@@ -32,6 +32,7 @@ export function createRouter(): Router {
   router.post("/api/students", asyncHandler(controllers.students.create));
   router.get("/api/students/:id", asyncHandler(controllers.students.detail));
   router.patch("/api/students/:id", asyncHandler(controllers.students.update));
+  router.get("/api/students/:studentId/export.xlsx", asyncHandler(controllers.studentReports.export));
   router.post("/api/enrollments/:id/pause", asyncHandler(controllers.enrollments.pause));
   router.post("/api/enrollments/:id/resume", asyncHandler(controllers.enrollments.resume));
   router.post("/api/enrollments/:id/end", asyncHandler(controllers.enrollments.end));

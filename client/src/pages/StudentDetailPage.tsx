@@ -19,7 +19,9 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import type { StudentDetail, TuitionMode } from "@teacher/shared";
+import { Download } from "@mui/icons-material";
 import { api } from "../api/client";
+import { downloadStudentReport } from "../api/students";
 import { LoadingState } from "../components/LoadingState";
 export function StudentDetailPage() {
   const { id } = useParams();
@@ -50,6 +52,9 @@ export function StudentDetailPage() {
   const changeEnrollmentStatus = async (action: "pause" | "resume") => { if (!item?.enrollmentId) return; if (action === "pause" && !window.confirm("Tạm dừng ghi danh này?")) return; setError(""); setSuccess(""); setBusy(true); try {
     await api(`/api/enrollments/${item.enrollmentId}/${action}`, { method: "POST" }); await load(); setSuccess(action === "pause" ? "Đã tạm dừng ghi danh." : "Đã mở lại ghi danh.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi trạng thái ghi danh."); } finally { setBusy(false); } };
+  const exportReport = async () => { setError(""); setSuccess(""); setBusy(true); try {
+    const filename = await downloadStudentReport(item!.id); setSuccess(`Đã tải báo cáo Excel: ${filename}`);
+  } catch (e) { setError(e instanceof Error ? e.message : "Không thể xuất báo cáo Excel."); } finally { setBusy(false); } };
   if (!item && !error) return <LoadingState />;
   if (!item) return <Alert severity="error">{error || "Không tải được học sinh."}</Alert>;
   return (
@@ -60,6 +65,9 @@ export function StudentDetailPage() {
         {item!.fullName}
       </Typography>
       <Button component={Link} to={`/admin/students/${item!.id}/edit`} variant="outlined">Sửa thông tin</Button>
+      <Button startIcon={<Download />} variant="contained" disabled={busy} onClick={exportReport}>
+        {busy ? "Đang tạo báo cáo…" : "Xuất báo cáo Excel"}
+      </Button>
       <Card>
         <CardContent>
           <Typography>Lớp: {item!.className}</Typography>

@@ -49,5 +49,9 @@
 - GET/POST `/api/teacher-busy-slots`
 - GET/PATCH/DELETE `/api/teacher-busy-slots/{id}`
 
-## Export (giai đoạn sau)
+## Export
 - GET `/api/students/{id}/export.xlsx`
+
+Route export yêu cầu auth, lấy dữ liệu canonical từ server và hỗ trợ
+`fromDate`, `toDate`, `classId`. Đây là output chuẩn hóa; generic legacy import
+không thuộc V1.

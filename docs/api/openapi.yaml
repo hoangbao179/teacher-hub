@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: Teacher Class Hub API
-  version: 0.3.0
-  description: API hiện hành qua checkpoint M5B, gồm lesson, tuition, schedule reconciliation và daily operations.
+  version: 0.4.0
+  description: API hiện hành qua checkpoint M6B, gồm lesson, tuition, schedule reconciliation, daily operations và Excel export.
 servers:
   - url: /
 security:
@@ -61,6 +61,33 @@ paths:
   /api/students/{id}:
     get: {summary: Chi tiết học sinh, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
     patch: {summary: Cập nhật học sinh, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
+  /api/students/{studentId}/export.xlsx:
+    get:
+      summary: Xuất workbook XLSX chuẩn hóa cho một học sinh
+      description: |
+        Dữ liệu lấy từ MySQL authoritative. `fromDate`/`toDate` lọc theo ngày học
+        thực tế; `classId` chỉ hợp lệ khi học sinh có lịch sử ghi danh tại lớp đó.
+        Workbook không được lưu trong database và thao tác tạo audit
+        `STUDENT_REPORT_EXPORTED`.
+      parameters:
+        - {in: path, name: studentId, required: true, schema: {type: integer, format: int64, minimum: 1}}
+        - {in: query, name: fromDate, schema: {type: string, format: date}}
+        - {in: query, name: toDate, schema: {type: string, format: date}}
+        - {in: query, name: classId, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: Workbook gồm Quá trình học tập, Học phí và Tổng hợp
+          headers:
+            Content-Disposition:
+              schema: {type: string}
+              description: Attachment filename an toàn cho Windows/macOS
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '413': {description: Báo cáo vượt giới hạn 5.000 dòng}
   /api/enrollments/{id}/pause:
     post: {summary: Tạm dừng ghi danh, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã tạm dừng}}}
   /api/enrollments/{id}/resume:

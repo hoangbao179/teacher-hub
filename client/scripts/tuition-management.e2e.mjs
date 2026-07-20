@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import ExcelJS from "exceljs";
 
 const root = path.resolve(import.meta.dirname, "../..");
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
@@ -158,6 +159,24 @@ try {
   await page.getByText("Chu kỳ đã thu và đang ở trạng thái chỉ đọc.").waitFor();
   if (await page.getByRole("link", { name: "Đánh dấu đã thu" }).count()) throw new Error("PAID detail still exposed payment action");
   await page.screenshot({ path: path.join(os.tmpdir(), "teacher-hub-m4b-paid-mobile.png"), fullPage: true });
+
+  await page.goto(`http://127.0.0.1:5176/admin/students/${dueStudent.id}`);
+  await page.getByRole("heading", { name: dueStudentName }).waitFor();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Xuất báo cáo Excel" }).click();
+  const download = await downloadPromise;
+  const downloadPath = path.join(os.tmpdir(), `teacher-hub-m6b-${suffix}.xlsx`);
+  await download.saveAs(downloadPath);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(fs.readFileSync(downloadPath));
+  const sheetNames = workbook.worksheets.map((sheet) => sheet.name);
+  if (JSON.stringify(sheetNames) !== JSON.stringify(["Quá trình học tập", "Học phí", "Tổng hợp"]))
+    throw new Error(`Unexpected workbook sheets: ${sheetNames.join(", ")}`);
+  if (workbook.getWorksheet("Quá trình học tập").rowCount !== 11 || workbook.getWorksheet("Học phí").rowCount !== 11)
+    throw new Error("Downloaded workbook row counts do not match canonical data");
+  if (workbook.getWorksheet("Học phí").getCell("F2").value !== due.packagePriceSnapshot)
+    throw new Error("Downloaded workbook did not preserve numeric price snapshot");
+  await page.getByText(/Đã tải báo cáo Excel:/).waitFor();
 
   const paidDetail = await api(`/api/tuition-cycles/${due.id}`, token);
   const dashboardAfterPayment = await api("/api/dashboard", token);

@@ -2,8 +2,8 @@
 
 ## Current milestone
 
-M6 release-candidate work is active. M6A Public Homepage is complete and M6B
-Excel export is the next gated checkpoint.
+M6 release-candidate work is active. M6A Public Homepage and M6B Excel export
+are complete; M6C system-wide polish is the next gated checkpoint.
 
 ## Status
 
@@ -29,6 +29,9 @@ M5B: PASS on 20/07/2026. Evidence is in
 M6A: PASS on 21/07/2026. Evidence is in
 `.agent-reports/M6A-public-homepage-implementation.md` and
 `.agent-reports/M6A-public-homepage-verification.md`.
+M6B: PASS on 21/07/2026. Evidence is in
+`.agent-reports/M6B-excel-export-implementation.md` and
+`.agent-reports/M6B-excel-export-verification.md`.
 
 ## Scope boundary
 
@@ -41,12 +44,13 @@ creation, busy slots, conflict warnings and per-item bulk reconciliation.
 M5B adds real Dashboard aggregates/today schedule, mobile reconciliation,
 weekly calendar, busy-slot management and makeup entry points. M6A adds the
 public marketing Homepage, content configuration, SEO, lazy media and public
-mobile/accessibility/performance coverage.
+mobile/accessibility/performance coverage. M6B adds authenticated canonical
+per-student Excel reporting, export audit and safe browser download.
 
 ## Known limitations
 
-- M6B Excel export is not implemented. Generic Excel import remains deferred
-  beyond V1 as a separate controlled legacy-migration task.
+- Generic Excel import remains deferred beyond V1 as a separate controlled
+  legacy-migration task.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production-specific public teacher/contact/domain values must replace the
   fictional source defaults before a real deployment.

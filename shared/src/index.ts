@@ -6,3 +6,4 @@ export * from "./contracts/lessons.js";
 export * from "./contracts/tuition.js";
 export * from "./contracts/schedule.js";
 export * from "./contracts/dashboard.js";
+export * from "./contracts/reports.js";

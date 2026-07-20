@@ -10,8 +10,8 @@
 - M5A: PASS — deterministic projections, exceptions, busy slots, conflicts and reconciliation API.
 - M5B: PASS — real dashboard, reconciliation, weekly calendar, busy and makeup mobile flows.
 - M6A: PASS — public marketing Homepage, SEO, contact actions, lazy media and route splitting.
-- M6B: next — canonical per-student Excel export.
-- M6C: pending — system-wide mobile/accessibility/performance polish.
+- M6B: PASS — canonical per-student Excel export, audit and browser download.
+- M6C: next — system-wide mobile/accessibility/performance polish.
 - M6D: pending — production readiness and release-candidate preparation.
 
 Chi tiết milestone cũ vẫn được lưu tại `milestones.md`; trạng thái hiện tại chỉ nằm trong `status.md`.

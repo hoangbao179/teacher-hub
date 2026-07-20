@@ -77,6 +77,8 @@
   `SCHEDULE_OCCURRENCE_RESCHEDULED`, `TEACHER_BUSY_SLOT_CREATED`,
   `TEACHER_BUSY_SLOT_UPDATED`, `TEACHER_BUSY_SLOT_DELETED` và các mutation
   `RECURRING_SCHEDULE_*`. Replay exception đồng nhất không tạo audit thứ hai.
+- Report action: `STUDENT_REPORT_EXPORTED`, entity là `STUDENT`; `after_json`
+  chỉ lưu filters đã dùng. Workbook bytes không được lưu trong audit/database.
 
 ## Kiểu dữ liệu bắt buộc
 - Múi giờ ứng dụng: Asia/Ho_Chi_Minh.
