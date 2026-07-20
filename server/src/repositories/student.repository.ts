@@ -7,6 +7,7 @@ import type {
   UpdateStudentRequest,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
+import { AuditRepository } from "./audit.repository";
 
 interface StudentJoinedRow extends RowDataPacket {
   id: number;
@@ -32,7 +33,7 @@ interface StudentJoinedRow extends RowDataPacket {
 function map(row: StudentJoinedRow): StudentDetail {
   const effective =
     row.tuition_mode === "FREE"
-      ? 0
+      ? null
       : row.tuition_mode === "CUSTOM"
         ? row.custom_package_price
         : row.default_package_price;
@@ -75,6 +76,7 @@ const baseQuery = `
 `;
 
 export class StudentRepository {
+  constructor(private readonly audit = new AuditRepository()) {}
   async list(): Promise<StudentListItem[]> {
     const [rows] = await pool.query<StudentJoinedRow[]>(
       `${baseQuery} ORDER BY s.full_name`,
@@ -90,8 +92,11 @@ export class StudentRepository {
     return rows[0] ? map(rows[0]) : null;
   }
 
-  async create(input: CreateStudentRequest): Promise<number> {
-      const [studentResult] = await pool.execute<ResultSetHeader>(
+  async create(input: CreateStudentRequest, actorUserId?: number): Promise<number> {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [studentResult] = await connection.execute<ResultSetHeader>(
         `
         INSERT INTO students(full_name,nickname,date_of_birth,parent_name,parent_phone,note)
         VALUES (?,?,?,?,?,?)
@@ -105,17 +110,37 @@ export class StudentRepository {
           input.note ?? null,
         ],
       );
+      await this.audit.record(connection, {
+        actorUserId, action: "STUDENT_CREATED", entityType: "STUDENT",
+        entityId: studentResult.insertId, newValues: input,
+      });
+      await connection.commit();
       return studentResult.insertId;
+    } catch (error) {
+      await connection.rollback(); throw error;
+    } finally { connection.release(); }
   }
 
-  async update(id: number, input: UpdateStudentRequest): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
+  async update(id: number, input: UpdateStudentRequest, actorUserId?: number): Promise<boolean> {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.query<RowDataPacket[]>("SELECT * FROM students WHERE id=? FOR UPDATE", [id]);
+      if (!rows[0]) { await connection.rollback(); return false; }
+      const [result] = await connection.execute<ResultSetHeader>(
       `UPDATE students SET full_name=?,nickname=?,date_of_birth=?,parent_name=?,parent_phone=?,note=?,status=? WHERE id=?`,
       [input.fullName, input.nickname ?? null, input.dateOfBirth ?? null,
         input.parentName ?? null, input.parentPhone ?? null, input.note ?? null,
         input.status, id],
     );
+    await this.audit.record(connection, {
+      actorUserId, action: "STUDENT_UPDATED", entityType: "STUDENT", entityId: id,
+      previousValues: rows[0], newValues: input,
+    });
+    await connection.commit();
     return result.affectedRows > 0;
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
   }
 
 }

@@ -8,6 +8,13 @@ export interface RecurringScheduleInput {
   endTime: string;
 }
 
+export interface CreateRecurringScheduleRequest extends RecurringScheduleInput {
+  effectiveFrom: string;
+  effectiveTo?: string;
+}
+
+export type UpdateRecurringScheduleRequest = CreateRecurringScheduleRequest;
+
 export interface CreateClassRequest {
   name: string;
   type: ClassType;

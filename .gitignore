@@ -7,6 +7,5 @@ coverage/
 .vite/
 .DS_Store
 *.log
-.agent-reports/
 server/data/
 mysql-data/

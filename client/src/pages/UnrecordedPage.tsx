@@ -29,14 +29,14 @@ export function UnrecordedPage() {
               {item.scheduledEndTime}
             </Typography>
             <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-              <Button size="small" variant="contained">
-                Đã dạy
+              <Button size="small" variant="contained" disabled>
+                Đã dạy · Chưa triển khai (M2)
               </Button>
-              <Button size="small" color="error" variant="outlined">
-                Nghỉ
+              <Button size="small" color="error" variant="outlined" disabled>
+                Nghỉ · Chưa triển khai
               </Button>
-              <Button size="small" variant="outlined">
-                Đổi lịch
+              <Button size="small" variant="outlined" disabled>
+                Đổi lịch · Chưa triển khai
               </Button>
             </Stack>
           </CardContent>

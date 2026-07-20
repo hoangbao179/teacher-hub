@@ -13,19 +13,19 @@ export class ClassService {
       throw new AppError(404, "CLASS_NOT_FOUND", "Không tìm thấy lớp.");
     return item;
   }
-  async create(input: CreateClassRequest) {
+  async create(input: CreateClassRequest, actorUserId?: number) {
     this.validate(input);
-    return this.repository.create({ ...input, name: input.name.trim() });
+    return this.repository.create({ ...input, name: input.name.trim() }, actorUserId);
   }
 
-  async update(id: number, input: UpdateClassRequest) {
+  async update(id: number, input: UpdateClassRequest, actorUserId?: number) {
     if (!Number.isInteger(id) || id < 1)
       throw new AppError(400, "VALIDATION_ERROR", "Mã lớp không hợp lệ.");
     this.validate(input);
     const result = await this.repository.update(id, {
       ...input,
       name: input.name.trim(),
-    });
+    }, actorUserId);
     if (result === "NOT_FOUND")
       throw new AppError(404, "CLASS_NOT_FOUND", "Không tìm thấy lớp.");
     if (result === "ONE_TO_ONE_CONFLICT")
@@ -34,8 +34,8 @@ export class ClassService {
       throw new AppError(409, "INVALID_CLASS_TRANSITION", "Không thể mở lại lớp đã đóng.");
   }
 
-  async setStatus(id: number, status: "ACTIVE" | "PAUSED" | "CLOSED") {
-    const result = await this.repository.setStatus(id, status);
+  async setStatus(id: number, status: "ACTIVE" | "PAUSED" | "CLOSED", actorUserId?: number) {
+    const result = await this.repository.setStatus(id, status, actorUserId);
     if (result === "NOT_FOUND")
       throw new AppError(404, "CLASS_NOT_FOUND", "Không tìm thấy lớp.");
     if (result === "INVALID_TRANSITION")
@@ -51,7 +51,7 @@ export class ClassService {
       throw new AppError(400, "VALIDATION_ERROR", "Trạng thái lớp không hợp lệ.");
     if (
       !Number.isInteger(input.defaultPackagePrice) ||
-      input.defaultPackagePrice < 0
+      input.defaultPackagePrice <= 0
     )
       throw new AppError(400, "VALIDATION_ERROR", "Giá gói không hợp lệ.");
     if (!Number.isInteger(input.defaultDurationMinutes) || input.defaultDurationMinutes < 1)

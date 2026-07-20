@@ -1,14 +1,18 @@
 openapi: 3.0.3
 info:
   title: Teacher Class Hub API
-  version: 0.1.0
-  description: API khung cho V1. Shared TypeScript contracts vẫn là source of truth khi code.
+  version: 0.1.1
+  description: Các endpoint đang tồn tại trong source ở mốc M1.1. Không liệt kê API M2 tương lai.
 servers:
-  - url: /api
+  - url: /
 security:
   - bearerAuth: []
 paths:
-  /auth/login:
+  /health:
+    get: {security: [], summary: Liveness, responses: {'200': {description: OK}}}
+  /ready:
+    get: {security: [], summary: Database readiness, responses: {'200': {description: Ready}}}
+  /api/auth/login:
     post:
       security: []
       summary: Đăng nhập giáo viên
@@ -19,122 +23,68 @@ paths:
             schema:
               type: object
               required: [email, password]
-              properties:
-                email: {type: string, format: email}
-                password: {type: string}
-      responses:
-        '200': {description: Thành công}
-  /auth/me:
-    get:
-      summary: User hiện tại
-      responses:
-        '200': {description: Thành công}
-  /dashboard:
-    get:
-      summary: Dashboard cô giáo
-      responses:
-        '200': {description: Thành công}
-  /classes:
-    get:
-      summary: Danh sách lớp
-      responses:
-        '200': {description: Thành công}
-    post:
-      summary: Tạo lớp
-      responses:
-        '201': {description: Đã tạo}
-  /classes/{id}:
-    get:
-      summary: Chi tiết lớp
-      parameters:
-        - {$ref: '#/components/parameters/Id'}
-      responses:
-        '200': {description: Thành công}
-  /classes/{id}/lessons:
-    get:
-      summary: Lịch sử buổi học của lớp
-      parameters:
-        - {$ref: '#/components/parameters/Id'}
-      responses:
-        '200': {description: Thành công}
-  /students:
-    get:
-      summary: Danh sách học sinh
-      responses:
-        '200': {description: Thành công}
-    post:
-      summary: Tạo học sinh và enrollment
-      responses:
-        '201': {description: Đã tạo}
-  /students/{id}:
-    get:
-      summary: Chi tiết học sinh
-      parameters:
-        - {$ref: '#/components/parameters/Id'}
-      responses:
-        '200': {description: Thành công}
-  /students/{id}/tuition-mode:
-    patch:
-      summary: Đổi chế độ học phí
-      parameters:
-        - {$ref: '#/components/parameters/Id'}
-      responses:
-        '204': {description: Đã cập nhật}
-  /lessons:
-    post:
-      summary: Tạo buổi học nháp
-      responses:
-        '201': {description: Đã tạo}
-  /lessons/{id}/complete:
-    post:
-      summary: Hoàn thành buổi, điểm danh và phân bổ chu kỳ
-      parameters:
-        - {$ref: '#/components/parameters/Id'}
-      responses:
-        '200': {description: Thành công}
-        '409': {description: State conflict}
-  /tuition-cycles:
+              properties: {email: {type: string, format: email}, password: {type: string}}
+      responses: {'200': {description: Thành công}, '401': {description: Sai thông tin đăng nhập}}
+  /api/auth/logout:
+    post: {summary: Kết thúc session phía client, responses: {'204': {description: Đã đăng xuất}}}
+  /api/auth/me:
+    get: {summary: Đọc authoritative user từ database, responses: {'200': {description: Thành công}, '401': {description: Token không hợp lệ}}}
+  /api/dashboard:
+    get: {summary: Dashboard giáo viên, responses: {'200': {description: Thành công}}}
+  /api/classes:
+    get: {summary: Danh sách lớp, responses: {'200': {description: Thành công}}}
+    post: {summary: Tạo lớp và lịch lặp, responses: {'201': {description: Đã tạo}}}
+  /api/classes/{id}:
+    get: {summary: Chi tiết lớp gồm schedules và active students, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
+    patch: {summary: Cập nhật lớp và lịch lặp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
+  /api/classes/{id}/pause:
+    post: {summary: Tạm dừng lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã tạm dừng}}}
+  /api/classes/{id}/resume:
+    post: {summary: Mở lại lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã mở lại}}}
+  /api/classes/{id}/close:
+    post: {summary: Đóng lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã đóng}}}
+  /api/classes/{id}/enrollments:
+    post: {summary: Ghi danh học sinh vào lớp ACTIVE, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'201': {description: Đã ghi danh}, '409': {description: Vi phạm trạng thái hoặc uniqueness}}}
+  /api/classes/{id}/schedules:
+    post: {summary: Tạo lịch lặp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'201': {description: Đã tạo}}}
+  /api/classes/{id}/lessons:
+    get: {summary: Lịch sử lesson hiện có của lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
+  /api/recurring-schedules/{id}:
+    patch: {summary: Cập nhật lịch lặp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
+    delete: {summary: Xóa lịch lặp chưa phát sinh dữ liệu học phí, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã xóa}}}
+  /api/students:
+    get: {summary: Danh sách học sinh, responses: {'200': {description: Thành công}}}
+    post: {summary: Tạo học sinh, responses: {'201': {description: Đã tạo}}}
+  /api/students/{id}:
+    get: {summary: Chi tiết học sinh, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
+    patch: {summary: Cập nhật học sinh, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
+  /api/enrollments/{id}/pause:
+    post: {summary: Tạm dừng ghi danh, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã tạm dừng}}}
+  /api/enrollments/{id}/resume:
+    post: {summary: Mở lại ghi danh nếu lớp ACTIVE, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã mở lại}}}
+  /api/enrollments/{id}/end:
+    post: {summary: Kết thúc ghi danh và giữ lịch sử, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã kết thúc}}}
+  /api/enrollments/{id}/tuition-mode:
+    patch: {summary: Đổi tuition mode có effective date, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
+  /api/lessons:
+    post: {summary: Tạo lesson draft (API nền có sẵn; UI wizard thuộc M2), responses: {'201': {description: Đã tạo}}}
+  /api/lessons/{id}/complete:
+    post: {summary: Hoàn thành lesson draft (API nền có sẵn; UI wizard thuộc M2), parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}, '409': {description: State conflict}}}
+  /api/tuition-cycles:
     get:
       summary: Danh sách chu kỳ
-      parameters:
-        - in: query
-          name: status
-          schema: {type: string}
-      responses:
-        '200': {description: Thành công}
-  /tuition-cycles/{id}:
-    get:
-      summary: Chi tiết chu kỳ
-      parameters:
-        - {$ref: '#/components/parameters/Id'}
-      responses:
-        '200': {description: Thành công}
-  /tuition-cycles/{id}/mark-paid:
-    post:
-      summary: Đánh dấu thu toàn bộ
-      parameters:
-        - {$ref: '#/components/parameters/Id'}
-      responses:
-        '204': {description: Đã thu}
-  /schedule/unrecorded:
-    get:
-      summary: Buổi dự kiến chưa ghi nhận
-      responses:
-        '200': {description: Thành công}
-  /schedule/week:
-    get:
-      summary: Lịch tuần và lịch bận
-      responses:
-        '200': {description: Thành công}
+      parameters: [{in: query, name: status, schema: {type: string}}]
+      responses: {'200': {description: Thành công}}
+  /api/tuition-cycles/{id}:
+    get: {summary: Chi tiết chu kỳ, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
+  /api/tuition-cycles/{id}/mark-paid:
+    post: {summary: Đánh dấu thanh toán toàn bộ, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã thu}}}
+  /api/schedule/unrecorded:
+    get: {summary: Occurrence dự kiến chưa ghi nhận, responses: {'200': {description: Thành công}}}
+  /api/schedule/week:
+    get: {summary: Lịch tuần và lịch bận, responses: {'200': {description: Thành công}}}
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   parameters:
-    Id:
-      in: path
-      name: id
-      required: true
-      schema: {type: integer, format: int64}
+    Id: {in: path, name: id, required: true, schema: {type: integer, format: int64}}

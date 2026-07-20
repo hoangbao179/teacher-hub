@@ -19,6 +19,13 @@ class_enrollments ─ tuition_cycles ─ tuition_cycle_sessions ─ lesson_atten
 - Giờ: `TIME`.
 - Timezone UI: `Asia/Ho_Chi_Minh`.
 
-## Integrity do service enforce
+## Integrity
 
-MySQL không có partial unique index thuận tiện; rule một enrollment ACTIVE/học sinh phải được kiểm tra trong transaction khi thêm/chuyển lớp.
+- Service kiểm tra state để trả domain error rõ ràng.
+- MySQL là consistency boundary cuối: generated `active_student_key` chỉ có giá
+  trị khi enrollment `ACTIVE`, unique index ngăn hai active enrollment cho cùng
+  student kể cả khi có race.
+- `classes.default_package_price > 0` và tuition-mode/custom-price combinations
+  được bảo vệ bằng check constraints.
+- ONE_TO_ONE capacity vẫn được khóa/kiểm tra trong transaction ở service/repository;
+  constraint cross-table này không thể biểu diễn bằng MySQL `CHECK` thuần túy.

@@ -13,23 +13,23 @@ export class ClassController {
   detail = async (req: Request, res: Response) =>
     res.json({ data: await this.service.detail(Number(req.params.id)) });
   create = async (req: Request, res: Response) => {
-    const id = await this.service.create(req.body as CreateClassRequest);
+    const id = await this.service.create(req.body as CreateClassRequest, req.auth!.id);
     res.status(201).json({ data: { id } });
   };
   update = async (req: Request, res: Response) => {
-    await this.service.update(Number(req.params.id), req.body as UpdateClassRequest);
+    await this.service.update(Number(req.params.id), req.body as UpdateClassRequest, req.auth!.id);
     res.status(204).end();
   };
   pause = async (req: Request, res: Response) => {
-    await this.service.setStatus(Number(req.params.id), "PAUSED");
+    await this.service.setStatus(Number(req.params.id), "PAUSED", req.auth!.id);
     res.status(204).end();
   };
   resume = async (req: Request, res: Response) => {
-    await this.service.setStatus(Number(req.params.id), "ACTIVE");
+    await this.service.setStatus(Number(req.params.id), "ACTIVE", req.auth!.id);
     res.status(204).end();
   };
   close = async (req: Request, res: Response) => {
-    await this.service.setStatus(Number(req.params.id), "CLOSED");
+    await this.service.setStatus(Number(req.params.id), "CLOSED", req.auth!.id);
     res.status(204).end();
   };
   lessonsByClass = async (req: Request, res: Response) =>

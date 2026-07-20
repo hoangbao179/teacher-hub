@@ -19,11 +19,12 @@ export function ClassFormPage() {
   const [name, setName] = useState("");
   const [type, setType] = useState<ClassType>("GROUP");
   const [subject, setSubject] = useState("");
-  const [price, setPrice] = useState(0);
+  const [price, setPrice] = useState(1);
   const [duration, setDuration] = useState(90);
   const [startDate, setStartDate] = useState(today);
   const [expectedEndDate, setExpectedEndDate] = useState("");
   const [status, setStatus] = useState<ClassStatus>("ACTIVE");
+  const [originalStatus, setOriginalStatus] = useState<ClassStatus>("ACTIVE");
   const [note, setNote] = useState("");
   const [schedules, setSchedules] = useState<RecurringScheduleInput[]>([{ ...emptySchedule }]);
 
@@ -33,13 +34,16 @@ export function ClassFormPage() {
       setName(item.name); setType(item.type); setSubject(item.subject ?? "");
       setPrice(item.defaultPackagePrice); setDuration(item.defaultDurationMinutes);
       setStartDate(item.startDate); setExpectedEndDate(item.expectedEndDate ?? "");
-      setStatus(item.status); setNote(item.note ?? "");
+      setStatus(item.status); setOriginalStatus(item.status); setNote(item.note ?? "");
       setSchedules(item.schedules.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })));
     }).catch((e: Error) => setError(e.message)).finally(() => setLoading(false));
   }, [id]);
 
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); setSaving(true); setError("");
+    event.preventDefault();
+    if (editing && status !== originalStatus && (status === "PAUSED" || status === "CLOSED") &&
+      !window.confirm(status === "CLOSED" ? "Đóng lớp? Lịch sử sẽ được giữ lại và không thể mở lại." : "Tạm dừng lớp?")) return;
+    setSaving(true); setError("");
     const body = { name, type, subject: subject || undefined, defaultPackagePrice: Number(price),
       defaultDurationMinutes: Number(duration), startDate, expectedEndDate: expectedEndDate || undefined,
       note: note || undefined, status, schedules };
@@ -47,9 +51,9 @@ export function ClassFormPage() {
       if (editing) await api(`/api/classes/${id}`, { method: "PATCH", body: JSON.stringify(body) });
       else {
         const result = await api<{ id: number }>("/api/classes", { method: "POST", body: JSON.stringify(body) });
-        navigate(`/admin/classes/${result.id}`); return;
+        navigate(`/admin/classes/${result.id}`, { state: { success: "Đã tạo lớp." } }); return;
       }
-      navigate(`/admin/classes/${id}`);
+      navigate(`/admin/classes/${id}`, { state: { success: "Đã cập nhật lớp." } });
     } catch (e) { setError(e instanceof Error ? e.message : "Không thể lưu lớp."); }
     finally { setSaving(false); }
   };
@@ -62,7 +66,7 @@ export function ClassFormPage() {
       <MenuItem value="ONE_TO_ONE">1 kèm 1</MenuItem><MenuItem value="GROUP">Lớp nhóm</MenuItem>
     </Select></FormControl>
     <TextField label="Môn học" value={subject} onChange={(e) => setSubject(e.target.value)} />
-    <TextField required type="number" label="Giá gói 8 buổi (VND)" value={price} onChange={(e) => setPrice(Number(e.target.value))} slotProps={{ htmlInput: { min: 0, step: 1 } }} />
+    <TextField required type="number" label="Giá gói 8 buổi (VND)" value={price} onChange={(e) => setPrice(Number(e.target.value))} slotProps={{ htmlInput: { min: 1, step: 1 } }} />
     <TextField required type="number" label="Thời lượng mặc định (phút)" value={duration} onChange={(e) => setDuration(Number(e.target.value))} slotProps={{ htmlInput: { min: 1, step: 1 } }} />
     <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
       <TextField required fullWidth type="date" label="Ngày bắt đầu" value={startDate} onChange={(e) => setStartDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />

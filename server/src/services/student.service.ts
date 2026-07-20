@@ -16,7 +16,7 @@ export class StudentService {
       throw new AppError(404, "STUDENT_NOT_FOUND", "Không tìm thấy học sinh.");
     return item;
   }
-  async create(input: CreateStudentRequest) {
+  async create(input: CreateStudentRequest, actorUserId?: number) {
     if (!input.fullName?.trim())
       throw new AppError(
         400,
@@ -26,14 +26,14 @@ export class StudentService {
     return this.repository.create({
       ...input,
       fullName: input.fullName.trim(),
-    });
+    }, actorUserId);
   }
-  async update(id: number, input: UpdateStudentRequest) {
+  async update(id: number, input: UpdateStudentRequest, actorUserId?: number) {
     if (!input.fullName?.trim())
       throw new AppError(400, "VALIDATION_ERROR", "Họ tên học sinh là bắt buộc.");
     if (!(input.status === "ACTIVE" || input.status === "INACTIVE"))
       throw new AppError(400, "VALIDATION_ERROR", "Trạng thái học sinh không hợp lệ.");
-    if (!(await this.repository.update(id, { ...input, fullName: input.fullName.trim() })))
+    if (!(await this.repository.update(id, { ...input, fullName: input.fullName.trim() }, actorUserId)))
       throw new AppError(404, "STUDENT_NOT_FOUND", "Không tìm thấy học sinh.");
   }
 }

@@ -12,6 +12,6 @@
 
 Nguồn đúng khi mâu thuẫn:
 
-`business rules > feature spec > acceptance criteria > shared contracts > source implementation > wireframe`.
+`business rules/approved ADR > acceptance criteria > shared contracts > OpenAPI > source implementation > wireframe`.
 
 Không tự thêm notification, thanh toán online, tài khoản phụ huynh/học sinh, nhiều giáo viên hoặc CMS trong V1.

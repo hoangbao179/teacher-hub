@@ -49,7 +49,7 @@ export function TuitionDetailPage() {
         ))}
       </List>
       {item!.status === "PAYMENT_DUE" && (
-        <Button variant="contained">Đánh dấu đã thu</Button>
+        <Button variant="contained" disabled>Đánh dấu đã thu · Chưa triển khai (M4)</Button>
       )}
     </Stack>
   );

@@ -1,6 +1,11 @@
 import type { ApiEnvelope } from "@teacher/shared";
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -25,8 +30,12 @@ export async function api<T>(
       ...options.headers,
     },
   });
+  if (response.status === 401) {
+    localStorage.removeItem("teacher-token");
+    unauthorizedHandler?.();
+  }
   if (response.status === 204) return undefined as T;
-  const payload = (await response.json()) as ApiEnvelope<T> & {
+  const payload = (await response.json().catch(() => ({}))) as ApiEnvelope<T> & {
     error?: { code: string; message: string };
   };
   if (!response.ok)

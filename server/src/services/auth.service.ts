@@ -33,4 +33,12 @@ export class AuthService {
     await this.users.touchLogin(user.id);
     return { token, user: authUser };
   }
+
+  async me(userId: number): Promise<LoginResponse["user"]> {
+    const user = await this.users.findById(userId);
+    if (!user || user.status !== "ACTIVE") {
+      throw new AppError(401, "INVALID_TOKEN", "Phiên đăng nhập không còn hợp lệ.");
+    }
+    return { id: user.id, email: user.email, displayName: user.display_name, role: user.role };
+  }
 }

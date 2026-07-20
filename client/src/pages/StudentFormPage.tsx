@@ -12,16 +12,19 @@ export function StudentFormPage() {
   const [dateOfBirth, setDateOfBirth] = useState(""); const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState(""); const [note, setNote] = useState("");
   const [status, setStatus] = useState<StudentStatus>("ACTIVE");
+  const [originalStatus, setOriginalStatus] = useState<StudentStatus>("ACTIVE");
   useEffect(() => { if (!id) return; api<StudentDetail>(`/api/students/${id}`).then((x) => {
     setFullName(x.fullName); setNickname(x.nickname ?? ""); setDateOfBirth(x.dateOfBirth ?? "");
-    setParentName(x.parentName ?? ""); setParentPhone(x.parentPhone ?? ""); setNote(x.note ?? ""); setStatus(x.status);
+    setParentName(x.parentName ?? ""); setParentPhone(x.parentPhone ?? ""); setNote(x.note ?? ""); setStatus(x.status); setOriginalStatus(x.status);
   }).catch((e: Error) => setError(e.message)).finally(() => setLoading(false)); }, [id]);
-  const submit = async (e: FormEvent) => { e.preventDefault(); setSaving(true); setError("");
+  const submit = async (e: FormEvent) => { e.preventDefault();
+    if (editing && originalStatus === "ACTIVE" && status === "INACTIVE" && !window.confirm("Ngừng hoạt động học sinh? Lịch sử sẽ được giữ lại.")) return;
+    setSaving(true); setError("");
     const body = { fullName, nickname: nickname || undefined, dateOfBirth: dateOfBirth || undefined,
       parentName: parentName || undefined, parentPhone: parentPhone || undefined, note: note || undefined, status };
     try { if (editing) await api(`/api/students/${id}`, { method: "PATCH", body: JSON.stringify(body) });
-      else { const result = await api<{id:number}>("/api/students", { method: "POST", body: JSON.stringify(body) }); navigate(`/admin/students/${result.id}`); return; }
-      navigate(`/admin/students/${id}`);
+      else { const result = await api<{id:number}>("/api/students", { method: "POST", body: JSON.stringify(body) }); navigate(`/admin/students/${result.id}`, { state: { success: "Đã tạo học sinh." } }); return; }
+      navigate(`/admin/students/${id}`, { state: { success: "Đã cập nhật học sinh." } });
     } catch (err) { setError(err instanceof Error ? err.message : "Không thể lưu học sinh."); } finally { setSaving(false); }
   };
   if (loading) return <LoadingState />;

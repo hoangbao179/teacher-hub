@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AdminLayout } from "./layout/AdminLayout";
 import { useAuth } from "./auth/AuthContext";
 import { HomePage } from "./pages/HomePage";
@@ -16,9 +16,16 @@ import { LessonWizardPage } from "./pages/LessonWizardPage";
 import { LessonCompletePlaceholderPage } from "./pages/LessonCompletePlaceholderPage";
 import { ClassFormPage } from "./pages/ClassFormPage";
 import { StudentFormPage } from "./pages/StudentFormPage";
+import { LoadingState } from "./components/LoadingState";
 function Protected() {
-  const { user } = useAuth();
-  return user ? <Outlet /> : <Navigate to="/admin/login" replace />;
+  const { user, bootstrapping } = useAuth();
+  const location = useLocation();
+  if (bootstrapping) return <LoadingState />;
+  return user ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/admin/login" replace state={{ from: location.pathname + location.search }} />
+  );
 }
 export function App() {
   return (

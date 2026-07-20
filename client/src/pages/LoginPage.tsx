@@ -7,11 +7,12 @@ import {
   Typography,
 } from "@mui/material";
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 export function LoginPage() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("teacher@example.com");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,7 +23,8 @@ export function LoginPage() {
     setError("");
     try {
       await auth.login({ email, password });
-      navigate("/admin");
+      const destination = (location.state as { from?: string } | null)?.from;
+      navigate(destination?.startsWith("/admin") ? destination : "/admin", { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Đăng nhập thất bại.");
     } finally {

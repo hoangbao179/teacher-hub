@@ -40,12 +40,26 @@ Node.js v24.18.0
 npm 12.0.1
 ```
 
-MySQL/Docker smoke-test remains a local/deployment step:
+MySQL native smoke-test local:
 
 ```bash
-docker compose up -d mysql
 cp server/.env.example server/.env
 npm run db:migrate
 npm run db:bootstrap-admin
 npm run dev
 ```
+
+Integration/E2E tạo schema tách biệt bằng hậu tố `_test` trên cùng MySQL native;
+runner từ chối prepare database không kết thúc bằng `_test` và không reset schema
+ứng dụng. Docker không được dùng cho các test này.
+
+## Repository consistency
+
+`npm run check:repo` đối chiếu method/path giữa Express và OpenAPI, kiểm tra bộ
+tài liệu implementation bắt buộc, manifest thủ công, generated artifacts đã
+track, empty click handlers và việc status khai `PASS` khi chưa có verification
+report. Check có chủ đích giới hạn ở các dấu hiệu ổn định, không parse JSX/YAML
+toàn phần để tránh brittle false positive.
+
+`npm run check` chạy typecheck, lint, production build, unit tests, MySQL
+integration tests, browser smoke test và consistency check.

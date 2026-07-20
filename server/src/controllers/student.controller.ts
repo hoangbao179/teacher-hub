@@ -12,11 +12,11 @@ export class StudentController {
   detail = async (req: Request, res: Response) =>
     res.json({ data: await this.service.detail(Number(req.params.id)) });
   create = async (req: Request, res: Response) => {
-    const id = await this.service.create(req.body as CreateStudentRequest);
+    const id = await this.service.create(req.body as CreateStudentRequest, req.auth!.id);
     res.status(201).json({ data: { id } });
   };
   update = async (req: Request, res: Response) => {
-    await this.service.update(Number(req.params.id), req.body as UpdateStudentRequest);
+    await this.service.update(Number(req.params.id), req.body as UpdateStudentRequest, req.auth!.id);
     res.status(204).end();
   };
 }

@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import type { DashboardResponse } from "@teacher/shared";
 import { api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
@@ -29,7 +30,7 @@ export function DashboardPage() {
       {error && <Alert severity="warning">{error}</Alert>}
       <Grid container spacing={2}>
         <Grid size={12}>
-          <Card sx={{ bgcolor: "primary.main", color: "white" }}>
+          <Card component={Link} to="/admin/tuition" sx={{ bgcolor: "primary.main", color: "white", textDecoration: "none" }}>
             <CardContent>
               <Payments />
               <Typography variant="h5" sx={{ fontWeight: 900 }}>
@@ -39,7 +40,7 @@ export function DashboardPage() {
           </Card>
         </Grid>
         <Grid size={6}>
-          <Card>
+          <Card component={Link} to="/admin/unrecorded" sx={{ textDecoration: "none", color: "inherit" }}>
             <CardContent>
               <CheckCircle color="success" />
               <Typography sx={{ fontWeight: 800 }}>
@@ -49,7 +50,7 @@ export function DashboardPage() {
           </Card>
         </Grid>
         <Grid size={6}>
-          <Card>
+          <Card component={Link} to="/admin/calendar" sx={{ textDecoration: "none", color: "inherit" }}>
             <CardContent>
               <CalendarMonth color="info" />
               <Typography sx={{ fontWeight: 800 }}>
@@ -68,10 +69,10 @@ export function DashboardPage() {
               {item.activeStudentCount} học sinh
             </Typography>
             <Button
-              href={`/admin/lessons/new?classId=${item.id}`}
+              disabled
               sx={{ mt: 1 }}
             >
-              Ghi nhận
+              Ghi nhận · Chưa triển khai (M2)
             </Button>
           </CardContent>
         </Card>

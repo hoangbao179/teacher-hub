@@ -4,6 +4,7 @@ import {
   Home,
   Menu,
   Payments,
+  Logout,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -13,8 +14,10 @@ import {
   Container,
   Toolbar,
   Typography,
+  IconButton,
 } from "@mui/material";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 
 const nav = [
   ["/admin", <Home key="home" />, "Hôm nay"],
@@ -26,6 +29,7 @@ const nav = [
 export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const auth = useAuth();
   const current = Math.max(
     0,
     nav.findIndex(([path]) =>
@@ -43,7 +47,10 @@ export function AdminLayout() {
         sx={{ borderBottom: 1, borderColor: "divider" }}
       >
         <Toolbar>
-          <Typography sx={{ fontWeight: 800 }}>Teacher Class Hub</Typography>
+          <Typography sx={{ fontWeight: 800, flexGrow: 1 }}>Teacher Class Hub</Typography>
+          <IconButton aria-label="Đăng xuất" onClick={() => void auth.logout().then(() => navigate("/admin/login"))}>
+            <Logout />
+          </IconButton>
         </Toolbar>
       </AppBar>
       <Container maxWidth="sm" sx={{ py: 2 }}>

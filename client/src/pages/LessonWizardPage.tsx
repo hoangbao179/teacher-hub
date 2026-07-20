@@ -101,9 +101,9 @@ export function LessonWizardPage() {
         variant="contained"
         size="large"
         onClick={create}
-        disabled={!classId}
+        disabled
       >
-        Tiếp tục
+        Chưa triển khai (M2)
       </Button>
     </Stack>
   );

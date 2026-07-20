@@ -16,6 +16,10 @@ function serviceReturning(result: EnrollmentWriteResult) {
   return new EnrollmentService(repository);
 }
 
+function serviceWithRepository(repository: Partial<EnrollmentRepository>) {
+  return new EnrollmentService(repository as EnrollmentRepository);
+}
+
 async function expectCode(run: () => Promise<unknown>, code: string) {
   await assert.rejects(run, (error: unknown) => error instanceof AppError && error.code === code);
 }
@@ -38,4 +42,27 @@ test("FREE enrollment has no custom price", async () => {
 
 test("closed classes cannot accept new enrollments", async () => {
   await expectCode(() => serviceReturning({ kind: "CLASS_CLOSED" }).create(2, valid), "CLASS_CLOSED");
+});
+
+test("paused classes cannot accept new enrollments", async () => {
+  await expectCode(() => serviceReturning({ kind: "CLASS_PAUSED" }).create(2, valid), "CLASS_PAUSED");
+});
+
+test("CLASS_DEFAULT enrollment rejects a custom price", async () => {
+  await expectCode(() => serviceReturning({ kind: "OK", id: 1 }).create(2, { ...valid, customPackagePrice: 1000 }), "CLASS_DEFAULT_CUSTOM_PRICE");
+});
+
+test("pause, resume and end request audited repository transitions with actor", async () => {
+  const calls: unknown[][] = [];
+  const service = serviceWithRepository({
+    setStatus: async (...args: unknown[]) => { calls.push(args); return { kind: "OK", id: 9 }; },
+  } as Partial<EnrollmentRepository>);
+  await service.pause(9, 42);
+  await service.resume(9, 42);
+  await service.end(9, { endedAt: "2026-07-20", reason: "Hoàn tất" }, 42);
+  assert.deepEqual(calls, [
+    [9, "PAUSED", undefined, undefined, 42],
+    [9, "ACTIVE", undefined, undefined, 42],
+    [9, "ENDED", "2026-07-20", "Hoàn tất", 42],
+  ]);
 });

@@ -2,8 +2,15 @@
 
 - `ONE_TO_ONE` và `GROUP` dùng cùng bảng `classes`.
 - Một học sinh tối đa một enrollment `ACTIVE`.
+- Rule trên được kiểm tra ở service và bảo vệ cuối cùng bằng generated key +
+  unique index `uq_enrollments_one_active_per_student` trong MySQL.
 - Giá lớp là mặc định; enrollment có thể `CUSTOM` hoặc `FREE`.
+- Giá gói lớp là integer VND dương cho đúng 8 buổi; `0` không biểu diễn miễn phí.
+- Lớp `PAUSED` hoặc `CLOSED` không nhận enrollment active mới; resume enrollment
+  cũng yêu cầu lớp đang `ACTIVE`.
 - Đóng lớp/ngừng học không xóa dữ liệu.
 - Enrollment ngừng ở dưới 8 buổi chuyển chu kỳ cuối sang `INCOMPLETE` khi flow được triển khai.
 
-Các action đóng/tạm dừng/ngừng học chưa được nối UI trong base; triển khai theo product spec và state machine.
+UI M1.1 đã nối create/edit, pause/resume/close class, create enrollment,
+pause/resume/end enrollment và change tuition mode với loading/error/success và
+confirmation cho transition phá hủy lịch sử hoạt động. Các mutation này có audit.

@@ -14,16 +14,18 @@ Monorepo mobile-first cho website giới thiệu giáo viên và hệ thống qu
 
 ## Khởi động nhanh
 
-Yêu cầu: Node.js 24.18.0 LTS, npm 12.0.1, Docker và Docker Compose.
+Yêu cầu local: Node.js 24.18.0 LTS, npm 12.0.1 và MySQL 8 native đang chạy.
+Docker Compose chỉ là lựa chọn deploy/isolated environment, không phải dependency
+của test runner local.
 
 ```bash
 npm install -g npm@12.0.1
 cp server/.env.example server/.env
 cp client/.env.example client/.env
 npm ci
-docker compose up -d mysql
 npm run db:migrate
 npm run db:bootstrap-admin
+npm run db:seed:dev
 npm run dev
 ```
 
@@ -32,7 +34,7 @@ Mặc định:
 - Web: `http://localhost:5173`
 - API: `http://localhost:4000`
 - Health: `http://localhost:4000/health`
-- MySQL: `localhost:3306`
+- MySQL native: `localhost:3306` (theo `server/.env`)
 
 Thông tin admin ban đầu lấy từ `server/.env`:
 
@@ -42,6 +44,11 @@ BOOTSTRAP_ADMIN_PASSWORD=change-me-now
 ```
 
 Hãy đổi password trước khi dùng thật.
+
+`npm run db:seed:dev` tạo idempotent dữ liệu giả `DEV_*` gồm lớp nhóm, lớp 1 kèm
+1, năm học sinh, ba tuition mode, schedules và trạng thái paused/closed.
+`npm run db:reset:dev` xóa toàn bộ business data trên MySQL cục bộ nhưng giữ
+`users` và `schema_migrations`; không chạy lệnh này với dữ liệu cần giữ.
 
 ## Trước khi code tính năng
 

@@ -10,6 +10,7 @@ import type {
   UpdateClassRequest,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
+import { AuditRepository } from "./audit.repository";
 
 interface ClassRow extends RowDataPacket {
   id: number;
@@ -42,6 +43,7 @@ function mapList(row: ClassRow): ClassListItem {
 }
 
 export class ClassRepository {
+  constructor(private readonly audit = new AuditRepository()) {}
   async list(): Promise<ClassListItem[]> {
     const [rows] = await pool.query<ClassRow[]>(`
       SELECT c.*,
@@ -114,7 +116,7 @@ export class ClassRepository {
     };
   }
 
-  async create(input: CreateClassRequest): Promise<number> {
+  async create(input: CreateClassRequest, actorUserId?: number): Promise<number> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -136,8 +138,12 @@ export class ClassRepository {
           input.status === "CLOSED" ? new Date() : null,
         ],
       );
+      await this.audit.record(connection, {
+        actorUserId, action: "CLASS_CREATED", entityType: "CLASS",
+        entityId: result.insertId, newValues: input,
+      });
       for (const schedule of input.schedules) {
-        await connection.execute(
+        const [scheduleResult] = await connection.execute<ResultSetHeader>(
           "INSERT INTO recurring_schedules(class_id,day_of_week,start_time,end_time,effective_from) VALUES (?,?,?,?,?)",
           [
             result.insertId,
@@ -147,6 +153,10 @@ export class ClassRepository {
             input.startDate,
           ],
         );
+        await this.audit.record(connection, {
+          actorUserId, action: "RECURRING_SCHEDULE_CREATED", entityType: "RECURRING_SCHEDULE",
+          entityId: scheduleResult.insertId, newValues: { classId: result.insertId, ...schedule },
+        });
       }
       await connection.commit();
       return result.insertId;
@@ -158,12 +168,12 @@ export class ClassRepository {
     }
   }
 
-  async update(id: number, input: UpdateClassRequest): Promise<"UPDATED" | "NOT_FOUND" | "ONE_TO_ONE_CONFLICT" | "INVALID_TRANSITION"> {
+  async update(id: number, input: UpdateClassRequest, actorUserId?: number): Promise<"UPDATED" | "NOT_FOUND" | "ONE_TO_ONE_CONFLICT" | "INVALID_TRANSITION"> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
       const [existing] = await connection.query<RowDataPacket[]>(
-        "SELECT id,status FROM classes WHERE id=? FOR UPDATE",
+        "SELECT * FROM classes WHERE id=? FOR UPDATE",
         [id],
       );
       if (!existing[0]) {
@@ -203,6 +213,21 @@ export class ClassRepository {
           id,
         ],
       );
+      await this.audit.record(connection, {
+        actorUserId, action: "CLASS_UPDATED", entityType: "CLASS", entityId: id,
+        previousValues: existing[0], newValues: input,
+      });
+      if (existing[0].status !== input.status) {
+        const statusAction = input.status === "PAUSED" ? "CLASS_PAUSED" : input.status === "ACTIVE" ? "CLASS_RESUMED" : "CLASS_CLOSED";
+        await this.audit.record(connection, {
+          actorUserId, action: statusAction, entityType: "CLASS", entityId: id,
+          previousValues: { status: existing[0].status }, newValues: { status: input.status },
+        });
+      }
+      const [oldSchedules] = await connection.query<RowDataPacket[]>(
+        "SELECT * FROM recurring_schedules WHERE class_id=? AND effective_to IS NULL FOR UPDATE",
+        [id],
+      );
       await connection.execute(
         "DELETE FROM recurring_schedules WHERE class_id=? AND effective_from>=CURDATE()",
         [id],
@@ -211,11 +236,25 @@ export class ClassRepository {
         "UPDATE recurring_schedules SET effective_to=DATE_SUB(CURDATE(),INTERVAL 1 DAY) WHERE class_id=? AND effective_to IS NULL AND effective_from<CURDATE()",
         [id],
       );
+      for (const [index, oldSchedule] of oldSchedules.entries()) {
+        const replacement = input.schedules[index];
+        await this.audit.record(connection, {
+          actorUserId,
+          action: replacement ? "RECURRING_SCHEDULE_UPDATED" : "RECURRING_SCHEDULE_DELETED",
+          entityType: "RECURRING_SCHEDULE", entityId: Number(oldSchedule.id),
+          previousValues: oldSchedule,
+          newValues: replacement ? { classId: id, ...replacement } : undefined,
+        });
+      }
       for (const schedule of input.schedules) {
-        await connection.execute(
+        const [scheduleResult] = await connection.execute<ResultSetHeader>(
           "INSERT INTO recurring_schedules(class_id,day_of_week,start_time,end_time,effective_from) VALUES (?,?,?,?,GREATEST(?,CURDATE()))",
           [id, schedule.dayOfWeek, schedule.startTime, schedule.endTime, input.startDate],
         );
+        await this.audit.record(connection, {
+          actorUserId, action: "RECURRING_SCHEDULE_CREATED", entityType: "RECURRING_SCHEDULE",
+          entityId: scheduleResult.insertId, newValues: { classId: id, ...schedule },
+        });
       }
       await connection.commit();
       return "UPDATED";
@@ -227,15 +266,32 @@ export class ClassRepository {
     }
   }
 
-  async setStatus(id: number, status: "ACTIVE" | "PAUSED" | "CLOSED"): Promise<"UPDATED" | "NOT_FOUND" | "INVALID_TRANSITION"> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE classes SET status=?,closed_at=CASE WHEN ?='CLOSED' THEN COALESCE(closed_at,NOW()) ELSE NULL END
-       WHERE id=? AND ((?='PAUSED' AND status='ACTIVE') OR (?='ACTIVE' AND status='PAUSED') OR (?='CLOSED' AND status IN ('ACTIVE','PAUSED')))`,
-      [status, status, id, status, status, status],
-    );
-    if (result.affectedRows > 0) return "UPDATED";
-    const [rows] = await pool.query<RowDataPacket[]>("SELECT id FROM classes WHERE id=?", [id]);
-    return rows[0] ? "INVALID_TRANSITION" : "NOT_FOUND";
+  async setStatus(id: number, status: "ACTIVE" | "PAUSED" | "CLOSED", actorUserId?: number): Promise<"UPDATED" | "NOT_FOUND" | "INVALID_TRANSITION"> {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.query<RowDataPacket[]>("SELECT * FROM classes WHERE id=? FOR UPDATE", [id]);
+      const previous = rows[0];
+      if (!previous) { await connection.rollback(); return "NOT_FOUND"; }
+      const allowed = (status === "PAUSED" && previous.status === "ACTIVE") ||
+        (status === "ACTIVE" && previous.status === "PAUSED") ||
+        (status === "CLOSED" && ["ACTIVE", "PAUSED"].includes(String(previous.status)));
+      if (!allowed) { await connection.rollback(); return "INVALID_TRANSITION"; }
+      await connection.execute(
+        `UPDATE classes SET status=?,closed_at=CASE WHEN ?='CLOSED' THEN COALESCE(closed_at,NOW()) ELSE NULL END WHERE id=?`,
+        [status, status, id],
+      );
+      const action = status === "PAUSED" ? "CLASS_PAUSED" : status === "ACTIVE" ? "CLASS_RESUMED" : "CLASS_CLOSED";
+      await this.audit.record(connection, {
+        actorUserId, action, entityType: "CLASS", entityId: id,
+        previousValues: { status: previous.status }, newValues: { status },
+      });
+      await connection.commit();
+      return "UPDATED";
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally { connection.release(); }
   }
 
   async countActiveEnrollment(

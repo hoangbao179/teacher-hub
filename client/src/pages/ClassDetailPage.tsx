@@ -18,12 +18,13 @@ import {
   Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import type { ClassDetail, StudentListItem, TuitionMode } from "@teacher/shared";
 import { api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
 export function ClassDetailPage() {
   const { id } = useParams();
+  const location = useLocation();
   const [item, setItem] = useState<ClassDetail | null>(null);
   const [error, setError] = useState("");
   const [students, setStudents] = useState<StudentListItem[]>([]);
@@ -32,45 +33,50 @@ export function ClassDetailPage() {
   const [tuitionMode, setTuitionMode] = useState<TuitionMode>("CLASS_DEFAULT");
   const [customPrice, setCustomPrice] = useState("");
   const [joinedAt, setJoinedAt] = useState(new Date().toISOString().slice(0, 10));
+  const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(() => (location.state as { success?: string } | null)?.success ?? "");
   const load = useCallback(() => api<ClassDetail>(`/api/classes/${id}`).then(setItem).catch((e: Error) => setError(e.message)), [id]);
   useEffect(() => {
     load();
     api<StudentListItem[]>("/api/students").then(setStudents).catch(() => undefined);
   }, [load]);
   const statusAction = async (action: "pause" | "resume" | "close") => {
+    if (action !== "resume" && !window.confirm(action === "close" ? "Đóng lớp? Lịch sử sẽ được giữ lại và không thể mở lại." : "Tạm dừng lớp?")) return;
     setError("");
-    try { await api(`/api/classes/${id}/${action}`, { method: "POST" }); await load(); }
+    setSuccess(""); setBusy(true);
+    try { await api(`/api/classes/${id}/${action}`, { method: "POST" }); await load(); setSuccess(action === "pause" ? "Đã tạm dừng lớp." : action === "resume" ? "Đã mở lại lớp." : "Đã đóng lớp."); }
     catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi trạng thái."); }
+    finally { setBusy(false); }
   };
   const enroll = async () => {
     setError("");
-    try {
+    setBusy(true); setSuccess(""); try {
       await api(`/api/classes/${id}/enrollments`, { method: "POST", body: JSON.stringify({
         studentId: Number(studentId), joinedAt, tuitionMode,
         customPackagePrice: tuitionMode === "CUSTOM" ? Number(customPrice) : undefined,
       }) });
-      setDialogOpen(false); setStudentId(""); await load();
+      setDialogOpen(false); setStudentId(""); await load(); setSuccess("Đã ghi danh học sinh.");
     } catch (e) { setError(e instanceof Error ? e.message : "Không thể ghi danh."); }
+    finally { setBusy(false); }
   };
   if (!item && !error) return <LoadingState />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (!item) return <Alert severity="error">{error || "Không tải được lớp."}</Alert>;
   return (
     <Stack spacing={2}>
+      {error && <Alert severity="error">{error}</Alert>}
+      {success && <Alert severity="success">{success}</Alert>}
       <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}><Typography variant="h5" sx={{ fontWeight: 900 }}>{item!.name}</Typography><Chip label={item!.status} /></Stack>
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
-        <Button
-          variant="contained"
-          href={`/admin/lessons/new?classId=${item!.id}`}
-        >
-          Ghi buổi học
+        <Button variant="contained" disabled>
+          Ghi buổi học · Chưa triển khai (M2)
         </Button>
-        <Button variant="outlined">Buổi học bù</Button>
+        <Button variant="outlined" disabled>Buổi học bù · Chưa triển khai (M2)</Button>
         <Button component={Link} to={`/admin/classes/${item!.id}/edit`} variant="outlined">Sửa</Button>
       </Stack>
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
-        {item!.status === "ACTIVE" && <Button onClick={() => statusAction("pause")}>Tạm dừng</Button>}
-        {item!.status === "PAUSED" && <Button onClick={() => statusAction("resume")}>Mở lại</Button>}
-        {item!.status !== "CLOSED" && <Button color="error" onClick={() => statusAction("close")}>Đóng lớp</Button>}
+        {item!.status === "ACTIVE" && <Button disabled={busy} onClick={() => statusAction("pause")}>Tạm dừng</Button>}
+        {item!.status === "PAUSED" && <Button disabled={busy} onClick={() => statusAction("resume")}>Mở lại</Button>}
+        {item!.status !== "CLOSED" && <Button disabled={busy} color="error" onClick={() => statusAction("close")}>Đóng lớp</Button>}
       </Stack>
       <Card>
         <CardContent>
@@ -86,7 +92,7 @@ export function ClassDetailPage() {
           </Typography>
         </CardContent>
       </Card>
-      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontWeight: 800 }}>Học sinh</Typography><Button variant="contained" disabled={item!.status === "CLOSED" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => setDialogOpen(true)}>Ghi danh</Button></Stack>
+      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontWeight: 800 }}>Học sinh</Typography><Button variant="contained" disabled={busy || item!.status !== "ACTIVE" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => setDialogOpen(true)}>Ghi danh</Button></Stack>
       {item!.students.map((student) => (
         <Card key={student.enrollmentId}>
           <CardContent>
@@ -116,7 +122,7 @@ export function ClassDetailPage() {
           <TextField type="date" label="Ngày vào học" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           <FormControl><InputLabel>Học phí</InputLabel><Select label="Học phí" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Theo giá lớp</MenuItem><MenuItem value="CUSTOM">Giá riêng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
           {tuitionMode === "CUSTOM" && <TextField required type="number" label="Giá riêng / 8 buổi" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} />}
-        </Stack></DialogContent><DialogActions><Button onClick={() => setDialogOpen(false)}>Hủy</Button><Button variant="contained" disabled={!studentId} onClick={enroll}>Ghi danh</Button></DialogActions>
+        </Stack></DialogContent><DialogActions><Button onClick={() => setDialogOpen(false)}>Hủy</Button><Button variant="contained" disabled={!studentId || busy} onClick={enroll}>{busy ? "Đang ghi danh…" : "Ghi danh"}</Button></DialogActions>
       </Dialog>
     </Stack>
   );

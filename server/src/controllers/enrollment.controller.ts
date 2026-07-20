@@ -5,11 +5,11 @@ import { EnrollmentService } from "../services/enrollment.service";
 export class EnrollmentController {
   constructor(private readonly service: EnrollmentService) {}
   create = async (req: Request, res: Response) => {
-    const id = await this.service.create(Number(req.params.id), req.body as CreateEnrollmentRequest);
+    const id = await this.service.create(Number(req.params.id), req.body as CreateEnrollmentRequest, req.auth!.id);
     res.status(201).json({ data: { id } });
   };
-  pause = async (req: Request, res: Response) => { await this.service.pause(Number(req.params.id)); res.status(204).end(); };
-  resume = async (req: Request, res: Response) => { await this.service.resume(Number(req.params.id)); res.status(204).end(); };
-  end = async (req: Request, res: Response) => { await this.service.end(Number(req.params.id), req.body as EndEnrollmentRequest); res.status(204).end(); };
-  changeTuitionMode = async (req: Request, res: Response) => { await this.service.changeTuitionMode(Number(req.params.id), req.body as ChangeTuitionModeRequest); res.status(204).end(); };
+  pause = async (req: Request, res: Response) => { await this.service.pause(Number(req.params.id), req.auth!.id); res.status(204).end(); };
+  resume = async (req: Request, res: Response) => { await this.service.resume(Number(req.params.id), req.auth!.id); res.status(204).end(); };
+  end = async (req: Request, res: Response) => { await this.service.end(Number(req.params.id), req.body as EndEnrollmentRequest, req.auth!.id); res.status(204).end(); };
+  changeTuitionMode = async (req: Request, res: Response) => { await this.service.changeTuitionMode(Number(req.params.id), req.body as ChangeTuitionModeRequest, req.auth!.id); res.status(204).end(); };
 }

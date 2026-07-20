@@ -1,9 +1,54 @@
-import type { RowDataPacket } from "mysql2/promise";
-import type { UnrecordedSession, WeekScheduleResponse } from "@teacher/shared";
+import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import type { CreateRecurringScheduleRequest, UnrecordedSession, WeekScheduleResponse } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { addDays, weekdayIso } from "../utils/date";
+import { AuditRepository } from "./audit.repository";
 
 export class ScheduleRepository {
+  constructor(private readonly audit = new AuditRepository()) {}
+
+  async create(classId: number, input: CreateRecurringScheduleRequest, actorUserId?: number): Promise<"CLASS_NOT_FOUND" | "CLASS_CLOSED" | number> {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [classes] = await connection.query<RowDataPacket[]>("SELECT status FROM classes WHERE id=? FOR UPDATE", [classId]);
+      if (!classes[0]) { await connection.rollback(); return "CLASS_NOT_FOUND"; }
+      if (classes[0].status === "CLOSED") { await connection.rollback(); return "CLASS_CLOSED"; }
+      const [result] = await connection.execute<ResultSetHeader>(
+        "INSERT INTO recurring_schedules(class_id,day_of_week,start_time,end_time,effective_from,effective_to) VALUES (?,?,?,?,?,?)",
+        [classId, input.dayOfWeek, input.startTime, input.endTime, input.effectiveFrom, input.effectiveTo ?? null],
+      );
+      await this.audit.record(connection, { actorUserId, action: "RECURRING_SCHEDULE_CREATED", entityType: "RECURRING_SCHEDULE", entityId: result.insertId, newValues: { classId, ...input } });
+      await connection.commit(); return result.insertId;
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
+  }
+
+  async update(id: number, input: CreateRecurringScheduleRequest, actorUserId?: number): Promise<boolean> {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.query<RowDataPacket[]>("SELECT * FROM recurring_schedules WHERE id=? FOR UPDATE", [id]);
+      if (!rows[0]) { await connection.rollback(); return false; }
+      await connection.execute("UPDATE recurring_schedules SET day_of_week=?,start_time=?,end_time=?,effective_from=?,effective_to=? WHERE id=?", [input.dayOfWeek, input.startTime, input.endTime, input.effectiveFrom, input.effectiveTo ?? null, id]);
+      await this.audit.record(connection, { actorUserId, action: "RECURRING_SCHEDULE_UPDATED", entityType: "RECURRING_SCHEDULE", entityId: id, previousValues: rows[0], newValues: input });
+      await connection.commit(); return true;
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
+  }
+
+  async remove(id: number, actorUserId?: number): Promise<boolean> {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.query<RowDataPacket[]>("SELECT * FROM recurring_schedules WHERE id=? FOR UPDATE", [id]);
+      if (!rows[0]) { await connection.rollback(); return false; }
+      await connection.execute("DELETE FROM recurring_schedules WHERE id=?", [id]);
+      await this.audit.record(connection, { actorUserId, action: "RECURRING_SCHEDULE_DELETED", entityType: "RECURRING_SCHEDULE", entityId: id, previousValues: rows[0] });
+      await connection.commit(); return true;
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
+  }
   async listUnrecorded(from: string, to: string): Promise<UnrecordedSession[]> {
     const [schedules] = await pool.query<RowDataPacket[]>(
       `

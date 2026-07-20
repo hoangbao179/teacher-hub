@@ -5,34 +5,34 @@ import { EnrollmentRepository, type EnrollmentWriteResult } from "../repositorie
 export class EnrollmentService {
   constructor(private readonly repository: EnrollmentRepository) {}
 
-  async create(classId: number, input: CreateEnrollmentRequest) {
+  async create(classId: number, input: CreateEnrollmentRequest, actorUserId?: number) {
     this.validateIdentity(classId, input.studentId);
     this.validateTuition(input.tuitionMode, input.customPackagePrice);
     this.validateDate(input.joinedAt, "Ngày vào học");
-    return this.unwrap(await this.repository.create(classId, input));
+    return this.unwrap(await this.repository.create(classId, input, actorUserId));
   }
 
-  async pause(id: number) {
+  async pause(id: number, actorUserId?: number) {
     this.validateId(id);
-    this.unwrap(await this.repository.setStatus(id, "PAUSED"));
+    this.unwrap(await this.repository.setStatus(id, "PAUSED", undefined, undefined, actorUserId));
   }
 
-  async resume(id: number) {
+  async resume(id: number, actorUserId?: number) {
     this.validateId(id);
-    this.unwrap(await this.repository.setStatus(id, "ACTIVE"));
+    this.unwrap(await this.repository.setStatus(id, "ACTIVE", undefined, undefined, actorUserId));
   }
 
-  async end(id: number, input: EndEnrollmentRequest) {
+  async end(id: number, input: EndEnrollmentRequest, actorUserId?: number) {
     this.validateId(id);
     this.validateDate(input.endedAt, "Ngày kết thúc");
-    this.unwrap(await this.repository.setStatus(id, "ENDED", input.endedAt, input.reason));
+    this.unwrap(await this.repository.setStatus(id, "ENDED", input.endedAt, input.reason, actorUserId));
   }
 
-  async changeTuitionMode(id: number, input: ChangeTuitionModeRequest) {
+  async changeTuitionMode(id: number, input: ChangeTuitionModeRequest, actorUserId?: number) {
     this.validateId(id);
     this.validateTuition(input.tuitionMode, input.customPackagePrice);
     this.validateDate(input.effectiveFrom, "Ngày áp dụng");
-    if (!(await this.repository.changeTuitionMode(id, input)))
+    if (!(await this.repository.changeTuitionMode(id, input, actorUserId)))
       throw new AppError(404, "ENROLLMENT_NOT_FOUND", "Không tìm thấy ghi danh đang hoạt động.");
   }
 
@@ -41,8 +41,8 @@ export class EnrollmentService {
       throw new AppError(400, "VALIDATION_ERROR", "Chế độ học phí không hợp lệ.");
     if (mode === "CUSTOM" && (!Number.isInteger(customPrice) || (customPrice ?? 0) <= 0))
       throw new AppError(400, "CUSTOM_PRICE_REQUIRED", "Giá riêng nguyên VND lớn hơn 0 là bắt buộc.");
-    if (mode === "FREE" && customPrice != null)
-      throw new AppError(400, "FREE_CUSTOM_PRICE", "Ghi danh miễn phí không được có giá riêng.");
+    if (mode !== "CUSTOM" && customPrice != null)
+      throw new AppError(400, mode === "FREE" ? "FREE_CUSTOM_PRICE" : "CLASS_DEFAULT_CUSTOM_PRICE", "Chỉ chế độ giá riêng mới được có giá riêng.");
   }
 
   private validateIdentity(classId: number, studentId: number) {
@@ -62,6 +62,7 @@ export class EnrollmentService {
       STUDENT_NOT_FOUND: [404, "STUDENT_NOT_FOUND", "Không tìm thấy học sinh."],
       ENROLLMENT_NOT_FOUND: [404, "ENROLLMENT_NOT_FOUND", "Không tìm thấy ghi danh."],
       CLASS_CLOSED: [409, "CLASS_CLOSED", "Lớp đã đóng không thể nhận học sinh."],
+      CLASS_PAUSED: [409, "CLASS_PAUSED", "Lớp đang tạm dừng không thể nhận hoặc mở lại ghi danh."],
       STUDENT_ACTIVE_ENROLLMENT: [409, "STUDENT_ACTIVE_ENROLLMENT", "Học sinh đã có một ghi danh đang hoạt động."],
       ONE_TO_ONE_LIMIT: [409, "ONE_TO_ONE_LIMIT", "Lớp 1 kèm 1 đã có học sinh đang học."],
       INVALID_TRANSITION: [409, "INVALID_ENROLLMENT_TRANSITION", "Chuyển trạng thái ghi danh không hợp lệ."],

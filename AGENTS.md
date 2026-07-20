@@ -17,12 +17,12 @@ Không copy DTO giữa `server` và `client`. Import từ `@teacher/shared`.
 
 Khi có mâu thuẫn, dùng thứ tự:
 
-1. `docs/product-spec/03-business-rules.md`
-2. tài liệu feature trong `docs/features/`
-3. acceptance criteria trong `docs/product-spec/09-acceptance-tests.md`
-4. contracts trong `shared/src/contracts/`
-5. migration/schema và source hiện tại
-6. wireframe
+1. Business rules trong `docs/product-spec/` và ADR đã approved trong `docs/decisions/`.
+2. Acceptance criteria trong `docs/product-spec/09-acceptance-tests.md` và `docs/implementation/acceptance/`.
+3. Contracts trong `shared/src/contracts/`.
+4. `docs/api/openapi.yaml`.
+5. Migration/schema và source hiện tại.
+6. Wireframe.
 
 Wireframe là tham chiếu UX, không phải nguồn business logic. Ảnh AI có thể chứa text/số liệu không nhất quán.
 

@@ -5,15 +5,18 @@ import type {
   EnrollmentStatus,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
+import { AuditRepository } from "./audit.repository";
 
 export type EnrollmentWriteResult =
   | { kind: "OK"; id: number }
   | { kind: "CLASS_NOT_FOUND" | "STUDENT_NOT_FOUND" | "ENROLLMENT_NOT_FOUND" }
-  | { kind: "CLASS_CLOSED" | "STUDENT_ACTIVE_ENROLLMENT" | "ONE_TO_ONE_LIMIT" }
+  | { kind: "CLASS_CLOSED" | "CLASS_PAUSED" | "STUDENT_ACTIVE_ENROLLMENT" | "ONE_TO_ONE_LIMIT" }
   | { kind: "INVALID_TRANSITION" };
 
 export class EnrollmentRepository {
-  async create(classId: number, input: CreateEnrollmentRequest): Promise<EnrollmentWriteResult> {
+  constructor(private readonly audit = new AuditRepository()) {}
+
+  async create(classId: number, input: CreateEnrollmentRequest, actorUserId?: number): Promise<EnrollmentWriteResult> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -23,6 +26,7 @@ export class EnrollmentRepository {
       );
       if (!classes[0]) return await this.rollback(connection, { kind: "CLASS_NOT_FOUND" });
       if (classes[0].status === "CLOSED") return await this.rollback(connection, { kind: "CLASS_CLOSED" });
+      if (classes[0].status === "PAUSED") return await this.rollback(connection, { kind: "CLASS_PAUSED" });
       const [students] = await connection.query<RowDataPacket[]>(
         "SELECT id FROM students WHERE id=? FOR UPDATE",
         [input.studentId],
@@ -48,17 +52,25 @@ export class EnrollmentRepository {
           input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
           input.joinedAt, input.note ?? null],
       );
+      await this.audit.record(connection, {
+        actorUserId, action: "ENROLLMENT_CREATED", entityType: "ENROLLMENT",
+        entityId: result.insertId, newValues: { classId, ...input },
+      });
       await connection.commit();
       return { kind: "OK", id: result.insertId };
     } catch (error) {
       await connection.rollback();
+      if ((error as { code?: string; message?: string }).code === "ER_DUP_ENTRY" &&
+          (error as { message?: string }).message?.includes("uq_enrollments_one_active_per_student")) {
+        return { kind: "STUDENT_ACTIVE_ENROLLMENT" };
+      }
       throw error;
     } finally {
       connection.release();
     }
   }
 
-  async setStatus(id: number, status: EnrollmentStatus, endedAt?: string, reason?: string): Promise<EnrollmentWriteResult> {
+  async setStatus(id: number, status: EnrollmentStatus, endedAt?: string, reason?: string, actorUserId?: number): Promise<EnrollmentWriteResult> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -78,6 +90,7 @@ export class EnrollmentRepository {
           [enrollment.class_id],
         );
         if (classes[0]?.status === "CLOSED") return await this.rollback(connection, { kind: "CLASS_CLOSED" });
+        if (classes[0]?.status === "PAUSED") return await this.rollback(connection, { kind: "CLASS_PAUSED" });
         const [studentActive] = await connection.query<RowDataPacket[]>(
           "SELECT id FROM class_enrollments WHERE student_id=? AND status='ACTIVE' AND id<>? FOR UPDATE",
           [enrollment.student_id, id],
@@ -95,6 +108,12 @@ export class EnrollmentRepository {
         `UPDATE class_enrollments SET status=?,ended_at=?,end_reason=? WHERE id=?`,
         [status, status === "ENDED" ? (endedAt ?? null) : null, status === "ENDED" ? (reason ?? null) : null, id],
       );
+      const action = status === "PAUSED" ? "ENROLLMENT_PAUSED" : status === "ACTIVE" ? "ENROLLMENT_RESUMED" : "ENROLLMENT_ENDED";
+      await this.audit.record(connection, {
+        actorUserId, action, entityType: "ENROLLMENT", entityId: id,
+        previousValues: { status: enrollment.status },
+        newValues: { status, endedAt: status === "ENDED" ? endedAt : undefined }, reason,
+      });
       await connection.commit();
       return { kind: "OK", id };
     } catch (error) {
@@ -105,13 +124,28 @@ export class EnrollmentRepository {
     }
   }
 
-  async changeTuitionMode(id: number, input: ChangeTuitionModeRequest): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE class_enrollments SET tuition_mode=?,custom_package_price=?,tuition_effective_from=? WHERE id=? AND status<>'ENDED'`,
-      [input.tuitionMode, input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
-        input.effectiveFrom, id],
-    );
-    return result.affectedRows > 0;
+  async changeTuitionMode(id: number, input: ChangeTuitionModeRequest, actorUserId?: number): Promise<boolean> {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.query<RowDataPacket[]>(
+        "SELECT * FROM class_enrollments WHERE id=? AND status<>'ENDED' FOR UPDATE", [id],
+      );
+      if (!rows[0]) { await connection.rollback(); return false; }
+      const [result] = await connection.execute<ResultSetHeader>(
+        `UPDATE class_enrollments SET tuition_mode=?,custom_package_price=?,tuition_effective_from=? WHERE id=?`,
+        [input.tuitionMode, input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
+          input.effectiveFrom, id],
+      );
+      await this.audit.record(connection, {
+        actorUserId, action: "TUITION_MODE_CHANGED", entityType: "ENROLLMENT", entityId: id,
+        previousValues: { tuitionMode: rows[0].tuition_mode, customPackagePrice: rows[0].custom_package_price, effectiveFrom: rows[0].tuition_effective_from },
+        newValues: input, reason: input.reason,
+      });
+      await connection.commit();
+      return result.affectedRows > 0;
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
   }
 
   private async rollback<T extends EnrollmentWriteResult>(connection: { rollback(): Promise<void> }, result: T): Promise<T> {

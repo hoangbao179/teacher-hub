@@ -9,6 +9,7 @@ export function createRouter(): Router {
   router.get("/ready", asyncHandler(controllers.health.ready));
   router.post("/api/auth/login", asyncHandler(controllers.auth.login));
   router.get("/api/auth/me", requireAuth, asyncHandler(controllers.auth.me));
+  router.post("/api/auth/logout", requireAuth, asyncHandler(controllers.auth.logout));
 
   router.use("/api", requireAuth);
   router.get("/api/dashboard", asyncHandler(controllers.dashboard.get));
@@ -20,6 +21,9 @@ export function createRouter(): Router {
   router.post("/api/classes/:id/resume", asyncHandler(controllers.classes.resume));
   router.post("/api/classes/:id/close", asyncHandler(controllers.classes.close));
   router.post("/api/classes/:id/enrollments", asyncHandler(controllers.enrollments.create));
+  router.post("/api/classes/:id/schedules", asyncHandler(controllers.schedule.createRecurring));
+  router.patch("/api/recurring-schedules/:id", asyncHandler(controllers.schedule.updateRecurring));
+  router.delete("/api/recurring-schedules/:id", asyncHandler(controllers.schedule.deleteRecurring));
   router.get(
     "/api/classes/:id/lessons",
     asyncHandler(controllers.classes.lessonsByClass),

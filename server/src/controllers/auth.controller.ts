@@ -10,5 +10,6 @@ export class AuthController {
       data: await this.service.login(body.email ?? "", body.password ?? ""),
     });
   };
-  me = async (req: Request, res: Response) => res.json({ data: req.auth });
+  me = async (req: Request, res: Response) => res.json({ data: await this.service.me(req.auth!.id) });
+  logout = async (_req: Request, res: Response) => res.status(204).end();
 }

@@ -9,8 +9,11 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/**/*.test.ts",
+    "test:integration": "node scripts/run-integration.cjs",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:bootstrap-admin": "tsx src/db/bootstrap-admin.ts",
+    "db:seed:dev": "tsx src/db/seed-dev.ts",
+    "db:reset:dev": "tsx src/db/reset-dev.ts",
     "db:migrate:prod": "node dist/db/migrate.js"
   },
   "dependencies": {

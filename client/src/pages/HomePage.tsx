@@ -8,6 +8,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { Link } from "react-router-dom";
 export function HomePage() {
   return (
     <Box>
@@ -31,7 +32,7 @@ export function HomePage() {
           <Typography sx={{ my: 2 }}>
             Lớp 1 kèm 1 và lớp nhóm, theo sát năng lực từng học sinh.
           </Typography>
-          <Button variant="contained" color="secondary" size="large">
+          <Button component="a" href="#contact" variant="contained" color="secondary" size="large">
             Liên hệ ngay
           </Button>
         </Container>
@@ -75,17 +76,22 @@ export function HomePage() {
         >
           YouTube embed / thumbnail
         </Box>
-        <Stack direction="row" spacing={1} sx={{ mt: 4 }}>
-          <Button fullWidth variant="contained">
-            Zalo
+        <Stack id="contact" direction="row" spacing={1} sx={{ mt: 4 }}>
+          <Button fullWidth variant="contained" disabled>
+            Zalo · Chưa cấu hình
           </Button>
-          <Button fullWidth variant="outlined" startIcon={<Phone />}>
-            Gọi
+          <Button fullWidth variant="outlined" startIcon={<Phone />} disabled>
+            Gọi · Chưa cấu hình
           </Button>
-          <Button fullWidth variant="outlined" startIcon={<Facebook />}>
-            Facebook
+          <Button fullWidth variant="outlined" startIcon={<Facebook />} disabled>
+            Facebook · Chưa cấu hình
           </Button>
         </Stack>
+        {import.meta.env.DEV && (
+          <Button component={Link} to="/admin/login" sx={{ mt: 3 }} size="small">
+            Đăng nhập quản trị (development)
+          </Button>
+        )}
       </Container>
     </Box>
   );
