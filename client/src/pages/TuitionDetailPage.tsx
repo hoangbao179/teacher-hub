@@ -1,56 +1,111 @@
+import { ArrowBack, Lock, Payments } from "@mui/icons-material";
 import {
   Alert,
+  Box,
   Button,
   Card,
   CardContent,
-  List,
-  ListItem,
-  ListItemText,
+  Divider,
   Stack,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import type { TuitionCycleDetail } from "@teacher/shared";
-import { api } from "../api/client";
+import { getTuitionCycle } from "../api/tuition";
 import { LoadingState } from "../components/LoadingState";
+import { TuitionStatusChip } from "../components/TuitionStatusChip";
+
 export function TuitionDetailPage() {
-  const { id } = useParams();
+  const { cycleId } = useParams();
+  const location = useLocation();
+  const id = Number(cycleId);
   const [item, setItem] = useState<TuitionCycleDetail | null>(null);
   const [error, setError] = useState("");
-  useEffect(() => {
-    api<TuitionCycleDetail>(`/api/tuition-cycles/${id}`)
-      .then(setItem)
-      .catch((e) => setError(e.message));
+  const success = (location.state as { success?: string } | null)?.success;
+  const load = useCallback(() => {
+    return getTuitionCycle(id).then(setItem).catch((reason: Error) => setError(reason.message));
   }, [id]);
+  useEffect(() => { void load(); }, [load]);
+
   if (!item && !error) return <LoadingState />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (!item) return <Alert severity="error" action={<Button color="inherit" onClick={() => { setError(""); void load(); }}>Thử lại</Button>}>{error || "Không tải được chu kỳ."}</Alert>;
+  const visibleItems = item.items.filter((entry) => entry.attendanceStatus === "PRESENT");
   return (
-    <Stack spacing={2}>
-      <Typography variant="h5" sx={{ fontWeight: 900 }}>
-        {item!.studentName} · Chu kỳ #{item!.cycleNumber}
-      </Typography>
+    <Stack spacing={2} data-testid="tuition-detail-page">
+      <Button component={Link} to="/admin/tuition" startIcon={<ArrowBack />} sx={{ alignSelf: "flex-start" }}>Học phí</Button>
+      {success && <Alert severity="success">{success}</Alert>}
+      <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+        <Stack sx={{ minWidth: 0 }}>
+          <Typography variant="h5" sx={{ fontWeight: 900 }}>{item.studentName} · Chu kỳ #{item.cycleNumber}</Typography>
+          <Typography color="text.secondary">{item.className}</Typography>
+        </Stack>
+        <TuitionStatusChip status={item.status} />
+      </Stack>
+
       <Card>
         <CardContent>
-          <Typography>
-            Giá snapshot: {item!.packagePriceSnapshot.toLocaleString("vi-VN")}đ
-          </Typography>
-          <Typography>Trạng thái: {item!.status}</Typography>
+          <InfoRow label="Giá gói (snapshot)" value={money(item.packagePriceSnapshot)} strong />
+          <InfoRow label="Tiến độ" value={`${item.itemCount}/${item.targetCount} buổi`} />
+          <InfoRow label="Ngày bắt đầu" value={displayDate(item.startedAt)} />
+          <InfoRow label="Ngày buổi 8" value={displayDate(item.reachedTargetAt)} />
+          {item.paidAt && <InfoRow label="Ngày thu" value={displayDate(item.paidAt)} />}
+          {item.paymentMethod && <InfoRow label="Hình thức" value={item.paymentMethod === "CASH" ? "Tiền mặt" : "Chuyển khoản"} />}
+          {item.paymentNote && <InfoRow label="Ghi chú thu" value={item.paymentNote} />}
         </CardContent>
       </Card>
-      <List>
-        {item!.items.map((entry) => (
-          <ListItem key={entry.attendanceId} divider>
-            <ListItemText
-              primary={`Buổi ${entry.sequenceNumber} · ${entry.sessionDate}`}
-              secondary={`Dự kiến ${entry.scheduledStartTime}-${entry.scheduledEndTime} · Thực tế ${entry.actualStartTime ?? "—"}-${entry.actualEndTime ?? "—"}`}
-            />
-          </ListItem>
+
+      <Typography sx={{ fontWeight: 900 }}>{visibleItems.length} buổi trong chu kỳ</Typography>
+      <Stack spacing={1}>
+        {visibleItems.map((entry) => (
+          <Card key={entry.attendanceId} variant="outlined" data-testid="tuition-cycle-item">
+            <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+              <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+                <Typography sx={{ fontWeight: 800 }}>Buổi {entry.sequenceNumber}</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{displayDate(entry.sessionDate)}</Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                Dự kiến {entry.scheduledStartTime}–{entry.scheduledEndTime}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Thực tế {entry.actualStartTime ?? "—"}–{entry.actualEndTime ?? "—"}
+                {entry.actualDurationMinutes != null ? ` · ${entry.actualDurationMinutes} phút` : ""}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">Loại buổi: {lessonType(entry.lessonType)}</Typography>
+            </CardContent>
+          </Card>
         ))}
-      </List>
-      {item!.status === "PAYMENT_DUE" && (
-        <Button variant="contained" disabled>Đánh dấu đã thu · Chưa triển khai (M4)</Button>
+      </Stack>
+      <Alert severity="info">Thời lượng thực tế chỉ để theo dõi, không thay đổi số buổi học phí.</Alert>
+      {item.status === "PAID" && <Alert icon={<Lock />} severity="success">Chu kỳ đã thu và đang ở trạng thái chỉ đọc.</Alert>}
+      {item.status === "PAYMENT_DUE" && (
+        <Box sx={{ position: "sticky", bottom: "72px", zIndex: 10, bgcolor: "background.default", pt: 1 }}>
+          <Button
+            component={Link}
+            to={`/admin/tuition/${item.id}/mark-paid`}
+            startIcon={<Payments />}
+            variant="contained"
+            size="large"
+            fullWidth
+          >
+            Đánh dấu đã thu
+          </Button>
+        </Box>
       )}
     </Stack>
   );
+}
+
+function InfoRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return <><Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", py: 1 }}><Typography color="text.secondary">{label}</Typography><Typography sx={{ fontWeight: strong ? 900 : 700, textAlign: "right" }}>{value}</Typography></Stack><Divider /></>;
+}
+
+function money(value: number): string { return `${value.toLocaleString("vi-VN")}đ`; }
+function displayDate(value: string | null): string {
+  if (!value) return "—";
+  const [year, month, day] = value.split("-");
+  return `${day}/${month}/${year}`;
+}
+function lessonType(value: "REGULAR" | "MAKEUP" | "EXTRA"): string {
+  return value === "REGULAR" ? "Thông thường" : value === "MAKEUP" ? "Học bù" : "Bổ sung";
 }

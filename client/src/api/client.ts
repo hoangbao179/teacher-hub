@@ -21,6 +21,13 @@ export async function api<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  return (await apiEnvelope<T>(path, options)).data;
+}
+
+export async function apiEnvelope<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<ApiEnvelope<T>> {
   const token = localStorage.getItem("teacher-token");
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
@@ -34,7 +41,7 @@ export async function api<T>(
     localStorage.removeItem("teacher-token");
     unauthorizedHandler?.();
   }
-  if (response.status === 204) return undefined as T;
+  if (response.status === 204) return { data: undefined as T };
   const payload = (await response.json().catch(() => ({}))) as ApiEnvelope<T> & {
     error?: { code: string; message: string };
   };
@@ -44,5 +51,5 @@ export async function api<T>(
       payload.error?.code ?? "API_ERROR",
       payload.error?.message ?? "Có lỗi xảy ra.",
     );
-  return payload.data;
+  return payload;
 }

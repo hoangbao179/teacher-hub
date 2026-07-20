@@ -10,6 +10,7 @@ import { StudentsPage } from "./pages/StudentsPage";
 import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { TuitionPage } from "./pages/TuitionPage";
 import { TuitionDetailPage } from "./pages/TuitionDetailPage";
+import { MarkTuitionPaidPage } from "./pages/MarkTuitionPaidPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { UnrecordedPage } from "./pages/UnrecordedPage";
 import { LessonWizardPage } from "./pages/LessonWizardPage";
@@ -44,7 +45,8 @@ export function App() {
           <Route path="/admin/students/:id" element={<StudentDetailPage />} />
           <Route path="/admin/students/:id/edit" element={<StudentFormPage />} />
           <Route path="/admin/tuition" element={<TuitionPage />} />
-          <Route path="/admin/tuition/:id" element={<TuitionDetailPage />} />
+          <Route path="/admin/tuition/:cycleId" element={<TuitionDetailPage />} />
+          <Route path="/admin/tuition/:cycleId/mark-paid" element={<MarkTuitionPaidPage />} />
           <Route path="/admin/calendar" element={<CalendarPage />} />
           <Route path="/admin/lessons/new" element={<LessonWizardPage />} />
           <Route path="/admin/lessons/:id/edit" element={<LessonWizardPage />} />

@@ -22,3 +22,8 @@ Mỗi lần tiếp tục ghi draft lên server qua `client/src/api/lessons.ts`; 
 draft khôi phục participant, attendance và content đã lưu. UI cảnh báo khi rời
 trang có thay đổi local, chặn duplicate submit và giữ primary action phía trên
 bottom navigation ở viewport 360–430px.
+
+M4B tuition pages call `client/src/api/tuition.ts`. List responses preserve API
+pagination metadata through `apiEnvelope`; pages never calculate authoritative
+payment state. Detail/payment primary actions remain above bottom navigation,
+and all cycle items use mobile cards rather than a wide table.

@@ -183,7 +183,7 @@ try {
   const orderedDates = dueDetail.items.map((item) => item.sessionDate);
   if (JSON.stringify(orderedDates) !== JSON.stringify([...orderedDates].sort())) throw new Error("Cycle detail is not chronological");
   await apiMutation(`/api/tuition-cycles/${due.id}/mark-paid`, token, "POST", {
-    paidAmount: due.packagePriceSnapshot, paidAt: "2026-07-31 10:00:00", paymentMethod: "CASH",
+    paidAmount: due.packagePriceSnapshot, paidAt: "2026-07-31", paymentMethod: "CASH",
   });
   const conflictDraft = await apiMutation("/api/lessons", token, "POST", {
     classId: m3Class.id, sessionDate: "2026-06-30", scheduledStartTime: "18:00", scheduledEndTime: "19:30",

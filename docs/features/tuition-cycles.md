@@ -32,6 +32,19 @@ An identical payment replay returns the persisted result with
 `PAYMENT_CONFLICT` (HTTP 409). Marking one cycle paid never updates a later
 accumulating cycle.
 
+## Mobile management UI
+
+M4B implements `/admin/tuition`, `/admin/tuition/:cycleId` and
+`/admin/tuition/:cycleId/mark-paid`. The list uses four status tabs, server-side
+search/class/sort/pagination and card layouts. Detail renders the exact stored
+item order with scheduled/actual time, duration and lesson type.
+
+Only `PAYMENT_DUE` shows the payment action. The payment form defaults to the
+snapshot amount, rejects any different amount, requires a confirmation dialog
+and disables the final action while the request is pending. A successful
+mutation navigates to freshly loaded read-only `PAID` detail; returning to the
+list also refetches server data.
+
 ## Enrollment ending
 
 Ending an enrollment locks its cycles and changes only an `ACCUMULATING`

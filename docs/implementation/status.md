@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-M4A tuition backend complete; M4B tuition mobile UI is the next approved checkpoint.
+M4 tuition operations complete; M5A schedule/reconciliation backend is the next approved checkpoint.
 
 ## Status
 
@@ -16,16 +16,19 @@ M3 evidence is in the matching
 M4A: PASS on 20/07/2026. Evidence is in
 `.agent-reports/M4A-tuition-api-implementation.md` and
 `.agent-reports/M4A-tuition-api-verification.md`.
+M4B: PASS on 20/07/2026. Evidence is in
+`.agent-reports/M4B-tuition-ui-implementation.md` and
+`.agent-reports/M4B-tuition-ui-verification.md`.
 
 ## Scope boundary
 
 M2A–M3 establish historical domain/contracts, transactional lesson APIs, mobile
 wizard and chronological mutable-cycle recalculation with immutable PAID boundary.
 Tuition query/payment APIs and enrollment-ending `INCOMPLETE` behavior are M4A.
-Tuition-management UI remains M4B and is not implemented yet.
+Tuition-management UI and mobile payment flow are M4B.
 
 ## Known limitations
 
 - Schedule occurrence resolve/reschedule và makeup controls thuộc milestone sau.
-- Tuition list/detail/mark-paid UI thuộc M4B; M4A APIs đã hoàn tất.
+- Dashboard and schedule reconciliation operations remain M5A/M5B.
 - Homepage contact values chưa cấu hình nên các contact buttons tương ứng bị disable.
