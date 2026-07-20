@@ -1,0 +1,46 @@
+# 08. Logical API Contract
+
+Đây là contract mức tài nguyên để Codex không tự thêm nghiệp vụ. Tên endpoint có thể điều chỉnh theo framework.
+
+## Auth
+- POST `/api/auth/login`
+- POST `/api/auth/logout`
+- GET `/api/auth/me`
+
+## Classes
+- GET/POST `/api/classes`
+- GET/PATCH `/api/classes/{id}`
+- POST `/api/classes/{id}/pause`
+- POST `/api/classes/{id}/resume`
+- POST `/api/classes/{id}/close`
+- GET/POST `/api/classes/{id}/schedules`
+
+## Students and enrollments
+- GET/POST `/api/students`
+- GET/PATCH `/api/students/{id}`
+- POST `/api/classes/{id}/enrollments`
+- PATCH `/api/enrollments/{id}`
+- POST `/api/enrollments/{id}/pause|resume|end`
+- PATCH `/api/enrollments/{id}/tuition-mode`
+
+## Lessons
+- GET/POST `/api/lessons`
+- GET/PATCH `/api/lessons/{id}`
+- POST `/api/lessons/{id}/complete`
+- POST `/api/lessons/{id}/cancel`
+- GET `/api/schedule/unrecorded?from=&to=&classId=`
+- POST `/api/schedule/unrecorded/batch-resolve`
+
+## Tuition
+- GET `/api/tuition-cycles`
+- GET `/api/tuition-cycles/{id}`
+- POST `/api/tuition-cycles/{id}/mark-paid`
+- POST `/api/tuition-cycles/{id}/unlock` (có reason)
+
+## Calendar
+- GET `/api/calendar?from=&to=`
+- GET/POST/PATCH `/api/busy-slots`
+- POST `/api/schedule-exceptions`
+
+## Export (giai đoạn sau)
+- GET `/api/students/{id}/export.xlsx`

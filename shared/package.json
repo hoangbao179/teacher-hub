@@ -1,0 +1,26 @@
+{
+  "name": "@teacher/shared",
+  "version": "0.1.0",
+  "private": true,
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "dev": "concurrently -k -n ESM,CJS \"tsc -p tsconfig.esm.json -w --preserveWatchOutput\" \"tsc -p tsconfig.cjs.json -w --preserveWatchOutput\""
+  },
+  "devDependencies": {
+    "concurrently": "10.0.3",
+    "typescript": "6.0.3"
+  }
+}

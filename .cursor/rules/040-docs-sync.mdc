@@ -1,0 +1,6 @@
+---
+description: Keep docs contracts schema and implementation synchronized
+alwaysApply: true
+globs: ["docs/**/*.md", "server/src/**/*.ts", "server/src/db/**/*.sql", "shared/src/**/*.ts"]
+---
+Khi đổi business rule, API, schema, deploy hoặc state machine, cập nhật docs liên quan trong cùng task. Giữ UTF-8 tiếng Việt và kiểm tra mojibake.

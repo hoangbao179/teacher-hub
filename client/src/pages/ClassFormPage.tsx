@@ -1,0 +1,87 @@
+import { Add, Delete } from "@mui/icons-material";
+import { Alert, Button, Card, CardContent, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from "@mui/material";
+import { FormEvent, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import type { ClassDetail, ClassStatus, ClassType, RecurringScheduleInput } from "@teacher/shared";
+import { api } from "../api/client";
+import { LoadingState } from "../components/LoadingState";
+
+const emptySchedule: RecurringScheduleInput = { dayOfWeek: 1, startTime: "18:00", endTime: "19:30" };
+const today = new Date().toISOString().slice(0, 10);
+
+export function ClassFormPage() {
+  const { id } = useParams();
+  const editing = Boolean(id);
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(editing);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [name, setName] = useState("");
+  const [type, setType] = useState<ClassType>("GROUP");
+  const [subject, setSubject] = useState("");
+  const [price, setPrice] = useState(0);
+  const [duration, setDuration] = useState(90);
+  const [startDate, setStartDate] = useState(today);
+  const [expectedEndDate, setExpectedEndDate] = useState("");
+  const [status, setStatus] = useState<ClassStatus>("ACTIVE");
+  const [note, setNote] = useState("");
+  const [schedules, setSchedules] = useState<RecurringScheduleInput[]>([{ ...emptySchedule }]);
+
+  useEffect(() => {
+    if (!id) return;
+    api<ClassDetail>(`/api/classes/${id}`).then((item) => {
+      setName(item.name); setType(item.type); setSubject(item.subject ?? "");
+      setPrice(item.defaultPackagePrice); setDuration(item.defaultDurationMinutes);
+      setStartDate(item.startDate); setExpectedEndDate(item.expectedEndDate ?? "");
+      setStatus(item.status); setNote(item.note ?? "");
+      setSchedules(item.schedules.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })));
+    }).catch((e: Error) => setError(e.message)).finally(() => setLoading(false));
+  }, [id]);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setSaving(true); setError("");
+    const body = { name, type, subject: subject || undefined, defaultPackagePrice: Number(price),
+      defaultDurationMinutes: Number(duration), startDate, expectedEndDate: expectedEndDate || undefined,
+      note: note || undefined, status, schedules };
+    try {
+      if (editing) await api(`/api/classes/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+      else {
+        const result = await api<{ id: number }>("/api/classes", { method: "POST", body: JSON.stringify(body) });
+        navigate(`/admin/classes/${result.id}`); return;
+      }
+      navigate(`/admin/classes/${id}`);
+    } catch (e) { setError(e instanceof Error ? e.message : "Không thể lưu lớp."); }
+    finally { setSaving(false); }
+  };
+  if (loading) return <LoadingState />;
+  return <Stack component="form" spacing={2} onSubmit={submit}>
+    <Typography variant="h5" sx={{ fontWeight: 900 }}>{editing ? "Sửa lớp" : "Thêm lớp"}</Typography>
+    {error && <Alert severity="error">{error}</Alert>}
+    <TextField required label="Tên lớp" value={name} onChange={(e) => setName(e.target.value)} />
+    <FormControl><InputLabel>Loại lớp</InputLabel><Select label="Loại lớp" value={type} onChange={(e) => setType(e.target.value as ClassType)}>
+      <MenuItem value="ONE_TO_ONE">1 kèm 1</MenuItem><MenuItem value="GROUP">Lớp nhóm</MenuItem>
+    </Select></FormControl>
+    <TextField label="Môn học" value={subject} onChange={(e) => setSubject(e.target.value)} />
+    <TextField required type="number" label="Giá gói 8 buổi (VND)" value={price} onChange={(e) => setPrice(Number(e.target.value))} slotProps={{ htmlInput: { min: 0, step: 1 } }} />
+    <TextField required type="number" label="Thời lượng mặc định (phút)" value={duration} onChange={(e) => setDuration(Number(e.target.value))} slotProps={{ htmlInput: { min: 1, step: 1 } }} />
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+      <TextField required fullWidth type="date" label="Ngày bắt đầu" value={startDate} onChange={(e) => setStartDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+      <TextField fullWidth type="date" label="Ngày kết thúc dự kiến" value={expectedEndDate} onChange={(e) => setExpectedEndDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+    </Stack>
+    {editing && <FormControl><InputLabel>Trạng thái</InputLabel><Select label="Trạng thái" value={status} onChange={(e) => setStatus(e.target.value as ClassStatus)}>
+      <MenuItem value="ACTIVE">Đang dạy</MenuItem><MenuItem value="PAUSED">Tạm dừng</MenuItem><MenuItem value="CLOSED">Đã đóng</MenuItem>
+    </Select></FormControl>}
+    <Typography sx={{ fontWeight: 800 }}>Lịch học hằng tuần</Typography>
+    {schedules.map((schedule, index) => <Card key={index} variant="outlined"><CardContent><Stack spacing={1.5}>
+      <FormControl><InputLabel>Thứ</InputLabel><Select label="Thứ" value={schedule.dayOfWeek} onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, dayOfWeek: Number(e.target.value) as RecurringScheduleInput["dayOfWeek"] } : x))}>
+        {[1,2,3,4,5,6,7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}
+      </Select></FormControl>
+      <Stack direction="row" spacing={1}><TextField fullWidth type="time" label="Bắt đầu" value={schedule.startTime} onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, startTime: e.target.value } : x))} slotProps={{ inputLabel: { shrink: true } }} />
+      <TextField fullWidth type="time" label="Kết thúc" value={schedule.endTime} onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, endTime: e.target.value } : x))} slotProps={{ inputLabel: { shrink: true } }} /></Stack>
+      <Button color="error" startIcon={<Delete />} disabled={schedules.length === 1} onClick={() => setSchedules((old) => old.filter((_, i) => i !== index))}>Xóa lịch</Button>
+    </Stack></CardContent></Card>)}
+    <Button startIcon={<Add />} onClick={() => setSchedules((old) => [...old, { ...emptySchedule }])}>Thêm lịch</Button>
+    <TextField multiline minRows={2} label="Ghi chú" value={note} onChange={(e) => setNote(e.target.value)} />
+    <Button type="submit" variant="contained" size="large" disabled={saving}>{saving ? "Đang lưu…" : "Lưu lớp"}</Button>
+  </Stack>;
+}

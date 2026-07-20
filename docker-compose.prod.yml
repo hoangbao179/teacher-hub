@@ -1,0 +1,51 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
+      MYSQL_DATABASE: ${DB_NAME:-teacher_class_hub}
+      MYSQL_USER: ${DB_USER:-teacher_app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?required}
+      TZ: Asia/Ho_Chi_Minh
+    command:
+      [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+        "--default-time-zone=+07:00",
+        "--innodb-buffer-pool-size=256M",
+        "--max-connections=50",
+      ]
+    volumes: ["mysql-data:/var/lib/mysql"]
+  api:
+    build: { context: ., dockerfile: Dockerfile.api }
+    restart: unless-stopped
+    depends_on: [mysql]
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      TZ: Asia/Ho_Chi_Minh
+      CORS_ORIGIN: ${PUBLIC_URL:?required}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-teacher_app}
+      DB_PASSWORD: ${DB_PASSWORD:?required}
+      DB_NAME: ${DB_NAME:-teacher_class_hub}
+      DB_CONNECTION_LIMIT: 5
+      JWT_SECRET: ${JWT_SECRET:?required}
+      JWT_EXPIRES_IN: 7d
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_DISPLAY_NAME: ${BOOTSTRAP_ADMIN_DISPLAY_NAME:-Cô giáo}
+  web:
+    build:
+      {
+        context: .,
+        dockerfile: Dockerfile.web,
+        args: { VITE_API_BASE_URL: "" },
+      }
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["80:80"]
+volumes:
+  mysql-data:

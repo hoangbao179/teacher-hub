@@ -1,0 +1,95 @@
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  LinearProgress,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import type { StudentDetail, TuitionMode } from "@teacher/shared";
+import { api } from "../api/client";
+import { LoadingState } from "../components/LoadingState";
+export function StudentDetailPage() {
+  const { id } = useParams();
+  const [item, setItem] = useState<StudentDetail | null>(null);
+  const [error, setError] = useState("");
+  const [tuitionOpen, setTuitionOpen] = useState(false);
+  const [tuitionMode, setTuitionMode] = useState<TuitionMode>("CLASS_DEFAULT");
+  const [customPrice, setCustomPrice] = useState("");
+  const today = new Date().toISOString().slice(0, 10);
+  const [effectiveFrom, setEffectiveFrom] = useState(today);
+  const load = useCallback(() => api<StudentDetail>(`/api/students/${id}`).then((value) => {
+    setItem(value); setTuitionMode(value.tuitionMode ?? "CLASS_DEFAULT");
+    setCustomPrice(value.customPackagePrice?.toString() ?? "");
+  }).catch((e: Error) => setError(e.message)), [id]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  const changeTuition = async () => { if (!item?.enrollmentId) return; setError(""); try {
+    await api(`/api/enrollments/${item.enrollmentId}/tuition-mode`, { method: "PATCH", body: JSON.stringify({ tuitionMode, effectiveFrom, customPackagePrice: tuitionMode === "CUSTOM" ? Number(customPrice) : undefined }) });
+    setTuitionOpen(false); await load();
+  } catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi học phí."); } };
+  const endEnrollment = async () => { if (!item?.enrollmentId || !window.confirm("Kết thúc ghi danh? Lịch sử học vẫn được giữ lại.")) return; setError(""); try {
+    await api(`/api/enrollments/${item.enrollmentId}/end`, { method: "POST", body: JSON.stringify({ endedAt: today }) }); await load();
+  } catch (e) { setError(e instanceof Error ? e.message : "Không thể kết thúc ghi danh."); } };
+  if (!item && !error) return <LoadingState />;
+  if (error) return <Alert severity="error">{error}</Alert>;
+  return (
+    <Stack spacing={2}>
+      <Typography variant="h5" sx={{ fontWeight: 900 }}>
+        {item!.fullName}
+      </Typography>
+      <Button component={Link} to={`/admin/students/${item!.id}/edit`} variant="outlined">Sửa thông tin</Button>
+      <Card>
+        <CardContent>
+          <Typography>Lớp: {item!.className}</Typography>
+          <Typography>
+            Phụ huynh: {item!.parentName ?? "—"} · {item!.parentPhone ?? "—"}
+          </Typography>
+          <Typography>
+            Học phí:{" "}
+            {item!.tuitionMode === "FREE"
+              ? "Miễn phí"
+              : `${item!.effectivePackagePrice?.toLocaleString("vi-VN")}đ / 8 buổi`}
+          </Typography>
+        </CardContent>
+      </Card>
+      {item!.tuitionMode !== "FREE" && (
+        <Card>
+          <CardContent>
+            <Typography sx={{ fontWeight: 800 }}>
+              Tiến độ {item!.currentProgress ?? 0}/8
+            </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={((item!.currentProgress ?? 0) / 8) * 100}
+              sx={{ my: 2 }}
+            />
+          </CardContent>
+        </Card>
+      )}
+      <Button variant="outlined" disabled={!item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setTuitionOpen(true)}>Đổi chế độ học phí</Button>
+      <Button color="error" variant="outlined" disabled={!item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={endEnrollment}>
+        Cho ngừng học
+      </Button>
+      <Dialog open={tuitionOpen} onClose={() => setTuitionOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Chế độ học phí</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+        <FormControl><InputLabel>Chế độ</InputLabel><Select label="Chế độ" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Theo giá lớp</MenuItem><MenuItem value="CUSTOM">Giá riêng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
+        {tuitionMode === "CUSTOM" && <TextField type="number" required label="Giá riêng / 8 buổi" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} />}
+        <TextField type="date" label="Áp dụng từ" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <Alert severity="info">Thay đổi chỉ áp dụng cho chu kỳ học phí tiếp theo.</Alert>
+      </Stack></DialogContent><DialogActions><Button onClick={() => setTuitionOpen(false)}>Hủy</Button><Button variant="contained" onClick={changeTuition}>Lưu</Button></DialogActions></Dialog>
+    </Stack>
+  );
+}

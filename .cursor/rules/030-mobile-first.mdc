@@ -1,0 +1,11 @@
+---
+description: Mobile-first admin UI
+alwaysApply: true
+globs: ["client/src/**/*.{ts,tsx,css}"]
+---
+- Thiết kế trước cho 360,375,390,430px.
+- Không horizontal scroll.
+- Touch target tối thiểu 44px.
+- List/card thay bảng rộng.
+- API calls chỉ qua `client/src/api`.
+- Không duplicate business calculation ở UI.

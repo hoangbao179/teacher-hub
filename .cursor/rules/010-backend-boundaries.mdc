@@ -1,0 +1,11 @@
+---
+description: Backend controller service repository boundaries
+alwaysApply: true
+globs: ["server/src/**/*.ts"]
+---
+- Controller: HTTP/input mapping.
+- Service: business/transaction.
+- Repository: SQL only.
+- Mutation học phí phải transaction và state guard.
+- Không sửa/xóa lịch sử paid âm thầm.
+- Không log password, JWT, secret.

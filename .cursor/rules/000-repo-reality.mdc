@@ -1,0 +1,11 @@
+---
+description: Repository reality and source-of-truth order
+alwaysApply: true
+globs: ["**/*.{ts,tsx,sql,md,json,yml,yaml}"]
+---
+- Monorepo: `server`, `client`, `shared`.
+- `docs/product-spec/03-business-rules.md` là business source of truth.
+- `shared` là contract source of truth.
+- Wireframe không được ghi đè rule.
+- Không copy DTO giữa client/server.
+- Minimal diff, không refactor ngoài task.

@@ -1,0 +1,123 @@
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  LinearProgress,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import type { ClassDetail, StudentListItem, TuitionMode } from "@teacher/shared";
+import { api } from "../api/client";
+import { LoadingState } from "../components/LoadingState";
+export function ClassDetailPage() {
+  const { id } = useParams();
+  const [item, setItem] = useState<ClassDetail | null>(null);
+  const [error, setError] = useState("");
+  const [students, setStudents] = useState<StudentListItem[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [studentId, setStudentId] = useState("");
+  const [tuitionMode, setTuitionMode] = useState<TuitionMode>("CLASS_DEFAULT");
+  const [customPrice, setCustomPrice] = useState("");
+  const [joinedAt, setJoinedAt] = useState(new Date().toISOString().slice(0, 10));
+  const load = useCallback(() => api<ClassDetail>(`/api/classes/${id}`).then(setItem).catch((e: Error) => setError(e.message)), [id]);
+  useEffect(() => {
+    load();
+    api<StudentListItem[]>("/api/students").then(setStudents).catch(() => undefined);
+  }, [load]);
+  const statusAction = async (action: "pause" | "resume" | "close") => {
+    setError("");
+    try { await api(`/api/classes/${id}/${action}`, { method: "POST" }); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi trạng thái."); }
+  };
+  const enroll = async () => {
+    setError("");
+    try {
+      await api(`/api/classes/${id}/enrollments`, { method: "POST", body: JSON.stringify({
+        studentId: Number(studentId), joinedAt, tuitionMode,
+        customPackagePrice: tuitionMode === "CUSTOM" ? Number(customPrice) : undefined,
+      }) });
+      setDialogOpen(false); setStudentId(""); await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Không thể ghi danh."); }
+  };
+  if (!item && !error) return <LoadingState />;
+  if (error) return <Alert severity="error">{error}</Alert>;
+  return (
+    <Stack spacing={2}>
+      <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}><Typography variant="h5" sx={{ fontWeight: 900 }}>{item!.name}</Typography><Chip label={item!.status} /></Stack>
+      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+        <Button
+          variant="contained"
+          href={`/admin/lessons/new?classId=${item!.id}`}
+        >
+          Ghi buổi học
+        </Button>
+        <Button variant="outlined">Buổi học bù</Button>
+        <Button component={Link} to={`/admin/classes/${item!.id}/edit`} variant="outlined">Sửa</Button>
+      </Stack>
+      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+        {item!.status === "ACTIVE" && <Button onClick={() => statusAction("pause")}>Tạm dừng</Button>}
+        {item!.status === "PAUSED" && <Button onClick={() => statusAction("resume")}>Mở lại</Button>}
+        {item!.status !== "CLOSED" && <Button color="error" onClick={() => statusAction("close")}>Đóng lớp</Button>}
+      </Stack>
+      <Card>
+        <CardContent>
+          <Typography>
+            Giá mặc định: {item!.defaultPackagePrice.toLocaleString("vi-VN")}đ /
+            8 buổi
+          </Typography>
+          <Typography>
+            Lịch:{" "}
+            {item!.schedules
+              .map((s) => `T${s.dayOfWeek} ${s.startTime}`)
+              .join(", ")}
+          </Typography>
+        </CardContent>
+      </Card>
+      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontWeight: 800 }}>Học sinh</Typography><Button variant="contained" disabled={item!.status === "CLOSED" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => setDialogOpen(true)}>Ghi danh</Button></Stack>
+      {item!.students.map((student) => (
+        <Card key={student.enrollmentId}>
+          <CardContent>
+            <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+              <Typography sx={{ fontWeight: 800 }}>{student.fullName}</Typography>
+              <Typography>
+                {student.tuitionMode === "FREE"
+                  ? "Miễn phí"
+                  : `${student.currentProgress ?? 0}/8`}
+              </Typography>
+            </Stack>
+            {student.tuitionMode !== "FREE" && (
+              <LinearProgress
+                variant="determinate"
+                value={((student.currentProgress ?? 0) / 8) * 100}
+                sx={{ mt: 1 }}
+              />
+            )}
+          </CardContent>
+        </Card>
+      ))}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Ghi danh học sinh</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+          <FormControl required><InputLabel>Học sinh</InputLabel><Select label="Học sinh" value={studentId} onChange={(e) => setStudentId(e.target.value)}>
+            {students.filter((x) => !x.enrollmentId && x.status === "ACTIVE").map((x) => <MenuItem value={String(x.id)} key={x.id}>{x.fullName}</MenuItem>)}
+          </Select></FormControl>
+          <TextField type="date" label="Ngày vào học" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+          <FormControl><InputLabel>Học phí</InputLabel><Select label="Học phí" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Theo giá lớp</MenuItem><MenuItem value="CUSTOM">Giá riêng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
+          {tuitionMode === "CUSTOM" && <TextField required type="number" label="Giá riêng / 8 buổi" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} />}
+        </Stack></DialogContent><DialogActions><Button onClick={() => setDialogOpen(false)}>Hủy</Button><Button variant="contained" disabled={!studentId} onClick={enroll}>Ghi danh</Button></DialogActions>
+      </Dialog>
+    </Stack>
+  );
+}

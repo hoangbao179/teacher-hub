@@ -1,0 +1,9 @@
+---
+description: Verification requirements
+alwaysApply: true
+globs: ["**/*.{ts,tsx,json,sql}"]
+---
+- Shared change: build shared + typecheck client/server.
+- Backend: typecheck + build.
+- Frontend: typecheck + lint + build.
+- Không tuyên bố pass nếu chưa chạy.

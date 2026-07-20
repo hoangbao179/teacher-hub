@@ -1,0 +1,37 @@
+{
+  "name": "teacher-class-hub",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "engines": {
+    "node": ">=24.15 <25",
+    "npm": ">=12 <13"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n SHARED,API,WEB -c yellow,cyan,magenta \"npm -w shared run dev\" \"npm -w server run dev\" \"npm -w client run dev\"",
+    "build": "npm run build:shared && npm run build:server && npm run build:client",
+    "build:shared": "npm -w shared run build",
+    "build:server": "npm -w server run build",
+    "build:client": "npm -w client run build",
+    "typecheck": "npm run build:shared && npm -w server run typecheck && npm -w client run typecheck",
+    "lint": "npm -w client run lint",
+    "test": "npm -w server run test",
+    "db:migrate": "npm -w server run db:migrate",
+    "db:bootstrap-admin": "npm -w server run db:bootstrap-admin",
+    "verify": "npm run typecheck && npm run lint && npm run build",
+    "deps:outdated": "npm outdated --workspaces --include-workspace-root",
+    "deps:audit": "npm audit"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.3"
+  },
+  "packageManager": "npm@12.0.1",
+  "volta": {
+    "node": "24.18.0",
+    "npm": "12.0.1"
+  }
+}

@@ -1,0 +1,13 @@
+---
+description: Core class lesson tuition rules
+alwaysApply: true
+globs: ["server/src/**/*.ts", "shared/src/**/*.ts", "client/src/**/*.{ts,tsx}"]
+---
+- Chỉ PRESENT + billable mới cộng gói.
+- ABSENT/FREE không cộng.
+- Học sinh FREE không tạo cycle.
+- Đủ 8 tự PAYMENT_DUE.
+- Giờ thực tế không đổi số buổi.
+- Giá snapshot theo cycle.
+- Một học sinh tối đa một active enrollment.
+- Paid cycle bị khóa.
