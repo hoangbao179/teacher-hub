@@ -1,26 +1,19 @@
 import {
   Alert,
-  Box,
   Button,
-  Card,
-  CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControlLabel,
   MenuItem,
   Radio,
   RadioGroup,
   Stack,
   TextField,
-  Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { BusySlotRecurrenceType, ScheduleConflictWarning, TeacherBusySlotInput } from "@teacher/shared";
 import { scheduleApi } from "../api/schedule";
 import { LoadingState } from "../components/LoadingState";
+import { ConfirmationDialog, FormSection, PageHeader, StickyActionBar } from "../components/UiKit";
 import { todayInHoChiMinh } from "../utils/date";
 
 export function BusySlotFormPage() {
@@ -87,12 +80,11 @@ export function BusySlotFormPage() {
   const valid = title.trim() && startTime && endTime > startTime &&
     (recurrenceType === "ONCE" ? specificDate : effectiveFrom && (!effectiveTo || effectiveTo >= effectiveFrom));
   return <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="busy-slot-form">
-    <Typography variant="h5" sx={{ fontWeight: 900 }}>{slotId ? "Sửa lịch bận" : "Thêm lịch bận"}</Typography>
-    <Typography color="text.secondary">Lịch dạy ở trường hoặc việc riêng chỉ dùng để hiển thị và cảnh báo trùng lịch.</Typography>
+    <PageHeader title={slotId ? "Sửa lịch bận" : "Thêm lịch bận"} subtitle="Lịch dạy ở trường hoặc việc riêng chỉ dùng để hiển thị và cảnh báo trùng lịch." />
     {error && <Alert severity="error" action={slotId ? <Button color="inherit" onClick={() => window.location.reload()}>Thử lại</Button> : undefined}>{error}</Alert>}
     {success && <Alert severity="success">{success}</Alert>}
     {warnings.length > 0 && <Alert severity="warning" data-testid="busy-conflict-warning">Có {warnings.length} cảnh báo trùng lịch: {warnings.map((item) => `${item.title} ${item.date} ${item.startTime}–${item.endTime}`).join("; ")}</Alert>}
-    <Card variant="outlined"><CardContent><Stack spacing={2}>
+    <FormSection title="Thông tin lịch bận">
       <TextField required label="Tiêu đề lịch bận" value={title} onChange={(event) => setTitle(event.target.value)} />
       <RadioGroup row value={recurrenceType} onChange={(event) => setRecurrenceType(event.target.value as BusySlotRecurrenceType)}>
         <FormControlLabel value="ONCE" control={<Radio />} label="Một lần" />
@@ -114,11 +106,13 @@ export function BusySlotFormPage() {
       <TextField label="Địa điểm (tùy chọn)" value={location} onChange={(event) => setLocation(event.target.value)} />
       <TextField multiline minRows={3} label="Ghi chú lịch bận (tùy chọn)" value={note} onChange={(event) => setNote(event.target.value)} />
       <Alert severity="info">Lịch bận không có học sinh, điểm danh hoặc học phí.</Alert>
-    </Stack></CardContent></Card>
-    <Box sx={{ position: "sticky", bottom: 72, bgcolor: "background.default", py: 1, zIndex: 5 }}><Stack direction="row" spacing={1}>
+    </FormSection>
+    <StickyActionBar>
       {slotId && <Button color="error" variant="outlined" disabled={busy} onClick={() => setConfirmDelete(true)}>Xóa</Button>}
       <Button fullWidth size="large" variant="contained" disabled={!valid || busy} onClick={() => void submit()}>{busy ? "Đang lưu…" : "Lưu lịch bận"}</Button>
-    </Stack></Box>
-    <Dialog open={confirmDelete} onClose={() => { if (!busy) setConfirmDelete(false); }} fullWidth maxWidth="xs"><DialogTitle>Xóa lịch bận?</DialogTitle><DialogContent>Thao tác chỉ xóa lịch bận này và không ảnh hưởng lesson hoặc học phí.</DialogContent><DialogActions><Button disabled={busy} onClick={() => setConfirmDelete(false)}>Hủy</Button><Button color="error" variant="contained" disabled={busy} onClick={() => void remove()}>Xóa lịch bận</Button></DialogActions></Dialog>
+    </StickyActionBar>
+    <ConfirmationDialog open={confirmDelete} title="Xóa lịch bận?" confirmLabel="Xóa lịch bận" destructive busy={busy} onCancel={() => setConfirmDelete(false)} onConfirm={() => void remove()}>
+      Thao tác chỉ xóa lịch bận này và không ảnh hưởng buổi học hoặc học phí.
+    </ConfirmationDialog>
   </Stack>;
 }

@@ -31,6 +31,7 @@ import type {
 import { ApiError } from "../api/client";
 import { lessonApi } from "../api/lessons";
 import { LoadingState } from "../components/LoadingState";
+import { visibleStatusLabel } from "../components/UiKit";
 
 const steps = ["Thông tin buổi học", "Điểm danh", "Nội dung và bài tập", "Xác nhận"];
 const today = new Intl.DateTimeFormat("en-CA", {
@@ -321,7 +322,7 @@ export function LessonWizardPage() {
         <Summary label="Giờ dự kiến" value={`${scheduledStart}–${scheduledEnd}`} />
         <Summary label="Giờ thực tế" value={`${actualStart}–${actualEnd}`} />
         <Summary label="Thời lượng" value={`${actualDuration ?? 0} phút (không đổi số buổi)`} />
-        <Summary label="Loại buổi" value={lessonType} />
+        <Summary label="Loại buổi" value={visibleStatusLabel(lessonType)} />
         <Divider />
         <Summary label="Có mặt / Nghỉ / Miễn phí" value={`${counts.PRESENT} / ${counts.ABSENT} / ${counts.FREE}`} />
         <Summary label="Nội dung" value={content || "Chưa nhập"} />

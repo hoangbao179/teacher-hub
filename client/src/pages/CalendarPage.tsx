@@ -7,6 +7,7 @@ import { scheduleApi } from "../api/schedule";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingCards } from "../components/LoadingCards";
 import { addDays, displayDate, todayInHoChiMinh, weekStart } from "../utils/date";
+import { PageHeader, visibleStatusLabel } from "../components/UiKit";
 
 type CalendarEntry = {
   key: string; date: string; startTime: string; endTime: string; title: string;
@@ -15,7 +16,7 @@ type CalendarEntry = {
 };
 
 const stateLabel: Record<ReconciliationState, string> = {
-  UNRECORDED: "Dự kiến", RECORDED: "Lesson", SKIPPED: "Nghỉ", RESCHEDULED: "Đổi lịch",
+  UNRECORDED: "Dự kiến", RECORDED: "Đã ghi nhận", SKIPPED: "Nghỉ", RESCHEDULED: "Đổi lịch",
 };
 
 export function CalendarPage() {
@@ -40,7 +41,7 @@ export function CalendarPage() {
     });
     for (const item of data.lessons.filter((lesson) => !linkedLessonIds.has(lesson.id))) values.push({
       key: `lesson-${item.id}`, date: item.date, startTime: item.startTime, endTime: item.endTime,
-      title: item.className, subtitle: `${item.lessonType === "MAKEUP" ? "Học bù" : item.lessonType === "EXTRA" ? "Học thêm" : "Lesson"} · ${item.status}`,
+      title: item.className, subtitle: `${visibleStatusLabel(item.lessonType)} · ${visibleStatusLabel(item.status)}`,
       color: item.status === "COMPLETED" ? "success" : item.status === "DRAFT" ? "primary" : "default",
       href: `/admin/lessons/${item.id}/edit`,
     });
@@ -58,10 +59,7 @@ export function CalendarPage() {
   }, [entries]);
 
   return <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="weekly-calendar">
-    <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
-      <Typography variant="h5" sx={{ fontWeight: 900 }}>Lịch tuần</Typography>
-      <Button size="small" startIcon={<Add />} component={Link} to={`/admin/busy-slots/new?date=${from}`}>Lịch bận</Button>
-    </Stack>
+    <PageHeader title="Lịch tuần" action={<Button size="small" startIcon={<Add />} component={Link} to={`/admin/busy-slots/new?date=${from}`}>Lịch bận</Button>} />
     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
       <IconButton aria-label="Tuần trước" onClick={() => { setData(null); setError(""); setFrom(addDays(from, -7)); }}><ChevronLeft /></IconButton>
       <TextField fullWidth type="date" label="Tuần bắt đầu" value={from} onChange={(event) => { setData(null); setError(""); setFrom(weekStart(event.target.value)); }} slotProps={{ inputLabel: { shrink: true } }} />
@@ -74,7 +72,7 @@ export function CalendarPage() {
     </Stack>
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     {!data && !error && <LoadingCards />}
-    {data && grouped.length === 0 && <EmptyState message="Tuần này chưa có lịch dự kiến, lesson hoặc lịch bận." />}
+    {data && grouped.length === 0 && <EmptyState message="Tuần này chưa có lịch dự kiến, buổi học hoặc lịch bận." />}
     {grouped.map(([date, items]) => <Stack key={date} spacing={1} data-testid="calendar-day">
       <Typography sx={{ fontWeight: 900, mt: 1 }}>{displayDate(date)}</Typography>
       {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: `${item.color}.main` }} data-testid="calendar-event">

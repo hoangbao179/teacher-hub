@@ -1,5 +1,6 @@
 /* global process, fetch, setTimeout, WebSocket, console */
 import { spawn, spawnSync } from "node:child_process";
+import { Buffer } from "node:buffer";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -17,6 +18,8 @@ const testEnv = {
 };
 const children = [];
 let chromeProfile;
+const artifactDir = path.join(os.tmpdir(), "teacher-hub-m6c-ui-audit");
+fs.mkdirSync(artifactDir, { recursive: true });
 
 function run(command, args, cwd = root, env = testEnv) {
   const npmCli = path.join(path.dirname(process.execPath), "node_modules/npm/bin", command === "npx" ? "npx-cli.js" : "npm-cli.js");
@@ -54,6 +57,7 @@ class Cdp {
       }
     };
     await this.send("Page.enable"); await this.send("Runtime.enable");
+    await this.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   }
   send(method, params = {}) {
     const id = this.nextId++;
@@ -84,6 +88,14 @@ class Cdp {
     const ok = await this.eval(`(() => { const dialog=document.querySelector('[role=dialog]'); const el=dialog && [...dialog.querySelectorAll('button')].find(x=>x.textContent.trim().includes(${JSON.stringify(text)}) && !x.disabled); if(!el) return false; el.click(); return true; })()`);
     if (!ok) throw new Error(`Dialog button not found: ${text}`);
   }
+  async clickLabel(label) {
+    const ok = await this.eval(`(() => { const el=document.querySelector('[aria-label=${JSON.stringify(label)}]'); if(!el || el.disabled) return false; el.click(); return true; })()`);
+    if (!ok) throw new Error(`Accessible control not found: ${label}`);
+  }
+  async screenshot(name) {
+    const { data } = await this.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+    fs.writeFileSync(path.join(artifactDir, `${name}.png`), Buffer.from(data, "base64"));
+  }
   async select(label, option) {
     const opened = await this.eval(`(() => { const label=[...document.querySelectorAll('label')].find(x=>x.textContent.includes(${JSON.stringify(label)})); if(!label) return false; const direct=document.getElementById(label.htmlFor); const el=(direct && direct.matches('[role=combobox]') ? direct : null) || [...document.querySelectorAll('[role=combobox]')].find(x=>label.parentElement?.contains(x) || (x.getAttribute('aria-labelledby')||'').split(' ').includes(label.id)); if(!el) return false; el.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0})); return true; })()`);
     if (!opened) throw new Error(`Select not found: ${label}`);
@@ -109,30 +121,51 @@ try {
   const target = await fetch("http://127.0.0.1:9223/json/new?http://127.0.0.1:5174/admin/login", { method: "PUT" }).then((response) => response.json());
   const cdp = new Cdp(target.webSocketDebuggerUrl); await cdp.open();
   await cdp.wait("document.body && document.body.innerText.includes('Đăng nhập cô giáo')", "login page");
+  await cdp.screenshot("admin-login-390");
   await cdp.setInput("Email", "smoke@example.test"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");
   await cdp.wait("location.pathname==='/admin'", "dashboard");
+  await cdp.screenshot("dashboard-390");
 
-  await cdp.clickText("Lớp học"); await cdp.wait("location.pathname==='/admin/classes' && document.body.innerText.includes('Thêm lớp')", "classes"); await cdp.clickText("Thêm lớp");
+  await cdp.clickText("Lớp học"); await cdp.wait("location.pathname==='/admin/classes' && document.body.innerText.includes('Thêm lớp')", "classes"); await cdp.screenshot("class-list-390"); await cdp.clickText("Thêm lớp");
   await cdp.wait("location.pathname==='/admin/classes/new' && document.body.innerText.includes('Tên lớp')", "class form");
+  await cdp.screenshot("class-form-390");
   await cdp.setInput("Tên lớp", `Browser Smoke ${Date.now()}`); await cdp.setInput("Giá gói", "2400000"); await cdp.clickText("Lưu lớp");
   await cdp.wait("/\\/admin\\/classes\\/\\d+$/.test(location.pathname)", "class detail"); const classPath = await cdp.eval("location.pathname");
+  await cdp.screenshot("class-detail-390");
 
-  await cdp.clickText("Học sinh"); await cdp.wait("location.pathname==='/admin/students' && document.body.innerText.includes('Thêm')", "students"); await cdp.clickText("Thêm");
+  await cdp.clickText("Học sinh"); await cdp.wait("location.pathname==='/admin/students' && document.body.innerText.includes('Thêm')", "students"); await cdp.screenshot("student-list-390"); await cdp.clickText("Thêm");
   await cdp.wait("location.pathname==='/admin/students/new' && document.body.innerText.includes('Họ và tên')", "student form");
+  await cdp.screenshot("student-form-390");
   const studentName = `Browser Student ${Date.now()}`; await cdp.setInput("Họ và tên", studentName); await cdp.clickText("Lưu học sinh");
   await cdp.wait("/\\/admin\\/students\\/\\d+$/.test(location.pathname)", "student detail"); const studentPath = await cdp.eval("location.pathname");
+  await cdp.screenshot("student-detail-390");
 
   await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${classPath}`)})`); await cdp.wait("document.body.innerText.includes('Ghi danh')", "class reload");
   await cdp.clickText("Ghi danh"); await cdp.wait("document.querySelector('[role=dialog]') && document.body.innerText.includes('Ngày vào học')", "enrollment dialog"); await cdp.select("Học sinh", studentName); await cdp.clickDialogText("Ghi danh"); await cdp.wait("document.body.innerText.includes('Đã ghi danh học sinh')", "enrollment success"); await cdp.wait(`document.body.innerText.includes(${JSON.stringify(studentName)})`, "enrolled student");
 
   await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${studentPath}`)})`); await cdp.wait("document.body.innerText.includes('Đổi chế độ học phí')", "student reload");
-  await cdp.clickText("Đổi chế độ học phí"); await cdp.wait("document.querySelector('[role=dialog]') && document.body.innerText.includes('Áp dụng từ')", "tuition dialog"); await cdp.select("Chế độ", "Giá riêng"); await cdp.wait("document.body.innerText.includes('Giá riêng / 8 buổi')", "custom price input"); await cdp.setInput("Giá riêng", "1900000"); await cdp.clickDialogText("Lưu");
+  await cdp.clickText("Đổi chế độ học phí"); await cdp.wait("document.querySelector('[role=dialog]') && document.body.innerText.includes('Áp dụng từ')", "tuition dialog");
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  const dialogFits = await cdp.eval("(() => { const r=document.querySelector('[role=dialog]').getBoundingClientRect(); return r.top>=0 && r.bottom<=innerHeight && r.left>=0 && r.right<=innerWidth; })()");
+  if (!dialogFits) throw new Error("Tuition dialog does not fit the 390x844 viewport");
+  await cdp.screenshot("tuition-mode-dialog-390"); await cdp.select("Chế độ", "Giá riêng"); await cdp.wait("document.body.innerText.includes('Giá riêng / 8 buổi')", "custom price input"); await cdp.setInput("Giá riêng", "1900000"); await cdp.clickDialogText("Lưu");
   await cdp.wait("document.body.innerText.includes('Đã cập nhật chế độ học phí')", "tuition success"); await cdp.send("Page.reload");
   await cdp.wait("document.body.innerText.includes('1.900.000')", "persisted custom tuition");
 
   await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${classPath}`)})`); await cdp.wait("document.body.innerText.includes('Tạm dừng')", "class action");
   await cdp.eval("window.confirm=()=>true"); await cdp.clickText("Tạm dừng"); await cdp.wait("document.body.innerText.includes('Đã tạm dừng lớp')", "class pause success");
-  console.log("Browser smoke passed: login, class, student, enrollment, tuition persistence, class pause.");
+  await cdp.clickLabel("Đăng xuất"); await cdp.wait("location.pathname==='/admin/login' && !localStorage.getItem('teacher-token')", "logout");
+  await cdp.wait("document.body.innerText.includes('Đăng nhập cô giáo') && !!document.querySelector('input[type=password]')", "login form after logout");
+  await cdp.setInput("Email", "smoke@example.test"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");
+  await cdp.wait("location.pathname.startsWith('/admin') && location.pathname!=='/admin/login' && !!localStorage.getItem('teacher-token')", "login after logout");
+  await cdp.eval(`location.assign(${JSON.stringify("http://127.0.0.1:5174/admin/khong-ton-tai")})`);
+  await cdp.wait("location.pathname==='/admin/khong-ton-tai' && document.body.innerText.includes('Không tìm thấy trang') && document.body.innerText.includes('Học phí')", "protected not found");
+  await cdp.screenshot("admin-not-found-390");
+  await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${classPath}`)})`);
+  await cdp.wait("document.body.innerText.includes('Tạm dừng') && document.body.innerText.includes('Mở lại')", "persisted class pause after relogin");
+  const overflow = await cdp.eval("document.documentElement.scrollWidth-document.documentElement.clientWidth");
+  if (overflow > 1) throw new Error(`Horizontal page overflow: ${overflow}px`);
+  console.log(`Browser smoke passed: core CRUD, persistence, protected 404 and logout/login; screenshots: ${artifactDir}`);
   cdp.socket.close();
 } finally {
   for (const child of children.reverse()) { try { child.kill(); } catch { /* already stopped */ } }

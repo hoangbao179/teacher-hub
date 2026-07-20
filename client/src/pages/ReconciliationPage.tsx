@@ -86,7 +86,7 @@ export function ReconciliationPage() {
         setSuccess(`Đã đánh dấu nghỉ ${ok}/${results.length} buổi.`);
       } else {
         await scheduleApi.skip(skipDialog.keys[0], { reason: skipReason, note: skipNote || undefined });
-        setSuccess("Đã đánh dấu nghỉ cho occurrence.");
+        setSuccess("Đã đánh dấu nghỉ cho buổi dự kiến.");
       }
       setSkipDialog(null); setSkipReason(""); setSkipNote(""); setSelected([]); setReload((value) => value + 1);
     } catch (value) { setError((value as Error).message); }
@@ -98,7 +98,7 @@ export function ReconciliationPage() {
     try {
       const results = await scheduleApi.bulkCreateDrafts({ keys: selected });
       const ok = results.filter((item) => item.success).length;
-      setSuccess(`Đã tạo ${ok}/${results.length} lesson draft độc lập. Mở từng draft để điểm danh và hoàn tất.`);
+      setSuccess(`Đã tạo ${ok}/${results.length} bản nháp buổi học độc lập. Mở từng bản nháp để điểm danh và hoàn tất.`);
       setSelected([]); setBulkConfirm(false); setReload((value) => value + 1);
     } catch (value) { setError((value as Error).message); }
     finally { setBusyKey(""); }
@@ -118,7 +118,7 @@ export function ReconciliationPage() {
         replacementDate, replacementStartTime: replacementStart, replacementEndTime: replacementEnd,
         reason: rescheduleReason, note: rescheduleNote || undefined,
       });
-      setWarnings(result.conflicts); setSuccess("Đã đổi lịch cho một occurrence; lịch lặp không thay đổi.");
+      setWarnings(result.conflicts); setSuccess("Đã đổi một buổi dự kiến; lịch lặp không thay đổi.");
       setRescheduleItem(null); setReload((value) => value + 1);
     } catch (value) { setError((value as Error).message); }
     finally { setBusyKey(""); }
@@ -127,7 +127,7 @@ export function ReconciliationPage() {
   return (
     <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page">
       <Typography variant="h5" sx={{ fontWeight: 900 }}>Đối soát buổi học</Typography>
-      <Typography color="text.secondary">Xác nhận lịch dự kiến thành lesson draft, nghỉ hoặc đổi lịch. Học phí chỉ đổi sau khi hoàn tất lesson wizard.</Typography>
+      <Typography color="text.secondary">Xác nhận lịch dự kiến thành bản nháp buổi học, nghỉ hoặc đổi lịch. Học phí chỉ thay đổi sau khi hoàn tất ghi nhận.</Typography>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setItems(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
       {warnings.length > 0 && <Alert severity="warning" onClose={() => setWarnings([])} data-testid="schedule-conflict-warning">
@@ -156,7 +156,7 @@ export function ReconciliationPage() {
       </Stack></CardContent></Card>}
 
       {!items && <LoadingCards />}
-      {items?.length === 0 && !error && <EmptyState message="Không có occurrence phù hợp trong khoảng đã chọn." />}
+      {items?.length === 0 && !error && <EmptyState message="Không có buổi dự kiến phù hợp trong khoảng đã chọn." />}
       {items?.map((item) => {
         const replacement = item.projectionSource === "RESCHEDULED";
         return <Card key={item.key} id={`occurrence-${item.key}`} data-testid="occurrence-card" variant="outlined"><CardContent><Stack spacing={1.25}>
@@ -171,7 +171,7 @@ export function ReconciliationPage() {
             {!replacement && <Button size="small" color="error" variant="outlined" disabled={Boolean(busyKey)} onClick={() => setSkipDialog({ keys: [item.key], bulk: false })}>Nghỉ</Button>}
             {!replacement && <Button size="small" variant="outlined" disabled={Boolean(busyKey)} onClick={() => openReschedule(item)}>Đổi lịch</Button>}
           </Stack>}
-          {item.linkedLessonId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/lessons/${item.linkedLessonId}/edit`)}>Mở lesson {item.linkedLessonStatus}</Button>}
+          {item.linkedLessonId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/lessons/${item.linkedLessonId}/edit`)}>Mở buổi học</Button>}
         </Stack></CardContent></Card>;
       })}
 
@@ -195,7 +195,7 @@ export function ReconciliationPage() {
       </Dialog>
 
       <Dialog open={bulkConfirm} onClose={() => { if (!busyKey) setBulkConfirm(false); }} fullWidth maxWidth="xs">
-        <DialogTitle>Tạo {selected.length} lesson draft?</DialogTitle><DialogContent><Alert severity="info">Mỗi buổi là một draft riêng. Bạn vẫn phải mở từng lesson để điểm danh và hoàn tất.</Alert></DialogContent><DialogActions><Button disabled={Boolean(busyKey)} onClick={() => setBulkConfirm(false)}>Hủy</Button><Button data-testid="confirm-bulk-drafts" variant="contained" disabled={!selected.length || Boolean(busyKey)} onClick={() => void submitBulkDrafts()}>{busyKey ? "Đang tạo…" : "Tạo bản nháp"}</Button></DialogActions>
+        <DialogTitle>Tạo {selected.length} bản nháp buổi học?</DialogTitle><DialogContent><Alert severity="info">Mỗi buổi là một bản nháp riêng. Bạn vẫn phải mở từng buổi để điểm danh và hoàn tất.</Alert></DialogContent><DialogActions><Button disabled={Boolean(busyKey)} onClick={() => setBulkConfirm(false)}>Hủy</Button><Button data-testid="confirm-bulk-drafts" variant="contained" disabled={!selected.length || Boolean(busyKey)} onClick={() => void submitBulkDrafts()}>{busyKey ? "Đang tạo…" : "Tạo bản nháp"}</Button></DialogActions>
       </Dialog>
     </Stack>
   );

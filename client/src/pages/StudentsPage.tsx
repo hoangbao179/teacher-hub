@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Chip,
-  LinearProgress,
   Stack,
   Typography,
 } from "@mui/material";
@@ -14,6 +13,8 @@ import { Link } from "react-router-dom";
 import type { StudentListItem } from "@teacher/shared";
 import { api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
+import { PageHeader, ProgressCount } from "../components/UiKit";
+import { EmptyState } from "../components/EmptyState";
 export function StudentsPage() {
   const [items, setItems] = useState<StudentListItem[] | null>(null);
   const [error, setError] = useState("");
@@ -25,7 +26,7 @@ export function StudentsPage() {
   if (!items && !error) return <LoadingState />;
   return (
     <Stack spacing={2}>
-      <Stack direction="row" sx={{ justifyContent: "space-between" }}><Typography variant="h5" sx={{ fontWeight: 900 }}>Học sinh</Typography><Button component={Link} to="/admin/students/new" startIcon={<Add />} variant="contained">Thêm</Button></Stack>
+      <PageHeader title="Học sinh" action={<Button component={Link} to="/admin/students/new" startIcon={<Add />} variant="contained">Thêm học sinh</Button>} />
       {error && <Alert severity="warning">{error}</Alert>}
       {items?.map((item) => (
         <Card
@@ -35,8 +36,8 @@ export function StudentsPage() {
           sx={{ textDecoration: "none" }}
         >
           <CardContent>
-            <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-              <Typography color="text.primary" sx={{ fontWeight: 800 }}>
+            <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+              <Typography color="text.primary" sx={{ fontWeight: 800, minWidth: 0, overflowWrap: "anywhere" }}>
                 {item.fullName}
               </Typography>
               <Chip
@@ -55,15 +56,12 @@ export function StudentsPage() {
               {item.className ?? "Chưa có lớp"}
             </Typography>
             {item.tuitionMode !== "FREE" && (
-              <LinearProgress
-                variant="determinate"
-                value={((item.currentProgress ?? 0) / 8) * 100}
-                sx={{ mt: 1 }}
-              />
+              <ProgressCount value={item.currentProgress ?? 0} />
             )}
           </CardContent>
         </Card>
       ))}
+      {items?.length === 0 && <EmptyState message="Chưa có học sinh. Chọn Thêm học sinh để bắt đầu." />}
     </Stack>
   );
 }

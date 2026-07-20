@@ -9,7 +9,6 @@ import {
   DialogTitle,
   FormControl,
   InputLabel,
-  LinearProgress,
   MenuItem,
   Select,
   Stack,
@@ -23,6 +22,7 @@ import { Download } from "@mui/icons-material";
 import { api } from "../api/client";
 import { downloadStudentReport } from "../api/students";
 import { LoadingState } from "../components/LoadingState";
+import { CurrencyDisplay, PageHeader, ProgressCount } from "../components/UiKit";
 export function StudentDetailPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -61,9 +61,7 @@ export function StudentDetailPage() {
     <Stack spacing={2}>
       {error && <Alert severity="error">{error}</Alert>}
       {success && <Alert severity="success">{success}</Alert>}
-      <Typography variant="h5" sx={{ fontWeight: 900 }}>
-        {item!.fullName}
-      </Typography>
+      <PageHeader title={item!.fullName} />
       <Button component={Link} to={`/admin/students/${item!.id}/edit`} variant="outlined">Sửa thông tin</Button>
       <Button startIcon={<Download />} variant="contained" disabled={busy} onClick={exportReport}>
         {busy ? "Đang tạo báo cáo…" : "Xuất báo cáo Excel"}
@@ -78,21 +76,14 @@ export function StudentDetailPage() {
             Học phí:{" "}
             {item!.tuitionMode === "FREE"
               ? "Miễn phí"
-              : `${item!.effectivePackagePrice?.toLocaleString("vi-VN")}đ / 8 buổi`}
+              : <><CurrencyDisplay value={item!.effectivePackagePrice} /> / 8 buổi</>}
           </Typography>
         </CardContent>
       </Card>
       {item!.tuitionMode !== "FREE" && (
         <Card>
           <CardContent>
-            <Typography sx={{ fontWeight: 800 }}>
-              Tiến độ {item!.currentProgress ?? 0}/8
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={((item!.currentProgress ?? 0) / 8) * 100}
-              sx={{ my: 2 }}
-            />
+            <ProgressCount value={item!.currentProgress ?? 0} />
           </CardContent>
         </Card>
       )}

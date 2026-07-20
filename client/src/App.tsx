@@ -21,6 +21,7 @@ const BusySlotFormPage = lazy(() => import("./pages/BusySlotFormPage").then((mod
 const LessonWizardPage = lazy(() => import("./pages/LessonWizardPage").then((module) => ({ default: module.LessonWizardPage })));
 const ClassFormPage = lazy(() => import("./pages/ClassFormPage").then((module) => ({ default: module.ClassFormPage })));
 const StudentFormPage = lazy(() => import("./pages/StudentFormPage").then((module) => ({ default: module.StudentFormPage })));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage").then((module) => ({ default: module.NotFoundPage })));
 function Protected() {
   const { user, bootstrapping } = useAuth();
   const location = useLocation();
@@ -59,9 +60,10 @@ export function App() {
           <Route path="/admin/busy-slots/:id/edit" element={<BusySlotFormPage />} />
           <Route path="/admin/lessons/new" element={<LessonWizardPage />} />
           <Route path="/admin/lessons/:id/edit" element={<LessonWizardPage />} />
+          <Route path="/admin/*" element={<NotFoundPage admin />} />
         </Route>
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   );

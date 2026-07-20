@@ -1,7 +1,6 @@
 import { ArrowBack, Lock, Payments } from "@mui/icons-material";
 import {
   Alert,
-  Box,
   Button,
   Card,
   CardContent,
@@ -15,6 +14,7 @@ import type { TuitionCycleDetail } from "@teacher/shared";
 import { getTuitionCycle } from "../api/tuition";
 import { LoadingState } from "../components/LoadingState";
 import { TuitionStatusChip } from "../components/TuitionStatusChip";
+import { DateTimeDisplay, PageHeader, StickyActionBar } from "../components/UiKit";
 
 export function TuitionDetailPage() {
   const { cycleId } = useParams();
@@ -35,13 +35,7 @@ export function TuitionDetailPage() {
     <Stack spacing={2} data-testid="tuition-detail-page">
       <Button component={Link} to="/admin/tuition" startIcon={<ArrowBack />} sx={{ alignSelf: "flex-start" }}>Học phí</Button>
       {success && <Alert severity="success">{success}</Alert>}
-      <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-        <Stack sx={{ minWidth: 0 }}>
-          <Typography variant="h5" sx={{ fontWeight: 900 }}>{item.studentName} · Chu kỳ #{item.cycleNumber}</Typography>
-          <Typography color="text.secondary">{item.className}</Typography>
-        </Stack>
-        <TuitionStatusChip status={item.status} />
-      </Stack>
+      <PageHeader title={`${item.studentName} · Chu kỳ #${item.cycleNumber}`} subtitle={item.className} action={<TuitionStatusChip status={item.status} />} />
 
       <Card>
         <CardContent>
@@ -62,7 +56,7 @@ export function TuitionDetailPage() {
             <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
               <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                 <Typography sx={{ fontWeight: 800 }}>Buổi {entry.sequenceNumber}</Typography>
-                <Typography sx={{ fontWeight: 700 }}>{displayDate(entry.sessionDate)}</Typography>
+                <DateTimeDisplay date={entry.sessionDate} />
               </Stack>
               <Typography variant="body2" color="text.secondary">
                 Dự kiến {entry.scheduledStartTime}–{entry.scheduledEndTime}
@@ -79,7 +73,7 @@ export function TuitionDetailPage() {
       <Alert severity="info">Thời lượng thực tế chỉ để theo dõi, không thay đổi số buổi học phí.</Alert>
       {item.status === "PAID" && <Alert icon={<Lock />} severity="success">Chu kỳ đã thu và đang ở trạng thái chỉ đọc.</Alert>}
       {item.status === "PAYMENT_DUE" && (
-        <Box sx={{ position: "sticky", bottom: "72px", zIndex: 10, bgcolor: "background.default", pt: 1 }}>
+        <StickyActionBar>
           <Button
             component={Link}
             to={`/admin/tuition/${item.id}/mark-paid`}
@@ -90,7 +84,7 @@ export function TuitionDetailPage() {
           >
             Đánh dấu đã thu
           </Button>
-        </Box>
+        </StickyActionBar>
       )}
     </Stack>
   );

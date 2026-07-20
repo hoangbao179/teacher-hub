@@ -9,6 +9,8 @@ const root = path.resolve(import.meta.dirname, "../..");
 const clientRoot = path.join(root, "client");
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
+const artifactDir = path.join(os.tmpdir(), "teacher-hub-m6c-ui-audit");
+fs.mkdirSync(artifactDir, { recursive: true });
 const env = {
   ...process.env,
   VITE_PUBLIC_SITE_URL: "https://teacher.example.test",
@@ -91,12 +93,23 @@ try {
   if (metadata.animations !== 0) throw new Error("Reduced-motion viewport still created nonessential animations");
   if (/chu kỳ cần thu|phụ huynh mẫu|teacher-token/i.test(metadata.body)) throw new Error("Private admin content leaked onto Homepage");
 
+  for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (overflow > 1) throw new Error(`Homepage overflow at ${viewport.width}px: ${overflow}px`);
+  }
+
+  await page.goto(`${origin}/khong-ton-tai`);
+  await page.getByRole("heading", { name: "Không tìm thấy trang" }).waitFor();
+  if (await page.getByText("Học phí", { exact: true }).count()) throw new Error("Public 404 leaked the admin shell");
+
   await page.goto(`${origin}/admin/login`);
   await page.getByRole("heading", { name: "Đăng nhập cô giáo" }).waitFor();
   const adminRobots = await page.locator('meta[name="robots"]').getAttribute("content");
   if (adminRobots !== "noindex,nofollow,noarchive") throw new Error(`Admin login is not noindex: ${adminRobots}`);
 
-  const screenshot = path.join(os.tmpdir(), "teacher-hub-m6a-home-mobile.png");
+  const screenshot = path.join(artifactDir, "public-home-390.png");
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(origin);
   await page.getByRole("heading", { level: 1, name: /Học chắc nền tảng/ }).waitFor();
   await page.screenshot({ path: screenshot, fullPage: true });

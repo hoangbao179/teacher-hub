@@ -1,14 +1,9 @@
 import { ArrowBack } from "@mui/icons-material";
 import {
   Alert,
-  Box,
   Button,
   Card,
   CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   FormControlLabel,
   FormLabel,
@@ -24,6 +19,7 @@ import type { TuitionCycleDetail } from "@teacher/shared";
 import { getTuitionCycle, markTuitionPaid } from "../api/tuition";
 import { LoadingState } from "../components/LoadingState";
 import { TuitionStatusChip } from "../components/TuitionStatusChip";
+import { ConfirmationDialog, StickyActionBar } from "../components/UiKit";
 
 export function MarkTuitionPaidPage() {
   const { cycleId } = useParams();
@@ -105,20 +101,15 @@ export function MarkTuitionPaidPage() {
         </FormControl>
         <TextField label="Ghi chú (tùy chọn)" value={note} onChange={(event) => setNote(event.target.value)} multiline minRows={3} slotProps={{ htmlInput: { maxLength: 1000 } }} />
         <Alert severity="warning">Sau khi xác nhận, chu kỳ và tám buổi liên quan sẽ được khóa.</Alert>
-        <Box sx={{ position: "sticky", bottom: "72px", zIndex: 10, bgcolor: "background.default", pt: 1 }}>
+        <StickyActionBar>
           <Button variant="contained" size="large" fullWidth disabled={busy || !amountValid || !paidAt} onClick={() => setConfirming(true)}>
             Xác nhận đã thu
           </Button>
-        </Box>
+        </StickyActionBar>
       </>}
-      <Dialog open={confirming} onClose={() => { if (!busy) setConfirming(false); }} fullWidth maxWidth="xs">
-        <DialogTitle>Xác nhận thanh toán?</DialogTitle>
-        <DialogContent><Typography>Bạn xác nhận đã thu {money(item.packagePriceSnapshot)} ngày {displayDate(paidAt)} bằng {method === "CASH" ? "tiền mặt" : "chuyển khoản"}.</Typography></DialogContent>
-        <DialogActions>
-          <Button disabled={busy} onClick={() => setConfirming(false)}>Quay lại</Button>
-          <Button data-testid="confirm-mark-paid" disabled={busy} variant="contained" onClick={() => void submit()}>{busy ? "Đang ghi nhận…" : "Đồng ý, đánh dấu đã thu"}</Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmationDialog open={confirming} title="Xác nhận thanh toán?" confirmLabel="Đồng ý, đánh dấu đã thu" confirmTestId="confirm-mark-paid" busy={busy} onCancel={() => setConfirming(false)} onConfirm={() => void submit()}>
+        <Typography>Bạn xác nhận đã thu {money(item.packagePriceSnapshot)} ngày {displayDate(paidAt)} bằng {method === "CASH" ? "tiền mặt" : "chuyển khoản"}.</Typography>
+      </ConfirmationDialog>
     </Stack>
   );
 }

@@ -3,14 +3,12 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
   InputLabel,
-  LinearProgress,
   MenuItem,
   Select,
   Stack,
@@ -22,6 +20,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import type { ClassDetail, StudentListItem, TuitionMode } from "@teacher/shared";
 import { api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
+import { CurrencyDisplay, ErrorState, MobileCard, PageHeader, ProgressCount, StatusBadge } from "../components/UiKit";
 export function ClassDetailPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -60,12 +59,12 @@ export function ClassDetailPage() {
     finally { setBusy(false); }
   };
   if (!item && !error) return <LoadingState />;
-  if (!item) return <Alert severity="error">{error || "Không tải được lớp."}</Alert>;
+  if (!item) return <ErrorState message={error || "Không tải được lớp."} onRetry={() => { setError(""); void load(); }} />;
   return (
     <Stack spacing={2}>
       {error && <Alert severity="error">{error}</Alert>}
       {success && <Alert severity="success">{success}</Alert>}
-      <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}><Typography variant="h5" sx={{ fontWeight: 900 }}>{item!.name}</Typography><Chip label={item!.status} /></Stack>
+      <PageHeader title={item!.name} action={<StatusBadge status={item!.status} />} />
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
         <Button component={Link} to={`/admin/lessons/new?classId=${item!.id}`} variant="contained" disabled={item!.status === "CLOSED"}>
           Ghi buổi học
@@ -78,20 +77,15 @@ export function ClassDetailPage() {
         {item!.status === "PAUSED" && <Button disabled={busy} onClick={() => statusAction("resume")}>Mở lại</Button>}
         {item!.status !== "CLOSED" && <Button disabled={busy} color="error" onClick={() => statusAction("close")}>Đóng lớp</Button>}
       </Stack>
-      <Card>
-        <CardContent>
-          <Typography>
-            Giá mặc định: {item!.defaultPackagePrice.toLocaleString("vi-VN")}đ /
-            8 buổi
-          </Typography>
+      <MobileCard>
+          <Typography>Giá mặc định: <CurrencyDisplay value={item!.defaultPackagePrice} /> / 8 buổi</Typography>
           <Typography>
             Lịch:{" "}
             {item!.schedules
               .map((s) => `T${s.dayOfWeek} ${s.startTime}`)
               .join(", ")}
           </Typography>
-        </CardContent>
-      </Card>
+      </MobileCard>
       <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontWeight: 800 }}>Học sinh</Typography><Button variant="contained" disabled={busy || item!.status !== "ACTIVE" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => setDialogOpen(true)}>Ghi danh</Button></Stack>
       {item!.students.map((student) => (
         <Card key={student.enrollmentId}>
@@ -105,11 +99,7 @@ export function ClassDetailPage() {
               </Typography>
             </Stack>
             {student.tuitionMode !== "FREE" && (
-              <LinearProgress
-                variant="determinate"
-                value={((student.currentProgress ?? 0) / 8) * 100}
-                sx={{ mt: 1 }}
-              />
+              <ProgressCount value={student.currentProgress ?? 0} />
             )}
           </CardContent>
         </Card>

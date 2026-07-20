@@ -2,8 +2,8 @@
 
 ## Current milestone
 
-M6 release-candidate work is active. M6A Public Homepage and M6B Excel export
-are complete; M6C system-wide polish is the next gated checkpoint.
+M6 release-candidate work is active. M6A Public Homepage, M6B Excel export and
+M6C system-wide polish are complete; M6D production readiness is next.
 
 ## Status
 
@@ -32,6 +32,9 @@ M6A: PASS on 21/07/2026. Evidence is in
 M6B: PASS on 21/07/2026. Evidence is in
 `.agent-reports/M6B-excel-export-implementation.md` and
 `.agent-reports/M6B-excel-export-verification.md`.
+M6C: PASS on 21/07/2026. Evidence is in
+`.agent-reports/M6C-ui-accessibility-performance-implementation.md` and
+`.agent-reports/M6C-ui-accessibility-performance-verification.md`.
 
 ## Scope boundary
 
@@ -46,6 +49,8 @@ weekly calendar, busy-slot management and makeup entry points. M6A adds the
 public marketing Homepage, content configuration, SEO, lazy media and public
 mobile/accessibility/performance coverage. M6B adds authenticated canonical
 per-student Excel reporting, export audit and safe browser download.
+M6C standardizes the mobile design system, Vietnamese terminology, accessibility
+states, protected/public navigation and responsive UI regression coverage.
 
 ## Known limitations
 

@@ -7,6 +7,8 @@ import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactDir = path.join(os.tmpdir(), "teacher-hub-m6c-ui-audit");
+fs.mkdirSync(artifactDir, { recursive: true });
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
 const testEnv = {
   ...process.env,
@@ -62,6 +64,11 @@ async function api(pathname, token, method = "GET", body) {
 async function noHorizontalScroll(page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (overflow > 1) throw new Error(`Horizontal page overflow: ${overflow}px`);
+}
+async function assertNoRawEnums(page) {
+  const raw = await page.locator("body").innerText();
+  const match = raw.match(/\b(ACTIVE|PAUSED|CLOSED|PRESENT|ABSENT|FREE|ACCUMULATING|PAYMENT_DUE|PAID|INCOMPLETE|REGULAR|MAKEUP|EXTRA|DRAFT|COMPLETED)\b/);
+  if (match) throw new Error(`Visible raw enum: ${match[0]}`);
 }
 function todayInHoChiMinh() {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
@@ -170,7 +177,7 @@ try {
   await skippedCard.getByRole("button", { name: "Nghỉ" }).click();
   await page.getByLabel("Lý do nghỉ").fill("Giáo viên bận");
   await page.getByRole("button", { name: "Xác nhận nghỉ" }).click();
-  await page.getByText("Đã đánh dấu nghỉ cho occurrence.").waitFor();
+  await page.getByText("Đã đánh dấu nghỉ cho buổi dự kiến.").waitFor();
   await skippedCard.getByText("Nghỉ", { exact: true }).waitFor();
 
   const movedCard = page.getByTestId("occurrence-card").filter({ hasText: "12:00–13:00" });
@@ -186,7 +193,7 @@ try {
     await page.getByTestId("occurrence-card").filter({ hasText: time }).getByRole("checkbox").check();
   await page.getByRole("button", { name: "Tạo 2 bản nháp" }).click();
   await page.getByTestId("confirm-bulk-drafts").click();
-  await page.getByText("Đã tạo 2/2 lesson draft độc lập.", { exact: false }).waitFor();
+  await page.getByText("Đã tạo 2/2 bản nháp buổi học độc lập.", { exact: false }).waitFor();
 
   await page.goto(`http://127.0.0.1:5177/admin/lessons/new?type=MAKEUP&date=${today}`);
   await page.getByLabel("Loại buổi").waitFor();
@@ -200,18 +207,20 @@ try {
   await page.goto("http://127.0.0.1:5177/admin/calendar");
   await page.getByTestId("calendar-event").first().waitFor();
   await page.getByText(`Dạy ở trường ${suffix}`).waitFor();
-  await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Học bù · DRAFT" }).waitFor();
+  await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Buổi học bù · Bản nháp" }).waitFor();
   await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Lịch thay thế" }).waitFor();
   await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Nghỉ" }).waitFor();
   const weekBefore = await page.getByLabel("Tuần bắt đầu").inputValue();
   await page.getByLabel("Tuần sau").click();
   await page.waitForFunction((value) => document.querySelector('input[type="date"]')?.value !== value, weekBefore);
   await page.getByLabel("Tuần trước").click();
-  await page.setViewportSize({ width: 360, height: 800 });
-  await noHorizontalScroll(page);
+  await assertNoRawEnums(page);
+  for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    await noHorizontalScroll(page);
+  }
   await page.setViewportSize({ width: 390, height: 844 });
-  await noHorizontalScroll(page);
-  const screenshot = path.join(os.tmpdir(), "teacher-hub-m5b-calendar-mobile.png");
+  const screenshot = path.join(artifactDir, "weekly-calendar-390.png");
   await page.screenshot({ path: screenshot, fullPage: true });
 
   await page.getByTestId("calendar-event").filter({ hasText: `Dạy ở trường ${suffix}` }).click();
@@ -229,6 +238,9 @@ try {
   const finalDashboard = await api("/api/dashboard", token);
   await page.getByTestId("dashboard-unrecorded-card").getByText(`${finalDashboard.unrecordedCount} buổi chưa ghi`).waitFor();
   await page.getByText(`Dạy ở trường ${suffix}`).waitFor();
+  await page.route("**/api/dashboard", (route) => route.abort("failed"));
+  await page.reload();
+  await page.getByText("Không thể kết nối máy chủ. Kiểm tra mạng rồi thử lại.").waitFor();
   console.log(`Playwright M5B operations passed at 390x844; inspected screenshot: ${screenshot}`);
 } finally {
   if (browser) await browser.close();

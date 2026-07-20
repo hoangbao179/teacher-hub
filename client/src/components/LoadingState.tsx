@@ -1,8 +1,9 @@
-import { Box, CircularProgress } from "@mui/material";
-export function LoadingState() {
+import { Box, CircularProgress, Typography } from "@mui/material";
+export function LoadingState({ message = "Đang tải dữ liệu…" }: { message?: string }) {
   return (
-    <Box sx={{ display: "grid", placeItems: "center", minHeight: 180 }}>
-      <CircularProgress />
+    <Box role="status" aria-live="polite" sx={{ display: "grid", placeItems: "center", gap: 1, minHeight: 180 }}>
+      <CircularProgress aria-hidden="true" />
+      <Typography color="text.secondary">{message}</Typography>
     </Box>
   );
 }

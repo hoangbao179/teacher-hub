@@ -7,6 +7,8 @@ import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactDir = path.join(os.tmpdir(), "teacher-hub-m6c-ui-audit");
+fs.mkdirSync(artifactDir, { recursive: true });
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
 const testEnv = {
   ...process.env,
@@ -121,7 +123,7 @@ try {
   await page.setViewportSize({ width: 360, height: 800 });
   await noHorizontalScroll(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: path.join(os.tmpdir(), "teacher-hub-m2c-mobile.png"), fullPage: true });
+  await page.screenshot({ path: path.join(artifactDir, "lesson-confirmation-390.png"), fullPage: true });
   await page.getByRole("button", { name: "Hoàn tất ghi nhận" }).click();
   await page.getByTestId("lesson-success").waitFor();
   const regularUrl = page.url();
@@ -175,7 +177,7 @@ try {
     lastResult = await completeTechnical(date);
   if (lastResult.tuitionImpacts[0].newProgress !== 1) throw new Error("Nine out-of-order lessons did not produce 8/8 + 1/8");
   await completeTechnical("2026-07-05");
-  const cycles = (await api("/api/tuition-cycles", token)).filter((item) => item.studentId === m3Student.id);
+  const cycles = await api(`/api/tuition-cycles?studentId=${m3Student.id}&pageSize=20`, token);
   if (cycles.length !== 2 || cycles.find((item) => item.status === "PAYMENT_DUE")?.progress !== 8 || cycles.find((item) => item.status === "ACCUMULATING")?.progress !== 2)
     throw new Error("Chronological E2E cycles are not 8/8 and 2/8");
   const due = cycles.find((item) => item.status === "PAYMENT_DUE");
@@ -199,7 +201,7 @@ try {
   await page.getByText("Xung đột:").waitFor();
   const conflictPersisted = await api(`/api/lessons/${conflictDraft.id}`, token);
   if (conflictPersisted.status !== "DRAFT") throw new Error("Paid conflict did not roll lesson back to DRAFT");
-  console.log(`Playwright lesson E2E passed at 390x844; inspected screenshot: ${path.join(os.tmpdir(), "teacher-hub-m2c-mobile.png")}`);
+  console.log(`Playwright lesson E2E passed at 390x844; screenshot: ${path.join(artifactDir, "lesson-confirmation-390.png")}`);
 } finally {
   if (browser) await browser.close();
   for (const child of children.reverse()) { try { child.kill(); } catch { /* already stopped */ } }

@@ -7,6 +7,7 @@ import { api } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingCards } from "../components/LoadingCards";
 import { displayDate, todayInHoChiMinh } from "../utils/date";
+import { PageHeader, visibleStatusLabel } from "../components/UiKit";
 
 interface TodayItem { key: string; title: string; time: string; label: string; href: string }
 
@@ -24,12 +25,12 @@ export function DashboardPage() {
     for (const item of data.todaySchedule.occurrences) values.push({
       key: `occurrence-${item.key}`, title: item.className,
       time: `${item.scheduledStartTime}–${item.scheduledEndTime}`,
-      label: item.state === "UNRECORDED" ? (item.projectionSource === "RESCHEDULED" ? "Lịch thay thế" : "Dự kiến") : item.state === "RECORDED" ? `Lesson ${item.linkedLessonStatus}` : item.state === "SKIPPED" ? "Nghỉ" : "Đổi lịch",
+      label: item.state === "UNRECORDED" ? (item.projectionSource === "RESCHEDULED" ? "Lịch thay thế" : "Dự kiến") : item.state === "RECORDED" ? `Buổi học · ${visibleStatusLabel(item.linkedLessonStatus ?? "DRAFT")}` : item.state === "SKIPPED" ? "Nghỉ" : "Đổi lịch",
       href: item.linkedLessonId ? `/admin/lessons/${item.linkedLessonId}/edit` : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
     });
     for (const item of data.todaySchedule.lessons.filter((lesson) => !linked.has(lesson.id))) values.push({
       key: `lesson-${item.id}`, title: item.className, time: `${item.startTime}–${item.endTime}`,
-      label: item.lessonType === "MAKEUP" ? `Học bù ${item.status}` : `${item.lessonType} ${item.status}`,
+      label: `${visibleStatusLabel(item.lessonType)} · ${visibleStatusLabel(item.status)}`,
       href: `/admin/lessons/${item.id}/edit`,
     });
     for (const item of data.todaySchedule.busyOccurrences) values.push({
@@ -41,18 +42,18 @@ export function DashboardPage() {
 
   if (!data && !error) return <LoadingCards />;
   return <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="dashboard-page">
-    <Typography variant="h5" sx={{ fontWeight: 900 }}>Hôm nay · {displayDate(todayInHoChiMinh())}</Typography>
+    <PageHeader title={`Hôm nay · ${displayDate(todayInHoChiMinh())}`} />
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     <Grid container spacing={1.5}>
-      <Grid size={12}><Card component={Link} to="/admin/tuition?status=PAYMENT_DUE" sx={{ bgcolor: "primary.main", color: "white", textDecoration: "none" }} data-testid="dashboard-tuition-card"><CardContent>
-        <Payments /><Typography variant="h5" sx={{ fontWeight: 900 }}>{data?.paymentDueCount ?? 0} chu kỳ cần thu</Typography>
+      <Grid size={12}><Card component={Link} to="/admin/tuition?status=PAYMENT_DUE" sx={{ display: "block", width: "100%", bgcolor: "#ede7ff", border: "1px solid #c4b5fd", color: "text.primary", textDecoration: "none" }} data-testid="dashboard-tuition-card"><CardContent>
+        <Payments color="primary" /><Typography variant="h5" sx={{ fontWeight: 900 }}>{data?.paymentDueCount ?? 0} chu kỳ cần thu</Typography>
         <Typography>{(data?.totalUnpaidAmount ?? 0).toLocaleString("vi-VN")}đ chưa thu</Typography>
       </CardContent></Card></Grid>
-      <Grid size={{ xs: 12, sm: 6 }}><Card component={Link} to="/admin/reconciliation" sx={{ height: "100%", textDecoration: "none", color: "inherit" }} data-testid="dashboard-unrecorded-card"><CardContent>
+      <Grid size={{ xs: 12, sm: 6 }}><Card component={Link} to="/admin/reconciliation" sx={{ display: "block", width: "100%", height: "100%", textDecoration: "none", color: "inherit" }} data-testid="dashboard-unrecorded-card"><CardContent>
         <CheckCircle color="warning" /><Typography variant="h6" sx={{ fontWeight: 900 }}>{data?.unrecordedCount ?? 0} buổi chưa ghi</Typography><Typography color="text.secondary">Trong 14 ngày gần đây</Typography>
       </CardContent></Card></Grid>
-      <Grid size={{ xs: 12, sm: 6 }}><Card component={Link} to="/admin/calendar" sx={{ height: "100%", textDecoration: "none", color: "inherit" }}><CardContent>
-        <CalendarMonth color="info" /><Typography variant="h6" sx={{ fontWeight: 900 }}>{todayItems.length} sự kiện hôm nay</Typography><Typography color="text.secondary">Lớp, lesson và lịch bận</Typography>
+      <Grid size={{ xs: 12, sm: 6 }}><Card component={Link} to="/admin/calendar" sx={{ display: "block", width: "100%", height: "100%", textDecoration: "none", color: "inherit" }}><CardContent>
+        <CalendarMonth color="info" /><Typography variant="h6" sx={{ fontWeight: 900 }}>{todayItems.length} sự kiện hôm nay</Typography><Typography color="text.secondary">Lớp, buổi học và lịch bận</Typography>
       </CardContent></Card></Grid>
     </Grid>
 
@@ -64,7 +65,7 @@ export function DashboardPage() {
     </Stack>
 
     <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontWeight: 900 }}>Lịch hôm nay</Typography><Button size="small" component={Link} to="/admin/calendar">Xem lịch tuần</Button></Stack>
-    {data && todayItems.length === 0 && <EmptyState message="Hôm nay chưa có lớp, lesson hoặc lịch bận." />}
+    {data && todayItems.length === 0 && <EmptyState message="Hôm nay chưa có lớp, buổi học hoặc lịch bận." />}
     {todayItems.map((item) => <Card key={item.key} variant="outlined" component={Link} to={item.href} sx={{ textDecoration: "none", color: "inherit" }} data-testid="dashboard-today-event"><CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
       <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}><Stack sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800 }}>{item.title}</Typography><Typography color="text.secondary">{item.time}</Typography></Stack><Typography variant="body2" color="primary" sx={{ fontWeight: 700 }}>{item.label}</Typography></Stack>
     </CardContent></Card>)}

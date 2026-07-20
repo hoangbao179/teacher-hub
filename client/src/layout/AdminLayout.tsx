@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { uiTokens } from "../theme";
 
 const nav = [
   ["/admin", <Home key="home" />, "Hôm nay"],
@@ -30,16 +31,16 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const auth = useAuth();
-  const current = Math.max(
-    0,
-    nav.findIndex(([path]) =>
+  const directIndex = nav.findIndex(([path]) =>
       path === "/admin"
         ? location.pathname === "/admin"
         : location.pathname.startsWith(path),
-    ),
-  );
+    );
+  const current = directIndex >= 0 ? directIndex
+    : /^\/admin\/(reconciliation|busy-slots|lessons)/.test(location.pathname) ? 1
+      : 0;
   return (
-    <Box sx={{ pb: "78px" }}>
+    <Box sx={{ pb: `calc(${uiTokens.navigationHeight}px + env(safe-area-inset-bottom) + 16px)`, minWidth: 0, overflowX: "clip" }}>
       <AppBar
         position="sticky"
         color="inherit"
@@ -53,11 +54,12 @@ export function AdminLayout() {
           </IconButton>
         </Toolbar>
       </AppBar>
-      <Container maxWidth="sm" sx={{ py: 2 }}>
+      <Container component="main" maxWidth="sm" sx={{ py: 2, minWidth: 0 }}>
         <Outlet />
       </Container>
       <BottomNavigation
         showLabels
+        aria-label="Điều hướng quản trị chính"
         value={current}
         onChange={(_e, value) => navigate(nav[value][0])}
         sx={{
@@ -69,7 +71,7 @@ export function AdminLayout() {
           borderTop: 1,
           borderColor: "divider",
           pb: "env(safe-area-inset-bottom)",
-          height: "calc(64px + env(safe-area-inset-bottom))",
+          height: `calc(${uiTokens.navigationHeight}px + env(safe-area-inset-bottom))`,
         }}
       >
         {nav.map(([, icon, label]) => (

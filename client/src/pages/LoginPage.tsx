@@ -13,7 +13,7 @@ export function LoginPage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState("teacher@example.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,10 +37,11 @@ export function LoginPage() {
     >
       <Paper
         component="form"
+        aria-labelledby="login-title"
         onSubmit={submit}
         sx={{ p: 3, width: "100%", maxWidth: 420 }}
       >
-        <Typography variant="h5" sx={{ fontWeight: 800 }}>
+        <Typography id="login-title" component="h1" variant="h5" sx={{ fontWeight: 800 }}>
           Đăng nhập cô giáo
         </Typography>
         {error && (
@@ -50,6 +51,9 @@ export function LoginPage() {
         )}
         <TextField
           fullWidth
+          required
+          autoComplete="username"
+          inputMode="email"
           label="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -57,6 +61,8 @@ export function LoginPage() {
         />
         <TextField
           fullWidth
+          required
+          autoComplete="current-password"
           type="password"
           label="Mật khẩu"
           value={password}
@@ -71,7 +77,7 @@ export function LoginPage() {
           disabled={loading}
           sx={{ mt: 3 }}
         >
-          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          {loading ? "Đang đăng nhập…" : "Đăng nhập"}
         </Button>
       </Paper>
     </Box>

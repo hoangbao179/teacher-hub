@@ -8,6 +8,8 @@ import { chromium } from "@playwright/test";
 import ExcelJS from "exceljs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactDir = path.join(os.tmpdir(), "teacher-hub-m6c-ui-audit");
+fs.mkdirSync(artifactDir, { recursive: true });
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
 const testEnv = {
   ...process.env,
@@ -158,7 +160,7 @@ try {
   await page.reload();
   await page.getByText("Chu kỳ đã thu và đang ở trạng thái chỉ đọc.").waitFor();
   if (await page.getByRole("link", { name: "Đánh dấu đã thu" }).count()) throw new Error("PAID detail still exposed payment action");
-  await page.screenshot({ path: path.join(os.tmpdir(), "teacher-hub-m4b-paid-mobile.png"), fullPage: true });
+  await page.screenshot({ path: path.join(artifactDir, "tuition-paid-390.png"), fullPage: true });
 
   await page.goto(`http://127.0.0.1:5176/admin/students/${dueStudent.id}`);
   await page.getByRole("heading", { name: dueStudentName }).waitFor();
@@ -210,7 +212,7 @@ try {
   await page.getByText("Không có chu kỳ học phí phù hợp.").waitFor();
   await page.setViewportSize({ width: 360, height: 800 });
   await noHorizontalScroll(page);
-  console.log(`Playwright tuition E2E passed; inspected screenshot: ${path.join(os.tmpdir(), "teacher-hub-m4b-paid-mobile.png")}`);
+  console.log(`Playwright tuition E2E passed; screenshot: ${path.join(artifactDir, "tuition-paid-390.png")}`);
 } finally {
   if (browser) await browser.close();
   for (const child of children.reverse()) { try { child.kill(); } catch { /* already stopped */ } }

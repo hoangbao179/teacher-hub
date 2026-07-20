@@ -1,0 +1,115 @@
+import type { ElementType, ReactNode } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  LinearProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
+import { displayDate } from "../utils/date";
+
+const visibleLabels: Record<string, string> = {
+  ACTIVE: "Đang dạy",
+  PAUSED: "Tạm dừng",
+  CLOSED: "Đã đóng",
+  INACTIVE: "Ngừng hoạt động",
+  ENDED: "Đã ngừng học",
+  PRESENT: "Có mặt",
+  ABSENT: "Nghỉ",
+  FREE: "Miễn phí",
+  ACCUMULATING: "Đang tích lũy",
+  PAYMENT_DUE: "Cần thu",
+  PAID: "Đã thu",
+  INCOMPLETE: "Chưa hoàn thành",
+  CANCELLED: "Đã hủy",
+  REGULAR: "Buổi thường",
+  MAKEUP: "Buổi học bù",
+  EXTRA: "Buổi học thêm",
+  DRAFT: "Bản nháp",
+  COMPLETED: "Đã hoàn thành",
+  UNRECORDED: "Chưa ghi nhận",
+  RECORDED: "Đã ghi nhận",
+  SKIPPED: "Nghỉ",
+  RESCHEDULED: "Đã đổi lịch",
+};
+
+export function visibleStatusLabel(value: string): string {
+  return visibleLabels[value] ?? "Không xác định";
+}
+
+export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+  return <Stack direction="row" useFlexGap sx={{ alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap" }}>
+    <Box sx={{ minWidth: 0 }}>
+      <Typography component="h1" variant="h5" sx={{ fontWeight: 900, overflowWrap: "anywhere" }}>{title}</Typography>
+      {subtitle && <Typography color="text.secondary" sx={{ mt: 0.5 }}>{subtitle}</Typography>}
+    </Box>
+    {action}
+  </Stack>;
+}
+
+export function StatusBadge({ status }: { status: string }) {
+  const color = status === "ACTIVE" || status === "COMPLETED" || status === "PAID" || status === "RECORDED" ? "success"
+    : status === "PAYMENT_DUE" || status === "UNRECORDED" ? "warning"
+      : status === "CLOSED" || status === "CANCELLED" || status === "ENDED" ? "default" : "primary";
+  return <Chip size="small" color={color} variant={status === "INCOMPLETE" || status === "CLOSED" ? "outlined" : "filled"} label={visibleStatusLabel(status)} sx={{ flexShrink: 0 }} />;
+}
+
+export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return <Alert severity="error" role="alert" action={onRetry ? <Button color="inherit" onClick={onRetry}>Thử lại</Button> : undefined}>{message}</Alert>;
+}
+
+export function ConfirmationDialog({ open, title, children, confirmLabel, confirmTestId, busy = false, destructive = false, onCancel, onConfirm }: {
+  open: boolean; title: string; children: ReactNode; confirmLabel: string; busy?: boolean;
+  confirmTestId?: string; destructive?: boolean; onCancel: () => void; onConfirm: () => void;
+}) {
+  return <Dialog open={open} onClose={() => { if (!busy) onCancel(); }} fullWidth maxWidth="xs" aria-labelledby="confirmation-dialog-title">
+    <DialogTitle id="confirmation-dialog-title">{title}</DialogTitle>
+    <DialogContent>{children}</DialogContent>
+    <DialogActions sx={{ flexWrap: "wrap" }}>
+      <Button disabled={busy} onClick={onCancel}>Quay lại</Button>
+      <Button data-testid={confirmTestId} variant="contained" color={destructive ? "error" : "primary"} disabled={busy} onClick={onConfirm}>{busy ? "Đang xử lý…" : confirmLabel}</Button>
+    </DialogActions>
+  </Dialog>;
+}
+
+export function StickyActionBar({ children }: { children: ReactNode }) {
+  return <Box sx={{ position: "sticky", bottom: "calc(var(--admin-nav-height) + 8px)", zIndex: 10, bgcolor: "background.default", py: 1 }}>
+    <Stack direction="row" spacing={1}>{children}</Stack>
+  </Box>;
+}
+
+export function MobileCard({ children, ...props }: { children: ReactNode; component?: ElementType; to?: string }) {
+  return <Card variant="outlined" {...props} sx={{ minWidth: 0, textDecoration: "none", color: "inherit" }}><CardContent>{children}</CardContent></Card>;
+}
+
+export function CurrencyDisplay({ value }: { value: number | null | undefined }) {
+  return <Typography component="span" sx={{ fontVariantNumeric: "tabular-nums" }}>{value == null ? "—" : `${value.toLocaleString("vi-VN")}đ`}</Typography>;
+}
+
+export function DateTimeDisplay({ date, startTime, endTime }: { date?: string | null; startTime?: string | null; endTime?: string | null }) {
+  const time = startTime ? `${startTime}${endTime ? `–${endTime}` : ""}` : "";
+  return <Typography component="span" sx={{ fontVariantNumeric: "tabular-nums" }}>{[date ? displayDate(date) : "", time].filter(Boolean).join(" · ") || "—"}</Typography>;
+}
+
+export function ProgressCount({ value, target = 8, label = "Tiến độ" }: { value: number; target?: number; label?: string }) {
+  const safeValue = Math.min(Math.max(value, 0), target);
+  return <Stack spacing={0.75}>
+    <Typography sx={{ fontWeight: 800 }}>{label} {safeValue}/{target}</Typography>
+    <LinearProgress aria-label={`${label} ${safeValue} trên ${target}`} variant="determinate" value={target ? (safeValue / target) * 100 : 0} />
+  </Stack>;
+}
+
+export function FormSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+  return <Card variant="outlined"><CardContent><Stack spacing={2}>
+    <Box><Typography component="h2" variant="h6" sx={{ fontWeight: 800 }}>{title}</Typography>{description && <Typography color="text.secondary">{description}</Typography>}</Box>
+    {children}
+  </Stack></CardContent></Card>;
+}
