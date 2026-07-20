@@ -2,17 +2,23 @@
 
 ## Current milestone
 
-M1.1 — Architecture stabilization.
+M2–M3 core learning engine complete. Do not start M4 automatically.
 
 ## Status
 
-PASS. Hoàn tất ngày 20/07/2026. Bằng chứng nằm tại
-`.agent-reports/M1.1-implementation.md` và `.agent-reports/M1.1-verification.md`.
+M1.1: PASS. M2A: PASS. M2B: PASS. M2C: PASS. M3: PASS on 20/07/2026. M2A evidence is in
+`.agent-reports/M2A-lesson-domain-implementation.md` and
+`.agent-reports/M2A-lesson-domain-verification.md`; M2B evidence is in the
+matching `.agent-reports/M2B-lesson-api-*.md` files; M2C evidence is in the
+matching `.agent-reports/M2C-lesson-ui-*.md` files.
+M3 evidence is in the matching
+`.agent-reports/M3-chronological-recalculation-*.md` files.
 
 ## Scope boundary
 
-M1.1 không triển khai lesson-recording wizard, attendance API mới, late-entry
-recalculation, makeup-session UI, Excel hoặc notification integrations.
+M2A–M3 establish historical domain/contracts, transactional lesson APIs, mobile
+wizard and chronological mutable-cycle recalculation with immutable PAID boundary.
+Payment/tuition-management UI remains M4 and is not implemented here.
 
 ## Known limitations (non-blocking for M1.1)
 

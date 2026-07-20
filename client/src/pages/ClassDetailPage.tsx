@@ -67,10 +67,10 @@ export function ClassDetailPage() {
       {success && <Alert severity="success">{success}</Alert>}
       <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}><Typography variant="h5" sx={{ fontWeight: 900 }}>{item!.name}</Typography><Chip label={item!.status} /></Stack>
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
-        <Button variant="contained" disabled>
-          Ghi buổi học · Chưa triển khai (M2)
+        <Button component={Link} to={`/admin/lessons/new?classId=${item!.id}`} variant="contained" disabled={item!.status === "CLOSED"}>
+          Ghi buổi học
         </Button>
-        <Button variant="outlined" disabled>Buổi học bù · Chưa triển khai (M2)</Button>
+        <Button component={Link} to={`/admin/lessons/new?classId=${item!.id}&type=MAKEUP`} variant="outlined" disabled={item!.status === "CLOSED"}>Buổi học bù</Button>
         <Button component={Link} to={`/admin/classes/${item!.id}/edit`} variant="outlined">Sửa</Button>
       </Stack>
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>

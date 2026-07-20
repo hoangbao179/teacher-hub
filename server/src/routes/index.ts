@@ -37,10 +37,16 @@ export function createRouter(): Router {
   router.post("/api/enrollments/:id/end", asyncHandler(controllers.enrollments.end));
   router.patch("/api/enrollments/:id/tuition-mode", asyncHandler(controllers.enrollments.changeTuitionMode));
   router.post("/api/lessons", asyncHandler(controllers.lessons.create));
+  router.get("/api/lessons/:id", asyncHandler(controllers.lessons.detail));
+  router.patch("/api/lessons/:id", asyncHandler(controllers.lessons.update));
+  router.put("/api/lessons/:id/participants", asyncHandler(controllers.lessons.updateParticipants));
+  router.put("/api/lessons/:id/attendances", asyncHandler(controllers.lessons.updateAttendances));
+  router.put("/api/lessons/:id/content", asyncHandler(controllers.lessons.updateContent));
   router.post(
     "/api/lessons/:id/complete",
     asyncHandler(controllers.lessons.complete),
   );
+  router.post("/api/lessons/:id/cancel", asyncHandler(controllers.lessons.cancel));
   router.get("/api/tuition-cycles", asyncHandler(controllers.tuition.list));
   router.get(
     "/api/tuition-cycles/:id",

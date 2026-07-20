@@ -10,6 +10,10 @@ async function ensureClass(connection: PoolConnection, name: string, type: "GROU
      VALUES (?,?,?, ?,90,CURDATE(),?,IF(?='CLOSED',NOW(),NULL),'DEV_SEED')`,
     [name, type, "English", price, status, status],
   );
+  await connection.execute(
+    "INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,?,CURDATE())",
+    [result.insertId, price],
+  );
   return result.insertId;
 }
 
@@ -26,10 +30,16 @@ async function ensureStudent(connection: PoolConnection, fullName: string): Prom
 async function ensureEnrollment(connection: PoolConnection, classId: number, studentId: number, mode: "CLASS_DEFAULT" | "CUSTOM" | "FREE", price?: number): Promise<void> {
   const [rows] = await connection.query<RowDataPacket[]>("SELECT id FROM class_enrollments WHERE class_id=? AND student_id=? LIMIT 1 FOR UPDATE", [classId, studentId]);
   if (rows[0]) return;
-  await connection.execute(
+  const [result] = await connection.execute<ResultSetHeader>(
     `INSERT INTO class_enrollments(class_id,student_id,joined_at,tuition_mode,custom_package_price,tuition_effective_from,note)
      VALUES (?,?,CURDATE(),?,?,CURDATE(),'DEV_SEED')`,
     [classId, studentId, mode, mode === "CUSTOM" ? (price ?? null) : null],
+  );
+  await connection.execute(
+    `INSERT INTO enrollment_tuition_policies
+      (enrollment_id,tuition_mode,custom_package_price,effective_from)
+     VALUES (?,?,?,CURDATE())`,
+    [result.insertId, mode, mode === "CUSTOM" ? (price ?? null) : null],
   );
 }
 

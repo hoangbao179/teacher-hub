@@ -119,3 +119,97 @@ Kiểm tra UTF-8 sau khi sửa docs tiếng Việt:
 ```bash
 rg "Ã|Ä|á»|áº|Â|�" docs AGENTS.md .cursor server shared client
 ```
+## 7. Task lifecycle and reporting
+
+Every non-trivial task must have a unique task ID, for example:
+
+- M2A-lesson-domain
+- M2B-lesson-api
+- M2C-lesson-ui
+- M3-chronological-recalculation
+
+Before implementation:
+
+1. Read the task document in `docs/implementation/tasks/`.
+2. Read the matching acceptance document.
+3. Inspect current git status and relevant migrations.
+4. Record the initial repository state in the implementation report.
+
+Required reports:
+
+- `.agent-reports/<TASK_ID>-implementation.md`
+- `.agent-reports/<TASK_ID>-verification.md`
+
+The implementation report must include:
+
+- scope completed;
+- files changed;
+- migrations added;
+- API and contract changes;
+- business rules affected;
+- commands executed;
+- test results;
+- manual UI verification;
+- known gaps;
+- current git status.
+
+The verification report must end with exactly one verdict:
+
+- `PASS`
+- `FAIL`
+
+An agent must not declare PASS when:
+
+- a required command was not run;
+- a test failed;
+- browser verification was skipped when required;
+- documentation or OpenAPI is stale;
+- a P0 acceptance item remains unresolved.
+
+Do not automatically continue to the next checkpoint after FAIL.
+
+Do not update `docs/implementation/status.md` to PASS until the matching
+verification report is PASS.
+
+## 8. Milestone checkpoint discipline
+
+Large milestones must be split into reviewable checkpoints.
+
+For every checkpoint:
+
+1. implement only the checkpoint scope;
+2. run the required fast checks;
+3. run milestone-level full checks when applicable;
+4. write reports;
+5. stop on failure;
+6. keep the diff reviewable.
+
+Do not implement M2 through M6 as one undifferentiated change set.
+
+The agent may execute multiple checkpoints in one session only when each
+checkpoint has its own task document, report, verification gate and git
+checkpoint.
+
+## 9. Migration discipline
+
+- Never edit an already-applied migration.
+- Add a new forward-only migration.
+- Never reset an unknown or production-like database.
+- Backfills must be explicit and verifiable.
+- Schema changes and application changes must be deployable in a safe order.
+- New constraints must account for existing rows before being enabled.
+
+## 10. Lesson-domain warning
+
+The current lesson create/complete implementation is pre-M2 scaffold code.
+
+It is not authoritative for:
+
+- participant selection;
+- historical enrollment eligibility;
+- effective-dated tuition;
+- makeup participant selection;
+- chronological tuition allocation.
+
+When implementing M2/M3, refactor or replace this flow according to the
+approved ADRs. Do not preserve behavior that conflicts with those ADRs.

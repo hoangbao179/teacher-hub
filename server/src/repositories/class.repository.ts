@@ -11,6 +11,8 @@ import type {
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { AuditRepository } from "./audit.repository";
+import { TuitionPolicyRepository } from "./tuition-policy.repository";
+import { todayInHoChiMinh } from "../utils/date";
 
 interface ClassRow extends RowDataPacket {
   id: number;
@@ -43,7 +45,10 @@ function mapList(row: ClassRow): ClassListItem {
 }
 
 export class ClassRepository {
-  constructor(private readonly audit = new AuditRepository()) {}
+  constructor(
+    private readonly audit = new AuditRepository(),
+    private readonly policies = new TuitionPolicyRepository(),
+  ) {}
   async list(): Promise<ClassListItem[]> {
     const [rows] = await pool.query<ClassRow[]>(`
       SELECT c.*,
@@ -142,6 +147,13 @@ export class ClassRepository {
         actorUserId, action: "CLASS_CREATED", entityType: "CLASS",
         entityId: result.insertId, newValues: input,
       });
+      await this.policies.createInitialClassPolicy(
+        connection,
+        result.insertId,
+        input.defaultPackagePrice,
+        input.startDate,
+        actorUserId,
+      );
       for (const schedule of input.schedules) {
         const [scheduleResult] = await connection.execute<ResultSetHeader>(
           "INSERT INTO recurring_schedules(class_id,day_of_week,start_time,end_time,effective_from) VALUES (?,?,?,?,?)",
@@ -213,6 +225,15 @@ export class ClassRepository {
           id,
         ],
       );
+      if (Number(existing[0].default_package_price) !== input.defaultPackagePrice) {
+        await this.policies.replaceClassPolicy(
+          connection,
+          id,
+          input.defaultPackagePrice,
+          todayInHoChiMinh(),
+          actorUserId,
+        );
+      }
       await this.audit.record(connection, {
         actorUserId, action: "CLASS_UPDATED", entityType: "CLASS", entityId: id,
         previousValues: existing[0], newValues: input,

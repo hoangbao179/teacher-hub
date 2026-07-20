@@ -6,6 +6,7 @@ import type {
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { AuditRepository } from "./audit.repository";
+import { TuitionPolicyRepository } from "./tuition-policy.repository";
 
 export type EnrollmentWriteResult =
   | { kind: "OK"; id: number }
@@ -14,7 +15,10 @@ export type EnrollmentWriteResult =
   | { kind: "INVALID_TRANSITION" };
 
 export class EnrollmentRepository {
-  constructor(private readonly audit = new AuditRepository()) {}
+  constructor(
+    private readonly audit = new AuditRepository(),
+    private readonly policies = new TuitionPolicyRepository(),
+  ) {}
 
   async create(classId: number, input: CreateEnrollmentRequest, actorUserId?: number): Promise<EnrollmentWriteResult> {
     const connection = await pool.getConnection();
@@ -51,6 +55,14 @@ export class EnrollmentRepository {
         [classId, input.studentId, input.joinedAt, input.tuitionMode,
           input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
           input.joinedAt, input.note ?? null],
+      );
+      await this.policies.createInitialEnrollmentPolicy(
+        connection,
+        result.insertId,
+        input.tuitionMode,
+        input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
+        input.joinedAt,
+        actorUserId,
       );
       await this.audit.record(connection, {
         actorUserId, action: "ENROLLMENT_CREATED", entityType: "ENROLLMENT",
@@ -136,6 +148,14 @@ export class EnrollmentRepository {
         `UPDATE class_enrollments SET tuition_mode=?,custom_package_price=?,tuition_effective_from=? WHERE id=?`,
         [input.tuitionMode, input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
           input.effectiveFrom, id],
+      );
+      await this.policies.replaceEnrollmentPolicy(
+        connection,
+        id,
+        input.tuitionMode,
+        input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
+        input.effectiveFrom,
+        actorUserId,
       );
       await this.audit.record(connection, {
         actorUserId, action: "TUITION_MODE_CHANGED", entityType: "ENROLLMENT", entityId: id,

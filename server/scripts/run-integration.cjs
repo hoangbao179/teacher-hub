@@ -26,5 +26,5 @@ function run(command, args, cwd = root) {
 try {
   run("node", ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
   run("npm", ["run", "db:migrate"], path.join(root, "server"));
-  run("npx", ["tsx", "--test", "src/**/*.integration.test.ts"], path.join(root, "server"));
+  run("npx", ["tsx", "--test", "--test-concurrency=1", "src/**/*.integration.test.ts"], path.join(root, "server"));
 } catch (error) { console.error(error); process.exit(1); }

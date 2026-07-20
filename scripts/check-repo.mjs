@@ -15,7 +15,7 @@ for (const file of required) if (!fs.existsSync(path.join(root, file))) failures
 if (fs.existsSync(path.join(root, "FILE_MANIFEST.txt"))) failures.push("FILE_MANIFEST.txt is a forbidden manual manifest");
 
 const routeSource = read("server/src/routes/index.ts");
-const routePattern = /router\.(get|post|patch|delete)\(\s*"([^"]+)"/gs;
+const routePattern = /router\.(get|post|put|patch|delete)\(\s*"([^"]+)"/gs;
 const sourceRoutes = new Set([...routeSource.matchAll(routePattern)].map((match) => `${match[1].toUpperCase()} ${match[2].replace(/:([A-Za-z]+)/g, "{$1}")}`));
 const openapi = read("docs/api/openapi.yaml");
 const documented = new Set();
@@ -23,7 +23,7 @@ let currentPath = null;
 for (const line of openapi.split(/\r?\n/)) {
   const pathMatch = line.match(/^  (\/[^:]+):\s*$/);
   if (pathMatch) { currentPath = pathMatch[1]; continue; }
-  const methodMatch = line.match(/^    (get|post|patch|delete):/);
+  const methodMatch = line.match(/^    (get|post|put|patch|delete):/);
   if (currentPath && methodMatch) documented.add(`${methodMatch[1].toUpperCase()} ${currentPath}`);
 }
 for (const route of sourceRoutes) if (!documented.has(route)) failures.push(`OpenAPI missing source route: ${route}`);

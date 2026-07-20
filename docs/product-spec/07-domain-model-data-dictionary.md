@@ -26,8 +26,26 @@
 - id, classId, lessonDate, scheduledStartTime, scheduledEndTime, actualStartTime, actualEndTime, actualDurationMinutes, sessionType, content, homework, note, status, createdAt, updatedAt.
 
 ## LessonAttendance
-- id, sessionId, enrollmentId, attendanceStatus, billingType, studentNote, createdAt, updatedAt.
-- Unique: sessionId + enrollmentId.
+- id, sessionId, participantId, enrollmentId, attendanceStatus,
+  countsForTuition, excludedFromTuition, studentNote, createdAt, updatedAt.
+- Unique: participantId và sessionId + enrollmentId; composite foreign key bảo
+  đảm attendance thuộc đúng participant snapshot.
+- `excludedFromTuition=true` là manual approved exclusion và bắt buộc
+  `countsForTuition=false`.
+
+## LessonSessionParticipant
+- id, lessonSessionId, enrollmentId, createdAt, createdBy.
+- Unique: lessonSessionId + enrollmentId.
+
+## ClassTuitionPolicy
+- id, classId, packagePrice, effectiveFrom, effectiveTo, createdAt, createdBy.
+- Khoảng ngày inclusive, không overlap; packagePrice là integer VND dương.
+
+## EnrollmentTuitionPolicy
+- id, enrollmentId, tuitionMode, customPackagePrice, effectiveFrom, effectiveTo,
+  createdAt, createdBy.
+- Khoảng ngày inclusive, không overlap; `CUSTOM` có giá dương, `FREE` và
+  `CLASS_DEFAULT` không có custom price.
 
 ## TuitionCycle
 - id, enrollmentId, cycleNumber, targetCount=8, packagePriceSnapshot, status, startedAt, reachedTargetAt, paidAt, paidAmount, paymentMethod, paymentNote, lockReason.

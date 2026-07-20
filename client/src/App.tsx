@@ -13,7 +13,6 @@ import { TuitionDetailPage } from "./pages/TuitionDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { UnrecordedPage } from "./pages/UnrecordedPage";
 import { LessonWizardPage } from "./pages/LessonWizardPage";
-import { LessonCompletePlaceholderPage } from "./pages/LessonCompletePlaceholderPage";
 import { ClassFormPage } from "./pages/ClassFormPage";
 import { StudentFormPage } from "./pages/StudentFormPage";
 import { LoadingState } from "./components/LoadingState";
@@ -48,10 +47,7 @@ export function App() {
           <Route path="/admin/tuition/:id" element={<TuitionDetailPage />} />
           <Route path="/admin/calendar" element={<CalendarPage />} />
           <Route path="/admin/lessons/new" element={<LessonWizardPage />} />
-          <Route
-            path="/admin/lessons/:id/complete"
-            element={<LessonCompletePlaceholderPage />}
-          />
+          <Route path="/admin/lessons/:id/edit" element={<LessonWizardPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

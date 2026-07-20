@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Teacher Class Hub API
   version: 0.1.1
-  description: Các endpoint đang tồn tại trong source ở mốc M1.1. Không liệt kê API M2 tương lai.
+  description: API hiện hành qua checkpoint M2B, gồm lesson workflow transactional.
 servers:
   - url: /
 security:
@@ -67,9 +67,87 @@ paths:
   /api/enrollments/{id}/tuition-mode:
     patch: {summary: Đổi tuition mode có effective date, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
   /api/lessons:
-    post: {summary: Tạo lesson draft (API nền có sẵn; UI wizard thuộc M2), responses: {'201': {description: Đã tạo}}}
+    post:
+      summary: Tạo lesson draft và participant snapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateLessonRequest'}
+            examples:
+              regular: {value: {classId: 1, sessionDate: '2026-07-20', scheduledStartTime: '18:00', scheduledEndTime: '19:30', lessonType: REGULAR}}
+              makeup: {value: {classId: 1, sessionDate: '2026-07-20', scheduledStartTime: '20:00', scheduledEndTime: '21:00', lessonType: MAKEUP, selectedEnrollmentIds: [10, 11]}}
+      responses:
+        '201': {description: Draft đầy đủ, content: {application/json: {schema: {$ref: '#/components/schemas/LessonEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/lessons/{id}:
+    get:
+      summary: Chi tiết lesson và participant snapshot
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Thành công, content: {application/json: {schema: {$ref: '#/components/schemas/LessonEnvelope'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      summary: Cập nhật draft hoặc ngày/giờ completed mutable; paid boundary trả conflict
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateLessonRequest'}}}}
+      responses:
+        '200': {description: Draft đã cập nhật, content: {application/json: {schema: {$ref: '#/components/schemas/LessonEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/lessons/{id}/participants:
+    put:
+      summary: Thay participant snapshot; completed cần gửi đủ attendance và không được chạm PAID
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateParticipantsRequest'}}}}
+      responses:
+        '200': {description: Draft đã cập nhật, content: {application/json: {schema: {$ref: '#/components/schemas/LessonEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/lessons/{id}/attendances:
+    put:
+      summary: Lưu điểm danh draft hoặc sửa completed mutable và recalculation atomically
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateAttendancesRequest'}}}}
+      responses:
+        '200': {description: Draft đã cập nhật, content: {application/json: {schema: {$ref: '#/components/schemas/LessonEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/lessons/{id}/content:
+    put:
+      summary: Lưu nội dung, bài tập và ghi chú draft
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateContentRequest'}}}}
+      responses:
+        '200': {description: Draft đã cập nhật, content: {application/json: {schema: {$ref: '#/components/schemas/LessonEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /api/lessons/{id}/complete:
-    post: {summary: Hoàn thành lesson draft (API nền có sẵn; UI wizard thuộc M2), parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}, '409': {description: State conflict}}}
+    post:
+      summary: Hoàn thành lesson và phân bổ tuition atomically; replay COMPLETED không nhân đôi
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CompleteLessonRequest'}}}}
+      responses:
+        '200': {description: Completion summary, content: {application/json: {schema: {$ref: '#/components/schemas/CompleteLessonEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/lessons/{id}/cancel:
+    post:
+      summary: Hủy lesson DRAFT; không có tác động tuition
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: false, content: {application/json: {schema: {type: object, properties: {reason: {type: string}}}}}}
+      responses:
+        '204': {description: Đã hủy}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /api/tuition-cycles:
     get:
       summary: Danh sách chu kỳ
@@ -88,3 +166,142 @@ components:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   parameters:
     Id: {in: path, name: id, required: true, schema: {type: integer, format: int64}}
+  responses:
+    ValidationError:
+      description: Dữ liệu không hợp lệ
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+    Unauthorized:
+      description: Chưa xác thực hoặc token không hợp lệ
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+    Conflict:
+      description: State, participant, policy hoặc concurrency conflict
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+    NotFound:
+      description: Không tìm thấy tài nguyên
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+  schemas:
+    LessonType: {type: string, enum: [REGULAR, MAKEUP, EXTRA]}
+    LessonStatus: {type: string, enum: [DRAFT, COMPLETED, CANCELLED]}
+    AttendanceStatus: {type: string, enum: [PRESENT, ABSENT, FREE]}
+    CreateLessonRequest:
+      type: object
+      required: [classId, sessionDate, scheduledStartTime, scheduledEndTime, lessonType]
+      properties:
+        classId: {type: integer, format: int64}
+        sessionDate: {type: string, format: date}
+        scheduledStartTime: {type: string, example: '18:00'}
+        scheduledEndTime: {type: string, example: '19:30'}
+        lessonType: {$ref: '#/components/schemas/LessonType'}
+        selectedEnrollmentIds: {type: array, uniqueItems: true, items: {type: integer, format: int64}}
+        note: {type: string, maxLength: 1000}
+    UpdateLessonRequest:
+      type: object
+      properties:
+        classId: {type: integer, format: int64}
+        sessionDate: {type: string, format: date}
+        scheduledStartTime: {type: string}
+        scheduledEndTime: {type: string}
+        actualStartTime: {type: string}
+        actualEndTime: {type: string}
+        lessonType: {$ref: '#/components/schemas/LessonType'}
+        note: {type: string, maxLength: 1000}
+        refreshParticipants: {type: boolean}
+        selectedEnrollmentIds: {type: array, uniqueItems: true, items: {type: integer, format: int64}}
+    UpdateParticipantsRequest:
+      type: object
+      required: [enrollmentIds]
+      properties:
+        enrollmentIds: {type: array, uniqueItems: true, items: {type: integer, format: int64}}
+        attendances:
+          description: Bắt buộc và đầy đủ khi sửa participant của lesson COMPLETED.
+          type: array
+          items: {$ref: '#/components/schemas/AttendanceInput'}
+    AttendanceInput:
+      type: object
+      required: [enrollmentId, status]
+      properties:
+        enrollmentId: {type: integer, format: int64}
+        status: {$ref: '#/components/schemas/AttendanceStatus'}
+        studentNote: {type: string, maxLength: 1000}
+    UpdateAttendancesRequest:
+      type: object
+      required: [attendances]
+      properties: {attendances: {type: array, items: {$ref: '#/components/schemas/AttendanceInput'}}}
+    UpdateContentRequest:
+      type: object
+      properties:
+        content: {type: string, maxLength: 2000}
+        homework: {type: string, maxLength: 2000}
+        note: {type: string, maxLength: 1000}
+    CompleteLessonRequest:
+      allOf:
+        - {$ref: '#/components/schemas/UpdateContentRequest'}
+        - type: object
+          required: [actualStartTime, actualEndTime, attendances]
+          properties:
+            actualStartTime: {type: string, example: '18:05'}
+            actualEndTime: {type: string, example: '20:05'}
+            attendances: {type: array, items: {$ref: '#/components/schemas/AttendanceInput'}}
+    LessonParticipant:
+      type: object
+      required: [participantId, enrollmentId, studentId, studentName, tuitionMode]
+      properties:
+        participantId: {type: integer, format: int64}
+        enrollmentId: {type: integer, format: int64}
+        studentId: {type: integer, format: int64}
+        studentName: {type: string}
+        tuitionMode: {type: string, enum: [CLASS_DEFAULT, CUSTOM, FREE]}
+        effectivePackagePrice: {type: integer, format: int64, nullable: true}
+        currentProgress: {type: integer, minimum: 0, maximum: 8, nullable: true}
+        attendance:
+          nullable: true
+          allOf: [{$ref: '#/components/schemas/AttendanceInput'}]
+    LessonDetail:
+      type: object
+      required: [id, classId, className, sessionDate, scheduledStartTime, scheduledEndTime, lessonType, status, participants]
+      properties:
+        id: {type: integer, format: int64}
+        classId: {type: integer, format: int64}
+        className: {type: string}
+        sessionDate: {type: string, format: date}
+        scheduledStartTime: {type: string}
+        scheduledEndTime: {type: string}
+        actualStartTime: {type: string, nullable: true}
+        actualEndTime: {type: string, nullable: true}
+        actualDurationMinutes: {type: integer, nullable: true}
+        lessonType: {$ref: '#/components/schemas/LessonType'}
+        status: {$ref: '#/components/schemas/LessonStatus'}
+        content: {type: string, nullable: true}
+        homework: {type: string, nullable: true}
+        note: {type: string, nullable: true}
+        participants: {type: array, items: {$ref: '#/components/schemas/LessonParticipant'}}
+    LessonEnvelope:
+      type: object
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/LessonDetail'}}
+    CompleteLessonEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [lessonId, lesson, actualDurationMinutes, presentCount, absentCount, freeCount, tuitionImpacts]
+          properties:
+            lessonId: {type: integer, format: int64}
+            lesson: {$ref: '#/components/schemas/LessonDetail'}
+            actualDurationMinutes: {type: integer}
+            presentCount: {type: integer}
+            absentCount: {type: integer}
+            freeCount: {type: integer}
+            tuitionImpacts: {type: array, items: {type: object}}
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: string, example: MISSING_ATTENDANCE}
+            message: {type: string}
+            details: {nullable: true}

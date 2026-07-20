@@ -27,6 +27,8 @@
     "db:seed:dev": "npm -w server run db:seed:dev",
     "db:reset:dev": "npm -w server run db:reset:dev",
     "check:repo": "node scripts/check-repo.mjs",
+    "check:fast": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "check:full": "npm run check",
     "verify": "npm run check",
     "check": "npm run typecheck && npm run lint && npm run build && npm run test && npm run test:integration && npm run test:e2e && npm run check:repo",
     "deps:outdated": "npm outdated --workspaces --include-workspace-root",
