@@ -70,6 +70,7 @@ export function createRouter(): Router {
   router.get("/api/schedule/week", asyncHandler(controllers.schedule.week));
   router.get("/api/teacher-busy-slots", asyncHandler(controllers.schedule.listBusySlots));
   router.post("/api/teacher-busy-slots", asyncHandler(controllers.schedule.createBusySlot));
+  router.get("/api/teacher-busy-slots/:id", asyncHandler(controllers.schedule.getBusySlot));
   router.patch("/api/teacher-busy-slots/:id", asyncHandler(controllers.schedule.updateBusySlot));
   router.delete("/api/teacher-busy-slots/:id", asyncHandler(controllers.schedule.deleteBusySlot));
   return router;

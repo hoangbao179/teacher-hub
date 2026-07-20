@@ -47,7 +47,7 @@
 
 ## Calendar
 - GET/POST `/api/teacher-busy-slots`
-- PATCH/DELETE `/api/teacher-busy-slots/{id}`
+- GET/PATCH/DELETE `/api/teacher-busy-slots/{id}`
 
 ## Export (giai đoạn sau)
 - GET `/api/students/{id}/export.xlsx`

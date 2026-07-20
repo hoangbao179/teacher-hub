@@ -44,6 +44,15 @@ interface LessonEvent {
   lessonType: "REGULAR" | "MAKEUP" | "EXTRA";
 }
 
+interface BusyOccurrence {
+  id: number;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string | null;
+}
+
 export class ScheduleRepository {
   constructor(private readonly audit = new AuditRepository()) {}
 
@@ -295,8 +304,12 @@ export class ScheduleRepository {
        ORDER BY rs.day_of_week,rs.start_time`, [to, from],
     );
     const busy = await this.listBusySlots(from, to);
+    const lessons = await this.listLessonEvents(from, to);
+    const busyOccurrences = await this.expandBusyEvents(from, to);
     return {
       from, to, occurrences: await this.listOccurrences(from, to),
+      lessons,
+      busyOccurrences,
       classSchedules: schedules.map((row) => ({ classId: Number(row.class_id), className: String(row.class_name),
         dayOfWeek: Number(row.day_of_week), startTime: String(row.start_text), endTime: String(row.end_text) })),
       busySlots: busy.map((row) => ({ id: row.id, title: row.title, dayOfWeek: row.dayOfWeek,
@@ -433,18 +446,18 @@ export class ScheduleRepository {
     return rows;
   }
 
-  private async expandBusyEvents(from: string, to: string): Promise<Array<{ id: number; title: string; date: string; startTime: string; endTime: string }>> {
+  private async expandBusyEvents(from: string, to: string): Promise<BusyOccurrence[]> {
     const slots = (await this.busyRows(from, to)).map(mapBusySlot);
-    const events: Array<{ id: number; title: string; date: string; startTime: string; endTime: string }> = [];
+    const events: BusyOccurrence[] = [];
     for (const slot of slots) {
       if (slot.recurrenceType === "ONCE" && slot.specificDate)
-        events.push({ id: slot.id, title: slot.title, date: slot.specificDate, startTime: slot.startTime, endTime: slot.endTime });
+        events.push({ id: slot.id, title: slot.title, date: slot.specificDate, startTime: slot.startTime, endTime: slot.endTime, location: slot.location });
       if (slot.recurrenceType === "WEEKLY")
         for (let date = from; date <= to; date = addDays(date, 1))
           if (weekdayIso(date) === slot.dayOfWeek && date >= (slot.effectiveFrom ?? date) && (!slot.effectiveTo || date <= slot.effectiveTo))
-            events.push({ id: slot.id, title: slot.title, date, startTime: slot.startTime, endTime: slot.endTime });
+            events.push({ id: slot.id, title: slot.title, date, startTime: slot.startTime, endTime: slot.endTime, location: slot.location });
     }
-    return events;
+    return events.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.id - b.id);
   }
 }
 

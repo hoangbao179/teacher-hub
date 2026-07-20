@@ -1,46 +1,88 @@
-import { Alert, Card, CardContent, Stack, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
-import type { WeekScheduleResponse } from "@teacher/shared";
-import { api } from "../api/client";
-import { LoadingState } from "../components/LoadingState";
+import { Add, ChevronLeft, ChevronRight } from "@mui/icons-material";
+import { Alert, Button, Card, CardContent, Chip, IconButton, Stack, TextField, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import type { ReconciliationState, WeekScheduleResponse } from "@teacher/shared";
+import { scheduleApi } from "../api/schedule";
+import { EmptyState } from "../components/EmptyState";
+import { LoadingCards } from "../components/LoadingCards";
+import { addDays, displayDate, todayInHoChiMinh, weekStart } from "../utils/date";
+
+type CalendarEntry = {
+  key: string; date: string; startTime: string; endTime: string; title: string;
+  subtitle: string; color: "default" | "primary" | "success" | "warning" | "error" | "info";
+  href?: string;
+};
+
+const stateLabel: Record<ReconciliationState, string> = {
+  UNRECORDED: "Dự kiến", RECORDED: "Lesson", SKIPPED: "Nghỉ", RESCHEDULED: "Đổi lịch",
+};
+
 export function CalendarPage() {
+  const [from, setFrom] = useState(weekStart(todayInHoChiMinh()));
   const [data, setData] = useState<WeekScheduleResponse | null>(null);
   const [error, setError] = useState("");
+  const [reload, setReload] = useState(0);
   useEffect(() => {
-    api<WeekScheduleResponse>("/api/schedule/week")
-      .then(setData)
-      .catch((e) => setError(e.message));
-  }, []);
-  if (!data && !error) return <LoadingState />;
-  return (
-    <Stack spacing={2}>
-      <Typography variant="h5" sx={{ fontWeight: 900 }}>
-        Lịch tuần
-      </Typography>
-      {error && <Alert severity="warning">{error}</Alert>}
-      {data?.classSchedules.map((item, index) => (
-        <Card key={`${item.classId}-${index}`}>
-          <CardContent>
-            <Typography sx={{ fontWeight: 800 }}>
-              T{item.dayOfWeek} · {item.className}
-            </Typography>
-            <Typography>
-              {item.startTime}–{item.endTime}
-            </Typography>
-          </CardContent>
-        </Card>
-      ))}
-      <Typography sx={{ fontWeight: 800 }}>Lịch bận</Typography>
-      {data?.busySlots.map((item) => (
-        <Card key={item.id}>
-          <CardContent>
-            <Typography sx={{ fontWeight: 800 }}>{item.title}</Typography>
-            <Typography>
-              {item.startTime}–{item.endTime}
-            </Typography>
-          </CardContent>
-        </Card>
-      ))}
+    scheduleApi.week(from).then(setData).catch((value: Error) => setError(value.message));
+  }, [from, reload]);
+
+  const entries = useMemo(() => {
+    if (!data) return [];
+    const values: CalendarEntry[] = [];
+    const linkedLessonIds = new Set(data.occurrences.map((item) => item.linkedLessonId).filter((id): id is number => id != null));
+    for (const item of data.occurrences) values.push({
+      key: `occurrence-${item.key}`, date: item.occurrenceDate, startTime: item.scheduledStartTime,
+      endTime: item.scheduledEndTime, title: item.className,
+      subtitle: item.projectionSource === "RESCHEDULED" && item.state === "UNRECORDED" ? "Lịch thay thế" : stateLabel[item.state],
+      color: item.state === "UNRECORDED" ? "warning" : item.state === "RECORDED" ? "success" : item.state === "SKIPPED" ? "default" : "info",
+      href: item.linkedLessonId ? `/admin/lessons/${item.linkedLessonId}/edit` : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
+    });
+    for (const item of data.lessons.filter((lesson) => !linkedLessonIds.has(lesson.id))) values.push({
+      key: `lesson-${item.id}`, date: item.date, startTime: item.startTime, endTime: item.endTime,
+      title: item.className, subtitle: `${item.lessonType === "MAKEUP" ? "Học bù" : item.lessonType === "EXTRA" ? "Học thêm" : "Lesson"} · ${item.status}`,
+      color: item.status === "COMPLETED" ? "success" : item.status === "DRAFT" ? "primary" : "default",
+      href: `/admin/lessons/${item.id}/edit`,
+    });
+    for (const item of data.busyOccurrences) values.push({
+      key: `busy-${item.id}-${item.date}`, date: item.date, startTime: item.startTime, endTime: item.endTime,
+      title: item.title, subtitle: item.location ? `Lịch bận · ${item.location}` : "Lịch bận", color: "error",
+      href: `/admin/busy-slots/${item.id}/edit`,
+    });
+    return values.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.key.localeCompare(b.key));
+  }, [data]);
+  const grouped = useMemo(() => {
+    const values = new Map<string, CalendarEntry[]>();
+    for (const item of entries) values.set(item.date, [...(values.get(item.date) ?? []), item]);
+    return [...values.entries()];
+  }, [entries]);
+
+  return <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="weekly-calendar">
+    <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
+      <Typography variant="h5" sx={{ fontWeight: 900 }}>Lịch tuần</Typography>
+      <Button size="small" startIcon={<Add />} component={Link} to={`/admin/busy-slots/new?date=${from}`}>Lịch bận</Button>
     </Stack>
-  );
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <IconButton aria-label="Tuần trước" onClick={() => { setData(null); setError(""); setFrom(addDays(from, -7)); }}><ChevronLeft /></IconButton>
+      <TextField fullWidth type="date" label="Tuần bắt đầu" value={from} onChange={(event) => { setData(null); setError(""); setFrom(weekStart(event.target.value)); }} slotProps={{ inputLabel: { shrink: true } }} />
+      <IconButton aria-label="Tuần sau" onClick={() => { setData(null); setError(""); setFrom(addDays(from, 7)); }}><ChevronRight /></IconButton>
+    </Stack>
+    <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+      <Button variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`}>Ghi nhận buổi học</Button>
+      <Button variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`}>Buổi học bù</Button>
+      <Button variant="outlined" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`}>Đối soát tuần</Button>
+    </Stack>
+    {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
+    {!data && !error && <LoadingCards />}
+    {data && grouped.length === 0 && <EmptyState message="Tuần này chưa có lịch dự kiến, lesson hoặc lịch bận." />}
+    {grouped.map(([date, items]) => <Stack key={date} spacing={1} data-testid="calendar-day">
+      <Typography sx={{ fontWeight: 900, mt: 1 }}>{displayDate(date)}</Typography>
+      {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: `${item.color}.main` }} data-testid="calendar-event">
+        <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
+          <Stack sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800 }}>{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}</Typography></Stack>
+          <Chip size="small" color={item.color} label={item.subtitle} />
+        </Stack></CardContent>
+      </Card>)}
+    </Stack>)}
+  </Stack>;
 }

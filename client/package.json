@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --max-warnings 0",
-    "test:e2e": "node scripts/browser-smoke.mjs && node scripts/lesson-wizard.e2e.mjs && node scripts/tuition-management.e2e.mjs",
+    "test:e2e": "node scripts/browser-smoke.mjs && node scripts/lesson-wizard.e2e.mjs && node scripts/tuition-management.e2e.mjs && node scripts/schedule-operations.e2e.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

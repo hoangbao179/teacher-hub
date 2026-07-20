@@ -8,7 +8,7 @@
 - M4A: PASS — tuition query/detail/summary, transactional payment and incomplete cycles.
 - M4B: PASS — mobile tuition list/detail/full-payment management.
 - M5A: PASS — deterministic projections, exceptions, busy slots, conflicts and reconciliation API.
-- M5B: pending — dashboard/reconciliation/calendar mobile operations UI.
+- M5B: PASS — real dashboard, reconciliation, weekly calendar, busy and makeup mobile flows.
 - M6+: later export and production hardening; not part of the current task group.
 
 Chi tiết milestone cũ vẫn được lưu tại `milestones.md`; trạng thái hiện tại chỉ nằm trong `status.md`.

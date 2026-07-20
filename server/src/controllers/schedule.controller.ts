@@ -54,6 +54,8 @@ export class ScheduleController {
 
   listBusySlots = async (req: Request, res: Response) =>
     res.json({ data: await this.service.listBusySlots(text(req.query.from), text(req.query.to)) });
+  getBusySlot = async (req: Request, res: Response) =>
+    res.json({ data: await this.service.getBusySlot(Number(req.params.id)) });
   createBusySlot = async (req: Request, res: Response) =>
     res.status(201).json({ data: await this.service.createBusySlot(req.body as TeacherBusySlotInput, req.auth!.id) });
   updateBusySlot = async (req: Request, res: Response) =>

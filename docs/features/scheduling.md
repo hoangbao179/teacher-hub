@@ -31,3 +31,7 @@ nhập dữ liệu lịch sử và không tự thay đổi sự kiện khác.
 
 Lịch bận hỗ trợ một lần hoặc lặp hằng tuần trong khoảng hiệu lực. Các mutation lưu
 actor/audit nhưng không có quan hệ enrollment, attendance hay tuition.
+
+API lịch tuần trả cả occurrence đã đối soát, lesson độc lập (gồm `MAKEUP`) và
+busy occurrence đã bung theo ngày. Dashboard dùng cùng projection cho lịch hôm
+nay; UI mobile chi tiết nằm trong `daily-operations.md`.

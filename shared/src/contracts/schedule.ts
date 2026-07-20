@@ -133,10 +133,33 @@ export interface UnrecordedSession {
   scheduledEndTime: string;
 }
 
+export interface CalendarLessonEvent {
+  id: number;
+  sourceKey: string | null;
+  classId: number;
+  className: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: LessonStatus;
+  lessonType: "REGULAR" | "MAKEUP" | "EXTRA";
+}
+
+export interface CalendarBusyOccurrence {
+  id: number;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string | null;
+}
+
 export interface WeekScheduleResponse {
   from: string;
   to: string;
-  occurrences?: ScheduleOccurrence[];
+  occurrences: ScheduleOccurrence[];
+  lessons: CalendarLessonEvent[];
+  busyOccurrences: CalendarBusyOccurrence[];
   classSchedules: Array<{
     classId: number;
     className: string;

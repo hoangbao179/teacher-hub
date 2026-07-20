@@ -37,7 +37,7 @@ const studentService = new StudentService(students);
 const lessonService = new LessonService(lessons, tuition);
 const tuitionService = new TuitionService(tuition);
 const scheduleService = new ScheduleService(schedules, lessonService);
-const dashboardService = new DashboardService(classes, tuition, schedules);
+const dashboardService = new DashboardService(tuition, schedules);
 const enrollmentService = new EnrollmentService(enrollments);
 
 export const controllers = {

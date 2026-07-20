@@ -122,6 +122,13 @@ export class ScheduleService {
     return this.repository.listBusySlots(start, end);
   }
 
+  async getBusySlot(id: number) {
+    this.validateId(id);
+    const slot = await this.repository.findBusySlot(id);
+    if (!slot) throw new AppError(404, "BUSY_SLOT_NOT_FOUND", "Không tìm thấy lịch bận.");
+    return slot;
+  }
+
   async createBusySlot(input: TeacherBusySlotInput, actorUserId?: number): Promise<TeacherBusySlotMutationResult> {
     this.validateBusySlot(input);
     const conflicts = await this.busyConflicts(input);

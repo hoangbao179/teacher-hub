@@ -124,6 +124,7 @@ try {
   const due = beforeCycles.find((item) => item.status === "PAYMENT_DUE");
   const accumulatingBefore = beforeCycles.find((item) => item.status === "ACCUMULATING");
   if (!due || !accumulatingBefore || accumulatingBefore.itemCount !== 2) throw new Error("Expected due 8/8 and accumulating 2/8 cycles");
+  const dashboardBeforePayment = await api("/api/dashboard", token);
 
   await page.goto("http://127.0.0.1:5176/admin/tuition");
   await page.getByRole("heading", { name: "Học phí" }).waitFor();
@@ -159,6 +160,12 @@ try {
   await page.screenshot({ path: path.join(os.tmpdir(), "teacher-hub-m4b-paid-mobile.png"), fullPage: true });
 
   const paidDetail = await api(`/api/tuition-cycles/${due.id}`, token);
+  const dashboardAfterPayment = await api("/api/dashboard", token);
+  if (dashboardAfterPayment.paymentDueCount !== dashboardBeforePayment.paymentDueCount - 1 ||
+      dashboardAfterPayment.totalUnpaidAmount !== dashboardBeforePayment.totalUnpaidAmount - due.packagePriceSnapshot)
+    throw new Error("Dashboard tuition aggregate did not refresh after payment");
+  await page.goto("http://127.0.0.1:5176/admin");
+  await page.getByTestId("dashboard-tuition-card").getByText(`${dashboardAfterPayment.paymentDueCount} chu kỳ cần thu`).waitFor();
   const replay = await api(`/api/tuition-cycles/${due.id}/mark-paid`, token, "POST", {
     paidAmount: due.packagePriceSnapshot,
     paidAt: paidDetail.paidAt,

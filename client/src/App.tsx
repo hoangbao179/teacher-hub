@@ -12,7 +12,8 @@ import { TuitionPage } from "./pages/TuitionPage";
 import { TuitionDetailPage } from "./pages/TuitionDetailPage";
 import { MarkTuitionPaidPage } from "./pages/MarkTuitionPaidPage";
 import { CalendarPage } from "./pages/CalendarPage";
-import { UnrecordedPage } from "./pages/UnrecordedPage";
+import { ReconciliationPage } from "./pages/ReconciliationPage";
+import { BusySlotFormPage } from "./pages/BusySlotFormPage";
 import { LessonWizardPage } from "./pages/LessonWizardPage";
 import { ClassFormPage } from "./pages/ClassFormPage";
 import { StudentFormPage } from "./pages/StudentFormPage";
@@ -35,7 +36,8 @@ export function App() {
       <Route element={<Protected />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<DashboardPage />} />
-          <Route path="/admin/unrecorded" element={<UnrecordedPage />} />
+          <Route path="/admin/reconciliation" element={<ReconciliationPage />} />
+          <Route path="/admin/unrecorded" element={<Navigate to="/admin/reconciliation" replace />} />
           <Route path="/admin/classes" element={<ClassesPage />} />
           <Route path="/admin/classes/new" element={<ClassFormPage />} />
           <Route path="/admin/classes/:id" element={<ClassDetailPage />} />
@@ -48,6 +50,8 @@ export function App() {
           <Route path="/admin/tuition/:cycleId" element={<TuitionDetailPage />} />
           <Route path="/admin/tuition/:cycleId/mark-paid" element={<MarkTuitionPaidPage />} />
           <Route path="/admin/calendar" element={<CalendarPage />} />
+          <Route path="/admin/busy-slots/new" element={<BusySlotFormPage />} />
+          <Route path="/admin/busy-slots/:id/edit" element={<BusySlotFormPage />} />
           <Route path="/admin/lessons/new" element={<LessonWizardPage />} />
           <Route path="/admin/lessons/:id/edit" element={<LessonWizardPage />} />
         </Route>

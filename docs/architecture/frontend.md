@@ -27,3 +27,9 @@ M4B tuition pages call `client/src/api/tuition.ts`. List responses preserve API
 pagination metadata through `apiEnvelope`; pages never calculate authoritative
 payment state. Detail/payment primary actions remain above bottom navigation,
 and all cycle items use mobile cards rather than a wide table.
+
+M5B operational pages call `client/src/api/schedule.ts`. Dashboard composes the
+server aggregate; reconciliation follows server-returned wizard routes; calendar
+renders a chronological week list; busy forms expose conflict warnings without
+blocking. New operational lists use card skeletons and error/retry/empty states,
+and keep mutation actions above the fixed bottom navigation.

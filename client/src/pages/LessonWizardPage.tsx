@@ -64,11 +64,11 @@ export function LessonWizardPage() {
   const [classDetail, setClassDetail] = useState<ClassDetail | null>(null);
   const [lesson, setLesson] = useState<LessonDetail | null>(null);
   const [classId, setClassId] = useState(Number(params.get("classId") ?? 0));
-  const [sessionDate, setSessionDate] = useState(today);
-  const [scheduledStart, setScheduledStart] = useState("18:00");
-  const [scheduledEnd, setScheduledEnd] = useState("19:30");
-  const [actualStart, setActualStart] = useState("18:00");
-  const [actualEnd, setActualEnd] = useState("19:30");
+  const [sessionDate, setSessionDate] = useState(params.get("date") ?? today);
+  const [scheduledStart, setScheduledStart] = useState(params.get("start") ?? "18:00");
+  const [scheduledEnd, setScheduledEnd] = useState(params.get("end") ?? "19:30");
+  const [actualStart, setActualStart] = useState(params.get("start") ?? "18:00");
+  const [actualEnd, setActualEnd] = useState(params.get("end") ?? "19:30");
   const [lessonType, setLessonType] = useState<LessonType>(params.get("type") === "MAKEUP" ? "MAKEUP" : "REGULAR");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [attendances, setAttendances] = useState<AttendanceDraft>({});
@@ -108,13 +108,13 @@ export function LessonWizardPage() {
       setClassDetail(detail);
       if (!lessonId) {
         const schedule = detail.schedules[0];
-        if (schedule) {
+        if (schedule && !params.get("start") && !params.get("end")) {
           setScheduledStart(schedule.startTime); setScheduledEnd(schedule.endTime);
           setActualStart(schedule.startTime); setActualEnd(schedule.endTime);
         }
       }
     }).catch((value: Error) => setError(value.message));
-  }, [classId, lessonId]);
+  }, [classId, lessonId, params]);
 
   useEffect(() => {
     const unload = (event: BeforeUnloadEvent) => {

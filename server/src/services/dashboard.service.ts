@@ -1,44 +1,31 @@
 import type { DashboardResponse } from "@teacher/shared";
-import { ClassRepository } from "../repositories/class.repository";
 import { ScheduleRepository } from "../repositories/schedule.repository";
 import { TuitionRepository } from "../repositories/tuition.repository";
-import { addDays, todayInHoChiMinh, weekdayIso } from "../utils/date";
+import { addDays, todayInHoChiMinh } from "../utils/date";
 
 export class DashboardService {
   constructor(
-    private readonly classes: ClassRepository,
     private readonly tuition: TuitionRepository,
     private readonly schedules: ScheduleRepository,
   ) {}
   async get(): Promise<DashboardResponse> {
-    const [allClasses, tuitionSummary, unrecorded] = await Promise.all([
-      this.classes.list(),
+    const today = todayInHoChiMinh();
+    const [tuitionSummary, unrecorded, todaySchedule] = await Promise.all([
       this.tuition.summary({}),
       this.schedules.listUnrecorded(
-        addDays(todayInHoChiMinh(), -14),
-        todayInHoChiMinh(),
+        addDays(today, -14),
+        today,
       ),
+      this.schedules.week(today, today),
     ]);
-    const todayDay = weekdayIso(todayInHoChiMinh());
-    const todayDetails = await Promise.all(
-      allClasses
-        .filter((item) => item.status === "ACTIVE")
-        .map((item) => this.classes.findDetail(item.id)),
-    );
-    const todayClassIds = new Set(
-      todayDetails
-        .filter(Boolean)
-        .filter((item) =>
-          item!.schedules.some((schedule) => schedule.dayOfWeek === todayDay),
-        )
-        .map((item) => item!.id),
-    );
     return {
       paymentDueCount: tuitionSummary.paymentDueCount,
+      totalUnpaidAmount: tuitionSummary.totalUnpaidAmount,
       accumulatingStudentCount: tuitionSummary.accumulatingEnrollmentCount,
       paidCycleCount: tuitionSummary.paidCycleCount,
-      todayClasses: allClasses.filter((item) => todayClassIds.has(item.id)),
+      unrecordedCount: unrecorded.length,
       recentUnrecordedSessions: unrecorded.slice(-5).reverse(),
+      todaySchedule,
     };
   }
 }

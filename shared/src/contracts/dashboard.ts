@@ -1,10 +1,11 @@
-import type { ClassListItem } from "./classes.js";
-import type { UnrecordedSession } from "./schedule.js";
+import type { UnrecordedSession, WeekScheduleResponse } from "./schedule.js";
 
 export interface DashboardResponse {
   paymentDueCount: number;
+  totalUnpaidAmount: number;
   accumulatingStudentCount: number;
   paidCycleCount: number;
-  todayClasses: ClassListItem[];
+  unrecordedCount: number;
   recentUnrecordedSessions: UnrecordedSession[];
+  todaySchedule: WeekScheduleResponse;
 }
