@@ -28,8 +28,16 @@
 - GET/PATCH `/api/lessons/{id}`
 - POST `/api/lessons/{id}/complete`
 - POST `/api/lessons/{id}/cancel`
-- GET `/api/schedule/unrecorded?from=&to=&classId=`
-- POST `/api/schedule/unrecorded/batch-resolve`
+- GET `/api/schedule/unrecorded?days=` (compatibility view)
+
+## Schedule reconciliation
+- GET `/api/schedule/occurrences?from=&to=&classId=&state=&lookbackDays=`
+- POST `/api/schedule/occurrences/{key}/create-draft`
+- POST `/api/schedule/occurrences/{key}/skip`
+- POST `/api/schedule/occurrences/{key}/reschedule`
+- POST `/api/schedule/occurrences/bulk-create-drafts`
+- POST `/api/schedule/occurrences/bulk-skip`
+- GET `/api/schedule/week?from=`
 
 ## Tuition
 - GET `/api/tuition-cycles`
@@ -38,9 +46,8 @@
 - POST `/api/tuition-cycles/{id}/unlock` (có reason)
 
 ## Calendar
-- GET `/api/calendar?from=&to=`
-- GET/POST/PATCH `/api/busy-slots`
-- POST `/api/schedule-exceptions`
+- GET/POST `/api/teacher-busy-slots`
+- PATCH/DELETE `/api/teacher-busy-slots/{id}`
 
 ## Export (giai đoạn sau)
 - GET `/api/students/{id}/export.xlsx`

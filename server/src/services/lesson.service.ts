@@ -33,23 +33,50 @@ export class LessonService {
   ) {}
 
   async create(input: CreateLessonRequest, actorUserId?: number): Promise<LessonDetail> {
+    return (await this.createDraft(input, undefined, actorUserId)).lesson;
+  }
+
+  async createFromOccurrence(
+    input: CreateLessonRequest,
+    sourceOccurrenceKey: string,
+    actorUserId?: number,
+  ): Promise<{ lesson: LessonDetail; idempotent: boolean }> {
+    if (!sourceOccurrenceKey || sourceOccurrenceKey.length > 160)
+      throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Mã occurrence không hợp lệ.");
+    return this.createDraft(input, sourceOccurrenceKey, actorUserId);
+  }
+
+  private async createDraft(
+    input: CreateLessonRequest,
+    sourceOccurrenceKey?: string,
+    actorUserId?: number,
+  ): Promise<{ lesson: LessonDetail; idempotent: boolean }> {
     this.validateCreate(input);
     const connection = await pool.getConnection();
     let lessonId = 0;
+    let idempotent = false;
     try {
       await connection.beginTransaction();
       if (!(await this.lessons.classExistsForUpdate(connection, input.classId)))
         throw new AppError(404, "CLASS_NOT_FOUND", "Không tìm thấy lớp.");
-      lessonId = await this.lessons.create(connection, input);
-      const selected = this.selectedForType(input.lessonType, input.selectedEnrollmentIds);
-      const snapshotted = await this.lessons.snapshotParticipants(
-        connection, lessonId, input.classId, input.sessionDate, selected, actorUserId,
-      );
-      this.assertSnapshot(input.lessonType, selected, snapshotted);
-      await this.audit.record(connection, {
-        actorUserId, action: "LESSON_DRAFT_CREATED", entityType: "LESSON",
-        entityId: lessonId, newValues: { ...input, participantEnrollmentIds: snapshotted },
-      });
+      const existing = sourceOccurrenceKey
+        ? await this.lessons.findByOccurrenceKeyForUpdate(connection, sourceOccurrenceKey)
+        : null;
+      if (existing) {
+        lessonId = Number(existing.id);
+        idempotent = true;
+      } else {
+        lessonId = await this.lessons.create(connection, input, sourceOccurrenceKey);
+        const selected = this.selectedForType(input.lessonType, input.selectedEnrollmentIds);
+        const snapshotted = await this.lessons.snapshotParticipants(
+          connection, lessonId, input.classId, input.sessionDate, selected, actorUserId,
+        );
+        this.assertSnapshot(input.lessonType, selected, snapshotted);
+        await this.audit.record(connection, {
+          actorUserId, action: "LESSON_DRAFT_CREATED", entityType: "LESSON",
+          entityId: lessonId, newValues: { ...input, sourceOccurrenceKey, participantEnrollmentIds: snapshotted },
+        });
+      }
       await connection.commit();
     } catch (error) {
       await connection.rollback();
@@ -57,7 +84,7 @@ export class LessonService {
     } finally {
       connection.release();
     }
-    return this.detail(lessonId);
+    return { lesson: await this.detail(lessonId), idempotent };
   }
 
   async detail(id: number): Promise<LessonDetail> {

@@ -2,7 +2,8 @@
 
 ## Current milestone
 
-M4 tuition operations complete; M5A schedule/reconciliation backend is the next approved checkpoint.
+M4 tuition operations and M5A schedule/reconciliation backend are complete; M5B
+dashboard and operations UI is the next approved checkpoint.
 
 ## Status
 
@@ -19,6 +20,9 @@ M4A: PASS on 20/07/2026. Evidence is in
 M4B: PASS on 20/07/2026. Evidence is in
 `.agent-reports/M4B-tuition-ui-implementation.md` and
 `.agent-reports/M4B-tuition-ui-verification.md`.
+M5A: PASS on 20/07/2026. Evidence is in
+`.agent-reports/M5A-schedule-reconciliation-api-implementation.md` and
+`.agent-reports/M5A-schedule-reconciliation-api-verification.md`.
 
 ## Scope boundary
 
@@ -26,9 +30,11 @@ M2A–M3 establish historical domain/contracts, transactional lesson APIs, mobil
 wizard and chronological mutable-cycle recalculation with immutable PAID boundary.
 Tuition query/payment APIs and enrollment-ending `INCOMPLETE` behavior are M4A.
 Tuition-management UI and mobile payment flow are M4B.
+M5A adds deterministic projected occurrences, exceptions, canonical draft
+creation, busy slots, conflict warnings and per-item bulk reconciliation.
 
 ## Known limitations
 
-- Schedule occurrence resolve/reschedule và makeup controls thuộc milestone sau.
-- Dashboard and schedule reconciliation operations remain M5A/M5B.
+- Dashboard, reconciliation and calendar UI remain M5B.
+- Makeup UI entry points from dashboard/class/calendar remain M5B.
 - Homepage contact values chưa cấu hình nên các contact buttons tương ứng bị disable.

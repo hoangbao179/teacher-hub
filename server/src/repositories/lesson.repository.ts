@@ -71,15 +71,22 @@ const lessonSelect = `
 export class LessonRepository {
   constructor(private readonly policies = new TuitionPolicyRepository()) {}
 
-  async create(connection: PoolConnection, input: CreateLessonRequest): Promise<number> {
+  async create(connection: PoolConnection, input: CreateLessonRequest, sourceOccurrenceKey?: string): Promise<number> {
     const [result] = await connection.execute<ResultSetHeader>(
       `INSERT INTO lesson_sessions
-        (class_id,session_date,scheduled_start_time,scheduled_end_time,lesson_type,note)
-       VALUES (?,?,?,?,?,?)`,
-      [input.classId, input.sessionDate, input.scheduledStartTime, input.scheduledEndTime,
+        (class_id,source_occurrence_key,session_date,scheduled_start_time,scheduled_end_time,lesson_type,note)
+       VALUES (?,?,?,?,?,?,?)`,
+      [input.classId, sourceOccurrenceKey ?? null, input.sessionDate, input.scheduledStartTime, input.scheduledEndTime,
         input.lessonType, input.note?.trim() || null],
     );
     return result.insertId;
+  }
+
+  async findByOccurrenceKeyForUpdate(connection: PoolConnection, key: string): Promise<LessonRow | null> {
+    const [rows] = await connection.query<LessonRow[]>(
+      `${lessonSelect} WHERE l.source_occurrence_key=? FOR UPDATE`, [key],
+    );
+    return rows[0] ?? null;
   }
 
   async classExistsForUpdate(connection: PoolConnection, classId: number): Promise<boolean> {

@@ -17,13 +17,22 @@
 - id, classId, dayOfWeek, scheduledStartTime, scheduledEndTime, effectiveFrom, effectiveTo.
 
 ## ScheduleException
-- id, classId, occurrenceDate, type (`SKIPPED`/`RESCHEDULED`), newDate, newStartTime, newEndTime, reason.
+- id, classId, recurringScheduleId, originalDate, originalStartTime,
+  originalEndTime, type (`SKIPPED`/`RESCHEDULED`), replacementDate,
+  replacementStartTime, replacementEndTime, reason, note, createdBy, createdAt.
+- Unique: recurringScheduleId + originalDate. Exception chỉ xử lý một occurrence
+  và không sửa định nghĩa lịch lặp.
 
 ## TeacherBusySlot
-- id, title, recurrenceType, dayOfWeek/date, startTime, endTime, effectiveFrom, effectiveTo, location, note.
+- id, title, recurrenceType, dayOfWeek/specificDate, startTime, endTime,
+  effectiveFrom, effectiveTo, location, note, createdBy, createdAt, updatedAt.
+- Không có student, enrollment, attendance hoặc tuition behavior.
 
 ## LessonSession
-- id, classId, lessonDate, scheduledStartTime, scheduledEndTime, actualStartTime, actualEndTime, actualDurationMinutes, sessionType, content, homework, note, status, createdAt, updatedAt.
+- id, classId, sourceOccurrenceKey (nullable/unique), lessonDate,
+  scheduledStartTime, scheduledEndTime, actualStartTime, actualEndTime,
+  actualDurationMinutes, sessionType, content, homework, note, status, createdAt,
+  updatedAt.
 
 ## LessonAttendance
 - id, sessionId, participantId, enrollmentId, attendanceStatus,
@@ -64,6 +73,10 @@
   `TUITION_CYCLE_MARKED_PAID`.
 - `TUITION_CYCLE_MARKED_PAID` được ghi cùng transaction với payment fields;
   replay đồng nhất không tạo audit thứ hai.
+- Schedule actions hiện hành: `SCHEDULE_OCCURRENCE_SKIPPED`,
+  `SCHEDULE_OCCURRENCE_RESCHEDULED`, `TEACHER_BUSY_SLOT_CREATED`,
+  `TEACHER_BUSY_SLOT_UPDATED`, `TEACHER_BUSY_SLOT_DELETED` và các mutation
+  `RECURRING_SCHEDULE_*`. Replay exception đồng nhất không tạo audit thứ hai.
 
 ## Kiểu dữ liệu bắt buộc
 - Múi giờ ứng dụng: Asia/Ho_Chi_Minh.

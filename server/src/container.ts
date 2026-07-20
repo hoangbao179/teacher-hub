@@ -36,7 +36,7 @@ const classService = new ClassService(classes);
 const studentService = new StudentService(students);
 const lessonService = new LessonService(lessons, tuition);
 const tuitionService = new TuitionService(tuition);
-const scheduleService = new ScheduleService(schedules);
+const scheduleService = new ScheduleService(schedules, lessonService);
 const dashboardService = new DashboardService(classes, tuition, schedules);
 const enrollmentService = new EnrollmentService(enrollments);
 

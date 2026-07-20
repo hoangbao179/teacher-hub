@@ -6,6 +6,7 @@ Quan hệ lõi:
 
 ```text
 classes ─ recurring_schedules
+recurring_schedules ─ schedule_exceptions
 classes ─ class_enrollments ─ students
 classes ─ lesson_sessions ─ lesson_attendances ─ class_enrollments
 classes ─ class_tuition_policies
@@ -49,3 +50,11 @@ class_enrollments ─ tuition_cycles ─ tuition_cycle_sessions ─ lesson_atten
   the `PAID` update and `TUITION_CYCLE_MARKED_PAID` audit insert commit together.
 - Ending an enrollment locks its cycle rows and changes only `ACCUMULATING` to
   `INCOMPLETE`; it never rewrites `PAYMENT_DUE` or `PAID` rows.
+- M5A adds a deterministic nullable `lesson_sessions.source_occurrence_key` with
+  a unique index. Draft creation reuses this key for idempotency; legacy/manual
+  lessons remain valid with `NULL`.
+- `schedule_exceptions` identifies one original occurrence by recurring schedule
+  and date, snapshots its original time, and stores reason/note/actor. A reschedule
+  stores replacement date/time without mutating the recurring definition.
+- `teacher_busy_slots` stores only teacher availability metadata and actor. It has
+  no enrollment, attendance or tuition foreign key.
