@@ -9,7 +9,10 @@
 - Lớp `PAUSED` hoặc `CLOSED` không nhận enrollment active mới; resume enrollment
   cũng yêu cầu lớp đang `ACTIVE`.
 - Đóng lớp/ngừng học không xóa dữ liệu.
-- Enrollment ngừng ở dưới 8 buổi chuyển chu kỳ cuối sang `INCOMPLETE` khi flow được triển khai.
+- Enrollment ngừng ở dưới 8 buổi chuyển chu kỳ cuối sang `INCOMPLETE`; cycle
+  `PAYMENT_DUE` hoặc `PAID` hiện hữu giữ nguyên.
+- Enrollment `ENDED` không resume. Học sinh quay lại phải có enrollment mới;
+  cycle của enrollment cũ không được nối hoặc mở lại.
 
 UI M1.1 đã nối create/edit, pause/resume/close class, create enrollment,
 pause/resume/end enrollment và change tuition mode với loading/error/success và

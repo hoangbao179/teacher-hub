@@ -48,6 +48,7 @@ export function createRouter(): Router {
   );
   router.post("/api/lessons/:id/cancel", asyncHandler(controllers.lessons.cancel));
   router.get("/api/tuition-cycles", asyncHandler(controllers.tuition.list));
+  router.get("/api/tuition-cycles/summary", asyncHandler(controllers.tuition.summary));
   router.get(
     "/api/tuition-cycles/:id",
     asyncHandler(controllers.tuition.detail),

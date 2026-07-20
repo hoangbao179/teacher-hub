@@ -7,6 +7,7 @@ import type {
 import { pool } from "../db/pool";
 import { AuditRepository } from "./audit.repository";
 import { TuitionPolicyRepository } from "./tuition-policy.repository";
+import { TuitionRepository } from "./tuition.repository";
 
 export type EnrollmentWriteResult =
   | { kind: "OK"; id: number }
@@ -18,6 +19,7 @@ export class EnrollmentRepository {
   constructor(
     private readonly audit = new AuditRepository(),
     private readonly policies = new TuitionPolicyRepository(),
+    private readonly tuition = new TuitionRepository(),
   ) {}
 
   async create(classId: number, input: CreateEnrollmentRequest, actorUserId?: number): Promise<EnrollmentWriteResult> {
@@ -120,6 +122,8 @@ export class EnrollmentRepository {
         `UPDATE class_enrollments SET status=?,ended_at=?,end_reason=? WHERE id=?`,
         [status, status === "ENDED" ? (endedAt ?? null) : null, status === "ENDED" ? (reason ?? null) : null, id],
       );
+      if (status === "ENDED")
+        await this.tuition.markAccumulatingIncomplete(connection, id);
       const action = status === "PAUSED" ? "ENROLLMENT_PAUSED" : status === "ACTIVE" ? "ENROLLMENT_RESUMED" : "ENROLLMENT_ENDED";
       await this.audit.record(connection, {
         actorUserId, action, entityType: "ENROLLMENT", entityId: id,

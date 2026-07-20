@@ -45,3 +45,7 @@ class_enrollments ─ tuition_cycles ─ tuition_cycle_sessions ─ lesson_atten
 - M3 rebuild locks enrollment, cycles and completed attendance; it preserves
   `PAID`, removes only mutable cycle/items, then groups deterministic attendance
   into 8 plus one optional partial cycle.
+- M4A payment locks the cycle row and all stored item rows before validation;
+  the `PAID` update and `TUITION_CYCLE_MARKED_PAID` audit insert commit together.
+- Ending an enrollment locks its cycle rows and changes only `ACCUMULATING` to
+  `INCOMPLETE`; it never rewrites `PAYMENT_DUE` or `PAID` rows.

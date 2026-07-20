@@ -11,9 +11,9 @@ export class DashboardService {
     private readonly schedules: ScheduleRepository,
   ) {}
   async get(): Promise<DashboardResponse> {
-    const [allClasses, cycles, unrecorded] = await Promise.all([
+    const [allClasses, tuitionSummary, unrecorded] = await Promise.all([
       this.classes.list(),
-      this.tuition.list(),
+      this.tuition.summary({}),
       this.schedules.listUnrecorded(
         addDays(todayInHoChiMinh(), -14),
         todayInHoChiMinh(),
@@ -34,12 +34,9 @@ export class DashboardService {
         .map((item) => item!.id),
     );
     return {
-      paymentDueCount: cycles.filter((item) => item.status === "PAYMENT_DUE")
-        .length,
-      accumulatingStudentCount: cycles.filter(
-        (item) => item.status === "ACCUMULATING",
-      ).length,
-      paidCycleCount: cycles.filter((item) => item.status === "PAID").length,
+      paymentDueCount: tuitionSummary.paymentDueCount,
+      accumulatingStudentCount: tuitionSummary.accumulatingEnrollmentCount,
+      paidCycleCount: tuitionSummary.paidCycleCount,
       todayClasses: allClasses.filter((item) => todayClassIds.has(item.id)),
       recentUnrecordedSessions: unrecorded.slice(-5).reverse(),
     };

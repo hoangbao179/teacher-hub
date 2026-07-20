@@ -49,10 +49,21 @@
 
 ## TuitionCycle
 - id, enrollmentId, cycleNumber, targetCount=8, packagePriceSnapshot, status, startedAt, reachedTargetAt, paidAt, paidAmount, paymentMethod, paymentNote, lockReason.
+- `paidAt` là ngày thu trong V1; `paidAmount` phải bằng `packagePriceSnapshot`.
+- `paymentMethod`: `CASH` hoặc `BANK_TRANSFER`; không có partial payment.
+- Chỉ partial cycle của enrollment `ENDED` có trạng thái `INCOMPLETE`.
 
 ## TuitionCycleSession
 - id, tuitionCycleId, attendanceId, sequenceNumber 1..8.
 - Unique attendanceId; unique cycleId + sequenceNumber.
+
+## AuditLog
+- id, actorUserId, entityType, entityId, action, reason, beforeJson, afterJson, createdAt.
+- Tuition actions hiện hành: `TUITION_ALLOCATION_RECALCULATED`,
+  `TUITION_CYCLE_CREATED`, `TUITION_CYCLE_PAYMENT_DUE`,
+  `TUITION_CYCLE_MARKED_PAID`.
+- `TUITION_CYCLE_MARKED_PAID` được ghi cùng transaction với payment fields;
+  replay đồng nhất không tạo audit thứ hai.
 
 ## Kiểu dữ liệu bắt buộc
 - Múi giờ ứng dụng: Asia/Ho_Chi_Minh.
