@@ -12,6 +12,8 @@
 - M6A: PASS — public marketing Homepage, SEO, contact actions, lazy media and route splitting.
 - M6B: PASS — canonical per-student Excel export, audit and browser download.
 - M6C: PASS — system-wide mobile/accessibility/performance polish and UI regression.
-- M6D: next — production readiness and release-candidate preparation.
+- M6D: PASS — production readiness and release-candidate preparation.
+
+Next: independent full-system review; do not treat RC status as production approval.
 
 Chi tiết milestone cũ vẫn được lưu tại `milestones.md`; trạng thái hiện tại chỉ nằm trong `status.md`.

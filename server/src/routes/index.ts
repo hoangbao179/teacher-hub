@@ -2,12 +2,13 @@ import { Router } from "express";
 import { controllers } from "../container";
 import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/async-handler";
+import { loginRateLimit } from "../middleware/login-rate-limit";
 
 export function createRouter(): Router {
   const router = Router();
   router.get("/health", controllers.health.health);
   router.get("/ready", asyncHandler(controllers.health.ready));
-  router.post("/api/auth/login", asyncHandler(controllers.auth.login));
+  router.post("/api/auth/login", loginRateLimit, asyncHandler(controllers.auth.login));
   router.get("/api/auth/me", requireAuth, asyncHandler(controllers.auth.me));
   router.post("/api/auth/logout", requireAuth, asyncHandler(controllers.auth.logout));
 

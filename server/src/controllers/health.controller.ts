@@ -5,7 +5,11 @@ export class HealthController {
   health = (_req: Request, res: Response) =>
     res.json({ data: { status: "ok" } });
   ready = async (_req: Request, res: Response) => {
-    await pool.query("SELECT 1");
-    res.json({ data: { status: "ready" } });
+    try {
+      await pool.query("SELECT 1");
+      res.json({ data: { status: "ready" } });
+    } catch {
+      res.status(503).json({ error: { code: "NOT_READY", message: "Dịch vụ chưa sẵn sàng." } });
+    }
   };
 }

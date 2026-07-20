@@ -1,7 +1,7 @@
 import type { ErrorRequestHandler } from "express";
 import { AppError } from "../errors/app-error";
 
-export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   if (error instanceof AppError) {
     res.status(error.statusCode).json({
       error: {
@@ -13,9 +13,8 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     return;
   }
 
-  console.error(
-    error instanceof Error ? error.message : "Unknown server error",
-  );
+  console.error(JSON.stringify({ level: "error", event: "request_failed", requestId: req.requestId,
+    error: error instanceof Error ? error.name : "UnknownError" }));
   res.status(500).json({
     error: {
       code: "INTERNAL_ERROR",

@@ -2,8 +2,9 @@
 
 ## Current milestone
 
-M6 release-candidate work is active. M6A Public Homepage, M6B Excel export and
-M6C system-wide polish are complete; M6D production readiness is next.
+M6 release-candidate preparation is complete. M6A through M6D are PASS and the
+artifact is `RELEASE_CANDIDATE_READY` for a separate full-system review. It is
+not production-approved.
 
 ## Status
 
@@ -35,6 +36,9 @@ M6B: PASS on 21/07/2026. Evidence is in
 M6C: PASS on 21/07/2026. Evidence is in
 `.agent-reports/M6C-ui-accessibility-performance-implementation.md` and
 `.agent-reports/M6C-ui-accessibility-performance-verification.md`.
+M6D: PASS on 21/07/2026. Evidence is in
+`.agent-reports/M6D-production-readiness-implementation.md` and
+`.agent-reports/M6D-production-readiness-verification.md`.
 
 ## Scope boundary
 
@@ -51,6 +55,8 @@ mobile/accessibility/performance coverage. M6B adds authenticated canonical
 per-student Excel reporting, export audit and safe browser download.
 M6C standardizes the mobile design system, Vietnamese terminology, accessibility
 states, protected/public navigation and responsive UI regression coverage.
+M6D adds production configuration validation, operational security/lifecycle,
+Docker/CI, backup/restore and release documentation.
 
 ## Known limitations
 

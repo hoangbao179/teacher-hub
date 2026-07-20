@@ -17,10 +17,17 @@ services:
         "--max-connections=50",
       ]
     volumes: ["mysql-data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
   api:
     build: { context: ., dockerfile: Dockerfile.api }
     restart: unless-stopped
-    depends_on: [mysql]
+    depends_on:
+      mysql: { condition: service_healthy }
     environment:
       NODE_ENV: production
       PORT: 4000
@@ -37,6 +44,12 @@ services:
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       BOOTSTRAP_ADMIN_DISPLAY_NAME: ${BOOTSTRAP_ADMIN_DISPLAY_NAME:-Cô giáo}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:4000/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
   web:
     build:
       {
@@ -45,7 +58,8 @@ services:
         args: { VITE_API_BASE_URL: "" },
       }
     restart: unless-stopped
-    depends_on: [api]
-    ports: ["80:80"]
+    depends_on:
+      api: { condition: service_healthy }
+    ports: ["80:8080"]
 volumes:
   mysql-data:

@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: Teacher Class Hub API
-  version: 0.4.0
-  description: API hiện hành qua checkpoint M6B, gồm lesson, tuition, schedule reconciliation, daily operations và Excel export.
+  version: 0.5.0
+  description: API release candidate V1, gồm vận hành lớp, báo cáo và production hardening qua M6D.
 servers:
   - url: /
 security:
@@ -11,7 +11,7 @@ paths:
   /health:
     get: {security: [], summary: Liveness, responses: {'200': {description: OK}}}
   /ready:
-    get: {security: [], summary: Database readiness, responses: {'200': {description: Ready}}}
+    get: {security: [], summary: Database readiness, responses: {'200': {description: Ready}, '503': {description: MySQL chưa sẵn sàng}}}
   /api/auth/login:
     post:
       security: []
@@ -24,7 +24,7 @@ paths:
               type: object
               required: [email, password]
               properties: {email: {type: string, format: email}, password: {type: string}}
-      responses: {'200': {description: Thành công}, '401': {description: Sai thông tin đăng nhập}}
+      responses: {'200': {description: Thành công}, '401': {description: Sai thông tin đăng nhập}, '429': {description: Quá nhiều lần đăng nhập sai; có Retry-After}}
   /api/auth/logout:
     post: {summary: Kết thúc session phía client, responses: {'204': {description: Đã đăng xuất}}}
   /api/auth/me:

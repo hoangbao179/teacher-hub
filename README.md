@@ -58,6 +58,18 @@ Hãy đổi password trước khi dùng thật.
 4. Không suy diễn nghiệp vụ từ wireframe nếu tài liệu chữ đã quy định khác.
 5. Cập nhật docs cùng lúc khi thay đổi business rule, schema, API hoặc deploy.
 
+## Lệnh kiểm tra và vận hành
+
+```bash
+npm run check:fast       # typecheck, lint, unit, build
+npm run check:full       # thêm integration, E2E, consistency
+npm run db:backup -- ./backups/pre-deploy.sql
+npm run db:restore -- ./backups/pre-deploy.sql --confirm
+```
+
+Hướng dẫn đầy đủ: `docs/deployment/local-development.md`,
+`docs/deployment/production.md` và `docs/deployment/backup-and-restore.md`.
+
 ## Trạng thái codebase
 
 Base đã có:
@@ -70,4 +82,5 @@ Base đã có:
 - frontend shell mobile-first và các route chính;
 - Docker/CI/docs/rules cho Cursor và Codex.
 
-Đây chưa phải sản phẩm hoàn thiện. Xem `docs/implementation/milestones.md` để triển khai theo từng milestone.
+Repository đang ở giai đoạn release candidate V1, chưa phải phê duyệt production.
+Xem `docs/implementation/release-checklist.md` và báo cáo M6.
