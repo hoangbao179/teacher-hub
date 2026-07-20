@@ -2,8 +2,8 @@
 
 ## Current milestone
 
-M4 tuition operations and M5 schedule/dashboard operations are complete. The
-M4–M5 task group is closed; do not start M6 automatically.
+M6 release-candidate work is active. M6A Public Homepage is complete and M6B
+Excel export is the next gated checkpoint.
 
 ## Status
 
@@ -26,6 +26,9 @@ M5A: PASS on 20/07/2026. Evidence is in
 M5B: PASS on 20/07/2026. Evidence is in
 `.agent-reports/M5B-dashboard-schedule-ui-implementation.md` and
 `.agent-reports/M5B-dashboard-schedule-ui-verification.md`.
+M6A: PASS on 21/07/2026. Evidence is in
+`.agent-reports/M6A-public-homepage-implementation.md` and
+`.agent-reports/M6A-public-homepage-verification.md`.
 
 ## Scope boundary
 
@@ -36,11 +39,14 @@ Tuition-management UI and mobile payment flow are M4B.
 M5A adds deterministic projected occurrences, exceptions, canonical draft
 creation, busy slots, conflict warnings and per-item bulk reconciliation.
 M5B adds real Dashboard aggregates/today schedule, mobile reconciliation,
-weekly calendar, busy-slot management and makeup entry points.
+weekly calendar, busy-slot management and makeup entry points. M6A adds the
+public marketing Homepage, content configuration, SEO, lazy media and public
+mobile/accessibility/performance coverage.
 
 ## Known limitations
 
-- M6 homepage polish and Excel export/import are not implemented.
+- M6B Excel export is not implemented. Generic Excel import remains deferred
+  beyond V1 as a separate controlled legacy-migration task.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
-- Production client build retains a non-failing chunk-size warning.
-- Homepage contact values chưa cấu hình nên các contact buttons tương ứng bị disable.
+- Production-specific public teacher/contact/domain values must replace the
+  fictional source defaults before a real deployment.

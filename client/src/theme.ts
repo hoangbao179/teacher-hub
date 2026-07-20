@@ -13,4 +13,17 @@ export const theme = createTheme({
       'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     button: { textTransform: "none", fontWeight: 700 },
   },
+  components: {
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          minHeight: 44,
+          "&:focus-visible": {
+            outline: "3px solid #2f6fed",
+            outlineOffset: 2,
+          },
+        },
+      },
+    },
+  },
 });

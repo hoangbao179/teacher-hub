@@ -1,0 +1,9 @@
+{
+  "name": "Lớp học cùng cô An",
+  "short_name": "Lớp cô An",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#6d3df5",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

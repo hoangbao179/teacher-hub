@@ -1,23 +1,26 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AdminLayout } from "./layout/AdminLayout";
 import { useAuth } from "./auth/AuthContext";
-import { HomePage } from "./pages/HomePage";
-import { LoginPage } from "./pages/LoginPage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { ClassesPage } from "./pages/ClassesPage";
-import { ClassDetailPage } from "./pages/ClassDetailPage";
-import { StudentsPage } from "./pages/StudentsPage";
-import { StudentDetailPage } from "./pages/StudentDetailPage";
-import { TuitionPage } from "./pages/TuitionPage";
-import { TuitionDetailPage } from "./pages/TuitionDetailPage";
-import { MarkTuitionPaidPage } from "./pages/MarkTuitionPaidPage";
-import { CalendarPage } from "./pages/CalendarPage";
-import { ReconciliationPage } from "./pages/ReconciliationPage";
-import { BusySlotFormPage } from "./pages/BusySlotFormPage";
-import { LessonWizardPage } from "./pages/LessonWizardPage";
-import { ClassFormPage } from "./pages/ClassFormPage";
-import { StudentFormPage } from "./pages/StudentFormPage";
 import { LoadingState } from "./components/LoadingState";
+import { RouteMetadata } from "./components/RouteMetadata";
+
+const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })));
+const LoginPage = lazy(() => import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })));
+const DashboardPage = lazy(() => import("./pages/DashboardPage").then((module) => ({ default: module.DashboardPage })));
+const ClassesPage = lazy(() => import("./pages/ClassesPage").then((module) => ({ default: module.ClassesPage })));
+const ClassDetailPage = lazy(() => import("./pages/ClassDetailPage").then((module) => ({ default: module.ClassDetailPage })));
+const StudentsPage = lazy(() => import("./pages/StudentsPage").then((module) => ({ default: module.StudentsPage })));
+const StudentDetailPage = lazy(() => import("./pages/StudentDetailPage").then((module) => ({ default: module.StudentDetailPage })));
+const TuitionPage = lazy(() => import("./pages/TuitionPage").then((module) => ({ default: module.TuitionPage })));
+const TuitionDetailPage = lazy(() => import("./pages/TuitionDetailPage").then((module) => ({ default: module.TuitionDetailPage })));
+const MarkTuitionPaidPage = lazy(() => import("./pages/MarkTuitionPaidPage").then((module) => ({ default: module.MarkTuitionPaidPage })));
+const CalendarPage = lazy(() => import("./pages/CalendarPage").then((module) => ({ default: module.CalendarPage })));
+const ReconciliationPage = lazy(() => import("./pages/ReconciliationPage").then((module) => ({ default: module.ReconciliationPage })));
+const BusySlotFormPage = lazy(() => import("./pages/BusySlotFormPage").then((module) => ({ default: module.BusySlotFormPage })));
+const LessonWizardPage = lazy(() => import("./pages/LessonWizardPage").then((module) => ({ default: module.LessonWizardPage })));
+const ClassFormPage = lazy(() => import("./pages/ClassFormPage").then((module) => ({ default: module.ClassFormPage })));
+const StudentFormPage = lazy(() => import("./pages/StudentFormPage").then((module) => ({ default: module.StudentFormPage })));
 function Protected() {
   const { user, bootstrapping } = useAuth();
   const location = useLocation();
@@ -30,7 +33,9 @@ function Protected() {
 }
 export function App() {
   return (
-    <Routes>
+    <Suspense fallback={<LoadingState />}>
+      <RouteMetadata />
+      <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/admin/login" element={<LoginPage />} />
       <Route element={<Protected />}>
@@ -57,6 +62,7 @@ export function App() {
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }
