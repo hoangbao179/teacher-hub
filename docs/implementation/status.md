@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-M1–M6, V1.1, all V1.2 checkpoints V12A–V12E and V13 are PASS.
+M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13 and V14 are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
 
@@ -74,6 +74,8 @@ V12E: PASS on 21/07/2026. Evidence is in
 `.agent-reports/V12E-implementation.md` and `.agent-reports/V12E-verification.md`.
 V13: PASS on 21/07/2026. Evidence is in
 `.agent-reports/V13-implementation.md` and `.agent-reports/V13-verification.md`.
+V14: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V14-implementation.md` and `.agent-reports/V14-verification.md`.
 
 ## Scope boundary
 
@@ -95,6 +97,10 @@ Docker/CI, backup/restore and release documentation.
 V13 completes the responsive public Homepage, compact mobile management flows,
 plain-language admin labels, stable class accents and verified local auth/port
 operations without changing business contracts.
+V14 adds historical lesson/name snapshots, effective-dated class/enrollment
+activity, versioned recurring schedules, source-linked subset makeup lessons,
+atomic temporary rescheduling and shared conflict warnings while preserving
+existing tuition and PAID-boundary rules.
 
 ## Known limitations
 

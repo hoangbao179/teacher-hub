@@ -14,8 +14,8 @@ async function clean(): Promise<void> {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
       "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances",
-      "lesson_session_participants", "lesson_sessions", "enrollment_tuition_policies",
-      "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes",
+      "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions", "enrollment_active_periods",
+      "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
   } finally {
@@ -48,6 +48,7 @@ integration("historical regular and selected makeup participant snapshots are co
       "INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,2400000,'2026-07-01')",
       [classResult.insertId],
     );
+    await connection.execute("INSERT INTO class_active_periods(class_id,active_from) VALUES (?,'2026-07-01')", [classResult.insertId]);
     const enrollmentIds: number[] = [];
     for (const [index, joinedAt, endedAt] of [
       [1, "2026-07-01", null],
@@ -67,6 +68,10 @@ integration("historical regular and selected makeup participant snapshots are co
       await connection.execute(
         "INSERT INTO enrollment_tuition_policies(enrollment_id,tuition_mode,effective_from) VALUES (?,'CLASS_DEFAULT',?)",
         [enrollment.insertId, joinedAt],
+      );
+      await connection.execute(
+        "INSERT INTO enrollment_active_periods(enrollment_id,active_from,active_to) VALUES (?,?,?)",
+        [enrollment.insertId, joinedAt, endedAt],
       );
     }
     const [regular] = await connection.execute<import("mysql2/promise").ResultSetHeader>(

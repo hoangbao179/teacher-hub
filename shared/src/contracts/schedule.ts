@@ -33,6 +33,7 @@ export interface ScheduleOccurrence {
   replacementStartTime: string | null;
   replacementEndTime: string | null;
   conflicts: ScheduleConflictWarning[];
+  skipReason: string | null;
 }
 
 export interface ScheduleOccurrenceQuery {
@@ -88,7 +89,66 @@ export interface BulkOccurrenceItemResult {
   exceptionId?: number;
   wizardPath?: string;
   idempotent?: boolean;
+  conflicts?: ScheduleConflictWarning[];
   error?: { code: string; message: string };
+}
+
+export interface ScheduleConflictCheckRequest {
+  date: string;
+  startTime: string;
+  endTime: string;
+  excludedOccurrenceKey?: string;
+  excludedLessonId?: number;
+}
+
+export interface MakeupSourceOption {
+  enrollmentId: number;
+  studentName: string;
+  studentNickname: string | null;
+  alreadyReplaced: boolean;
+}
+
+export interface MakeupSourceOptions {
+  occurrenceKey: string;
+  classId: number;
+  className: string;
+  originalDate: string;
+  originalStartTime: string;
+  originalEndTime: string;
+  reason: string | null;
+  participants: MakeupSourceOption[];
+}
+
+export interface TemporaryRescheduleRequest {
+  classId: number;
+  recurringScheduleId: number;
+  fromDate: string;
+  toDate: string;
+  replacementDayOfWeek: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  replacementStartTime: string;
+  replacementEndTime: string;
+  reason: string;
+  note?: string;
+  confirmConflicts?: boolean;
+}
+
+export interface TemporaryReschedulePreviewItem {
+  originalOccurrenceKey: string;
+  originalDate: string;
+  originalStartTime: string;
+  originalEndTime: string;
+  replacementDate: string;
+  replacementStartTime: string;
+  replacementEndTime: string;
+  currentState: ReconciliationState;
+  eligible: boolean;
+  conflicts: ScheduleConflictWarning[];
+}
+
+export interface TemporaryReschedulePreview {
+  items: TemporaryReschedulePreviewItem[];
+  canApply: boolean;
+  conflictCount: number;
 }
 
 export type BusySlotRecurrenceType = "ONCE" | "WEEKLY";

@@ -2,8 +2,8 @@
 
 ## Đăng nhập và mật khẩu
 
-Mở `/admin/login`, nhập username/password rồi chọn **Ghi nhớ đăng nhập trên thiết
-bị này** chỉ trên thiết bị riêng. Khi chọn, ứng dụng lưu JWT và username trong
+Mở `/admin/login`, nhập username/password rồi chọn **Ghi nhớ đăng nhập** chỉ trên
+thiết bị cá nhân. Khi chọn, ứng dụng lưu JWT và username trong
 localStorage; khi bỏ chọn, JWT nằm trong sessionStorage và username không được giữ.
 Ứng dụng không bao giờ lưu mật khẩu thô. Đề nghị lưu mật khẩu, nếu có, thuộc password
 manager của trình duyệt. Nút góc phải đăng xuất và xóa token ở cả hai nơi.
@@ -30,16 +30,27 @@ Học sinh**. Nút thao tác cố định nằm phía trên thanh. Desktop dùng
    hoặc Miễn phí theo ngày hiệu lực.
 3. **Ghi nhận buổi học**: chọn lớp/ngày/giờ, điểm danh, nội dung và xác nhận. Chỉ
    Có mặt có tính phí mới cộng đợt học phí; Nghỉ/Miễn phí không cộng; số giờ không quy đổi buổi.
-4. **Buổi học bù**: chọn đúng học sinh tham gia. Khi nhập muộn, dùng ngày học thật;
-   hệ thống phân bổ lại theo thời gian nhưng không tự sửa đợt học phí Đã thu.
+4. **Buổi học bù**: từ occurrence đã Nghỉ, chọn **Tạo buổi học bù** rồi chọn toàn
+   lớp hoặc subset. Học sinh đã được bù cho cùng nguồn sẽ bị khóa. Buổi bù generic
+   không có nguồn vẫn dùng được. Khi nhập muộn, dùng ngày học thật; hệ thống phân
+   bổ lại theo thời gian nhưng không tự sửa đợt học phí Đã thu.
 5. **Học phí**: theo dõi Chưa đủ 8 buổi/Cần thu/Đã thu/Dở dang và chỉ xác
    nhận thanh toán toàn bộ đúng mức đã chốt. Trên mobile, search nằm ngoài và lớp,
    trạng thái, sắp xếp nằm trong nút **Lọc**. Đợt Đã thu là chỉ đọc.
-6. **Xác nhận lịch dạy/Lịch**: buổi dự kiến phải được đánh dấu Đã dạy, Nghỉ hoặc Đổi
-   lịch; lịch lặp không tự sinh học phí. Lịch bận dùng để cảnh báo trùng.
+6. **Xác nhận lịch dạy/Lịch**: **Nghỉ** xử lý occurrence trước khi có draft;
+   **Hủy bản nháp** giữ lesson/audit và cũng đưa occurrence nguồn về Nghỉ. Cả hai
+   không tạo học phí. Lịch bận và conflict chỉ cảnh báo, không tự nghỉ/đổi lớp.
 7. **Xuất Excel**: mở chi tiết học sinh và chọn **Xuất báo cáo Excel**. Workbook
    chuẩn hóa chứa lịch sử học/học phí/tổng hợp; không dùng làm generic import.
-8. Tạm dừng/đóng lớp hoặc cho học sinh ngừng học bằng đổi trạng thái, không xóa lịch sử.
+8. Tạm dừng/mở lại lớp hoặc ghi danh phải chọn ngày hiệu lực. Khoảng pause không
+   sinh lịch/participant; lịch sử trước pause và dữ liệu nhập muộn vẫn theo ngày
+   học thực tế. Đóng lớp/ngừng học không xóa lịch sử.
+9. **Đổi lịch tạm thời** tại chi tiết lớp: chọn lịch gốc, khoảng ngày, thứ/giờ mới,
+   xem preview và xác nhận conflict. Hết khoảng chọn, lịch tự quay về pattern gốc.
+
+Tên lớp và học sinh trong buổi cũ là snapshot tại thời điểm tạo; đổi tên hiện tại
+không thay đổi lịch sử. Correction có chủ ý vẫn tuân thủ audit, recalculation và
+biên chu kỳ Đã thu.
 
 ## Homepage và liên hệ
 

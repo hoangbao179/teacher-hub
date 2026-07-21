@@ -18,9 +18,9 @@ async function clean(): Promise<void> {
   try {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
-      "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_session_participants",
-      "lesson_sessions", "schedule_exceptions", "teacher_busy_slots", "recurring_schedules",
-      "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments",
+      "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants",
+      "lesson_sessions", "schedule_exceptions", "teacher_busy_slots", "recurring_schedules", "enrollment_active_periods",
+      "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments",
       "audit_logs", "students", "classes", "users",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
@@ -38,6 +38,7 @@ async function fixture() {
       "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('M5A Group','GROUP',2400000,90,'2026-07-01')",
     );
     await connection.execute("INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,2400000,'2026-07-01')", [klass.insertId]);
+    await connection.execute("INSERT INTO class_active_periods(class_id,active_from) VALUES (?,'2026-07-01')", [klass.insertId]);
     const scheduleIds: number[] = [];
     for (let day = 1; day <= 5; day += 1) {
       const [schedule] = await connection.execute<ResultSetHeader>(
@@ -57,6 +58,7 @@ async function fixture() {
         "INSERT INTO enrollment_tuition_policies(enrollment_id,tuition_mode,effective_from) VALUES (?,'CLASS_DEFAULT','2026-07-01')",
         [enrollment.insertId],
       );
+      await connection.execute("INSERT INTO enrollment_active_periods(enrollment_id,active_from) VALUES (?,'2026-07-01')", [enrollment.insertId]);
       enrollmentIds.push(enrollment.insertId);
     }
     return { actorId: actor.insertId, classId: klass.insertId, scheduleIds, enrollmentIds };
@@ -68,7 +70,7 @@ function services() {
   return { lessons, schedules: new ScheduleService(new ScheduleRepository(), lessons) };
 }
 
-integration("project, create canonical draft and treat cancelled source as recorded", async () => {
+integration("project, cancel canonical draft as skipped and preserve pre-pause history", async () => {
   const data = await fixture();
   const { lessons, schedules } = services();
   const items = await schedules.occurrences({ from: "2026-07-20", to: "2026-07-31", lookbackDays: 60 });
@@ -90,10 +92,13 @@ integration("project, create canonical draft and treat cancelled source as recor
   assert.equal(cycles.length, 0);
   await lessons.cancel(first.lessonId, { reason: "Teacher cancelled" }, data.actorId);
   const handled = (await schedules.occurrences({ from: "2026-07-20", to: "2026-07-20", lookbackDays: 60 }))[0];
-  assert.equal(handled.state, "RECORDED");
+  assert.equal(handled.state, "SKIPPED");
   assert.equal(handled.linkedLessonStatus, "CANCELLED");
   await pool.execute("UPDATE classes SET status='PAUSED' WHERE id=?", [data.classId]);
-  assert.equal((await schedules.occurrences({ from: "2026-07-20", to: "2026-07-31", lookbackDays: 60 })).length, 0);
+  await pool.execute("UPDATE class_active_periods SET active_to='2026-07-24' WHERE class_id=? AND active_to IS NULL", [data.classId]);
+  const historical = await schedules.occurrences({ from: "2026-07-20", to: "2026-07-31", lookbackDays: 60 });
+  assert.ok(historical.length > 0);
+  assert.equal(historical.every((item) => item.occurrenceDate <= "2026-07-24"), true);
 });
 
 integration("skip, reschedule, replacement draft and busy-slot conflicts are operational", async () => {

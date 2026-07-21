@@ -1,4 +1,4 @@
-import type { CreateClassRequest, UpdateClassRequest } from "@teacher/shared";
+import type { ChangeClassStatusRequest, CreateClassRequest, UpdateClassRequest } from "@teacher/shared";
 import { AppError } from "../errors/app-error";
 import { ClassRepository } from "../repositories/class.repository";
 
@@ -22,24 +22,37 @@ export class ClassService {
     if (!Number.isInteger(id) || id < 1)
       throw new AppError(400, "VALIDATION_ERROR", "Mã lớp không hợp lệ.");
     this.validate(input);
-    const result = await this.repository.update(id, {
-      ...input,
-      name: input.name.trim(),
-    }, actorUserId);
+    let result;
+    try {
+      result = await this.repository.update(id, {
+        ...input,
+        name: input.name.trim(),
+      }, actorUserId);
+    } catch (error) {
+      if ((error as Error).message === "INVALID_SCHEDULE_EFFECTIVE_DATE")
+        throw new AppError(409, "INVALID_SCHEDULE_EFFECTIVE_DATE", "Ngày hiệu lực lịch mới phải sau ngày bắt đầu version hiện tại.");
+      throw error;
+    }
     if (result === "NOT_FOUND")
       throw new AppError(404, "CLASS_NOT_FOUND", "Không tìm thấy lớp.");
     if (result === "ONE_TO_ONE_CONFLICT")
       throw new AppError(409, "ONE_TO_ONE_LIMIT", "Lớp 1 kèm 1 chỉ có thể có một học sinh đang học.");
     if (result === "INVALID_TRANSITION")
-      throw new AppError(409, "INVALID_CLASS_TRANSITION", "Không thể mở lại lớp đã đóng.");
+      throw new AppError(409, "INVALID_CLASS_TRANSITION", "Trạng thái chỉ được đổi bằng thao tác pause/resume/close có ngày hiệu lực.");
   }
 
-  async setStatus(id: number, status: "ACTIVE" | "PAUSED" | "CLOSED", actorUserId?: number) {
-    const result = await this.repository.setStatus(id, status, actorUserId);
+  async setStatus(id: number, status: "ACTIVE" | "PAUSED" | "CLOSED", input: ChangeClassStatusRequest, actorUserId?: number) {
+    this.validateDate(input.effectiveDate, "Ngày hiệu lực");
+    const result = await this.repository.setStatus(id, status, input.effectiveDate, input.reason, actorUserId);
     if (result === "NOT_FOUND")
       throw new AppError(404, "CLASS_NOT_FOUND", "Không tìm thấy lớp.");
     if (result === "INVALID_TRANSITION")
       throw new AppError(409, "INVALID_CLASS_TRANSITION", "Chuyển trạng thái lớp không hợp lệ.");
+  }
+
+  private validateDate(value: string, label: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value))
+      throw new AppError(400, "VALIDATION_ERROR", `${label} không hợp lệ.`);
   }
 
   private validate(input: CreateClassRequest | UpdateClassRequest) {
@@ -62,6 +75,8 @@ export class ClassService {
       throw new AppError(400, "VALIDATION_ERROR", "Lịch lặp không hợp lệ.");
     const seen = new Set<string>();
     for (const schedule of input.schedules) {
+      if (schedule.id != null && (!Number.isInteger(schedule.id) || schedule.id < 1))
+        throw new AppError(400, "VALIDATION_ERROR", "Mã lịch lặp không hợp lệ.");
       const key = `${schedule.dayOfWeek}:${schedule.startTime}`;
       if (!Number.isInteger(schedule.dayOfWeek) || schedule.dayOfWeek < 1 || schedule.dayOfWeek > 7 ||
           !/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.startTime) ||
@@ -70,5 +85,7 @@ export class ClassService {
         throw new AppError(400, "VALIDATION_ERROR", "Lịch lặp không hợp lệ.");
       seen.add(key);
     }
+    if ("scheduleEffectiveDate" in input && input.scheduleEffectiveDate)
+      this.validateDate(input.scheduleEffectiveDate, "Ngày hiệu lực lịch");
   }
 }

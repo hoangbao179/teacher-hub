@@ -40,6 +40,11 @@ export interface EndEnrollmentRequest {
   reason?: string;
 }
 
+export interface ChangeEnrollmentStatusRequest {
+  effectiveDate: string;
+  reason?: string;
+}
+
 export interface StudentListItem {
   id: number;
   fullName: string;

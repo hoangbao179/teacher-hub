@@ -6,9 +6,10 @@ import type { ClassDetail, ClassStatus, ClassType, RecurringScheduleInput } from
 import { api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
 import { FormSection } from "../components/UiKit";
+import { todayInHoChiMinh } from "../utils/date";
 
 const emptySchedule: RecurringScheduleInput = { dayOfWeek: 1, startTime: "18:00", endTime: "19:30" };
-const today = new Date().toISOString().slice(0, 10);
+const today = todayInHoChiMinh();
 const priceDigits = (value: string): string => value.replace(/\D/g, "").replace(/^0+/, "");
 const formatPrice = (value: string | number): string => {
   const digits = priceDigits(String(value));
@@ -33,6 +34,7 @@ export function ClassFormPage() {
   const [originalStatus, setOriginalStatus] = useState<ClassStatus>("ACTIVE");
   const [note, setNote] = useState("");
   const [schedules, setSchedules] = useState<RecurringScheduleInput[]>([{ ...emptySchedule }]);
+  const [scheduleEffectiveDate, setScheduleEffectiveDate] = useState(today);
 
   useEffect(() => {
     if (!id) return;
@@ -41,7 +43,7 @@ export function ClassFormPage() {
       setPrice(formatPrice(item.defaultPackagePrice)); setDuration(item.defaultDurationMinutes);
       setStartDate(item.startDate); setExpectedEndDate(item.expectedEndDate ?? "");
       setStatus(item.status); setOriginalStatus(item.status); setNote(item.note ?? "");
-      setSchedules(item.schedules.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })));
+      setSchedules(item.schedules.map(({ id: scheduleId, dayOfWeek, startTime, endTime }) => ({ id: scheduleId, dayOfWeek, startTime, endTime })));
     }).catch((e: Error) => setError(e.message)).finally(() => setLoading(false));
   }, [id]);
 
@@ -57,7 +59,8 @@ export function ClassFormPage() {
     setSaving(true); setError("");
     const body = { name, type, subject: subject || undefined, defaultPackagePrice: parsedPrice,
       defaultDurationMinutes: Number(duration), startDate, expectedEndDate: expectedEndDate || undefined,
-      note: note || undefined, status, schedules };
+      note: note || undefined, status, schedules,
+      scheduleEffectiveDate: editing ? scheduleEffectiveDate : undefined };
     try {
       if (editing) await api(`/api/classes/${id}`, { method: "PATCH", body: JSON.stringify(body) });
       else {
@@ -83,14 +86,13 @@ export function ClassFormPage() {
         <TextField required fullWidth type="date" label="Ngày bắt đầu" value={startDate} onChange={(e) => setStartDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField fullWidth type="date" label="Ngày kết thúc dự kiến" value={expectedEndDate} onChange={(e) => setExpectedEndDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       </Stack>
-      {editing && <FormControl><InputLabel>Trạng thái</InputLabel><Select label="Trạng thái" value={status} onChange={(e) => setStatus(e.target.value as ClassStatus)}>
-        <MenuItem value="ACTIVE">Đang dạy</MenuItem><MenuItem value="PAUSED">Tạm dừng</MenuItem><MenuItem value="CLOSED">Đã đóng</MenuItem>
-      </Select></FormControl>}
+      {editing && <Alert severity="info">Đổi trạng thái lớp tại trang chi tiết để chọn đúng ngày hiệu lực.</Alert>}
     </FormSection>
     <FormSection title="Học phí" description="Mức học phí cho đúng 8 buổi.">
       <TextField required label="Giá gói 8 buổi (VND)" placeholder="Ví dụ: 2.400.000" value={price} onChange={(event) => setPrice(formatPrice(event.target.value))} onBlur={() => setPrice(formatPrice(price))} slotProps={{ htmlInput: { inputMode: "numeric", pattern: "[0-9.]*" } }} />
     </FormSection>
     <FormSection title="Lịch học hằng tuần">
+      {editing && <TextField required type="date" label="Áp dụng thay đổi lịch từ" value={scheduleEffectiveDate} onChange={(e) => setScheduleEffectiveDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} helperText="Chỉ dùng khi thêm, sửa hoặc xóa lịch; sửa metadata không tạo version lịch mới." />}
       {schedules.map((schedule, index) => <Card key={index} variant="outlined"><CardContent><Stack spacing={1.5}>
         <FormControl><InputLabel>Thứ</InputLabel><Select label="Thứ" value={schedule.dayOfWeek} onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, dayOfWeek: Number(e.target.value) as RecurringScheduleInput["dayOfWeek"] } : x))}>
           {[1,2,3,4,5,6,7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}

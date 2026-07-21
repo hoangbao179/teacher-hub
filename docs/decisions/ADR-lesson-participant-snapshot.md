@@ -1,6 +1,6 @@
 # ADR: Lesson participant snapshot
 
-Status: Approved for Milestone 2 design; not implemented in M1.1.
+Status: Implemented; extended by V14.
 
 ## Decision
 
@@ -8,6 +8,11 @@ Mỗi `lesson_session` lưu participant snapshot. Buổi `REGULAR` snapshot toà
 enrollment đủ điều kiện tại ngày học; buổi `MAKEUP` có thể snapshot riêng các
 học sinh được chọn. Attendance chỉ được ghi cho participant có trong snapshot.
 Thay đổi enrollment về sau không sửa danh sách participant lịch sử.
+
+V14 snapshot thêm `student_name_snapshot` và `student_nickname_snapshot`; lesson
+snapshot `class_name_snapshot`, `class_type_snapshot` và `subject_snapshot`.
+Các màn lịch sử và báo cáo ưu tiên snapshot, nên đổi tên hiện tại không rewrite
+buổi cũ.
 
 Schema dự kiến:
 

@@ -1,4 +1,4 @@
-import type { ChangeTuitionModeRequest, CreateEnrollmentRequest, EndEnrollmentRequest } from "@teacher/shared";
+import type { ChangeEnrollmentStatusRequest, ChangeTuitionModeRequest, CreateEnrollmentRequest, EndEnrollmentRequest } from "@teacher/shared";
 import { AppError } from "../errors/app-error";
 import { EnrollmentRepository, type EnrollmentWriteResult } from "../repositories/enrollment.repository";
 
@@ -12,20 +12,22 @@ export class EnrollmentService {
     return this.unwrap(await this.repository.create(classId, input, actorUserId));
   }
 
-  async pause(id: number, actorUserId?: number) {
+  async pause(id: number, input: ChangeEnrollmentStatusRequest, actorUserId?: number) {
     this.validateId(id);
-    this.unwrap(await this.repository.setStatus(id, "PAUSED", undefined, undefined, actorUserId));
+    this.validateDate(input.effectiveDate, "Ngày hiệu lực");
+    this.unwrap(await this.repository.setStatus(id, "PAUSED", input.effectiveDate, undefined, input.reason, actorUserId));
   }
 
-  async resume(id: number, actorUserId?: number) {
+  async resume(id: number, input: ChangeEnrollmentStatusRequest, actorUserId?: number) {
     this.validateId(id);
-    this.unwrap(await this.repository.setStatus(id, "ACTIVE", undefined, undefined, actorUserId));
+    this.validateDate(input.effectiveDate, "Ngày hiệu lực");
+    this.unwrap(await this.repository.setStatus(id, "ACTIVE", input.effectiveDate, undefined, input.reason, actorUserId));
   }
 
   async end(id: number, input: EndEnrollmentRequest, actorUserId?: number) {
     this.validateId(id);
     this.validateDate(input.endedAt, "Ngày kết thúc");
-    this.unwrap(await this.repository.setStatus(id, "ENDED", input.endedAt, input.reason, actorUserId));
+    this.unwrap(await this.repository.setStatus(id, "ENDED", input.endedAt, input.endedAt, input.reason, actorUserId));
   }
 
   async changeTuitionMode(id: number, input: ChangeTuitionModeRequest, actorUserId?: number) {

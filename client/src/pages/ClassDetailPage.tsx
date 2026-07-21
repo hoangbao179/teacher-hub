@@ -17,10 +17,12 @@ import {
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import type { ClassDetail, StudentListItem, TuitionMode } from "@teacher/shared";
+import type { ClassDetail, StudentListItem, TemporaryReschedulePreview, TuitionMode, Weekday } from "@teacher/shared";
 import { api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, ErrorState, MobileCard, PageHeader, ProgressCount, StatusBadge } from "../components/UiKit";
+import { scheduleApi } from "../api/schedule";
+import { addDays, todayInHoChiMinh } from "../utils/date";
 export function ClassDetailPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -34,19 +36,46 @@ export function ClassDetailPage() {
   const [joinedAt, setJoinedAt] = useState(new Date().toISOString().slice(0, 10));
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(() => (location.state as { success?: string } | null)?.success ?? "");
+  const today = todayInHoChiMinh();
+  const [statusActionName, setStatusActionName] = useState<"pause" | "resume" | "close" | null>(null);
+  const [statusEffectiveDate, setStatusEffectiveDate] = useState(today);
+  const [statusReason, setStatusReason] = useState("");
+  const [temporaryOpen, setTemporaryOpen] = useState(false);
+  const [temporaryScheduleId, setTemporaryScheduleId] = useState(0);
+  const [temporaryFrom, setTemporaryFrom] = useState(today);
+  const [temporaryTo, setTemporaryTo] = useState(addDays(today, 14));
+  const [replacementDay, setReplacementDay] = useState<Weekday>(1);
+  const [replacementStart, setReplacementStart] = useState("18:00");
+  const [replacementEnd, setReplacementEnd] = useState("19:30");
+  const [temporaryReason, setTemporaryReason] = useState("");
+  const [temporaryNote, setTemporaryNote] = useState("");
+  const [temporaryPreview, setTemporaryPreview] = useState<TemporaryReschedulePreview | null>(null);
   const load = useCallback(() => api<ClassDetail>(`/api/classes/${id}`).then(setItem).catch((e: Error) => setError(e.message)), [id]);
   useEffect(() => {
     load();
     api<StudentListItem[]>("/api/students").then(setStudents).catch(() => undefined);
   }, [load]);
-  const statusAction = async (action: "pause" | "resume" | "close") => {
-    if (action !== "resume" && !window.confirm(action === "close" ? "Đóng lớp? Lịch sử sẽ được giữ lại và không thể mở lại." : "Tạm dừng lớp?")) return;
+  const statusAction = async () => {
+    const action = statusActionName;
+    if (!action) return;
     setError("");
     setSuccess(""); setBusy(true);
-    try { await api(`/api/classes/${id}/${action}`, { method: "POST" }); await load(); setSuccess(action === "pause" ? "Đã tạm dừng lớp." : action === "resume" ? "Đã mở lại lớp." : "Đã đóng lớp."); }
+    try { await api(`/api/classes/${id}/${action}`, { method: "POST", body: JSON.stringify({ effectiveDate: statusEffectiveDate, reason: statusReason || undefined }) }); await load(); setStatusActionName(null); setSuccess(action === "pause" ? "Đã tạm dừng lớp theo ngày hiệu lực." : action === "resume" ? "Đã mở lại lớp theo ngày hiệu lực." : "Đã đóng lớp và giữ lịch sử."); }
     catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi trạng thái."); }
     finally { setBusy(false); }
   };
+  const temporaryPayload = (confirmConflicts = false) => ({
+    classId: item!.id, recurringScheduleId: temporaryScheduleId, fromDate: temporaryFrom, toDate: temporaryTo,
+    replacementDayOfWeek: replacementDay, replacementStartTime: replacementStart,
+    replacementEndTime: replacementEnd, reason: temporaryReason, note: temporaryNote || undefined, confirmConflicts,
+  });
+  const previewTemporary = async () => { setBusy(true); setError(""); try {
+    setTemporaryPreview(await scheduleApi.previewTemporary(temporaryPayload()));
+  } catch (e) { setError(e instanceof Error ? e.message : "Không thể xem trước đổi lịch."); } finally { setBusy(false); } };
+  const applyTemporary = async () => { if (!temporaryPreview) return; setBusy(true); setError(""); try {
+    await scheduleApi.applyTemporary(temporaryPayload(temporaryPreview.conflictCount > 0));
+    setTemporaryOpen(false); setTemporaryPreview(null); setSuccess("Đã đổi lịch tạm thời bằng schedule exceptions; lịch gốc không thay đổi.");
+  } catch (e) { setError(e instanceof Error ? e.message : "Không thể áp dụng đổi lịch."); } finally { setBusy(false); } };
   const enroll = async () => {
     setError("");
     setBusy(true); setSuccess(""); try {
@@ -71,11 +100,12 @@ export function ClassDetailPage() {
         </Button>
         <Button component={Link} to={`/admin/lessons/new?classId=${item!.id}&type=MAKEUP`} variant="outlined" disabled={item!.status === "CLOSED"}>Buổi học bù</Button>
         <Button component={Link} to={`/admin/classes/${item!.id}/edit`} variant="outlined">Sửa</Button>
+        <Button variant="outlined" disabled={!item!.schedules.length || item!.status === "CLOSED"} onClick={() => { const schedule = item!.schedules[0]; setTemporaryScheduleId(schedule?.id ?? 0); setReplacementDay(schedule?.dayOfWeek ?? 1); setReplacementStart(schedule?.startTime ?? "18:00"); setReplacementEnd(schedule?.endTime ?? "19:30"); setTemporaryOpen(true); }}>Đổi lịch tạm thời</Button>
       </Stack>
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
-        {item!.status === "ACTIVE" && <Button disabled={busy} onClick={() => statusAction("pause")}>Tạm dừng</Button>}
-        {item!.status === "PAUSED" && <Button disabled={busy} onClick={() => statusAction("resume")}>Mở lại</Button>}
-        {item!.status !== "CLOSED" && <Button disabled={busy} color="error" onClick={() => statusAction("close")}>Đóng lớp</Button>}
+        {item!.status === "ACTIVE" && <Button disabled={busy} onClick={() => setStatusActionName("pause")}>Tạm dừng</Button>}
+        {item!.status === "PAUSED" && <Button disabled={busy} onClick={() => setStatusActionName("resume")}>Mở lại</Button>}
+        {item!.status !== "CLOSED" && <Button disabled={busy} color="error" onClick={() => setStatusActionName("close")}>Đóng lớp</Button>}
       </Stack>
       <MobileCard>
           <Typography>Giá mặc định: <CurrencyDisplay value={item!.defaultPackagePrice} /> / 8 buổi</Typography>
@@ -113,6 +143,28 @@ export function ClassDetailPage() {
           <FormControl><InputLabel>Học phí</InputLabel><Select label="Học phí" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Theo giá lớp</MenuItem><MenuItem value="CUSTOM">Giá riêng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
           {tuitionMode === "CUSTOM" && <TextField required type="number" label="Giá riêng / 8 buổi" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} />}
         </Stack></DialogContent><DialogActions><Button onClick={() => setDialogOpen(false)}>Hủy</Button><Button variant="contained" disabled={!studentId || busy} onClick={enroll}>{busy ? "Đang ghi danh…" : "Ghi danh"}</Button></DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(statusActionName)} onClose={() => !busy && setStatusActionName(null)} fullWidth maxWidth="xs">
+        <DialogTitle>{statusActionName === "pause" ? "Tạm dừng lớp" : statusActionName === "resume" ? "Mở lại lớp" : "Đóng lớp"}</DialogTitle>
+        <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+          <Alert severity="info">Ngày hiệu lực quyết định khoảng nào có occurrence; lịch lặp và lịch sử cũ được giữ nguyên.</Alert>
+          <TextField required type="date" label="Ngày hiệu lực" value={statusEffectiveDate} onChange={(e) => setStatusEffectiveDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField label="Lý do (tùy chọn)" value={statusReason} onChange={(e) => setStatusReason(e.target.value)} />
+        </Stack></DialogContent><DialogActions><Button onClick={() => setStatusActionName(null)}>Hủy</Button><Button color={statusActionName === "close" ? "error" : "primary"} variant="contained" disabled={busy || !statusEffectiveDate} onClick={() => void statusAction()}>{busy ? "Đang lưu…" : "Xác nhận"}</Button></DialogActions>
+      </Dialog>
+      <Dialog open={temporaryOpen} onClose={() => !busy && setTemporaryOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Đổi lịch tạm thời</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+          <Alert severity="info">Hệ thống tạo exception cho từng buổi. Hết khoảng chọn, lớp tự trở về lịch gốc.</Alert>
+          <TextField select required label="Lịch gốc" value={temporaryScheduleId} onChange={(e) => { setTemporaryScheduleId(Number(e.target.value)); setTemporaryPreview(null); }}>
+            {item!.schedules.map((schedule) => <MenuItem key={schedule.id} value={schedule.id}>T{schedule.dayOfWeek} · {schedule.startTime}–{schedule.endTime}</MenuItem>)}
+          </TextField>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}><TextField fullWidth required type="date" label="Từ ngày" value={temporaryFrom} onChange={(e) => { setTemporaryFrom(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /><TextField fullWidth required type="date" label="Đến ngày" value={temporaryTo} onChange={(e) => { setTemporaryTo(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /></Stack>
+          <TextField select label="Chuyển sang" value={replacementDay} onChange={(e) => { setReplacementDay(Number(e.target.value) as Weekday); setTemporaryPreview(null); }}>{[1,2,3,4,5,6,7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}</TextField>
+          <Stack direction="row" spacing={1}><TextField fullWidth required type="time" label="Bắt đầu mới" value={replacementStart} onChange={(e) => { setReplacementStart(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /><TextField fullWidth required type="time" label="Kết thúc mới" value={replacementEnd} onChange={(e) => { setReplacementEnd(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /></Stack>
+          <TextField required label="Lý do" value={temporaryReason} onChange={(e) => { setTemporaryReason(e.target.value); setTemporaryPreview(null); }} />
+          <TextField label="Ghi chú (tùy chọn)" value={temporaryNote} onChange={(e) => setTemporaryNote(e.target.value)} />
+          {temporaryPreview && <Stack spacing={1}>{temporaryPreview.items.map((preview) => <Alert key={preview.originalOccurrenceKey} severity={!preview.eligible ? "error" : preview.conflicts.length ? "warning" : "success"}>{preview.originalDate} {preview.originalStartTime} → {preview.replacementDate} {preview.replacementStartTime}{preview.conflicts.length ? ` · ${preview.conflicts.length} cảnh báo trùng` : ""}</Alert>)}</Stack>}
+        </Stack></DialogContent><DialogActions><Button onClick={() => setTemporaryOpen(false)}>Hủy</Button>{temporaryPreview ? <Button variant="contained" disabled={busy || !temporaryPreview.canApply} onClick={() => void applyTemporary()}>{busy ? "Đang áp dụng…" : temporaryPreview.conflictCount ? "Xác nhận dù trùng" : "Áp dụng"}</Button> : <Button variant="contained" disabled={busy || !temporaryReason.trim() || !temporaryScheduleId} onClick={() => void previewTemporary()}>{busy ? "Đang xem…" : "Xem trước"}</Button>}</DialogActions>
       </Dialog>
     </Stack>
   );

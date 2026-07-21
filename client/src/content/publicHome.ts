@@ -156,6 +156,11 @@ export const publicHomeContent = {
     },
   ] satisfies PublicHeroSlide[],
   introduction: value("VITE_PUBLIC_INTRODUCTION", "Cô Vy đồng hành cùng học sinh từ lớp 1 đến lớp 9 theo mục tiêu phù hợp: xây nền, củng cố phần còn yếu và bám sát chương trình trên trường."),
+  teacherProfile: {
+    greeting: "Xin chào, cô là Uyên Vy.",
+    biography: "Đồng hành cùng học sinh lớp 1–9 tại Huế. Tập trung xây nền, củng cố phần còn yếu và giúp học sinh tự tin hơn.",
+    highlights: ["Tiếng Anh lớp 1–9", "Kèm cặp 1–1 và nhóm nhỏ", "Theo sát năng lực từng học sinh"],
+  },
   media: {
     ogImage: value("VITE_PUBLIC_OG_IMAGE_URL", "/images/teacher-english-hero-1440.jpg"),
     teacherPhoto: value("VITE_PUBLIC_TEACHER_PHOTO_URL", "/images/teacher-hero-720.webp"),

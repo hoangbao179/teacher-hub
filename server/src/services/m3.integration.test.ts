@@ -16,8 +16,8 @@ async function clean(): Promise<void> {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
       "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances",
-      "lesson_session_participants", "lesson_sessions", "enrollment_tuition_policies",
-      "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes",
+      "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions", "enrollment_active_periods",
+      "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
   } finally { connection.release(); }
@@ -34,6 +34,7 @@ async function fixture() {
       "INSERT INTO class_tuition_policies(class_id,package_price,effective_from,effective_to) VALUES (?,2000000,'2026-06-01','2026-07-14'),(?,2200000,'2026-07-15',NULL)",
       [klass.insertId, klass.insertId],
     );
+    await connection.execute("INSERT INTO class_active_periods(class_id,active_from) VALUES (?,'2026-06-01')", [klass.insertId]);
     const [student] = await connection.execute<ResultSetHeader>("INSERT INTO students(full_name) VALUES ('M3 Student')");
     const [enrollment] = await connection.execute<ResultSetHeader>(
       `INSERT INTO class_enrollments(class_id,student_id,joined_at,tuition_mode,tuition_effective_from)
@@ -43,6 +44,7 @@ async function fixture() {
       "INSERT INTO enrollment_tuition_policies(enrollment_id,tuition_mode,effective_from) VALUES (?,'CLASS_DEFAULT','2026-06-01')",
       [enrollment.insertId],
     );
+    await connection.execute("INSERT INTO enrollment_active_periods(enrollment_id,active_from) VALUES (?,'2026-06-01')", [enrollment.insertId]);
     const [secondStudent] = await connection.execute<ResultSetHeader>("INSERT INTO students(full_name) VALUES ('M3 Second Student')");
     const [secondEnrollment] = await connection.execute<ResultSetHeader>(
       `INSERT INTO class_enrollments(class_id,student_id,joined_at,tuition_mode,tuition_effective_from)
@@ -52,6 +54,7 @@ async function fixture() {
       "INSERT INTO enrollment_tuition_policies(enrollment_id,tuition_mode,effective_from) VALUES (?,'CLASS_DEFAULT','2026-06-01')",
       [secondEnrollment.insertId],
     );
+    await connection.execute("INSERT INTO enrollment_active_periods(enrollment_id,active_from) VALUES (?,'2026-06-01')", [secondEnrollment.insertId]);
     return { classId: klass.insertId, enrollmentId: enrollment.insertId, studentId: student.insertId,
       secondEnrollmentId: secondEnrollment.insertId };
   } finally { connection.release(); }

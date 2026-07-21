@@ -154,14 +154,16 @@ export function LoginPage() {
               },
             }}
           />
-          <FormControlLabel
-            sx={{ mt: 1.25, alignItems: "flex-start", "& .MuiFormControlLabel-label": { pt: 1 } }}
-            control={<Checkbox checked={remember} onChange={(event) => setRemember(event.target.checked)} />}
-            label="Ghi nhớ đăng nhập trên thiết bị này"
-          />
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 4.75 }}>
-            Không chọn khi đăng nhập trên thiết bị dùng chung.
-          </Typography>
+          <Stack sx={{ mt: 1.25, alignItems: "flex-start" }}>
+            <FormControlLabel
+              sx={{ m: 0 }}
+              control={<Checkbox checked={remember} onChange={(event) => setRemember(event.target.checked)} />}
+              label="Ghi nhớ đăng nhập"
+            />
+            <Typography variant="body2" color="text.secondary" sx={{ pl: 1.75 }}>
+              Chỉ chọn trên thiết bị cá nhân.
+            </Typography>
+          </Stack>
           <Button fullWidth type="submit" variant="contained" size="large" disabled={loading || blockedSeconds > 0} sx={{ mt: 2.5 }}>
             {loading ? "Đang đăng nhập…" : "Đăng nhập"}
           </Button>

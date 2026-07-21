@@ -9,6 +9,7 @@ import type {
   UpdateLessonContentRequest,
   UpdateLessonParticipantsRequest,
   UpdateLessonRequest,
+  CancelLessonRequest,
 } from "@teacher/shared";
 import { api } from "./client";
 
@@ -32,6 +33,9 @@ export const lessonApi = {
     method: "PUT", body: JSON.stringify(input),
   }),
   complete: (id: number, input: CompleteLessonRequest) => api<CompleteLessonResult>(`/api/lessons/${id}/complete`, {
+    method: "POST", body: JSON.stringify(input),
+  }),
+  cancel: (id: number, input: CancelLessonRequest) => api<void>(`/api/lessons/${id}/cancel`, {
     method: "POST", body: JSON.stringify(input),
   }),
 };

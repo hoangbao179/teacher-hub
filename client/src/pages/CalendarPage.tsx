@@ -1,4 +1,4 @@
-import { Add, ChevronLeft, ChevronRight } from "@mui/icons-material";
+import { Add, ChevronLeft, ChevronRight, WarningAmber } from "@mui/icons-material";
 import { Alert, Box, Button, Card, CardContent, Chip, IconButton, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -15,6 +15,7 @@ type CalendarEntry = {
   subtitle: string; color: "default" | "primary" | "success" | "warning" | "error" | "info";
   classId?: number;
   href?: string;
+  warningCount?: number;
 };
 
 const stateLabel: Record<ReconciliationState, string> = {
@@ -40,6 +41,7 @@ export function CalendarPage() {
       subtitle: item.projectionSource === "RESCHEDULED" && item.state === "UNRECORDED" ? "Lịch thay thế" : stateLabel[item.state],
       color: item.state === "UNRECORDED" ? "warning" : item.state === "RECORDED" ? "success" : item.state === "SKIPPED" ? "default" : "info",
       href: item.linkedLessonId ? `/admin/lessons/${item.linkedLessonId}/edit` : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
+      warningCount: item.conflicts.length,
     });
     for (const item of data.lessons.filter((lesson) => !linkedLessonIds.has(lesson.id))) values.push({
       key: `lesson-${item.id}`, classId: item.classId, date: item.date, startTime: item.startTime, endTime: item.endTime,
@@ -67,11 +69,11 @@ export function CalendarPage() {
       <TextField fullWidth type="date" label="Tuần bắt đầu" value={from} onChange={(event) => { setData(null); setError(""); setFrom(weekStart(event.target.value)); }} slotProps={{ inputLabel: { shrink: true } }} />
       <IconButton aria-label="Tuần sau" onClick={() => { setData(null); setError(""); setFrom(addDays(from, 7)); }}><ChevronRight /></IconButton>
     </Stack>
-    <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-      <Button variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`}>Ghi nhận buổi học</Button>
-      <Button variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`}>Buổi học bù</Button>
-      <Button variant="outlined" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`}>Kiểm tra lịch tuần</Button>
-    </Stack>
+    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
+      <Button fullWidth variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`}>Ghi nhận buổi học</Button>
+      <Button fullWidth variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`}>Buổi học bù</Button>
+      <Button fullWidth variant="outlined" component={Link} sx={{ gridColumn: "1 / -1" }} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`}>Kiểm tra lịch tuần</Button>
+    </Box>
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     {!data && !error && <LoadingCards />}
     {data && grouped.length === 0 && <EmptyState message="Tuần này chưa có lịch dự kiến, buổi học hoặc lịch bận." />}
@@ -81,7 +83,7 @@ export function CalendarPage() {
       {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: item.classId ? classColor(item.classId).accent : `${item.color}.main` }} data-testid="calendar-event">
         <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
           <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}</Typography></Stack>
-          <Chip size="small" color={item.color} label={item.subtitle} />
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>{Boolean(item.warningCount) && <WarningAmber color="warning" aria-label={`${item.warningCount} cảnh báo trùng lịch`} fontSize="small" />}<Chip size="small" color={item.color} label={item.subtitle} /></Stack>
         </Stack></CardContent>
       </Card>)}
     </Stack>)}

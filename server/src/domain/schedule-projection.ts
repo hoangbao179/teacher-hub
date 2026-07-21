@@ -13,6 +13,7 @@ export interface RecurringProjectionInput {
   endTime: string;
   effectiveFrom: string;
   effectiveTo: string | null;
+  activePeriods?: Array<{ activeFrom: string; activeTo: string | null }>;
 }
 
 export interface ProjectionExceptionInput {
@@ -21,6 +22,7 @@ export interface ProjectionExceptionInput {
   replacementDate: string | null;
   replacementStartTime: string | null;
   replacementEndTime: string | null;
+  reason?: string | null;
 }
 
 export interface ProjectionLessonInput {
@@ -67,7 +69,9 @@ export function expandRecurringSchedules(
     const weekday = weekdayIso(date);
     for (const schedule of schedules) {
       if (schedule.dayOfWeek !== weekday || date < schedule.effectiveFrom ||
-          (schedule.effectiveTo != null && date > schedule.effectiveTo)) continue;
+          (schedule.effectiveTo != null && date > schedule.effectiveTo) ||
+          (schedule.activePeriods && !schedule.activePeriods.some((period) =>
+            period.activeFrom <= date && (period.activeTo == null || period.activeTo >= date)))) continue;
       const key = occurrenceKey(schedule.classId, schedule.recurringScheduleId, date);
       results.set(key, {
         key,
@@ -88,6 +92,7 @@ export function expandRecurringSchedules(
         replacementStartTime: null,
         replacementEndTime: null,
         conflicts: [],
+        skipReason: null,
       });
     }
   }
@@ -100,7 +105,9 @@ export function reconcileOccurrence(
   lesson: ProjectionLessonInput | null,
 ): ScheduleOccurrence[] {
   if (exception?.type === "SKIPPED")
-    return [{ ...occurrence, state: "SKIPPED", exceptionId: exception.id }];
+    return [{ ...occurrence, state: "SKIPPED", exceptionId: exception.id,
+      skipReason: exception.reason ?? null, linkedLessonId: lesson?.id ?? null,
+      linkedLessonStatus: lesson?.status ?? null }];
   if (exception?.type === "RESCHEDULED") {
     const original = {
       ...occurrence,
@@ -125,7 +132,7 @@ export function reconcileOccurrence(
     };
     return [original, replacement];
   }
-  if (lesson)
+  if (lesson && lesson.status !== "CANCELLED")
     return [{ ...occurrence, state: "RECORDED", linkedLessonId: lesson.id, linkedLessonStatus: lesson.status }];
   return [occurrence];
 }

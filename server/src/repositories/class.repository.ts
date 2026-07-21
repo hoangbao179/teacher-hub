@@ -80,8 +80,11 @@ export class ClassRepository {
     if (!row) return null;
 
     const [schedules] = await pool.query<RowDataPacket[]>(
-      'SELECT id, day_of_week, TIME_FORMAT(start_time, "%H:%i") start_time, TIME_FORMAT(end_time, "%H:%i") end_time FROM recurring_schedules WHERE class_id=? AND effective_to IS NULL ORDER BY day_of_week,start_time',
-      [id],
+      `SELECT id,day_of_week,TIME_FORMAT(start_time,'%H:%i') start_time,
+        TIME_FORMAT(end_time,'%H:%i') end_time
+       FROM recurring_schedules WHERE class_id=? AND effective_from<=?
+         AND (effective_to IS NULL OR effective_to>=?) ORDER BY day_of_week,start_time`,
+      [id, todayInHoChiMinh(), todayInHoChiMinh()],
     );
     const [students] = await pool.query<RowDataPacket[]>(
       `
@@ -154,6 +157,11 @@ export class ClassRepository {
         input.startDate,
         actorUserId,
       );
+      if ((input.status ?? "ACTIVE") === "ACTIVE")
+        await connection.execute(
+          "INSERT INTO class_active_periods(class_id,active_from,created_by) VALUES (?,?,?)",
+          [result.insertId, input.startDate, actorUserId ?? null],
+        );
       for (const schedule of input.schedules) {
         const [scheduleResult] = await connection.execute<ResultSetHeader>(
           "INSERT INTO recurring_schedules(class_id,day_of_week,start_time,end_time,effective_from) VALUES (?,?,?,?,?)",
@@ -192,7 +200,7 @@ export class ClassRepository {
         await connection.rollback();
         return "NOT_FOUND";
       }
-      if (existing[0].status === "CLOSED" && input.status !== "CLOSED") {
+      if (existing[0].status !== input.status) {
         await connection.rollback();
         return "INVALID_TRANSITION";
       }
@@ -208,8 +216,7 @@ export class ClassRepository {
       }
       await connection.execute<ResultSetHeader>(
         `UPDATE classes SET name=?,class_type=?,subject=?,default_package_price=?,
-          default_duration_minutes=?,start_date=?,expected_end_date=?,status=?,note=?,
-          closed_at=CASE WHEN ?='CLOSED' THEN COALESCE(closed_at,NOW()) ELSE NULL END
+          default_duration_minutes=?,start_date=?,expected_end_date=?,note=?
          WHERE id=?`,
         [
           input.name,
@@ -219,9 +226,7 @@ export class ClassRepository {
           input.defaultDurationMinutes,
           input.startDate,
           input.expectedEndDate ?? null,
-          input.status,
           input.note ?? null,
-          input.status,
           id,
         ],
       );
@@ -238,43 +243,54 @@ export class ClassRepository {
         actorUserId, action: "CLASS_UPDATED", entityType: "CLASS", entityId: id,
         previousValues: existing[0], newValues: input,
       });
-      if (existing[0].status !== input.status) {
-        const statusAction = input.status === "PAUSED" ? "CLASS_PAUSED" : input.status === "ACTIVE" ? "CLASS_RESUMED" : "CLASS_CLOSED";
-        await this.audit.record(connection, {
-          actorUserId, action: statusAction, entityType: "CLASS", entityId: id,
-          previousValues: { status: existing[0].status }, newValues: { status: input.status },
-        });
-      }
+      const effectiveDate = input.scheduleEffectiveDate ?? todayInHoChiMinh();
       const [oldSchedules] = await connection.query<RowDataPacket[]>(
-        "SELECT * FROM recurring_schedules WHERE class_id=? AND effective_to IS NULL FOR UPDATE",
-        [id],
+        `SELECT * FROM recurring_schedules WHERE class_id=? AND effective_from<=?
+          AND (effective_to IS NULL OR effective_to>=?) FOR UPDATE`,
+        [id, effectiveDate, effectiveDate],
       );
-      await connection.execute(
-        "DELETE FROM recurring_schedules WHERE class_id=? AND effective_from>=CURDATE()",
-        [id],
-      );
-      await connection.execute(
-        "UPDATE recurring_schedules SET effective_to=DATE_SUB(CURDATE(),INTERVAL 1 DAY) WHERE class_id=? AND effective_to IS NULL AND effective_from<CURDATE()",
-        [id],
-      );
-      for (const [index, oldSchedule] of oldSchedules.entries()) {
-        const replacement = input.schedules[index];
-        await this.audit.record(connection, {
-          actorUserId,
-          action: replacement ? "RECURRING_SCHEDULE_UPDATED" : "RECURRING_SCHEDULE_DELETED",
-          entityType: "RECURRING_SCHEDULE", entityId: Number(oldSchedule.id),
-          previousValues: oldSchedule,
-          newValues: replacement ? { classId: id, ...replacement } : undefined,
-        });
-      }
-      for (const schedule of input.schedules) {
+      const unmatched = new Map(oldSchedules.map((row) => [Number(row.id), row]));
+      for (const scheduleInput of input.schedules) {
+        let schedule = scheduleInput;
+        let old = schedule.id ? unmatched.get(schedule.id) : undefined;
+        if (!old && !schedule.id)
+          old = [...unmatched.values()].find((row) => Number(row.day_of_week) === schedule.dayOfWeek &&
+            String(row.start_time).slice(0, 5) === schedule.startTime && String(row.end_time).slice(0, 5) === schedule.endTime);
+        if (old) {
+          unmatched.delete(Number(old.id));
+          const unchanged = Number(old.day_of_week) === schedule.dayOfWeek &&
+            String(old.start_time).slice(0, 5) === schedule.startTime && String(old.end_time).slice(0, 5) === schedule.endTime;
+          if (unchanged) continue;
+          if (effectiveDate <= String(old.effective_from).slice(0, 10))
+            throw new Error("INVALID_SCHEDULE_EFFECTIVE_DATE");
+          await connection.execute(
+            "UPDATE recurring_schedules SET effective_to=DATE_SUB(?,INTERVAL 1 DAY) WHERE id=?",
+            [effectiveDate, old.id],
+          );
+          await this.audit.record(connection, {
+            actorUserId, action: "RECURRING_SCHEDULE_VERSION_ENDED", entityType: "RECURRING_SCHEDULE",
+            entityId: Number(old.id), previousValues: old, newValues: { effectiveTo: effectiveDate },
+          });
+        }
         const [scheduleResult] = await connection.execute<ResultSetHeader>(
-          "INSERT INTO recurring_schedules(class_id,day_of_week,start_time,end_time,effective_from) VALUES (?,?,?,?,GREATEST(?,CURDATE()))",
-          [id, schedule.dayOfWeek, schedule.startTime, schedule.endTime, input.startDate],
+          "INSERT INTO recurring_schedules(class_id,day_of_week,start_time,end_time,effective_from) VALUES (?,?,?,?,?)",
+          [id, schedule.dayOfWeek, schedule.startTime, schedule.endTime, effectiveDate],
         );
         await this.audit.record(connection, {
           actorUserId, action: "RECURRING_SCHEDULE_CREATED", entityType: "RECURRING_SCHEDULE",
           entityId: scheduleResult.insertId, newValues: { classId: id, ...schedule },
+        });
+      }
+      for (const old of unmatched.values()) {
+        if (effectiveDate <= String(old.effective_from).slice(0, 10))
+          throw new Error("INVALID_SCHEDULE_EFFECTIVE_DATE");
+        await connection.execute(
+          "UPDATE recurring_schedules SET effective_to=DATE_SUB(?,INTERVAL 1 DAY) WHERE id=?",
+          [effectiveDate, old.id],
+        );
+        await this.audit.record(connection, {
+          actorUserId, action: "RECURRING_SCHEDULE_ENDED", entityType: "RECURRING_SCHEDULE",
+          entityId: Number(old.id), previousValues: old, newValues: { effectiveTo: effectiveDate },
         });
       }
       await connection.commit();
@@ -287,7 +303,13 @@ export class ClassRepository {
     }
   }
 
-  async setStatus(id: number, status: "ACTIVE" | "PAUSED" | "CLOSED", actorUserId?: number): Promise<"UPDATED" | "NOT_FOUND" | "INVALID_TRANSITION"> {
+  async setStatus(
+    id: number,
+    status: "ACTIVE" | "PAUSED" | "CLOSED",
+    effectiveDate: string,
+    reason?: string,
+    actorUserId?: number,
+  ): Promise<"UPDATED" | "NOT_FOUND" | "INVALID_TRANSITION"> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -298,14 +320,39 @@ export class ClassRepository {
         (status === "ACTIVE" && previous.status === "PAUSED") ||
         (status === "CLOSED" && ["ACTIVE", "PAUSED"].includes(String(previous.status)));
       if (!allowed) { await connection.rollback(); return "INVALID_TRANSITION"; }
+      const [periodRows] = await connection.query<RowDataPacket[]>(
+        "SELECT * FROM class_active_periods WHERE class_id=? ORDER BY active_from DESC FOR UPDATE", [id],
+      );
+      const openPeriod = periodRows.find((row) => row.active_to == null);
+      if (status === "ACTIVE") {
+        const overlaps = periodRows.some((row) => String(row.active_from).slice(0, 10) <= effectiveDate &&
+          (row.active_to == null || String(row.active_to).slice(0, 10) >= effectiveDate));
+        if (overlaps) { await connection.rollback(); return "INVALID_TRANSITION"; }
+        await connection.execute(
+          "INSERT INTO class_active_periods(class_id,active_from,created_by) VALUES (?,?,?)",
+          [id, effectiveDate, actorUserId ?? null],
+        );
+      } else if (openPeriod) {
+        const activeFrom = String(openPeriod.active_from).slice(0, 10);
+        if (effectiveDate < activeFrom) {
+          await connection.rollback(); return "INVALID_TRANSITION";
+        }
+        if (effectiveDate === activeFrom)
+          await connection.execute("DELETE FROM class_active_periods WHERE id=?", [openPeriod.id]);
+        else
+          await connection.execute(
+            "UPDATE class_active_periods SET active_to=DATE_SUB(?,INTERVAL 1 DAY) WHERE id=?",
+            [effectiveDate, openPeriod.id],
+          );
+      }
       await connection.execute(
-        `UPDATE classes SET status=?,closed_at=CASE WHEN ?='CLOSED' THEN COALESCE(closed_at,NOW()) ELSE NULL END WHERE id=?`,
-        [status, status, id],
+        `UPDATE classes SET status=?,closed_at=CASE WHEN ?='CLOSED' THEN CONCAT(?,' 23:59:59') ELSE NULL END WHERE id=?`,
+        [status, status, effectiveDate, id],
       );
       const action = status === "PAUSED" ? "CLASS_PAUSED" : status === "ACTIVE" ? "CLASS_RESUMED" : "CLASS_CLOSED";
       await this.audit.record(connection, {
         actorUserId, action, entityType: "CLASS", entityId: id,
-        previousValues: { status: previous.status }, newValues: { status },
+        previousValues: { status: previous.status }, newValues: { status, effectiveDate }, reason,
       });
       await connection.commit();
       return "UPDATED";

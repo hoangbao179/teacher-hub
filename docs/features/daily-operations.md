@@ -23,6 +23,10 @@ student, attendance or tuition fields.
 Dashboard, class detail and calendar link “Buổi học bù” to the existing M2 lesson
 wizard with `MAKEUP` preselected. The wizard still requires explicit participants.
 
+Occurrence SKIPPED hiển thị lý do và mở wizard với nguồn học bù. Học sinh đã có
+replacement cho nguồn đó bị khóa. Conflict preflight dùng chung cho lesson, draft,
+reschedule và busy slot; cảnh báo có text/icon và không tự thay đổi lịch khác.
+
 The admin shell is branded “Lớp học cô Vy”. On mobile its five equal-width primary
 actions are Hôm nay, Lịch, Lớp học, Học phí and Học sinh; labels keep one size and
 one line, while the person icon identifies Học sinh. The fixed navigation and sticky

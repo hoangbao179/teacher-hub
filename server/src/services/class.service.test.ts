@@ -26,7 +26,7 @@ test("class mutations forward actor for audit", async () => {
   } as unknown as ClassRepository;
   const service = new ClassService(repository);
   await service.create(valid, 77);
-  await service.setStatus(5, "PAUSED", 77);
+  await service.setStatus(5, "PAUSED", { effectiveDate: "2026-07-21" }, 77);
   assert.equal(calls[0]?.[1], 77);
-  assert.deepEqual(calls[1], [5, "PAUSED", 77]);
+  assert.deepEqual(calls[1], [5, "PAUSED", "2026-07-21", undefined, 77]);
 });

@@ -2,9 +2,9 @@ import "dotenv/config";
 import { pool } from "./pool";
 
 const businessTables = [
-  "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_session_participants", "lesson_sessions",
+  "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions",
   "schedule_exceptions", "recurring_schedules", "teacher_busy_slots", "class_enrollments",
-  "enrollment_tuition_policies", "class_tuition_policies",
+  "enrollment_active_periods", "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies",
   "audit_logs", "students", "classes",
 ];
 

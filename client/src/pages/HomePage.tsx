@@ -271,10 +271,10 @@ export function HomePage() {
               <Box component="img" src={content.media.teacherPhoto} alt={content.media.teacherPhotoAlt} loading="lazy" width="720" height="540" sx={{ width: "100%", maxHeight: { xs: 260, md: 330 }, objectFit: "cover", objectPosition: content.media.teacherPhotoFocalPosition, borderRadius: 3, boxShadow: "0 12px 30px rgba(55,40,90,.12)" }} />
               <Box>
                 <Typography variant="overline" color="primary">GIỚI THIỆU CÔ VY</Typography>
-                <Typography id="about-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Đồng hành theo năng lực từng học sinh</Typography>
-                <Typography color="text.secondary" sx={{ mt: 2 }}>{content.introduction}</Typography>
+                <Typography id="about-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{content.teacherProfile.greeting}</Typography>
+                <Typography color="text.secondary" sx={{ mt: 2 }}>{content.teacherProfile.biography}</Typography>
                 <Stack spacing={1.25} sx={{ mt: 2.5 }}>
-                  {["Kèm cặp 1–1", "Lớp nhóm nhỏ", "Củng cố kiến thức"].map((item) => (
+                  {content.teacherProfile.highlights.map((item) => (
                     <Stack key={item} direction="row" spacing={1} sx={{ alignItems: "center" }}><CheckCircleOutlined color="success" /><Typography variant="subtitle2">{item}</Typography></Stack>
                   ))}
                 </Stack>

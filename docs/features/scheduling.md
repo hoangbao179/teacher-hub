@@ -10,8 +10,7 @@ cũ nhất trước và không tự tạo lesson.
 Các trạng thái:
 
 - `UNRECORDED`: chưa có lesson hoặc exception xử lý occurrence.
-- `RECORDED`: đã có lesson `DRAFT`, `COMPLETED` hoặc `CANCELLED`. Lesson bị hủy vẫn
-  là một quyết định rõ ràng của giáo viên nên occurrence không tự xuất hiện lại.
+- `RECORDED`: đã có lesson `DRAFT` hoặc `COMPLETED`.
 - `SKIPPED`: occurrence gốc đã được đánh dấu nghỉ.
 - `RESCHEDULED`: occurrence gốc đã đổi lịch; một projection thay thế có hậu tố
   khóa `:R` xuất hiện tại ngày/giờ mới và có thể tiếp tục tạo lesson draft.
@@ -31,6 +30,12 @@ nhập dữ liệu lịch sử và không tự thay đổi sự kiện khác.
 
 Lịch bận hỗ trợ một lần hoặc lặp hằng tuần trong khoảng hiệu lực. Các mutation lưu
 actor/audit nhưng không có quan hệ enrollment, attendance hay tuition.
+
+V14 giữ recurring schedule theo version. PATCH đóng version cũ và tạo row mới;
+DELETE chỉ end-date. Projection kết hợp effective range với class active periods,
+nên pause/close không làm mất occurrence quá khứ và resume không backfill khoảng
+pause. Đổi lịch tạm thời tối đa 45 ngày/20 occurrence dùng preview rồi tạo atomic
+RESCHEDULED exceptions, không sửa pattern gốc.
 
 API lịch tuần trả cả occurrence đã đối soát, lesson độc lập (gồm `MAKEUP`) và
 busy occurrence đã bung theo ngày. Dashboard dùng cùng projection cho lịch hôm

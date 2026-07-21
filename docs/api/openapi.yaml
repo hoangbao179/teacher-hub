@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Teacher Class Hub API
-  version: 0.5.0
+  version: 0.6.0
   description: API release candidate V1, gồm vận hành lớp, báo cáo và production hardening qua M6D.
 servers:
   - url: /
@@ -41,11 +41,11 @@ paths:
     get: {summary: Chi tiết lớp gồm schedules và active students, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
     patch: {summary: Cập nhật lớp và lịch lặp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
   /api/classes/{id}/pause:
-    post: {summary: Tạm dừng lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã tạm dừng}}}
+    post: {summary: Tạm dừng lớp theo ngày hiệu lực, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã tạm dừng}}}
   /api/classes/{id}/resume:
-    post: {summary: Mở lại lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã mở lại}}}
+    post: {summary: Mở lại lớp theo ngày hiệu lực, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã mở lại}}}
   /api/classes/{id}/close:
-    post: {summary: Đóng lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã đóng}}}
+    post: {summary: Đóng lớp theo ngày hiệu lực và giữ lịch sử, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã đóng}}}
   /api/classes/{id}/enrollments:
     post: {summary: Ghi danh học sinh vào lớp ACTIVE, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'201': {description: Đã ghi danh}, '409': {description: Vi phạm trạng thái hoặc uniqueness}}}
   /api/classes/{id}/schedules:
@@ -53,8 +53,8 @@ paths:
   /api/classes/{id}/lessons:
     get: {summary: Lịch sử lesson hiện có của lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
   /api/recurring-schedules/{id}:
-    patch: {summary: Cập nhật lịch lặp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
-    delete: {summary: Xóa lịch lặp chưa phát sinh dữ liệu học phí, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã xóa}}}
+    patch: {summary: Tạo version lịch lặp mới từ effectiveFrom, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã tạo version}}}
+    delete: {summary: End-date lịch lặp, không hard-delete lịch sử, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã kết thúc version}}}
   /api/students:
     get: {summary: Danh sách học sinh, responses: {'200': {description: Thành công}}}
     post: {summary: Tạo học sinh, responses: {'201': {description: Đã tạo}}}
@@ -89,9 +89,9 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '413': {description: Báo cáo vượt giới hạn 5.000 dòng}
   /api/enrollments/{id}/pause:
-    post: {summary: Tạm dừng ghi danh, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã tạm dừng}}}
+    post: {summary: Tạm dừng ghi danh theo ngày hiệu lực, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã tạm dừng}}}
   /api/enrollments/{id}/resume:
-    post: {summary: Mở lại ghi danh nếu lớp ACTIVE, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã mở lại}}}
+    post: {summary: Mở lại ghi danh theo ngày hiệu lực nếu lớp ACTIVE, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã mở lại}}}
   /api/enrollments/{id}/end:
     post: {summary: Kết thúc ghi danh và giữ lịch sử, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã kết thúc}}}
   /api/enrollments/{id}/tuition-mode:
@@ -171,9 +171,9 @@ paths:
         '409': {$ref: '#/components/responses/Conflict'}
   /api/lessons/{id}/cancel:
     post:
-      summary: Hủy lesson DRAFT; không có tác động tuition
+      summary: Hủy lesson DRAFT; lesson gắn occurrence đồng thời tạo SKIPPED exception
       parameters: [{$ref: '#/components/parameters/Id'}]
-      requestBody: {required: false, content: {application/json: {schema: {type: object, properties: {reason: {type: string}}}}}}
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [reason], properties: {reason: {type: string, maxLength: 255}}}}}}
       responses:
         '204': {description: Đã hủy}
         '401': {$ref: '#/components/responses/Unauthorized'}
@@ -264,6 +264,14 @@ paths:
         '400': {$ref: '#/components/responses/ValidationError'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+  /api/schedule/occurrences/{key}/makeup-options:
+    get:
+      summary: Đọc nguồn nghỉ/hủy và eligibility participant cho học bù subset
+      parameters: [{$ref: '#/components/parameters/OccurrenceKey'}]
+      responses:
+        '200': {description: Nguồn và trạng thái replacement từng học sinh, content: {application/json: {schema: {$ref: '#/components/schemas/MakeupSourceOptionsEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /api/schedule/occurrences/{key}/skip:
     post:
       summary: Tạo SKIPPED exception idempotent cho đúng một occurrence
@@ -291,6 +299,29 @@ paths:
         - {in: query, name: from, schema: {type: string, format: date}}
       responses:
         '200': {description: Thành công, content: {application/json: {schema: {$ref: '#/components/schemas/WeekScheduleEnvelope'}}}}
+  /api/schedule/conflicts/check:
+    post:
+      summary: Preflight conflict dùng chung cho lesson, occurrence, reschedule và lịch bận
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ScheduleConflictCheckRequest'}}}}
+      responses:
+        '200': {description: Danh sách cảnh báo không chặn, content: {application/json: {schema: {type: object, required: [data], properties: {data: {type: array, items: {$ref: '#/components/schemas/ScheduleConflictWarning'}}}}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+  /api/schedule/temporary-reschedules/preview:
+    post:
+      summary: Xem trước đổi lịch tạm thời, không ghi database
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TemporaryRescheduleRequest'}}}}
+      responses:
+        '200': {description: Preview occurrence và conflict, content: {application/json: {schema: {$ref: '#/components/schemas/TemporaryReschedulePreviewEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/schedule/temporary-reschedules:
+    post:
+      summary: Tạo atomic RESCHEDULED exceptions cho khoảng tạm thời
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TemporaryRescheduleRequest'}}}}
+      responses:
+        '201': {description: Đã áp dụng toàn bộ, content: {application/json: {schema: {$ref: '#/components/schemas/TemporaryReschedulePreviewEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /api/teacher-busy-slots:
     get:
       summary: Danh sách định nghĩa lịch bận giao với khoảng ngày
@@ -345,6 +376,12 @@ components:
       description: Không tìm thấy tài nguyên
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
   schemas:
+    EffectiveStatusRequest:
+      type: object
+      required: [effectiveDate]
+      properties:
+        effectiveDate: {type: string, format: date}
+        reason: {type: string, maxLength: 255}
     LessonType: {type: string, enum: [REGULAR, MAKEUP, EXTRA]}
     LessonStatus: {type: string, enum: [DRAFT, COMPLETED, CANCELLED]}
     AttendanceStatus: {type: string, enum: [PRESENT, ABSENT, FREE]}
@@ -363,7 +400,7 @@ components:
         endTime: {type: string}
     ScheduleOccurrence:
       type: object
-      required: [key, originalKey, occurrenceDate, originalOccurrenceDate, recurringScheduleId, classId, className, scheduledStartTime, scheduledEndTime, projectionSource, state, conflicts]
+      required: [key, originalKey, occurrenceDate, originalOccurrenceDate, recurringScheduleId, classId, className, scheduledStartTime, scheduledEndTime, projectionSource, state, conflicts, skipReason]
       properties:
         key: {type: string}
         originalKey: {type: string}
@@ -383,6 +420,7 @@ components:
         replacementStartTime: {type: string, nullable: true}
         replacementEndTime: {type: string, nullable: true}
         conflicts: {type: array, items: {$ref: '#/components/schemas/ScheduleConflictWarning'}}
+        skipReason: {type: string, nullable: true}
     ScheduleOccurrenceListEnvelope:
       type: object
       required: [data]
@@ -450,7 +488,83 @@ components:
               exceptionId: {type: integer, format: int64}
               wizardPath: {type: string}
               idempotent: {type: boolean}
+              conflicts: {type: array, items: {$ref: '#/components/schemas/ScheduleConflictWarning'}}
               error: {type: object, properties: {code: {type: string}, message: {type: string}}}
+    ScheduleConflictCheckRequest:
+      type: object
+      required: [date, startTime, endTime]
+      properties:
+        date: {type: string, format: date}
+        startTime: {type: string}
+        endTime: {type: string}
+        excludedOccurrenceKey: {type: string}
+        excludedLessonId: {type: integer, format: int64}
+    TemporaryRescheduleRequest:
+      type: object
+      required: [classId, recurringScheduleId, fromDate, toDate, replacementDayOfWeek, replacementStartTime, replacementEndTime, reason]
+      properties:
+        classId: {type: integer, format: int64}
+        recurringScheduleId: {type: integer, format: int64}
+        fromDate: {type: string, format: date}
+        toDate: {type: string, format: date}
+        replacementDayOfWeek: {type: integer, minimum: 1, maximum: 7}
+        replacementStartTime: {type: string}
+        replacementEndTime: {type: string}
+        reason: {type: string, maxLength: 255}
+        note: {type: string, maxLength: 2000}
+        confirmConflicts: {type: boolean}
+    TemporaryReschedulePreviewEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [items, canApply, conflictCount]
+          properties:
+            canApply: {type: boolean}
+            conflictCount: {type: integer}
+            items:
+              type: array
+              maxItems: 20
+              items:
+                type: object
+                required: [originalOccurrenceKey, originalDate, originalStartTime, originalEndTime, replacementDate, replacementStartTime, replacementEndTime, currentState, eligible, conflicts]
+                properties:
+                  originalOccurrenceKey: {type: string}
+                  originalDate: {type: string, format: date}
+                  originalStartTime: {type: string}
+                  originalEndTime: {type: string}
+                  replacementDate: {type: string, format: date}
+                  replacementStartTime: {type: string}
+                  replacementEndTime: {type: string}
+                  currentState: {$ref: '#/components/schemas/ReconciliationState'}
+                  eligible: {type: boolean}
+                  conflicts: {type: array, items: {$ref: '#/components/schemas/ScheduleConflictWarning'}}
+    MakeupSourceOptionsEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [occurrenceKey, classId, className, originalDate, originalStartTime, originalEndTime, participants]
+          properties:
+            occurrenceKey: {type: string}
+            classId: {type: integer, format: int64}
+            className: {type: string}
+            originalDate: {type: string, format: date}
+            originalStartTime: {type: string}
+            originalEndTime: {type: string}
+            reason: {type: string, nullable: true}
+            participants:
+              type: array
+              items:
+                type: object
+                required: [enrollmentId, studentName, alreadyReplaced]
+                properties:
+                  enrollmentId: {type: integer, format: int64}
+                  studentName: {type: string}
+                  studentNickname: {type: string, nullable: true}
+                  alreadyReplaced: {type: boolean}
     TeacherBusySlotInput:
       type: object
       required: [title, recurrenceType, startTime, endTime]
@@ -552,6 +666,7 @@ components:
         scheduledEndTime: {type: string, example: '19:30'}
         lessonType: {$ref: '#/components/schemas/LessonType'}
         selectedEnrollmentIds: {type: array, uniqueItems: true, items: {type: integer, format: int64}}
+        makeupSourceOccurrenceKey: {type: string, maxLength: 160}
         note: {type: string, maxLength: 1000}
     UpdateLessonRequest:
       type: object
@@ -617,11 +732,12 @@ components:
           allOf: [{$ref: '#/components/schemas/AttendanceInput'}]
     LessonDetail:
       type: object
-      required: [id, classId, className, sessionDate, scheduledStartTime, scheduledEndTime, lessonType, status, completedAt, participants]
+      required: [id, classId, className, sourceOccurrenceKey, sessionDate, scheduledStartTime, scheduledEndTime, lessonType, status, completedAt, cancelledAt, cancelReason, makeupSource, participants]
       properties:
         id: {type: integer, format: int64}
         classId: {type: integer, format: int64}
         className: {type: string}
+        sourceOccurrenceKey: {type: string, nullable: true}
         sessionDate: {type: string, format: date}
         scheduledStartTime: {type: string}
         scheduledEndTime: {type: string}
@@ -631,9 +747,12 @@ components:
         lessonType: {$ref: '#/components/schemas/LessonType'}
         status: {$ref: '#/components/schemas/LessonStatus'}
         completedAt: {type: string, format: date-time, nullable: true, description: Persisted completion time; null while not completed}
+        cancelledAt: {type: string, format: date-time, nullable: true}
+        cancelReason: {type: string, nullable: true}
         content: {type: string, nullable: true}
         homework: {type: string, nullable: true}
         note: {type: string, nullable: true}
+        makeupSource: {type: object, nullable: true}
         participants: {type: array, items: {$ref: '#/components/schemas/LessonParticipant'}}
     LessonEnvelope:
       type: object

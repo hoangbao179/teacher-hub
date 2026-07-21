@@ -3,6 +3,7 @@ export type ClassStatus = "ACTIVE" | "PAUSED" | "CLOSED";
 export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface RecurringScheduleInput {
+  id?: number;
   dayOfWeek: Weekday;
   startTime: string;
   endTime: string;
@@ -14,6 +15,16 @@ export interface CreateRecurringScheduleRequest extends RecurringScheduleInput {
 }
 
 export type UpdateRecurringScheduleRequest = CreateRecurringScheduleRequest;
+
+export interface EndRecurringScheduleRequest {
+  effectiveDate: string;
+  reason?: string;
+}
+
+export interface ChangeClassStatusRequest {
+  effectiveDate: string;
+  reason?: string;
+}
 
 export interface CreateClassRequest {
   name: string;
@@ -39,6 +50,7 @@ export interface UpdateClassRequest {
   note?: string;
   status: ClassStatus;
   schedules: RecurringScheduleInput[];
+  scheduleEffectiveDate?: string;
 }
 
 export interface ClassListItem {

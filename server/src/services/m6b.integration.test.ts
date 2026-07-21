@@ -21,9 +21,9 @@ async function clean(): Promise<void> {
   try {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
-      "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_session_participants",
-      "lesson_sessions", "schedule_exceptions", "teacher_busy_slots", "recurring_schedules",
-      "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs",
+      "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants",
+      "lesson_sessions", "schedule_exceptions", "teacher_busy_slots", "recurring_schedules", "enrollment_active_periods",
+      "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs",
       "students", "classes", "users",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
@@ -48,6 +48,7 @@ async function fixture() {
       "INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,2400000,'2026-07-01'),(?,1800000,'2026-07-01')",
       [klass.insertId, otherClass.insertId],
     );
+    await connection.execute("INSERT INTO class_active_periods(class_id,active_from) VALUES (?,'2026-07-01'),(?,'2026-07-01')", [klass.insertId, otherClass.insertId]);
     const [student] = await connection.execute<ResultSetHeader>(
       "INSERT INTO students(full_name,nickname,parent_name,parent_phone) VALUES ('Nguyễn Minh An','An','Phụ huynh An','0900000000')",
     );
@@ -60,6 +61,7 @@ async function fixture() {
       "INSERT INTO enrollment_tuition_policies(enrollment_id,tuition_mode,effective_from) VALUES (?,'CLASS_DEFAULT','2026-07-01')",
       [enrollment.insertId],
     );
+    await connection.execute("INSERT INTO enrollment_active_periods(enrollment_id,active_from) VALUES (?,'2026-07-01')", [enrollment.insertId]);
 
     for (let day = 1; day <= 12; day += 1) {
       const status = day === 11 ? "ABSENT" : day === 12 ? "FREE" : "PRESENT";

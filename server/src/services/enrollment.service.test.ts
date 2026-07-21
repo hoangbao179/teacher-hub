@@ -57,12 +57,12 @@ test("pause, resume and end request audited repository transitions with actor", 
   const service = serviceWithRepository({
     setStatus: async (...args: unknown[]) => { calls.push(args); return { kind: "OK", id: 9 }; },
   } as Partial<EnrollmentRepository>);
-  await service.pause(9, 42);
-  await service.resume(9, 42);
+  await service.pause(9, { effectiveDate: "2026-07-20" }, 42);
+  await service.resume(9, { effectiveDate: "2026-07-21" }, 42);
   await service.end(9, { endedAt: "2026-07-20", reason: "Hoàn tất" }, 42);
   assert.deepEqual(calls, [
-    [9, "PAUSED", undefined, undefined, 42],
-    [9, "ACTIVE", undefined, undefined, 42],
-    [9, "ENDED", "2026-07-20", "Hoàn tất", 42],
+    [9, "PAUSED", "2026-07-20", undefined, undefined, 42],
+    [9, "ACTIVE", "2026-07-21", undefined, undefined, 42],
+    [9, "ENDED", "2026-07-20", "2026-07-20", "Hoàn tất", 42],
   ]);
 });

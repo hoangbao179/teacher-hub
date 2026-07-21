@@ -7,6 +7,10 @@ import {
   Checkbox,
   Chip,
   Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -19,7 +23,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type {
   AttendanceStatus,
   ClassDetail,
@@ -27,9 +31,12 @@ import type {
   CompleteLessonResult,
   LessonDetail,
   LessonType,
+  MakeupSourceOptions,
+  ScheduleConflictWarning,
 } from "@teacher/shared";
 import { ApiError } from "../api/client";
 import { lessonApi } from "../api/lessons";
+import { scheduleApi } from "../api/schedule";
 import { LoadingState } from "../components/LoadingState";
 import { visibleStatusLabel } from "../components/UiKit";
 
@@ -65,6 +72,8 @@ export function LessonWizardPage() {
   const { id } = useParams();
   const lessonId = id ? Number(id) : null;
   const [params] = useSearchParams();
+  const location = useLocation();
+  const sourceKey = params.get("source");
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [classes, setClasses] = useState<ClassListItem[]>([]);
@@ -88,6 +97,13 @@ export function LessonWizardPage() {
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState("");
   const [completion, setCompletion] = useState<CompleteLessonResult | null>(null);
+  const [makeupSource, setMakeupSource] = useState<MakeupSourceOptions | null>(null);
+  const [scheduleWarnings, setScheduleWarnings] = useState<ScheduleConflictWarning[]>(
+    () => (location.state as { scheduleConflicts?: ScheduleConflictWarning[] } | null)?.scheduleConflicts ?? [],
+  );
+  const [conflictsConfirmed, setConflictsConfirmed] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   useEffect(() => {
     lessonApi.listClasses().then(setClasses).catch((value: Error) => setError(value.message));
@@ -108,6 +124,14 @@ export function LessonWizardPage() {
       else if (detail.participants.length) setStep(1);
     }).catch((value: Error) => setError(value.message)).finally(() => setLoading(false));
   }, [lessonId]);
+
+  useEffect(() => {
+    const effectiveSourceKey = sourceKey ?? lesson?.makeupSource?.occurrenceKey;
+    if (!effectiveSourceKey) return;
+    scheduleApi.makeupOptions(effectiveSourceKey).then((source) => {
+      setMakeupSource(source); setClassId(source.classId); setLessonType("MAKEUP");
+    }).catch((value: Error) => setError(value.message));
+  }, [lesson?.makeupSource?.occurrenceKey, sourceKey]);
 
   useEffect(() => {
     if (!classId) return;
@@ -149,10 +173,12 @@ export function LessonWizardPage() {
   const participants = lesson?.participants ?? [];
   const availableStudents = useMemo(() => {
     const values = new Map<number, { enrollmentId: number; fullName: string }>();
-    classDetail?.students.forEach((item) => values.set(item.enrollmentId, { enrollmentId: item.enrollmentId, fullName: item.fullName }));
+    if (makeupSource)
+      makeupSource.participants.forEach((item) => values.set(item.enrollmentId, { enrollmentId: item.enrollmentId, fullName: item.studentName }));
+    else classDetail?.students.forEach((item) => values.set(item.enrollmentId, { enrollmentId: item.enrollmentId, fullName: item.fullName }));
     lesson?.participants.forEach((item) => values.set(item.enrollmentId, { enrollmentId: item.enrollmentId, fullName: item.studentName }));
     return [...values.values()];
-  }, [classDetail, lesson]);
+  }, [classDetail, lesson, makeupSource]);
   const counts = useMemo(() => ({
     PRESENT: Object.values(attendances).filter((item) => item.status === "PRESENT").length,
     ABSENT: Object.values(attendances).filter((item) => item.status === "ABSENT").length,
@@ -175,11 +201,22 @@ export function LessonWizardPage() {
     }
     setBusy(true);
     try {
+      if (!conflictsConfirmed) {
+        const warnings = await scheduleApi.checkConflicts({
+          date: sessionDate, startTime: scheduledStart, endTime: scheduledEnd,
+          excludedOccurrenceKey: lesson?.sourceOccurrenceKey ?? undefined,
+          excludedLessonId: lesson?.id,
+        });
+        if (warnings.length) {
+          setScheduleWarnings(warnings); setBusy(false); return;
+        }
+      }
       let saved: LessonDetail;
       if (!lessonId) {
         saved = await lessonApi.create({
           classId, sessionDate, scheduledStartTime: scheduledStart, scheduledEndTime: scheduledEnd,
-          lessonType, selectedEnrollmentIds: lessonType === "REGULAR" ? undefined : selectedIds, note,
+          lessonType, selectedEnrollmentIds: lessonType === "REGULAR" ? undefined : selectedIds,
+          makeupSourceOccurrenceKey: sourceKey ?? undefined, note,
         });
         saved = await lessonApi.update(saved.id, { actualStartTime: actualStart, actualEndTime: actualEnd });
         navigate(`/admin/lessons/${saved.id}/edit`, { replace: true });
@@ -201,7 +238,7 @@ export function LessonWizardPage() {
           saved = await lessonApi.participants(saved.id, { enrollmentIds: desiredIds });
       }
       setLesson(saved); setSelectedIds(saved.participants.map((item) => item.enrollmentId));
-      setAttendances(attendanceFrom(saved)); setDirty(false); setStep(1);
+      setAttendances(attendanceFrom(saved)); setDirty(false); setConflictsConfirmed(false); setScheduleWarnings([]); setStep(1);
     } catch (value) { handleError(value); }
     finally { setBusy(false); }
   }
@@ -250,6 +287,17 @@ export function LessonWizardPage() {
     finally { setBusy(false); }
   }
 
+  async function cancelDraft() {
+    if (!lesson || !cancelReason.trim()) return;
+    setBusy(true); setError("");
+    try {
+      await lessonApi.cancel(lesson.id, { reason: cancelReason });
+      const saved = await lessonApi.detail(lesson.id);
+      setLesson(saved); setCancelOpen(false); setCancelReason(""); setDirty(false);
+    } catch (value) { handleError(value); }
+    finally { setBusy(false); }
+  }
+
   if (loading) return <LoadingState />;
   if (completion) return <CompletionState result={completion} />;
 
@@ -269,17 +317,22 @@ export function LessonWizardPage() {
       </Stepper>
       {error && <Alert severity="error">{error}</Alert>}
       {conflict && <Alert severity="warning"><strong>Xung đột:</strong> {conflict} Hãy tải lại buổi học.</Alert>}
+      {scheduleWarnings.length > 0 && <Alert severity="warning" action={!conflictsConfirmed ? <Button color="inherit" onClick={() => setConflictsConfirmed(true)}>Tiếp tục dù trùng</Button> : undefined} data-testid="lesson-conflict-warning" data-wizard-action>
+        Có {scheduleWarnings.length} cảnh báo trùng lịch: {scheduleWarnings.map((item) => `${item.title} ${item.startTime}–${item.endTime}`).join("; ")}
+      </Alert>}
       {lesson?.status === "COMPLETED" && <Alert severity="success">Buổi học đã hoàn thành và được lưu.</Alert>}
+      {lesson?.status === "CANCELLED" && <Alert severity="info">Bản nháp đã hủy{lesson.cancelReason ? `: ${lesson.cancelReason}` : "."}{lesson.sourceOccurrenceKey && <> <Button component={Link} to={`/admin/lessons/new?classId=${lesson.classId}&type=MAKEUP&source=${encodeURIComponent(lesson.sourceOccurrenceKey)}`}>Tạo buổi học bù</Button></>}</Alert>}
 
       {step === 0 && <Stack spacing={2}>
-        <TextField select required label="Lớp" value={classes.some((item) => item.id === classId) ? classId : ""} onChange={(event) => { setClassId(Number(event.target.value)); setSelectedIds([]); markDirty(); }}>
+        {makeupSource && <Alert severity="info">Học bù cho buổi nghỉ {makeupSource.originalDate} · {makeupSource.originalStartTime}–{makeupSource.originalEndTime}{makeupSource.reason ? ` · ${makeupSource.reason}` : ""}</Alert>}
+        <TextField select required disabled={Boolean(makeupSource)} label="Lớp" value={classes.some((item) => item.id === classId) ? classId : ""} onChange={(event) => { setClassId(Number(event.target.value)); setSelectedIds([]); markDirty(); }}>
           {classes.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
         </TextField>
-        <TextField required type="date" label="Ngày học" value={sessionDate} onChange={(event) => { setSessionDate(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
+        <TextField required type="date" label="Ngày học" value={sessionDate} onChange={(event) => { setSessionDate(event.target.value); setConflictsConfirmed(false); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
         <Typography component="h2" variant="subtitle1">Giờ dự kiến</Typography>
         <Stack direction="row" spacing={1}>
-          <TextField fullWidth required type="time" label="Bắt đầu dự kiến" value={scheduledStart} onChange={(event) => { setScheduledStart(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
-          <TextField fullWidth required type="time" label="Kết thúc dự kiến" value={scheduledEnd} onChange={(event) => { setScheduledEnd(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField fullWidth required type="time" label="Bắt đầu dự kiến" value={scheduledStart} onChange={(event) => { setScheduledStart(event.target.value); setConflictsConfirmed(false); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField fullWidth required type="time" label="Kết thúc dự kiến" value={scheduledEnd} onChange={(event) => { setScheduledEnd(event.target.value); setConflictsConfirmed(false); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
         </Stack>
         <Typography component="h2" variant="subtitle1">Giờ thực tế</Typography>
         <Stack direction="row" spacing={1}>
@@ -289,15 +342,15 @@ export function LessonWizardPage() {
         <Alert severity={actualDuration ? "info" : "warning"}>
           Thời lượng thực tế: {actualDuration ? `${actualDuration} phút` : "không hợp lệ"}. Học phí vẫn tính tối đa một buổi.
         </Alert>
-        <TextField select label="Loại buổi" value={lessonType} onChange={(event) => { setLessonType(event.target.value as LessonType); setSelectedIds([]); markDirty(); }}>
+        <TextField select disabled={Boolean(makeupSource)} label="Loại buổi" value={lessonType} onChange={(event) => { setLessonType(event.target.value as LessonType); setSelectedIds([]); markDirty(); }}>
           <MenuItem value="REGULAR">Buổi thường</MenuItem><MenuItem value="MAKEUP">Học bù</MenuItem><MenuItem value="EXTRA">Học thêm</MenuItem>
         </TextField>
         {lessonType !== "REGULAR" && <Card variant="outlined"><CardContent>
           <Typography component="h2" variant="subtitle1" sx={{ mb: 1 }}>Chọn học sinh tham gia</Typography>
           {!availableStudents.length && <Alert severity="info">Lớp chưa có học sinh có thể chọn.</Alert>}
-          {availableStudents.map((student) => <FormControlLabel key={student.enrollmentId} control={<Checkbox checked={selectedIds.includes(student.enrollmentId)} onChange={(event) => {
+          {availableStudents.map((student) => { const unavailable = makeupSource?.participants.find((item) => item.enrollmentId === student.enrollmentId)?.alreadyReplaced ?? false; return <FormControlLabel key={student.enrollmentId} control={<Checkbox disabled={unavailable} checked={selectedIds.includes(student.enrollmentId)} onChange={(event) => {
             setSelectedIds((current) => event.target.checked ? [...current, student.enrollmentId] : current.filter((value) => value !== student.enrollmentId)); markDirty();
-          }} />} label={student.fullName} />)}
+          }} />} label={`${student.fullName}${unavailable ? " · Đã được xếp học bù" : ""}`} />; })}
         </CardContent></Card>}
         <TextField multiline minRows={2} label="Ghi chú" value={note} onChange={(event) => { setNote(event.target.value.slice(0, 1000)); markDirty(); }} helperText={`${note.length}/1000`} />
       </Stack>}
@@ -345,12 +398,14 @@ export function LessonWizardPage() {
 
       <Box data-testid="sticky-action-bar" data-wizard-action sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1, mt: 2, borderTop: 1, borderColor: "divider" }}>
         <Stack direction="row" spacing={1}>
+          {lesson?.status === "DRAFT" && <Button color="error" variant="outlined" disabled={busy} onClick={() => setCancelOpen(true)}>Hủy bản nháp</Button>}
           {step > 0 && <Button fullWidth variant="outlined" sx={{ minHeight: 48 }} disabled={busy} onClick={() => setStep((value) => value - 1)}>Quay lại</Button>}
-          <Button fullWidth variant="contained" sx={{ minHeight: 48 }} disabled={busy || (lesson?.status === "COMPLETED" && step === 3) || (step === 1 && !participants.length)} onClick={step === 0 ? saveInformation : step === 1 ? saveAttendance : step === 2 ? saveContent : complete}>
+          <Button fullWidth variant="contained" sx={{ minHeight: 48 }} disabled={busy || lesson?.status === "CANCELLED" || (lesson?.status === "COMPLETED" && step === 3) || (step === 1 && !participants.length) || (step === 0 && scheduleWarnings.length > 0 && !conflictsConfirmed)} onClick={step === 0 ? saveInformation : step === 1 ? saveAttendance : step === 2 ? saveContent : complete}>
             {busy ? "Đang lưu…" : step === 3 ? (lesson?.status === "COMPLETED" ? "Đã hoàn thành" : "Hoàn tất ghi nhận") : "Lưu và tiếp tục"}
           </Button>
         </Stack>
       </Box>
+      <Dialog open={cancelOpen} onClose={() => !busy && setCancelOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Hủy bản nháp?</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}><Alert severity="info">Nếu bản nháp gắn lịch dự kiến, occurrence sẽ chuyển thành Nghỉ và có thể tạo buổi học bù.</Alert><TextField required label="Lý do hủy" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} /></Stack></DialogContent><DialogActions><Button onClick={() => setCancelOpen(false)}>Quay lại</Button><Button color="error" variant="contained" disabled={busy || !cancelReason.trim()} onClick={() => void cancelDraft()}>{busy ? "Đang hủy…" : "Hủy bản nháp"}</Button></DialogActions></Dialog>
     </Stack>
   );
 }

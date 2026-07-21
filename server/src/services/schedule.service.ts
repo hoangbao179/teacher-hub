@@ -4,13 +4,17 @@ import type {
   BulkSkipOccurrenceRequest,
   CreateOccurrenceDraftResult,
   CreateRecurringScheduleRequest,
+  EndRecurringScheduleRequest,
   ReconciliationState,
   RescheduleOccurrenceRequest,
   ScheduleExceptionResult,
+  ScheduleConflictCheckRequest,
   ScheduleOccurrenceQuery,
   SkipOccurrenceRequest,
   TeacherBusySlotInput,
   TeacherBusySlotMutationResult,
+  TemporaryReschedulePreview,
+  TemporaryRescheduleRequest,
 } from "@teacher/shared";
 import { parseOccurrenceKey } from "../domain/schedule-projection";
 import { AppError } from "../errors/app-error";
@@ -67,6 +71,68 @@ export class ScheduleService {
       wizardPath: `/admin/lessons/${created.lesson.id}/edit`, idempotent: created.idempotent, conflicts };
   }
 
+  makeupOptions(key: string) {
+    return this.lessons.makeupOptions(key);
+  }
+
+  async checkConflicts(input: ScheduleConflictCheckRequest) {
+    this.validateDate(input.date, "Ngày kiểm tra");
+    this.validateTimeRange(input.startTime, input.endTime);
+    if (input.excludedOccurrenceKey && !parseOccurrenceKey(input.excludedOccurrenceKey))
+      throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Mã occurrence loại trừ không hợp lệ.");
+    if (input.excludedLessonId != null) this.validateId(input.excludedLessonId);
+    return this.repository.detectConflicts(
+      input.date, input.startTime, input.endTime,
+      input.excludedOccurrenceKey, input.excludedLessonId,
+    );
+  }
+
+  async previewTemporary(input: TemporaryRescheduleRequest): Promise<TemporaryReschedulePreview> {
+    this.validateTemporary(input);
+    const occurrences = (await this.repository.listOccurrences(input.fromDate, input.toDate, input.classId))
+      .filter((item) => item.recurringScheduleId === input.recurringScheduleId && item.projectionSource === "RECURRING");
+    if (!occurrences.length)
+      throw new AppError(404, "TEMPORARY_RESCHEDULE_EMPTY", "Không có occurrence nguồn trong khoảng đã chọn.");
+    if (occurrences.length > 20)
+      throw new AppError(400, "TEMPORARY_RESCHEDULE_LIMIT", "Chỉ được đổi tối đa 20 occurrence mỗi lần.");
+    const items = await Promise.all(occurrences.map(async (occurrence) => {
+      const replacementDate = addDays(
+        occurrence.occurrenceDate,
+        input.replacementDayOfWeek - weekdayIso(occurrence.occurrenceDate),
+      );
+      const conflicts = await this.repository.detectConflicts(
+        replacementDate, input.replacementStartTime, input.replacementEndTime, occurrence.originalKey,
+      );
+      return {
+        originalOccurrenceKey: occurrence.originalKey,
+        originalDate: occurrence.originalOccurrenceDate,
+        originalStartTime: occurrence.scheduledStartTime,
+        originalEndTime: occurrence.scheduledEndTime,
+        replacementDate,
+        replacementStartTime: input.replacementStartTime,
+        replacementEndTime: input.replacementEndTime,
+        currentState: occurrence.state,
+        eligible: occurrence.state === "UNRECORDED",
+        conflicts,
+      };
+    }));
+    return {
+      items,
+      canApply: items.every((item) => item.eligible),
+      conflictCount: items.reduce((count, item) => count + item.conflicts.length, 0),
+    };
+  }
+
+  async applyTemporary(input: TemporaryRescheduleRequest, actorUserId?: number): Promise<TemporaryReschedulePreview> {
+    const preview = await this.previewTemporary(input);
+    if (!preview.canApply)
+      throw new AppError(409, "TEMPORARY_RESCHEDULE_INELIGIBLE", "Có occurrence đã ghi nhận, nghỉ hoặc đổi lịch.");
+    if (preview.conflictCount > 0 && !input.confirmConflicts)
+      throw new AppError(409, "SCHEDULE_CONFLICT_CONFIRMATION_REQUIRED", "Cần xác nhận các cảnh báo trùng lịch trước khi áp dụng.");
+    await this.repository.applyTemporaryReschedules(input, preview.items, actorUserId);
+    return preview;
+  }
+
   async skip(key: string, input: SkipOccurrenceRequest, actorUserId?: number): Promise<ScheduleExceptionResult> {
     this.validateReason(input.reason, input.note);
     const occurrence = await this.requireOriginalOccurrence(key);
@@ -96,7 +162,7 @@ export class ScheduleService {
     for (const key of keys) {
       try {
         const result = await this.createDraft(key, actorUserId);
-        results.push({ key, success: true, lessonId: result.lessonId, wizardPath: result.wizardPath, idempotent: result.idempotent });
+        results.push({ key, success: true, lessonId: result.lessonId, wizardPath: result.wizardPath, idempotent: result.idempotent, conflicts: result.conflicts });
       } catch (error) { results.push(this.bulkError(key, error)); }
     }
     return results;
@@ -163,11 +229,17 @@ export class ScheduleService {
 
   async update(id: number, input: CreateRecurringScheduleRequest, actorUserId?: number) {
     this.validateRecurring(input);
-    if (!(await this.repository.update(id, input, actorUserId))) throw new AppError(404, "SCHEDULE_NOT_FOUND", "Không tìm thấy lịch lặp.");
+    const result = await this.repository.update(id, input, actorUserId);
+    if (result === "NOT_FOUND") throw new AppError(404, "SCHEDULE_NOT_FOUND", "Không tìm thấy lịch lặp.");
+    if (result === "INVALID_EFFECTIVE_DATE") throw new AppError(409, "INVALID_SCHEDULE_EFFECTIVE_DATE", "Ngày hiệu lực version mới phải sau ngày bắt đầu version hiện tại.");
   }
 
-  async remove(id: number, actorUserId?: number) {
-    if (!(await this.repository.remove(id, actorUserId))) throw new AppError(404, "SCHEDULE_NOT_FOUND", "Không tìm thấy lịch lặp.");
+  async remove(id: number, input: EndRecurringScheduleRequest, actorUserId?: number) {
+    this.validateId(id);
+    this.validateDate(input.effectiveDate, "Ngày kết thúc lịch");
+    const result = await this.repository.remove(id, input, actorUserId);
+    if (result === "NOT_FOUND") throw new AppError(404, "SCHEDULE_NOT_FOUND", "Không tìm thấy lịch lặp.");
+    if (result === "INVALID_EFFECTIVE_DATE") throw new AppError(409, "INVALID_SCHEDULE_EFFECTIVE_DATE", "Ngày kết thúc phải sau ngày bắt đầu version hiện tại.");
   }
 
   private normalizeOccurrenceQuery(input: ScheduleOccurrenceQuery): ScheduleOccurrenceQuery {
@@ -255,6 +327,16 @@ export class ScheduleService {
   private validateReason(reason: string, note?: string): void {
     if (!reason?.trim() || reason.trim().length > 255 || (note?.length ?? 0) > 2000)
       throw new AppError(400, "VALIDATION_ERROR", "Lý do là bắt buộc (tối đa 255 ký tự) và ghi chú tối đa 2000 ký tự.");
+  }
+
+  private validateTemporary(input: TemporaryRescheduleRequest): void {
+    this.validateId(input.classId);
+    this.validateId(input.recurringScheduleId);
+    this.validateDateRange(input.fromDate, input.toDate, 45);
+    if (!Number.isInteger(input.replacementDayOfWeek) || input.replacementDayOfWeek < 1 || input.replacementDayOfWeek > 7)
+      throw new AppError(400, "VALIDATION_ERROR", "Thứ thay thế không hợp lệ.");
+    this.validateTimeRange(input.replacementStartTime, input.replacementEndTime);
+    this.validateReason(input.reason, input.note);
   }
 
   private validateTimeRange(start: string, end: string): void {

@@ -179,6 +179,29 @@ try {
   await page.getByRole("button", { name: "Xác nhận nghỉ" }).click();
   await page.getByText("Đã đánh dấu nghỉ cho buổi dự kiến.").waitFor();
   await skippedCard.getByText("Nghỉ", { exact: true }).waitFor();
+  await skippedCard.getByRole("button", { name: "Tạo buổi học bù" }).click();
+  await page.waitForURL("**/admin/lessons/new?classId=*&type=MAKEUP&source=*");
+  await page.getByText("Học bù cho buổi nghỉ", { exact: false }).waitFor();
+  const sourceStudent = page.getByLabel(studentName, { exact: false });
+  if (await sourceStudent.isDisabled()) throw new Error("Eligible makeup participant is disabled before replacement");
+  await sourceStudent.check();
+  await page.getByLabel("Bắt đầu dự kiến").fill("21:00");
+  await page.getByLabel("Kết thúc dự kiến").fill("22:00");
+  await page.getByLabel("Bắt đầu thực tế").fill("21:00");
+  await page.getByLabel("Kết thúc thực tế").fill("22:00");
+  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  const continueDespiteConflict = page.getByRole("button", { name: "Tiếp tục dù trùng" });
+  if (await continueDespiteConflict.isVisible().catch(() => false)) {
+    await continueDespiteConflict.click();
+    await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  }
+  await page.waitForURL("**/admin/lessons/*/edit");
+  await page.goto(`http://127.0.0.1:5177/admin/reconciliation?from=${today}&to=${today}&classId=${klass.id}&state=ALL`);
+  const skippedAgain = page.getByTestId("occurrence-card").filter({ hasText: "10:00–11:00" });
+  await skippedAgain.getByRole("button", { name: "Tạo buổi học bù" }).click();
+  await page.getByText(`${studentName} · Đã được xếp học bù`).waitFor();
+  if (!(await page.getByLabel(studentName, { exact: false }).isDisabled())) throw new Error("Replaced makeup participant can be selected twice");
+  await page.goto(`http://127.0.0.1:5177/admin/reconciliation?from=${today}&to=${today}&classId=${klass.id}&state=ALL`);
 
   const movedCard = page.getByTestId("occurrence-card").filter({ hasText: "12:00–13:00" });
   await movedCard.getByRole("button", { name: "Đổi lịch" }).click();
@@ -207,7 +230,7 @@ try {
   await page.goto("http://127.0.0.1:5177/admin/calendar");
   await page.getByTestId("calendar-event").first().waitFor();
   await page.getByText(`Dạy ở trường ${suffix}`).waitFor();
-  await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Buổi học bù · Bản nháp" }).waitFor();
+  await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Buổi học bù · Bản nháp" }).first().waitFor();
   await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Lịch thay thế" }).waitFor();
   await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Nghỉ" }).waitFor();
   const weekBefore = await page.getByLabel("Tuần bắt đầu").inputValue();
@@ -215,10 +238,14 @@ try {
   await page.waitForFunction((value) => document.querySelector('input[type="date"]')?.value !== value, weekBefore);
   await page.getByLabel("Tuần trước").click();
   await assertNoRawEnums(page);
-  for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 800 }]) {
+  for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 430, height: 900 }, { width: 768, height: 900 }, { width: 1280, height: 800 }]) {
     await page.setViewportSize(viewport);
     await noHorizontalScroll(page);
   }
+  await page.setViewportSize({ width: 360, height: 800 });
+  const actionBoxes = await Promise.all(["Ghi nhận buổi học", "Buổi học bù", "Kiểm tra lịch tuần"].map((name) => page.getByRole("link", { name, exact: true }).boundingBox()));
+  if (!actionBoxes.every(Boolean) || Math.abs(actionBoxes[0].width - actionBoxes[1].width) > 1 || Math.abs(actionBoxes[0].x - actionBoxes[2].x) > 1 || actionBoxes[2].width < actionBoxes[0].width * 1.9)
+    throw new Error(`Calendar quick actions are not aligned at 360px: ${JSON.stringify(actionBoxes)}`);
   await page.setViewportSize({ width: 390, height: 844 });
   const screenshot = path.join(artifactDir, "weekly-calendar-390.png");
   await page.screenshot({ path: screenshot, fullPage: true });
@@ -233,6 +260,31 @@ try {
   await page.getByLabel("Hiệu lực đến (tùy chọn)").fill(addDays(today, 7));
   await page.getByRole("button", { name: "Lưu lịch bận" }).click();
   await page.getByText("Đã cập nhật lịch bận.").waitFor();
+
+  await page.goto(`http://127.0.0.1:5177/admin/classes/${klass.id}`);
+  await page.getByRole("button", { name: "Đổi lịch tạm thời" }).click();
+  await page.getByLabel("Từ ngày").fill(addDays(today, 7));
+  await page.getByLabel("Đến ngày").fill(addDays(today, 14));
+  await page.getByLabel("Chuyển sang").click();
+  const replacementWeekday = weekdayIso(today) === 7 ? 1 : weekdayIso(today) + 1;
+  const replacementLabel = replacementWeekday === 7 ? "Chủ nhật" : `Thứ ${replacementWeekday + 1}`;
+  await page.getByRole("option", { name: replacementLabel }).click();
+  await page.getByLabel("Bắt đầu mới").fill("21:00");
+  await page.getByLabel("Kết thúc mới").fill("22:00");
+  await page.getByLabel("Lý do").fill("Đổi tạm hai tuần");
+  await page.getByRole("button", { name: "Xem trước" }).click();
+  await page.getByRole("button", { name: /Áp dụng|Xác nhận dù trùng/ }).waitFor();
+  await page.getByRole("button", { name: /Áp dụng|Xác nhận dù trùng/ }).click();
+  await page.getByText("Đã đổi lịch tạm thời bằng schedule exceptions; lịch gốc không thay đổi.").waitFor();
+
+  await page.getByRole("button", { name: "Tạm dừng" }).click();
+  await page.getByLabel("Ngày hiệu lực").fill(addDays(today, 20));
+  await page.getByRole("button", { name: "Xác nhận" }).click();
+  await page.getByText("Đã tạm dừng lớp theo ngày hiệu lực.").waitFor();
+  await page.getByRole("button", { name: "Mở lại" }).click();
+  await page.getByLabel("Ngày hiệu lực").fill(addDays(today, 22));
+  await page.getByRole("button", { name: "Xác nhận" }).click();
+  await page.getByText("Đã mở lại lớp theo ngày hiệu lực.").waitFor();
 
   await page.goto("http://127.0.0.1:5177/admin");
   const finalDashboard = await api("/api/dashboard", token);

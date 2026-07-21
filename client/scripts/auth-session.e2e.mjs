@@ -86,7 +86,7 @@ async function assertNoPasswordPersisted(page, context) {
 async function login(page, remember) {
   await page.getByLabel("Tên đăng nhập").fill(username);
   await page.locator('input[name="password"]').fill(password);
-  const checkbox = page.getByRole("checkbox", { name: "Ghi nhớ đăng nhập trên thiết bị này" });
+  const checkbox = page.getByRole("checkbox", { name: "Ghi nhớ đăng nhập" });
   if ((await checkbox.isChecked()) !== remember) await checkbox.click();
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await page.waitForURL(`${origin}/admin`);
@@ -116,6 +116,7 @@ try {
   await page.getByRole("heading", { level: 1, name: "Chào mừng cô Vy trở lại" }).waitFor();
   await page.getByText("Tiếng Anh lớp 1–9", { exact: true }).waitFor();
   await page.getByRole("heading", { level: 2, name: "Đăng nhập", exact: true }).waitFor();
+  await page.getByText("Chỉ chọn trên thiết bị cá nhân.", { exact: true }).waitFor();
   assert(await page.getByLabel("Tên đăng nhập").getAttribute("autocomplete") === "username", "Username autocomplete is not username");
   assert(await page.locator('input[name="password"]').getAttribute("autocomplete") === "current-password", "Password autocomplete is not current-password");
   await page.screenshot({ path: path.join(artifactDir, "login-390x844.png"), fullPage: true });

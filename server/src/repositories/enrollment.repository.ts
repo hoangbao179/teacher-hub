@@ -8,6 +8,7 @@ import { pool } from "../db/pool";
 import { AuditRepository } from "./audit.repository";
 import { TuitionPolicyRepository } from "./tuition-policy.repository";
 import { TuitionRepository } from "./tuition.repository";
+import { addDays } from "../utils/date";
 
 export type EnrollmentWriteResult =
   | { kind: "OK"; id: number }
@@ -66,6 +67,10 @@ export class EnrollmentRepository {
         input.joinedAt,
         actorUserId,
       );
+      await connection.execute(
+        "INSERT INTO enrollment_active_periods(enrollment_id,active_from,created_by) VALUES (?,?,?)",
+        [result.insertId, input.joinedAt, actorUserId ?? null],
+      );
       await this.audit.record(connection, {
         actorUserId, action: "ENROLLMENT_CREATED", entityType: "ENROLLMENT",
         entityId: result.insertId, newValues: { classId, ...input },
@@ -84,7 +89,14 @@ export class EnrollmentRepository {
     }
   }
 
-  async setStatus(id: number, status: EnrollmentStatus, endedAt?: string, reason?: string, actorUserId?: number): Promise<EnrollmentWriteResult> {
+  async setStatus(
+    id: number,
+    status: EnrollmentStatus,
+    effectiveDate: string,
+    endedAt?: string,
+    reason?: string,
+    actorUserId?: number,
+  ): Promise<EnrollmentWriteResult> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -118,6 +130,30 @@ export class EnrollmentRepository {
           if (classActive.length) return await this.rollback(connection, { kind: "ONE_TO_ONE_LIMIT" });
         }
       }
+      const [periodRows] = await connection.query<RowDataPacket[]>(
+        "SELECT * FROM enrollment_active_periods WHERE enrollment_id=? ORDER BY active_from DESC FOR UPDATE", [id],
+      );
+      const openPeriod = periodRows.find((row) => row.active_to == null);
+      if (status === "ACTIVE") {
+        const overlaps = periodRows.some((row) => String(row.active_from).slice(0, 10) <= effectiveDate &&
+          (row.active_to == null || String(row.active_to).slice(0, 10) >= effectiveDate));
+        if (overlaps) return await this.rollback(connection, { kind: "INVALID_TRANSITION" });
+        await connection.execute(
+          "INSERT INTO enrollment_active_periods(enrollment_id,active_from,created_by) VALUES (?,?,?)",
+          [id, effectiveDate, actorUserId ?? null],
+        );
+      } else if (openPeriod) {
+        const activeTo = status === "ENDED" ? (endedAt ?? effectiveDate) : addDays(effectiveDate, -1);
+        const activeFrom = String(openPeriod.active_from).slice(0, 10);
+        if (status === "PAUSED" && effectiveDate === activeFrom)
+          await connection.execute("DELETE FROM enrollment_active_periods WHERE id=?", [openPeriod.id]);
+        else if (activeTo < activeFrom)
+          return await this.rollback(connection, { kind: "INVALID_TRANSITION" });
+        else
+          await connection.execute(
+            "UPDATE enrollment_active_periods SET active_to=? WHERE id=?", [activeTo, openPeriod.id],
+          );
+      }
       await connection.execute(
         `UPDATE class_enrollments SET status=?,ended_at=?,end_reason=? WHERE id=?`,
         [status, status === "ENDED" ? (endedAt ?? null) : null, status === "ENDED" ? (reason ?? null) : null, id],
@@ -128,7 +164,7 @@ export class EnrollmentRepository {
       await this.audit.record(connection, {
         actorUserId, action, entityType: "ENROLLMENT", entityId: id,
         previousValues: { status: enrollment.status },
-        newValues: { status, endedAt: status === "ENDED" ? endedAt : undefined }, reason,
+        newValues: { status, effectiveDate, endedAt: status === "ENDED" ? endedAt : undefined }, reason,
       });
       await connection.commit();
       return { kind: "OK", id };

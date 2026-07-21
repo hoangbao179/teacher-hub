@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { CreateClassRequest, UpdateClassRequest } from "@teacher/shared";
+import type { ChangeClassStatusRequest, CreateClassRequest, UpdateClassRequest } from "@teacher/shared";
 import { ClassService } from "../services/class.service";
 import { LessonService } from "../services/lesson.service";
 
@@ -21,15 +21,15 @@ export class ClassController {
     res.status(204).end();
   };
   pause = async (req: Request, res: Response) => {
-    await this.service.setStatus(Number(req.params.id), "PAUSED", req.auth!.id);
+    await this.service.setStatus(Number(req.params.id), "PAUSED", req.body as ChangeClassStatusRequest, req.auth!.id);
     res.status(204).end();
   };
   resume = async (req: Request, res: Response) => {
-    await this.service.setStatus(Number(req.params.id), "ACTIVE", req.auth!.id);
+    await this.service.setStatus(Number(req.params.id), "ACTIVE", req.body as ChangeClassStatusRequest, req.auth!.id);
     res.status(204).end();
   };
   close = async (req: Request, res: Response) => {
-    await this.service.setStatus(Number(req.params.id), "CLOSED", req.auth!.id);
+    await this.service.setStatus(Number(req.params.id), "CLOSED", req.body as ChangeClassStatusRequest, req.auth!.id);
     res.status(204).end();
   };
   lessonsByClass = async (req: Request, res: Response) =>

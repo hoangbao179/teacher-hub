@@ -91,7 +91,7 @@ try {
   await page.mouse.up();
   assert(await carousel.getAttribute("data-active-slide") === "primary", "Horizontal swipe did not advance the carousel");
 
-  for (const heading of ["Đồng hành theo năng lực", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Phản hồi từ phụ huynh", "Trao đổi về mục tiêu"]) {
+  for (const heading of ["Xin chào, cô là Uyên Vy.", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Phản hồi từ phụ huynh", "Trao đổi về mục tiêu"]) {
     await page.getByRole("heading", { name: new RegExp(heading) }).first().waitFor();
   }
   for (const program of ["Tiếng Anh lớp 1–5", "Tiếng Anh lớp 6–9", "Kèm cặp và ôn thi"])
@@ -132,6 +132,12 @@ try {
   assert(!/Nội dung minh họa cho môi trường phát triển|Ảnh tạm|Video tạm|Chưa cấu hình|from người hâm mộ/i.test(metadata.body), "Visitor-facing development warning remains");
   assert(!/Cô giáo An|Học Toán|Xây nền Toán/i.test(metadata.body), "Old teacher or mathematics branding remains");
   assert(!/\b\d{1,3}(?:[. ]\d{3})+\s*(?:đ|VND)\b/i.test(metadata.body), "Homepage exposes a public tuition price");
+  for (const teacherCopy of [
+    "Đồng hành cùng học sinh lớp 1–9 tại Huế.",
+    "Tập trung xây nền, củng cố phần còn yếu và giúp học sinh tự tin hơn.",
+    "Kèm cặp 1–1 và nhóm nhỏ",
+    "Theo sát năng lực từng học sinh",
+  ]) assert(metadata.body.includes(teacherCopy), `Teacher introduction is missing: ${teacherCopy}`);
   assert(metadata.body.includes("2026 — từ người hâm mộ cô Vy, with love ❤️"), "Personalized footer copy is missing");
 
   const viewports = [

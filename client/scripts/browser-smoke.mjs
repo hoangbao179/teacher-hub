@@ -233,7 +233,8 @@ try {
   await cdp.selectDialog("Sắp xếp", "Tên Z–A"); await cdp.clickDialogText("Áp dụng");
 
   await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${classPath}`)})`); await cdp.wait("document.body.innerText.includes('Tạm dừng')", "class action");
-  await cdp.eval("window.confirm=()=>true"); await cdp.clickText("Tạm dừng"); await cdp.wait("document.body.innerText.includes('Đã tạm dừng lớp')", "class pause success");
+  await cdp.clickText("Tạm dừng"); await cdp.wait("document.querySelector('[role=dialog]') && document.body.innerText.includes('Ngày hiệu lực')", "class pause dialog");
+  await cdp.clickDialogText("Xác nhận"); await cdp.wait("document.body.innerText.includes('Đã tạm dừng lớp')", "class pause success");
   await cdp.clickLabel("Đăng xuất"); await cdp.wait("location.pathname==='/admin/login' && !localStorage.getItem('teacher-token')", "logout");
   await cdp.wait("document.body.innerText.includes('Đăng nhập') && !!document.querySelector('input[type=password]')", "login form after logout");
   await cdp.setInput("Tên đăng nhập", "smoke-e2e"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");

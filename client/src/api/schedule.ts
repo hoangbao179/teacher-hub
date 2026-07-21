@@ -3,14 +3,19 @@ import type {
   BulkOccurrenceRequest,
   BulkSkipOccurrenceRequest,
   CreateOccurrenceDraftResult,
+  MakeupSourceOptions,
   ReconciliationState,
   RescheduleOccurrenceRequest,
   ScheduleExceptionResult,
+  ScheduleConflictCheckRequest,
+  ScheduleConflictWarning,
   ScheduleOccurrence,
   SkipOccurrenceRequest,
   TeacherBusySlot,
   TeacherBusySlotInput,
   TeacherBusySlotMutationResult,
+  TemporaryReschedulePreview,
+  TemporaryRescheduleRequest,
   WeekScheduleResponse,
 } from "@teacher/shared";
 import { api } from "./client";
@@ -30,6 +35,18 @@ export const scheduleApi = {
   },
   createDraft(key: string) {
     return api<CreateOccurrenceDraftResult>(`/api/schedule/occurrences/${encodeURIComponent(key)}/create-draft`, json("POST"));
+  },
+  makeupOptions(key: string) {
+    return api<MakeupSourceOptions>(`/api/schedule/occurrences/${encodeURIComponent(key)}/makeup-options`);
+  },
+  checkConflicts(input: ScheduleConflictCheckRequest) {
+    return api<ScheduleConflictWarning[]>("/api/schedule/conflicts/check", json("POST", input));
+  },
+  previewTemporary(input: TemporaryRescheduleRequest) {
+    return api<TemporaryReschedulePreview>("/api/schedule/temporary-reschedules/preview", json("POST", input));
+  },
+  applyTemporary(input: TemporaryRescheduleRequest) {
+    return api<TemporaryReschedulePreview>("/api/schedule/temporary-reschedules", json("POST", input));
   },
   skip(key: string, input: SkipOccurrenceRequest) {
     return api<ScheduleExceptionResult>(`/api/schedule/occurrences/${encodeURIComponent(key)}/skip`, json("POST", input));

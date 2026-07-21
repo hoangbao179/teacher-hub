@@ -72,7 +72,7 @@ export function ReconciliationPage() {
 
   async function createDraft(item: ScheduleOccurrence) {
     setBusyKey(item.key); setError("");
-    try { const result = await scheduleApi.createDraft(item.key); navigate(result.wizardPath); }
+    try { const result = await scheduleApi.createDraft(item.key); navigate(result.wizardPath, { state: { scheduleConflicts: result.conflicts } }); }
     catch (value) { setError((value as Error).message); }
     finally { setBusyKey(""); }
   }
@@ -167,6 +167,7 @@ export function ReconciliationPage() {
             <Chip size="small" color={item.state === "UNRECORDED" ? "warning" : item.state === "RECORDED" ? "success" : "default"} label={replacement && item.state === "UNRECORDED" ? "Lịch thay thế" : labels[item.state]} />
           </Stack>
           {item.conflicts.length > 0 && <Alert severity="warning">{item.conflicts.length} cảnh báo trùng lịch</Alert>}
+          {item.state === "SKIPPED" && item.skipReason && <Typography variant="body2" color="text.secondary">Lý do: {item.skipReason}</Typography>}
           {item.state === "UNRECORDED" && <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
             <Checkbox aria-label={`Chọn ${item.className} ${item.occurrenceDate}`} checked={selected.includes(item.key)} onChange={() => toggle(item.key)} />
             <Button size="small" variant="contained" disabled={Boolean(busyKey)} onClick={() => void createDraft(item)}>{busyKey === item.key ? "Đang tạo…" : "Đã dạy"}</Button>
@@ -174,6 +175,7 @@ export function ReconciliationPage() {
             {!replacement && <Button size="small" variant="outlined" disabled={Boolean(busyKey)} onClick={() => openReschedule(item)}>Đổi lịch</Button>}
           </Stack>}
           {item.linkedLessonId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/lessons/${item.linkedLessonId}/edit`)}>Mở buổi học</Button>}
+          {item.state === "SKIPPED" && <Button size="small" variant="contained" onClick={() => navigate(`/admin/lessons/new?classId=${item.classId}&type=MAKEUP&source=${encodeURIComponent(item.originalKey)}`)}>Tạo buổi học bù</Button>}
         </Stack></CardContent></Card>;
       })}
       </Box>

@@ -107,7 +107,8 @@ export class StudentReportRepository {
   async learningRows(studentId: number, query: StudentReportExportQuery): Promise<StudentLearningReportRow[]> {
     const filters = reportFilters(query, "l");
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT a.id attendance_id,l.id lesson_id,l.session_date,l.class_id,c.name class_name,
+      `SELECT a.id attendance_id,l.id lesson_id,l.session_date,l.class_id,
+        COALESCE(l.class_name_snapshot,c.name) class_name,
         l.lesson_type,l.scheduled_start_time,l.scheduled_end_time,l.actual_start_time,
         l.actual_end_time,l.actual_duration_minutes,a.attendance_status,a.counts_for_tuition,
         l.content,l.homework,a.student_note,l.note lesson_note
@@ -141,7 +142,7 @@ export class StudentReportRepository {
     const filters = reportFilters(query, "l");
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT tc.id cycle_id,tc.enrollment_id,tc.cycle_number,tc.status cycle_status,
-        e.class_id,c.name class_name,tc.started_at,tc.reached_target_at,
+        e.class_id,COALESCE(l.class_name_snapshot,c.name) class_name,tc.started_at,tc.reached_target_at,
         tc.package_price_snapshot,tc.paid_at,tc.paid_amount,tc.payment_method,tc.payment_note,
         (SELECT COUNT(*) FROM tuition_cycle_sessions all_items WHERE all_items.tuition_cycle_id=tc.id) cycle_item_count,
         tcs.sequence_number,l.session_date,l.scheduled_start_time,l.scheduled_end_time,
@@ -188,4 +189,3 @@ export class StudentReportRepository {
     } finally { connection.release(); }
   }
 }
-

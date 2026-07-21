@@ -10,15 +10,21 @@ import type {
   LessonParticipantDetail,
   LessonSummary,
   LessonType,
+  MakeupSourceOptions,
   UpdateLessonRequest,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
+import { parseOccurrenceKey } from "../domain/schedule-projection";
 import { TuitionPolicyRepository } from "./tuition-policy.repository";
 
 export interface LessonRow extends RowDataPacket {
   id: number;
   class_id: number;
   class_name: string;
+  class_type_snapshot: "ONE_TO_ONE" | "GROUP";
+  subject_snapshot: string | null;
+  source_occurrence_key: string | null;
+  makeup_source_occurrence_key: string | null;
   session_date: Date | string;
   scheduled_start: string;
   scheduled_end: string;
@@ -31,6 +37,9 @@ export interface LessonRow extends RowDataPacket {
   homework: string | null;
   note: string | null;
   completed_at: Date | string | null;
+  cancelled_at: Date | string | null;
+  cancelled_by: number | null;
+  cancel_reason: string | null;
 }
 
 export interface ParticipantRow extends RowDataPacket {
@@ -58,6 +67,7 @@ function mapSummary(row: LessonRow): LessonSummary {
     id: Number(row.id),
     classId: Number(row.class_id),
     className: String(row.class_name),
+    sourceOccurrenceKey: row.source_occurrence_key == null ? null : String(row.source_occurrence_key),
     sessionDate: dateOnly(row.session_date),
     scheduledStartTime: String(row.scheduled_start),
     scheduledEndTime: String(row.scheduled_end),
@@ -67,11 +77,13 @@ function mapSummary(row: LessonRow): LessonSummary {
     lessonType: row.lesson_type,
     status: row.status,
     completedAt: dateTime(row.completed_at),
+    cancelledAt: dateTime(row.cancelled_at),
+    cancelReason: row.cancel_reason == null ? null : String(row.cancel_reason),
   };
 }
 
 const lessonSelect = `
-  SELECT l.*,c.name class_name,
+  SELECT l.*,COALESCE(l.class_name_snapshot,c.name) class_name,
     TIME_FORMAT(l.scheduled_start_time,'%H:%i') scheduled_start,
     TIME_FORMAT(l.scheduled_end_time,'%H:%i') scheduled_end,
     TIME_FORMAT(l.actual_start_time,'%H:%i') actual_start,
@@ -84,10 +96,13 @@ export class LessonRepository {
   async create(connection: PoolConnection, input: CreateLessonRequest, sourceOccurrenceKey?: string): Promise<number> {
     const [result] = await connection.execute<ResultSetHeader>(
       `INSERT INTO lesson_sessions
-        (class_id,source_occurrence_key,session_date,scheduled_start_time,scheduled_end_time,lesson_type,note)
-       VALUES (?,?,?,?,?,?,?)`,
-      [input.classId, sourceOccurrenceKey ?? null, input.sessionDate, input.scheduledStartTime, input.scheduledEndTime,
-        input.lessonType, input.note?.trim() || null],
+        (class_id,class_name_snapshot,class_type_snapshot,subject_snapshot,source_occurrence_key,
+         makeup_source_occurrence_key,session_date,scheduled_start_time,scheduled_end_time,lesson_type,note)
+       SELECT c.id,c.name,c.class_type,c.subject,?,?,?,?,?,?,?
+       FROM classes c WHERE c.id=?`,
+      [sourceOccurrenceKey ?? null, input.makeupSourceOccurrenceKey ?? null, input.sessionDate,
+        input.scheduledStartTime, input.scheduledEndTime, input.lessonType,
+        input.note?.trim() || null, input.classId],
     );
     return result.insertId;
   }
@@ -117,7 +132,8 @@ export class LessonRepository {
       if (!lesson) return null;
       const sessionDate = dateOnly(lesson.session_date);
       const [rows] = await connection.query<RowDataPacket[]>(
-        `SELECT p.id participant_id,p.enrollment_id,s.id student_id,s.full_name student_name,
+        `SELECT p.id participant_id,p.enrollment_id,s.id student_id,
+          COALESCE(p.student_name_snapshot,s.full_name) student_name,
           a.attendance_status,a.student_note,
           (SELECT COUNT(*) FROM tuition_cycle_sessions tcs
             JOIN tuition_cycles tc ON tc.id=tcs.tuition_cycle_id
@@ -126,7 +142,7 @@ export class LessonRepository {
          JOIN class_enrollments e ON e.id=p.enrollment_id
          JOIN students s ON s.id=e.student_id
          LEFT JOIN lesson_attendances a ON a.participant_id=p.id
-         WHERE p.lesson_session_id=? ORDER BY s.full_name,p.id`,
+         WHERE p.lesson_session_id=? ORDER BY p.student_name_snapshot,p.id`,
         [lessonId],
       );
       const participants: LessonParticipantDetail[] = [];
@@ -151,6 +167,9 @@ export class LessonRepository {
         content: lesson.content == null ? null : String(lesson.content),
         homework: lesson.homework == null ? null : String(lesson.homework),
         note: lesson.note == null ? null : String(lesson.note),
+        makeupSource: lesson.makeup_source_occurrence_key
+          ? await this.makeupSourceSummary(connection, String(lesson.makeup_source_occurrence_key), Number(lesson.class_id))
+          : null,
         participants,
       };
     } finally {
@@ -175,8 +194,13 @@ export class LessonRepository {
     const [rows] = await connection.query<RowDataPacket[]>(
       `SELECT id FROM class_enrollments
        WHERE class_id=? AND joined_at<=? AND (ended_at IS NULL OR ended_at>=?)
+         AND EXISTS (
+           SELECT 1 FROM enrollment_active_periods ap
+           WHERE ap.enrollment_id=class_enrollments.id
+             AND ap.active_from<=? AND (ap.active_to IS NULL OR ap.active_to>=?)
+         )
        ORDER BY id FOR UPDATE`,
-      [classId, sessionDate, sessionDate],
+      [classId, sessionDate, sessionDate, sessionDate, sessionDate],
     );
     return rows.map((row) => Number(row.id));
   }
@@ -188,16 +212,19 @@ export class LessonRepository {
     sessionDate: string,
     selectedEnrollmentIds: number[] | null,
     actorUserId?: number,
+    eligibilityDate = sessionDate,
   ): Promise<number[]> {
-    const eligible = await this.eligibleEnrollmentIds(connection, classId, sessionDate);
+    const eligible = await this.eligibleEnrollmentIds(connection, classId, eligibilityDate);
     const selected = selectedEnrollmentIds ?? eligible;
     const eligibleSet = new Set(eligible);
     if (selected.some((id) => !eligibleSet.has(id))) return [];
     for (const enrollmentId of selected) {
       await connection.execute(
         `INSERT INTO lesson_session_participants
-          (lesson_session_id,enrollment_id,created_by) VALUES (?,?,?)`,
-        [lessonId, enrollmentId, actorUserId ?? null],
+          (lesson_session_id,enrollment_id,student_name_snapshot,student_nickname_snapshot,created_by)
+         SELECT ?,e.id,s.full_name,s.nickname,?
+         FROM class_enrollments e JOIN students s ON s.id=e.student_id WHERE e.id=?`,
+        [lessonId, actorUserId ?? null, enrollmentId],
       );
     }
     return selected;
@@ -210,6 +237,7 @@ export class LessonRepository {
     sessionDate: string,
     selectedEnrollmentIds: number[] | null,
     actorUserId?: number,
+    eligibilityDate = sessionDate,
   ): Promise<number[]> {
     await connection.execute(
       `DELETE a FROM lesson_attendances a
@@ -217,12 +245,15 @@ export class LessonRepository {
        WHERE p.lesson_session_id=?`, [lessonId],
     );
     await connection.execute("DELETE FROM lesson_session_participants WHERE lesson_session_id=?", [lessonId]);
-    return this.snapshotParticipants(connection, lessonId, classId, sessionDate, selectedEnrollmentIds, actorUserId);
+    return this.snapshotParticipants(
+      connection, lessonId, classId, sessionDate, selectedEnrollmentIds, actorUserId, eligibilityDate,
+    );
   }
 
   async participantRowsForUpdate(connection: PoolConnection, lessonId: number): Promise<ParticipantRow[]> {
     const [rows] = await connection.query<ParticipantRow[]>(
-      `SELECT p.id participant_id,p.enrollment_id,s.id student_id,s.full_name student_name
+      `SELECT p.id participant_id,p.enrollment_id,s.id student_id,
+        COALESCE(p.student_name_snapshot,s.full_name) student_name
        FROM lesson_session_participants p
        JOIN class_enrollments e ON e.id=p.enrollment_id
        JOIN students s ON s.id=e.student_id
@@ -317,9 +348,158 @@ export class LessonRepository {
     );
   }
 
-  async cancel(connection: PoolConnection, lessonId: number): Promise<void> {
+  async cancel(connection: PoolConnection, lessonId: number, reason: string, actorUserId?: number): Promise<void> {
     await connection.execute(
-      "UPDATE lesson_sessions SET status='CANCELLED' WHERE id=? AND status='DRAFT'", [lessonId],
+      `UPDATE lesson_sessions SET status='CANCELLED',cancelled_at=NOW(),cancelled_by=?,cancel_reason=?
+       WHERE id=? AND status='DRAFT'`, [actorUserId ?? null, reason, lessonId],
     );
+  }
+
+  async makeupSourceEligibility(
+    connection: PoolConnection,
+    key: string,
+    classId: number,
+  ): Promise<{ options: MakeupSourceOptions; eligibleEnrollmentIds: number[] } | null> {
+    const source = await this.makeupSourceSummary(connection, key, classId, true);
+    if (!source) return null;
+    const [cancelled] = await connection.query<RowDataPacket[]>(
+      "SELECT id FROM lesson_sessions WHERE source_occurrence_key=? AND status='CANCELLED' FOR UPDATE",
+      [key],
+    );
+    let rows: RowDataPacket[];
+    if (cancelled[0]) {
+      [rows] = await connection.query<RowDataPacket[]>(
+        `SELECT p.enrollment_id,COALESCE(p.student_name_snapshot,s.full_name) student_name,
+          COALESCE(p.student_nickname_snapshot,s.nickname) student_nickname
+         FROM lesson_session_participants p
+         JOIN class_enrollments e ON e.id=p.enrollment_id JOIN students s ON s.id=e.student_id
+         WHERE p.lesson_session_id=? ORDER BY p.id FOR UPDATE`,
+        [cancelled[0].id],
+      );
+    } else {
+      [rows] = await connection.query<RowDataPacket[]>(
+        `SELECT e.id enrollment_id,s.full_name student_name,s.nickname student_nickname
+         FROM class_enrollments e JOIN students s ON s.id=e.student_id
+         WHERE e.class_id=? AND e.joined_at<=? AND (e.ended_at IS NULL OR e.ended_at>=?)
+           AND EXISTS (SELECT 1 FROM enrollment_active_periods ap WHERE ap.enrollment_id=e.id
+             AND ap.active_from<=? AND (ap.active_to IS NULL OR ap.active_to>=?))
+         ORDER BY s.full_name,e.id FOR UPDATE`,
+        [classId, source.originalDate, source.originalDate, source.originalDate, source.originalDate],
+      );
+    }
+    const [replaced] = await connection.query<RowDataPacket[]>(
+      "SELECT enrollment_id FROM lesson_makeup_replacements WHERE source_occurrence_key=? FOR UPDATE",
+      [key],
+    );
+    const replacedIds = new Set(replaced.map((row) => Number(row.enrollment_id)));
+    return {
+      options: {
+        ...source,
+        classId,
+        participants: rows.map((row) => ({
+          enrollmentId: Number(row.enrollment_id),
+          studentName: String(row.student_name),
+          studentNickname: row.student_nickname == null ? null : String(row.student_nickname),
+          alreadyReplaced: replacedIds.has(Number(row.enrollment_id)),
+        })),
+      },
+      eligibleEnrollmentIds: rows.map((row) => Number(row.enrollment_id)).filter((id) => !replacedIds.has(id)),
+    };
+  }
+
+  async readMakeupSourceOptions(key: string): Promise<MakeupSourceOptions | null> {
+    const parsed = parseOccurrenceKey(key);
+    if (!parsed || parsed.replacement) return null;
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const result = await this.makeupSourceEligibility(connection, key, parsed.classId);
+      await connection.commit();
+      return result?.options ?? null;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally { connection.release(); }
+  }
+
+  async syncMakeupReplacements(
+    connection: PoolConnection,
+    lessonId: number,
+    sourceKey: string,
+    enrollmentIds: number[],
+    actorUserId?: number,
+  ): Promise<void> {
+    await connection.execute("DELETE FROM lesson_makeup_replacements WHERE makeup_lesson_id=?", [lessonId]);
+    for (const enrollmentId of enrollmentIds)
+      await connection.execute(
+        `INSERT INTO lesson_makeup_replacements
+          (source_occurrence_key,makeup_lesson_id,enrollment_id,created_by) VALUES (?,?,?,?)`,
+        [sourceKey, lessonId, enrollmentId, actorUserId ?? null],
+      );
+  }
+
+  async ensureSkippedForCancelledSource(
+    connection: PoolConnection,
+    sourceKey: string,
+    reason: string,
+    actorUserId?: number,
+  ): Promise<number> {
+    const parsed = parseOccurrenceKey(sourceKey);
+    if (!parsed || parsed.replacement)
+      throw new Error("INVALID_CANCEL_SOURCE_OCCURRENCE");
+    const [schedules] = await connection.query<RowDataPacket[]>(
+      "SELECT * FROM recurring_schedules WHERE id=? AND class_id=? FOR UPDATE",
+      [parsed.recurringScheduleId, parsed.classId],
+    );
+    const schedule = schedules[0];
+    if (!schedule) throw new Error("INVALID_CANCEL_SOURCE_OCCURRENCE");
+    const [existing] = await connection.query<RowDataPacket[]>(
+      "SELECT id,exception_type FROM schedule_exceptions WHERE recurring_schedule_id=? AND original_date=? FOR UPDATE",
+      [parsed.recurringScheduleId, parsed.occurrenceDate],
+    );
+    if (existing[0]) {
+      if (existing[0].exception_type !== "SKIPPED") throw new Error("OCCURRENCE_ALREADY_RESOLVED");
+      return Number(existing[0].id);
+    }
+    const [created] = await connection.execute<ResultSetHeader>(
+      `INSERT INTO schedule_exceptions
+        (class_id,recurring_schedule_id,original_date,original_start_time,original_end_time,
+         exception_type,reason,created_by) VALUES (?,?,?,?,?,'SKIPPED',?,?)`,
+      [parsed.classId, parsed.recurringScheduleId, parsed.occurrenceDate,
+        schedule.start_time, schedule.end_time, reason, actorUserId ?? null],
+    );
+    return created.insertId;
+  }
+
+  private async makeupSourceSummary(
+    connection: PoolConnection,
+    key: string,
+    classId: number,
+    forUpdate = false,
+  ): Promise<LessonDetail["makeupSource"]> {
+    const parsed = parseOccurrenceKey(key);
+    if (!parsed || parsed.replacement || parsed.classId !== classId) return null;
+    const [rows] = await connection.query<RowDataPacket[]>(
+      `SELECT c.name class_name,TIME_FORMAT(rs.start_time,'%H:%i') start_time,
+        TIME_FORMAT(rs.end_time,'%H:%i') end_time,se.reason skip_reason,l.cancel_reason
+       FROM recurring_schedules rs JOIN classes c ON c.id=rs.class_id
+       LEFT JOIN schedule_exceptions se ON se.recurring_schedule_id=rs.id
+         AND se.original_date=? AND se.exception_type='SKIPPED'
+       LEFT JOIN lesson_sessions l ON l.source_occurrence_key=? AND l.status='CANCELLED'
+       WHERE rs.id=? AND rs.class_id=? AND rs.day_of_week=WEEKDAY(?)+1
+         AND rs.effective_from<=? AND (rs.effective_to IS NULL OR rs.effective_to>=?)
+         AND (se.id IS NOT NULL OR l.id IS NOT NULL)${forUpdate ? " FOR UPDATE" : ""}`,
+      [parsed.occurrenceDate, key, parsed.recurringScheduleId, classId,
+        parsed.occurrenceDate, parsed.occurrenceDate, parsed.occurrenceDate],
+    );
+    const row = rows[0];
+    return row ? {
+      occurrenceKey: key,
+      originalDate: parsed.occurrenceDate,
+      originalStartTime: String(row.start_time),
+      originalEndTime: String(row.end_time),
+      className: String(row.class_name),
+      reason: row.skip_reason == null ? (row.cancel_reason == null ? null : String(row.cancel_reason)) : String(row.skip_reason),
+    } : null;
   }
 }

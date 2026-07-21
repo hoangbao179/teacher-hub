@@ -23,6 +23,7 @@ import { api } from "../api/client";
 import { downloadStudentReport } from "../api/students";
 import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, PageHeader, ProgressCount } from "../components/UiKit";
+import { todayInHoChiMinh } from "../utils/date";
 export function StudentDetailPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -31,10 +32,13 @@ export function StudentDetailPage() {
   const [tuitionOpen, setTuitionOpen] = useState(false);
   const [tuitionMode, setTuitionMode] = useState<TuitionMode>("CLASS_DEFAULT");
   const [customPrice, setCustomPrice] = useState("");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInHoChiMinh();
   const [effectiveFrom, setEffectiveFrom] = useState(today);
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(() => (location.state as { success?: string } | null)?.success ?? "");
+  const [statusActionName, setStatusActionName] = useState<"pause" | "resume" | null>(null);
+  const [statusEffectiveDate, setStatusEffectiveDate] = useState(today);
+  const [statusReason, setStatusReason] = useState("");
   const load = useCallback(() => api<StudentDetail>(`/api/students/${id}`).then((value) => {
     setItem(value); setTuitionMode(value.tuitionMode ?? "CLASS_DEFAULT");
     setCustomPrice(value.customPackagePrice?.toString() ?? "");
@@ -49,8 +53,8 @@ export function StudentDetailPage() {
   const endEnrollment = async () => { if (!item?.enrollmentId || !window.confirm("Kết thúc ghi danh? Lịch sử học vẫn được giữ lại.")) return; setError(""); setSuccess(""); setBusy(true); try {
     await api(`/api/enrollments/${item.enrollmentId}/end`, { method: "POST", body: JSON.stringify({ endedAt: today }) }); await load(); setSuccess("Đã kết thúc ghi danh và giữ nguyên lịch sử.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể kết thúc ghi danh."); } finally { setBusy(false); } };
-  const changeEnrollmentStatus = async (action: "pause" | "resume") => { if (!item?.enrollmentId) return; if (action === "pause" && !window.confirm("Tạm dừng ghi danh này?")) return; setError(""); setSuccess(""); setBusy(true); try {
-    await api(`/api/enrollments/${item.enrollmentId}/${action}`, { method: "POST" }); await load(); setSuccess(action === "pause" ? "Đã tạm dừng ghi danh." : "Đã mở lại ghi danh.");
+  const changeEnrollmentStatus = async () => { const action = statusActionName; if (!item?.enrollmentId || !action) return; setError(""); setSuccess(""); setBusy(true); try {
+    await api(`/api/enrollments/${item.enrollmentId}/${action}`, { method: "POST", body: JSON.stringify({ effectiveDate: statusEffectiveDate, reason: statusReason || undefined }) }); await load(); setStatusActionName(null); setSuccess(action === "pause" ? "Đã tạm dừng ghi danh theo ngày hiệu lực." : "Đã mở lại ghi danh theo ngày hiệu lực.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi trạng thái ghi danh."); } finally { setBusy(false); } };
   const exportReport = async () => { setError(""); setSuccess(""); setBusy(true); try {
     const filename = await downloadStudentReport(item!.id); setSuccess(`Đã tải báo cáo Excel: ${filename}`);
@@ -90,8 +94,8 @@ export function StudentDetailPage() {
         </Card>
       )}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
-        {item!.enrollmentStatus === "ACTIVE" && <Button disabled={busy} variant="outlined" onClick={() => changeEnrollmentStatus("pause")}>Tạm dừng ghi danh</Button>}
-        {item!.enrollmentStatus === "PAUSED" && <Button disabled={busy} variant="outlined" onClick={() => changeEnrollmentStatus("resume")}>Mở lại ghi danh</Button>}
+        {item!.enrollmentStatus === "ACTIVE" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("pause")}>Tạm dừng ghi danh</Button>}
+        {item!.enrollmentStatus === "PAUSED" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("resume")}>Mở lại ghi danh</Button>}
         <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setTuitionOpen(true)}>Đổi chế độ học phí</Button>
         <Button color="error" variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={endEnrollment}>Cho ngừng học</Button>
       </Stack>
@@ -101,6 +105,11 @@ export function StudentDetailPage() {
         <TextField type="date" label="Áp dụng từ" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         <Alert severity="info">Thay đổi chỉ áp dụng cho đợt học phí tiếp theo.</Alert>
       </Stack></DialogContent><DialogActions><Button onClick={() => setTuitionOpen(false)}>Hủy</Button><Button variant="contained" disabled={busy} onClick={changeTuition}>{busy ? "Đang lưu…" : "Lưu"}</Button></DialogActions></Dialog>
+      <Dialog open={Boolean(statusActionName)} onClose={() => !busy && setStatusActionName(null)} fullWidth maxWidth="xs"><DialogTitle>{statusActionName === "pause" ? "Tạm dừng ghi danh" : "Mở lại ghi danh"}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+        <Alert severity="info">Participant lịch sử không đổi; ngày hiệu lực chỉ quyết định các buổi nào học sinh đủ điều kiện.</Alert>
+        <TextField required type="date" label="Ngày hiệu lực" value={statusEffectiveDate} onChange={(e) => setStatusEffectiveDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <TextField label="Lý do (tùy chọn)" value={statusReason} onChange={(e) => setStatusReason(e.target.value)} />
+      </Stack></DialogContent><DialogActions><Button onClick={() => setStatusActionName(null)}>Hủy</Button><Button variant="contained" disabled={busy || !statusEffectiveDate} onClick={() => void changeEnrollmentStatus()}>{busy ? "Đang lưu…" : "Xác nhận"}</Button></DialogActions></Dialog>
     </Stack>
   );
 }

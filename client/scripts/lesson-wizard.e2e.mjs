@@ -124,6 +124,11 @@ try {
   const stickyBar = await page.getByTestId("sticky-action-bar").boundingBox();
   if (!mobileNavigation || !stickyBar || stickyBar.y + stickyBar.height > mobileNavigation.y) throw new Error("Sticky primary action overlaps mobile navigation");
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  const continueDespiteConflict = page.getByRole("button", { name: "Tiếp tục dù trùng" });
+  if (await continueDespiteConflict.isVisible().catch(() => false)) {
+    await continueDespiteConflict.click();
+    await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  }
   await page.getByText("Học sinh Mẫu Một").waitFor();
   const secondCard = page.locator(".MuiCard-root").filter({ hasText: "Học sinh Mẫu Hai" });
   await secondCard.getByRole("button", { name: "Nghỉ" }).click();
@@ -154,6 +159,10 @@ try {
   await page.getByLabel("Học sinh Mẫu Một").check();
   await page.getByLabel("Học sinh Mẫu Hai").check();
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  if (await continueDespiteConflict.isVisible().catch(() => false)) {
+    await continueDespiteConflict.click();
+    await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  }
   await page.getByLabel("Nhận xét riêng (tùy chọn)").first().waitFor();
   if (await page.getByText("Học sinh Mẫu Ba", { exact: true }).count()) throw new Error("Non-selected makeup student appeared in attendance");
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();

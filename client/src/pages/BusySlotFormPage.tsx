@@ -80,7 +80,7 @@ export function BusySlotFormPage() {
   const valid = title.trim() && startTime && endTime > startTime &&
     (recurrenceType === "ONCE" ? specificDate : effectiveFrom && (!effectiveTo || effectiveTo >= effectiveFrom));
   return <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="busy-slot-form" data-form-width="bounded">
-    <PageHeader title={slotId ? "Sửa lịch bận" : "Thêm lịch bận"} subtitle="Lịch dạy ở trường hoặc việc riêng chỉ dùng để hiển thị và cảnh báo trùng lịch." />
+    <PageHeader title={slotId ? "Sửa lịch bận" : "Thêm lịch bận"} subtitle="Lịch bận dùng để hiển thị và cảnh báo trùng. Hệ thống không tự nghỉ hoặc tự đổi lịch lớp." />
     {error && <Alert severity="error" action={slotId ? <Button color="inherit" onClick={() => window.location.reload()}>Thử lại</Button> : undefined}>{error}</Alert>}
     {success && <Alert severity="success">{success}</Alert>}
     {warnings.length > 0 && <Alert severity="warning" data-testid="busy-conflict-warning">Có {warnings.length} cảnh báo trùng lịch: {warnings.map((item) => `${item.title} ${item.date} ${item.startTime}–${item.endTime}`).join("; ")}</Alert>}

@@ -66,12 +66,24 @@ export class LessonService {
         lessonId = Number(existing.id);
         idempotent = true;
       } else {
-        lessonId = await this.lessons.create(connection, input, sourceOccurrenceKey);
+        const makeupSource = input.makeupSourceOccurrenceKey
+          ? await this.lessons.makeupSourceEligibility(connection, input.makeupSourceOccurrenceKey, input.classId)
+          : null;
+        if (input.makeupSourceOccurrenceKey && !makeupSource)
+          throw new AppError(409, "MAKEUP_SOURCE_INVALID", "Buổi nguồn không tồn tại hoặc chưa được đánh dấu nghỉ/hủy.");
         const selected = this.selectedForType(input.lessonType, input.selectedEnrollmentIds);
+        if (makeupSource && selected?.some((id) => !makeupSource.eligibleEnrollmentIds.includes(id)))
+          throw new AppError(409, "MAKEUP_REPLACEMENT_DUPLICATE", "Có học sinh không đủ điều kiện hoặc đã được học bù cho buổi nguồn này.");
+        lessonId = await this.lessons.create(connection, input, sourceOccurrenceKey);
         const snapshotted = await this.lessons.snapshotParticipants(
           connection, lessonId, input.classId, input.sessionDate, selected, actorUserId,
+          makeupSource?.options.originalDate ?? input.sessionDate,
         );
         this.assertSnapshot(input.lessonType, selected, snapshotted);
+        if (makeupSource)
+          await this.lessons.syncMakeupReplacements(
+            connection, lessonId, input.makeupSourceOccurrenceKey!, snapshotted, actorUserId,
+          );
         await this.audit.record(connection, {
           actorUserId, action: "LESSON_DRAFT_CREATED", entityType: "LESSON",
           entityId: lessonId, newValues: { ...input, sourceOccurrenceKey, participantEnrollmentIds: snapshotted },
@@ -92,6 +104,15 @@ export class LessonService {
     const item = await this.lessons.findDetail(id);
     if (!item) throw new AppError(404, "LESSON_NOT_FOUND", "Không tìm thấy buổi học.");
     return item;
+  }
+
+  async makeupOptions(key: string) {
+    if (!parseOccurrenceKeyForMakeup(key))
+      throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Mã occurrence nguồn không hợp lệ.");
+    const options = await this.lessons.readMakeupSourceOptions(key);
+    if (!options)
+      throw new AppError(409, "MAKEUP_SOURCE_INVALID", "Buổi nguồn không tồn tại hoặc chưa được đánh dấu nghỉ/hủy.");
+    return options;
   }
 
   listByClass(classId: number) {
@@ -150,10 +171,25 @@ export class LessonService {
       if (participantBasisChanged) {
         const existingIds = (await this.lessons.participantRowsForUpdate(connection, id)).map((row) => Number(row.enrollment_id));
         const selected = this.selectedForType(merged.lessonType, input.selectedEnrollmentIds ?? existingIds);
+        const makeupSource = lesson.makeup_source_occurrence_key
+          ? await this.lessons.makeupSourceEligibility(connection, String(lesson.makeup_source_occurrence_key), merged.classId)
+          : null;
+        if (lesson.makeup_source_occurrence_key && (!makeupSource || merged.lessonType !== "MAKEUP"))
+          throw new AppError(409, "MAKEUP_SOURCE_INVALID", "Buổi học bù liên kết nguồn không thể đổi lớp hoặc loại buổi.");
+        if (makeupSource) {
+          const selectable = new Set([...makeupSource.eligibleEnrollmentIds, ...existingIds]);
+          if (selected?.some((enrollmentId) => !selectable.has(enrollmentId)))
+            throw new AppError(409, "MAKEUP_REPLACEMENT_DUPLICATE", "Học sinh đã được xếp học bù ở buổi khác cho cùng buổi nguồn.");
+        }
         const snapshotted = await this.lessons.replaceParticipants(
           connection, id, merged.classId, merged.sessionDate, selected, actorUserId,
+          makeupSource?.options.originalDate ?? merged.sessionDate,
         );
         this.assertSnapshot(merged.lessonType, selected, snapshotted);
+        if (lesson.makeup_source_occurrence_key)
+          await this.lessons.syncMakeupReplacements(
+            connection, id, String(lesson.makeup_source_occurrence_key), snapshotted, actorUserId,
+          );
         await this.audit.record(connection, {
           actorUserId, action: "LESSON_PARTICIPANTS_UPDATED", entityType: "LESSON",
           entityId: id, newValues: { enrollmentIds: snapshotted },
@@ -193,10 +229,27 @@ export class LessonService {
         await this.tuition.detachMutableLessonAttendances(connection, id);
       }
       const selected = this.selectedForType(lesson.lesson_type, input.enrollmentIds);
+      let makeupSource = null;
+      if (lesson.makeup_source_occurrence_key) {
+        makeupSource = await this.lessons.makeupSourceEligibility(
+          connection, String(lesson.makeup_source_occurrence_key), Number(lesson.class_id),
+        );
+        if (!makeupSource)
+          throw new AppError(409, "MAKEUP_SOURCE_INVALID", "Buổi nguồn không còn hợp lệ.");
+        const currentIds = new Set(previousIds);
+        const selectable = new Set([...makeupSource.eligibleEnrollmentIds, ...currentIds]);
+        if (selected?.some((enrollmentId) => !selectable.has(enrollmentId)))
+          throw new AppError(409, "MAKEUP_REPLACEMENT_DUPLICATE", "Học sinh đã được xếp học bù ở buổi khác cho cùng buổi nguồn.");
+      }
       const snapshotted = await this.lessons.replaceParticipants(
         connection, id, Number(lesson.class_id), this.dateOnly(lesson.session_date), selected, actorUserId,
+        makeupSource?.options.originalDate ?? this.dateOnly(lesson.session_date),
       );
       this.assertSnapshot(lesson.lesson_type, selected, snapshotted);
+      if (lesson.makeup_source_occurrence_key)
+        await this.lessons.syncMakeupReplacements(
+          connection, id, String(lesson.makeup_source_occurrence_key), snapshotted, actorUserId,
+        );
       if (lesson.status === "COMPLETED") {
         const participants = await this.lessons.participantRowsForUpdate(connection, id);
         await this.saveAttendances(connection, lesson, participants, input.attendances!, true);
@@ -312,15 +365,28 @@ export class LessonService {
     return this.completionResult(detail, duplicate ? [] : impacts);
   }
 
-  async cancel(id: number, input: CancelLessonRequest = {}, actorUserId?: number): Promise<void> {
+  async cancel(id: number, input: CancelLessonRequest, actorUserId?: number): Promise<void> {
     this.validateId(id);
+    if (!input?.reason?.trim() || input.reason.trim().length > 255)
+      throw new AppError(400, "VALIDATION_ERROR", "Lý do hủy là bắt buộc và tối đa 255 ký tự.");
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
-      await this.requireDraft(connection, id);
-      await this.lessons.cancel(connection, id);
+      const lesson = await this.requireDraft(connection, id);
+      const reason = input.reason.trim();
+      await this.lessons.cancel(connection, id, reason, actorUserId);
+      if (lesson.source_occurrence_key) {
+        const exceptionId = await this.lessons.ensureSkippedForCancelledSource(
+          connection, String(lesson.source_occurrence_key), reason, actorUserId,
+        );
+        await this.audit.record(connection, {
+          actorUserId, action: "SCHEDULE_OCCURRENCE_SKIPPED", entityType: "SCHEDULE_EXCEPTION",
+          entityId: exceptionId, reason,
+          newValues: { occurrenceKey: lesson.source_occurrence_key, sourceLessonId: id },
+        });
+      }
       await this.audit.record(connection, {
-        actorUserId, action: "LESSON_CANCELLED", entityType: "LESSON", entityId: id, reason: input.reason,
+        actorUserId, action: "LESSON_CANCELLED", entityType: "LESSON", entityId: id, reason,
       });
       await connection.commit();
     } catch (error) { await connection.rollback(); throw this.mapDatabaseError(error); }
@@ -436,6 +502,8 @@ export class LessonService {
     this.validateLessonInfo(input);
     this.assertUniqueIds(input.selectedEnrollmentIds ?? [], "DUPLICATE_PARTICIPANT");
     this.selectedForType(input.lessonType, input.selectedEnrollmentIds);
+    if (input.makeupSourceOccurrenceKey && input.lessonType !== "MAKEUP")
+      throw new AppError(400, "MAKEUP_SOURCE_INVALID", "Chỉ buổi học bù mới được liên kết buổi nguồn.");
   }
 
   private validateLessonInfo(input: {
@@ -500,9 +568,15 @@ export class LessonService {
   private mapDatabaseError(error: unknown): unknown {
     const code = (error as { code?: string }).code;
     if (code === "ER_DUP_ENTRY")
-      return new AppError(409, "DUPLICATE_PARTICIPANT", "Participant hoặc attendance bị trùng.");
+      return (error as { message?: string }).message?.includes("uq_makeup_source_enrollment")
+        ? new AppError(409, "MAKEUP_REPLACEMENT_DUPLICATE", "Học sinh đã được học bù cho buổi nguồn này.")
+        : new AppError(409, "DUPLICATE_PARTICIPANT", "Participant hoặc attendance bị trùng.");
     if (code === "ER_NO_REFERENCED_ROW_2")
       return new AppError(400, "INVALID_PARTICIPANT", "Học sinh không thuộc participant snapshot.");
     return error;
   }
+}
+
+function parseOccurrenceKeyForMakeup(key: string): boolean {
+  return /^\d+:\d+:\d{4}-\d{2}-\d{2}$/.test(key);
 }

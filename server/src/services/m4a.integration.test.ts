@@ -19,8 +19,8 @@ async function clean(): Promise<void> {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
       "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances",
-      "lesson_session_participants", "lesson_sessions", "enrollment_tuition_policies",
-      "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes", "users",
+      "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions", "enrollment_active_periods",
+      "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes", "users",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
   } finally { connection.release(); }
@@ -40,6 +40,7 @@ async function fixture(names: string[]) {
       "INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,2400000,'2026-07-01')",
       [klass.insertId],
     );
+    await connection.execute("INSERT INTO class_active_periods(class_id,active_from) VALUES (?,'2026-07-01')", [klass.insertId]);
     const enrollments: Record<string, number> = {};
     const students: Record<string, number> = {};
     for (const name of names) {
@@ -57,6 +58,7 @@ async function fixture(names: string[]) {
           (enrollment_id,tuition_mode,effective_from) VALUES (?,'CLASS_DEFAULT','2026-07-01')`,
         [enrollment.insertId],
       );
+      await connection.execute("INSERT INTO enrollment_active_periods(enrollment_id,active_from) VALUES (?,'2026-07-01')", [enrollment.insertId]);
       enrollments[name] = enrollment.insertId;
       students[name] = student.insertId;
     }

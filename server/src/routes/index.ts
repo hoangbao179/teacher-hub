@@ -67,9 +67,13 @@ export function createRouter(): Router {
   router.post("/api/schedule/occurrences/bulk-create-drafts", asyncHandler(controllers.schedule.bulkCreateDrafts));
   router.post("/api/schedule/occurrences/bulk-skip", asyncHandler(controllers.schedule.bulkSkip));
   router.post("/api/schedule/occurrences/:key/create-draft", asyncHandler(controllers.schedule.createDraft));
+  router.get("/api/schedule/occurrences/:key/makeup-options", asyncHandler(controllers.schedule.makeupOptions));
   router.post("/api/schedule/occurrences/:key/skip", asyncHandler(controllers.schedule.skip));
   router.post("/api/schedule/occurrences/:key/reschedule", asyncHandler(controllers.schedule.reschedule));
   router.get("/api/schedule/week", asyncHandler(controllers.schedule.week));
+  router.post("/api/schedule/conflicts/check", asyncHandler(controllers.schedule.checkConflicts));
+  router.post("/api/schedule/temporary-reschedules/preview", asyncHandler(controllers.schedule.previewTemporary));
+  router.post("/api/schedule/temporary-reschedules", asyncHandler(controllers.schedule.applyTemporary));
   router.get("/api/teacher-busy-slots", asyncHandler(controllers.schedule.listBusySlots));
   router.post("/api/teacher-busy-slots", asyncHandler(controllers.schedule.createBusySlot));
   router.get("/api/teacher-busy-slots/:id", asyncHandler(controllers.schedule.getBusySlot));

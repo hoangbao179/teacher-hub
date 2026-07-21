@@ -46,13 +46,32 @@ test("skipped original is handled and reschedule emits one replacement", () => {
   assert.equal(moved[1].projectionSource, "RESCHEDULED");
 });
 
-test("draft, completed and cancelled lessons all handle their source occurrence", () => {
+test("draft and completed record their source while cancelled does not mask a skipped occurrence", () => {
   const base = expandRecurringSchedules([schedule], "2026-07-13", "2026-07-13")[0];
-  for (const status of ["DRAFT", "COMPLETED", "CANCELLED"] as const) {
+  for (const status of ["DRAFT", "COMPLETED"] as const) {
     const result = reconcileOccurrence(base, null, { id: 9, status });
     assert.equal(result[0].state, "RECORDED");
     assert.equal(result[0].linkedLessonStatus, status);
   }
+  assert.equal(reconcileOccurrence(base, null, { id: 9, status: "CANCELLED" })[0].state, "UNRECORDED");
+  const skipped = reconcileOccurrence(base, {
+    id: 8, type: "SKIPPED", replacementDate: null, replacementStartTime: null,
+    replacementEndTime: null, reason: "Mưa lớn",
+  }, { id: 9, status: "CANCELLED" })[0];
+  assert.equal(skipped.state, "SKIPPED");
+  assert.equal(skipped.linkedLessonStatus, "CANCELLED");
+  assert.equal(skipped.skipReason, "Mưa lớn");
+});
+
+test("class active periods suppress paused dates without rewriting recurring versions", () => {
+  const projected = expandRecurringSchedules([{
+    ...schedule, effectiveTo: null,
+    activePeriods: [
+      { activeFrom: "2026-07-01", activeTo: "2026-07-12" },
+      { activeFrom: "2026-07-20", activeTo: null },
+    ],
+  }], "2026-07-01", "2026-07-27");
+  assert.deepEqual(projected.map((item) => item.occurrenceDate), ["2026-07-06", "2026-07-20", "2026-07-27"]);
 });
 
 test("overlap detection uses half-open ranges on one date", () => {

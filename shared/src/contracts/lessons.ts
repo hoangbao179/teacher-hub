@@ -14,6 +14,8 @@ export type LessonDomainErrorCode =
   | "FREE_ENROLLMENT_BILLABLE"
   | "TUITION_POLICY_NOT_FOUND"
   | "TUITION_POLICY_OVERLAP"
+  | "MAKEUP_SOURCE_INVALID"
+  | "MAKEUP_REPLACEMENT_DUPLICATE"
   | "PAID_CYCLE_CONFLICT";
 
 export interface CreateLessonRequest {
@@ -23,6 +25,7 @@ export interface CreateLessonRequest {
   scheduledEndTime: string;
   lessonType: LessonType;
   selectedEnrollmentIds?: number[];
+  makeupSourceOccurrenceKey?: string;
   note?: string;
 }
 
@@ -73,6 +76,7 @@ export interface LessonSummary {
   id: number;
   classId: number;
   className: string;
+  sourceOccurrenceKey: string | null;
   sessionDate: string;
   scheduledStartTime: string;
   scheduledEndTime: string;
@@ -82,6 +86,8 @@ export interface LessonSummary {
   lessonType: LessonType;
   status: LessonStatus;
   completedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
 }
 
 export interface LessonParticipantDetail {
@@ -102,6 +108,14 @@ export interface LessonDetail extends LessonSummary {
   content: string | null;
   homework: string | null;
   note: string | null;
+  makeupSource: {
+    occurrenceKey: string;
+    originalDate: string;
+    originalStartTime: string;
+    originalEndTime: string;
+    className: string;
+    reason: string | null;
+  } | null;
   participants: LessonParticipantDetail[];
 }
 
@@ -134,5 +148,5 @@ export interface CompleteLessonResult {
 }
 
 export interface CancelLessonRequest {
-  reason?: string;
+  reason: string;
 }

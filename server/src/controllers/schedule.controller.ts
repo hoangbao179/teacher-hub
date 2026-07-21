@@ -3,10 +3,13 @@ import type {
   BulkOccurrenceRequest,
   BulkSkipOccurrenceRequest,
   CreateRecurringScheduleRequest,
+  EndRecurringScheduleRequest,
   ReconciliationState,
   RescheduleOccurrenceRequest,
+  ScheduleConflictCheckRequest,
   SkipOccurrenceRequest,
   TeacherBusySlotInput,
+  TemporaryRescheduleRequest,
 } from "@teacher/shared";
 import { ScheduleService } from "../services/schedule.service";
 import { addDays, todayInHoChiMinh } from "../utils/date";
@@ -26,6 +29,14 @@ export class ScheduleController {
   };
   createDraft = async (req: Request, res: Response) =>
     res.json({ data: await this.service.createDraft(String(req.params.key), req.auth!.id) });
+  makeupOptions = async (req: Request, res: Response) =>
+    res.json({ data: await this.service.makeupOptions(String(req.params.key)) });
+  checkConflicts = async (req: Request, res: Response) =>
+    res.json({ data: await this.service.checkConflicts(req.body as ScheduleConflictCheckRequest) });
+  previewTemporary = async (req: Request, res: Response) =>
+    res.json({ data: await this.service.previewTemporary(req.body as TemporaryRescheduleRequest) });
+  applyTemporary = async (req: Request, res: Response) =>
+    res.status(201).json({ data: await this.service.applyTemporary(req.body as TemporaryRescheduleRequest, req.auth!.id) });
   skip = async (req: Request, res: Response) =>
     res.json({ data: await this.service.skip(String(req.params.key), req.body as SkipOccurrenceRequest, req.auth!.id) });
   reschedule = async (req: Request, res: Response) =>
@@ -48,7 +59,7 @@ export class ScheduleController {
     res.status(204).end();
   };
   deleteRecurring = async (req: Request, res: Response) => {
-    await this.service.remove(Number(req.params.id), req.auth!.id);
+    await this.service.remove(Number(req.params.id), req.body as EndRecurringScheduleRequest, req.auth!.id);
     res.status(204).end();
   };
 
