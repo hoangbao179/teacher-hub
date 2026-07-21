@@ -5,6 +5,8 @@
 - Linux host, Docker Compose, DNS và HTTPS reverse proxy; cấu hình tham chiếu phù
   hợp máy nhỏ khoảng 1 CPU/1 GB RAM/15 GB SSD nhưng chưa được benchmark tại mức đó.
 - Tạo secret ngẫu nhiên tối thiểu 32 ký tự; không dùng giá trị `.env.example`.
+- Đặt `BOOTSTRAP_ADMIN_USERNAME` (3–64 ký tự `a-z`, `0-9`, `.`, `_`, `-`),
+  `BOOTSTRAP_ADMIN_PASSWORD` mạnh và tên hiển thị. Email không bắt buộc.
 - Đặt `PUBLIC_URL=https://...`, DB credentials riêng, và giữ file env ngoài Git.
 - Cấu hình toàn bộ `PUBLIC_*` trong `deploy/env.example`: tên/brand giáo viên,
   điện thoại, Zalo, Facebook, public base URL, SEO title/description, hero assets,
@@ -21,6 +23,7 @@
 docker compose -f docker-compose.prod.yml build
 docker compose -f docker-compose.prod.yml up -d mysql
 docker compose -f docker-compose.prod.yml run --rm api node dist/db/migrate.js
+docker compose -f docker-compose.prod.yml run --rm api node dist/db/bootstrap-admin.js
 docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml ps
 ```
@@ -31,7 +34,7 @@ API/MySQL có healthcheck/restart và volume `mysql-data:/var/lib/mysql`. Đặt
 reverse proxy/firewall, chỉ public cổng HTTP(S), không public MySQL.
 
 Ở `/admin/login`, chọn **Ghi nhớ đăng nhập trên thiết bị này** chỉ trên thiết bị
-riêng. Chế độ này giữ JWT/email theo hạn JWT; bỏ chọn dùng phiên trình duyệt. Ứng
+riêng. Chế độ này giữ JWT/tên đăng nhập theo hạn JWT; bỏ chọn dùng phiên trình duyệt. Ứng
 dụng không lưu mật khẩu thô—nếu cần, dùng password manager của trình duyệt.
 
 Nginx container áp dụng CSP tương thích MUI, ảnh thumbnail và YouTube nocookie.

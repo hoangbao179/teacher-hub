@@ -8,8 +8,8 @@ import { UserRepository } from "../repositories/user.repository";
 export class AuthService {
   constructor(private readonly users: UserRepository) {}
 
-  async login(email: string, password: string): Promise<LoginResponse> {
-    const user = await this.users.findByEmail(email.toLowerCase());
+  async login(username: string, password: string): Promise<LoginResponse> {
+    const user = await this.users.findByUsername(username.trim().toLowerCase());
     if (
       !user ||
       user.status !== "ACTIVE" ||
@@ -18,12 +18,12 @@ export class AuthService {
       throw new AppError(
         401,
         "INVALID_CREDENTIALS",
-        "Email hoặc mật khẩu không đúng.",
+        "Tên đăng nhập hoặc mật khẩu không đúng.",
       );
     }
     const authUser = {
       id: user.id,
-      email: user.email,
+      username: user.username,
       displayName: user.display_name,
       role: user.role,
     };
@@ -39,6 +39,6 @@ export class AuthService {
     if (!user || user.status !== "ACTIVE") {
       throw new AppError(401, "INVALID_TOKEN", "Phiên đăng nhập không còn hợp lệ.");
     }
-    return { id: user.id, email: user.email, displayName: user.display_name, role: user.role };
+    return { id: user.id, username: user.username, displayName: user.display_name, role: user.role };
   }
 }

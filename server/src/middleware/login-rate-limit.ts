@@ -5,8 +5,8 @@ const MAX_FAILURES = 10;
 const failures = new Map<string, { count: number; resetAt: number }>();
 
 export function loginRateLimit(req: Request, res: Response, next: NextFunction): void {
-  const email = typeof req.body?.email === "string" ? req.body.email.toLowerCase().slice(0, 254) : "unknown";
-  const key = `${req.ip}|${email}`;
+  const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase().slice(0, 190) : "unknown";
+  const key = `${req.ip}|${username}`;
   const now = Date.now();
   const current = failures.get(key);
   if (current && current.resetAt > now && current.count >= MAX_FAILURES) {

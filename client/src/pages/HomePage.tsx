@@ -212,7 +212,7 @@ export function HomePage() {
       </Box>
 
       <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", py: 3 }}>
-        <Container maxWidth="lg"><Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between" }}><Typography color="text.secondary">© {new Date().getFullYear()} {content.brandName}</Typography><Button component={Link} to="/admin/login" size="small" color="inherit">Đăng nhập quản trị</Button></Stack></Container>
+        <Container maxWidth="lg"><Typography color="text.secondary" sx={{ textAlign: "center" }}>2026 — từ người hâm mộ cô Vy, with love ❤️</Typography></Container>
       </Box>
 
     </Box>

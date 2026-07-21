@@ -21,12 +21,12 @@ import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { getRememberedEmail, getRememberPreference } from "../auth/authStorage";
+import { getRememberedUsername, getRememberPreference } from "../auth/authStorage";
 
 function friendlyLoginError(error: unknown): string {
   if (!(error instanceof ApiError)) return "Không thể đăng nhập. Vui lòng thử lại.";
   if (error.status === 0 || error.code === "NETWORK_ERROR") return "Không thể kết nối máy chủ. Vui lòng thử lại.";
-  if (error.code === "INVALID_CREDENTIALS") return "Sai email hoặc mật khẩu.";
+  if (error.code === "INVALID_CREDENTIALS") return "Sai tên đăng nhập hoặc mật khẩu.";
   if (error.code === "ACCOUNT_INACTIVE") return "Tài khoản hiện không hoạt động.";
   if (error.status === 429) return "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng chờ rồi thử lại.";
   return "Không thể đăng nhập. Vui lòng thử lại.";
@@ -36,7 +36,7 @@ export function LoginPage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState(getRememberedEmail);
+  const [username, setUsername] = useState(getRememberedUsername);
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(getRememberPreference);
   const [showPassword, setShowPassword] = useState(false);
@@ -49,7 +49,7 @@ export function LoginPage() {
     setError("");
     auth.clearSessionMessage();
     try {
-      await auth.login({ email, password }, remember);
+      await auth.login({ username, password }, remember);
       const destination = (location.state as { from?: string } | null)?.from;
       navigate(destination?.startsWith("/admin") ? destination : "/admin", { replace: true });
     } catch (caught) {
@@ -88,17 +88,16 @@ export function LoginPage() {
             <Typography color="text.secondary">Quản lý lớp học, buổi học và học phí</Typography>
           </Stack>
 
-          <Typography component="h2" variant="subtitle1" sx={{ mt: 3 }}>Đăng nhập cô giáo</Typography>
+          <Typography component="h2" variant="subtitle1" sx={{ mt: 3 }}>Đăng nhập</Typography>
           {(error || auth.sessionMessage) && <Alert severity="error" sx={{ mt: 1.5 }}>{error || auth.sessionMessage}</Alert>}
           <TextField
             fullWidth
             required
-            name="email"
+            name="username"
             autoComplete="username"
-            inputMode="email"
-            label="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            label="Tên đăng nhập"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
             sx={{ mt: 2 }}
           />
           <TextField
@@ -139,7 +138,7 @@ export function LoginPage() {
             {loading ? "Đang đăng nhập…" : "Đăng nhập"}
           </Button>
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 2 }}>
-            Ứng dụng chỉ ghi nhớ phiên và email theo lựa chọn của cô. Trình duyệt có thể đề nghị lưu mật khẩu an toàn trên thiết bị này.
+            Ứng dụng chỉ ghi nhớ phiên và tên đăng nhập theo lựa chọn của cô. Trình duyệt có thể đề nghị lưu mật khẩu an toàn trên thiết bị này.
           </Typography>
         </Paper>
       </Stack>

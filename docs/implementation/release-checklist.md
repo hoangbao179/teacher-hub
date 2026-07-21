@@ -9,6 +9,8 @@
 - [x] M6A, M6B, M6C and M6D reports end in PASS.
 - [x] V11A, V11B, V11C and V11D reports end in PASS; final Cô Vy branding,
   authentication storage and mobile navigation evidence is recorded.
+- [x] V11E switches the single-teacher login contract/bootstrap to username,
+  applies migration `0007` and records footer/login visual regression evidence.
 - [x] Source packaging uses a controlled allowlist, produces SHA-256 and passes
   `npm run check:package`; reports, private data, env files and build output are excluded.
 

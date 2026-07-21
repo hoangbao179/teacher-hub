@@ -7,7 +7,7 @@ export class AuthController {
   login = async (req: Request, res: Response) => {
     const body = req.body as LoginRequest;
     res.json({
-      data: await this.service.login(body.email ?? "", body.password ?? ""),
+      data: await this.service.login(body.username ?? "", body.password ?? ""),
     });
   };
   me = async (req: Request, res: Response) => res.json({ data: await this.service.me(req.auth!.id) });

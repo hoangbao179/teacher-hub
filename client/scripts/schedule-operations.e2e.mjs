@@ -19,7 +19,7 @@ const testEnv = {
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: `${process.env.DB_NAME ?? "teacher_hub"}_test`,
   JWT_SECRET: "schedule-e2e-secret-with-at-least-32-characters",
-  BOOTSTRAP_ADMIN_EMAIL: "schedule-e2e@example.test",
+  BOOTSTRAP_ADMIN_USERNAME: "schedule-e2e",
   BOOTSTRAP_ADMIN_PASSWORD: "schedule-e2e-password-123",
   BOOTSTRAP_ADMIN_DISPLAY_NAME: "Schedule E2E Teacher",
   PORT: "4103",
@@ -98,7 +98,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto("http://127.0.0.1:5177/admin/login");
-  await page.getByLabel("Email").fill("schedule-e2e@example.test");
+  await page.getByLabel("Tên đăng nhập").fill("schedule-e2e");
   await page.locator('input[name="password"]').fill("schedule-e2e-password-123");
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await page.waitForURL("**/admin");

@@ -1,13 +1,13 @@
 export type UserRole = "TEACHER";
 
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 
 export interface AuthUser {
   id: number;
-  email: string;
+  username: string;
   displayName: string;
   role: UserRole;
 }

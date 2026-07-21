@@ -1,7 +1,7 @@
 # 07. Domain Model and Data Dictionary
 
 ## User
-- id, username/email, passwordHash, status, lastLoginAt.
+- id, username (unique), email (legacy/optional), passwordHash, status, lastLoginAt.
 
 ## Student
 - id, fullName, nickname, dateOfBirth (optional), gender (optional), parentName, parentPhone, note, status, createdAt, updatedAt.

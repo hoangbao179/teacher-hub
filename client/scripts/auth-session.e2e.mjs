@@ -10,7 +10,7 @@ dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4108;
 const webPort = 5188;
 const origin = `http://127.0.0.1:${webPort}`;
-const email = "auth-e2e@example.test";
+const username = "auth-e2e";
 const password = "auth-e2e-password-123";
 const artifactDir = path.join(root, ".agent-reports", "v1-1-login-final");
 const testEnv = {
@@ -22,7 +22,7 @@ const testEnv = {
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: `${process.env.DB_NAME ?? "teacher_hub"}_test`,
   JWT_SECRET: "auth-e2e-secret-with-at-least-32-characters",
-  BOOTSTRAP_ADMIN_EMAIL: email,
+  BOOTSTRAP_ADMIN_USERNAME: username,
   BOOTSTRAP_ADMIN_PASSWORD: password,
   BOOTSTRAP_ADMIN_DISPLAY_NAME: "Cô Vy",
   PORT: String(apiPort),
@@ -78,7 +78,7 @@ async function assertNoPasswordPersisted(page, context) {
 }
 
 async function login(page, remember) {
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Tên đăng nhập").fill(username);
   await page.locator('input[name="password"]').fill(password);
   const checkbox = page.getByRole("checkbox", { name: "Ghi nhớ đăng nhập trên thiết bị này" });
   if ((await checkbox.isChecked()) !== remember) await checkbox.click();
@@ -107,7 +107,8 @@ try {
 
   await page.goto(`${origin}/admin/login`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { level: 1, name: "Lớp học tiếng Anh cô Vy" }).waitFor();
-  assert(await page.getByLabel("Email").getAttribute("autocomplete") === "username", "Email autocomplete is not username");
+  await page.getByRole("heading", { level: 2, name: "Đăng nhập", exact: true }).waitFor();
+  assert(await page.getByLabel("Tên đăng nhập").getAttribute("autocomplete") === "username", "Username autocomplete is not username");
   assert(await page.locator('input[name="password"]').getAttribute("autocomplete") === "current-password", "Password autocomplete is not current-password");
   await page.screenshot({ path: path.join(artifactDir, "login-390x844.png"), fullPage: true });
 
@@ -123,21 +124,21 @@ try {
   await page.getByRole("button", { name: "Ẩn mật khẩu" }).click();
   assert(await passwordInput.getAttribute("type") === "password", "Hide-password control did not restore masking");
 
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Tên đăng nhập").fill(username);
   await passwordInput.fill("incorrect-password");
   await passwordInput.press("Enter");
-  await page.getByText("Sai email hoặc mật khẩu.", { exact: true }).waitFor();
+  await page.getByText("Sai tên đăng nhập hoặc mật khẩu.", { exact: true }).waitFor();
   assert(!(await page.locator("body").innerText()).includes("INVALID_CREDENTIALS"), "Raw API error code is visible");
 
   await login(page, true);
   let storage = await page.evaluate(() => ({
     localToken: localStorage.getItem("teacher-token"),
     sessionToken: sessionStorage.getItem("teacher-token"),
-    rememberedEmail: localStorage.getItem("teacher-remembered-email"),
+    rememberedUsername: localStorage.getItem("teacher-remembered-username"),
   }));
   assert(Boolean(storage.localToken), "Remembered login did not use localStorage");
   assert(!storage.sessionToken, "Remembered login left a duplicate sessionStorage token");
-  assert(storage.rememberedEmail === email, "Remembered email was not persisted");
+  assert(storage.rememberedUsername === username, "Remembered username was not persisted");
   await assertNoPasswordPersisted(page, context);
 
   await page.reload({ waitUntil: "networkidle" });
@@ -152,21 +153,21 @@ try {
   storage = await page.evaluate(() => ({
     localToken: localStorage.getItem("teacher-token"),
     sessionToken: sessionStorage.getItem("teacher-token"),
-    rememberedEmail: localStorage.getItem("teacher-remembered-email"),
+    rememberedUsername: localStorage.getItem("teacher-remembered-username"),
   }));
   assert(!storage.localToken && !storage.sessionToken, "Logout did not clear both token stores");
-  assert(storage.rememberedEmail === email, "Explicitly remembered email was unexpectedly cleared on logout");
-  assert(await page.getByLabel("Email").inputValue() === email, "Remembered email did not populate the login form");
+  assert(storage.rememberedUsername === username, "Explicitly remembered username was unexpectedly cleared on logout");
+  assert(await page.getByLabel("Tên đăng nhập").inputValue() === username, "Remembered username did not populate the login form");
 
   await login(page, false);
   storage = await page.evaluate(() => ({
     localToken: localStorage.getItem("teacher-token"),
     sessionToken: sessionStorage.getItem("teacher-token"),
-    rememberedEmail: localStorage.getItem("teacher-remembered-email"),
+    rememberedUsername: localStorage.getItem("teacher-remembered-username"),
   }));
   assert(!storage.localToken, "Session-only login left a localStorage token");
   assert(Boolean(storage.sessionToken), "Session-only login did not use sessionStorage");
-  assert(!storage.rememberedEmail, "Session-only login persisted the email");
+  assert(!storage.rememberedUsername, "Session-only login persisted the username");
   await assertNoPasswordPersisted(page, context);
 
   await page.reload({ waitUntil: "networkidle" });
@@ -179,7 +180,7 @@ try {
   const freshPage = await context.newPage();
   await freshPage.goto(`${origin}/admin`, { waitUntil: "networkidle" });
   await freshPage.waitForURL(`${origin}/admin/login`);
-  assert(await freshPage.getByLabel("Email").inputValue() === "", "Session-only email leaked into a fresh browsing session");
+  assert(await freshPage.getByLabel("Tên đăng nhập").inputValue() === "", "Session-only username leaked into a fresh browsing session");
   await freshPage.close();
 
   await page.getByRole("button", { name: "Đăng xuất" }).click();

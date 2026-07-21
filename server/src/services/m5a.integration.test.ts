@@ -32,7 +32,7 @@ async function fixture() {
   const connection = await pool.getConnection();
   try {
     const [actor] = await connection.execute<ResultSetHeader>(
-      "INSERT INTO users(email,password_hash,display_name) VALUES ('m5a@example.test','hash','M5A')",
+      "INSERT INTO users(username,email,password_hash,display_name) VALUES ('m5a','m5a@example.test','hash','M5A')",
     );
     const [klass] = await connection.execute<ResultSetHeader>(
       "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('M5A Group','GROUP',2400000,90,'2026-07-01')",

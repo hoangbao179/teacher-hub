@@ -1,7 +1,7 @@
 # Hướng dẫn giáo viên
 
-1. Đăng nhập ở `/admin/login`. Chọn **Ghi nhớ đăng nhập trên thiết bị này** trên
-   điện thoại riêng để giữ phiên và email; bỏ chọn trên thiết bị dùng chung để phiên
+1. Đăng nhập ở `/admin/login` bằng tên đăng nhập và mật khẩu đã cấu hình. Chọn
+   **Ghi nhớ đăng nhập trên thiết bị này** trên điện thoại riêng để giữ phiên và tên đăng nhập; bỏ chọn trên thiết bị dùng chung để phiên
    kết thúc khi đóng trình duyệt. Ứng dụng không lưu mật khẩu thô; việc đề nghị lưu
    mật khẩu thuộc password manager của trình duyệt. Dùng nút góc phải để đăng xuất.
 2. **Lớp học → Thêm lớp**: nhập giá gói 8 buổi, thời lượng và lịch lặp.

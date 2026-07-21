@@ -94,6 +94,10 @@ try {
   if (/chu kỳ cần thu|phụ huynh mẫu|teacher-token/i.test(metadata.body)) throw new Error("Private admin content leaked onto Homepage");
   if (/Cô giáo An|Học Toán|Xây nền Toán/i.test(metadata.body)) throw new Error("Old teacher or mathematics demo branding remains visible");
   if (!metadata.body.includes("Cô Vy") || !metadata.body.includes("Nguyễn Tri Phương")) throw new Error("Required Cô Vy English content is missing");
+  if (metadata.body.includes("Đăng nhập quản trị") || metadata.body.includes("©")) throw new Error("Homepage still exposes the removed admin/copyright footer");
+  if (!metadata.body.includes("2026 — từ người hâm mộ cô Vy, with love ❤️")) throw new Error("Requested fan dedication footer is missing");
+  const adminLinks = page.locator('a[href="/admin/login"]');
+  if (await adminLinks.count() !== 1 || await adminLinks.first().innerText() !== "Quản trị") throw new Error("Homepage must keep exactly the header Quản trị link");
   if (/\b\d{1,3}(?:[. ]\d{3})+\s*(?:đ|VND)\b/i.test(metadata.body)) throw new Error("Homepage exposes a public tuition price");
 
   for (const viewport of [{ width: 360, height: 800 }, { width: 375, height: 812 }, { width: 390, height: 844 }, { width: 393, height: 852 }, { width: 412, height: 915 }, { width: 430, height: 932 }]) {
@@ -108,7 +112,7 @@ try {
   if (await page.getByText("Học phí", { exact: true }).count()) throw new Error("Public 404 leaked the admin shell");
 
   await page.goto(`${origin}/admin/login`);
-  await page.getByRole("heading", { name: "Đăng nhập cô giáo" }).waitFor();
+  await page.getByRole("heading", { name: "Đăng nhập", exact: true }).waitFor();
   const adminRobots = await page.locator('meta[name="robots"]').getAttribute("content");
   if (adminRobots !== "noindex,nofollow,noarchive") throw new Error(`Admin login is not noindex: ${adminRobots}`);
 

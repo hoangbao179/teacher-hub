@@ -39,7 +39,7 @@ Mặc định:
 Thông tin admin ban đầu lấy từ `server/.env`:
 
 ```env
-BOOTSTRAP_ADMIN_EMAIL=teacher@example.com
+BOOTSTRAP_ADMIN_USERNAME=covy
 BOOTSTRAP_ADMIN_PASSWORD=change-me-now
 ```
 

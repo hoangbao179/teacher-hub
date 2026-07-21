@@ -9,10 +9,10 @@ import {
 import type { AuthUser, LoginRequest, LoginResponse } from "@teacher/shared";
 import { api, ApiError, setUnauthorizedHandler } from "../api/client";
 import {
-  clearRememberedEmail,
+  clearRememberedUsername,
   clearToken,
   getToken,
-  saveRememberedEmail,
+  saveRememberedUsername,
   saveRememberPreference,
   saveToken,
 } from "./authStorage";
@@ -78,15 +78,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         saveToken(result.token, remember);
         saveRememberPreference(remember);
-        if (remember) saveRememberedEmail(input.email);
-        else clearRememberedEmail();
+        if (remember) saveRememberedUsername(input.username);
+        else clearRememberedUsername();
         setSessionMessage("");
         setUser(result.user);
       },
       async logout() {
         try { await api<void>("/api/auth/logout", { method: "POST" }); } catch { /* local logout remains authoritative */ }
         clearToken();
-        // Keep the explicitly remembered email/preference for the next login.
+        // Keep the explicitly remembered username/preference for the next login.
         setUser(null);
       },
     }),

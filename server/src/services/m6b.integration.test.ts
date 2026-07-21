@@ -36,7 +36,7 @@ async function fixture() {
   try {
     await connection.beginTransaction();
     const [actor] = await connection.execute<ResultSetHeader>(
-      "INSERT INTO users(email,password_hash,display_name) VALUES ('m6b@example.com','hash','M6B')",
+      "INSERT INTO users(username,email,password_hash,display_name) VALUES ('m6b','m6b@example.com','hash','M6B')",
     );
     const [klass] = await connection.execute<ResultSetHeader>(
       "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp M6B','GROUP',2400000,90,'2026-07-01')",
@@ -158,7 +158,7 @@ integration("HTTP export requires auth and returns a parseable XLSX attachment",
     const port = (server.address() as AddressInfo).port;
     const url = `http://127.0.0.1:${port}/api/students/${data.studentId}/export.xlsx`;
     assert.equal((await fetch(url)).status, 401);
-    const token = jwt.sign({ id: data.actorId, email: "m6b@example.com", displayName: "M6B", role: "TEACHER" }, config.jwt.secret, { expiresIn: "5m" });
+    const token = jwt.sign({ id: data.actorId, username: "m6b", displayName: "M6B", role: "TEACHER" }, config.jwt.secret, { expiresIn: "5m" });
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-type"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

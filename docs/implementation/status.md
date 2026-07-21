@@ -3,7 +3,7 @@
 ## Current milestone
 
 V1.1 Cô Vy branding and mobile polish checkpoint is complete. V11A, V11B,
-V11C and V11D are PASS. The reviewable release-candidate artifact is not a
+V11C, V11D and the V11E footer/username-auth follow-up are PASS. The reviewable release-candidate artifact is not a
 production approval; real operator configuration is still required and the
 independent full-system review has not started.
 
@@ -61,6 +61,8 @@ V11C: PASS on 21/07/2026. Evidence is in
 `.agent-reports/V11C-implementation.md` and `.agent-reports/V11C-verification.md`.
 V11D: PASS on 21/07/2026. Evidence is in
 `.agent-reports/V11D-implementation.md` and `.agent-reports/V11D-verification.md`.
+V11E: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V11E-implementation.md` and `.agent-reports/V11E-verification.md`.
 
 ## Scope boundary
 

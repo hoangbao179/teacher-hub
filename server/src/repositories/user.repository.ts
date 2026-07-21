@@ -3,7 +3,8 @@ import { pool } from "../db/pool";
 
 interface UserRow extends RowDataPacket {
   id: number;
-  email: string;
+  username: string;
+  email: string | null;
   password_hash: string;
   display_name: string;
   role: "TEACHER";
@@ -15,10 +16,10 @@ export class UserRepository {
     const [rows] = await pool.query<UserRow[]>("SELECT * FROM users WHERE id=? LIMIT 1", [id]);
     return rows[0] ?? null;
   }
-  async findByEmail(email: string): Promise<UserRow | null> {
+  async findByUsername(username: string): Promise<UserRow | null> {
     const [rows] = await pool.query<UserRow[]>(
-      "SELECT * FROM users WHERE email = ? LIMIT 1",
-      [email],
+      "SELECT * FROM users WHERE username = ? LIMIT 1",
+      [username],
     );
     return rows[0] ?? null;
   }

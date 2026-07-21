@@ -1,5 +1,6 @@
 export const AUTH_TOKEN_KEY = "teacher-token";
-const REMEMBERED_EMAIL_KEY = "teacher-remembered-email";
+const REMEMBERED_USERNAME_KEY = "teacher-remembered-username";
+const LEGACY_REMEMBERED_EMAIL_KEY = "teacher-remembered-email";
 const REMEMBER_PREFERENCE_KEY = "teacher-remember-login";
 
 /** Token lookup is deterministic: persistent local storage first, then the
@@ -18,16 +19,18 @@ export function clearToken(): void {
   sessionStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
-export function getRememberedEmail(): string {
-  return localStorage.getItem(REMEMBERED_EMAIL_KEY) ?? "";
+export function getRememberedUsername(): string {
+  return localStorage.getItem(REMEMBERED_USERNAME_KEY) ?? "";
 }
 
-export function saveRememberedEmail(email: string): void {
-  localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim());
+export function saveRememberedUsername(username: string): void {
+  localStorage.setItem(REMEMBERED_USERNAME_KEY, username.trim());
+  localStorage.removeItem(LEGACY_REMEMBERED_EMAIL_KEY);
 }
 
-export function clearRememberedEmail(): void {
-  localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+export function clearRememberedUsername(): void {
+  localStorage.removeItem(REMEMBERED_USERNAME_KEY);
+  localStorage.removeItem(LEGACY_REMEMBERED_EMAIL_KEY);
 }
 
 export function getRememberPreference(): boolean {
