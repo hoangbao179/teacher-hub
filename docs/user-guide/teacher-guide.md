@@ -54,10 +54,12 @@ biên chu kỳ Đã thu.
 
 ## Homepage và liên hệ
 
-Contact/domain/media do người triển khai cấu hình qua `PUBLIC_*`/`VITE_PUBLIC_*`.
-CTA thiếu hoặc sai sẽ bị ẩn; không tự điền thông tin đoán. Ảnh public hiện có thể là
-media tạm theo `docs/content/replacing-public-media.md`. Testimonial chưa xác minh
-không được công khai như phản hồi thật.
+Text, domain, Facebook, SEO và media Homepage nằm trong
+`client/src/content/publicHome.ts`; người triển khai chỉ cấu hình
+`VITE_PUBLIC_ZALO_URL`. Production từ chối Zalo thiếu hoặc sai; không tự điền thông tin
+đoán. Ảnh public hiện có thể là media tạm trong `client/public/images` theo
+`docs/content/replacing-public-media.md`. Testimonial chưa xác minh không được công khai
+như phản hồi thật.
 
 Vite local dùng cố định cổng 5173 và không tự nhảy sang 5174. Nếu cổng bị chiếm trên Windows:
 

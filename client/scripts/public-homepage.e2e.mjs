@@ -12,9 +12,7 @@ const artifactDir = path.join(root, ".agent-reports", "v1-2-homepage");
 fs.mkdirSync(artifactDir, { recursive: true });
 const env = {
   ...process.env,
-  VITE_PUBLIC_CONTENT_MODE: "demo",
-  VITE_PUBLIC_SITE_URL: "https://teacher.example.test",
-  VITE_PUBLIC_ZALO_URL: "https://zalo.me/84912345678",
+  VITE_PUBLIC_ZALO_URL: "https://zalo.me/lien-he-co-vy",
 };
 let child;
 let browser;
@@ -137,9 +135,10 @@ try {
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     body: document.body.innerText,
   }));
-  assert(metadata.title.includes("Lớp học tiếng Anh cô Vy") && metadata.description?.includes("Nguyễn Tri Phương"), "Homepage metadata is incomplete");
+  assert(metadata.title === "Lớp học tiếng Anh cô Vy | Tiếng Anh lớp 1–9 tại Huế", `Unexpected Homepage title: ${metadata.title}`);
+  assert(metadata.description === "Kèm cặp tiếng Anh 1–1 và lớp nhóm nhỏ cho học sinh lớp 1–9 tại Huế.", `Unexpected Homepage description: ${metadata.description}`);
   assert(metadata.robots === "index,follow,max-image-preview:large", `Unexpected public robots metadata: ${metadata.robots}`);
-  assert(metadata.canonical === "https://teacher.example.test/", `Unexpected canonical URL: ${metadata.canonical}`);
+  assert(metadata.canonical === "https://tienganhcovy.com/", `Unexpected canonical URL: ${metadata.canonical}`);
   assert(metadata.structured && JSON.parse(metadata.structured)["@type"] === "Person", "Person structured data is missing");
   assert(metadata.overflow <= 1, `Homepage horizontal overflow: ${metadata.overflow}px`);
   assert(!/Nội dung minh họa cho môi trường phát triển|Ảnh tạm|Video tạm|Chưa cấu hình|from người hâm mộ/i.test(metadata.body), "Visitor-facing development warning remains");

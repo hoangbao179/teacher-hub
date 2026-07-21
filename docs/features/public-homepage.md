@@ -20,7 +20,7 @@ quản trị và không công khai giá học phí.
 ## Media tạm thời
 
 Ảnh hiện tại là asset tạm, không được mô tả như chân dung thật của Cô Vy. Thay
-ảnh/alt/focal point theo `docs/content/replacing-public-media.md` và chạy validator,
+ảnh/alt/focal point theo `docs/content/replacing-public-media.md` và chạy production validation,
 E2E cùng review mobile/desktop. Thay media không được làm đổi business logic.
 Video dài chỉ tạo iframe `youtube-nocookie.com` sau tương tác và không autoplay audio.
 
@@ -34,15 +34,16 @@ Video dài chỉ tạo iframe `youtube-nocookie.com` sau tương tác và không
 - Homepage không hiển thị CTA gọi điện và production không yêu cầu cấu hình phone. Zalo và
   Facebook nằm cùng một hàng, rộng bằng nhau trên mobile; Facebook dùng URL công khai cố định
   `https://www.facebook.com/uyenvy.le.12`. External link dùng `noopener noreferrer`.
-- Local development có bộ contact tạm đã cấu hình để section không rỗng; production
-  bắt buộc qua validation với contact thật trước build.
+- Local development dùng Zalo fallback an toàn để section không rỗng; production
+  bắt buộc qua validation với URL Zalo thật trước build.
 
 ## Cấu hình, SEO và accessibility
 
-Fallback/source nằm ở `client/src/content/publicHome.ts`; deployment override bằng
-`VITE_PUBLIC_*` theo `client/.env.example`. Biến frontend không được chứa secret.
-Production validation từ chối contact/domain placeholder và testimonial published
-nhưng chưa verified. Đồng bộ domain thật vào sitemap/robots trước release.
+Text, SEO, Facebook, video/testimonial và đường dẫn media local nằm ở
+`client/src/content/publicHome.ts`. Chỉ `VITE_PUBLIC_ZALO_URL` được cấu hình theo deployment;
+biến frontend này không được chứa secret. Production validation từ chối Zalo thiếu,
+placeholder, sai host hoặc không dùng HTTPS. Domain production được cố định trong source,
+sitemap và robots.
 
 Trang dùng landmark, một H1, heading tuần tự, focus-visible, touch target tối thiểu
 44 px, ảnh responsive và không phụ thuộc animation. Canonical/Open Graph/Twitter và

@@ -33,27 +33,7 @@ export interface PublicProgram {
   accent: "mint" | "blue" | "coral";
 }
 
-const value = (name: keyof ImportMetaEnv, fallback: string): string => import.meta.env[name]?.trim() || fallback;
-const parseArray = <T>(raw: string | undefined, fallback: T[]): T[] => {
-  if (!raw?.trim()) return fallback;
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed as T[] : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-const parseTestimonials = (raw: string | undefined, fallback: PublicTestimonial[]): PublicTestimonial[] => {
-  const parsed = parseArray<PublicTestimonial>(raw, fallback);
-  return parsed.every((item) =>
-    typeof item?.id === "string" && typeof item.guardianLabel === "string" &&
-    typeof item.studentLevel === "string" && typeof item.location === "string" &&
-    typeof item.quote === "string" && typeof item.verified === "boolean" &&
-    typeof item.published === "boolean") ? parsed : fallback;
-};
-
-const placeholderContact = /\.invalid(?:\/|$)|localhost|84000000000|84900000000|chua-cau-hinh|chưa-cấu-hình|example(?:\.|\/|$)/i;
+const placeholderContact = /\.invalid(?:\/|$)|localhost|chua-cau-hinh|chưa-cấu-hình|example(?:\.|\/|$)/i;
 
 const defaultVideos: PublicVideo[] = [
   {
@@ -93,39 +73,32 @@ const developmentTestimonialDrafts: PublicTestimonial[] = [
   },
 ];
 
-export const isDevelopmentContent = import.meta.env.VITE_PUBLIC_CONTENT_MODE !== "production";
-const publicSiteUrl = value("VITE_PUBLIC_SITE_URL", "https://configure-public-domain.invalid").replace(/\/$/, "");
-const heroMobile = value("VITE_PUBLIC_HERO_MOBILE_URL", "/images/teacher-english-hero-720.jpg");
-const heroDesktop = value("VITE_PUBLIC_HERO_DESKTOP_URL", "/images/teacher-english-hero-1440.jpg");
-const alternateHeroMobile = value("VITE_PUBLIC_HERO_ALT_MOBILE_URL", "/images/teacher-hero-720.webp");
-const alternateHeroDesktop = value("VITE_PUBLIC_HERO_ALT_DESKTOP_URL", "/images/teacher-hero-1440.webp");
-const secondaryHeroMobile = value("VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL", "/images/teacher-secondary-study-720.jpg");
-const secondaryHeroDesktop = value("VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL", "/images/teacher-secondary-study-1440.jpg");
-const rawZaloUrl = value("VITE_PUBLIC_ZALO_URL", "");
-const zaloUrl = isConfiguredExternalUrl(rawZaloUrl, "zalo.me") ? rawZaloUrl : isDevelopmentContent ? "https://zalo.me/84912345678" : rawZaloUrl;
+export const isDevelopmentContent = import.meta.env.DEV;
+const rawZaloUrl = import.meta.env.VITE_PUBLIC_ZALO_URL?.trim() ?? "";
+const zaloUrl = isConfiguredExternalUrl(rawZaloUrl, "zalo.me") ? rawZaloUrl : isDevelopmentContent ? "https://zalo.me/" : rawZaloUrl;
 const facebookUrl = "https://www.facebook.com/uyenvy.le.12";
 
 /**
- * Source of truth for deployment-specific public content and temporary media.
- * VITE_* values are public browser configuration and must never contain secrets.
+ * Source of truth for stable Homepage content and local media.
+ * Only the Zalo URL remains deployment-specific; VITE_* values must never contain secrets.
  */
 export const publicHomeContent = {
-  siteUrl: publicSiteUrl,
-  teacherName: value("VITE_PUBLIC_TEACHER_NAME", "Cô Vy"),
-  brandName: value("VITE_PUBLIC_BRAND_NAME", "Lớp học cô Vy"),
+  siteUrl: "https://tienganhcovy.com",
+  teacherName: "Cô Vy",
+  brandName: "Lớp học cô Vy",
   subject: "Tiếng Anh",
   levels: "Lớp 1–9",
   location: "Huế",
-  heroDescription: value("VITE_PUBLIC_DESCRIPTION", "Kèm cặp 1–1 và lớp nhóm nhỏ, bám sát năng lực từng học sinh."),
+  heroDescription: "Kèm cặp 1–1 và lớp nhóm nhỏ, bám sát năng lực từng học sinh.",
   carouselIntervalMs: 5_500,
   heroSlides: [
     {
       id: "foundation",
       eyebrow: "Cô Vy · Tiếng Anh lớp 1–9 tại Huế",
-      title: value("VITE_PUBLIC_HERO_HEADING", "Tiếng Anh vững nền tảng"),
+      title: "Tiếng Anh vững nền tảng",
       description: "Tự tin tiến bộ mỗi ngày",
-      mobileImage: heroMobile,
-      desktopImage: heroDesktop,
+      mobileImage: "/images/teacher-english-hero-720.jpg",
+      desktopImage: "/images/teacher-english-hero-1440.jpg",
       focalPosition: "center",
       alt: "Góc học tập tiếng Anh với sách, thẻ từ và đồ dùng học tập",
     },
@@ -134,8 +107,8 @@ export const publicHomeContent = {
       eyebrow: "Xây nền đúng nhịp cho từng học sinh",
       title: "Tiếng Anh lớp 1–5",
       description: "Phonics, phát âm, từ vựng và mẫu câu",
-      mobileImage: alternateHeroMobile,
-      desktopImage: alternateHeroDesktop,
+      mobileImage: "/images/teacher-hero-720.webp",
+      desktopImage: "/images/teacher-hero-1440.webp",
       focalPosition: "68% center",
       alt: "Sách tiếng Anh, thẻ chữ cái và bút màu trên bàn học",
     },
@@ -144,27 +117,35 @@ export const publicHomeContent = {
       eyebrow: "Củng cố kiến thức và bám sát chương trình",
       title: "Tiếng Anh lớp 6–9",
       description: "Ngữ pháp, đọc hiểu, viết và kỹ năng làm bài",
-      mobileImage: secondaryHeroMobile,
-      desktopImage: secondaryHeroDesktop,
+      mobileImage: "/images/teacher-secondary-study-720.jpg",
+      desktopImage: "/images/teacher-secondary-study-1440.jpg",
       focalPosition: "58% center",
       alt: "Không gian học tập với sách, vở và máy tính",
     },
   ] satisfies PublicHeroSlide[],
-  introduction: value("VITE_PUBLIC_INTRODUCTION", "Cô Vy đồng hành cùng học sinh từ lớp 1 đến lớp 9 theo mục tiêu phù hợp: xây nền, củng cố phần còn yếu và bám sát chương trình trên trường."),
+  introduction: "Cô Vy đồng hành cùng học sinh từ lớp 1 đến lớp 9 theo mục tiêu phù hợp: xây nền, củng cố phần còn yếu và bám sát chương trình trên trường.",
   teacherProfile: {
     greeting: "Xin chào, cô là Uyên Vy.",
     biography: "Đồng hành cùng học sinh lớp 1–9 tại Huế. Tập trung xây nền, củng cố phần còn yếu và giúp học sinh tự tin hơn.",
     highlights: ["Tiếng Anh lớp 1–9", "Kèm cặp 1–1 và nhóm nhỏ", "Theo sát năng lực từng học sinh"],
   },
   media: {
-    ogImage: value("VITE_PUBLIC_OG_IMAGE_URL", "/images/teacher-english-hero-1440.jpg"),
-    teacherPhoto: value("VITE_PUBLIC_TEACHER_PHOTO_URL", "/images/teacher-hero-720.webp"),
-    teacherPhotoAlt: value("VITE_PUBLIC_TEACHER_PHOTO_ALT", "Không gian dạy và học tiếng Anh của cô Vy"),
-    teacherPhotoFocalPosition: value("VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION", "center"),
+    ogImage: "/images/teacher-english-hero-1440.jpg",
+    teacherPhoto: "/images/teacher-hero-720.webp",
+    teacherPhotoAlt: "Không gian dạy và học tiếng Anh của cô Vy",
+    teacherPhotoFocalPosition: "center",
   },
   contact: {
     zaloUrl,
     facebookUrl,
+    heroCtaLabel: "Nhắn Zalo cho cô Vy",
+    heroCtaHint: "Trao đổi nhanh về tình hình học của con",
+    heading: "Cùng cô Vy tìm cách học phù hợp cho con",
+    description: "Ba mẹ có thể nhắn cô Vy để chia sẻ tình hình học hiện tại, thời gian phù hợp và phần con đang cần hỗ trợ. Cô sẽ trao đổi thêm về lớp học và cách học phù hợp.",
+    highlights: ["Lớp 1–9", "1–1 hoặc nhóm nhỏ", "Tại Huế"],
+    zaloLabel: "Nhắn Zalo",
+    facebookLabel: "Facebook",
+    followUp: "Trao đổi về tình hình học và lịch học của con",
   },
   methods: [
     { title: "Bám sát năng lực", detail: "Xác định phần kiến thức còn hổng và chọn nhịp học phù hợp với từng học sinh." },
@@ -191,17 +172,18 @@ export const publicHomeContent = {
       accent: "coral",
     },
   ] satisfies PublicProgram[],
-  videos: parseArray<PublicVideo>(import.meta.env.VITE_PUBLIC_VIDEOS_JSON, defaultVideos),
-  testimonials: parseTestimonials(import.meta.env.VITE_PUBLIC_TESTIMONIALS_JSON, developmentTestimonialDrafts),
+  videos: defaultVideos,
+  testimonials: developmentTestimonialDrafts,
   parentTopics: [
     "Con mất gốc nên bắt đầu từ đâu?",
     "Học 1–1 hay học nhóm phù hợp hơn?",
     "Làm sao theo dõi tiến bộ của con?",
   ],
   seo: {
-    title: value("VITE_PUBLIC_SEO_TITLE", "Lớp học tiếng Anh cô Vy | Tiếng Anh lớp 1–9 tại Huế"),
-    description: value("VITE_PUBLIC_SEO_DESCRIPTION", "Kèm cặp tiếng Anh 1–1 và lớp nhóm nhỏ cho học sinh lớp 1–9 tại Huế, củng cố kiến thức, bám sát chương trình và ôn thi Nguyễn Tri Phương."),
+    title: "Lớp học tiếng Anh cô Vy | Tiếng Anh lớp 1–9 tại Huế",
+    description: "Kèm cặp tiếng Anh 1–1 và lớp nhóm nhỏ cho học sinh lớp 1–9 tại Huế.",
   },
+  footer: "2026 — từ người hâm mộ cô Vy, with love ❤️",
 } as const;
 
 export function isConfiguredExternalUrl(raw: string, host: "zalo.me" | "facebook.com"): boolean {

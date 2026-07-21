@@ -57,21 +57,21 @@ nhật credential trong database.
 
 `client/src/content/publicHome.ts` là nguồn duy nhất cho branding, chương trình
 Tiếng Anh lớp 1–9, phương pháp, media, video, phản hồi, liên hệ và SEO. Các giá trị
-theo deployment được khai báo bằng `VITE_PUBLIC_*` theo `client/.env.example`.
+ổn định nằm trong source; chỉ URL Zalo thay đổi theo deployment bằng
+`VITE_PUBLIC_ZALO_URL` trong `client/.env.example`.
 
-Các giá trị liên hệ/domain trong file example là placeholder phát triển; action
-không hợp lệ sẽ bị ẩn khỏi Homepage. Trước khi build production, cung cấp Zalo và domain
-thật; Facebook dùng URL mặc định đã duyệt. Đồng bộ domain đó vào `client/public/sitemap.xml`
-và `client/public/robots.txt`, sau đó chạy:
+Development có Zalo fallback an toàn; trước khi build production phải cung cấp URL Zalo
+HTTPS thật. Site URL, SEO, Facebook, sitemap và robots đã được cố định cho
+`https://tienganhcovy.com`. Ảnh local nằm trong `client/public/images` và được đóng gói vào
+Docker Web image. Sau khi đổi ảnh, commit rồi deploy image mới. Chạy:
 
 ```bash
 npm -w client run validate:public
 npm -w client run build:production
 ```
 
-Validator production từ chối domain/liên hệ mẫu và nội dung phản
-hồi “minh họa”. Không đặt secret vào biến `VITE_*` vì mọi giá trị này được nhúng
-vào trình duyệt.
+Validator production từ chối Zalo thiếu, placeholder, sai host hoặc không dùng HTTPS.
+Không đặt secret vào biến `VITE_*` vì giá trị được nhúng vào trình duyệt.
 
 ## Trước khi code tính năng
 

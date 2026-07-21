@@ -220,9 +220,9 @@ function HeroCarousel({ showZalo }: { showZalo: boolean }) {
           {showZalo && (
             <Box sx={{ mt: { xs: 2, sm: 2.5 }, maxWidth: { sm: 360 } }}>
               <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth endIcon={<ArrowForward />}>
-                Nhắn Zalo cho cô Vy
+                {content.contact.heroCtaLabel}
               </Button>
-              <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "rgba(255,255,255,.86)", textAlign: "center" }}>Trao đổi nhanh về tình hình học của con</Typography>
+              <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "rgba(255,255,255,.86)", textAlign: "center" }}>{content.contact.heroCtaHint}</Typography>
             </Box>
           )}
         </Box>
@@ -364,22 +364,22 @@ export function HomePage() {
             boxShadow: "0 12px 30px rgba(57,42,94,.08)",
           }}>
             <MenuBook color="primary" sx={{ fontSize: 38 }} />
-            <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Cùng cô Vy tìm cách học phù hợp cho con</Typography>
-            <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 680, mx: "auto" }}>Ba mẹ có thể nhắn cô Vy để chia sẻ tình hình học hiện tại, thời gian phù hợp và phần con đang cần hỗ trợ. Cô sẽ trao đổi thêm về lớp học và cách học phù hợp.</Typography>
-            <Stack direction="row" useFlexGap sx={{ justifyContent: "center", flexWrap: "wrap", gap: 1, mt: 2 }}><Chip size="small" label="Lớp 1–9" /><Chip size="small" label="1–1 hoặc nhóm nhỏ" /><Chip size="small" label="Tại Huế" /></Stack>
+            <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{content.contact.heading}</Typography>
+            <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 680, mx: "auto" }}>{content.contact.description}</Typography>
+            <Stack direction="row" useFlexGap sx={{ justifyContent: "center", flexWrap: "wrap", gap: 1, mt: 2 }}>{content.contact.highlights.map((item) => <Chip key={item} size="small" label={item} />)}</Stack>
             <Box sx={{ mt: 3, maxWidth: 580, mx: "auto" }}>
               <Box data-testid="contact-actions" sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
-                {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<ChatBubbleOutlined />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", background: "linear-gradient(105deg, #713bea, #268edc)" }}>Nhắn Zalo</Button>}
-                {showFacebook && <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<Facebook />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", color: "#174b77", background: "linear-gradient(105deg, #dcedff, #bfe2ff)", "&:hover": { background: "linear-gradient(105deg, #cfe6ff, #add9ff)" } }}>Facebook</Button>}
+                {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<ChatBubbleOutlined />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", background: "linear-gradient(105deg, #713bea, #268edc)" }}>{content.contact.zaloLabel}</Button>}
+                {showFacebook && <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<Facebook />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", color: "#174b77", background: "linear-gradient(105deg, #dcedff, #bfe2ff)", "&:hover": { background: "linear-gradient(105deg, #cfe6ff, #add9ff)" } }}>{content.contact.facebookLabel}</Button>}
               </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Trao đổi về tình hình học và lịch học của con</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{content.contact.followUp}</Typography>
             </Box>
           </Box>
         </Container>}
       </Box>
 
       <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", pt: 1, pb: "calc(8px + env(safe-area-inset-bottom, 0px))", bgcolor: "#faf9fd" }}>
-        <Container maxWidth="lg"><Typography color="text.secondary" sx={{ textAlign: "center", fontSize: 12, lineHeight: 1.4 }}>2026 — từ người hâm mộ cô Vy, with love ❤️</Typography></Container>
+        <Container maxWidth="lg"><Typography color="text.secondary" sx={{ textAlign: "center", fontSize: 12, lineHeight: 1.4 }}>{content.footer}</Typography></Container>
       </Box>
     </Box>
   );

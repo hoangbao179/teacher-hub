@@ -18,34 +18,20 @@ Tạo environment `production`. Tạo đúng các repository/environment secrets
 `PROD_SSH_KNOWN_HOSTS` phải là dòng host key đã đối chiếu fingerprint qua console hoặc
 kênh tin cậy. Workflow bật `StrictHostKeyChecking=yes` và không gọi `ssh-keyscan`.
 
-Tạo repository variable `GHCR_OWNER` bằng tên owner GitHub viết thường và các biến
-public sau. Đây là dữ liệu được nhúng vào bundle trình duyệt, tuyệt đối không đặt secret:
+Tạo đúng hai repository/environment variables sau:
 
-- `VITE_PUBLIC_SITE_URL`
-- `VITE_PUBLIC_TEACHER_NAME`
-- `VITE_PUBLIC_BRAND_NAME`
-- `VITE_PUBLIC_HERO_HEADING`
-- `VITE_PUBLIC_DESCRIPTION`
-- `VITE_PUBLIC_INTRODUCTION`
-- `VITE_PUBLIC_ZALO_URL`
-- `VITE_PUBLIC_HERO_MOBILE_URL`
-- `VITE_PUBLIC_HERO_DESKTOP_URL`
-- `VITE_PUBLIC_HERO_ALT_MOBILE_URL`
-- `VITE_PUBLIC_HERO_ALT_DESKTOP_URL`
-- `VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL`
-- `VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL`
-- `VITE_PUBLIC_TEACHER_PHOTO_URL`
-- `VITE_PUBLIC_TEACHER_PHOTO_ALT`
-- `VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION`
-- `VITE_PUBLIC_OG_IMAGE_URL`
-- `VITE_PUBLIC_VIDEOS_JSON`
-- `VITE_PUBLIC_TESTIMONIALS_JSON`
-- `VITE_PUBLIC_SEO_TITLE`
-- `VITE_PUBLIC_SEO_DESCRIPTION`
+- `GHCR_OWNER`: tên owner GitHub viết thường;
+- `VITE_PUBLIC_ZALO_URL`: URL HTTPS `zalo.me` thật, có path liên hệ.
 
-Workflow cố định `VITE_API_BASE_URL` rỗng để browser gọi cùng origin và cố định
-`VITE_PUBLIC_CONTENT_MODE=production`. Facebook mặc định là
-`https://www.facebook.com/uyenvy.le.12`; không có biến phone hoặc Facebook cũ.
+`VITE_PUBLIC_ZALO_URL` được nhúng vào bundle trình duyệt nên tuyệt đối không đặt secret.
+Workflow cố định `VITE_API_BASE_URL` rỗng để browser gọi cùng origin. Text Homepage, SEO,
+site URL, Facebook và đường dẫn media không phải GitHub Variables; chúng nằm trong
+`client/src/content/publicHome.ts`. Không đưa DB password, JWT hoặc deployment secret vào
+GitHub Variables hay build args.
+
+Ảnh local nằm trong `client/public/images` và được đóng gói vào Docker Web image. Muốn thay
+ảnh, thay file trong thư mục này, cập nhật đường dẫn/alt/focal trong source nếu cần, commit
+rồi deploy để build Web image mới.
 
 ## Bootstrap VPS
 
@@ -102,6 +88,9 @@ Các biến trong `/opt/teacher-hub/.env`:
 tiên; workflow sẽ ghi full commit SHA trước khi Compose chạy. `HEALTHCHECK_URL` có thể để
 rỗng để dùng `https://tienganhcovy.com/ready`. Không đưa password, token, IP hoặc JWT vào
 GitHub Variables, workflow log hay repository.
+
+Server `.env` chỉ chứa runtime/deployment config và secret như image tag, CORS,
+healthcheck, database và JWT. Không đặt text Homepage hoặc đường dẫn ảnh vào file này.
 
 Với database mới hoàn toàn, tạo admin một lần sau deploy bằng biến môi trường tạm, không
 lưu password bootstrap trong `.env` hoặc shell history:
