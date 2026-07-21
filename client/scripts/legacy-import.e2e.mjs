@@ -31,10 +31,11 @@ const children = [];
 let browser;
 
 function run(command, args, cwd = root) {
-  const npmCli = path.join(path.dirname(process.execPath), "node_modules/npm/bin/npm-cli.js");
-  const executable = command === "npm" ? process.execPath : command;
-  const commandArgs = command === "npm" ? [npmCli, ...args] : args;
-  const result = spawnSync(executable, commandArgs, { cwd, env: testEnv, stdio: "inherit" });
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  const executable = command === "npm" && process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : command === "npm" ? npmCommand : command;
+  const commandArgs = command === "npm" && process.platform === "win32" ? ["/d", "/s", "/c", npmCommand, ...args] : args;
+  const result = spawnSync(executable, commandArgs, { cwd, env: testEnv, stdio: "inherit", shell: false });
+  if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed: ${result.status}`);
 }
 function start(args, cwd) {

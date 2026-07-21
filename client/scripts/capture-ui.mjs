@@ -41,13 +41,18 @@ const children = [];
 let browser;
 
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, env: testEnv, stdio: "inherit" });
+  const result = spawnSync(command, args, { cwd, env: testEnv, stdio: "inherit", shell: false });
+  if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed: ${result.status}`);
 }
 
 function runNpm(args, cwd) {
-  const npmCli = path.join(path.dirname(process.execPath), "node_modules/npm/bin/npm-cli.js");
-  run(process.execPath, [npmCli, ...args], cwd);
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  if (process.platform === "win32") {
+    run(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", npmCommand, ...args], cwd);
+    return;
+  }
+  run(npmCommand, args, cwd);
 }
 
 function start(args, cwd) {

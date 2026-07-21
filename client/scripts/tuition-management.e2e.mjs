@@ -27,13 +27,13 @@ const testEnv = {
 const children = [];
 let browser;
 
-function npmCli(command) {
-  return path.join(path.dirname(process.execPath), "node_modules/npm/bin", command === "npx" ? "npx-cli.js" : "npm-cli.js");
-}
 function run(command, args, cwd = root) {
-  const executable = ["npm", "npx"].includes(command) ? process.execPath : command;
-  const commandArgs = ["npm", "npx"].includes(command) ? [npmCli(command), ...args] : args;
-  const result = spawnSync(executable, commandArgs, { cwd, env: testEnv, stdio: "inherit" });
+  const useWindowsCommand = ["npm", "npx"].includes(command) && process.platform === "win32";
+  const packageCommand = useWindowsCommand ? `${command}.cmd` : command;
+  const executable = useWindowsCommand ? process.env.ComSpec ?? "cmd.exe" : packageCommand;
+  const commandArgs = useWindowsCommand ? ["/d", "/s", "/c", packageCommand, ...args] : args;
+  const result = spawnSync(executable, commandArgs, { cwd, env: testEnv, stdio: "inherit", shell: false });
+  if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed: ${result.status}`);
 }
 function start(command, args, cwd, env) {

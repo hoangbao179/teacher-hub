@@ -21,11 +21,13 @@ const artifactDir = path.join(os.tmpdir(), "teacher-hub-m6c-ui-audit");
 fs.mkdirSync(artifactDir, { recursive: true });
 
 function run(command, args, cwd = root, env = testEnv) {
-  const npmCli = path.join(path.dirname(process.execPath), "node_modules/npm/bin", command === "npx" ? "npx-cli.js" : "npm-cli.js");
-  const executable = ["npm", "npx"].includes(command) ? process.execPath : command;
-  const commandArgs = ["npm", "npx"].includes(command) ? [npmCli, ...args] : args;
-  const result = spawnSync(executable, commandArgs, { cwd, env, stdio: "inherit" });
-  if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed: ${result.error?.message ?? result.status}`);
+  const useWindowsCommand = ["npm", "npx"].includes(command) && process.platform === "win32";
+  const packageCommand = useWindowsCommand ? `${command}.cmd` : command;
+  const executable = useWindowsCommand ? process.env.ComSpec ?? "cmd.exe" : packageCommand;
+  const commandArgs = useWindowsCommand ? ["/d", "/s", "/c", packageCommand, ...args] : args;
+  const result = spawnSync(executable, commandArgs, { cwd, env, stdio: "inherit", shell: false });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed: ${result.status}`);
 }
 function start(command, args, cwd, env) {
   const child = spawn(command, args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
