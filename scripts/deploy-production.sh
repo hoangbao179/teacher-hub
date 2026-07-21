@@ -130,22 +130,37 @@ compose up -d mysql
 wait_for_healthy mysql 60
 
 install -m 700 -d "$BACKUP_DIR"
-backup_file="$BACKUP_DIR/pre-migrate-$(date -u +%Y%m%dT%H%M%SZ)-${NEW_IMAGE_TAG:0:12}.sql.gz"
-temporary_backup="${backup_file}.tmp"
-rm -f "$temporary_backup"
-# Variables in this command intentionally expand inside the MySQL container.
-# shellcheck disable=SC2016
-compose exec -T mysql sh -c \
-  'exec mysqldump --user=root --password="$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers --set-gtid-purged=OFF "$MYSQL_DATABASE"' \
-  | gzip -c > "$temporary_backup"
-gzip -t "$temporary_backup"
-uncompressed_size="$(gzip -cd "$temporary_backup" | wc -c)"
-if [[ ! -s "$temporary_backup" || "$uncompressed_size" -eq 0 ]]; then
-  echo "Database backup is empty."
+schema_migrations_table_count="$(
+  # Variables in this command intentionally expand inside the MySQL container.
+  # shellcheck disable=SC2016
+  compose exec -T mysql sh -c \
+    'exec mysql --batch --skip-column-names --user=root --password="$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '\''schema_migrations'\''"'
+)"
+
+if [[ "$schema_migrations_table_count" == "0" ]]; then
+  previous_tag=""
+  echo "Initial deploy detected: skipping database backup"
+elif [[ "$schema_migrations_table_count" == "1" ]]; then
+  backup_file="$BACKUP_DIR/pre-migrate-$(date -u +%Y%m%dT%H%M%SZ)-${NEW_IMAGE_TAG:0:12}.sql.gz"
+  temporary_backup="${backup_file}.tmp"
+  rm -f "$temporary_backup"
+  # Variables in this command intentionally expand inside the MySQL container.
+  # shellcheck disable=SC2016
+  compose exec -T mysql sh -c \
+    'exec mysqldump --user=root --password="$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers --set-gtid-purged=OFF "$MYSQL_DATABASE"' \
+    | gzip -c > "$temporary_backup"
+  gzip -t "$temporary_backup"
+  uncompressed_size="$(gzip -cd "$temporary_backup" | wc -c)"
+  if [[ ! -s "$temporary_backup" || "$uncompressed_size" -eq 0 ]]; then
+    echo "Database backup is empty."
+    exit 1
+  fi
+  mv -f "$temporary_backup" "$backup_file"
+  chmod 600 "$backup_file"
+else
+  echo "Could not determine whether the production database was initialized."
   exit 1
 fi
-mv -f "$temporary_backup" "$backup_file"
-chmod 600 "$backup_file"
 
 compose pull
 compose run --rm --no-deps api node dist/db/migrate.js
