@@ -1,17 +1,21 @@
 import {
   ArrowForward,
   AutoStories,
+  ChatBubbleOutlined,
   CheckCircleOutlined,
+  ChevronLeft,
+  ChevronRight,
+  EditOutlined,
   Facebook,
   LightbulbOutlined,
   MenuBook,
   Phone,
   PlayArrow,
   School,
+  StarOutlined,
 } from "@mui/icons-material";
 import {
   AppBar,
-  Alert,
   Box,
   Button,
   Card,
@@ -22,10 +26,17 @@ import {
   Stack,
   Toolbar,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { isDemoContent, publicHomeContent as content } from "../content/publicHome";
+import {
+  isConfiguredExternalUrl,
+  isConfiguredPhone,
+  isDevelopmentContent,
+  publicHomeContent as content,
+  publishableTestimonials,
+} from "../content/publicHome";
 
 function youtubeId(url: string): string | null {
   try {
@@ -44,7 +55,7 @@ function LearningVideo({ video }: { video: (typeof content.videos)[number] }) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
 
   return (
-    <Card component="article" variant="outlined" sx={{ overflow: "hidden", height: "100%" }}>
+    <Card component="article" variant="outlined" sx={{ overflow: "hidden", height: "100%", borderRadius: 3 }}>
       {id && playing ? (
         <Box
           component="iframe"
@@ -70,14 +81,8 @@ function LearningVideo({ video }: { video: (typeof content.videos)[number] }) {
             aria-label={`Phát video: ${video.title}`}
             onClick={() => setPlaying(true)}
             sx={{
-              position: "absolute",
-              inset: 0,
-              m: "auto",
-              width: 58,
-              height: 58,
-              bgcolor: "white",
-              color: "primary.main",
-              "&:hover": { bgcolor: "grey.100" },
+              position: "absolute", inset: 0, m: "auto", width: 58, height: 58,
+              bgcolor: "white", color: "primary.main", "&:hover": { bgcolor: "grey.100" },
             }}
           >
             <PlayArrow fontSize="large" />
@@ -96,9 +101,156 @@ function LearningVideo({ video }: { video: (typeof content.videos)[number] }) {
   );
 }
 
-const sectionSx = { py: { xs: 6, sm: 8 }, scrollMarginTop: 72 } as const;
+const sectionSx = { py: { xs: 5, sm: 7, md: 8 }, scrollMarginTop: 72 } as const;
+const programTone = {
+  mint: { background: "linear-gradient(145deg, #fff8cf 0%, #e9f9ef 100%)", border: "#cfe8d8", icon: "#1d8b61" },
+  blue: { background: "linear-gradient(145deg, #eaf5ff 0%, #f0eaff 100%)", border: "#d4d8f5", icon: "#5f48d5" },
+  coral: { background: "linear-gradient(145deg, #fff0e9 0%, #f2ebff 100%)", border: "#efd4d5", icon: "#c55b61" },
+} as const;
+
+function HeroCarousel({ showZalo }: { showZalo: boolean }) {
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [tabHidden, setTabHidden] = useState(() => document.hidden);
+  const pointerStart = useRef<number | null>(null);
+  const slides = content.heroSlides;
+
+  const move = (direction: number) => setActive((current) => (current + direction + slides.length) % slides.length);
+
+  useEffect(() => {
+    const onVisibility = () => setTabHidden(document.hidden);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  useEffect(() => {
+    const preload = window.setTimeout(() => {
+      for (const slide of slides.slice(1)) {
+        const mobile = new Image(); mobile.src = slide.mobileImage;
+        const desktop = new Image(); desktop.src = slide.desktopImage;
+      }
+    }, 0);
+    return () => window.clearTimeout(preload);
+  }, [slides]);
+
+  useEffect(() => {
+    if (reduceMotion || paused || tabHidden) return;
+    const timer = window.setInterval(() => setActive((current) => (current + 1) % slides.length), content.carouselIntervalMs);
+    return () => window.clearInterval(timer);
+  }, [paused, reduceMotion, slides.length, tabHidden]);
+
+  const slide = slides[active];
+  return (
+    <Box
+      component="section"
+      aria-roledescription="carousel"
+      aria-label="Chương trình tiếng Anh của cô Vy"
+      data-testid="hero-carousel"
+      data-active-slide={slide.id}
+      tabIndex={0}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false); }}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowLeft") { event.preventDefault(); move(-1); }
+        if (event.key === "ArrowRight") { event.preventDefault(); move(1); }
+        if (event.key === "Home") { event.preventDefault(); setActive(0); }
+        if (event.key === "End") { event.preventDefault(); setActive(slides.length - 1); }
+      }}
+      onPointerDown={(event) => { pointerStart.current = event.clientX; }}
+      onPointerUp={(event) => {
+        if (pointerStart.current == null) return;
+        const distance = event.clientX - pointerStart.current;
+        pointerStart.current = null;
+        if (Math.abs(distance) >= 42) move(distance > 0 ? -1 : 1);
+      }}
+      sx={{
+        position: "relative",
+        height: { xs: "clamp(470px, calc(100vw + 110px), 500px)", sm: "clamp(540px, 72vw, 580px)", lg: 620 },
+        "@media (min-width:400px) and (max-width:599.95px)": { height: "clamp(490px, calc(100vw + 90px), 520px)" },
+        display: "grid", alignItems: "end", color: "white", bgcolor: "#24173f", overflow: "hidden", outline: 0, touchAction: "pan-y",
+      }}
+    >
+      {slides.map((item, index) => (
+        <Box
+          component="picture"
+          key={item.id}
+          aria-hidden={index !== active}
+          sx={{
+            position: "absolute", inset: 0, opacity: index === active ? 1 : 0,
+            transition: reduceMotion ? "none" : "opacity 520ms ease",
+          }}
+        >
+          <source media="(max-width: 720px)" srcSet={item.mobileImage} />
+          <Box
+            component="img"
+            src={item.desktopImage}
+            alt={index === active ? item.alt : ""}
+            width="1440"
+            height="900"
+            loading={index === 0 ? "eager" : "lazy"}
+            fetchPriority={index === 0 ? "high" : "auto"}
+            sx={{
+              width: "100%", height: "100%", objectFit: "cover", objectPosition: item.focalPosition,
+              transform: index === active && !reduceMotion ? "scale(1.015)" : "scale(1)",
+              transition: reduceMotion ? "none" : "transform 5.5s ease-out",
+            }}
+          />
+        </Box>
+      ))}
+      <Box aria-hidden="true" sx={{ position: "absolute", inset: 0, background: { xs: "linear-gradient(0deg,rgba(22,12,42,.95) 2%,rgba(22,12,42,.5) 72%,rgba(22,12,42,.18))", md: "linear-gradient(90deg,rgba(22,12,42,.93),rgba(22,12,42,.52) 48%,rgba(22,12,42,.08) 78%)" } }} />
+
+      <Box aria-hidden="true" sx={{ position: "absolute", inset: 0, pointerEvents: "none", display: { xs: "none", sm: "block" } }}>
+        <AutoStories sx={{ position: "absolute", right: "8%", top: "16%", color: "#ffe799", fontSize: 38, transform: "rotate(8deg)" }} />
+        <StarOutlined sx={{ position: "absolute", right: "20%", top: "8%", color: "#d9ceff", fontSize: 26 }} />
+        <EditOutlined sx={{ position: "absolute", right: "4%", bottom: "23%", color: "#a9e8ce", fontSize: 34, transform: "rotate(-12deg)" }} />
+        <ChatBubbleOutlined sx={{ position: "absolute", left: "52%", top: "18%", color: "rgba(255,255,255,.75)", fontSize: 30 }} />
+      </Box>
+
+      <Container maxWidth="lg" sx={{ position: "relative", pb: { xs: 5.5, sm: 7 }, pt: 7 }}>
+        <Box role="group" aria-roledescription="slide" aria-label={`${active + 1} / ${slides.length}: ${slide.title}`} sx={{ maxWidth: 620 }}>
+          <Typography sx={{ color: "#e8ddff", fontSize: { xs: 12.5, sm: 14 }, fontWeight: 700 }}>{slide.eyebrow}</Typography>
+          <Typography id="hero-heading" component="h1" sx={{ fontSize: { xs: "1.9rem", sm: "3rem" }, lineHeight: 1.08, fontWeight: 800, mt: 0.75, maxWidth: 590 }}>{slide.title}</Typography>
+          <Typography sx={{ mt: 1.25, fontSize: { xs: "0.95rem", sm: "1.14rem" }, fontWeight: 600, maxWidth: 560 }}>{slide.description}</Typography>
+          {showZalo && (
+            <Box sx={{ mt: { xs: 2, sm: 2.5 }, maxWidth: { sm: 360 } }}>
+              <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth endIcon={<ArrowForward />}>
+                Nhắn Zalo cho cô Vy
+              </Button>
+              <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "rgba(255,255,255,.86)", textAlign: "center" }}>Trao đổi nhanh về tình hình học của con</Typography>
+            </Box>
+          )}
+        </Box>
+      </Container>
+
+      <IconButton aria-label="Slide trước" onClick={() => move(-1)} sx={{ position: "absolute", left: { xs: 8, sm: 18 }, top: { xs: "25%", sm: "42%" }, bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronLeft /></IconButton>
+      <IconButton aria-label="Slide tiếp theo" onClick={() => move(1)} sx={{ position: "absolute", right: { xs: 8, sm: 18 }, top: { xs: "25%", sm: "42%" }, bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronRight /></IconButton>
+      <Stack direction="row" spacing={0.75} sx={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)" }}>
+        {slides.map((item, index) => (
+          <IconButton
+            key={item.id}
+            aria-label={`Chuyển đến slide ${index + 1}: ${item.title}`}
+            aria-current={index === active ? "true" : undefined}
+            onClick={() => setActive(index)}
+            sx={{ minWidth: 44, width: 44, height: 44, p: 0 }}
+          >
+            <Box sx={{ width: index === active ? 24 : 8, height: 8, borderRadius: 8, bgcolor: index === active ? "white" : "rgba(255,255,255,.58)", transition: reduceMotion ? "none" : "width 180ms ease" }} />
+          </IconButton>
+        ))}
+      </Stack>
+    </Box>
+  );
+}
 
 export function HomePage() {
+  const showZalo = isConfiguredExternalUrl(content.contact.zaloUrl, "zalo.me");
+  const showFacebook = isConfiguredExternalUrl(content.contact.facebookUrl, "facebook.com");
+  const showPhone = isConfiguredPhone(content.contact.phoneHref, content.contact.phoneDisplay);
+  const verifiedTestimonials = publishableTestimonials(content.testimonials);
+  const developmentDrafts = isDevelopmentContent ? content.testimonials.filter((item) => !item.published || !item.verified) : [];
+
   return (
     <Box sx={{ bgcolor: "#fff", color: "text.primary", overflowX: "clip" }}>
       <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -112,38 +264,15 @@ export function HomePage() {
         </Container>
       </AppBar>
 
-      {isDemoContent && (
-        <Alert severity="info" icon={false} role="status" sx={{ borderRadius: 0, justifyContent: "center", py: 0.5 }}>
-          Nội dung minh họa cho môi trường phát triển — không dùng để quảng bá thật.
-        </Alert>
-      )}
-
       <Box component="main">
-        <Box component="section" aria-labelledby="hero-heading" sx={{ position: "relative", minHeight: { xs: 610, sm: 620 }, display: "grid", alignItems: "end", color: "white", bgcolor: "#24173f" }}>
-          <Box component="picture" sx={{ position: "absolute", inset: 0 }}>
-            <source media="(max-width: 720px)" srcSet={content.media.heroMobile} />
-            <Box component="img" src={content.media.heroDesktop} alt="Góc học tập tiếng Anh với sách, thẻ từ và đồ dùng học tập" width="1440" height="900" fetchPriority="high" sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
-          </Box>
-          <Box aria-hidden="true" sx={{ position: "absolute", inset: 0, background: { xs: "linear-gradient(0deg,rgba(22,12,42,.94) 5%,rgba(22,12,42,.45) 68%,rgba(22,12,42,.15))", md: "linear-gradient(90deg,rgba(22,12,42,.92),rgba(22,12,42,.54) 47%,rgba(22,12,42,.08) 75%)" } }} />
-          <Container maxWidth="lg" sx={{ position: "relative", pb: { xs: 6, sm: 9 }, pt: 12 }}>
-            <Box sx={{ maxWidth: 610 }}>
-              <Typography color="#e8ddff" sx={{ fontWeight: 700 }}>{content.teacherName} · {content.subject} {content.levels}</Typography>
-              <Typography id="hero-heading" component="h1" sx={{ fontSize: { xs: "2.05rem", sm: "3.25rem" }, lineHeight: 1.08, fontWeight: 800, mt: 1 }}>{content.heroHeading}</Typography>
-              <Typography sx={{ mt: 2, fontSize: { xs: "0.95rem", sm: "1.08rem" }, maxWidth: 560 }}>{content.heroDescription}</Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 3, alignItems: "stretch" }}>
-                <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" endIcon={<ArrowForward />}>Nhắn Zalo cho cô</Button>
-                <Button component="a" href={content.contact.phoneHref} variant="outlined" size="large" startIcon={<Phone />} sx={{ color: "white", borderColor: "rgba(255,255,255,.72)", "&:hover": { borderColor: "white", bgcolor: "rgba(255,255,255,.08)" } }}>Gọi {content.contact.phoneDisplay}</Button>
-              </Stack>
-            </Box>
-          </Container>
-        </Box>
+        <HeroCarousel showZalo={showZalo} />
 
         <Container maxWidth="lg">
           <Box component="section" id="about" aria-labelledby="about-heading" sx={sectionSx}>
             <Typography variant="overline" color="primary">GIỚI THIỆU CÔ VY</Typography>
             <Typography id="about-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Đồng hành theo năng lực từng học sinh</Typography>
             <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 760 }}>{content.introduction}</Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 4 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 3.5 }}>
               {["Kèm cặp 1–1", "Lớp nhóm nhỏ", "Củng cố kiến thức"].map((item) => (
                 <Stack key={item} direction="row" spacing={1} sx={{ flex: 1, alignItems: "center" }}><CheckCircleOutlined color="success" /><Typography variant="subtitle2">{item}</Typography></Stack>
               ))}
@@ -151,13 +280,23 @@ export function HomePage() {
           </Box>
         </Container>
 
-        <Box sx={{ bgcolor: "#f7f5ff" }}>
+        <Box sx={{ bgcolor: "#faf8ff", position: "relative" }}>
           <Container maxWidth="lg">
             <Box component="section" id="programs" aria-labelledby="programs-heading" sx={sectionSx}>
               <Typography variant="overline" color="primary">CHƯƠNG TRÌNH HỌC</Typography>
               <Typography id="programs-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Tiếng Anh lớp 1–9 theo từng mục tiêu</Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 4 }}>
-                {content.programs.map((program) => <Card key={program.title} variant="outlined" sx={{ height: "100%", borderColor: "#d9cef8", boxShadow: "0 6px 18px rgba(57, 42, 94, .06)" }}><CardContent><Chip label={program.level} color="primary" variant="outlined" /><Typography component="h3" variant="h6" sx={{ mt: 1.5 }}>{program.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{program.detail}</Typography></CardContent></Card>)}
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 3.5 }}>
+                {content.programs.map((program) => {
+                  const tone = programTone[program.accent];
+                  return <Card component="article" key={program.title} variant="outlined" sx={{ height: "100%", background: tone.background, borderColor: tone.border, borderRadius: 3, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}><CardContent>
+                    <MenuBook aria-hidden="true" sx={{ color: tone.icon, fontSize: 30 }} />
+                    <Typography component="h3" variant="h6" sx={{ mt: 1 }}>{program.title}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>{program.summary}</Typography>
+                    <Stack component="ul" spacing={0.75} sx={{ listStyle: "none", pl: 0, mb: 0, mt: 2 }}>
+                      {program.topics.map((topic) => <Stack component="li" direction="row" spacing={0.8} key={topic} sx={{ alignItems: "center" }}><CheckCircleOutlined aria-hidden="true" sx={{ color: tone.icon, fontSize: 18 }} /><Typography variant="body2">{topic}</Typography></Stack>)}
+                    </Stack>
+                  </CardContent></Card>;
+                })}
               </Box>
             </Box>
           </Container>
@@ -167,10 +306,10 @@ export function HomePage() {
           <Box component="section" id="method" aria-labelledby="method-heading" sx={sectionSx}>
             <Typography variant="overline" color="primary">PHƯƠNG PHÁP GIẢNG DẠY</Typography>
             <Typography id="method-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Rõ ràng, vừa sức và có mục tiêu</Typography>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 4 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 3.5 }}>
               {content.methods.map((method, index) => {
                 const Icon = [LightbulbOutlined, AutoStories, CheckCircleOutlined][index];
-                return <Card key={method.title} variant="outlined" sx={{ height: "100%", bgcolor: ["#f6f1ff", "#eef7ff", "#eefaf5"][index] }}><CardContent><Icon color="primary" /><Typography component="h3" variant="h6" sx={{ mt: 1.5 }}>{method.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{method.detail}</Typography></CardContent></Card>;
+                return <Card key={method.title} variant="outlined" sx={{ height: "100%", bgcolor: ["#f6f1ff", "#eef7ff", "#eefaf5"][index], borderRadius: 3 }}><CardContent><Icon color="primary" /><Typography component="h3" variant="h6" sx={{ mt: 1.25 }}>{method.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>{method.detail}</Typography></CardContent></Card>;
               })}
             </Box>
           </Box>
@@ -179,7 +318,7 @@ export function HomePage() {
             <Typography variant="overline" color="primary">VIDEO HỌC TẬP</Typography>
             <Typography id="videos-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Xem thử cách tiếp cận bài học</Typography>
             <Typography color="text.secondary" sx={{ mt: 1 }}>Player chỉ được tải sau khi bạn chọn phát video.</Typography>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2, mt: 4 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2, mt: 3.5 }}>
               {content.videos.map((video) => <LearningVideo key={video.url} video={video} />)}
             </Box>
           </Box>
@@ -188,33 +327,51 @@ export function HomePage() {
         <Box sx={{ bgcolor: "#f7f5ff" }}>
           <Container maxWidth="lg">
             <Box component="section" id="feedback" aria-labelledby="feedback-heading" sx={sectionSx}>
-              <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
-              <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{isDemoContent ? "Mẫu bố cục phản hồi phụ huynh" : "Phản hồi từ phụ huynh"}</Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2, mt: 4 }}>
-                {content.testimonials.map((item) => <Card component="figure" key={item.attribution} variant="outlined" sx={{ m: 0 }}><CardContent>{isDemoContent && <Chip size="small" label="Nội dung minh họa" color="warning" variant="outlined" sx={{ mb: 1.5 }} />}<Typography component="blockquote" sx={{ m: 0 }}>“{item.quote}”</Typography><Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 600 }}>— {item.attribution}</Typography></CardContent></Card>)}
-              </Box>
+              <Typography variant="overline" color="primary">PHỤ HUYNH VÀ CÔ VY</Typography>
+              <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{verifiedTestimonials.length ? "Phản hồi từ phụ huynh" : "Phụ huynh thường quan tâm"}</Typography>
+              {verifiedTestimonials.length ? (
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2, mt: 3.5 }}>
+                  {verifiedTestimonials.map((item) => <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, borderRadius: 3 }}><CardContent><Typography component="blockquote" sx={{ m: 0 }}>“{item.quote}”</Typography><Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 600 }}>— {item.guardianLabel} · {item.studentLevel} · {item.location}</Typography></CardContent></Card>)}
+                </Box>
+              ) : (
+                <Box data-testid="testimonial-fallback" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 1.5, mt: 3 }}>
+                  {content.parentTopics.map((topic, index) => <Card key={topic} variant="outlined" sx={{ borderRadius: 3, bgcolor: ["#fff9df", "#edf7ff", "#eefaf5"][index] }}><CardContent><ChatBubbleOutlined color="primary" aria-hidden="true" /><Typography component="h3" variant="subtitle1" sx={{ mt: 1 }}>{topic}</Typography></CardContent></Card>)}
+                </Box>
+              )}
+              {developmentDrafts.length > 0 && (
+                <Box sx={{ mt: 4 }}>
+                  <Typography component="h3" variant="h6">Bản nháp để thay bằng phản hồi đã xác minh</Typography>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 1.5, mt: 2 }}>
+                    {developmentDrafts.map((item) => <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, borderRadius: 3 }}><CardContent><Chip size="small" label="Nội dung mẫu" color="warning" variant="outlined" sx={{ mb: 1.5 }} /><Typography component="blockquote" variant="body2" sx={{ m: 0 }}>“{item.quote}”</Typography><Typography component="figcaption" variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5, fontWeight: 600 }}>— {item.guardianLabel} · {item.studentLevel} · {item.location}</Typography></CardContent></Card>)}
+                  </Box>
+                </Box>
+              )}
             </Box>
           </Container>
         </Box>
 
-        <Container maxWidth="lg">
+        <Container maxWidth="md">
           <Box component="section" id="contact" aria-labelledby="contact-heading" sx={{ ...sectionSx, textAlign: "center" }}>
-            <MenuBook color="primary" sx={{ fontSize: 36 }} />
+            <MenuBook color="primary" sx={{ fontSize: 38 }} />
             <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Trao đổi về mục tiêu học của con</Typography>
-            <Typography color="text.secondary" sx={{ mt: 1 }}>Ưu tiên nhắn Zalo; cô sẽ phản hồi khi kết thúc giờ dạy.</Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 3, justifyContent: "center" }}>
-              <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large">Nhắn Zalo</Button>
-              <Button component="a" href={content.contact.phoneHref} variant="outlined" size="large" startIcon={<Phone />}>Gọi điện</Button>
-              <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="outlined" size="large" startIcon={<Facebook />}>Facebook</Button>
-            </Stack>
+            <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 680, mx: "auto" }}>Cô Vy sẽ tư vấn lộ trình phù hợp với trình độ, thời gian học và mục tiêu của từng học sinh.</Typography>
+            <Box sx={{ mt: 3, maxWidth: 580, mx: "auto" }}>
+              {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth>Nhắn Zalo cho cô Vy</Button>}
+              {showZalo && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>Trao đổi nhanh về tình hình học của con</Typography>}
+              {(showPhone || showFacebook) && (
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", gap: 1.25, mt: 2 }}>
+                  {showPhone && <Button component="a" href={content.contact.phoneHref} variant="outlined" size="large" startIcon={<Phone />}>Gọi cô Vy</Button>}
+                  {showFacebook && <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="outlined" size="large" startIcon={<Facebook />}>Facebook</Button>}
+                </Box>
+              )}
+            </Box>
           </Box>
         </Container>
       </Box>
 
-      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", py: 3 }}>
+      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", py: 3, bgcolor: "#faf9fd" }}>
         <Container maxWidth="lg"><Typography color="text.secondary" sx={{ textAlign: "center" }}>2026 — từ người hâm mộ cô Vy, with love ❤️</Typography></Container>
       </Box>
-
     </Box>
   );
 }

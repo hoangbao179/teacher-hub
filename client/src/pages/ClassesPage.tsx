@@ -1,4 +1,4 @@
-import { Add } from "@mui/icons-material";
+import { Add, Groups, Person } from "@mui/icons-material";
 import {
   Alert,
   Button,
@@ -36,16 +36,18 @@ export function ClassesPage() {
           key={item.id}
           component={Link}
           to={`/admin/classes/${item.id}`}
-          sx={{ textDecoration: "none" }}
+          data-class-tone={item.type === "ONE_TO_ONE" ? "mint" : "blue"}
+          sx={{ textDecoration: "none", borderLeft: "4px solid", borderLeftColor: item.type === "ONE_TO_ONE" ? "#78cfa5" : "#8a78df", boxShadow: "0 3px 12px rgba(36,29,62,.07)" }}
         >
           <CardContent>
             <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-              <Typography variant="subtitle1" sx={{ minWidth: 0, overflowWrap: "anywhere" }} color="text.primary">
-                {item.name}
-              </Typography>
+              <Stack direction="row" spacing={1} sx={{ minWidth: 0, alignItems: "center" }}>
+                <Box sx={{ display: "grid", placeItems: "center", width: 32, height: 32, flexShrink: 0, borderRadius: 2, bgcolor: item.type === "ONE_TO_ONE" ? "#e2f6eb" : "#eeeaff", color: item.type === "ONE_TO_ONE" ? "#168754" : "#624bd2" }}>{item.type === "ONE_TO_ONE" ? <Person sx={{ fontSize: 19 }} /> : <Groups sx={{ fontSize: 19 }} />}</Box>
+                <Typography variant="subtitle1" sx={{ minWidth: 0, overflowWrap: "anywhere" }} color="text.primary">{item.name}</Typography>
+              </Stack>
               <StatusBadge status={item.status} />
             </Stack>
-            <Typography color="text.secondary">
+            <Typography color="text.secondary" sx={{ mt: 1 }}>
               {item.type === "ONE_TO_ONE" ? "1 kèm 1" : "Lớp nhóm"} ·{" "}
               {item.activeStudentCount} học sinh
             </Typography>

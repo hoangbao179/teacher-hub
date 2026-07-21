@@ -11,8 +11,9 @@ const apiPort = 4108;
 const webPort = 5188;
 const origin = `http://127.0.0.1:${webPort}`;
 const username = "auth-e2e";
-const password = "auth-e2e-password-123";
-const artifactDir = path.join(root, ".agent-reports", "v1-1-login-final");
+const bootstrapE2ePassword = "auth-e2e-password-123";
+const password = "v12c42";
+const artifactDir = path.join(root, ".agent-reports", "v1-2-admin");
 const testEnv = {
   ...process.env,
   NODE_ENV: "test",
@@ -23,11 +24,16 @@ const testEnv = {
   DB_NAME: `${process.env.DB_NAME ?? "teacher_hub"}_test`,
   JWT_SECRET: "auth-e2e-secret-with-at-least-32-characters",
   BOOTSTRAP_ADMIN_USERNAME: username,
-  BOOTSTRAP_ADMIN_PASSWORD: password,
+  BOOTSTRAP_ADMIN_PASSWORD: bootstrapE2ePassword,
   BOOTSTRAP_ADMIN_DISPLAY_NAME: "Cô Vy",
   PORT: String(apiPort),
   CORS_ORIGIN: origin,
   VITE_API_BASE_URL: `http://127.0.0.1:${apiPort}`,
+  LOGIN_RATE_LIMIT_WINDOW_SECONDS: "3",
+  LOGIN_RATE_LIMIT_MAX_FAILURES: "2",
+  ADMIN_RESET_USERNAME: username,
+  ADMIN_RESET_PASSWORD: password,
+  ADMIN_RESET_PASSWORD_CONFIRMATION: password,
 };
 const children = [];
 let browser;
@@ -92,6 +98,7 @@ try {
   run("node", ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
   run("npm", ["run", "db:migrate"], path.join(root, "server"));
   run("npm", ["run", "db:bootstrap-admin"], path.join(root, "server"));
+  run("npm", ["run", "admin:reset-password"], root);
 
   const node = process.execPath;
   start(node, [path.join(root, "node_modules/tsx/dist/cli.mjs"), "src/index.ts"], path.join(root, "server"));
@@ -106,7 +113,8 @@ try {
   const page = await context.newPage();
 
   await page.goto(`${origin}/admin/login`, { waitUntil: "networkidle" });
-  await page.getByRole("heading", { level: 1, name: "Lớp học tiếng Anh cô Vy" }).waitFor();
+  await page.getByRole("heading", { level: 1, name: "Chào mừng cô Vy trở lại" }).waitFor();
+  await page.getByText("Tiếng Anh lớp 1–9", { exact: true }).waitFor();
   await page.getByRole("heading", { level: 2, name: "Đăng nhập", exact: true }).waitFor();
   assert(await page.getByLabel("Tên đăng nhập").getAttribute("autocomplete") === "username", "Username autocomplete is not username");
   assert(await page.locator('input[name="password"]').getAttribute("autocomplete") === "current-password", "Password autocomplete is not current-password");
@@ -125,7 +133,7 @@ try {
   assert(await passwordInput.getAttribute("type") === "password", "Hide-password control did not restore masking");
 
   await page.getByLabel("Tên đăng nhập").fill(username);
-  await passwordInput.fill("incorrect-password");
+  await passwordInput.fill(bootstrapE2ePassword);
   await passwordInput.press("Enter");
   await page.getByText("Sai tên đăng nhập hoặc mật khẩu.", { exact: true }).waitFor();
   assert(!(await page.locator("body").innerText()).includes("INVALID_CREDENTIALS"), "Raw API error code is visible");
@@ -198,6 +206,32 @@ try {
   }));
   assert(!storage.localToken && !storage.sessionToken, "Invalid auth bootstrap did not clear both token stores");
 
+  await page.getByLabel("Tên đăng nhập").fill(username);
+  await passwordInput.fill("wrong-rate-limit-value");
+  await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
+  await page.getByText("Sai tên đăng nhập hoặc mật khẩu.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
+  await page.getByText("Sai tên đăng nhập hoặc mật khẩu.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
+  const countdown = page.locator('[aria-live="polite"]').filter({ hasText: /Bạn đã nhập sai quá nhiều lần\. Có thể thử lại sau \d+ giây\./ });
+  await countdown.waitFor();
+  const blockedSubmit = page.getByRole("button", { name: "Đăng nhập", exact: true });
+  assert(await blockedSubmit.isDisabled(), "Rate-limited submit button is not disabled");
+  assert(await page.getByLabel("Tên đăng nhập").inputValue() === username, "Rate limit cleared the username field");
+  assert(await passwordInput.inputValue() === "wrong-rate-limit-value", "Rate limit cleared the password field");
+  assert(await countdown.getAttribute("aria-live") === "polite", "Countdown is not exposed through a live region");
+  await page.screenshot({ path: path.join(artifactDir, "login-rate-limit-390x844.png"), fullPage: true });
+  await assertNoPasswordPersisted(page, context);
+  await page.waitForTimeout(3_500);
+  assert(await blockedSubmit.isEnabled(), "Submit did not automatically re-enable after Retry-After");
+  await passwordInput.fill(password);
+  await blockedSubmit.click();
+  await page.waitForURL(`${origin}/admin`);
+  await page.locator('[data-testid="dashboard-page"]').waitFor();
+  await assertNoPasswordPersisted(page, context);
+  await page.getByRole("button", { name: "Đăng xuất" }).click();
+  await page.waitForURL(`${origin}/admin/login`);
+
   for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -213,7 +247,7 @@ try {
   assert(Boolean(submitBox) && submitBox.y >= 0 && submitBox.y + submitBox.height <= 500, "Submit button is unreachable in a short keyboard-like viewport");
   assert(await page.evaluate(() => document.documentElement.scrollHeight > document.documentElement.clientHeight), "Login cannot scroll in a short viewport");
 
-  console.log(`V11B auth-session E2E passed; screenshots: ${artifactDir}`);
+  console.log(`V12C auth-session and rate-limit E2E passed; screenshots: ${artifactDir}`);
 } finally {
   if (browser) await browser.close();
   for (const child of children.reverse()) {

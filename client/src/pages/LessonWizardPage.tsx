@@ -33,7 +33,13 @@ import { lessonApi } from "../api/lessons";
 import { LoadingState } from "../components/LoadingState";
 import { visibleStatusLabel } from "../components/UiKit";
 
-const steps = ["Thông tin buổi học", "Điểm danh", "Nội dung và bài tập", "Xác nhận"];
+const steps = ["Thông tin", "Điểm danh", "Nội dung", "Xác nhận"];
+const stepTones = [
+  { main: "#2f6fed", soft: "#dce9ff" },
+  { main: "#168754", soft: "#dff4e8" },
+  { main: "#bd6d00", soft: "#fff0c9" },
+  { main: "#6d3df5", soft: "#e9e1ff" },
+] as const;
 const today = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit",
 }).format(new Date());
@@ -251,7 +257,15 @@ export function LessonWizardPage() {
     <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="lesson-wizard" data-form-width="bounded">
       <Typography component="h1" variant="h5">Ghi nhận buổi học</Typography>
       <Stepper activeStep={step} alternativeLabel sx={{ mx: -1, "& .MuiStepLabel-label": { fontSize: { xs: "0.65rem", sm: "0.75rem" }, lineHeight: 1.15 } }}>
-        {steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
+        {steps.map((label, index) => {
+          const tone = stepTones[index];
+          return <Step key={label} data-step-tone={index} sx={{
+            "& .MuiStepIcon-root": { color: tone.soft },
+            "& .MuiStepIcon-text": { fill: tone.main, fontWeight: 700 },
+            "& .MuiStepIcon-root.Mui-active, & .MuiStepIcon-root.Mui-completed": { color: tone.main },
+            "& .MuiStepIcon-root.Mui-active .MuiStepIcon-text": { fill: "#fff" },
+          }}><StepLabel>{label}</StepLabel></Step>;
+        })}
       </Stepper>
       {error && <Alert severity="error">{error}</Alert>}
       {conflict && <Alert severity="warning"><strong>Xung đột:</strong> {conflict} Hãy tải lại buổi học.</Alert>}

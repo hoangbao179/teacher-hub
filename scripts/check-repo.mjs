@@ -11,6 +11,16 @@ const required = [
   "docs/implementation/roadmap.md", "docs/implementation/status.md",
   "docs/implementation/tasks/M1.1-architecture-stabilization.md",
   "docs/implementation/acceptance/M1.1.md",
+  "docs/features/public-homepage.md", "docs/features/authentication.md",
+  "docs/features/admin-ui.md", "docs/user-guide/teacher-guide.md",
+  "docs/design/ui-guidelines.md", "docs/wireframes/README.md",
+  "docs/wireframes/v2-branding/README.md",
+  ...Array.from({ length: 8 }, (_, index) =>
+    `docs/wireframes/v2-branding/0${index + 1}-${[
+      "homepage-mobile", "homepage-desktop", "login-mobile", "dashboard-mobile",
+      "student-list-mobile", "bottom-navigation-mobile", "lesson-wizard-mobile",
+      "tuition-list-mobile",
+    ][index]}.png`),
 ];
 assertRuleSelfTests();
 for (const file of required) if (!fs.existsSync(path.join(root, file))) failures.push(`Missing required file: ${file}`);
@@ -63,9 +73,37 @@ for (const file of clientFiles) {
     if (pattern.test(source)) failures.push(`${label} in ${file}`);
   const passwordReason = rawPasswordPersistenceReason(file, source);
   if (passwordReason) failures.push(`${passwordReason} in ${file}`);
-  if (/Cô giáo An|Học Toán|Xây nền Toán|Teacher Class Hub/i.test(source))
+  if (/Cô (?:giáo )?An\b|Học Toán|Xây nền Toán|Teacher Class Hub/i.test(source))
     failures.push(`Stale visible branding/content in ${file}`);
 }
+
+const currentDocumentationFiles = execFileSync("rg", ["--files", "docs/product-spec", "docs/features", "docs/user-guide", "docs/design", "docs/deployment", "docs/security"], {
+  cwd: root,
+  encoding: "utf8",
+}).trim().split(/\r?\n/).filter((file) => file.endsWith(".md"));
+currentDocumentationFiles.push("README.md", "AGENTS.md", "docs/README.md", "docs/wireframes/README.md", "docs/wireframes/v2-branding/README.md");
+const staleVisiblePatterns = [
+  { label: "old teacher name", pattern: /Cô (?:giáo )?An\b/i, probe: "Cô An" },
+  { label: "mathematics marketing copy", pattern: /\b(?:Học Toán|Xây nền Toán|Mathematics)\b/i, probe: "Học Toán" },
+  { label: "obsolete single-video hero", pattern: /\b(?:video hero tự chạy|Hero video tự host|Hero autoplay muted)\b/i, probe: "Hero video tự host" },
+  { label: "old ten-character password minimum", pattern: /(?:ít nhất|tối thiểu|minimum|at least)\s+10\s+(?:ký tự|characters?)/i, probe: "tối thiểu 10 ký tự" },
+  { label: "old fifteen-minute login limiter", pattern: /\b(?:15 phút|15 minutes)\b|15\s*\*\s*60\s*\*\s*1000/i, probe: "15 phút" },
+  { label: "indefinite login limiter text", pattern: /Vui lòng chờ rồi thử lại/i, probe: "Vui lòng chờ rồi thử lại" },
+  { label: "old wireframe authority statement", pattern: /wireframes?\s+(?:are|is|là).{0,40}(?:authoritative|source of truth|nguồn đúng)/i, probe: "Wireframe là nguồn đúng" },
+];
+for (const { label, pattern, probe } of staleVisiblePatterns) {
+  if (!pattern.test(probe)) failures.push(`Repository checker self-test failed for ${label}`);
+}
+for (const file of currentDocumentationFiles) {
+  const currentSource = read(file);
+  for (const { label, pattern } of staleVisiblePatterns) {
+    if (pattern.test(currentSource)) failures.push(`${label} in current documentation: ${file}`);
+  }
+}
+
+const agents = read("AGENTS.md");
+for (const marker of ["docs/wireframes/v2-branding/", "Wireframe P0", "docs/content/replacing-public-media.md"])
+  if (!agents.includes(marker)) failures.push(`AGENTS visual-reference rules are missing: ${marker}`);
 
 const obsoleteFiles = ["client/src/pages/LessonCompletePlaceholderPage.tsx"];
 for (const file of obsoleteFiles) if (fs.existsSync(path.join(root, file))) failures.push(`Obsolete completed-feature placeholder exists: ${file}`);

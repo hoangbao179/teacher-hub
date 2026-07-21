@@ -213,3 +213,13 @@ It is not authoritative for:
 
 When implementing M2/M3, refactor or replace this flow according to the
 approved ADRs. Do not preserve behavior that conflicts with those ADRs.
+
+## 11. Visual references
+
+- Ứng dụng chạy thật và screenshot đã approved trong
+  `docs/wireframes/v2-branding/` là tham chiếu visual hiện hành.
+- Wireframe P0 vẫn là tham chiếu workflow và phân cấp thông tin; không dùng text/số
+  liệu trong ảnh để thay đổi business rule.
+- Khi đã có V2 cho một màn hình, không hoàn nguyên styling về P0 cũ.
+- Media Homepage tạm thời chỉ được thay qua cấu hình/quy trình trong
+  `docs/content/replacing-public-media.md`, không làm đổi business logic.

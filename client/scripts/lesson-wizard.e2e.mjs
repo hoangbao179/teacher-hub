@@ -100,7 +100,7 @@ try {
   if (!group) throw new Error("Seeded group class not found");
 
   await page.goto(`http://127.0.0.1:5175/admin/lessons/new?classId=${group.id}`);
-  await page.getByText("Thông tin buổi học", { exact: true }).first().waitFor();
+  await page.getByText("Thông tin", { exact: true }).first().waitFor();
   const lessonTypography = await page.evaluate(async () => {
     await document.fonts.ready;
     const titleStyle = getComputedStyle(document.querySelector("h1"));

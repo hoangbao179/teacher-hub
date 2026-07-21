@@ -2,10 +2,9 @@
 
 ## Current milestone
 
-V1.1 Cô Vy branding and mobile polish checkpoint is complete. V11A, V11B,
-V11C, V11D and the V11E footer/username-auth follow-up are PASS. The reviewable release-candidate artifact is not a
-production approval; real operator configuration is still required and the
-independent full-system review has not started.
+M1–M6, V1.1 and all V1.2 checkpoints V12A–V12E are PASS.
+The release-candidate artifact is not a production approval; real operator
+configuration is still required. **Independent full-system review: NOT STARTED.**
 
 ## Status
 
@@ -63,6 +62,16 @@ V11D: PASS on 21/07/2026. Evidence is in
 `.agent-reports/V11D-implementation.md` and `.agent-reports/V11D-verification.md`.
 V11E: PASS on 21/07/2026. Evidence is in
 `.agent-reports/V11E-implementation.md` and `.agent-reports/V11E-verification.md`.
+V12A: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V12A-implementation.md` and `.agent-reports/V12A-verification.md`.
+V12B: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V12B-implementation.md` and `.agent-reports/V12B-verification.md`.
+V12C: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V12C-implementation.md` and `.agent-reports/V12C-verification.md`.
+V12D: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V12D-implementation.md` and `.agent-reports/V12D-verification.md`.
+V12E: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V12E-implementation.md` and `.agent-reports/V12E-verification.md`.
 
 ## Scope boundary
 

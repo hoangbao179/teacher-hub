@@ -5,6 +5,7 @@ import {
   Person,
   Payments,
   Logout,
+  School,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -17,6 +18,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Stack,
   Toolbar,
   Typography,
   IconButton,
@@ -53,7 +55,10 @@ export function AdminLayout() {
         sx={{ borderBottom: 1, borderColor: "divider", zIndex: (theme) => theme.zIndex.drawer + 1 }}
       >
         <Toolbar sx={{ minHeight: `${uiTokens.navigationHeight}px !important`, px: { xs: 2, md: 3 } }}>
-          <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>Lớp học cô Vy</Typography>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexGrow: 1 }}>
+            <Box sx={{ display: "grid", placeItems: "center", width: 34, height: 34, borderRadius: 2, bgcolor: "#eee8ff", color: "primary.main" }}><School sx={{ fontSize: 20 }} /></Box>
+            <Typography variant="subtitle1">Lớp học cô Vy</Typography>
+          </Stack>
           <IconButton aria-label="Đăng xuất" onClick={() => void auth.logout().then(() => navigate("/admin/login"))}>
             <Logout />
           </IconButton>
@@ -72,6 +77,7 @@ export function AdminLayout() {
             height: `calc(100% - ${uiTokens.navigationHeight}px)`,
             boxSizing: "border-box",
             borderRightColor: "divider",
+            bgcolor: "#fbfaff",
             p: 1.5,
           },
         }}

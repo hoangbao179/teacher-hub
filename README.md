@@ -44,6 +44,9 @@ BOOTSTRAP_ADMIN_PASSWORD=change-me-now
 ```
 
 Hãy đổi password trước khi dùng thật.
+Sau bootstrap, có thể đổi riêng mật khẩu của admin hiện hữu bằng
+`npm run admin:reset-password`; sửa `.env` hoặc chạy `npm run dev` không tự cập
+nhật credential trong database.
 
 `npm run db:seed:dev` tạo idempotent dữ liệu giả `DEV_*` gồm lớp nhóm, lớp 1 kèm
 1, năm học sinh, ba tuition mode, schedules và trạng thái paused/closed.
@@ -56,8 +59,8 @@ Hãy đổi password trước khi dùng thật.
 Tiếng Anh lớp 1–9, phương pháp, media, video, phản hồi, liên hệ và SEO. Các giá trị
 theo deployment được khai báo bằng `VITE_PUBLIC_*` theo `client/.env.example`.
 
-Các giá trị liên hệ/domain trong file example là placeholder phát triển và luôn
-được gắn nhãn trên Homepage. Trước khi build production, cung cấp số điện thoại,
+Các giá trị liên hệ/domain trong file example là placeholder phát triển; action
+không hợp lệ sẽ bị ẩn khỏi Homepage. Trước khi build production, cung cấp số điện thoại,
 Zalo, Facebook và domain thật; đồng bộ domain đó vào `client/public/sitemap.xml`
 và `client/public/robots.txt`, sau đó chạy:
 

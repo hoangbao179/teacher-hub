@@ -9,7 +9,10 @@
 5. Migration/schema và source hiện tại.
 6. `wireframes/`.
 
-Wireframe không được dùng để ghi đè business rule. Nội dung Home do developer sửa trong source, không có CMS V1. Excel migration tạm hoãn; file cũ chỉ nằm trong `reference/legacy-excel/`.
+Wireframe không được dùng để ghi đè business rule. PNG P0 là lịch sử workflow;
+screenshot chạy thật trong `wireframes/v2-branding/` là tham chiếu styling hiện
+hành cho màn hình tương ứng. Nội dung Home do developer sửa trong source, không có
+CMS V1. Excel migration tạm hoãn; file cũ chỉ nằm trong `reference/legacy-excel/`.
 
 Khi thêm/sửa feature quan trọng, cập nhật tài liệu feature và shared contract trong cùng PR.
 

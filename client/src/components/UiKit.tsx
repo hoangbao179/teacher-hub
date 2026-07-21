@@ -57,7 +57,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 
 export function StatusBadge({ status }: { status: string }) {
   const color = status === "ACTIVE" || status === "COMPLETED" || status === "PAID" || status === "RECORDED" ? "success"
-    : status === "PAYMENT_DUE" || status === "UNRECORDED" ? "warning"
+    : status === "PAYMENT_DUE" || status === "UNRECORDED" || status === "PAUSED" ? "warning"
       : status === "CLOSED" || status === "CANCELLED" || status === "ENDED" ? "default" : "primary";
   return <Chip size="small" color={color} variant={status === "INCOMPLETE" || status === "CLOSED" ? "outlined" : "filled"} label={visibleStatusLabel(status)} sx={{ flexShrink: 0 }} />;
 }
@@ -103,7 +103,7 @@ export function ProgressCount({ value, target = 8, label = "Tiến độ" }: { v
   const safeValue = Math.min(Math.max(value, 0), target);
   return <Stack spacing={0.75}>
     <Typography variant="subtitle2">{label} {safeValue}/{target}</Typography>
-    <LinearProgress aria-label={`${label} ${safeValue} trên ${target}`} variant="determinate" value={target ? (safeValue / target) * 100 : 0} />
+    <LinearProgress aria-label={`${label} ${safeValue} trên ${target}`} variant="determinate" value={target ? (safeValue / target) * 100 : 0} sx={{ height: 6, borderRadius: 4, bgcolor: "#e6e1f3", "& .MuiLinearProgress-bar": { borderRadius: 4 } }} />
   </Stack>;
 }
 

@@ -2,7 +2,8 @@
 
 - bcrypt hash, expiring JWT, protected `/api`, generic login failure, Helmet, explicit
   CORS, 1 MB JSON limit, parameterized repositories and sanitized 500 responses.
-- Login limiter: 10 failures/IP+username/15 phút. V1 limiter in-memory phù hợp một API
+- Login limiter: mặc định development 20 lần/60 giây, production 10 lần/300 giây,
+  theo IP+username. V1 limiter in-memory phù hợp một API
   instance; multi-instance cần shared store ở post-V1.
 - Request IDs và JSON logs chỉ ghi method/path/status/duration/error class; không ghi
   token, password, request body, lesson notes hay workbook.
@@ -27,8 +28,12 @@
   này sử dụng. Chấp nhận tạm thời, theo dõi upstream; không có high/critical và không
   dùng `audit fix --force`.
 
-Dependency tree hợp lệ. Audit production: 2 moderate (ExcelJS + UUID cùng một chuỗi),
-0 high/critical. License inventory chủ yếu MIT/Apache/ISC/BSD; MPL và lựa chọn
+Dependency tree cài sạch. Audit production hiện có 2 moderate (ExcelJS + UUID cùng
+một chuỗi), 0 high/critical. Audit đầy đủ tính thêm 2 high từ dev-only
+`concurrently` → `shell-quote`; các script concurrently là lệnh tĩnh do maintainer
+kiểm soát, không parse input người dùng. NPM chỉ đề xuất `--force` với downgrade
+breaking nên V1.2 ghi nhận và hoãn xử lý dependency riêng, không tự force-fix.
+License inventory chủ yếu MIT/Apache/ISC/BSD; MPL và lựa chọn
 MIT-or-GPL là dependency transitively distributed, không có copyleft blocker đã xác
 định cho source ứng dụng. Outdated major Node types/TypeScript được hoãn vì ngoài M6;
 review manifest không tìm thấy dependency trực tiếp không dùng.

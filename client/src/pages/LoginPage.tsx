@@ -1,6 +1,8 @@
 import {
+  AutoStories,
   ArrowBack,
   School,
+  StarOutlined,
   Visibility,
   VisibilityOff,
 } from "@mui/icons-material";
@@ -17,7 +19,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -28,7 +30,6 @@ function friendlyLoginError(error: unknown): string {
   if (error.status === 0 || error.code === "NETWORK_ERROR") return "Không thể kết nối máy chủ. Vui lòng thử lại.";
   if (error.code === "INVALID_CREDENTIALS") return "Sai tên đăng nhập hoặc mật khẩu.";
   if (error.code === "ACCOUNT_INACTIVE") return "Tài khoản hiện không hoạt động.";
-  if (error.status === 429) return "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng chờ rồi thử lại.";
   return "Không thể đăng nhập. Vui lòng thử lại.";
 }
 
@@ -42,9 +43,20 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [blockedSeconds, setBlockedSeconds] = useState(0);
+  const [retryFallback, setRetryFallback] = useState(false);
+
+  useEffect(() => {
+    if (blockedSeconds <= 0) return;
+    const timer = window.setTimeout(() => {
+      setBlockedSeconds((remaining) => Math.max(0, remaining - 1));
+    }, 1_000);
+    return () => window.clearTimeout(timer);
+  }, [blockedSeconds]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (blockedSeconds > 0) return;
     setLoading(true);
     setError("");
     auth.clearSessionMessage();
@@ -53,7 +65,12 @@ export function LoginPage() {
       const destination = (location.state as { from?: string } | null)?.from;
       navigate(destination?.startsWith("/admin") ? destination : "/admin", { replace: true });
     } catch (caught) {
-      setError(friendlyLoginError(caught));
+      if (caught instanceof ApiError && caught.status === 429) {
+        setBlockedSeconds(Math.max(1, caught.retryAfterSeconds ?? 60));
+        setRetryFallback(caught.retryAfterSeconds === undefined);
+      } else {
+        setError(friendlyLoginError(caught));
+      }
     } finally {
       setLoading(false);
     }
@@ -75,6 +92,9 @@ export function LoginPage() {
     >
       <Box aria-hidden="true" sx={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", bgcolor: "rgba(109,61,245,.08)", top: -80, right: -70 }} />
       <Box aria-hidden="true" sx={{ position: "absolute", width: 120, height: 120, borderRadius: "32%", bgcolor: "rgba(63,169,245,.08)", bottom: 30, left: -70, transform: "rotate(18deg)" }} />
+      <Typography aria-hidden="true" sx={{ position: "absolute", top: { xs: 76, sm: "16%" }, right: { xs: 14, sm: "8%" }, color: "rgba(109,61,245,.2)", fontWeight: 800, letterSpacing: ".08em", fontSize: { xs: 18, sm: 24 } }}>ABC</Typography>
+      <AutoStories aria-hidden="true" sx={{ position: "absolute", left: { xs: 12, sm: "8%" }, top: { xs: "70%", sm: "62%" }, color: "rgba(24,145,103,.18)", fontSize: { xs: 30, sm: 42 }, transform: "rotate(-8deg)" }} />
+      <StarOutlined aria-hidden="true" sx={{ position: "absolute", right: { xs: 18, sm: "12%" }, bottom: { xs: 26, sm: "18%" }, color: "rgba(234,151,27,.2)", fontSize: 34 }} />
       <Stack sx={{ position: "relative", width: "100%", maxWidth: 460, minHeight: { xs: "auto", sm: "calc(100svh - 40px)" }, mx: "auto", justifyContent: { xs: "flex-start", sm: "center" } }}>
         <Button component={Link} to="/" startIcon={<ArrowBack />} color="inherit" sx={{ alignSelf: "flex-start", mb: { xs: 1.5, sm: 2 } }}>
           Về trang chủ
@@ -84,12 +104,20 @@ export function LoginPage() {
             <Box sx={{ display: "grid", placeItems: "center", width: 52, height: 52, borderRadius: 2.5, color: "primary.main", bgcolor: "#eee8ff" }}>
               <School aria-hidden="true" sx={{ fontSize: 29 }} />
             </Box>
-            <Typography id="login-title" component="h1" variant="h5">Lớp học tiếng Anh cô Vy</Typography>
-            <Typography color="text.secondary">Quản lý lớp học, buổi học và học phí</Typography>
+            <Typography variant="overline" color="primary">LỚP HỌC CÔ VY</Typography>
+            <Typography id="login-title" component="h1" variant="h5">Chào mừng cô Vy trở lại</Typography>
+            <Typography color="text.secondary" sx={{ fontWeight: 600 }}>Tiếng Anh lớp 1–9</Typography>
           </Stack>
 
-          <Typography component="h2" variant="subtitle1" sx={{ mt: 3 }}>Đăng nhập</Typography>
-          {(error || auth.sessionMessage) && <Alert severity="error" sx={{ mt: 1.5 }}>{error || auth.sessionMessage}</Alert>}
+          <Typography component="h2" variant="subtitle1" sx={{ mt: 2.5 }}>Đăng nhập</Typography>
+          {blockedSeconds > 0 && (
+            <Alert severity="warning" aria-live="polite" sx={{ mt: 1.5 }}>
+              {retryFallback
+                ? `Bạn đã nhập sai quá nhiều lần. Máy chủ không gửi thời gian chờ; có thể thử lại sau khoảng ${blockedSeconds} giây.`
+                : `Bạn đã nhập sai quá nhiều lần. Có thể thử lại sau ${blockedSeconds} giây.`}
+            </Alert>
+          )}
+          {(error || auth.sessionMessage) && blockedSeconds === 0 && <Alert severity="error" sx={{ mt: 1.5 }}>{error || auth.sessionMessage}</Alert>}
           <TextField
             fullWidth
             required
@@ -134,7 +162,7 @@ export function LoginPage() {
           <Typography variant="body2" color="text.secondary" sx={{ ml: 4.75 }}>
             Không chọn khi đăng nhập trên thiết bị dùng chung.
           </Typography>
-          <Button fullWidth type="submit" variant="contained" size="large" disabled={loading} sx={{ mt: 2.5 }}>
+          <Button fullWidth type="submit" variant="contained" size="large" disabled={loading || blockedSeconds > 0} sx={{ mt: 2.5 }}>
             {loading ? "Đang đăng nhập…" : "Đăng nhập"}
           </Button>
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 2 }}>

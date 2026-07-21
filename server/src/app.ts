@@ -16,6 +16,7 @@ export function createApp() {
     cors({
       origin: config.corsOrigin.split(",").map((item) => item.trim()),
       credentials: false,
+      exposedHeaders: ["Retry-After"],
     }),
   );
   app.use(express.json({ limit: "1mb" }));

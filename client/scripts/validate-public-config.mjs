@@ -35,12 +35,23 @@ export function validatePublicConfig(env) {
   if (!/^\+[1-9]\d{7,14}$/.test(env.VITE_PUBLIC_PHONE_E164 ?? "")) errors.push("VITE_PUBLIC_PHONE_E164 must use E.164 format");
   for (const key of ["VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL", "VITE_PUBLIC_OG_IMAGE_URL"])
     if (!/^\/(?!\/)|^https:\/\//.test(env[key] ?? "")) errors.push(`${key} must be a root-relative or HTTPS asset URL`);
-  for (const [key, fields] of [["VITE_PUBLIC_VIDEOS_JSON", ["title", "description", "url"]], ["VITE_PUBLIC_TESTIMONIALS_JSON", ["quote", "attribution"]]]) {
-    try {
-      const items = JSON.parse(env[key] ?? "");
-      if (!Array.isArray(items) || !items.length || items.some((item) => !fields.every((field) => typeof item?.[field] === "string" && item[field].trim()))) errors.push(`${key} must be a non-empty array with ${fields.join(", ")}`);
-    } catch { errors.push(`${key} must be valid JSON`); }
-  }
+  try {
+    const items = JSON.parse(env.VITE_PUBLIC_VIDEOS_JSON ?? "");
+    const fields = ["title", "description", "url"];
+    if (!Array.isArray(items) || !items.length || items.some((item) => !fields.every((field) => typeof item?.[field] === "string" && item[field].trim())))
+      errors.push(`VITE_PUBLIC_VIDEOS_JSON must be a non-empty array with ${fields.join(", ")}`);
+  } catch { errors.push("VITE_PUBLIC_VIDEOS_JSON must be valid JSON"); }
+  try {
+    const items = JSON.parse(env.VITE_PUBLIC_TESTIMONIALS_JSON ?? "");
+    const stringFields = ["id", "guardianLabel", "studentLevel", "location", "quote"];
+    if (!Array.isArray(items) || items.some((item) =>
+      !stringFields.every((field) => typeof item?.[field] === "string" && item[field].trim()) ||
+      typeof item?.verified !== "boolean" || typeof item?.published !== "boolean" ||
+      (item.date != null && (typeof item.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(item.date)))))
+      errors.push(`VITE_PUBLIC_TESTIMONIALS_JSON must be an array with ${stringFields.join(", ")}, verified and published`);
+    if (Array.isArray(items) && items.some((item) => item?.published === true && item?.verified !== true))
+      errors.push("VITE_PUBLIC_TESTIMONIALS_JSON cannot publish an unverified testimonial");
+  } catch { errors.push("VITE_PUBLIC_TESTIMONIALS_JSON must be valid JSON"); }
   return [...new Set(errors)];
 }
 
@@ -53,7 +64,7 @@ const validFixture = {
   VITE_PUBLIC_PHONE_E164: "+84912345678", VITE_PUBLIC_FACEBOOK_URL: "https://www.facebook.com/lophocanhngucovy",
   VITE_PUBLIC_HERO_MOBILE_URL: "/images/teacher-english-hero-720.jpg", VITE_PUBLIC_HERO_DESKTOP_URL: "/images/teacher-english-hero-1440.jpg", VITE_PUBLIC_OG_IMAGE_URL: "/images/teacher-english-hero-1440.jpg",
   VITE_PUBLIC_VIDEOS_JSON: '[{"title":"Bài học","description":"Giới thiệu","url":"https://youtu.be/abc123"}]',
-  VITE_PUBLIC_TESTIMONIALS_JSON: '[{"quote":"Phản hồi đã được cho phép công khai","attribution":"Phụ huynh lớp 6"}]',
+  VITE_PUBLIC_TESTIMONIALS_JSON: '[{"id":"verified-1","guardianLabel":"Phụ huynh lớp 6","studentLevel":"Lớp 6","location":"Huế","quote":"Phản hồi đã được cho phép công khai","verified":true,"published":true}]',
   VITE_PUBLIC_SEO_TITLE: "Lớp học tiếng Anh cô Vy", VITE_PUBLIC_SEO_DESCRIPTION: "Thông tin lớp tiếng Anh và phương pháp học.",
 };
 
@@ -65,6 +76,8 @@ if (process.argv.includes("--self-test")) {
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_TEACHER_NAME: "replace-with-teacher" }).length) throw new Error("Placeholder teacher was accepted");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_ZALO_URL: "https://zalo.me/84000000000" }).length) throw new Error("Placeholder Zalo was accepted");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_PHONE_E164: "+84000000000" }).length) throw new Error("Placeholder E.164 phone was accepted");
+  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_TESTIMONIALS_JSON: '[{"id":"unsafe","guardianLabel":"Phụ huynh","studentLevel":"Lớp 7","location":"Huế","quote":"Chưa xác minh","verified":false,"published":true}]' }).some((item) => item.includes("unverified"))) throw new Error("Published unverified testimonial was accepted");
+  if (validatePublicConfig({ ...validFixture, VITE_PUBLIC_TESTIMONIALS_JSON: "[]" }).length) throw new Error("Empty testimonial fallback configuration was rejected");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_SEO_TITLE: "" }).length) throw new Error("Missing SEO title was accepted");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_SEO_DESCRIPTION: "" }).length) throw new Error("Missing SEO description was accepted");
   const confidentialProbe = "confidential-value-must-not-be-printed";

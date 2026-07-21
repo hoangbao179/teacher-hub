@@ -14,6 +14,9 @@ interface ImportMetaEnv {
   readonly VITE_PUBLIC_FACEBOOK_URL?: string;
   readonly VITE_PUBLIC_HERO_MOBILE_URL?: string;
   readonly VITE_PUBLIC_HERO_DESKTOP_URL?: string;
+  readonly VITE_PUBLIC_HERO_ALT_MOBILE_URL?: string;
+  readonly VITE_PUBLIC_HERO_ALT_DESKTOP_URL?: string;
+  readonly VITE_PUBLIC_TEACHER_PHOTO_URL?: string;
   readonly VITE_PUBLIC_OG_IMAGE_URL?: string;
   readonly VITE_PUBLIC_VIDEOS_JSON?: string;
   readonly VITE_PUBLIC_TESTIMONIALS_JSON?: string;

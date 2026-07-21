@@ -1,8 +1,10 @@
 import "dotenv/config";
+import { resolveAuthSettings, type AppEnvironment } from "./auth-settings";
 
 const nodeEnv = process.env.NODE_ENV ?? "development";
 if (!["development", "test", "production"].includes(nodeEnv)) throw new Error("NODE_ENV must be development, test or production");
 const production = nodeEnv === "production";
+const authSettings = resolveAuthSettings(process.env, nodeEnv as AppEnvironment);
 
 function value(name: string, fallback: string): string {
   const result = process.env[name]?.trim() || (production ? "" : fallback);
@@ -41,4 +43,5 @@ export const config = {
     connectionLimit: integer("DB_CONNECTION_LIMIT", 5, 1, 50),
   },
   jwt: { secret: jwtSecret, expiresIn: value("JWT_EXPIRES_IN", "7d") },
+  auth: authSettings,
 };

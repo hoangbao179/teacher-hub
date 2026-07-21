@@ -1,5 +1,6 @@
 import type { ApiEnvelope } from "@teacher/shared";
 import { clearToken, getToken } from "../auth/authStorage";
+import { parseRetryAfterSeconds } from "../auth/retryAfter";
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 let unauthorizedHandler: (() => void) | null = null;
@@ -13,6 +14,7 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
+    public retryAfterSeconds?: number,
   ) {
     super(message);
   }
@@ -56,6 +58,7 @@ export async function apiEnvelope<T>(
       response.status,
       payload.error?.code ?? "API_ERROR",
       payload.error?.message ?? "Có lỗi xảy ra.",
+      parseRetryAfterSeconds(response.headers.get("Retry-After")),
     );
   return payload;
 }

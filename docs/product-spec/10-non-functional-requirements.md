@@ -10,7 +10,8 @@
 ## Hiệu năng
 - Homepage ưu tiên LCP nhanh trên 4G.
 - Ảnh WebP/AVIF, lazy-load.
-- Hero video ngắn, nén, muted; YouTube iframe chỉ khởi tạo khi bấm.
+- Hero dùng ảnh responsive tối ưu; slide đầu ưu tiên tải, slide sau deferred.
+  YouTube iframe chỉ khởi tạo khi bấm.
 - API danh sách hỗ trợ pagination/filter nếu dữ liệu tăng.
 
 ## Bảo mật

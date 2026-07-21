@@ -1,6 +1,8 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import type { RowDataPacket } from "mysql2";
+import { assertAdminPassword } from "../auth/password-policy";
+import { config } from "../config/config";
 import { pool } from "./pool";
 
 interface UserIdRow extends RowDataPacket {
@@ -19,8 +21,7 @@ async function bootstrap(): Promise<void> {
   }
   if (!/^[a-z0-9._-]{3,64}$/.test(username))
     throw new Error("Username bootstrap phải dài 3–64 ký tự và chỉ gồm a-z, 0-9, dấu chấm, gạch dưới hoặc gạch ngang.");
-  if (password.length < 10)
-    throw new Error("Password bootstrap phải có ít nhất 10 ký tự.");
+  assertAdminPassword(password, config.auth.adminPasswordMinLength);
 
   const passwordHash = await bcrypt.hash(password, 12);
   const connection = await pool.getConnection();

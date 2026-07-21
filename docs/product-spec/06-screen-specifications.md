@@ -8,8 +8,11 @@
 
 ## 01 Homepage public mobile
 - Route gợi ý: `/`.
-- Section: header, hero video, giới thiệu, phương pháp, video, testimonial, CTA liên hệ, footer.
-- Hero autoplay muted; video dài YouTube; không hiển thị học phí; không CMS.
+- Section: header, carousel ba slide, giới thiệu, chương trình học, phương pháp,
+  video, phản hồi phụ huynh, CTA liên hệ và footer.
+- Carousel có previous/next, indicator, keyboard/swipe, autoplay 5–6 giây và
+  reduced-motion; video dài YouTube chỉ tải khi bấm.
+- Không hiển thị học phí; không CMS; contact hợp lệ mới xuất hiện và Zalo ưu tiên.
 
 ## 02 Admin Dashboard
 - Route: `/admin`.

@@ -12,6 +12,7 @@
     "test:integration": "node scripts/run-integration.cjs",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:bootstrap-admin": "tsx src/db/bootstrap-admin.ts",
+    "admin:reset-password": "tsx src/auth/reset-admin-password.ts",
     "db:seed:dev": "tsx src/db/seed-dev.ts",
     "db:reset:dev": "tsx src/db/reset-dev.ts",
     "db:migrate:prod": "node dist/db/migrate.js"

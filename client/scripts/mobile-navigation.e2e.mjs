@@ -10,7 +10,7 @@ dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4109;
 const webPort = 5189;
 const origin = `http://127.0.0.1:${webPort}`;
-const artifactDir = path.join(root, ".agent-reports", "v1-1-mobile-nav");
+const artifactDir = path.join(root, ".agent-reports", "v1-2-admin");
 const testEnv = {
   ...process.env,
   NODE_ENV: "test",
@@ -144,7 +144,7 @@ try {
   for (const viewport of [{ width: 390, height: 844 }, { width: 393, height: 852 }, { width: 412, height: 915 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport);
     await page.goto(`${origin}/admin/login`, { waitUntil: "networkidle" });
-    await page.getByRole("heading", { level: 1, name: "Lớp học tiếng Anh cô Vy" }).waitFor();
+    await page.getByRole("heading", { level: 1, name: "Chào mừng cô Vy trở lại" }).waitFor();
     await page.screenshot({ path: path.join(artifactDir, `login-${viewport.width}x${viewport.height}.png`), fullPage: false });
   }
 

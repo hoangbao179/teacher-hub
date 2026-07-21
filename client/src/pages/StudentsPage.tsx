@@ -31,6 +31,13 @@ function studentInitial(name: string): string {
   return word?.slice(0, 1).toLocaleUpperCase("vi-VN") || "?";
 }
 
+const avatarTones = [
+  { bg: "#eee8ff", text: "#6d3df5" },
+  { bg: "#e4f5ec", text: "#168754" },
+  { bg: "#e7f3ff", text: "#087ca7" },
+  { bg: "#fff0df", text: "#b85c00" },
+] as const;
+
 export function StudentsPage() {
   const [items, setItems] = useState<StudentListItem[] | null>(null);
   const [error, setError] = useState("");
@@ -50,11 +57,11 @@ export function StudentsPage() {
           key={item.id}
           component={Link}
           to={`/admin/students/${item.id}`}
-          sx={{ textDecoration: "none" }}
+          sx={{ textDecoration: "none", boxShadow: "0 3px 12px rgba(36,29,62,.06)" }}
         >
           <CardContent>
             <Stack direction="row" spacing={1.25} sx={{ alignItems: "flex-start" }}>
-              <Avatar sx={{ width: 38, height: 38, bgcolor: "#eee8ff", color: "primary.main", fontSize: 16, fontWeight: 700 }}>
+              <Avatar sx={{ width: 38, height: 38, bgcolor: avatarTones[item.id % avatarTones.length].bg, color: avatarTones[item.id % avatarTones.length].text, fontSize: 16, fontWeight: 700 }}>
                 {studentInitial(item.fullName)}
               </Avatar>
               <Stack spacing={0.25} sx={{ minWidth: 0, flex: 1 }}>

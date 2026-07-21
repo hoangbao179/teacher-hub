@@ -63,7 +63,9 @@ UI hiển thị ba lựa chọn:
 
 ## BR-09. Trang public
 - Nội dung do developer sửa, không có CMS V1.
-- Hero video tự host, autoplay, muted, loop, playsinline.
+- Hero là carousel ba slide responsive; tự chuyển sau 5–6 giây, có điều khiển
+  chuột/bàn phím/swipe và dừng animation/autoplay khi người dùng chọn reduced motion.
 - Video dài nhúng YouTube và chỉ tải player khi người dùng tương tác.
 - Không hiển thị học phí công khai.
 - CTA ưu tiên Zalo, sau đó điện thoại và Facebook.
+- Chỉ phản hồi có xác nhận đồng ý công khai mới được hiển thị như testimonial thật.

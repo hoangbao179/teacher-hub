@@ -17,5 +17,5 @@ export function TuitionStatusChip({ status }: { status: TuitionCycleStatus }) {
   const color = status === "PAID" ? "success"
     : status === "PAYMENT_DUE" ? "warning"
       : status === "INCOMPLETE" ? "default" : "primary";
-  return <Chip size="small" color={color} variant={status === "INCOMPLETE" ? "outlined" : "filled"} label={labels[status]} />;
+  return <Chip data-tuition-tone={status === "ACCUMULATING" ? "blue" : status === "PAYMENT_DUE" ? "orange" : status === "PAID" ? "green" : "neutral"} size="small" color={color} variant={status === "INCOMPLETE" || status === "CANCELLED" ? "outlined" : "filled"} label={labels[status]} />;
 }
