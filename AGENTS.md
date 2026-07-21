@@ -1,225 +1,525 @@
-# AGENTS.md — Teacher Class Hub
+# AGENTS.md — Lớp học cô Vy
 
-File này là hướng dẫn mặc định cho Codex/Cursor/AI agent khi làm việc trong repository.
+Hướng dẫn mặc định cho Codex, Cursor và các AI agent khi làm việc trong repository.
 
-## 1. Repository reality
+Mục tiêu: sửa đúng phạm vi, dùng ít context, kiểm tra đủ và giữ lịch sử Git dễ hiểu.
+
+---
+
+## 1. Repository
 
 Đây là npm workspaces monorepo:
 
-- `server/`: Express + MySQL, CommonJS build.
-- `client/`: React + Vite + MUI, ES modules.
-- `shared/`: source of truth cho contracts/DTO/enums dùng chung.
-- `docs/`: source of truth cho nghiệp vụ và kiến trúc.
+- `client/`: React, Vite, MUI.
+- `server/`: Express, MySQL.
+- `shared/`: contracts, DTO và enum dùng chung.
+- `docs/`: nghiệp vụ, kiến trúc và hướng dẫn vận hành.
 
-Không copy DTO giữa `server` và `client`. Import từ `@teacher/shared`.
+Không copy DTO giữa client và server.
 
-## 2. Source-of-truth priority
+Luôn import contract từ:
 
-Khi có mâu thuẫn, dùng thứ tự:
+```text
+@teacher/shared
+```
 
-1. Business rules trong `docs/product-spec/` và ADR đã approved trong `docs/decisions/`.
-2. Acceptance criteria trong `docs/product-spec/09-acceptance-tests.md` và `docs/implementation/acceptance/`.
-3. Contracts trong `shared/src/contracts/`.
-4. `docs/api/openapi.yaml`.
-5. Migration/schema và source hiện tại.
-6. Wireframe.
+Runtime chuẩn:
 
-Wireframe là tham chiếu UX, không phải nguồn business logic. Ảnh AI có thể chứa text/số liệu không nhất quán.
+```text
+Node.js 24
+npm 12
+```
 
-## 3. V1 business boundaries
+---
 
-- Chỉ một giáo viên/admin.
-- Học sinh không phải user.
+## 2. Source of truth
+
+### Business và API
+
+Khi có mâu thuẫn, ưu tiên:
+
+1. Business rules đã được duyệt trong `docs/product-spec/`.
+2. ADR trong `docs/decisions/`.
+3. Acceptance criteria liên quan trực tiếp.
+4. Contracts trong `shared/src/`.
+5. `docs/api/openapi.yaml`.
+6. Migration và source đang chạy.
+
+### Giao diện
+
+Ưu tiên:
+
+1. Ứng dụng đang chạy và đã được user duyệt.
+2. Screenshot V2 trong `docs/wireframes/v2-branding/`.
+3. Hướng dẫn trong `docs/design/ui-guidelines.md`.
+4. Wireframe P0.
+
+Wireframe P0 chỉ mô tả luồng và phân cấp thông tin.
+
+Không dùng text hoặc số liệu trong ảnh wireframe để thay đổi business rule.
+
+---
+
+## 3. Business rules cố định của V1
+
+- Chỉ có một giáo viên/admin.
+- Học sinh và phụ huynh không có tài khoản.
 - Một học sinh chỉ có tối đa một enrollment `ACTIVE`.
-- Lớp 1 kèm 1 và lớp nhóm dùng cùng domain model.
-- Học phí theo gói 8 buổi, không theo số giờ.
-- Chỉ attendance `PRESENT` và `countsForTuition=true` mới cộng chu kỳ.
-- `ABSENT` không cộng; `FREE` có học nhưng không cộng.
-- Học sinh `tuitionMode=FREE` không tạo chu kỳ học phí.
-- Giờ thực tế chỉ để theo dõi/export, không quy đổi số buổi.
-- Dữ liệu nhập muộn phải xử lý theo ngày học thực tế.
-- Chu kỳ đủ 8 tự chuyển `PAYMENT_DUE`.
-- Thanh toán toàn bộ; V1 không thanh toán một phần.
-- Chu kỳ `PAID` bị khóa; chỉnh sửa phải có flow mở khóa rõ ràng, không âm thầm sửa.
-- Đóng lớp/ngừng học là đổi trạng thái, không xóa lịch sử.
-- Không triển khai notification, Zalo/Messenger API, payment gateway, CMS, nhiều giáo viên trong V1 nếu user không mở scope.
+- Lớp 1 kèm 1 và lớp nhóm dùng chung domain model.
+- Học phí tính theo gói đúng 8 buổi.
+- Thời lượng buổi học không làm tăng số buổi học phí.
+- `PRESENT` mới có thể được tính học phí.
+- `ABSENT` không tính học phí.
+- `FREE` có lịch sử học nhưng không tính học phí.
+- Enrollment `FREE` không tạo chu kỳ học phí.
+- Dữ liệu nhập muộn xử lý theo ngày học thực tế.
+- Chu kỳ đủ 8 buổi chuyển thành `PAYMENT_DUE`.
+- V1 không hỗ trợ thanh toán một phần.
+- Chu kỳ `PAID` và các item của nó bất biến.
+- Lịch lặp chỉ là lịch dự kiến, không chứng minh đã dạy.
+- Buổi học bù có thể chỉ gồm một số học sinh.
+- Đóng lớp và ngừng học phải giữ lịch sử.
+- Không tự thêm CMS, payment gateway, notification, nhiều giáo viên hoặc tài
+  khoản phụ huynh/học sinh khi user chưa mở scope.
+
+Không thay đổi các rule trên trong task UI hoặc maintenance.
+
+---
 
 ## 4. Architecture rules
 
-Backend layering:
+### Backend
 
-- Controller: parse input, auth, HTTP mapping.
-- Service: business rules, transaction orchestration.
+- Controller: HTTP input/output, auth và status mapping.
+- Service: business rule và transaction orchestration.
 - Repository: SQL và row mapping.
 - Không đặt SQL trong controller.
-- Không gọi API ngoài trong DB transaction.
+- Không gọi external API bên trong database transaction.
+- Mutation liên quan nhiều bảng phải có transaction.
+- Không sửa migration đã được áp dụng; luôn tạo migration mới.
 
-Frontend:
+### Frontend
 
-- API calls ở `client/src/api/`.
+- API call đặt trong `client/src/api/`.
 - Page không gọi `fetch` trực tiếp.
-- Mobile-first 360/375/390/430px.
-- Không dùng bảng rộng cho luồng thao tác mobile; dùng cards/lists.
-- Bottom navigation là navigation chính cho admin mobile.
+- Internal navigation dùng React Router.
+- Mobile-first trong dải 360–430 px.
+- Không dùng bảng rộng cho luồng mobile.
+- Không hiển thị raw enum cho end user.
+- Không để nút trông như có thể bấm nhưng không có hành động.
 
-Database:
+### Database
 
-- Tiền lưu `BIGINT` VND.
-- Thời lượng lưu phút nguyên.
-- Ngày học lưu `DATE`, giờ lưu `TIME`.
+- Tiền lưu bằng số nguyên VND.
+- Thời lượng lưu bằng phút nguyên.
+- Ngày học dùng `DATE`.
+- Giờ học dùng `TIME`.
 - Hiển thị theo `Asia/Ho_Chi_Minh`.
-- Không xóa cứng dữ liệu đã phát sinh học phí.
+- Không hard-delete dữ liệu đã phát sinh nghiệp vụ.
 
-## 5. Change discipline
+---
 
-Trước thay đổi không nhỏ:
+## 5. Brand và UI cố định
 
-1. Đọc docs liên quan.
-2. Đọc shared contract liên quan.
-3. Đọc controller/service/repository/schema liên quan.
-4. Chọn diff nhỏ nhất đúng nghiệp vụ.
-5. Cập nhật docs nếu đổi rule/API/schema/deploy.
-6. Chạy verification phù hợp.
+Brand chính:
 
-Không:
+```text
+Lớp học cô Vy
+Tiếng Anh lớp 1–9
+Huế
+```
 
-- refactor rộng ngoài task;
-- tự thêm dependency nặng;
-- log password/JWT/secret;
-- tin `studentId`, `userId` từ client nếu server có context authoritative;
-- tuyên bố build/test thành công nếu chưa chạy.
+Phong cách:
 
-## 6. Verification
+- thân thiện;
+- có màu sắc giáo dục;
+- phù hợp học sinh lớp 1–9;
+- không quá trẻ con;
+- Homepage sinh động hơn Admin;
+- Admin ưu tiên rõ ràng và thao tác nhanh.
 
-Sau thay đổi shared: build shared + typecheck server/client.
+Mobile:
 
-Sau backend/schema:
+- ưu tiên 360, 375, 390, 393, 400, 412 và 430 px;
+- bottom navigation có 5 mục;
+- label bottom navigation không được xuống dòng;
+- sticky action không che bottom navigation;
+- tôn trọng safe area của iPhone và Android;
+- không có page-level horizontal scroll.
+
+Footer sau là chủ ý của chủ repository và phải được giữ nguyên:
+
+```text
+2026 — từ người hâm mộ cô Vy, with love ❤️
+```
+
+Không thay đổi, “chuyên nghiệp hóa” hoặc xóa footer này trừ khi user yêu cầu
+trực tiếp.
+
+Media Homepage hiện có thể là ảnh/video tạm.
+
+Chỉ thay media qua cấu hình và hướng dẫn trong:
+
+```text
+docs/content/replacing-public-media.md
+```
+
+Không thay đổi business logic khi đổi ảnh/video.
+
+---
+
+## 6. Chế độ làm việc mặc định: Lean workflow
+
+Mặc định chỉ đọc những gì liên quan trực tiếp đến task.
+
+Trước khi sửa:
+
+1. Đọc `AGENTS.md`.
+2. Đọc feature document hoặc ADR liên quan trực tiếp.
+3. Đọc contract, source và test liên quan.
+4. Kiểm tra `git status --short`.
+5. Xác định rõ file thuộc phạm vi task.
+
+Không mặc định đọc:
+
+- toàn bộ `docs/`;
+- toàn bộ source;
+- toàn bộ report milestone cũ;
+- toàn bộ wireframe;
+- toàn bộ Git history.
+
+Chỉ đọc report cũ khi:
+
+- điều tra regression;
+- kiểm tra một quyết định trước đây;
+- user yêu cầu review milestone;
+- task phụ thuộc trực tiếp vào kết quả đó.
+
+Không lặp lại business rule dài trong prompt hoặc report khi chỉ cần dẫn tới tài
+liệu nguồn.
+
+---
+
+## 7. Mức độ task và tài liệu cần tạo
+
+### Task nhỏ
+
+Ví dụ:
+
+- sửa text;
+- spacing;
+- màu sắc;
+- một lỗi UI;
+- một validation nhỏ;
+- dead code.
+
+Không cần tạo task document, acceptance document hoặc report file trừ khi user
+yêu cầu.
+
+Chỉ cần:
+
+- sửa code;
+- chạy targeted checks;
+- tóm tắt trong final response;
+- commit sau PASS.
+
+### Task vừa
+
+Ví dụ:
+
+- sửa nhiều màn có liên quan;
+- thêm search/filter;
+- thay đổi một luồng UX;
+- sửa auth hoặc vận hành local.
+
+Tạo tối đa:
+
+```text
+docs/implementation/tasks/<TASK_ID>.md
+docs/implementation/acceptance/<TASK_ID>.md
+.agent-reports/<TASK_ID>-implementation.md
+.agent-reports/<TASK_ID>-verification.md
+```
+
+Không chia task vừa thành nhiều checkpoint nhỏ nếu không có dependency hoặc rủi
+ro riêng biệt.
+
+### Task lớn hoặc rủi ro cao
+
+Chỉ chia checkpoint khi có một trong các yếu tố:
+
+- migration;
+- thay đổi business rule;
+- auth/security quan trọng;
+- nhiều transaction;
+- thay đổi API lớn;
+- deployment;
+- scope nhiều module độc lập.
+
+Mỗi checkpoint phải có lý do rõ ràng.
+
+Không chia checkpoint chỉ để tạo thêm report.
+
+---
+
+## 8. Reporting
+
+Report phải ngắn, chỉ ghi thông tin có giá trị.
+
+Implementation report tối đa gồm:
+
+```md
+# <TASK_ID> Implementation
+
+## Phạm vi
+## Vấn đề đã sửa
+## File chính đã đổi
+## API/schema thay đổi
+## Kiểm tra đã chạy
+## Điểm còn lại
+## Commit
+```
+
+Verification report tối đa gồm:
+
+```md
+# <TASK_ID> Verification
+
+## Acceptance
+## Typecheck/lint
+## Unit/integration/E2E
+## Kiểm tra UI thủ công
+## Tài liệu
+## Final verdict
+```
+
+Verdict cuối phải là một trong hai:
+
+```text
+PASS
+FAIL
+```
+
+Không copy toàn bộ log command vào report.
+
+Chỉ ghi:
+
+- command;
+- kết quả;
+- lỗi quan trọng nếu có.
+
+Không commit screenshot tạm, video test hoặc log lớn vào `.agent-reports/`.
+
+Screenshot đã được user duyệt mới được đưa vào:
+
+```text
+docs/wireframes/v2-branding/
+```
+
+---
+
+## 9. Verification tiết kiệm thời gian
+
+Trong lúc phát triển, chạy kiểm tra theo phạm vi.
+
+### Shared/contracts
+
+```bash
+npm run build:shared
+npm run typecheck
+```
+
+### Backend
 
 ```bash
 npm -w server run typecheck
-npm -w server run build
+npm -w server run test
 ```
 
-Sau frontend:
+Chạy integration khi thay đổi:
+
+- SQL;
+- repository;
+- transaction;
+- auth;
+- migration;
+- business rule.
+
+```bash
+npm run test:integration
+```
+
+### Frontend
 
 ```bash
 npm -w client run typecheck
 npm -w client run lint
-npm -w client run build
 ```
 
-Toàn repo:
+Chạy E2E targeted khi thay đổi luồng UI.
+
+### Gate cuối task
+
+Chỉ chạy một lần ở cuối:
 
 ```bash
-npm run verify
+npm run check:full
 ```
 
-Kiểm tra UTF-8 sau khi sửa docs tiếng Việt:
+Khi thay đổi package/release:
 
 ```bash
-rg "Ã|Ä|á»|áº|Â|�" docs AGENTS.md .cursor server shared client
+npm run package:source
+npm run check:package
 ```
-## 7. Task lifecycle and reporting
 
-Every non-trivial task must have a unique task ID, for example:
+Không chạy `check:full` sau từng thay đổi nhỏ.
 
-- M2A-lesson-domain
-- M2B-lesson-api
-- M2C-lesson-ui
-- M3-chronological-recalculation
+Không tuyên bố PASS khi command bắt buộc chưa chạy hoặc bị lỗi.
 
-Before implementation:
+---
 
-1. Read the task document in `docs/implementation/tasks/`.
-2. Read the matching acceptance document.
-3. Inspect current git status and relevant migrations.
-4. Record the initial repository state in the implementation report.
+## 10. Documentation discipline
 
-Required reports:
+Chỉ cập nhật tài liệu khi thay đổi:
 
-- `.agent-reports/<TASK_ID>-implementation.md`
-- `.agent-reports/<TASK_ID>-verification.md`
+- business rule;
+- API;
+- contract;
+- schema;
+- auth behavior;
+- deployment;
+- UI convention đã được duyệt;
+- user guide.
 
-The implementation report must include:
+Không tạo thêm tài liệu trùng nội dung.
 
-- scope completed;
-- files changed;
-- migrations added;
-- API and contract changes;
-- business rules affected;
-- commands executed;
-- test results;
-- manual UI verification;
-- known gaps;
-- current git status.
+Nguồn trạng thái chính:
 
-The verification report must end with exactly one verdict:
+```text
+docs/implementation/status.md
+```
 
-- `PASS`
-- `FAIL`
+Không duy trì nhiều file status mâu thuẫn.
 
-An agent must not declare PASS when:
+Không sinh lại toàn bộ wireframe khi chỉ thay đổi một vài màn.
 
-- a required command was not run;
-- a test failed;
-- browser verification was skipped when required;
-- documentation or OpenAPI is stale;
-- a P0 acceptance item remains unresolved.
+Dùng screenshot của ứng dụng chạy thật cho visual reference V2.
 
-Do not automatically continue to the next checkpoint after FAIL.
+---
 
-Do not update `docs/implementation/status.md` to PASS until the matching
-verification report is PASS.
+## 11. Git và tự commit sau PASS
 
-## 8. Milestone checkpoint discipline
+Sau khi task hoặc checkpoint đạt PASS:
 
-Large milestones must be split into reviewable checkpoints.
+1. Chạy:
 
-For every checkpoint:
+```bash
+git status --short
+git diff --stat
+git diff --check
+```
 
-1. implement only the checkpoint scope;
-2. run the required fast checks;
-3. run milestone-level full checks when applicable;
-4. write reports;
-5. stop on failure;
-6. keep the diff reviewable.
+2. Stage chỉ file thuộc task.
 
-Do not implement M2 through M6 as one undifferentiated change set.
+3. Không stage:
 
-The agent may execute multiple checkpoints in one session only when each
-checkpoint has its own task document, report, verification gate and git
-checkpoint.
+- `.env`;
+- `.git`;
+- `node_modules`;
+- local `dist`;
+- `.private-data`;
+- workbook cá nhân;
+- database dump;
+- secret;
+- log;
+- screenshot tạm;
+- thay đổi có sẵn của user không thuộc task.
 
-## 9. Migration discipline
+4. Kiểm tra:
 
-- Never edit an already-applied migration.
-- Add a new forward-only migration.
-- Never reset an unknown or production-like database.
-- Backfills must be explicit and verifiable.
-- Schema changes and application changes must be deployable in a safe order.
-- New constraints must account for existing rows before being enabled.
+```bash
+git diff --cached --stat
+git diff --cached --check
+```
 
-## 10. Lesson-domain warning
+5. Tự tạo commit bằng tiếng Việt.
 
-The current lesson create/complete implementation is pre-M2 scaffold code.
+Format:
 
-It is not authoritative for:
+```text
+<type>(<scope>): <mô tả tiếng Việt>
+```
 
-- participant selection;
-- historical enrollment eligibility;
-- effective-dated tuition;
-- makeup participant selection;
-- chronological tuition allocation.
+Ví dụ:
 
-When implementing M2/M3, refactor or replace this flow according to the
-approved ADRs. Do not preserve behavior that conflicts with those ADRs.
+```text
+feat(home): hoàn thiện giao diện trang chủ cô Vy
+fix(auth): sửa đổi mật khẩu và giới hạn đăng nhập
+style(admin): tối ưu bộ lọc và bố cục mobile
+docs: cập nhật tài liệu và ảnh tham chiếu V2
+test: bổ sung kiểm thử tìm kiếm học sinh
+chore(release): hoàn tất kiểm tra gói phát hành
+```
 
-## 11. Visual references
+6. Ghi commit hash vào report hoặc final response.
 
-- Ứng dụng chạy thật và screenshot đã approved trong
-  `docs/wireframes/v2-branding/` là tham chiếu visual hiện hành.
-- Wireframe P0 vẫn là tham chiếu workflow và phân cấp thông tin; không dùng text/số
-  liệu trong ảnh để thay đổi business rule.
-- Khi đã có V2 cho một màn hình, không hoàn nguyên styling về P0 cũ.
-- Media Homepage tạm thời chỉ được thay qua cấu hình/quy trình trong
-  `docs/content/replacing-public-media.md`, không làm đổi business logic.
+Không commit khi:
+
+- verdict là FAIL;
+- test bắt buộc chưa chạy;
+- có secret/private data trong staged diff;
+- diff trộn thay đổi ngoài task;
+- không xác định rõ phạm vi.
+
+Không:
+
+- `git reset --hard`;
+- `git commit --amend`;
+- squash hoặc rewrite history;
+- force commit code lỗi;
+- tự push remote.
+
+---
+
+## 12. Security và private data
+
+Không log hoặc commit:
+
+- password;
+- password hash;
+- JWT;
+- database credentials;
+- `.env`;
+- dữ liệu học sinh thật;
+- workbook riêng tư.
+
+Ứng dụng không được lưu raw password trong:
+
+- localStorage;
+- sessionStorage;
+- IndexedDB;
+- client-readable cookie.
+
+Khi chia sẻ source, chỉ dùng:
+
+```bash
+npm run package:source
+npm run check:package
+```
+
+Không ZIP nguyên working directory.
+
+---
+
+## 13. Final response
+
+Final response phải ngắn và có:
+
+1. Đã sửa gì.
+2. Kiểm tra nào đã chạy.
+3. Kết quả PASS hoặc FAIL.
+4. Commit hash và commit message nếu đã commit.
+5. Điểm còn tồn tại thực sự.
+
+Không lặp lại toàn bộ report trong final response.
