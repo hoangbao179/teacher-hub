@@ -1,9 +1,10 @@
 name: production-deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,58 +13,18 @@ concurrency:
   group: production
   cancel-in-progress: false
 
-env:
-  NPM_VERSION: 12.0.1
-
 jobs:
-  verify:
-    name: Verify production revision
-    runs-on: ubuntu-24.04
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: rootpass
-          MYSQL_DATABASE: teacher_hub_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost -prootpass --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-    env:
-      NODE_ENV: test
-      DB_HOST: 127.0.0.1
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: rootpass
-      DB_NAME: teacher_hub_test
-      JWT_SECRET: ci-only-secret-with-at-least-32-characters
-      CHROME_PATH: /usr/bin/google-chrome
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Pin npm
-        run: npm install --global npm@"$NPM_VERSION"
-      - name: Install dependencies
-        run: npm ci
-      - name: Run full verification
-        run: npm run check:full
-
   publish:
     name: Build and publish immutable images
-    needs: verify
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - name: Validate image owner
         env:
           GHCR_OWNER: ${{ vars.GHCR_OWNER }}
@@ -85,7 +46,7 @@ jobs:
           file: Dockerfile.api
           push: true
           tags: |
-            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:${{ github.sha }}
+            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:${{ github.event.workflow_run.head_sha }}
             ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:latest
           cache-from: type=gha,scope=teacher-hub-api
           cache-to: type=gha,mode=max,scope=teacher-hub-api
@@ -96,7 +57,7 @@ jobs:
           file: Dockerfile.web
           push: true
           tags: |
-            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:${{ github.sha }}
+            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:${{ github.event.workflow_run.head_sha }}
             ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:latest
           cache-from: type=gha,scope=teacher-hub-web
           cache-to: type=gha,mode=max,scope=teacher-hub-web
@@ -110,10 +71,12 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - name: Copy deployment files and deploy
         shell: bash
         env:
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
           PROD_HOST: ${{ secrets.PROD_HOST }}
           PROD_PORT: ${{ secrets.PROD_PORT }}
           PROD_USER: ${{ secrets.PROD_USER }}
