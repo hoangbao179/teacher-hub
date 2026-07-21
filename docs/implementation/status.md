@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13 and V14 are PASS.
+M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V17 are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
 
@@ -76,6 +76,9 @@ V13: PASS on 21/07/2026. Evidence is in
 `.agent-reports/V13-implementation.md` and `.agent-reports/V13-verification.md`.
 V14: PASS on 21/07/2026. Evidence is in
 `.agent-reports/V14-implementation.md` and `.agent-reports/V14-verification.md`.
+V17-PRODUCTION-CICD: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V17-PRODUCTION-CICD-implementation.md` and
+`.agent-reports/V17-PRODUCTION-CICD-verification.md`.
 
 ## Scope boundary
 
@@ -107,8 +110,16 @@ existing tuition and PAID-boundary rules.
 - Apply legacy Excel vào dữ liệu nghiệp vụ vẫn được tách sang V16B; V16A đã có
   parser, preview và audit reconciliation nhưng không ghi database.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
-- Production-specific public teacher/contact/domain values must be supplied through
-  the validated `PUBLIC_*` deployment variables before a production build.
+- Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
+  be configured by the operator before the first production deployment.
+
+## V17-PRODUCTION-CICD
+
+GitHub Actions verifies source, builds API/Web on the runner, pushes full-SHA and latest
+GHCR tags, then deploys only the full SHA to `/opt/teacher-hub`. Production Compose runs
+MySQL, API, Web and Caddy within low-resource limits; deploy performs pre-migration
+backup, one migration, readiness checks and image-only rollback without exposing
+MySQL/API/Web ports or storing production secrets in the repository.
 
 ## V16A
 

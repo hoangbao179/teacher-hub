@@ -73,7 +73,6 @@ const validFixture = {
 
 if (process.argv.includes("--self-test")) {
   if (validatePublicConfig(validFixture).length) throw new Error("Valid marketing fixture was rejected");
-  if (validatePublicConfig({ ...validFixture, VITE_PUBLIC_PHONE_DISPLAY: undefined, VITE_PUBLIC_PHONE_E164: undefined }).length) throw new Error("Optional phone configuration was rejected");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_SITE_URL: "https://configure-public-domain.invalid" }).length) throw new Error("Placeholder public domain was accepted");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_TEACHER_NAME: "Cô giáo An" }).length) throw new Error("Old demo teacher was accepted");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_TEACHER_NAME: "replace-with-teacher" }).length) throw new Error("Placeholder teacher was accepted");

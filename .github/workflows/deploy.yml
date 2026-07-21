@@ -1,0 +1,190 @@
+name: production-deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: 24.18.0
+  NPM_VERSION: 12.0.1
+
+jobs:
+  verify:
+    name: Verify production revision
+    runs-on: ubuntu-24.04
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: teacher_hub_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -prootpass --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      NODE_ENV: test
+      TZ: Asia/Ho_Chi_Minh
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: rootpass
+      DB_NAME: teacher_hub_test
+      JWT_SECRET: ci-only-secret-with-at-least-32-characters
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Pin npm
+        run: npm install --global npm@"$NPM_VERSION"
+      - name: Install dependencies
+        run: npm ci
+      - name: Run full verification
+        run: npm run check:full
+
+  publish:
+    name: Build and publish immutable images
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate image owner
+        env:
+          GHCR_OWNER: ${{ vars.GHCR_OWNER }}
+        run: |
+          if [[ ! "$GHCR_OWNER" =~ ^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$ ]]; then
+            echo "GHCR_OWNER must be a lowercase GitHub owner name."
+            exit 1
+          fi
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push API image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.api
+          push: true
+          tags: |
+            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:${{ github.sha }}
+            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:latest
+          cache-from: type=gha,scope=teacher-hub-api
+          cache-to: type=gha,mode=max,scope=teacher-hub-api
+      - name: Build and push Web image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.web
+          push: true
+          tags: |
+            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:${{ github.sha }}
+            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:latest
+          cache-from: type=gha,scope=teacher-hub-web
+          cache-to: type=gha,mode=max,scope=teacher-hub-web
+          build-args: |
+            VITE_API_BASE_URL=
+            VITE_PUBLIC_CONTENT_MODE=production
+            VITE_PUBLIC_SITE_URL=${{ vars.VITE_PUBLIC_SITE_URL }}
+            VITE_PUBLIC_TEACHER_NAME=${{ vars.VITE_PUBLIC_TEACHER_NAME }}
+            VITE_PUBLIC_BRAND_NAME=${{ vars.VITE_PUBLIC_BRAND_NAME }}
+            VITE_PUBLIC_HERO_HEADING=${{ vars.VITE_PUBLIC_HERO_HEADING }}
+            VITE_PUBLIC_DESCRIPTION=${{ vars.VITE_PUBLIC_DESCRIPTION }}
+            VITE_PUBLIC_INTRODUCTION=${{ vars.VITE_PUBLIC_INTRODUCTION }}
+            VITE_PUBLIC_ZALO_URL=${{ vars.VITE_PUBLIC_ZALO_URL }}
+            VITE_PUBLIC_HERO_MOBILE_URL=${{ vars.VITE_PUBLIC_HERO_MOBILE_URL }}
+            VITE_PUBLIC_HERO_DESKTOP_URL=${{ vars.VITE_PUBLIC_HERO_DESKTOP_URL }}
+            VITE_PUBLIC_HERO_ALT_MOBILE_URL=${{ vars.VITE_PUBLIC_HERO_ALT_MOBILE_URL }}
+            VITE_PUBLIC_HERO_ALT_DESKTOP_URL=${{ vars.VITE_PUBLIC_HERO_ALT_DESKTOP_URL }}
+            VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL=${{ vars.VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL }}
+            VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL=${{ vars.VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL }}
+            VITE_PUBLIC_TEACHER_PHOTO_URL=${{ vars.VITE_PUBLIC_TEACHER_PHOTO_URL }}
+            VITE_PUBLIC_TEACHER_PHOTO_ALT=${{ vars.VITE_PUBLIC_TEACHER_PHOTO_ALT }}
+            VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION=${{ vars.VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION }}
+            VITE_PUBLIC_OG_IMAGE_URL=${{ vars.VITE_PUBLIC_OG_IMAGE_URL }}
+            VITE_PUBLIC_VIDEOS_JSON=${{ vars.VITE_PUBLIC_VIDEOS_JSON }}
+            VITE_PUBLIC_TESTIMONIALS_JSON=${{ vars.VITE_PUBLIC_TESTIMONIALS_JSON }}
+            VITE_PUBLIC_SEO_TITLE=${{ vars.VITE_PUBLIC_SEO_TITLE }}
+            VITE_PUBLIC_SEO_DESCRIPTION=${{ vars.VITE_PUBLIC_SEO_DESCRIPTION }}
+
+  deploy:
+    name: Deploy exact revision to production
+    needs: publish
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+      - name: Copy deployment files and deploy
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_PORT: ${{ secrets.PROD_PORT }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          PROD_SSH_KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          for required_name in PROD_HOST PROD_PORT PROD_USER PROD_SSH_PRIVATE_KEY PROD_SSH_KNOWN_HOSTS; do
+            if [[ -z "${!required_name:-}" ]]; then
+              echo "Missing required production SSH secret: $required_name"
+              exit 1
+            fi
+          done
+          if [[ ! "$PROD_PORT" =~ ^[0-9]{1,5}$ ]] || (( PROD_PORT < 1 || PROD_PORT > 65535 )); then
+            echo "PROD_PORT must be a valid TCP port."
+            exit 1
+          fi
+          if [[ ! "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Deployment image tag must be a full Git commit SHA."
+            exit 1
+          fi
+          install -m 700 -d "$HOME/.ssh"
+          key_file="$HOME/.ssh/teacher-hub-production"
+          known_hosts_file="$HOME/.ssh/teacher-hub-known-hosts"
+          trap 'rm -f "$key_file" "$known_hosts_file"' EXIT
+          printf '%s\n' "$PROD_SSH_PRIVATE_KEY" | tr -d '\r' > "$key_file"
+          printf '%s\n' "$PROD_SSH_KNOWN_HOSTS" | tr -d '\r' > "$known_hosts_file"
+          chmod 600 "$key_file" "$known_hosts_file"
+
+          ssh_options=(
+            -i "$key_file"
+            -p "$PROD_PORT"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o "UserKnownHostsFile=$known_hosts_file"
+          )
+          ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" 'mkdir -p /opt/teacher-hub'
+          scp \
+            -i "$key_file" \
+            -P "$PROD_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$known_hosts_file" \
+            docker-compose.deploy.yml Caddyfile scripts/deploy-production.sh \
+            "$PROD_USER@$PROD_HOST:/opt/teacher-hub/"
+          # IMAGE_TAG is deliberately expanded locally after the full-SHA validation above.
+          # shellcheck disable=SC2029
+          ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \
+            "cd /opt/teacher-hub && chmod 700 deploy-production.sh && ./deploy-production.sh '$IMAGE_TAG'"

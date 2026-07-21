@@ -9,14 +9,15 @@ interface ImportMetaEnv {
   readonly VITE_PUBLIC_DESCRIPTION?: string;
   readonly VITE_PUBLIC_INTRODUCTION?: string;
   readonly VITE_PUBLIC_ZALO_URL?: string;
-  readonly VITE_PUBLIC_PHONE_DISPLAY?: string;
-  readonly VITE_PUBLIC_PHONE_E164?: string;
-  readonly VITE_PUBLIC_FACEBOOK_URL?: string;
   readonly VITE_PUBLIC_HERO_MOBILE_URL?: string;
   readonly VITE_PUBLIC_HERO_DESKTOP_URL?: string;
   readonly VITE_PUBLIC_HERO_ALT_MOBILE_URL?: string;
   readonly VITE_PUBLIC_HERO_ALT_DESKTOP_URL?: string;
+  readonly VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL?: string;
+  readonly VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL?: string;
   readonly VITE_PUBLIC_TEACHER_PHOTO_URL?: string;
+  readonly VITE_PUBLIC_TEACHER_PHOTO_ALT?: string;
+  readonly VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION?: string;
   readonly VITE_PUBLIC_OG_IMAGE_URL?: string;
   readonly VITE_PUBLIC_VIDEOS_JSON?: string;
   readonly VITE_PUBLIC_TESTIMONIALS_JSON?: string;

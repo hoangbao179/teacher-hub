@@ -60,8 +60,8 @@ Tiếng Anh lớp 1–9, phương pháp, media, video, phản hồi, liên hệ 
 theo deployment được khai báo bằng `VITE_PUBLIC_*` theo `client/.env.example`.
 
 Các giá trị liên hệ/domain trong file example là placeholder phát triển; action
-không hợp lệ sẽ bị ẩn khỏi Homepage. Trước khi build production, cung cấp số điện thoại,
-Zalo, Facebook và domain thật; đồng bộ domain đó vào `client/public/sitemap.xml`
+không hợp lệ sẽ bị ẩn khỏi Homepage. Trước khi build production, cung cấp Zalo và domain
+thật; Facebook dùng URL mặc định đã duyệt. Đồng bộ domain đó vào `client/public/sitemap.xml`
 và `client/public/robots.txt`, sau đó chạy:
 
 ```bash
@@ -69,7 +69,7 @@ npm -w client run validate:public
 npm -w client run build:production
 ```
 
-Validator production từ chối domain/số điện thoại/liên hệ mẫu và nội dung phản
+Validator production từ chối domain/liên hệ mẫu và nội dung phản
 hồi “minh họa”. Không đặt secret vào biến `VITE_*` vì mọi giá trị này được nhúng
 vào trình duyệt.
 

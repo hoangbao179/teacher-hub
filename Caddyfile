@@ -1,0 +1,8 @@
+www.tienganhcovy.com {
+	redir https://tienganhcovy.com{uri} permanent
+}
+
+tienganhcovy.com {
+	encode zstd gzip
+	reverse_proxy web:8080
+}

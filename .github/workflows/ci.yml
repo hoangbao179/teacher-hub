@@ -1,7 +1,12 @@
 name: ci
+
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,12 +27,12 @@ jobs:
       DB_PORT: 3306
       DB_USER: root
       DB_PASSWORD: rootpass
-      DB_NAME: teacher_hub
+      DB_NAME: teacher_hub_test
       JWT_SECRET: ci-only-secret-with-at-least-32-characters
       CHROME_PATH: /usr/bin/google-chrome
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24.18.0
           cache: npm

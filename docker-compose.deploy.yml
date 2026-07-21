@@ -1,0 +1,126 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
+      MYSQL_DATABASE: ${DB_NAME:?required}
+      MYSQL_USER: ${DB_USER:?required}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?required}
+      TZ: Asia/Ho_Chi_Minh
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+07:00
+      - --innodb-buffer-pool-size=192M
+      - --max-connections=30
+      - --performance-schema=OFF
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    logging: *default-logging
+
+  api:
+    image: ghcr.io/${GHCR_OWNER:?required}/teacher-hub-api:${IMAGE_TAG:?required}
+    restart: unless-stopped
+    mem_limit: 384m
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=256
+      PORT: 4000
+      TZ: Asia/Ho_Chi_Minh
+      CORS_ORIGIN: ${CORS_ORIGIN:?required}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:?required}
+      DB_PASSWORD: ${DB_PASSWORD:?required}
+      DB_NAME: ${DB_NAME:?required}
+      DB_CONNECTION_LIMIT: 5
+      JWT_SECRET: ${JWT_SECRET:?required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ADMIN_PASSWORD_MIN_LENGTH: ${ADMIN_PASSWORD_MIN_LENGTH:-6}
+      LOGIN_RATE_LIMIT_WINDOW_SECONDS: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:-300}
+      LOGIN_RATE_LIMIT_MAX_FAILURES: ${LOGIN_RATE_LIMIT_MAX_FAILURES:-10}
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:4000/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    logging: *default-logging
+
+  web:
+    image: ghcr.io/${GHCR_OWNER:?required}/teacher-hub-web:${IMAGE_TAG:?required}
+    restart: unless-stopped
+    mem_limit: 96m
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+    networks:
+      - backend
+      - edge
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    logging: *default-logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    mem_limit: 96m
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - edge
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging: *default-logging
+
+networks:
+  backend:
+    internal: true
+  edge:
+
+volumes:
+  mysql-data:
+  caddy-data:
+  caddy-config:

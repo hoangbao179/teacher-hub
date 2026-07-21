@@ -1,15 +1,16 @@
 # Deploy
 
-Repository build thành hai image `api` và `web`, dùng chung MySQL. Đây vẫn là một monorepo và một compose stack.
+Production dùng image GHCR và các file ở root:
 
-```bash
-cp deploy/env.example .env
-# cập nhật secret
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d mysql
-docker compose -f docker-compose.prod.yml run --rm api node dist/db/migrate.js
-docker compose -f docker-compose.prod.yml run --rm api node dist/db/bootstrap-admin.js
-docker compose -f docker-compose.prod.yml up -d
-```
+- `docker-compose.deploy.yml`
+- `Caddyfile`
+- `.env.deploy.example`
+- `scripts/deploy-production.sh`
+- `.github/workflows/deploy.yml`
 
-Với VPS nhỏ, giữ `DB_CONNECTION_LIMIT=5`, MySQL buffer 256MB và không thêm worker/polling nếu chưa có nhu cầu.
+VPS không build source và không cài Node.js/npm. Hướng dẫn bootstrap, GitHub
+Secrets/Variables, server `.env`, backup, health check và rollback nằm tại
+`docs/deployment/production.md`.
+
+`docker-compose.prod.yml` và `deploy/env.example` được giữ cho quy trình build production
+cục bộ cũ; không phải source of truth của VPS/GitHub Actions.

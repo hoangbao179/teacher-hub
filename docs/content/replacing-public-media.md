@@ -26,10 +26,11 @@ dùng ba media khác nhau:
 Thay đồng thời:
 
 - `VITE_PUBLIC_ZALO_URL`: URL HTTPS `zalo.me` thật;
-- `VITE_PUBLIC_PHONE_DISPLAY` và `VITE_PUBLIC_PHONE_E164`: nhãn và số E.164 cho `tel:`;
-- `VITE_PUBLIC_FACEBOOK_URL`: URL trang/profile HTTPS cụ thể, không dùng Facebook root;
 - `VITE_PUBLIC_SITE_URL`: public base URL thật;
 - `VITE_PUBLIC_OG_IMAGE_URL`: ảnh chia sẻ mạng xã hội.
+
+Facebook dùng mặc định đã duyệt `https://www.facebook.com/uyenvy.le.12`. Homepage không
+dùng biến phone hoặc Facebook ở build production.
 
 Link thiếu, placeholder hoặc sai host bị ẩn khỏi visitor. Production validation bắt buộc các giá trị liên hệ hợp lệ.
 
