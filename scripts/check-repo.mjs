@@ -6,6 +6,21 @@ import { assertRuleSelfTests, rawPasswordPersistenceReason } from "./package-rul
 const root = path.resolve(import.meta.dirname, "..");
 const failures = [];
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const listFiles = (...directories) => {
+  const files = [];
+  const visit = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(entryPath);
+      else if (entry.isFile()) files.push(path.relative(root, entryPath).replaceAll("\\", "/"));
+    }
+  };
+  for (const directory of directories) {
+    const absoluteDirectory = path.join(root, directory);
+    if (fs.existsSync(absoluteDirectory)) visit(absoluteDirectory);
+  }
+  return files.sort();
+};
 
 const required = [
   "docs/implementation/roadmap.md", "docs/implementation/status.md",
@@ -55,7 +70,7 @@ for (const file of tracked) {
     failures.push(`Generated screenshot/image is tracked outside approved source assets: ${normalized}`);
 }
 
-const clientFiles = execFileSync("rg", ["--files", "client/src"], { cwd: root, encoding: "utf8" }).trim().split(/\r?\n/).filter(Boolean);
+const clientFiles = listFiles("client/src");
 const fakeActionPatterns = [
   { label: "empty click handler", pattern: /onClick\s*=\s*\{\s*\(\)\s*=>\s*\{\s*\}\s*\}/ },
   { label: "placeholder href", pattern: /href\s*=\s*["']#["']/ },
@@ -77,10 +92,8 @@ for (const file of clientFiles) {
     failures.push(`Stale visible branding/content in ${file}`);
 }
 
-const currentDocumentationFiles = execFileSync("rg", ["--files", "docs/product-spec", "docs/features", "docs/user-guide", "docs/design", "docs/deployment", "docs/security"], {
-  cwd: root,
-  encoding: "utf8",
-}).trim().split(/\r?\n/).filter((file) => file.endsWith(".md"));
+const currentDocumentationFiles = listFiles("docs/product-spec", "docs/features", "docs/user-guide", "docs/design", "docs/deployment", "docs/security")
+  .filter((file) => file.endsWith(".md"));
 currentDocumentationFiles.push("README.md", "AGENTS.md", "docs/README.md", "docs/wireframes/README.md", "docs/wireframes/v2-branding/README.md");
 const staleVisiblePatterns = [
   { label: "old teacher name", pattern: /Cô (?:giáo )?An\b/i, probe: "Cô An" },
@@ -107,7 +120,7 @@ for (const marker of ["docs/wireframes/v2-branding/", "Wireframe P0", "docs/cont
 
 const obsoleteFiles = ["client/src/pages/LessonCompletePlaceholderPage.tsx"];
 for (const file of obsoleteFiles) if (fs.existsSync(path.join(root, file))) failures.push(`Obsolete completed-feature placeholder exists: ${file}`);
-const serverFiles = execFileSync("rg", ["--files", "server/src"], { cwd: root, encoding: "utf8" }).trim().split(/\r?\n/).filter(Boolean);
+const serverFiles = listFiles("server/src");
 for (const file of serverFiles)
   if (/\baddBillableAttendance\s*\(/.test(read(file))) failures.push(`Obsolete incremental tuition path exists in ${file}`);
 
