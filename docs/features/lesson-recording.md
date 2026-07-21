@@ -43,3 +43,7 @@ V14 snapshot cả tên/lớp/môn để metadata hiện tại không đổi lị
 draft cần lý do và lưu cancellation metadata. Nếu draft gắn occurrence, cùng
 transaction tạo SKIPPED exception. MAKEUP có thể liên kết occurrence nghỉ/hủy;
 mapping participant ngăn một enrollment được thay thế hai lần cho cùng nguồn.
+
+V15 dùng mapping như entitlement ledger `OPEN → RESERVED → FULFILLED/WAIVED`.
+Hủy draft hoặc bỏ participant release reservation; `PRESENT/FREE` fulfill còn
+`ABSENT` trở lại `OPEN`. Correction cập nhật ledger trong cùng transaction.

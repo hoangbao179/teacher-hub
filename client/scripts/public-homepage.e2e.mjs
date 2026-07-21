@@ -91,9 +91,15 @@ try {
   await page.mouse.up();
   assert(await carousel.getAttribute("data-active-slide") === "primary", "Horizontal swipe did not advance the carousel");
 
-  for (const heading of ["Xin chào, cô là Uyên Vy.", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Phản hồi từ phụ huynh", "Trao đổi về mục tiêu"]) {
+  for (const heading of ["Xin chào, cô là Uyên Vy.", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Phản hồi từ phụ huynh", "Cùng cô Vy tìm cách học phù hợp cho con"]) {
     await page.getByRole("heading", { name: new RegExp(heading) }).first().waitFor();
   }
+  await page.getByText("Ba mẹ có thể nhắn cô Vy để chia sẻ tình hình học hiện tại, thời gian phù hợp và phần con đang cần hỗ trợ. Cô sẽ trao đổi thêm về lớp học và cách học phù hợp.", { exact: true }).waitFor();
+  await page.getByRole("link", { name: "Nhắn cô Vy qua Zalo", exact: true }).waitFor();
+  await page.getByText("Trao đổi về tình hình học và lịch học của con", { exact: true }).waitFor();
+  for (const label of ["Lớp 1–9", "1–1 hoặc nhóm nhỏ", "Tại Huế"])
+    await page.getByText(label, { exact: true }).waitFor();
+  await page.getByText("2026 — từ người hâm mộ cô Vy, with love ❤️", { exact: true }).waitFor();
   for (const program of ["Tiếng Anh lớp 1–5", "Tiếng Anh lớp 6–9", "Kèm cặp và ôn thi"])
     await page.getByRole("heading", { level: 3, name: program, exact: true }).waitFor();
   await page.getByTestId("testimonial-list").waitFor();
@@ -167,7 +173,7 @@ try {
     else if (viewport.width <= 430) assert(metrics.heroHeight <= 450, `Hero height ${metrics.heroHeight}px exceeds 450 at ${viewport.width}px`);
     else assert(metrics.heroHeight >= 500 && metrics.heroHeight <= 520, `Desktop hero height ${metrics.heroHeight}px is outside 500–520`);
     if (viewport.width <= 430) assert(metrics.aboutTop < viewport.height, `Next section is not discoverable at ${viewport.width}px`);
-    assert(metrics.labels.includes("Nhắn Zalo cho cô Vy"), `Primary Zalo CTA is not visible at ${viewport.width}px`);
+    assert(metrics.labels.includes("Nhắn cô Vy qua Zalo"), `Primary Zalo CTA is not visible at ${viewport.width}px`);
     await page.screenshot({ path: path.join(artifactDir, `homepage-${viewport.width}x${viewport.height}.png`), fullPage: true });
   }
 

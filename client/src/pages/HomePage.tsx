@@ -20,6 +20,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   Container,
   IconButton,
   Stack,
@@ -348,14 +349,16 @@ export function HomePage() {
         {(showZalo || showPhone || showFacebook) && <Container maxWidth="md">
           <Box component="section" id="contact" aria-labelledby="contact-heading" sx={{ ...sectionSx, textAlign: "center" }}>
             <MenuBook color="primary" sx={{ fontSize: 38 }} />
-            <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Trao đổi về mục tiêu học của con</Typography>
+            <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Cùng cô Vy tìm cách học phù hợp cho con</Typography>
+            <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 680, mx: "auto" }}>Ba mẹ có thể nhắn cô Vy để chia sẻ tình hình học hiện tại, thời gian phù hợp và phần con đang cần hỗ trợ. Cô sẽ trao đổi thêm về lớp học và cách học phù hợp.</Typography>
+            <Stack direction="row" useFlexGap sx={{ justifyContent: "center", flexWrap: "wrap", gap: 1, mt: 2 }}><Chip size="small" label="Lớp 1–9" /><Chip size="small" label="1–1 hoặc nhóm nhỏ" /><Chip size="small" label="Tại Huế" /></Stack>
             <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 680, mx: "auto" }}>Cô Vy sẽ tư vấn lộ trình phù hợp với trình độ, thời gian học và mục tiêu của từng học sinh.</Typography>
             <Box sx={{ mt: 3, maxWidth: 580, mx: "auto" }}>
-              {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth startIcon={<ChatBubbleOutlined />} sx={{ background: "linear-gradient(105deg, #6d3df5, #398de5)" }}>Nhắn Zalo cho cô Vy</Button>}
-              {showZalo && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>Trao đổi nhanh về tình hình học của con</Typography>}
+              {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth startIcon={<ChatBubbleOutlined />} sx={{ background: "linear-gradient(105deg, #6d3df5, #398de5)" }}>Nhắn cô Vy qua Zalo</Button>}
+              {showZalo && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>Trao đổi về tình hình học và lịch học của con</Typography>}
               {(showPhone || showFacebook) && (
                 <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", "@media (max-width:359px)": { gridTemplateColumns: "1fr" }, gap: 1.25, mt: 2 }}>
-                  {showPhone && <Button component="a" href={content.contact.phoneHref} variant="outlined" size="large" startIcon={<Phone />}>Gọi cô Vy</Button>}
+                  {showPhone && <Button component="a" href={content.contact.phoneHref} variant="outlined" size="large" startIcon={<Phone />}>Gọi điện</Button>}
                   {showFacebook && <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="outlined" size="large" startIcon={<Facebook />}>Facebook</Button>}
                 </Box>
               )}

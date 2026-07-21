@@ -40,3 +40,8 @@ RESCHEDULED exceptions, không sửa pattern gốc.
 API lịch tuần trả cả occurrence đã đối soát, lesson độc lập (gồm `MAKEUP`) và
 busy occurrence đã bung theo ngày. Dashboard dùng cùng projection cho lịch hôm
 nay; UI mobile chi tiết nằm trong `daily-operations.md`.
+
+V15 cho phép một request đổi tạm subset 1–7 lịch tuần, tối đa 45 ngày/30
+occurrences. Preview kiểm tra cả database và xung đột giữa các mapping; apply là
+all-or-nothing. Lịch thay thế có thể tiếp tục nghỉ nhưng exception gốc vẫn là
+`RESCHEDULED`; metadata cancellation và entitlement đều quy về canonical key.

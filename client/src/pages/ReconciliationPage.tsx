@@ -49,6 +49,7 @@ export function ReconciliationPage() {
   const [skipDialog, setSkipDialog] = useState<SkipDialogState | null>(null);
   const [skipReason, setSkipReason] = useState("");
   const [skipNote, setSkipNote] = useState("");
+  const [makeupRequired, setMakeupRequired] = useState(true);
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [rescheduleItem, setRescheduleItem] = useState<ScheduleOccurrence | null>(null);
   const [replacementDate, setReplacementDate] = useState(today);
@@ -82,11 +83,11 @@ export function ReconciliationPage() {
     setBusyKey("skip"); setError("");
     try {
       if (skipDialog.bulk) {
-        const results = await scheduleApi.bulkSkip({ keys: skipDialog.keys, reason: skipReason, note: skipNote || undefined });
+        const results = await scheduleApi.bulkSkip({ keys: skipDialog.keys, reason: skipReason, note: skipNote || undefined, makeupRequired });
         const ok = results.filter((item) => item.success).length;
         setSuccess(`Đã đánh dấu nghỉ ${ok}/${results.length} buổi.`);
       } else {
-        await scheduleApi.skip(skipDialog.keys[0], { reason: skipReason, note: skipNote || undefined });
+        await scheduleApi.skip(skipDialog.keys[0], { reason: skipReason, note: skipNote || undefined, makeupRequired });
         setSuccess("Đã đánh dấu nghỉ cho buổi dự kiến.");
       }
       setSkipDialog(null); setSkipReason(""); setSkipNote(""); setSelected([]); setReload((value) => value + 1);
@@ -171,7 +172,7 @@ export function ReconciliationPage() {
           {item.state === "UNRECORDED" && <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
             <Checkbox aria-label={`Chọn ${item.className} ${item.occurrenceDate}`} checked={selected.includes(item.key)} onChange={() => toggle(item.key)} />
             <Button size="small" variant="contained" disabled={Boolean(busyKey)} onClick={() => void createDraft(item)}>{busyKey === item.key ? "Đang tạo…" : "Đã dạy"}</Button>
-            {!replacement && <Button size="small" color="error" variant="outlined" disabled={Boolean(busyKey)} onClick={() => setSkipDialog({ keys: [item.key], bulk: false })}>Nghỉ</Button>}
+            <Button size="small" color="error" variant="outlined" disabled={Boolean(busyKey)} onClick={() => { setMakeupRequired(true); setSkipDialog({ keys: [item.key], bulk: false }); }}>Nghỉ</Button>
             {!replacement && <Button size="small" variant="outlined" disabled={Boolean(busyKey)} onClick={() => openReschedule(item)}>Đổi lịch</Button>}
           </Stack>}
           {item.linkedLessonId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/lessons/${item.linkedLessonId}/edit`)}>Mở buổi học</Button>}
@@ -186,6 +187,7 @@ export function ReconciliationPage() {
           <Alert severity="info">Chỉ tạo schedule exception; không tạo attendance hoặc thay đổi học phí.</Alert>
           <TextField required label="Lý do nghỉ" value={skipReason} onChange={(event) => setSkipReason(event.target.value)} />
           <TextField multiline minRows={2} label="Ghi chú (tùy chọn)" value={skipNote} onChange={(event) => setSkipNote(event.target.value)} />
+          <FormControlLabel control={<Checkbox checked={makeupRequired} onChange={(event) => setMakeupRequired(event.target.checked)} />} label="Cần sắp xếp học bù" />
         </Stack></DialogContent>
         <DialogActions><Button disabled={Boolean(busyKey)} onClick={() => setSkipDialog(null)}>Hủy</Button><Button variant="contained" color="error" disabled={!skipReason.trim() || Boolean(busyKey)} onClick={() => void submitSkip()}>{busyKey ? "Đang lưu…" : "Xác nhận nghỉ"}</Button></DialogActions>
       </Dialog>

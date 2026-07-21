@@ -11,6 +11,9 @@ import type {
   TuitionCycleListQuery,
   TuitionSummary,
   TuitionSummaryQuery,
+  CreateAdvanceReceiptRequest,
+  TuitionReceipt,
+  SettleIncompleteCycleRequest,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
@@ -21,6 +24,7 @@ import {
   type BillableAttendanceOrder,
 } from "../domain/lesson-domain";
 import { TuitionPolicyRepository } from "./tuition-policy.repository";
+import { AuditRepository } from "./audit.repository";
 
 interface RecalculationAttendance extends BillableAttendanceOrder {
   enrollmentId: number;
@@ -53,7 +57,7 @@ export interface LockedTuitionCycle {
 }
 
 export class TuitionRepository {
-  constructor(private readonly policies = new TuitionPolicyRepository()) {}
+  constructor(private readonly policies = new TuitionPolicyRepository(), private readonly audit = new AuditRepository()) {}
 
   async lessonTouchesPaidCycle(connection: PoolConnection, lessonId: number): Promise<boolean> {
     const [rows] = await connection.query<RowDataPacket[]>(
@@ -148,6 +152,16 @@ export class TuitionRepository {
       throw new AppError(409, "PAID_CYCLE_CONFLICT", "Attendance lịch sử nằm trước ranh giới chu kỳ đã thu; cần flow mở khóa riêng.");
 
     await connection.execute(
+      `UPDATE tuition_receipts tr JOIN tuition_receipt_allocations tra ON tra.receipt_id=tr.id
+       JOIN tuition_cycles tc ON tc.id=tra.tuition_cycle_id
+       SET tr.status=IF(tr.status='TRANSFERRED','TRANSFERRED','AVAILABLE')
+       WHERE tc.enrollment_id=? AND tc.status<>'PAID'`, [enrollmentId],
+    );
+    await connection.execute(
+      `DELETE tra FROM tuition_receipt_allocations tra JOIN tuition_cycles tc ON tc.id=tra.tuition_cycle_id
+       WHERE tc.enrollment_id=? AND tc.status<>'PAID'`, [enrollmentId],
+    );
+    await connection.execute(
       `DELETE tcs FROM tuition_cycle_sessions tcs
        JOIN tuition_cycles tc ON tc.id=tcs.tuition_cycle_id
        WHERE tc.enrollment_id=? AND tc.status<>'PAID'`, [enrollmentId],
@@ -182,6 +196,7 @@ export class TuitionRepository {
           "INSERT INTO tuition_cycle_sessions(tuition_cycle_id,attendance_id,sequence_number) VALUES (?,?,?)",
           [created.insertId, attendance.attendanceId, sequence + 1],
         );
+      await this.allocateAdvanceReceipt(connection, enrollmentId, created.insertId, firstPolicy.packagePrice, due);
     }
     return {
       enrollmentId,
@@ -234,7 +249,7 @@ export class TuitionRepository {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT tc.*,e.student_id,e.class_id,s.full_name student_name,s.nickname student_nickname,
         c.name class_name,COALESCE(items.item_count,0) item_count,
-        active.progress active_progress
+        active.progress active_progress,COALESCE(receipts.receipt_count,0) receipt_count
        FROM tuition_cycles tc
        JOIN class_enrollments e ON e.id=tc.enrollment_id
        JOIN students s ON s.id=e.student_id
@@ -250,6 +265,8 @@ export class TuitionRepository {
          WHERE ac.status='ACCUMULATING'
          GROUP BY ac.id,ac.enrollment_id
        ) active ON active.enrollment_id=tc.enrollment_id
+       LEFT JOIN (SELECT tuition_cycle_id,COUNT(*) receipt_count FROM tuition_receipt_allocations GROUP BY tuition_cycle_id)
+         receipts ON receipts.tuition_cycle_id=tc.id
        ${where} ORDER BY ${order} LIMIT ? OFFSET ?`,
       [...params, query.pageSize, offset],
     );
@@ -265,7 +282,7 @@ export class TuitionRepository {
     const [baseRows] = await pool.query<RowDataPacket[]>(
       `SELECT tc.*,e.student_id,e.class_id,s.full_name student_name,s.nickname student_nickname,
         c.name class_name,COALESCE(items.item_count,0) item_count,
-        active.progress active_progress
+        active.progress active_progress,COALESCE(receipts.receipt_count,0) receipt_count
        FROM tuition_cycles tc
        JOIN class_enrollments e ON e.id=tc.enrollment_id
        JOIN students s ON s.id=e.student_id
@@ -281,6 +298,8 @@ export class TuitionRepository {
          WHERE ac.status='ACCUMULATING'
          GROUP BY ac.id,ac.enrollment_id
        ) active ON active.enrollment_id=tc.enrollment_id
+       LEFT JOIN (SELECT tuition_cycle_id,COUNT(*) receipt_count FROM tuition_receipt_allocations GROUP BY tuition_cycle_id)
+         receipts ON receipts.tuition_cycle_id=tc.id
        WHERE tc.id=?`, [id],
     );
     if (!baseRows[0]) return null;
@@ -301,6 +320,10 @@ export class TuitionRepository {
       paidAmount: baseRows[0].paid_amount == null ? null : Number(baseRows[0].paid_amount),
       paymentMethod: baseRows[0].payment_method ?? null,
       paymentNote: baseRows[0].payment_note == null ? null : String(baseRows[0].payment_note),
+      settledAt: baseRows[0].settled_at == null ? null : String(baseRows[0].settled_at),
+      settlementMethod: baseRows[0].settlement_method ?? null,
+      settlementReason: baseRows[0].settlement_reason == null ? null : String(baseRows[0].settlement_reason),
+      settlementNote: baseRows[0].settlement_note == null ? null : String(baseRows[0].settlement_note),
       items: rows.map((row) => ({
         sequenceNumber: Number(row.sequence_number),
         attendanceId: Number(row.attendance_id),
@@ -323,7 +346,8 @@ export class TuitionRepository {
         SUM(status='PAYMENT_DUE') payment_due_count,
         COALESCE(SUM(CASE WHEN status='PAYMENT_DUE' THEN package_price_snapshot ELSE 0 END),0) total_unpaid_amount,
         COUNT(DISTINCT CASE WHEN status='ACCUMULATING' THEN enrollment_id END) accumulating_enrollment_count,
-        SUM(status='PAID' AND (? IS NULL OR DATE(paid_at)>=?) AND (? IS NULL OR DATE(paid_at)<=?)) paid_cycle_count
+        SUM(status='PAID' AND (? IS NULL OR DATE(paid_at)>=?) AND (? IS NULL OR DATE(paid_at)<=?)) paid_cycle_count,
+        SUM(status='INCOMPLETE' AND settlement_status='OPEN') open_incomplete_count
        FROM tuition_cycles`,
       [query.from ?? null, query.from ?? null, query.to ?? null, query.to ?? null],
     );
@@ -332,6 +356,7 @@ export class TuitionRepository {
       totalUnpaidAmount: Number(rows[0]?.total_unpaid_amount ?? 0),
       accumulatingEnrollmentCount: Number(rows[0]?.accumulating_enrollment_count ?? 0),
       paidCycleCount: Number(rows[0]?.paid_cycle_count ?? 0),
+      openIncompleteCount: Number(rows[0]?.open_incomplete_count ?? 0),
       from: query.from ?? null,
       to: query.to ?? null,
     };
@@ -382,6 +407,116 @@ export class TuitionRepository {
       [enrollmentId],
     );
   }
+
+  async lockEnrollmentForReceipt(connection: PoolConnection, enrollmentId: number): Promise<RowDataPacket | null> {
+    const [rows] = await connection.query<RowDataPacket[]>(
+      "SELECT * FROM class_enrollments WHERE id=? FOR UPDATE", [enrollmentId],
+    );
+    return rows[0] ?? null;
+  }
+
+  async createAdvanceReceipt(
+    connection: PoolConnection,
+    enrollmentId: number,
+    input: CreateAdvanceReceiptRequest,
+    packagePrice: number,
+    actorUserId?: number,
+  ): Promise<number> {
+    const [created] = await connection.execute<ResultSetHeader>(
+      `INSERT INTO tuition_receipts
+        (enrollment_id,receipt_type,amount,package_price_snapshot,received_at,payment_method,note,created_by)
+       VALUES (?,'ADVANCE',?,?,?,?,?,?)`,
+      [enrollmentId, input.amount, packagePrice, input.receivedAt, input.paymentMethod,
+        input.note?.trim() || null, actorUserId ?? null],
+    );
+    const [cycles] = await connection.query<RowDataPacket[]>(
+      "SELECT id,package_price_snapshot FROM tuition_cycles WHERE enrollment_id=? AND status='ACCUMULATING' ORDER BY cycle_number DESC LIMIT 1 FOR UPDATE",
+      [enrollmentId],
+    );
+    if (cycles[0] && Number(cycles[0].package_price_snapshot) === packagePrice) {
+      await connection.execute(
+        "INSERT INTO tuition_receipt_allocations(receipt_id,tuition_cycle_id,allocated_amount) VALUES (?,?,?)",
+        [created.insertId, cycles[0].id, input.amount],
+      );
+      await connection.execute("UPDATE tuition_receipts SET status='ALLOCATED' WHERE id=?", [created.insertId]);
+    }
+    return created.insertId;
+  }
+
+  async findReceipt(id: number): Promise<TuitionReceipt | null> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT tr.*,tra.tuition_cycle_id FROM tuition_receipts tr
+       LEFT JOIN tuition_receipt_allocations tra ON tra.receipt_id=tr.id WHERE tr.id=?`, [id],
+    );
+    return rows[0] ? mapReceipt(rows[0]) : null;
+  }
+
+  async listReceipts(enrollmentId: number): Promise<TuitionReceipt[]> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT tr.*,tra.tuition_cycle_id FROM tuition_receipts tr
+       LEFT JOIN tuition_receipt_allocations tra ON tra.receipt_id=tr.id
+       WHERE tr.enrollment_id=? ORDER BY tr.received_at DESC,tr.id DESC`, [enrollmentId],
+    );
+    return rows.map(mapReceipt);
+  }
+
+  async settleIncomplete(
+    connection: PoolConnection,
+    cycleId: number,
+    input: SettleIncompleteCycleRequest,
+    actorUserId?: number,
+  ): Promise<RowDataPacket | null> {
+    const [rows] = await connection.query<RowDataPacket[]>(
+      "SELECT * FROM tuition_cycles WHERE id=? FOR UPDATE", [cycleId],
+    );
+    const cycle = rows[0];
+    if (!cycle) return null;
+    if (cycle.status !== "INCOMPLETE" || cycle.settlement_status !== "OPEN")
+      throw new AppError(409, "INCOMPLETE_SETTLEMENT_CONFLICT", "Đợt dở dang không còn ở trạng thái chờ xử lý.");
+    if (input.type === "SETTLE")
+      await connection.execute(
+        `UPDATE tuition_cycles SET settlement_status='SETTLED',settled_amount=?,settled_at=NOW(),
+          settlement_method=?,settlement_reason=?,settlement_note=?,settled_by=? WHERE id=?`,
+        [input.amount, input.method, input.reason.trim(), input.note?.trim() || null, actorUserId ?? null, cycleId],
+      );
+    else await connection.execute(
+      `UPDATE tuition_cycles SET settlement_status='WAIVED',settled_at=NOW(),settlement_reason=?,
+        settlement_note=?,settled_by=? WHERE id=?`,
+      [input.reason.trim(), input.note?.trim() || null, actorUserId ?? null, cycleId],
+    );
+    return cycle;
+  }
+
+  private async allocateAdvanceReceipt(
+    connection: PoolConnection,
+    enrollmentId: number,
+    cycleId: number,
+    packagePrice: number,
+    complete: boolean,
+  ): Promise<void> {
+    const [receipts] = await connection.query<RowDataPacket[]>(
+      `SELECT * FROM tuition_receipts WHERE enrollment_id=? AND status IN ('AVAILABLE','TRANSFERRED')
+       AND amount=? ORDER BY received_at,id LIMIT 1 FOR UPDATE`, [enrollmentId, packagePrice],
+    );
+    const receipt = receipts[0];
+    if (!receipt) return;
+    await connection.execute(
+      "INSERT INTO tuition_receipt_allocations(receipt_id,tuition_cycle_id,allocated_amount) VALUES (?,?,?)",
+      [receipt.id, cycleId, packagePrice],
+    );
+    await connection.execute("UPDATE tuition_receipts SET status='ALLOCATED' WHERE id=?", [receipt.id]);
+    await this.audit.record(connection, { action: "TUITION_ADVANCE_ALLOCATED", entityType: "TUITION_RECEIPT",
+      entityId: Number(receipt.id), newValues: { enrollmentId, tuitionCycleId: cycleId, complete } });
+    if (complete) {
+      await connection.execute(
+        `UPDATE tuition_cycles SET status='PAID',paid_amount=?,paid_at=CONCAT(?,' 00:00:00'),
+          payment_method=?,payment_note=CONCAT('Thu trước #',?) WHERE id=? AND status='PAYMENT_DUE'`,
+        [packagePrice, receipt.received_at, receipt.payment_method, receipt.id, cycleId],
+      );
+      await this.audit.record(connection, { action: "TUITION_CYCLE_MARKED_PAID", entityType: "TUITION_CYCLE",
+        entityId: cycleId, newValues: { source: "ADVANCE_RECEIPT", receiptId: Number(receipt.id), amount: packagePrice } });
+    }
+  }
 }
 
 function mapListRow(row: RowDataPacket): TuitionCycleListItem {
@@ -406,5 +541,16 @@ function mapListRow(row: RowDataPacket): TuitionCycleListItem {
     paidAt: row.paid_at ? String(row.paid_at).slice(0, 10) : null,
     activeNextCycleProgress: status === "ACCUMULATING" || row.active_progress == null
       ? null : Number(row.active_progress),
+    settlementStatus: row.settlement_status ?? "OPEN",
+    settledAmount: row.settled_amount == null ? null : Number(row.settled_amount),
+    hasAdvanceReceipt: Number(row.receipt_count ?? 0) > 0,
   };
+}
+
+function mapReceipt(row: RowDataPacket): TuitionReceipt {
+  return { id: Number(row.id), enrollmentId: Number(row.enrollment_id), receiptType: "ADVANCE",
+    amount: Number(row.amount), packagePriceSnapshot: Number(row.package_price_snapshot),
+    receivedAt: String(row.received_at).slice(0, 10), paymentMethod: row.payment_method,
+    status: row.status, note: row.note == null ? null : String(row.note),
+    tuitionCycleId: row.tuition_cycle_id == null ? null : Number(row.tuition_cycle_id) };
 }

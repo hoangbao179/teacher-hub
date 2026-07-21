@@ -9,7 +9,8 @@ import type {
   TeacherBusySlot,
   TeacherBusySlotInput,
   TemporaryReschedulePreviewItem,
-  TemporaryRescheduleRequest,
+  BulkTemporaryRescheduleRequest,
+  OutstandingMakeupItem,
   UnrecordedSession,
   WeekScheduleResponse,
 } from "@teacher/shared";
@@ -158,8 +159,13 @@ export class ScheduleRepository {
     actorUserId?: number,
   ): Promise<ExceptionWriteResult> {
     const parsed = parseOccurrenceKey(key);
-    if (!parsed || parsed.replacement)
+    if (!parsed)
       throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Chỉ occurrence gốc mới có thể nghỉ hoặc đổi lịch.");
+    if (parsed.replacement) {
+      if (type !== "SKIPPED")
+        throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Lịch thay thế chỉ có thể được đánh dấu nghỉ.");
+      return this.cancelReplacement(key, input as SkipOccurrenceRequest, actorUserId);
+    }
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -188,6 +194,7 @@ export class ScheduleRepository {
         replacementDate: replacement?.replacementDate ?? null,
         replacementStartTime: replacement?.replacementStartTime ?? null,
         replacementEndTime: replacement?.replacementEndTime ?? null,
+        makeupRequired: !("makeupRequired" in input) || input.makeupRequired !== false,
       };
       if (existing) {
         const identical = existing.exception_type === normalized.type &&
@@ -195,21 +202,32 @@ export class ScheduleRepository {
           nullableTime(existing.replacement_start_time) === normalized.replacementStartTime &&
           nullableTime(existing.replacement_end_time) === normalized.replacementEndTime &&
           String(existing.reason ?? "") === normalized.reason &&
-          (existing.note == null ? null : String(existing.note)) === normalized.note;
+          (existing.note == null ? null : String(existing.note)) === normalized.note &&
+          Boolean(existing.makeup_required) === normalized.makeupRequired;
         if (!identical)
           throw new AppError(409, "OCCURRENCE_ALREADY_RESOLVED", "Occurrence đã có thao tác nghỉ hoặc đổi lịch khác.");
+        if (type === "SKIPPED")
+          await this.ensureMakeupEntitlements(connection, key, parsed.classId, parsed.occurrenceDate,
+            normalized.makeupRequired ? "OPEN" : "WAIVED", normalized.reason, actorUserId);
         await connection.commit();
         return { id: Number(existing.id), idempotent: true };
       }
       const [created] = await connection.execute<ResultSetHeader>(
         `INSERT INTO schedule_exceptions
           (class_id,recurring_schedule_id,original_date,original_start_time,original_end_time,
-           exception_type,replacement_date,replacement_start_time,replacement_end_time,reason,note,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+           exception_type,replacement_date,replacement_start_time,replacement_end_time,reason,note,makeup_required,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [parsed.classId, parsed.recurringScheduleId, parsed.occurrenceDate, schedule.start_time, schedule.end_time,
           type, normalized.replacementDate, normalized.replacementStartTime, normalized.replacementEndTime,
-          normalized.reason, normalized.note, actorUserId ?? null],
+          normalized.reason, normalized.note, normalized.makeupRequired, actorUserId ?? null],
       );
+      if (type === "SKIPPED")
+        await this.ensureMakeupEntitlements(connection, key, parsed.classId, parsed.occurrenceDate,
+          normalized.makeupRequired ? "OPEN" : "WAIVED", normalized.reason, actorUserId);
+      if (type === "SKIPPED") await this.audit.record(connection, { actorUserId,
+        action: normalized.makeupRequired ? "MAKEUP_ENTITLEMENT_OPENED" : "MAKEUP_ENTITLEMENT_WAIVED",
+        entityType: "SCHEDULE_EXCEPTION", entityId: created.insertId,
+        newValues: { sourceOccurrenceKey: key }, reason: normalized.reason });
       await this.audit.record(connection, {
         actorUserId,
         action: type === "SKIPPED" ? "SCHEDULE_OCCURRENCE_SKIPPED" : "SCHEDULE_OCCURRENCE_RESCHEDULED",
@@ -222,6 +240,102 @@ export class ScheduleRepository {
       return { id: created.insertId, idempotent: false };
     } catch (error) { await connection.rollback(); throw error; }
     finally { connection.release(); }
+  }
+
+  private async cancelReplacement(
+    replacementKey: string,
+    input: SkipOccurrenceRequest,
+    actorUserId?: number,
+  ): Promise<ExceptionWriteResult> {
+    const parsed = parseOccurrenceKey(replacementKey)!;
+    const canonicalKey = occurrenceKey(parsed.classId, parsed.recurringScheduleId, parsed.occurrenceDate);
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.query<RowDataPacket[]>(
+        `SELECT * FROM schedule_exceptions
+         WHERE recurring_schedule_id=? AND class_id=? AND original_date=? FOR UPDATE`,
+        [parsed.recurringScheduleId, parsed.classId, parsed.occurrenceDate],
+      );
+      const exception = rows[0];
+      if (!exception || exception.exception_type !== "RESCHEDULED")
+        throw new AppError(409, "REPLACEMENT_NOT_FOUND", "Không tìm thấy lịch thay thế đang hoạt động.");
+      const [lessons] = await connection.query<RowDataPacket[]>(
+        "SELECT id,status FROM lesson_sessions WHERE source_occurrence_key=? FOR UPDATE", [replacementKey],
+      );
+      if (lessons.some((lesson) => lesson.status !== "CANCELLED"))
+        throw new AppError(409, "OCCURRENCE_RECORDED", "Lịch thay thế đã có buổi học và không thể đánh dấu nghỉ trực tiếp.");
+      const makeupRequired = input.makeupRequired !== false;
+      if (exception.replacement_cancelled_at) {
+        const identical = String(exception.replacement_cancel_reason ?? "") === input.reason.trim() &&
+          (exception.replacement_cancel_note == null ? null : String(exception.replacement_cancel_note)) === (input.note?.trim() || null) &&
+          Boolean(exception.makeup_required) === makeupRequired;
+        if (!identical) throw new AppError(409, "OCCURRENCE_ALREADY_RESOLVED", "Lịch thay thế đã được đánh dấu nghỉ với thông tin khác.");
+        await connection.commit();
+        return { id: Number(exception.id), idempotent: true };
+      }
+      await connection.execute(
+        `UPDATE schedule_exceptions SET replacement_cancelled_at=NOW(),replacement_cancelled_by=?,
+          replacement_cancel_reason=?,replacement_cancel_note=?,makeup_required=? WHERE id=?`,
+        [actorUserId ?? null, input.reason.trim(), input.note?.trim() || null, makeupRequired, exception.id],
+      );
+      await this.ensureMakeupEntitlements(connection, canonicalKey, parsed.classId, parsed.occurrenceDate,
+        makeupRequired ? "OPEN" : "WAIVED", input.reason.trim(), actorUserId);
+      await this.audit.record(connection, { actorUserId,
+        action: makeupRequired ? "MAKEUP_ENTITLEMENT_OPENED" : "MAKEUP_ENTITLEMENT_WAIVED",
+        entityType: "SCHEDULE_EXCEPTION", entityId: Number(exception.id),
+        newValues: { sourceOccurrenceKey: canonicalKey }, reason: input.reason.trim() });
+      await this.audit.record(connection, { actorUserId, action: "SCHEDULE_REPLACEMENT_SKIPPED",
+        entityType: "SCHEDULE_EXCEPTION", entityId: Number(exception.id), reason: input.reason.trim(),
+        newValues: { occurrenceKey: replacementKey, canonicalKey, makeupRequired } });
+      await connection.commit();
+      return { id: Number(exception.id), idempotent: false };
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
+  }
+
+  private async ensureMakeupEntitlements(
+    connection: PoolConnection,
+    sourceKey: string,
+    classId: number,
+    originalDate: string,
+    status: "OPEN" | "WAIVED",
+    reason: string,
+    actorUserId?: number,
+  ): Promise<void> {
+    const [cancelledDrafts] = await connection.query<RowDataPacket[]>(
+      `SELECT id FROM lesson_sessions WHERE source_occurrence_key IN (?,?) AND status='CANCELLED'
+       ORDER BY id DESC LIMIT 1 FOR UPDATE`, [sourceKey, replacementOccurrenceKey(sourceKey)],
+    );
+    const lessonId = cancelledDrafts[0]?.id;
+    const [participants] = lessonId
+      ? await connection.query<RowDataPacket[]>(
+          `SELECT p.enrollment_id,COALESCE(p.student_name_snapshot,s.full_name) student_name,
+            COALESCE(p.student_nickname_snapshot,s.nickname) student_nickname
+           FROM lesson_session_participants p JOIN class_enrollments e ON e.id=p.enrollment_id
+           JOIN students s ON s.id=e.student_id WHERE p.lesson_session_id=? FOR UPDATE`, [lessonId])
+      : await connection.query<RowDataPacket[]>(
+          `SELECT e.id enrollment_id,s.full_name student_name,s.nickname student_nickname
+           FROM class_enrollments e JOIN students s ON s.id=e.student_id
+           WHERE e.class_id=? AND e.joined_at<=? AND (e.ended_at IS NULL OR e.ended_at>=?)
+             AND EXISTS (SELECT 1 FROM enrollment_active_periods ap WHERE ap.enrollment_id=e.id
+               AND ap.active_from<=? AND (ap.active_to IS NULL OR ap.active_to>=?)) FOR UPDATE`,
+          [classId, originalDate, originalDate, originalDate, originalDate]);
+    for (const participant of participants) {
+      await connection.execute(
+        `INSERT INTO lesson_makeup_replacements
+          (source_occurrence_key,enrollment_id,student_name_snapshot,student_nickname_snapshot,status,
+           waived_at,waived_reason,created_by,updated_by)
+         VALUES (?,?,?,?,?,IF(?='WAIVED',NOW(),NULL),IF(?='WAIVED',?,NULL),?,?)
+         ON DUPLICATE KEY UPDATE
+           status=IF(status IN ('FULFILLED','RESERVED'),status,VALUES(status)),
+           waived_at=IF(status IN ('FULFILLED','RESERVED'),waived_at,VALUES(waived_at)),
+           waived_reason=IF(status IN ('FULFILLED','RESERVED'),waived_reason,VALUES(waived_reason)),
+           updated_by=VALUES(updated_by)`,
+        [sourceKey, participant.enrollment_id, participant.student_name, participant.student_nickname,
+          status, status, status, reason, actorUserId ?? null, actorUserId ?? null],
+      );
+    }
   }
 
   async detectConflicts(date: string, startTime: string, endTime: string, excludeOriginalKey?: string, excludeLessonId?: number): Promise<ScheduleConflictWarning[]> {
@@ -251,29 +365,31 @@ export class ScheduleRepository {
   }
 
   async applyTemporaryReschedules(
-    input: TemporaryRescheduleRequest,
+    input: BulkTemporaryRescheduleRequest,
     items: TemporaryReschedulePreviewItem[],
     actorUserId?: number,
   ): Promise<number[]> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
+      const scheduleIds = input.mappings.map((mapping) => mapping.recurringScheduleId);
       const [schedules] = await connection.query<RowDataPacket[]>(
-        "SELECT * FROM recurring_schedules WHERE id=? AND class_id=? FOR UPDATE",
-        [input.recurringScheduleId, input.classId],
+        `SELECT * FROM recurring_schedules WHERE id IN (${scheduleIds.map(() => "?").join(",")}) AND class_id=? FOR UPDATE`,
+        [...scheduleIds, input.classId],
       );
-      if (!schedules[0]) throw new AppError(404, "SCHEDULE_NOT_FOUND", "Không tìm thấy lịch lặp nguồn.");
+      if (schedules.length !== scheduleIds.length)
+        throw new AppError(404, "SCHEDULE_NOT_FOUND", "Không tìm thấy lịch lặp nguồn.");
       const ids: number[] = [];
       for (const item of items) {
         const parsed = parseOccurrenceKey(item.originalOccurrenceKey);
-        if (!parsed || parsed.recurringScheduleId !== input.recurringScheduleId || parsed.classId !== input.classId)
+        if (!parsed || !scheduleIds.includes(parsed.recurringScheduleId) || parsed.classId !== input.classId)
           throw new AppError(409, "TEMPORARY_RESCHEDULE_STALE", "Preview đổi lịch không còn hợp lệ.");
         const [existing] = await connection.query<RowDataPacket[]>(
           `SELECT se.id exception_id,l.id lesson_id FROM recurring_schedules rs
            LEFT JOIN schedule_exceptions se ON se.recurring_schedule_id=rs.id AND se.original_date=?
            LEFT JOIN lesson_sessions l ON l.source_occurrence_key IN (?,?)
            WHERE rs.id=? FOR UPDATE`,
-          [item.originalDate, item.originalOccurrenceKey, replacementOccurrenceKey(item.originalOccurrenceKey), input.recurringScheduleId],
+          [item.originalDate, item.originalOccurrenceKey, replacementOccurrenceKey(item.originalOccurrenceKey), parsed.recurringScheduleId],
         );
         if (existing[0]?.exception_id || existing[0]?.lesson_id)
           throw new AppError(409, "TEMPORARY_RESCHEDULE_STALE", "Có occurrence đã được xử lý sau khi preview.");
@@ -282,7 +398,7 @@ export class ScheduleRepository {
             (class_id,recurring_schedule_id,original_date,original_start_time,original_end_time,
              exception_type,replacement_date,replacement_start_time,replacement_end_time,reason,note,created_by)
            VALUES (?,?,?,?,?,'RESCHEDULED',?,?,?,?,?,?)`,
-          [input.classId, input.recurringScheduleId, item.originalDate, item.originalStartTime, item.originalEndTime,
+          [input.classId, parsed.recurringScheduleId, item.originalDate, item.originalStartTime, item.originalEndTime,
             item.replacementDate, item.replacementStartTime, item.replacementEndTime,
             input.reason.trim(), input.note?.trim() || null, actorUserId ?? null],
         );
@@ -304,6 +420,66 @@ export class ScheduleRepository {
   async listBusySlots(from: string, to: string): Promise<TeacherBusySlot[]> {
     const rows = await this.busyRows(from, to);
     return rows.map(mapBusySlot);
+  }
+
+  async listAllBusySlots(): Promise<TeacherBusySlot[]> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT *,TIME_FORMAT(start_time,'%H:%i') start_text,TIME_FORMAT(end_time,'%H:%i') end_text,
+        DATE_FORMAT(specific_date,'%Y-%m-%d') specific_date_text,
+        DATE_FORMAT(effective_from,'%Y-%m-%d') effective_from_text,
+        DATE_FORMAT(effective_to,'%Y-%m-%d') effective_to_text
+       FROM teacher_busy_slots ORDER BY COALESCE(specific_date,effective_from),start_time`,
+    );
+    return rows.map(mapBusySlot);
+  }
+
+  async listOutstandingMakeups(): Promise<OutstandingMakeupItem[]> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT mr.source_occurrence_key,mr.enrollment_id,mr.student_name_snapshot,mr.student_nickname_snapshot,mr.status,
+        se.class_id,c.name class_name,DATE_FORMAT(se.original_date,'%Y-%m-%d') original_date,
+        TIME_FORMAT(se.original_start_time,'%H:%i') original_start_time,TIME_FORMAT(se.original_end_time,'%H:%i') original_end_time,
+        DATE_FORMAT(se.replacement_date,'%Y-%m-%d') replacement_date,
+        TIME_FORMAT(se.replacement_start_time,'%H:%i') replacement_start_time,
+        TIME_FORMAT(se.replacement_end_time,'%H:%i') replacement_end_time,
+        COALESCE(se.replacement_cancel_reason,se.reason) reason,
+        DATE_FORMAT(COALESCE(se.replacement_cancelled_at,se.created_at),'%Y-%m-%d') skipped_at
+       FROM lesson_makeup_replacements mr
+       JOIN schedule_exceptions se
+         ON CONCAT(se.class_id,':',se.recurring_schedule_id,':',DATE_FORMAT(se.original_date,'%Y-%m-%d'))=mr.source_occurrence_key
+       JOIN classes c ON c.id=se.class_id
+       ORDER BY se.original_date,mr.source_occurrence_key,mr.id`,
+    );
+    const grouped = new Map<string, OutstandingMakeupItem>();
+    for (const row of rows) {
+      let item = grouped.get(String(row.source_occurrence_key));
+      if (!item) {
+        item = { sourceOccurrenceKey: String(row.source_occurrence_key), classId: Number(row.class_id),
+          className: String(row.class_name), originalDate: String(row.original_date),
+          originalStartTime: String(row.original_start_time), originalEndTime: String(row.original_end_time),
+          replacementDate: row.replacement_date == null ? null : String(row.replacement_date),
+          replacementStartTime: row.replacement_start_time == null ? null : String(row.replacement_start_time),
+          replacementEndTime: row.replacement_end_time == null ? null : String(row.replacement_end_time),
+          reason: row.reason == null ? null : String(row.reason), skippedAt: String(row.skipped_at),
+          openCount: 0, reservedCount: 0, fulfilledCount: 0, waivedCount: 0, participants: [] };
+        grouped.set(item.sourceOccurrenceKey, item);
+      }
+      const status = row.status as "OPEN" | "RESERVED" | "FULFILLED" | "WAIVED";
+      if (status === "OPEN") item.openCount++;
+      else if (status === "RESERVED") item.reservedCount++;
+      else if (status === "FULFILLED") item.fulfilledCount++;
+      else item.waivedCount++;
+      item.participants.push({ enrollmentId: Number(row.enrollment_id), studentName: String(row.student_name_snapshot),
+        studentNickname: row.student_nickname_snapshot == null ? null : String(row.student_nickname_snapshot),
+        alreadyReplaced: status !== "OPEN", entitlementStatus: status });
+    }
+    return [...grouped.values()].filter((item) => item.openCount + item.reservedCount > 0);
+  }
+
+  async outstandingMakeupStudentCount(): Promise<number> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      "SELECT COUNT(*) total FROM lesson_makeup_replacements WHERE status='OPEN'",
+    );
+    return Number(rows[0]?.total ?? 0);
   }
 
   async createBusySlot(input: TeacherBusySlotInput, actorUserId?: number): Promise<number> {
@@ -506,7 +682,8 @@ export class ScheduleRepository {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT id,exception_type,DATE_FORMAT(replacement_date,'%Y-%m-%d') replacement_date,
         TIME_FORMAT(replacement_start_time,'%H:%i') replacement_start_time,
-        TIME_FORMAT(replacement_end_time,'%H:%i') replacement_end_time,reason
+        TIME_FORMAT(replacement_end_time,'%H:%i') replacement_end_time,reason,
+        replacement_cancelled_at,replacement_cancel_reason,makeup_required
        FROM schedule_exceptions WHERE recurring_schedule_id=? AND original_date=?`, [scheduleId, date],
     );
     return rows[0] ? mapException(rows[0]) : null;
@@ -573,7 +750,10 @@ function mapException(row: RowDataPacket): ProjectionExceptionInput {
     replacementDate: row.replacement_date_text ?? row.replacement_date ?? null,
     replacementStartTime: row.replacement_start_text ?? row.replacement_start_time ?? null,
     replacementEndTime: row.replacement_end_text ?? row.replacement_end_time ?? null,
-    reason: row.reason == null ? null : String(row.reason) };
+    reason: row.reason == null ? null : String(row.reason),
+    replacementCancelledAt: row.replacement_cancelled_at == null ? null : String(row.replacement_cancelled_at),
+    replacementCancelReason: row.replacement_cancel_reason == null ? null : String(row.replacement_cancel_reason),
+    makeupRequired: row.makeup_required == null ? true : Boolean(row.makeup_required) };
 }
 function mapBusySlot(row: RowDataPacket): TeacherBusySlot {
   return { id: Number(row.id), title: String(row.title), recurrenceType: row.recurrence_type,

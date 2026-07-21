@@ -198,6 +198,14 @@ try {
   const accumulatingAfter = afterCycles.find((item) => item.status === "ACCUMULATING");
   if (JSON.stringify(accumulatingAfter) !== JSON.stringify(accumulatingBefore)) throw new Error("Next accumulating cycle changed after payment");
 
+  const incompleteCycles = await api(`/api/tuition-cycles?studentId=${incompleteStudent.id}&status=INCOMPLETE&pageSize=20`, token);
+  await page.goto(`http://127.0.0.1:5176/admin/tuition/${incompleteCycles[0].id}`);
+  await page.getByRole("button", { name: "Chốt học phí" }).click();
+  await page.getByLabel("Số tiền thực thu").fill("1200000");
+  await page.getByLabel("Lý do").fill("Chốt khi ngừng học");
+  await page.getByRole("button", { name: "Xác nhận" }).click();
+  await page.getByText("Đã chốt 1.200.000đ").waitFor();
+
   await page.goto("http://127.0.0.1:5176/admin/tuition");
   await page.getByRole("button", { name: /^Lọc/ }).click();
   await page.getByTestId("tuition-status-filter").click();
@@ -218,6 +226,42 @@ try {
   await page.getByText("Không có đợt học phí phù hợp.").waitFor();
   await page.setViewportSize({ width: 360, height: 800 });
   await noHorizontalScroll(page);
+
+  await page.goto(`http://127.0.0.1:5176/admin/students/${dueStudent.id}`);
+  await page.getByRole("button", { name: "Thu học phí trước" }).click();
+  await page.getByLabel("Phương thức").click(); await page.getByRole("option", { name: "Chuyển khoản" }).click();
+  await page.getByRole("button", { name: "Xác nhận thu trước" }).click();
+  await page.getByText("Đã ghi nhận thu trước", { exact: false }).waitFor();
+  const targetClass = await api("/api/classes", token, "POST", {
+    name: `M4B Transfer ${suffix}`, type: "ONE_TO_ONE", defaultPackagePrice: 2_400_000,
+    defaultDurationMinutes: 90, startDate: "2026-01-01", schedules: [],
+  });
+  await page.getByRole("button", { name: "Chuyển lớp" }).click();
+  await page.getByLabel("Lớp mới").click(); await page.getByRole("option", { name: `M4B Transfer ${suffix}` }).click();
+  await page.getByLabel("Lý do chuyển").fill("Cần học 1-1");
+  await page.getByLabel("Khoản thu trước").click(); await page.getByRole("option", { name: "Chuyển sang lớp mới" }).click();
+  await page.getByRole("button", { name: "Xác nhận chuyển lớp" }).click();
+  await page.getByText("Đã chuyển lớp", { exact: false }).waitFor();
+  const transferredStudent = await api(`/api/students/${dueStudent.id}`, token);
+  if (transferredStudent.classId !== targetClass.id || transferredStudent.currentProgress !== 0)
+    throw new Error("Transfer UI did not create a new 0/8 enrollment");
+  await page.getByRole("button", { name: "Ngừng học" }).click();
+  const endDialog = page.getByRole("dialog", { name: "Ngừng học" });
+  await endDialog.waitFor();
+  await endDialog.getByLabel("Lý do", { exact: false }).fill("Kết thúc sau chuyển lớp");
+  await endDialog.getByLabel("Ghi chú (tùy chọn)").fill("Kiểm tra dialog ngừng học V15");
+  await endDialog.getByLabel("Khoản đã thu trước").click();
+  await page.getByRole("option", { name: "Hoàn tiền" }).click();
+  await page.getByRole("button", { name: "Xác nhận ngừng học" }).click();
+  await page.getByText("Đã ngừng học", { exact: false }).waitFor();
+  const endedStudent = await api(`/api/students/${dueStudent.id}`, token);
+  if (endedStudent.enrollmentId !== null) throw new Error("End-enrollment dialog left an active or paused enrollment");
+  const refunded = await api(`/api/enrollments/${transferredStudent.enrollmentId}/tuition-receipts`, token);
+  if (refunded[0]?.status !== "REFUNDED") throw new Error("End-enrollment dialog did not refund the advance receipt");
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    await noHorizontalScroll(page);
+  }
   console.log(`Playwright tuition E2E passed; screenshot: ${path.join(artifactDir, "tuition-paid-390.png")}`);
 } finally {
   if (browser) await browser.close();

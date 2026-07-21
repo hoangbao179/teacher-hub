@@ -38,6 +38,40 @@ export interface UpdateEnrollmentRequest {
 export interface EndEnrollmentRequest {
   endedAt: string;
   reason?: string;
+  note?: string;
+  incompleteCycleAction?: IncompleteCycleAction;
+  advanceReceiptAction?: EndAdvanceReceiptAction;
+}
+
+import type { PaymentMethod } from "./tuition.js";
+
+export type IncompleteCycleAction =
+  | { type: "KEEP_OPEN" }
+  | { type: "SETTLE"; amount: number; method: PaymentMethod; note?: string }
+  | { type: "WAIVE"; reason: string };
+
+export type EndAdvanceReceiptAction =
+  | { type: "APPLY_TO_OLD_SETTLEMENT" }
+  | { type: "REFUND"; note?: string }
+  | { type: "NONE" };
+
+export interface TransferEnrollmentRequest {
+  targetClassId: number;
+  effectiveDate: string;
+  tuitionMode: TuitionMode;
+  customPackagePrice?: number;
+  reason: string;
+  note?: string;
+  incompleteCycleAction: IncompleteCycleAction;
+  advanceReceiptAction?:
+    | { type: "TRANSFER_TO_NEW_ENROLLMENT" }
+    | EndAdvanceReceiptAction;
+}
+
+export interface TransferEnrollmentResult {
+  oldEnrollmentId: number;
+  newEnrollmentId: number;
+  effectiveDate: string;
 }
 
 export interface ChangeEnrollmentStatusRequest {
@@ -67,6 +101,8 @@ export interface StudentDetail extends StudentListItem {
   note: string | null;
   joinedAt: string | null;
   effectivePackagePrice: number | null;
+  incompleteCycle: { id: number; itemCount: number; settlementStatus: "OPEN" | "SETTLED" | "WAIVED" } | null;
+  advanceReceipt: { id: number; amount: number; status: "AVAILABLE" | "ALLOCATED" | "TRANSFERRED" } | null;
 }
 
 export interface ChangeTuitionModeRequest {

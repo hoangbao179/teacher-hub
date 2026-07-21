@@ -34,6 +34,8 @@ export interface ScheduleOccurrence {
   replacementEndTime: string | null;
   conflicts: ScheduleConflictWarning[];
   skipReason: string | null;
+  makeupRequired: boolean;
+  replacementCancelled: boolean;
 }
 
 export interface ScheduleOccurrenceQuery {
@@ -55,6 +57,7 @@ export interface CreateOccurrenceDraftResult {
 export interface SkipOccurrenceRequest {
   reason: string;
   note?: string;
+  makeupRequired?: boolean;
 }
 
 export interface RescheduleOccurrenceRequest {
@@ -80,6 +83,7 @@ export interface BulkOccurrenceRequest {
 export interface BulkSkipOccurrenceRequest extends BulkOccurrenceRequest {
   reason: string;
   note?: string;
+  makeupRequired?: boolean;
 }
 
 export interface BulkOccurrenceItemResult {
@@ -106,7 +110,10 @@ export interface MakeupSourceOption {
   studentName: string;
   studentNickname: string | null;
   alreadyReplaced: boolean;
+  entitlementStatus: MakeupEntitlementStatus;
 }
+
+export type MakeupEntitlementStatus = "OPEN" | "RESERVED" | "FULFILLED" | "WAIVED";
 
 export interface MakeupSourceOptions {
   occurrenceKey: string;
@@ -132,7 +139,25 @@ export interface TemporaryRescheduleRequest {
   confirmConflicts?: boolean;
 }
 
+export interface TemporaryRescheduleMapping {
+  recurringScheduleId: number;
+  replacementDayOfWeek: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  replacementStartTime: string;
+  replacementEndTime: string;
+}
+
+export interface BulkTemporaryRescheduleRequest {
+  classId: number;
+  fromDate: string;
+  toDate: string;
+  mappings: TemporaryRescheduleMapping[];
+  reason: string;
+  note?: string;
+  confirmConflicts?: boolean;
+}
+
 export interface TemporaryReschedulePreviewItem {
+  recurringScheduleId: number;
   originalOccurrenceKey: string;
   originalDate: string;
   originalStartTime: string;
@@ -149,6 +174,25 @@ export interface TemporaryReschedulePreview {
   items: TemporaryReschedulePreviewItem[];
   canApply: boolean;
   conflictCount: number;
+}
+
+export interface OutstandingMakeupItem {
+  sourceOccurrenceKey: string;
+  classId: number;
+  className: string;
+  originalDate: string;
+  originalStartTime: string;
+  originalEndTime: string;
+  replacementDate: string | null;
+  replacementStartTime: string | null;
+  replacementEndTime: string | null;
+  reason: string | null;
+  skippedAt: string;
+  openCount: number;
+  reservedCount: number;
+  fulfilledCount: number;
+  waivedCount: number;
+  participants: MakeupSourceOption[];
 }
 
 export type BusySlotRecurrenceType = "ONCE" | "WEEKLY";

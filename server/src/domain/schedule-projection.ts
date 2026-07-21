@@ -23,6 +23,9 @@ export interface ProjectionExceptionInput {
   replacementStartTime: string | null;
   replacementEndTime: string | null;
   reason?: string | null;
+  replacementCancelledAt?: string | null;
+  replacementCancelReason?: string | null;
+  makeupRequired?: boolean;
 }
 
 export interface ProjectionLessonInput {
@@ -93,6 +96,8 @@ export function expandRecurringSchedules(
         replacementEndTime: null,
         conflicts: [],
         skipReason: null,
+        makeupRequired: true,
+        replacementCancelled: false,
       });
     }
   }
@@ -107,7 +112,7 @@ export function reconcileOccurrence(
   if (exception?.type === "SKIPPED")
     return [{ ...occurrence, state: "SKIPPED", exceptionId: exception.id,
       skipReason: exception.reason ?? null, linkedLessonId: lesson?.id ?? null,
-      linkedLessonStatus: lesson?.status ?? null }];
+      linkedLessonStatus: lesson?.status ?? null, makeupRequired: exception.makeupRequired ?? true }];
   if (exception?.type === "RESCHEDULED") {
     const original = {
       ...occurrence,
@@ -116,6 +121,7 @@ export function reconcileOccurrence(
       replacementDate: exception.replacementDate,
       replacementStartTime: exception.replacementStartTime,
       replacementEndTime: exception.replacementEndTime,
+      makeupRequired: exception.makeupRequired ?? true,
     };
     if (!exception.replacementDate || !exception.replacementStartTime || !exception.replacementEndTime)
       return [original];
@@ -126,9 +132,11 @@ export function reconcileOccurrence(
       scheduledStartTime: exception.replacementStartTime,
       scheduledEndTime: exception.replacementEndTime,
       projectionSource: "RESCHEDULED",
-      state: lesson ? "RECORDED" : "UNRECORDED",
+      state: exception.replacementCancelledAt ? "SKIPPED" : lesson && lesson.status !== "CANCELLED" ? "RECORDED" : "UNRECORDED",
       linkedLessonId: lesson?.id ?? null,
       linkedLessonStatus: lesson?.status ?? null,
+      skipReason: exception.replacementCancelReason ?? null,
+      replacementCancelled: Boolean(exception.replacementCancelledAt),
     };
     return [original, replacement];
   }

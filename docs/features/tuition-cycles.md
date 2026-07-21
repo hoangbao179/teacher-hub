@@ -72,3 +72,10 @@ The last chronological item in `PAID` history is an immutable boundary. A new
 or edited mutable attendance at/before that key returns `PAID_CYCLE_CONFLICT`
 and rolls back. Manual approved exclusions use `excluded_from_tuition`; excluded,
 ABSENT, per-session FREE and globally FREE attendance never enter a cycle.
+
+## Thu trước và chốt đợt dở dang
+
+V15 lưu khoản thu trước đúng toàn bộ giá gói tại ngày nhận. Receipt có thể
+allocate vào cycle đang tích lũy nhưng cycle vẫn `ACCUMULATING`; chỉ đủ 8 buổi
+mới tự `PAID`. Cycle dưới 8 vẫn `INCOMPLETE` với settlement riêng
+`OPEN/SETTLED/WAIVED`, không phải partial payment thông thường.

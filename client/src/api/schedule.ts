@@ -16,6 +16,8 @@ import type {
   TeacherBusySlotMutationResult,
   TemporaryReschedulePreview,
   TemporaryRescheduleRequest,
+  BulkTemporaryRescheduleRequest,
+  OutstandingMakeupItem,
   WeekScheduleResponse,
 } from "@teacher/shared";
 import { api } from "./client";
@@ -42,11 +44,14 @@ export const scheduleApi = {
   checkConflicts(input: ScheduleConflictCheckRequest) {
     return api<ScheduleConflictWarning[]>("/api/schedule/conflicts/check", json("POST", input));
   },
-  previewTemporary(input: TemporaryRescheduleRequest) {
+  previewTemporary(input: TemporaryRescheduleRequest | BulkTemporaryRescheduleRequest) {
     return api<TemporaryReschedulePreview>("/api/schedule/temporary-reschedules/preview", json("POST", input));
   },
-  applyTemporary(input: TemporaryRescheduleRequest) {
+  applyTemporary(input: TemporaryRescheduleRequest | BulkTemporaryRescheduleRequest) {
     return api<TemporaryReschedulePreview>("/api/schedule/temporary-reschedules", json("POST", input));
+  },
+  outstandingMakeups() {
+    return api<OutstandingMakeupItem[]>("/api/schedule/makeup-outstanding");
   },
   skip(key: string, input: SkipOccurrenceRequest) {
     return api<ScheduleExceptionResult>(`/api/schedule/occurrences/${encodeURIComponent(key)}/skip`, json("POST", input));
@@ -63,8 +68,11 @@ export const scheduleApi = {
   week(from: string) {
     return api<WeekScheduleResponse>(`/api/schedule/week?from=${encodeURIComponent(from)}`);
   },
-  busySlots(from: string, to: string) {
-    return api<TeacherBusySlot[]>(`/api/teacher-busy-slots?from=${from}&to=${to}`);
+  busySlots(from?: string, to?: string) {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    return api<TeacherBusySlot[]>(`/api/teacher-busy-slots${params.size ? `?${params}` : ""}`);
   },
   busySlot(id: number) {
     return api<TeacherBusySlot>(`/api/teacher-busy-slots/${id}`);

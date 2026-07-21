@@ -5,12 +5,15 @@ import type {
   TuitionCycleSort,
   TuitionCycleStatus,
   TuitionSummaryQuery,
+  CreateAdvanceReceiptRequest,
+  SettleIncompleteCycleRequest,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { decideTuitionPayment } from "../domain/tuition-payment";
 import { AppError } from "../errors/app-error";
 import { AuditRepository } from "../repositories/audit.repository";
 import { TuitionRepository } from "../repositories/tuition.repository";
+import { TuitionPolicyRepository } from "../repositories/tuition-policy.repository";
 
 const listStatuses = new Set<TuitionCycleStatus>([
   "ACCUMULATING", "PAYMENT_DUE", "PAID", "INCOMPLETE",
@@ -21,6 +24,7 @@ export class TuitionService {
   constructor(
     private readonly repository: TuitionRepository,
     private readonly audit = new AuditRepository(),
+    private readonly policies = new TuitionPolicyRepository(),
   ) {}
 
   list(input: TuitionCycleListQuery) {
@@ -113,6 +117,63 @@ export class TuitionService {
     } finally {
       connection.release();
     }
+  }
+
+  listReceipts(enrollmentId: number) {
+    this.validateId(enrollmentId);
+    return this.repository.listReceipts(enrollmentId);
+  }
+
+  async createAdvanceReceipt(enrollmentId: number, input: CreateAdvanceReceiptRequest, actorUserId?: number) {
+    this.validateId(enrollmentId);
+    this.validatePayment({ paidAmount: input.amount, paidAt: input.receivedAt,
+      paymentMethod: input.paymentMethod, paymentNote: input.note });
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const enrollment = await this.repository.lockEnrollmentForReceipt(connection, enrollmentId);
+      if (!enrollment) throw new AppError(404, "ENROLLMENT_NOT_FOUND", "Không tìm thấy ghi danh.");
+      if (enrollment.status === "ENDED")
+        throw new AppError(409, "ENROLLMENT_ENDED", "Không thể thu trước cho ghi danh đã kết thúc.");
+      const policy = await this.policies.resolve(connection, enrollmentId, input.receivedAt, true);
+      if (policy.mode === "FREE" || policy.packagePrice == null)
+        throw new AppError(409, "ADVANCE_FREE_ENROLLMENT", "Ghi danh miễn phí không thể thu học phí trước.");
+      if (input.amount !== policy.packagePrice)
+        throw new AppError(400, "FULL_ADVANCE_REQUIRED", "Thu trước phải đúng toàn bộ giá một gói tại ngày nhận.");
+      const id = await this.repository.createAdvanceReceipt(connection, enrollmentId, input, policy.packagePrice, actorUserId);
+      await this.audit.record(connection, { actorUserId, action: "TUITION_ADVANCE_RECEIVED",
+        entityType: "TUITION_RECEIPT", entityId: id,
+        newValues: { enrollmentId, amount: input.amount, receivedAt: input.receivedAt,
+          paymentMethod: input.paymentMethod, packagePriceSnapshot: policy.packagePrice } });
+      await connection.commit();
+      return (await this.repository.findReceipt(id))!;
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
+  }
+
+  async settleIncomplete(id: number, input: SettleIncompleteCycleRequest, actorUserId?: number) {
+    this.validateId(id);
+    if (!input || !["SETTLE", "WAIVE"].includes(input.type) || !input.reason?.trim() || input.reason.length > 255)
+      throw new AppError(400, "VALIDATION_ERROR", "Cần chọn cách chốt và nhập lý do.");
+    if (input.type === "SETTLE") {
+      if (!Number.isInteger(input.amount) || input.amount < 0)
+        throw new AppError(400, "VALIDATION_ERROR", "Số tiền chốt phải là số nguyên VND không âm.");
+      if (!["CASH", "BANK_TRANSFER"].includes(input.method))
+        throw new AppError(400, "VALIDATION_ERROR", "Phương thức thu không hợp lệ.");
+    }
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const previous = await this.repository.settleIncomplete(connection, id, input, actorUserId);
+      if (!previous) throw new AppError(404, "CYCLE_NOT_FOUND", "Không tìm thấy chu kỳ học phí.");
+      await this.audit.record(connection, { actorUserId,
+        action: input.type === "SETTLE" ? "TUITION_INCOMPLETE_SETTLED" : "TUITION_INCOMPLETE_WAIVED",
+        entityType: "TUITION_CYCLE", entityId: id, previousValues: previous, newValues: input,
+        reason: input.reason });
+      await connection.commit();
+      return this.detail(id);
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
   }
 
   private normalizeListQuery(input: TuitionCycleListQuery) {

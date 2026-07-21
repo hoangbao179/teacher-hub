@@ -10,6 +10,7 @@ import type {
   SkipOccurrenceRequest,
   TeacherBusySlotInput,
   TemporaryRescheduleRequest,
+  BulkTemporaryRescheduleRequest,
 } from "@teacher/shared";
 import { ScheduleService } from "../services/schedule.service";
 import { addDays, todayInHoChiMinh } from "../utils/date";
@@ -31,12 +32,14 @@ export class ScheduleController {
     res.json({ data: await this.service.createDraft(String(req.params.key), req.auth!.id) });
   makeupOptions = async (req: Request, res: Response) =>
     res.json({ data: await this.service.makeupOptions(String(req.params.key)) });
+  outstandingMakeups = async (_req: Request, res: Response) =>
+    res.json({ data: await this.service.outstandingMakeups() });
   checkConflicts = async (req: Request, res: Response) =>
     res.json({ data: await this.service.checkConflicts(req.body as ScheduleConflictCheckRequest) });
   previewTemporary = async (req: Request, res: Response) =>
-    res.json({ data: await this.service.previewTemporary(req.body as TemporaryRescheduleRequest) });
+    res.json({ data: await this.service.previewTemporary(req.body as TemporaryRescheduleRequest | BulkTemporaryRescheduleRequest) });
   applyTemporary = async (req: Request, res: Response) =>
-    res.status(201).json({ data: await this.service.applyTemporary(req.body as TemporaryRescheduleRequest, req.auth!.id) });
+    res.status(201).json({ data: await this.service.applyTemporary(req.body as TemporaryRescheduleRequest | BulkTemporaryRescheduleRequest, req.auth!.id) });
   skip = async (req: Request, res: Response) =>
     res.json({ data: await this.service.skip(String(req.params.key), req.body as SkipOccurrenceRequest, req.auth!.id) });
   reschedule = async (req: Request, res: Response) =>

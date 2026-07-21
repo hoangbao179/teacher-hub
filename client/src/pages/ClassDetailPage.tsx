@@ -3,11 +3,13 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
@@ -41,12 +43,9 @@ export function ClassDetailPage() {
   const [statusEffectiveDate, setStatusEffectiveDate] = useState(today);
   const [statusReason, setStatusReason] = useState("");
   const [temporaryOpen, setTemporaryOpen] = useState(false);
-  const [temporaryScheduleId, setTemporaryScheduleId] = useState(0);
   const [temporaryFrom, setTemporaryFrom] = useState(today);
   const [temporaryTo, setTemporaryTo] = useState(addDays(today, 14));
-  const [replacementDay, setReplacementDay] = useState<Weekday>(1);
-  const [replacementStart, setReplacementStart] = useState("18:00");
-  const [replacementEnd, setReplacementEnd] = useState("19:30");
+  const [temporaryMappings, setTemporaryMappings] = useState<Record<number, { selected: boolean; day: Weekday; start: string; end: string }>>({});
   const [temporaryReason, setTemporaryReason] = useState("");
   const [temporaryNote, setTemporaryNote] = useState("");
   const [temporaryPreview, setTemporaryPreview] = useState<TemporaryReschedulePreview | null>(null);
@@ -65,9 +64,12 @@ export function ClassDetailPage() {
     finally { setBusy(false); }
   };
   const temporaryPayload = (confirmConflicts = false) => ({
-    classId: item!.id, recurringScheduleId: temporaryScheduleId, fromDate: temporaryFrom, toDate: temporaryTo,
-    replacementDayOfWeek: replacementDay, replacementStartTime: replacementStart,
-    replacementEndTime: replacementEnd, reason: temporaryReason, note: temporaryNote || undefined, confirmConflicts,
+    classId: item!.id, fromDate: temporaryFrom, toDate: temporaryTo,
+    mappings: Object.entries(temporaryMappings).filter(([, value]) => value.selected).map(([scheduleId, value]) => ({
+      recurringScheduleId: Number(scheduleId), replacementDayOfWeek: value.day,
+      replacementStartTime: value.start, replacementEndTime: value.end,
+    })),
+    reason: temporaryReason, note: temporaryNote || undefined, confirmConflicts,
   });
   const previewTemporary = async () => { setBusy(true); setError(""); try {
     setTemporaryPreview(await scheduleApi.previewTemporary(temporaryPayload()));
@@ -100,7 +102,7 @@ export function ClassDetailPage() {
         </Button>
         <Button component={Link} to={`/admin/lessons/new?classId=${item!.id}&type=MAKEUP`} variant="outlined" disabled={item!.status === "CLOSED"}>Buổi học bù</Button>
         <Button component={Link} to={`/admin/classes/${item!.id}/edit`} variant="outlined">Sửa</Button>
-        <Button variant="outlined" disabled={!item!.schedules.length || item!.status === "CLOSED"} onClick={() => { const schedule = item!.schedules[0]; setTemporaryScheduleId(schedule?.id ?? 0); setReplacementDay(schedule?.dayOfWeek ?? 1); setReplacementStart(schedule?.startTime ?? "18:00"); setReplacementEnd(schedule?.endTime ?? "19:30"); setTemporaryOpen(true); }}>Đổi lịch tạm thời</Button>
+        <Button variant="outlined" disabled={!item!.schedules.length || item!.status === "CLOSED"} onClick={() => { setTemporaryMappings(Object.fromEntries(item!.schedules.map((schedule, index) => [schedule.id, { selected: index === 0, day: schedule.dayOfWeek, start: schedule.startTime, end: schedule.endTime }]))); setTemporaryOpen(true); }}>Đổi lịch tạm thời</Button>
       </Stack>
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
         {item!.status === "ACTIVE" && <Button disabled={busy} onClick={() => setStatusActionName("pause")}>Tạm dừng</Button>}
@@ -155,16 +157,16 @@ export function ClassDetailPage() {
       <Dialog open={temporaryOpen} onClose={() => !busy && setTemporaryOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Đổi lịch tạm thời</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
           <Alert severity="info">Hệ thống tạo exception cho từng buổi. Hết khoảng chọn, lớp tự trở về lịch gốc.</Alert>
-          <TextField select required label="Lịch gốc" value={temporaryScheduleId} onChange={(e) => { setTemporaryScheduleId(Number(e.target.value)); setTemporaryPreview(null); }}>
-            {item!.schedules.map((schedule) => <MenuItem key={schedule.id} value={schedule.id}>T{schedule.dayOfWeek} · {schedule.startTime}–{schedule.endTime}</MenuItem>)}
-          </TextField>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}><TextField fullWidth required type="date" label="Từ ngày" value={temporaryFrom} onChange={(e) => { setTemporaryFrom(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /><TextField fullWidth required type="date" label="Đến ngày" value={temporaryTo} onChange={(e) => { setTemporaryTo(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /></Stack>
-          <TextField select label="Chuyển sang" value={replacementDay} onChange={(e) => { setReplacementDay(Number(e.target.value) as Weekday); setTemporaryPreview(null); }}>{[1,2,3,4,5,6,7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}</TextField>
-          <Stack direction="row" spacing={1}><TextField fullWidth required type="time" label="Bắt đầu mới" value={replacementStart} onChange={(e) => { setReplacementStart(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /><TextField fullWidth required type="time" label="Kết thúc mới" value={replacementEnd} onChange={(e) => { setReplacementEnd(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /></Stack>
+          {item!.schedules.map((schedule) => { const mapping = temporaryMappings[schedule.id]; if (!mapping) return null; return <Card key={schedule.id} variant="outlined"><CardContent><Stack spacing={1}>
+            <FormControlLabel control={<Checkbox checked={mapping.selected} onChange={(e) => { setTemporaryMappings((current) => ({ ...current, [schedule.id]: { ...current[schedule.id], selected: e.target.checked } })); setTemporaryPreview(null); }} />} label={`T${schedule.dayOfWeek} · ${schedule.startTime}–${schedule.endTime}`} />
+            {mapping.selected && <><TextField select label="Chuyển sang" value={mapping.day} onChange={(e) => { setTemporaryMappings((current) => ({ ...current, [schedule.id]: { ...current[schedule.id], day: Number(e.target.value) as Weekday } })); setTemporaryPreview(null); }}>{[1,2,3,4,5,6,7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}</TextField>
+            <Stack direction="row" spacing={1}><TextField fullWidth required type="time" label="Bắt đầu mới" value={mapping.start} onChange={(e) => { setTemporaryMappings((current) => ({ ...current, [schedule.id]: { ...current[schedule.id], start: e.target.value } })); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /><TextField fullWidth required type="time" label="Kết thúc mới" value={mapping.end} onChange={(e) => { setTemporaryMappings((current) => ({ ...current, [schedule.id]: { ...current[schedule.id], end: e.target.value } })); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /></Stack></>}
+          </Stack></CardContent></Card>; })}
           <TextField required label="Lý do" value={temporaryReason} onChange={(e) => { setTemporaryReason(e.target.value); setTemporaryPreview(null); }} />
           <TextField label="Ghi chú (tùy chọn)" value={temporaryNote} onChange={(e) => setTemporaryNote(e.target.value)} />
           {temporaryPreview && <Stack spacing={1}>{temporaryPreview.items.map((preview) => <Alert key={preview.originalOccurrenceKey} severity={!preview.eligible ? "error" : preview.conflicts.length ? "warning" : "success"}>{preview.originalDate} {preview.originalStartTime} → {preview.replacementDate} {preview.replacementStartTime}{preview.conflicts.length ? ` · ${preview.conflicts.length} cảnh báo trùng` : ""}</Alert>)}</Stack>}
-        </Stack></DialogContent><DialogActions><Button onClick={() => setTemporaryOpen(false)}>Hủy</Button>{temporaryPreview ? <Button variant="contained" disabled={busy || !temporaryPreview.canApply} onClick={() => void applyTemporary()}>{busy ? "Đang áp dụng…" : temporaryPreview.conflictCount ? "Xác nhận dù trùng" : "Áp dụng"}</Button> : <Button variant="contained" disabled={busy || !temporaryReason.trim() || !temporaryScheduleId} onClick={() => void previewTemporary()}>{busy ? "Đang xem…" : "Xem trước"}</Button>}</DialogActions>
+        </Stack></DialogContent><DialogActions><Button onClick={() => setTemporaryOpen(false)}>Hủy</Button>{temporaryPreview ? <Button variant="contained" disabled={busy || !temporaryPreview.canApply} onClick={() => void applyTemporary()}>{busy ? "Đang áp dụng…" : temporaryPreview.conflictCount ? "Xác nhận dù trùng" : "Áp dụng"}</Button> : <Button variant="contained" disabled={busy || !temporaryReason.trim() || !Object.values(temporaryMappings).some((value) => value.selected)} onClick={() => void previewTemporary()}>{busy ? "Đang xem…" : "Xem trước"}</Button>}</DialogActions>
       </Dialog>
     </Stack>
   );

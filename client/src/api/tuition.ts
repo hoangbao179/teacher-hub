@@ -5,6 +5,9 @@ import type {
   TuitionCycleDetail,
   TuitionCycleListItem,
   TuitionCycleListQuery,
+  CreateAdvanceReceiptRequest,
+  TuitionReceipt,
+  SettleIncompleteCycleRequest,
 } from "@teacher/shared";
 import { api, apiEnvelope } from "./client";
 
@@ -36,5 +39,21 @@ export function markTuitionPaid(
   return api<MarkTuitionPaidResult>(`/api/tuition-cycles/${id}/mark-paid`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export function listTuitionReceipts(enrollmentId: number): Promise<TuitionReceipt[]> {
+  return api<TuitionReceipt[]>(`/api/enrollments/${enrollmentId}/tuition-receipts`);
+}
+
+export function createAdvanceReceipt(enrollmentId: number, input: CreateAdvanceReceiptRequest): Promise<TuitionReceipt> {
+  return api<TuitionReceipt>(`/api/enrollments/${enrollmentId}/tuition-receipts/advance`, {
+    method: "POST", body: JSON.stringify(input),
+  });
+}
+
+export function settleIncompleteCycle(id: number, input: SettleIncompleteCycleRequest): Promise<TuitionCycleDetail> {
+  return api<TuitionCycleDetail>(`/api/tuition-cycles/${id}/settle-incomplete`, {
+    method: "POST", body: JSON.stringify(input),
   });
 }

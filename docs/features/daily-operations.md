@@ -36,3 +36,7 @@ Dashboard greeting comes from the authenticated display name and all metric valu
 remain server-authoritative. Lavender, mint and blue distinguish the three metrics
 without changing their priority or links. Student cards render only returned data:
 full name, optional nickname, class, Vietnamese state and current tuition progress.
+
+V15 thêm `/admin/makeup-outstanding` không giới hạn lookback và
+`/admin/busy-slots`. Calendar giữ toàn bộ conflict; dialog giải thích loại, đối
+tượng và ngày/giờ trùng thay vì chỉ hiển thị icon.

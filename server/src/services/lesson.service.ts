@@ -20,6 +20,7 @@ import { LessonRepository, type LessonRow, type ParticipantRow } from "../reposi
 import { TuitionPolicyRepository } from "../repositories/tuition-policy.repository";
 import { TuitionRepository } from "../repositories/tuition.repository";
 import { durationMinutes } from "../utils/date";
+import { occurrenceKey, parseOccurrenceKey } from "../domain/schedule-projection";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -51,6 +52,11 @@ export class LessonService {
     sourceOccurrenceKey?: string,
     actorUserId?: number,
   ): Promise<{ lesson: LessonDetail; idempotent: boolean }> {
+    if (input.makeupSourceOccurrenceKey) {
+      const parsed = parseOccurrenceKey(input.makeupSourceOccurrenceKey);
+      if (parsed) input = { ...input, makeupSourceOccurrenceKey:
+        occurrenceKey(parsed.classId, parsed.recurringScheduleId, parsed.occurrenceDate) };
+    }
     this.validateCreate(input);
     const connection = await pool.getConnection();
     let lessonId = 0;
@@ -84,6 +90,9 @@ export class LessonService {
           await this.lessons.syncMakeupReplacements(
             connection, lessonId, input.makeupSourceOccurrenceKey!, snapshotted, actorUserId,
           );
+        if (makeupSource) await this.audit.record(connection, { actorUserId,
+          action: "MAKEUP_ENTITLEMENT_RESERVED", entityType: "LESSON", entityId: lessonId,
+          newValues: { sourceOccurrenceKey: input.makeupSourceOccurrenceKey, enrollmentIds: snapshotted } });
         await this.audit.record(connection, {
           actorUserId, action: "LESSON_DRAFT_CREATED", entityType: "LESSON",
           entityId: lessonId, newValues: { ...input, sourceOccurrenceKey, participantEnrollmentIds: snapshotted },
@@ -253,6 +262,8 @@ export class LessonService {
       if (lesson.status === "COMPLETED") {
         const participants = await this.lessons.participantRowsForUpdate(connection, id);
         await this.saveAttendances(connection, lesson, participants, input.attendances!, true);
+        if (lesson.makeup_source_occurrence_key)
+          await this.lessons.applyMakeupAttendance(connection, id, input.attendances!, actorUserId);
         for (const enrollmentId of new Set([...previousIds, ...snapshotted]))
           await this.recalculateWithAudit(connection, enrollmentId, id, actorUserId);
       }
@@ -285,6 +296,8 @@ export class LessonService {
       if (lesson.status === "COMPLETED")
         for (const enrollmentId of new Set(affectedIds))
           await this.recalculateWithAudit(connection, enrollmentId, id, actorUserId);
+      if (lesson.status === "COMPLETED" && lesson.makeup_source_occurrence_key)
+        await this.lessons.applyMakeupAttendance(connection, id, input.attendances, actorUserId);
       await this.audit.record(connection, {
         actorUserId, action: "LESSON_ATTENDANCE_UPDATED", entityType: "LESSON",
         entityId: id, newValues: input,
@@ -345,6 +358,11 @@ export class LessonService {
           input.homework?.trim() || lesson.homework || null,
           input.note?.trim() || lesson.note || null,
         );
+        if (lesson.makeup_source_occurrence_key)
+          await this.lessons.applyMakeupAttendance(connection, lessonId, input.attendances, actorUserId);
+        if (lesson.makeup_source_occurrence_key) await this.audit.record(connection, { actorUserId,
+          action: "MAKEUP_ENTITLEMENT_FULFILLED", entityType: "LESSON", entityId: lessonId,
+          newValues: { sourceOccurrenceKey: lesson.makeup_source_occurrence_key, attendances: input.attendances } });
         for (const enrollmentId of new Set(saved.map((item) => item.enrollmentId)))
           impacts.push(await this.recalculateWithAudit(connection, enrollmentId, lessonId, actorUserId));
         await this.audit.record(connection, {
@@ -375,6 +393,11 @@ export class LessonService {
       const lesson = await this.requireDraft(connection, id);
       const reason = input.reason.trim();
       await this.lessons.cancel(connection, id, reason, actorUserId);
+      if (lesson.makeup_source_occurrence_key)
+        await this.lessons.releaseMakeupReservations(connection, id, actorUserId);
+      if (lesson.makeup_source_occurrence_key) await this.audit.record(connection, { actorUserId,
+        action: "MAKEUP_ENTITLEMENT_RELEASED", entityType: "LESSON", entityId: id,
+        newValues: { sourceOccurrenceKey: lesson.makeup_source_occurrence_key } });
       if (lesson.source_occurrence_key) {
         const exceptionId = await this.lessons.ensureSkippedForCancelledSource(
           connection, String(lesson.source_occurrence_key), reason, actorUserId,
@@ -578,5 +601,5 @@ export class LessonService {
 }
 
 function parseOccurrenceKeyForMakeup(key: string): boolean {
-  return /^\d+:\d+:\d{4}-\d{2}-\d{2}$/.test(key);
+  return parseOccurrenceKey(key) != null;
 }

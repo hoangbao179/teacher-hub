@@ -6,13 +6,14 @@ import {
   Card,
   CardContent,
   Divider,
+  Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField,
   Stack,
   Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import type { TuitionCycleDetail } from "@teacher/shared";
-import { getTuitionCycle } from "../api/tuition";
+import type { PaymentMethod, TuitionCycleDetail } from "@teacher/shared";
+import { getTuitionCycle, settleIncompleteCycle } from "../api/tuition";
 import { LoadingState } from "../components/LoadingState";
 import { TuitionStatusChip } from "../components/TuitionStatusChip";
 import { DateTimeDisplay, PageHeader, StickyActionBar } from "../components/UiKit";
@@ -23,11 +24,22 @@ export function TuitionDetailPage() {
   const id = Number(cycleId);
   const [item, setItem] = useState<TuitionCycleDetail | null>(null);
   const [error, setError] = useState("");
+  const [settleOpen, setSettleOpen] = useState(false);
+  const [settleType, setSettleType] = useState<"SETTLE" | "WAIVE">("SETTLE");
+  const [amount, setAmount] = useState("0");
+  const [method, setMethod] = useState<PaymentMethod>("CASH");
+  const [reason, setReason] = useState("");
   const success = (location.state as { success?: string } | null)?.success;
   const load = useCallback(() => {
     return getTuitionCycle(id).then(setItem).catch((reason: Error) => setError(reason.message));
   }, [id]);
   useEffect(() => { void load(); }, [load]);
+  const settle = async () => { if (!item) return; setError(""); try {
+    const updated = await settleIncompleteCycle(item.id, settleType === "SETTLE"
+      ? { type: "SETTLE", amount: Number(amount), method, reason }
+      : { type: "WAIVE", reason });
+    setItem(updated); setSettleOpen(false);
+  } catch (value) { setError((value as Error).message); } };
 
   if (!item && !error) return <LoadingState />;
   if (!item) return <Alert severity="error" action={<Button color="inherit" onClick={() => { setError(""); void load(); }}>Thử lại</Button>}>{error || "Không tải được đợt học phí."}</Alert>;
@@ -47,6 +59,7 @@ export function TuitionDetailPage() {
           {item.paidAt && <InfoRow label="Ngày thu" value={displayDate(item.paidAt)} />}
           {item.paymentMethod && <InfoRow label="Hình thức" value={item.paymentMethod === "CASH" ? "Tiền mặt" : "Chuyển khoản"} />}
           {item.paymentNote && <InfoRow label="Ghi chú thu" value={item.paymentNote} />}
+          {item.status === "INCOMPLETE" && <InfoRow label="Xử lý đợt dở" value={item.settlementStatus === "OPEN" ? "Chờ xử lý" : item.settlementStatus === "SETTLED" ? `Đã chốt ${money(item.settledAmount ?? 0)}` : "Đã miễn"} />}
         </CardContent>
       </Card>
 
@@ -87,6 +100,13 @@ export function TuitionDetailPage() {
           </Button>
         </StickyActionBar>
       )}
+      {item.status === "INCOMPLETE" && item.settlementStatus === "OPEN" && <Button variant="contained" onClick={() => { setAmount(String(Math.round(item.packagePriceSnapshot * item.itemCount / 8))); setSettleOpen(true); }}>Chốt học phí</Button>}
+      <Dialog open={settleOpen} onClose={() => setSettleOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Chốt học phí đợt dở dang</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+        <Alert severity="info">Đợt hiện tại: {item.itemCount}/8 · Gợi ý theo tỷ lệ: {money(Math.round(item.packagePriceSnapshot * item.itemCount / 8))}. Trạng thái chu kỳ vẫn là dở dang.</Alert>
+        <TextField select label="Cách xử lý" value={settleType} onChange={(event) => setSettleType(event.target.value as typeof settleType)}><MenuItem value="SETTLE">Chốt số tiền thực thu</MenuItem><MenuItem value="WAIVE">Miễn phần còn lại</MenuItem></TextField>
+        {settleType === "SETTLE" && <><TextField type="number" label="Số tiền thực thu" value={amount} onChange={(event) => setAmount(event.target.value)} /><TextField select label="Phương thức" value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)}><MenuItem value="CASH">Tiền mặt</MenuItem><MenuItem value="BANK_TRANSFER">Chuyển khoản</MenuItem></TextField></>}
+        <TextField required label="Lý do" value={reason} onChange={(event) => setReason(event.target.value)} />
+      </Stack></DialogContent><DialogActions><Button onClick={() => setSettleOpen(false)}>Hủy</Button><Button variant="contained" disabled={!reason.trim()} onClick={() => void settle()}>Xác nhận</Button></DialogActions></Dialog>
     </Stack>
   );
 }

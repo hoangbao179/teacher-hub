@@ -13,7 +13,7 @@ async function clean(): Promise<void> {
   try {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
-      "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances",
+      "tuition_receipt_allocations", "tuition_receipts", "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances",
       "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions", "enrollment_active_periods",
       "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);

@@ -6,6 +6,8 @@ export interface DashboardResponse {
   accumulatingStudentCount: number;
   paidCycleCount: number;
   unrecordedCount: number;
+  outstandingMakeupStudentCount: number;
+  openIncompleteCycleCount: number;
   recentUnrecordedSessions: UnrecordedSession[];
   todaySchedule: WeekScheduleResponse;
 }

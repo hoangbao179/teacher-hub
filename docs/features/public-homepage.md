@@ -48,3 +48,6 @@ Trang dùng landmark, một H1, heading tuần tự, focus-visible, touch target
 Person JSON-LD lấy từ cấu hình public đã duyệt.
 
 Footer phải giữ nguyên: `2026 — từ người hâm mộ cô Vy, with love ❤️`.
+
+Contact V15 dùng tiêu đề “Cùng cô Vy tìm cách học phù hợp cho con”, CTA “Nhắn cô
+Vy qua Zalo” và chip Lớp 1–9, 1–1 hoặc nhóm nhỏ, Tại Huế trong section hiện có.

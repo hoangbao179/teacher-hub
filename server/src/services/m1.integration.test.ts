@@ -17,7 +17,7 @@ const integration = enabled ? test : test.skip;
 integration("M1 class, student, enrollment transitions and audit persist", async () => {
   const connection = await pool.getConnection();
   await connection.query("SET FOREIGN_KEY_CHECKS=0");
-  for (const table of ["tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions", "recurring_schedules", "enrollment_active_periods", "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes"]) await connection.query(`TRUNCATE TABLE ${table}`);
+  for (const table of ["tuition_receipt_allocations", "tuition_receipts", "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions", "recurring_schedules", "enrollment_active_periods", "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes"]) await connection.query(`TRUNCATE TABLE ${table}`);
   await connection.query("SET FOREIGN_KEY_CHECKS=1");
   connection.release();
 

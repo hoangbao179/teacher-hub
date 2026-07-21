@@ -109,3 +109,8 @@ existing tuition and PAID-boundary rules.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production-specific public teacher/contact/domain values must be supplied through
   the validated `PUBLIC_*` deployment variables before a production build.
+
+## V15
+
+Đã triển khai replacement cancellation, entitlement học bù, bulk reschedule,
+conflict/lịch bận, thu trước, settlement đợt dở, chuyển lớp và contact Homepage.

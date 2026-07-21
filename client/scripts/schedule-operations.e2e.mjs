@@ -211,6 +211,15 @@ try {
   await page.getByLabel("Lý do đổi lịch").fill("Học sinh xin đổi");
   await page.getByRole("button", { name: "Lưu đổi lịch" }).click();
   await page.getByTestId("schedule-conflict-warning").waitFor();
+  const replacementCard = page.getByTestId("occurrence-card").filter({ hasText: "18:15–18:45" });
+  await replacementCard.getByRole("button", { name: "Nghỉ" }).click();
+  await page.getByLabel("Lý do nghỉ").fill("Lịch thay thế tiếp tục nghỉ");
+  await page.getByRole("button", { name: "Xác nhận nghỉ" }).click();
+  await replacementCard.getByText("Nghỉ", { exact: true }).waitFor();
+  await page.goto("http://127.0.0.1:5177/admin/makeup-outstanding");
+  await page.getByRole("heading", { name: "Buổi cần học bù" }).waitFor();
+  await page.getByText("Lịch thay thế đã nghỉ", { exact: false }).first().waitFor();
+  await page.goto(`http://127.0.0.1:5177/admin/reconciliation?from=${today}&to=${today}&classId=${klass.id}&state=ALL`);
 
   for (const time of ["14:00–15:00", "16:00–17:00"])
     await page.getByTestId("occurrence-card").filter({ hasText: time }).getByRole("checkbox").check();
@@ -231,8 +240,16 @@ try {
   await page.getByTestId("calendar-event").first().waitFor();
   await page.getByText(`Dạy ở trường ${suffix}`).waitFor();
   await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Buổi học bù · Bản nháp" }).first().waitFor();
-  await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Lịch thay thế" }).waitFor();
-  await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Nghỉ" }).waitFor();
+  await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "10:00–11:00" }).filter({ hasText: "Nghỉ" }).waitFor();
+  const conflictButton = page.getByRole("button", { name: /Xem \d+ cảnh báo trùng lịch/ }).first();
+  await conflictButton.waitFor(); await conflictButton.click();
+  await page.getByRole("heading", { name: "Chi tiết trùng lịch" }).waitFor();
+  await page.getByText(/Trùng (lớp khác|buổi học|lịch bận)/).first().waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("link", { name: "Lịch bận", exact: true }).click();
+  await page.waitForURL("**/admin/busy-slots");
+  await page.getByTestId("busy-slot-list").getByText(`Dạy ở trường ${suffix}`).waitFor();
+  await page.goto("http://127.0.0.1:5177/admin/calendar");
   const weekBefore = await page.getByLabel("Tuần bắt đầu").inputValue();
   await page.getByLabel("Tuần sau").click();
   await page.waitForFunction((value) => document.querySelector('input[type="date"]')?.value !== value, weekBefore);

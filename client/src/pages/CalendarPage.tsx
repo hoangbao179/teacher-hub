@@ -1,8 +1,8 @@
 import { Add, ChevronLeft, ChevronRight, WarningAmber } from "@mui/icons-material";
-import { Alert, Box, Button, Card, CardContent, Chip, IconButton, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogContent, DialogTitle, IconButton, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import type { ReconciliationState, WeekScheduleResponse } from "@teacher/shared";
+import type { ReconciliationState, ScheduleConflictWarning, WeekScheduleResponse } from "@teacher/shared";
 import { scheduleApi } from "../api/schedule";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingCards } from "../components/LoadingCards";
@@ -15,7 +15,7 @@ type CalendarEntry = {
   subtitle: string; color: "default" | "primary" | "success" | "warning" | "error" | "info";
   classId?: number;
   href?: string;
-  warningCount?: number;
+  warnings?: ScheduleConflictWarning[];
 };
 
 const stateLabel: Record<ReconciliationState, string> = {
@@ -27,6 +27,7 @@ export function CalendarPage() {
   const [data, setData] = useState<WeekScheduleResponse | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+  const [conflicts, setConflicts] = useState<ScheduleConflictWarning[]>([]);
   useEffect(() => {
     scheduleApi.week(from).then(setData).catch((value: Error) => setError(value.message));
   }, [from, reload]);
@@ -41,7 +42,7 @@ export function CalendarPage() {
       subtitle: item.projectionSource === "RESCHEDULED" && item.state === "UNRECORDED" ? "Lịch thay thế" : stateLabel[item.state],
       color: item.state === "UNRECORDED" ? "warning" : item.state === "RECORDED" ? "success" : item.state === "SKIPPED" ? "default" : "info",
       href: item.linkedLessonId ? `/admin/lessons/${item.linkedLessonId}/edit` : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
-      warningCount: item.conflicts.length,
+      warnings: item.conflicts,
     });
     for (const item of data.lessons.filter((lesson) => !linkedLessonIds.has(lesson.id))) values.push({
       key: `lesson-${item.id}`, classId: item.classId, date: item.date, startTime: item.startTime, endTime: item.endTime,
@@ -63,7 +64,7 @@ export function CalendarPage() {
   }, [entries]);
 
   return <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="weekly-calendar">
-    <PageHeader title="Lịch tuần" action={<Button size="small" startIcon={<Add />} component={Link} to={`/admin/busy-slots/new?date=${from}`}>Lịch bận</Button>} />
+    <PageHeader title="Lịch tuần" action={<Button size="small" startIcon={<Add />} component={Link} to="/admin/busy-slots">Lịch bận</Button>} />
     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
       <IconButton aria-label="Tuần trước" onClick={() => { setData(null); setError(""); setFrom(addDays(from, -7)); }}><ChevronLeft /></IconButton>
       <TextField fullWidth type="date" label="Tuần bắt đầu" value={from} onChange={(event) => { setData(null); setError(""); setFrom(weekStart(event.target.value)); }} slotProps={{ inputLabel: { shrink: true } }} />
@@ -83,10 +84,16 @@ export function CalendarPage() {
       {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: item.classId ? classColor(item.classId).accent : `${item.color}.main` }} data-testid="calendar-event">
         <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
           <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}</Typography></Stack>
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>{Boolean(item.warningCount) && <WarningAmber color="warning" aria-label={`${item.warningCount} cảnh báo trùng lịch`} fontSize="small" />}<Chip size="small" color={item.color} label={item.subtitle} /></Stack>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>{Boolean(item.warnings?.length) && <IconButton size="small" color="warning" aria-label={`Xem ${item.warnings!.length} cảnh báo trùng lịch`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setConflicts(item.warnings!); }}><WarningAmber fontSize="small" /></IconButton>}<Chip size="small" color={item.color} label={item.subtitle} /></Stack>
         </Stack></CardContent>
       </Card>)}
     </Stack>)}
     </Box>
+    <Dialog open={conflicts.length > 0} onClose={() => setConflicts([])} fullWidth maxWidth="xs"><DialogTitle>Chi tiết trùng lịch</DialogTitle><DialogContent><Stack spacing={1.5}>
+      {conflicts.map((warning, index) => <Alert key={`${warning.kind}-${warning.id ?? warning.occurrenceKey}-${index}`} severity="warning">
+        <Typography variant="subtitle2">{warning.kind === "PROJECTED_OCCURRENCE" ? "Trùng lớp khác" : warning.kind === "LESSON" ? "Trùng buổi học" : "Trùng lịch bận"}</Typography>
+        <Typography variant="body2">Trùng với {warning.title}</Typography><Typography variant="body2">{displayDate(warning.date)} · {warning.startTime}–{warning.endTime}</Typography>
+      </Alert>)}
+    </Stack></DialogContent></Dialog>
   </Stack>;
 }

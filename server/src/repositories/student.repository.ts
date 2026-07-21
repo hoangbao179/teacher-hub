@@ -28,6 +28,12 @@ interface StudentJoinedRow extends RowDataPacket {
   joined_at: string | null;
   current_progress: number | null;
   has_payment_due: number;
+  incomplete_cycle_id: number | null;
+  incomplete_item_count: number | null;
+  settlement_status: "OPEN" | "SETTLED" | "WAIVED" | null;
+  advance_receipt_id: number | null;
+  advance_receipt_amount: number | null;
+  advance_receipt_status: "AVAILABLE" | "ALLOCATED" | "TRANSFERRED" | null;
 }
 
 function map(row: StudentJoinedRow): StudentDetail {
@@ -62,6 +68,10 @@ function map(row: StudentJoinedRow): StudentDetail {
       row.current_progress == null ? null : Number(row.current_progress),
     hasPaymentDue: Boolean(row.has_payment_due),
     effectivePackagePrice: effective == null ? null : Number(effective),
+    incompleteCycle: row.incomplete_cycle_id == null ? null : { id: Number(row.incomplete_cycle_id),
+      itemCount: Number(row.incomplete_item_count ?? 0), settlementStatus: row.settlement_status ?? "OPEN" },
+    advanceReceipt: row.advance_receipt_id == null ? null : { id: Number(row.advance_receipt_id),
+      amount: Number(row.advance_receipt_amount), status: row.advance_receipt_status! },
   };
 }
 
@@ -70,6 +80,12 @@ const baseQuery = `
     e.tuition_mode, e.custom_package_price, c.default_package_price, e.joined_at,
     (SELECT COUNT(*) FROM tuition_cycle_sessions tcs JOIN tuition_cycles tc ON tc.id=tcs.tuition_cycle_id WHERE tc.enrollment_id=e.id AND tc.status='ACCUMULATING') current_progress,
     EXISTS(SELECT 1 FROM tuition_cycles due WHERE due.enrollment_id=e.id AND due.status='PAYMENT_DUE') has_payment_due
+    ,(SELECT tc.id FROM tuition_cycles tc WHERE tc.enrollment_id=e.id AND tc.status='INCOMPLETE' ORDER BY tc.cycle_number DESC LIMIT 1) incomplete_cycle_id
+    ,(SELECT COUNT(*) FROM tuition_cycle_sessions ics WHERE ics.tuition_cycle_id=(SELECT tc2.id FROM tuition_cycles tc2 WHERE tc2.enrollment_id=e.id AND tc2.status='INCOMPLETE' ORDER BY tc2.cycle_number DESC LIMIT 1)) incomplete_item_count
+    ,(SELECT tc3.settlement_status FROM tuition_cycles tc3 WHERE tc3.enrollment_id=e.id AND tc3.status='INCOMPLETE' ORDER BY tc3.cycle_number DESC LIMIT 1) settlement_status
+    ,(SELECT tr.id FROM tuition_receipts tr WHERE tr.enrollment_id=e.id AND tr.status IN ('AVAILABLE','ALLOCATED','TRANSFERRED') ORDER BY tr.id LIMIT 1) advance_receipt_id
+    ,(SELECT tr.amount FROM tuition_receipts tr WHERE tr.enrollment_id=e.id AND tr.status IN ('AVAILABLE','ALLOCATED','TRANSFERRED') ORDER BY tr.id LIMIT 1) advance_receipt_amount
+    ,(SELECT tr.status FROM tuition_receipts tr WHERE tr.enrollment_id=e.id AND tr.status IN ('AVAILABLE','ALLOCATED','TRANSFERRED') ORDER BY tr.id LIMIT 1) advance_receipt_status
   FROM students s
   LEFT JOIN class_enrollments e ON e.student_id=s.id AND e.status IN ('ACTIVE','PAUSED')
   LEFT JOIN classes c ON c.id=e.class_id

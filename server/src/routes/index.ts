@@ -37,6 +37,7 @@ export function createRouter(): Router {
   router.post("/api/enrollments/:id/pause", asyncHandler(controllers.enrollments.pause));
   router.post("/api/enrollments/:id/resume", asyncHandler(controllers.enrollments.resume));
   router.post("/api/enrollments/:id/end", asyncHandler(controllers.enrollments.end));
+  router.post("/api/enrollments/:id/transfer", asyncHandler(controllers.enrollments.transfer));
   router.patch("/api/enrollments/:id/tuition-mode", asyncHandler(controllers.enrollments.changeTuitionMode));
   router.post("/api/lessons", asyncHandler(controllers.lessons.create));
   router.get("/api/lessons/:id", asyncHandler(controllers.lessons.detail));
@@ -59,11 +60,15 @@ export function createRouter(): Router {
     "/api/tuition-cycles/:id/mark-paid",
     asyncHandler(controllers.tuition.markPaid),
   );
+  router.post("/api/tuition-cycles/:id/settle-incomplete", asyncHandler(controllers.tuition.settleIncomplete));
+  router.get("/api/enrollments/:id/tuition-receipts", asyncHandler(controllers.tuition.listReceipts));
+  router.post("/api/enrollments/:id/tuition-receipts/advance", asyncHandler(controllers.tuition.createAdvanceReceipt));
   router.get(
     "/api/schedule/unrecorded",
     asyncHandler(controllers.schedule.unrecorded),
   );
   router.get("/api/schedule/occurrences", asyncHandler(controllers.schedule.occurrences));
+  router.get("/api/schedule/makeup-outstanding", asyncHandler(controllers.schedule.outstandingMakeups));
   router.post("/api/schedule/occurrences/bulk-create-drafts", asyncHandler(controllers.schedule.bulkCreateDrafts));
   router.post("/api/schedule/occurrences/bulk-skip", asyncHandler(controllers.schedule.bulkSkip));
   router.post("/api/schedule/occurrences/:key/create-draft", asyncHandler(controllers.schedule.createDraft));

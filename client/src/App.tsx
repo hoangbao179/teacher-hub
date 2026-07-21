@@ -18,6 +18,8 @@ const MarkTuitionPaidPage = lazy(() => import("./pages/MarkTuitionPaidPage").the
 const CalendarPage = lazy(() => import("./pages/CalendarPage").then((module) => ({ default: module.CalendarPage })));
 const ReconciliationPage = lazy(() => import("./pages/ReconciliationPage").then((module) => ({ default: module.ReconciliationPage })));
 const BusySlotFormPage = lazy(() => import("./pages/BusySlotFormPage").then((module) => ({ default: module.BusySlotFormPage })));
+const BusySlotsPage = lazy(() => import("./pages/BusySlotsPage").then((module) => ({ default: module.BusySlotsPage })));
+const OutstandingMakeupsPage = lazy(() => import("./pages/OutstandingMakeupsPage").then((module) => ({ default: module.OutstandingMakeupsPage })));
 const LessonWizardPage = lazy(() => import("./pages/LessonWizardPage").then((module) => ({ default: module.LessonWizardPage })));
 const ClassFormPage = lazy(() => import("./pages/ClassFormPage").then((module) => ({ default: module.ClassFormPage })));
 const StudentFormPage = lazy(() => import("./pages/StudentFormPage").then((module) => ({ default: module.StudentFormPage })));
@@ -63,9 +65,11 @@ export function App() {
           <Route path="/admin/tuition/:cycleId" element={<TuitionDetailPage />} />
           <Route path="/admin/tuition/:cycleId/mark-paid" element={<MarkTuitionPaidPage />} />
           <Route path="/admin/calendar" element={<CalendarPage />} />
+          <Route path="/admin/busy-slots" element={<BusySlotsPage />} />
           <Route path="/admin/busy-slots/new" element={<BusySlotFormPage />} />
           <Route path="/admin/busy-slots/:id/edit" element={<BusySlotFormPage />} />
           <Route path="/admin/lessons/new" element={<LessonWizardPage />} />
+          <Route path="/admin/makeup-outstanding" element={<OutstandingMakeupsPage />} />
           <Route path="/admin/lessons/:id/edit" element={<LessonWizardPage />} />
           <Route path="/admin/*" element={<NotFoundPage admin />} />
         </Route>

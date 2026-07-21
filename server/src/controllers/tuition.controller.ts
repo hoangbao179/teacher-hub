@@ -3,6 +3,8 @@ import type {
   MarkTuitionPaidRequest,
   TuitionCycleListQuery,
   TuitionCycleSort,
+  CreateAdvanceReceiptRequest,
+  SettleIncompleteCycleRequest,
 } from "@teacher/shared";
 import { TuitionService } from "../services/tuition.service";
 
@@ -41,6 +43,16 @@ export class TuitionController {
     );
     res.json({ data: result });
   };
+  listReceipts = async (req: Request, res: Response) =>
+    res.json({ data: await this.service.listReceipts(Number(req.params.id)) });
+  createAdvanceReceipt = async (req: Request, res: Response) =>
+    res.status(201).json({ data: await this.service.createAdvanceReceipt(
+      Number(req.params.id), req.body as CreateAdvanceReceiptRequest, req.auth!.id,
+    ) });
+  settleIncomplete = async (req: Request, res: Response) =>
+    res.json({ data: await this.service.settleIncomplete(
+      Number(req.params.id), req.body as SettleIncompleteCycleRequest, req.auth!.id,
+    ) });
 }
 
 function text(value: unknown): string | undefined {

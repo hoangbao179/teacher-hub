@@ -6,6 +6,9 @@ export type TuitionCycleStatus =
   | "CANCELLED";
 
 export type TuitionCycleSort = "OLDEST_DUE" | "NEWEST" | "STUDENT_NAME";
+export type PaymentMethod = "CASH" | "BANK_TRANSFER";
+export type IncompleteSettlementStatus = "OPEN" | "SETTLED" | "WAIVED";
+export type TuitionReceiptStatus = "AVAILABLE" | "ALLOCATED" | "TRANSFERRED" | "REFUNDED" | "VOID";
 
 export interface TuitionCycleListQuery {
   status?: Exclude<TuitionCycleStatus, "CANCELLED">;
@@ -38,12 +41,19 @@ export interface TuitionCycleListItem {
   reachedTargetAt: string | null;
   paidAt: string | null;
   activeNextCycleProgress: number | null;
+  settlementStatus: IncompleteSettlementStatus;
+  settledAmount: number | null;
+  hasAdvanceReceipt: boolean;
 }
 
 export interface TuitionCycleDetail extends TuitionCycleListItem {
   paidAmount: number | null;
-  paymentMethod: "CASH" | "BANK_TRANSFER" | null;
+  paymentMethod: PaymentMethod | null;
   paymentNote: string | null;
+  settledAt: string | null;
+  settlementMethod: PaymentMethod | null;
+  settlementReason: string | null;
+  settlementNote: string | null;
   items: Array<{
     sequenceNumber: number;
     attendanceId: number;
@@ -62,7 +72,7 @@ export interface TuitionCycleDetail extends TuitionCycleListItem {
 export interface MarkTuitionPaidRequest {
   paidAmount: number;
   paidAt: string;
-  paymentMethod: "CASH" | "BANK_TRANSFER";
+  paymentMethod: PaymentMethod;
   paymentNote?: string;
 }
 
@@ -86,6 +96,31 @@ export interface TuitionSummary {
   totalUnpaidAmount: number;
   accumulatingEnrollmentCount: number;
   paidCycleCount: number;
+  openIncompleteCount: number;
   from: string | null;
   to: string | null;
 }
+
+export interface CreateAdvanceReceiptRequest {
+  amount: number;
+  receivedAt: string;
+  paymentMethod: PaymentMethod;
+  note?: string;
+}
+
+export interface TuitionReceipt {
+  id: number;
+  enrollmentId: number;
+  receiptType: "ADVANCE";
+  amount: number;
+  packagePriceSnapshot: number;
+  receivedAt: string;
+  paymentMethod: PaymentMethod;
+  status: TuitionReceiptStatus;
+  note: string | null;
+  tuitionCycleId: number | null;
+}
+
+export type SettleIncompleteCycleRequest =
+  | { type: "SETTLE"; amount: number; method: PaymentMethod; reason: string; note?: string }
+  | { type: "WAIVE"; reason: string; note?: string };

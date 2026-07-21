@@ -19,3 +19,7 @@
 UI M1.1 đã nối create/edit, pause/resume/close class, create enrollment,
 pause/resume/end enrollment và change tuition mode với loading/error/success và
 confirmation cho transition phá hủy lịch sử hoạt động. Các mutation này có audit.
+
+V15 chuyển lớp atomic: enrollment cũ kết thúc ở ngày trước ngày chuyển,
+enrollment/policy/active period mới bắt đầu đúng ngày chuyển ở 0/8. Đợt dở và
+receipt được xử lý theo lựa chọn; lesson, attendance và cycle cũ không bị sửa.
