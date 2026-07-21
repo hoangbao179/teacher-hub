@@ -44,3 +44,15 @@ jobs:
         with:
           name: verification-reports
           path: .agent-reports/
+
+  deploy-production:
+    name: Publish and deploy production
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      source_sha: ${{ github.sha }}
+    secrets: inherit

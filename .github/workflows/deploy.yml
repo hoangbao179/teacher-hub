@@ -1,10 +1,11 @@
 name: production-deploy
 
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
-    branches: [main]
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -16,7 +17,6 @@ concurrency:
 jobs:
   publish:
     name: Build and publish immutable images
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.source_sha }}
       - name: Validate image owner
         env:
           GHCR_OWNER: ${{ vars.GHCR_OWNER }}
@@ -46,7 +46,7 @@ jobs:
           file: Dockerfile.api
           push: true
           tags: |
-            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:${{ inputs.source_sha }}
             ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:latest
           cache-from: type=gha,scope=teacher-hub-api
           cache-to: type=gha,mode=max,scope=teacher-hub-api
@@ -57,7 +57,7 @@ jobs:
           file: Dockerfile.web
           push: true
           tags: |
-            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:${{ inputs.source_sha }}
             ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:latest
           cache-from: type=gha,scope=teacher-hub-web
           cache-to: type=gha,mode=max,scope=teacher-hub-web
@@ -72,11 +72,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.source_sha }}
       - name: Copy deployment files and deploy
         shell: bash
         env:
-          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+          IMAGE_TAG: ${{ inputs.source_sha }}
           PROD_HOST: ${{ secrets.PROD_HOST }}
           PROD_PORT: ${{ secrets.PROD_PORT }}
           PROD_USER: ${{ secrets.PROD_USER }}
