@@ -48,8 +48,8 @@ export function visibleStatusLabel(value: string): string {
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return <Stack direction="row" useFlexGap sx={{ alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap" }}>
     <Box sx={{ minWidth: 0 }}>
-      <Typography component="h1" variant="h5" sx={{ fontWeight: 900, overflowWrap: "anywhere" }}>{title}</Typography>
-      {subtitle && <Typography color="text.secondary" sx={{ mt: 0.5 }}>{subtitle}</Typography>}
+      <Typography component="h1" variant="h5" sx={{ overflowWrap: "anywhere" }}>{title}</Typography>
+      {subtitle && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{subtitle}</Typography>}
     </Box>
     {action}
   </Stack>;
@@ -81,7 +81,7 @@ export function ConfirmationDialog({ open, title, children, confirmLabel, confir
 }
 
 export function StickyActionBar({ children }: { children: ReactNode }) {
-  return <Box sx={{ position: "sticky", bottom: "calc(var(--admin-nav-height) + 8px)", zIndex: 10, bgcolor: "background.default", py: 1 }}>
+  return <Box data-testid="sticky-action-bar" sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1 }}>
     <Stack direction="row" spacing={1}>{children}</Stack>
   </Box>;
 }
@@ -102,14 +102,37 @@ export function DateTimeDisplay({ date, startTime, endTime }: { date?: string | 
 export function ProgressCount({ value, target = 8, label = "Tiến độ" }: { value: number; target?: number; label?: string }) {
   const safeValue = Math.min(Math.max(value, 0), target);
   return <Stack spacing={0.75}>
-    <Typography sx={{ fontWeight: 800 }}>{label} {safeValue}/{target}</Typography>
+    <Typography variant="subtitle2">{label} {safeValue}/{target}</Typography>
     <LinearProgress aria-label={`${label} ${safeValue} trên ${target}`} variant="determinate" value={target ? (safeValue / target) * 100 : 0} />
   </Stack>;
 }
 
 export function FormSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return <Card variant="outlined"><CardContent><Stack spacing={2}>
-    <Box><Typography component="h2" variant="h6" sx={{ fontWeight: 800 }}>{title}</Typography>{description && <Typography color="text.secondary">{description}</Typography>}</Box>
+    <Box><Typography component="h2" variant="h6">{title}</Typography>{description && <Typography variant="body2" color="text.secondary">{description}</Typography>}</Box>
     {children}
   </Stack></CardContent></Card>;
+}
+
+export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+  return <Stack direction="row" useFlexGap sx={{ alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
+    <Typography component="h2" variant="h6">{title}</Typography>
+    {action}
+  </Stack>;
+}
+
+export function SummaryMetricCard({ icon, value, label, tone = "default" }: {
+  icon?: ReactNode; value: ReactNode; label: string; tone?: "default" | "primary" | "warning";
+}) {
+  return <Card variant="outlined" sx={{ bgcolor: tone === "primary" ? "#f2edff" : tone === "warning" ? "#fff7ed" : "background.paper" }}>
+    <CardContent><Stack spacing={0.75}>
+      {icon}
+      <Typography component="p" variant="h6">{value}</Typography>
+      <Typography variant="body2" color="text.secondary">{label}</Typography>
+    </Stack></CardContent>
+  </Card>;
+}
+
+export function ResponsivePageContainer({ children, form = false }: { children: ReactNode; form?: boolean }) {
+  return <Box sx={{ width: "100%", maxWidth: form ? "var(--app-form-width)" : "var(--app-content-width)", mx: "auto" }}>{children}</Box>;
 }

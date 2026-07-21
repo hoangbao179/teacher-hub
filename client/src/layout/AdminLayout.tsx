@@ -12,6 +12,11 @@ import {
   BottomNavigationAction,
   Box,
   Container,
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
   Toolbar,
   Typography,
   IconButton,
@@ -40,29 +45,67 @@ export function AdminLayout() {
     : /^\/admin\/(reconciliation|busy-slots|lessons)/.test(location.pathname) ? 1
       : 0;
   return (
-    <Box sx={{ pb: `calc(${uiTokens.navigationHeight}px + env(safe-area-inset-bottom) + 16px)`, minWidth: 0, overflowX: "clip" }}>
+    <Box sx={{ minHeight: "100dvh", minWidth: 0, overflowX: "clip", pb: { xs: `calc(${uiTokens.navigationHeight}px + env(safe-area-inset-bottom) + 16px)`, md: 0 } }}>
       <AppBar
-        position="sticky"
+        position="fixed"
         color="inherit"
         elevation={0}
-        sx={{ borderBottom: 1, borderColor: "divider" }}
+        sx={{ borderBottom: 1, borderColor: "divider", zIndex: (theme) => theme.zIndex.drawer + 1 }}
       >
-        <Toolbar>
-          <Typography sx={{ fontWeight: 800, flexGrow: 1 }}>Teacher Class Hub</Typography>
+        <Toolbar sx={{ minHeight: `${uiTokens.navigationHeight}px !important`, px: { xs: 2, md: 3 } }}>
+          <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>Teacher Class Hub</Typography>
           <IconButton aria-label="Đăng xuất" onClick={() => void auth.logout().then(() => navigate("/admin/login"))}>
             <Logout />
           </IconButton>
         </Toolbar>
       </AppBar>
-      <Container component="main" maxWidth="sm" sx={{ py: 2, minWidth: 0 }}>
-        <Outlet />
-      </Container>
+      <Drawer
+        variant="permanent"
+        data-testid="desktop-navigation"
+        sx={{
+          display: { xs: "none", md: "block" },
+          width: uiTokens.desktopNavigationWidth,
+          flexShrink: 0,
+          "& .MuiDrawer-paper": {
+            width: uiTokens.desktopNavigationWidth,
+            top: uiTokens.navigationHeight,
+            height: `calc(100% - ${uiTokens.navigationHeight}px)`,
+            boxSizing: "border-box",
+            borderRightColor: "divider",
+            p: 1.5,
+          },
+        }}
+      >
+        <List component="nav" aria-label="Điều hướng quản trị trên máy tính">
+          {nav.map(([path, icon, label], index) => <ListItemButton
+            key={path}
+            selected={current === index}
+            onClick={() => navigate(path)}
+            sx={{ borderRadius: 1.25, mb: 0.5 }}
+          >
+            <ListItemIcon sx={{ minWidth: 38, color: current === index ? "primary.main" : "text.secondary" }}>{icon}</ListItemIcon>
+            <ListItemText primary={label} slotProps={{ primary: { variant: "body2", sx: { fontWeight: current === index ? 600 : 500 } } }} />
+          </ListItemButton>)}
+        </List>
+      </Drawer>
+      <Box sx={{ ml: { md: `${uiTokens.desktopNavigationWidth}px` }, pt: `${uiTokens.navigationHeight}px`, minWidth: 0 }}>
+        <Container
+          component="main"
+          maxWidth={false}
+          data-testid="admin-content"
+          sx={{ width: "100%", maxWidth: `${uiTokens.contentWidth}px`, mx: "auto", px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 3 }, minWidth: 0 }}
+        >
+          <Outlet />
+        </Container>
+      </Box>
       <BottomNavigation
         showLabels
+        data-testid="mobile-navigation"
         aria-label="Điều hướng quản trị chính"
         value={current}
         onChange={(_e, value) => navigate(nav[value][0])}
         sx={{
+          display: { xs: "flex", md: "none" },
           position: "fixed",
           bottom: 0,
           left: 0,
@@ -75,7 +118,7 @@ export function AdminLayout() {
         }}
       >
         {nav.map(([, icon, label]) => (
-          <BottomNavigationAction key={label} label={label} icon={icon} />
+          <BottomNavigationAction key={label} label={label} icon={icon} aria-label={label} />
         ))}
       </BottomNavigation>
     </Box>

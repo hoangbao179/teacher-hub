@@ -7,10 +7,14 @@
 - [x] Environment validation, secret placeholders, dependency/license/security review completed.
 - [x] Health/readiness, login, admin bootstrap and restore procedures documented.
 - [x] M6A, M6B, M6C and M6D reports end in PASS.
+- [x] Source packaging uses a controlled allowlist, produces SHA-256 and passes
+  `npm run check:package`; reports, private data, env files and build output are excluded.
 
 ## Deployment operator gate (repeat per environment)
 
 - [ ] Git/tag is clean and approved; real public identity/contact/domain configured.
+- [ ] `npm -w client run validate:public` passes with approved teacher, contact,
+  SEO, media and consented testimonial values.
 - [ ] Production secrets verified out of band and first admin credentials rotated.
 - [ ] Pre-deployment backup taken and restore drill reviewed.
 - [ ] Docker images built; MySQL/API/web health and observed resource usage recorded.

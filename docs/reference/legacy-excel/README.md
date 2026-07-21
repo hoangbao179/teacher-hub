@@ -1,5 +1,9 @@
 # Legacy Excel
 
+Không lưu workbook học sinh thật trong cây source này. Các workbook local phục vụ
+đối chiếu thủ công phải đặt tại `.private-data/legacy-excel/` (đã bị Git, Docker và
+source package loại trừ). Không đưa tên, số điện thoại hay lịch sử học thật vào fixture.
+
 Các file này chỉ là dữ liệu tham khảo cho migration sau. V1 base không import tự động.
 
 M6B chỉ triển khai canonical normalized export. Generic import, tự nhận diện cột

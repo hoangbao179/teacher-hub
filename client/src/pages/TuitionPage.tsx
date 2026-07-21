@@ -1,6 +1,7 @@
 import { Search } from "@mui/icons-material";
 import {
   Alert,
+  Box,
   Button,
   Card,
   CardActions,
@@ -85,7 +86,7 @@ export function TuitionPage() {
   };
   return (
     <Stack spacing={2} data-testid="tuition-list-page">
-      <Typography variant="h5" sx={{ fontWeight: 900 }}>Học phí</Typography>
+      <Typography component="h1" variant="h5">Học phí</Typography>
       <Tabs
         value={status}
         onChange={(_event, value: VisibleStatus) => { beginReload(); setStatus(value); setPage(1); setSort(value === "PAYMENT_DUE" ? "OLDEST_DUE" : "NEWEST"); }}
@@ -129,19 +130,20 @@ export function TuitionPage() {
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { beginReload(); setRetry((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
       {!items && !error && <LoadingState />}
       {items?.length === 0 && <EmptyState message="Không có chu kỳ học phí phù hợp." />}
+      <Box data-testid="tuition-card-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
       {items?.map((item) => (
         <Card key={item.id} data-testid="tuition-cycle-card">
           <CardContent>
             <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
               <Stack sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 800 }} noWrap>{item.studentName}</Typography>
+                <Typography variant="subtitle1" noWrap>{item.studentName}</Typography>
                 <Typography color="text.secondary" variant="body2">{item.className} · Chu kỳ #{item.cycleNumber}</Typography>
               </Stack>
               <TuitionStatusChip status={item.status} />
             </Stack>
             <Stack direction="row" sx={{ justifyContent: "space-between", mt: 1 }}>
-              <Typography color="primary" sx={{ fontWeight: 800 }}>{money(item.packagePriceSnapshot)}</Typography>
-              <Typography sx={{ fontWeight: 700 }}>{item.itemCount}/{item.targetCount}</Typography>
+              <Typography color="primary" variant="subtitle1">{money(item.packagePriceSnapshot)}</Typography>
+              <Typography sx={{ fontWeight: 600 }}>{item.itemCount}/{item.targetCount}</Typography>
             </Stack>
             <LinearProgress variant="determinate" value={(item.itemCount / item.targetCount) * 100} sx={{ mt: 1 }} />
             <Typography variant="caption" color="text.secondary">
@@ -157,6 +159,7 @@ export function TuitionPage() {
           </CardActions>
         </Card>
       ))}
+      </Box>
       {items && total > 0 && (
         <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
           <Button disabled={page === 1} onClick={() => { beginReload(); setPage((value) => value - 1); }}>Trang trước</Button>

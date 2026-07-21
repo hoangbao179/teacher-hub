@@ -1,5 +1,6 @@
 import {
   Alert,
+  Box,
   Button,
   Card,
   CardContent,
@@ -126,7 +127,7 @@ export function ReconciliationPage() {
 
   return (
     <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page">
-      <Typography variant="h5" sx={{ fontWeight: 900 }}>Đối soát buổi học</Typography>
+      <Typography component="h1" variant="h5">Đối soát buổi học</Typography>
       <Typography color="text.secondary">Xác nhận lịch dự kiến thành bản nháp buổi học, nghỉ hoặc đổi lịch. Học phí chỉ thay đổi sau khi hoàn tất ghi nhận.</Typography>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setItems(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
@@ -134,7 +135,7 @@ export function ReconciliationPage() {
         Có {warnings.length} xung đột lịch; thao tác vẫn được lưu. {warnings.map((item) => `${item.title} ${item.startTime}–${item.endTime}`).join("; ")}
       </Alert>}
 
-      <Card variant="outlined"><CardContent><Stack spacing={1.5}>
+      <Card variant="outlined" sx={{ width: "100%", maxWidth: "var(--app-form-width)" }}><CardContent><Stack spacing={1.5}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
           <TextField fullWidth type="date" label="Từ ngày" value={from} onChange={(event) => { setItems(null); setError(""); setFrom(event.target.value); }} slotProps={{ inputLabel: { shrink: true } }} />
           <TextField fullWidth type="date" label="Đến ngày" value={to} onChange={(event) => { setItems(null); setError(""); setTo(event.target.value); }} slotProps={{ inputLabel: { shrink: true } }} />
@@ -157,11 +158,12 @@ export function ReconciliationPage() {
 
       {!items && <LoadingCards />}
       {items?.length === 0 && !error && <EmptyState message="Không có buổi dự kiến phù hợp trong khoảng đã chọn." />}
+      <Box data-testid="reconciliation-card-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.5, alignItems: "start" }}>
       {items?.map((item) => {
         const replacement = item.projectionSource === "RESCHEDULED";
         return <Card key={item.key} id={`occurrence-${item.key}`} data-testid="occurrence-card" variant="outlined"><CardContent><Stack spacing={1.25}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
-            <Stack sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800 }}>{item.className}</Typography><Typography color="text.secondary">{displayDate(item.occurrenceDate)} · {item.scheduledStartTime}–{item.scheduledEndTime}</Typography></Stack>
+            <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.className}</Typography><Typography variant="body2" color="text.secondary">{displayDate(item.occurrenceDate)} · {item.scheduledStartTime}–{item.scheduledEndTime}</Typography></Stack>
             <Chip size="small" color={item.state === "UNRECORDED" ? "warning" : item.state === "RECORDED" ? "success" : "default"} label={replacement && item.state === "UNRECORDED" ? "Lịch thay thế" : labels[item.state]} />
           </Stack>
           {item.conflicts.length > 0 && <Alert severity="warning">{item.conflicts.length} cảnh báo trùng lịch</Alert>}
@@ -174,6 +176,7 @@ export function ReconciliationPage() {
           {item.linkedLessonId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/lessons/${item.linkedLessonId}/edit`)}>Mở buổi học</Button>}
         </Stack></CardContent></Card>;
       })}
+      </Box>
 
       <Dialog open={Boolean(skipDialog)} onClose={() => { if (!busyKey) setSkipDialog(null); }} fullWidth maxWidth="xs">
         <DialogTitle>{skipDialog?.bulk ? `Cho ${skipDialog.keys.length} buổi nghỉ` : "Xác nhận buổi nghỉ"}</DialogTitle>

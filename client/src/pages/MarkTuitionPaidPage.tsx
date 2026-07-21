@@ -68,16 +68,16 @@ export function MarkTuitionPaidPage() {
   if (!item && !error) return <LoadingState />;
   if (!item) return <Alert severity="error" action={<Button color="inherit" onClick={() => { setError(""); setRetry((value) => value + 1); }}>Thử lại</Button>}>{error || "Không tải được chu kỳ."}</Alert>;
   return (
-    <Stack spacing={2} data-testid="mark-tuition-paid-page">
+    <Stack spacing={2} data-testid="mark-tuition-paid-page" data-form-width="bounded" sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto" }}>
       <Button component={Link} to={`/admin/tuition/${item.id}`} startIcon={<ArrowBack />} sx={{ alignSelf: "flex-start" }}>Chi tiết chu kỳ</Button>
-      <Typography variant="h5" sx={{ fontWeight: 900 }}>Đánh dấu đã thu</Typography>
+      <Typography component="h1" variant="h5">Đánh dấu đã thu</Typography>
       {error && <Alert severity="error">{error}</Alert>}
       <Card><CardContent>
         <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-          <Stack><Typography sx={{ fontWeight: 900 }}>{item.studentName}</Typography><Typography color="text.secondary">{item.className} · Chu kỳ #{item.cycleNumber}</Typography></Stack>
+          <Stack><Typography variant="subtitle1">{item.studentName}</Typography><Typography variant="body2" color="text.secondary">{item.className} · Chu kỳ #{item.cycleNumber}</Typography></Stack>
           <TuitionStatusChip status={item.status} />
         </Stack>
-        <Typography color="primary" sx={{ fontWeight: 900, mt: 1 }}>{money(item.packagePriceSnapshot)}</Typography>
+        <Typography color="primary" variant="h6" sx={{ mt: 1 }}>{money(item.packagePriceSnapshot)}</Typography>
       </CardContent></Card>
       {item.status !== "PAYMENT_DUE" ? (
         <Alert severity="info">Chu kỳ này không còn ở trạng thái cần thu. Thông tin hiện tại chỉ đọc.</Alert>

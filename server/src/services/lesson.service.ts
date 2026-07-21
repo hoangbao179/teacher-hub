@@ -370,12 +370,14 @@ export class LessonService {
   }
 
   private completionResult(detail: LessonDetail, impacts: TuitionProgressImpact[]): CompleteLessonResult {
+    if (!detail.completedAt)
+      throw new AppError(500, "LESSON_COMPLETION_TIMESTAMP_MISSING", "Buổi học đã hoàn thành nhưng thiếu thời điểm hoàn thành.");
     const presentCount = detail.participants.filter((item) => item.attendance?.status === "PRESENT").length;
     const absentCount = detail.participants.filter((item) => item.attendance?.status === "ABSENT").length;
     const freeCount = detail.participants.filter((item) => item.attendance?.status === "FREE").length;
     return {
       lessonId: detail.id,
-      completedAt: new Date().toISOString(),
+      completedAt: detail.completedAt,
       attendanceCount: detail.participants.length,
       newlyDueCycles: impacts.filter((item) => item.becamePaymentDue && item.cycleId != null).map((item) => ({
         cycleId: item.cycleId!, studentId: item.studentId, studentName: item.studentName,

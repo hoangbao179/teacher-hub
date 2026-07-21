@@ -61,7 +61,7 @@ export function ClassDetailPage() {
   if (!item && !error) return <LoadingState />;
   if (!item) return <ErrorState message={error || "Không tải được lớp."} onRetry={() => { setError(""); void load(); }} />;
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
       {error && <Alert severity="error">{error}</Alert>}
       {success && <Alert severity="success">{success}</Alert>}
       <PageHeader title={item!.name} action={<StatusBadge status={item!.status} />} />
@@ -86,12 +86,12 @@ export function ClassDetailPage() {
               .join(", ")}
           </Typography>
       </MobileCard>
-      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontWeight: 800 }}>Học sinh</Typography><Button variant="contained" disabled={busy || item!.status !== "ACTIVE" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => setDialogOpen(true)}>Ghi danh</Button></Stack>
+      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography variant="h6">Học sinh</Typography><Button variant="contained" disabled={busy || item!.status !== "ACTIVE" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => setDialogOpen(true)}>Ghi danh</Button></Stack>
       {item!.students.map((student) => (
         <Card key={student.enrollmentId}>
           <CardContent>
             <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-              <Typography sx={{ fontWeight: 800 }}>{student.fullName}</Typography>
+              <Typography variant="subtitle1">{student.fullName}</Typography>
               <Typography>
                 {student.tuitionMode === "FREE"
                   ? "Miễn phí"

@@ -63,12 +63,17 @@ Hãy đổi password trước khi dùng thật.
 ```bash
 npm run check:fast       # typecheck, lint, unit, build
 npm run check:full       # thêm integration, E2E, consistency
+npm run package:source   # tạo controlled source snapshot + SHA-256 trong release/
+npm run check:package    # kiểm tra checksum và nội dung cấm trong archive
 npm run db:backup -- ./backups/pre-deploy.sql
 npm run db:restore -- ./backups/pre-deploy.sql --confirm
 ```
 
 Hướng dẫn đầy đủ: `docs/deployment/local-development.md`,
 `docs/deployment/production.md` và `docs/deployment/backup-and-restore.md`.
+Source package loại `.git`, env thật, dependency/build local, report/screenshot,
+dump/backup và workbook riêng tư. Manifest trong archive ghi base commit và cho biết
+snapshot có chứa working-tree changes hay không.
 
 ## Trạng thái codebase
 

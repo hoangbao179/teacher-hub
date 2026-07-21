@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   CardContent,
+  Box,
   Stack,
   Typography,
 } from "@mui/material";
@@ -29,6 +30,7 @@ export function ClassesPage() {
           Thêm lớp
         </Button>} />
       {error && <Alert severity="warning">{error}</Alert>}
+      <Box data-testid="class-card-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
       {items?.map((item) => (
         <Card
           key={item.id}
@@ -38,7 +40,7 @@ export function ClassesPage() {
         >
           <CardContent>
             <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-              <Typography sx={{ fontWeight: 800, minWidth: 0, overflowWrap: "anywhere" }} color="text.primary">
+              <Typography variant="subtitle1" sx={{ minWidth: 0, overflowWrap: "anywhere" }} color="text.primary">
                 {item.name}
               </Typography>
               <StatusBadge status={item.status} />
@@ -51,6 +53,7 @@ export function ClassesPage() {
           </CardContent>
         </Card>
       ))}
+      </Box>
       {items?.length === 0 && <EmptyState message="Chưa có lớp học. Chọn Thêm lớp để bắt đầu." />}
     </Stack>
   );

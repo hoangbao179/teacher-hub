@@ -193,65 +193,6 @@ export class TuitionRepository {
       paymentDueCycleIds,
     };
   }
-  async addBillableAttendance(
-    connection: PoolConnection,
-    enrollmentId: number,
-    attendanceId: number,
-    sessionDate: string,
-    packagePrice: number,
-  ): Promise<{ cycleId: number; becameDue: boolean; createdCycle: boolean; progress: number }> {
-    const [cycles] = await connection.query<RowDataPacket[]>(
-      `
-      SELECT * FROM tuition_cycles WHERE enrollment_id=? AND status='ACCUMULATING' ORDER BY cycle_number DESC LIMIT 1 FOR UPDATE
-    `,
-      [enrollmentId],
-    );
-    let cycleId: number;
-    let createdCycle = false;
-    if (!cycles[0]) {
-      const [numbers] = await connection.query<RowDataPacket[]>(
-        "SELECT COALESCE(MAX(cycle_number),0)+1 next_number FROM tuition_cycles WHERE enrollment_id=? FOR UPDATE",
-        [enrollmentId],
-      );
-      const [created] = await connection.execute<ResultSetHeader>(
-        `
-        INSERT INTO tuition_cycles(enrollment_id,cycle_number,package_price_snapshot,started_at)
-        VALUES (?,?,?,?)
-      `,
-        [
-          enrollmentId,
-          Number(numbers[0].next_number),
-          packagePrice,
-          sessionDate,
-        ],
-      );
-      cycleId = created.insertId;
-      createdCycle = true;
-    } else {
-      cycleId = Number(cycles[0].id);
-    }
-
-    const [countRows] = await connection.query<RowDataPacket[]>(
-      "SELECT COUNT(*) count FROM tuition_cycle_sessions WHERE tuition_cycle_id=? FOR UPDATE",
-      [cycleId],
-    );
-    const nextSequence = Number(countRows[0].count) + 1;
-    if (nextSequence > 8)
-      throw new Error("Chu kỳ tích lũy không hợp lệ: đã vượt quá 8 buổi.");
-    await connection.execute(
-      "INSERT INTO tuition_cycle_sessions(tuition_cycle_id,attendance_id,sequence_number) VALUES (?,?,?)",
-      [cycleId, attendanceId, nextSequence],
-    );
-    const becameDue = nextSequence === 8;
-    if (becameDue) {
-      await connection.query(
-        "UPDATE tuition_cycles SET status='PAYMENT_DUE',reached_target_at=? WHERE id=?",
-        [sessionDate, cycleId],
-      );
-    }
-    return { cycleId, becameDue, createdCycle, progress: nextSequence };
-  }
-
   async accumulatingProgress(connection: PoolConnection, enrollmentId: number): Promise<number> {
     const [rows] = await connection.query<RowDataPacket[]>(
       `SELECT COUNT(tcs.id) progress FROM tuition_cycles tc

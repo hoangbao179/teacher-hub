@@ -58,8 +58,8 @@ export function ClassFormPage() {
     finally { setSaving(false); }
   };
   if (loading) return <LoadingState />;
-  return <Stack component="form" spacing={2} onSubmit={submit}>
-    <Typography variant="h5" sx={{ fontWeight: 900 }}>{editing ? "Sửa lớp" : "Thêm lớp"}</Typography>
+  return <Stack component="form" spacing={2} onSubmit={submit} data-testid="bounded-form" sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto" }}>
+    <Typography component="h1" variant="h5">{editing ? "Sửa lớp" : "Thêm lớp"}</Typography>
     {error && <Alert severity="error">{error}</Alert>}
     <TextField required label="Tên lớp" value={name} onChange={(e) => setName(e.target.value)} />
     <FormControl><InputLabel>Loại lớp</InputLabel><Select label="Loại lớp" value={type} onChange={(e) => setType(e.target.value as ClassType)}>
@@ -75,7 +75,7 @@ export function ClassFormPage() {
     {editing && <FormControl><InputLabel>Trạng thái</InputLabel><Select label="Trạng thái" value={status} onChange={(e) => setStatus(e.target.value as ClassStatus)}>
       <MenuItem value="ACTIVE">Đang dạy</MenuItem><MenuItem value="PAUSED">Tạm dừng</MenuItem><MenuItem value="CLOSED">Đã đóng</MenuItem>
     </Select></FormControl>}
-    <Typography sx={{ fontWeight: 800 }}>Lịch học hằng tuần</Typography>
+    <Typography component="h2" variant="h6">Lịch học hằng tuần</Typography>
     {schedules.map((schedule, index) => <Card key={index} variant="outlined"><CardContent><Stack spacing={1.5}>
       <FormControl><InputLabel>Thứ</InputLabel><Select label="Thứ" value={schedule.dayOfWeek} onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, dayOfWeek: Number(e.target.value) as RecurringScheduleInput["dayOfWeek"] } : x))}>
         {[1,2,3,4,5,6,7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}

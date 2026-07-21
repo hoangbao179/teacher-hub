@@ -123,11 +123,66 @@ try {
   await cdp.wait("document.body && document.body.innerText.includes('Đăng nhập cô giáo')", "login page");
   await cdp.screenshot("admin-login-390");
   await cdp.setInput("Email", "smoke@example.test"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");
-  await cdp.wait("location.pathname==='/admin'", "dashboard");
+  await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "dashboard");
+  const typographyAudit = await cdp.eval(`(async () => {
+    await document.fonts.ready;
+    const bodyStyle = getComputedStyle(document.body);
+    const heading = document.querySelector('h1');
+    const headingStyle = heading && getComputedStyle(heading);
+    const button = document.querySelector('.MuiButton-root');
+    const buttonStyle = button && getComputedStyle(button);
+    return {
+      fontLoaded: document.fonts.check('400 16px "Be Vietnam Pro"'),
+      bodyFamily: bodyStyle.fontFamily,
+      headingSize: headingStyle?.fontSize,
+      headingWeight: headingStyle?.fontWeight,
+      buttonSize: buttonStyle?.fontSize,
+      buttonWeight: buttonStyle?.fontWeight,
+      rawEnums: (document.body.innerText.match(/\\b(ACTIVE|PAUSED|CLOSED|PRESENT|ABSENT|FREE|ACCUMULATING|PAYMENT_DUE|PAID|INCOMPLETE)\\b/g) || []),
+      unnamedEnabledActions: [...document.querySelectorAll('button:not(:disabled),a[href]')].filter((el) => !(el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent.trim())).length,
+    };
+  })()`);
+  if (!typographyAudit.fontLoaded || !typographyAudit.bodyFamily.includes("Be Vietnam Pro")) throw new Error(`Application font is not loaded: ${JSON.stringify(typographyAudit)}`);
+  if (typographyAudit.headingSize !== "21px" || typographyAudit.headingWeight !== "700") throw new Error(`Unexpected page-title typography: ${JSON.stringify(typographyAudit)}`);
+  if (typographyAudit.buttonSize !== "14px" || Number(typographyAudit.buttonWeight) > 600) throw new Error(`Unexpected button typography: ${JSON.stringify(typographyAudit)}`);
+  if (typographyAudit.rawEnums.length) throw new Error(`Raw enum labels are visible: ${typographyAudit.rawEnums.join(", ")}`);
+  if (typographyAudit.unnamedEnabledActions) throw new Error(`${typographyAudit.unnamedEnabledActions} enabled actions lack an accessible name`);
   await cdp.screenshot("dashboard-390");
+  const mobileShell = await cdp.eval(`(() => ({
+    mobileNav: getComputedStyle(document.querySelector('[data-testid="mobile-navigation"]')).display,
+    desktopNav: getComputedStyle(document.querySelector('[data-testid="desktop-navigation"]')).display,
+    overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth,
+  }))()`);
+  if (mobileShell.mobileNav === "none" || mobileShell.desktopNav !== "none" || mobileShell.overflow > 1) throw new Error(`Invalid mobile shell: ${JSON.stringify(mobileShell)}`);
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await cdp.send("Page.reload"); await new Promise((resolve) => setTimeout(resolve, 350)); await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "desktop dashboard");
+  const desktopShell = await cdp.eval(`(() => {
+    const contentElement = document.querySelector('[data-testid="admin-content"]');
+    const mobileElement = document.querySelector('[data-testid="mobile-navigation"]');
+    const desktopElement = document.querySelector('[data-testid="desktop-navigation"]');
+    const eventsElement = document.querySelector('[data-testid="dashboard-events"]');
+    const content = contentElement?.getBoundingClientRect();
+    return {
+      mobileNav: mobileElement ? getComputedStyle(mobileElement).display : 'missing',
+      desktopNav: desktopElement ? getComputedStyle(desktopElement).display : 'missing',
+      contentWidth: content?.width || 0,
+      eventColumns: eventsElement ? getComputedStyle(eventsElement).gridTemplateColumns.split(' ').length : 0,
+      overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth,
+    };
+  })()`);
+  if (desktopShell.mobileNav !== "none" || desktopShell.desktopNav === "none" || desktopShell.contentWidth < 900 || desktopShell.eventColumns < 2 || desktopShell.overflow > 1) throw new Error(`Invalid desktop shell: ${JSON.stringify(desktopShell)}`);
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 360, height: 800, deviceScaleFactor: 1, mobile: true });
+  await cdp.send("Page.reload"); await new Promise((resolve) => setTimeout(resolve, 350)); await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "360px dashboard");
+  if (await cdp.eval("document.documentElement.scrollWidth-document.documentElement.clientWidth") > 1) throw new Error("Dashboard overflows at 360px");
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await cdp.send("Page.reload"); await new Promise((resolve) => setTimeout(resolve, 350)); await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "restored mobile dashboard");
 
   await cdp.clickText("Lớp học"); await cdp.wait("location.pathname==='/admin/classes' && document.body.innerText.includes('Thêm lớp')", "classes"); await cdp.screenshot("class-list-390"); await cdp.clickText("Thêm lớp");
   await cdp.wait("location.pathname==='/admin/classes/new' && document.body.innerText.includes('Tên lớp')", "class form");
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  const formWidth = await cdp.eval("document.querySelector('[data-testid=bounded-form]').getBoundingClientRect().width");
+  if (formWidth > 681 || formWidth < 580) throw new Error(`Desktop form width is not bounded appropriately: ${formWidth}px`);
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await cdp.screenshot("class-form-390");
   await cdp.setInput("Tên lớp", `Browser Smoke ${Date.now()}`); await cdp.setInput("Giá gói", "2400000"); await cdp.clickText("Lưu lớp");
   await cdp.wait("/\\/admin\\/classes\\/\\d+$/.test(location.pathname)", "class detail"); const classPath = await cdp.eval("location.pathname");

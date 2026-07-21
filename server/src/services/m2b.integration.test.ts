@@ -90,6 +90,9 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
   assert.equal(result.presentCount, 1); assert.equal(result.absentCount, 1); assert.equal(result.freeCount, 1);
   const persisted = await lessons.detail(draft.id);
   assert.equal(persisted.status, "COMPLETED"); assert.equal(persisted.content, "Lesson content");
+  assert.ok(result.completedAt);
+  assert.equal(result.completedAt, persisted.completedAt);
+  assert.equal(Number.isNaN(Date.parse(result.completedAt)), false);
   const [attendanceRows] = await pool.query<RowDataPacket[]>("SELECT * FROM lesson_attendances WHERE lesson_session_id=?", [draft.id]);
   assert.equal(attendanceRows.length, 3);
   const [cycleItems] = await pool.query<RowDataPacket[]>("SELECT * FROM tuition_cycle_sessions");
@@ -99,6 +102,8 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
     attendances: persisted.participants.map((item) => ({ enrollmentId: item.enrollmentId, status: item.attendance!.status })),
   });
   assert.equal(replay.lesson.status, "COMPLETED");
+  assert.equal(replay.completedAt, result.completedAt);
+  assert.equal(replay.lesson.completedAt, result.completedAt);
   const [afterReplay] = await pool.query<RowDataPacket[]>("SELECT * FROM tuition_cycle_sessions");
   assert.equal(afterReplay.length, 1);
   const [audits] = await pool.query<RowDataPacket[]>("SELECT action FROM audit_logs WHERE entity_id=? OR entity_type='TUITION_CYCLE'", [draft.id]);

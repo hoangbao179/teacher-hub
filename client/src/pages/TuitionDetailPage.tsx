@@ -1,6 +1,7 @@
 import { ArrowBack, Lock, Payments } from "@mui/icons-material";
 import {
   Alert,
+  Box,
   Button,
   Card,
   CardContent,
@@ -32,7 +33,7 @@ export function TuitionDetailPage() {
   if (!item) return <Alert severity="error" action={<Button color="inherit" onClick={() => { setError(""); void load(); }}>Thử lại</Button>}>{error || "Không tải được chu kỳ."}</Alert>;
   const visibleItems = item.items.filter((entry) => entry.attendanceStatus === "PRESENT");
   return (
-    <Stack spacing={2} data-testid="tuition-detail-page">
+    <Stack spacing={2} data-testid="tuition-detail-page" sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
       <Button component={Link} to="/admin/tuition" startIcon={<ArrowBack />} sx={{ alignSelf: "flex-start" }}>Học phí</Button>
       {success && <Alert severity="success">{success}</Alert>}
       <PageHeader title={`${item.studentName} · Chu kỳ #${item.cycleNumber}`} subtitle={item.className} action={<TuitionStatusChip status={item.status} />} />
@@ -49,13 +50,13 @@ export function TuitionDetailPage() {
         </CardContent>
       </Card>
 
-      <Typography sx={{ fontWeight: 900 }}>{visibleItems.length} buổi trong chu kỳ</Typography>
-      <Stack spacing={1}>
+      <Typography component="h2" variant="h6">{visibleItems.length} buổi trong chu kỳ</Typography>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 1 }}>
         {visibleItems.map((entry) => (
           <Card key={entry.attendanceId} variant="outlined" data-testid="tuition-cycle-item">
             <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
               <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                <Typography sx={{ fontWeight: 800 }}>Buổi {entry.sequenceNumber}</Typography>
+                <Typography variant="subtitle1">Buổi {entry.sequenceNumber}</Typography>
                 <DateTimeDisplay date={entry.sessionDate} />
               </Stack>
               <Typography variant="body2" color="text.secondary">
@@ -69,7 +70,7 @@ export function TuitionDetailPage() {
             </CardContent>
           </Card>
         ))}
-      </Stack>
+      </Box>
       <Alert severity="info">Thời lượng thực tế chỉ để theo dõi, không thay đổi số buổi học phí.</Alert>
       {item.status === "PAID" && <Alert icon={<Lock />} severity="success">Chu kỳ đã thu và đang ở trạng thái chỉ đọc.</Alert>}
       {item.status === "PAYMENT_DUE" && (
@@ -91,7 +92,7 @@ export function TuitionDetailPage() {
 }
 
 function InfoRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return <><Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", py: 1 }}><Typography color="text.secondary">{label}</Typography><Typography sx={{ fontWeight: strong ? 900 : 700, textAlign: "right" }}>{value}</Typography></Stack><Divider /></>;
+  return <><Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", py: 1 }}><Typography color="text.secondary">{label}</Typography><Typography sx={{ fontWeight: strong ? 700 : 600, textAlign: "right" }}>{value}</Typography></Stack><Divider /></>;
 }
 
 function money(value: number): string { return `${value.toLocaleString("vi-VN")}đ`; }

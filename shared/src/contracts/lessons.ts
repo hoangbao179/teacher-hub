@@ -81,6 +81,7 @@ export interface LessonSummary {
   actualDurationMinutes: number | null;
   lessonType: LessonType;
   status: LessonStatus;
+  completedAt: string | null;
 }
 
 export interface LessonParticipantDetail {

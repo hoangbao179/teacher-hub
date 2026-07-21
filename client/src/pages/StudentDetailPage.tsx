@@ -58,14 +58,16 @@ export function StudentDetailPage() {
   if (!item && !error) return <LoadingState />;
   if (!item) return <Alert severity="error">{error || "Không tải được học sinh."}</Alert>;
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
       {error && <Alert severity="error">{error}</Alert>}
       {success && <Alert severity="success">{success}</Alert>}
       <PageHeader title={item!.fullName} />
-      <Button component={Link} to={`/admin/students/${item!.id}/edit`} variant="outlined">Sửa thông tin</Button>
-      <Button startIcon={<Download />} variant="contained" disabled={busy} onClick={exportReport}>
-        {busy ? "Đang tạo báo cáo…" : "Xuất báo cáo Excel"}
-      </Button>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <Button component={Link} to={`/admin/students/${item!.id}/edit`} variant="outlined">Sửa thông tin</Button>
+        <Button startIcon={<Download />} variant="contained" disabled={busy} onClick={exportReport}>
+          {busy ? "Đang tạo báo cáo…" : "Xuất báo cáo Excel"}
+        </Button>
+      </Stack>
       <Card>
         <CardContent>
           <Typography>Lớp: {item!.className}</Typography>
@@ -87,12 +89,12 @@ export function StudentDetailPage() {
           </CardContent>
         </Card>
       )}
-      {item!.enrollmentStatus === "ACTIVE" && <Button disabled={busy} variant="outlined" onClick={() => changeEnrollmentStatus("pause")}>Tạm dừng ghi danh</Button>}
-      {item!.enrollmentStatus === "PAUSED" && <Button disabled={busy} variant="outlined" onClick={() => changeEnrollmentStatus("resume")}>Mở lại ghi danh</Button>}
-      <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setTuitionOpen(true)}>Đổi chế độ học phí</Button>
-      <Button color="error" variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={endEnrollment}>
-        Cho ngừng học
-      </Button>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+        {item!.enrollmentStatus === "ACTIVE" && <Button disabled={busy} variant="outlined" onClick={() => changeEnrollmentStatus("pause")}>Tạm dừng ghi danh</Button>}
+        {item!.enrollmentStatus === "PAUSED" && <Button disabled={busy} variant="outlined" onClick={() => changeEnrollmentStatus("resume")}>Mở lại ghi danh</Button>}
+        <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setTuitionOpen(true)}>Đổi chế độ học phí</Button>
+        <Button color="error" variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={endEnrollment}>Cho ngừng học</Button>
+      </Stack>
       <Dialog open={tuitionOpen} onClose={() => setTuitionOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Chế độ học phí</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         <FormControl><InputLabel>Chế độ</InputLabel><Select label="Chế độ" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Theo giá lớp</MenuItem><MenuItem value="CUSTOM">Giá riêng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
         {tuitionMode === "CUSTOM" && <TextField type="number" required label="Giá riêng / 8 buổi" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} />}

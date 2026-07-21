@@ -44,6 +44,15 @@ function dateOnly(value: Date | string): string {
   return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
 }
 
+function dateTime(value: Date | string | null): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value.toISOString();
+  const raw = String(value);
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(raw))
+    return `${raw.replace(" ", "T")}+07:00`;
+  return raw;
+}
+
 function mapSummary(row: LessonRow): LessonSummary {
   return {
     id: Number(row.id),
@@ -57,6 +66,7 @@ function mapSummary(row: LessonRow): LessonSummary {
     actualDurationMinutes: row.actual_duration_minutes == null ? null : Number(row.actual_duration_minutes),
     lessonType: row.lesson_type,
     status: row.status,
+    completedAt: dateTime(row.completed_at),
   };
 }
 

@@ -54,6 +54,7 @@ try {
   await page.goto(origin, { waitUntil: "networkidle" });
 
   await page.getByRole("heading", { level: 1, name: /Học chắc nền tảng/ }).waitFor();
+  await page.getByRole("status").filter({ hasText: "Nội dung minh họa" }).waitFor();
   if (await page.locator("h1").count() !== 1) throw new Error("Homepage must contain exactly one H1");
   for (const heading of ["Học đúng cách", "Nhẹ nhàng, rõ ràng", "Phù hợp từng giai đoạn", "Xem thử cách", "Tiến bộ nhìn thấy", "Trao đổi về mục tiêu"]) {
     await page.getByRole("heading", { name: new RegExp(heading) }).waitFor();

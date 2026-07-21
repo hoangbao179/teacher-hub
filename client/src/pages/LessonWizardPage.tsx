@@ -248,8 +248,8 @@ export function LessonWizardPage() {
   if (completion) return <CompletionState result={completion} />;
 
   return (
-    <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="lesson-wizard">
-      <Typography variant="h5" sx={{ fontWeight: 900 }}>Ghi nhận buổi học</Typography>
+    <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="lesson-wizard" data-form-width="bounded">
+      <Typography component="h1" variant="h5">Ghi nhận buổi học</Typography>
       <Stepper activeStep={step} alternativeLabel sx={{ mx: -1, "& .MuiStepLabel-label": { fontSize: { xs: "0.65rem", sm: "0.75rem" }, lineHeight: 1.15 } }}>
         {steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
       </Stepper>
@@ -262,12 +262,12 @@ export function LessonWizardPage() {
           {classes.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
         </TextField>
         <TextField required type="date" label="Ngày học" value={sessionDate} onChange={(event) => { setSessionDate(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
-        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Giờ dự kiến</Typography>
+        <Typography component="h2" variant="subtitle1">Giờ dự kiến</Typography>
         <Stack direction="row" spacing={1}>
           <TextField fullWidth required type="time" label="Bắt đầu dự kiến" value={scheduledStart} onChange={(event) => { setScheduledStart(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
           <TextField fullWidth required type="time" label="Kết thúc dự kiến" value={scheduledEnd} onChange={(event) => { setScheduledEnd(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
         </Stack>
-        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Giờ thực tế</Typography>
+        <Typography component="h2" variant="subtitle1">Giờ thực tế</Typography>
         <Stack direction="row" spacing={1}>
           <TextField fullWidth required type="time" label="Bắt đầu thực tế" value={actualStart} onChange={(event) => { setActualStart(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
           <TextField fullWidth required type="time" label="Kết thúc thực tế" value={actualEnd} onChange={(event) => { setActualEnd(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
@@ -279,7 +279,7 @@ export function LessonWizardPage() {
           <MenuItem value="REGULAR">Buổi thường</MenuItem><MenuItem value="MAKEUP">Học bù</MenuItem><MenuItem value="EXTRA">Học thêm</MenuItem>
         </TextField>
         {lessonType !== "REGULAR" && <Card variant="outlined"><CardContent>
-          <Typography sx={{ fontWeight: 800, mb: 1 }}>Chọn học sinh tham gia</Typography>
+          <Typography component="h2" variant="subtitle1" sx={{ mb: 1 }}>Chọn học sinh tham gia</Typography>
           {!availableStudents.length && <Alert severity="info">Lớp chưa có học sinh có thể chọn.</Alert>}
           {availableStudents.map((student) => <FormControlLabel key={student.enrollmentId} control={<Checkbox checked={selectedIds.includes(student.enrollmentId)} onChange={(event) => {
             setSelectedIds((current) => event.target.checked ? [...current, student.enrollmentId] : current.filter((value) => value !== student.enrollmentId)); markDirty();
@@ -292,7 +292,7 @@ export function LessonWizardPage() {
         {!participants.length && <Alert severity="warning">Không có participant trong snapshot. Quay lại để kiểm tra ngày học hoặc danh sách chọn.</Alert>}
         {participants.map((participant) => <Card key={participant.participantId} variant="outlined"><CardContent>
           <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
-            <Typography sx={{ fontWeight: 800 }}>{participant.studentName}</Typography>
+            <Typography variant="subtitle1">{participant.studentName}</Typography>
             <Chip size="small" label={participant.tuitionMode === "FREE" ? "Miễn phí toàn phần" : `${participant.currentProgress ?? 0}/8`} />
           </Stack>
           <ToggleButtonGroup exclusive fullWidth size="small" value={attendances[participant.enrollmentId]?.status ?? null} onChange={(_event, value: AttendanceStatus | null) => {
@@ -316,7 +316,7 @@ export function LessonWizardPage() {
       </Stack>}
 
       {step === 3 && <Card variant="outlined"><CardContent><Stack spacing={1}>
-        <Typography variant="h6" sx={{ fontWeight: 900 }}>Xác nhận buổi học</Typography>
+        <Typography component="h2" variant="h6">Xác nhận buổi học</Typography>
         <Summary label="Lớp" value={lesson?.className ?? classDetail?.name ?? "—"} />
         <Summary label="Ngày học" value={sessionDate} />
         <Summary label="Giờ dự kiến" value={`${scheduledStart}–${scheduledEnd}`} />
@@ -329,7 +329,7 @@ export function LessonWizardPage() {
         <Summary label="Bài tập" value={homework || "Chưa nhập"} />
       </Stack></CardContent></Card>}
 
-      <Box data-wizard-action sx={{ position: "sticky", bottom: "calc(64px + env(safe-area-inset-bottom))", zIndex: 10, bgcolor: "background.paper", py: 1, mt: 2, borderTop: 1, borderColor: "divider" }}>
+      <Box data-testid="sticky-action-bar" data-wizard-action sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1, mt: 2, borderTop: 1, borderColor: "divider" }}>
         <Stack direction="row" spacing={1}>
           {step > 0 && <Button fullWidth variant="outlined" sx={{ minHeight: 48 }} disabled={busy} onClick={() => setStep((value) => value - 1)}>Quay lại</Button>}
           <Button fullWidth variant="contained" sx={{ minHeight: 48 }} disabled={busy || (lesson?.status === "COMPLETED" && step === 3) || (step === 1 && !participants.length)} onClick={step === 0 ? saveInformation : step === 1 ? saveAttendance : step === 2 ? saveContent : complete}>
@@ -344,7 +344,7 @@ export function LessonWizardPage() {
 function Summary({ label, value }: { label: string; value: string }) {
   return <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
     <Typography color="text.secondary" sx={{ flexShrink: 0 }}>{label}</Typography>
-    <Typography sx={{ fontWeight: 700, textAlign: "right", overflowWrap: "anywhere" }}>{value}</Typography>
+    <Typography sx={{ fontWeight: 600, textAlign: "right", overflowWrap: "anywhere" }}>{value}</Typography>
   </Stack>;
 }
 
@@ -352,13 +352,13 @@ function CompletionState({ result }: { result: CompleteLessonResult }) {
   return <Stack spacing={2} data-testid="lesson-success">
     <Alert severity="success"><strong>Đã lưu buổi học thành công.</strong> Thời lượng {result.actualDurationMinutes} phút không thay đổi số buổi tính phí.</Alert>
     <Card><CardContent><Stack spacing={1}>
-      <Typography variant="h6" sx={{ fontWeight: 900 }}>{result.lesson.className}</Typography>
+      <Typography variant="h6">{result.lesson.className}</Typography>
       <Typography>{result.lesson.sessionDate} · {result.lesson.actualStartTime}–{result.lesson.actualEndTime}</Typography>
       <Typography>Có mặt {result.presentCount} · Nghỉ {result.absentCount} · Miễn phí {result.freeCount}</Typography>
     </Stack></CardContent></Card>
-    <Typography sx={{ fontWeight: 900 }}>Tác động tiến độ</Typography>
+    <Typography component="h2" variant="h6">Tác động tiến độ</Typography>
     {result.tuitionImpacts.map((item) => <Card key={item.enrollmentId} variant="outlined"><CardContent>
-      <Stack direction="row" sx={{ justifyContent: "space-between" }}><Typography sx={{ fontWeight: 800 }}>{item.studentName}</Typography><Typography>{item.previousProgress ?? "—"} → {item.newProgress ?? "—"}/8</Typography></Stack>
+      <Stack direction="row" sx={{ justifyContent: "space-between" }}><Typography variant="subtitle1">{item.studentName}</Typography><Typography>{item.previousProgress ?? "—"} → {item.newProgress ?? "—"}/8</Typography></Stack>
       {item.becamePaymentDue && <Chip sx={{ mt: 1 }} color="warning" label="Đã đạt 8/8 · Cần thu" />}
     </CardContent></Card>)}
     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} data-wizard-action>

@@ -39,6 +39,19 @@ M6C: PASS on 21/07/2026. Evidence is in
 M6D: PASS on 21/07/2026. Evidence is in
 `.agent-reports/M6D-production-readiness-implementation.md` and
 `.agent-reports/M6D-production-readiness-verification.md`.
+UIA: PASS on 21/07/2026. Evidence is in
+`.agent-reports/UIA-implementation.md` and
+`.agent-reports/UIA-verification.md`.
+UIB: PASS on 21/07/2026. Evidence is in
+`.agent-reports/UIB-implementation.md`,
+`.agent-reports/UIB-verification.md` and
+`.agent-reports/UIB-visual-review.md`.
+UIC: PASS on 21/07/2026. Evidence is in
+`.agent-reports/UIC-implementation.md` and
+`.agent-reports/UIC-verification.md`.
+UID: PASS on 21/07/2026. Evidence is in
+`.agent-reports/UID-implementation.md` and
+`.agent-reports/UID-verification.md`.
 
 ## Scope boundary
 
@@ -63,5 +76,5 @@ Docker/CI, backup/restore and release documentation.
 - Generic Excel import remains deferred beyond V1 as a separate controlled
   legacy-migration task.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
-- Production-specific public teacher/contact/domain values must replace the
-  fictional source defaults before a real deployment.
+- Production-specific public teacher/contact/domain values must be supplied through
+  the validated `PUBLIC_*` deployment variables before a production build.

@@ -4,6 +4,7 @@ import {
   Card,
   CardContent,
   Chip,
+  Box,
   Stack,
   Typography,
 } from "@mui/material";
@@ -28,6 +29,7 @@ export function StudentsPage() {
     <Stack spacing={2}>
       <PageHeader title="Học sinh" action={<Button component={Link} to="/admin/students/new" startIcon={<Add />} variant="contained">Thêm học sinh</Button>} />
       {error && <Alert severity="warning">{error}</Alert>}
+      <Box data-testid="student-card-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
       {items?.map((item) => (
         <Card
           key={item.id}
@@ -37,7 +39,7 @@ export function StudentsPage() {
         >
           <CardContent>
             <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-              <Typography color="text.primary" sx={{ fontWeight: 800, minWidth: 0, overflowWrap: "anywhere" }}>
+              <Typography color="text.primary" variant="subtitle1" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
                 {item.fullName}
               </Typography>
               <Chip
@@ -61,6 +63,7 @@ export function StudentsPage() {
           </CardContent>
         </Card>
       ))}
+      </Box>
       {items?.length === 0 && <EmptyState message="Chưa có học sinh. Chọn Thêm học sinh để bắt đầu." />}
     </Stack>
   );

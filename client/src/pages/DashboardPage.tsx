@@ -1,5 +1,5 @@
 import { Add, CalendarMonth, CheckCircle, Payments } from "@mui/icons-material";
-import { Alert, Button, Card, CardContent, Grid, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Grid, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { DashboardResponse } from "@teacher/shared";
@@ -45,29 +45,31 @@ export function DashboardPage() {
     <PageHeader title={`Hôm nay · ${displayDate(todayInHoChiMinh())}`} />
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     <Grid container spacing={1.5}>
-      <Grid size={12}><Card component={Link} to="/admin/tuition?status=PAYMENT_DUE" sx={{ display: "block", width: "100%", bgcolor: "#ede7ff", border: "1px solid #c4b5fd", color: "text.primary", textDecoration: "none" }} data-testid="dashboard-tuition-card"><CardContent>
-        <Payments color="primary" /><Typography variant="h5" sx={{ fontWeight: 900 }}>{data?.paymentDueCount ?? 0} chu kỳ cần thu</Typography>
+      <Grid size={{ xs: 12, md: 4 }}><Card component={Link} to="/admin/tuition?status=PAYMENT_DUE" sx={{ display: "block", width: "100%", height: "100%", bgcolor: "#ede7ff", border: "1px solid #c4b5fd", color: "text.primary", textDecoration: "none" }} data-testid="dashboard-tuition-card"><CardContent>
+        <Payments color="primary" /><Typography variant="h6">{data?.paymentDueCount ?? 0} chu kỳ cần thu</Typography>
         <Typography>{(data?.totalUnpaidAmount ?? 0).toLocaleString("vi-VN")}đ chưa thu</Typography>
       </CardContent></Card></Grid>
-      <Grid size={{ xs: 12, sm: 6 }}><Card component={Link} to="/admin/reconciliation" sx={{ display: "block", width: "100%", height: "100%", textDecoration: "none", color: "inherit" }} data-testid="dashboard-unrecorded-card"><CardContent>
-        <CheckCircle color="warning" /><Typography variant="h6" sx={{ fontWeight: 900 }}>{data?.unrecordedCount ?? 0} buổi chưa ghi</Typography><Typography color="text.secondary">Trong 14 ngày gần đây</Typography>
+      <Grid size={{ xs: 12, sm: 6, md: 4 }}><Card component={Link} to="/admin/reconciliation" sx={{ display: "block", width: "100%", height: "100%", textDecoration: "none", color: "inherit" }} data-testid="dashboard-unrecorded-card"><CardContent>
+        <CheckCircle color="warning" /><Typography variant="h6">{data?.unrecordedCount ?? 0} buổi chưa ghi</Typography><Typography variant="body2" color="text.secondary">Trong 14 ngày gần đây</Typography>
       </CardContent></Card></Grid>
-      <Grid size={{ xs: 12, sm: 6 }}><Card component={Link} to="/admin/calendar" sx={{ display: "block", width: "100%", height: "100%", textDecoration: "none", color: "inherit" }}><CardContent>
-        <CalendarMonth color="info" /><Typography variant="h6" sx={{ fontWeight: 900 }}>{todayItems.length} sự kiện hôm nay</Typography><Typography color="text.secondary">Lớp, buổi học và lịch bận</Typography>
+      <Grid size={{ xs: 12, sm: 6, md: 4 }}><Card component={Link} to="/admin/calendar" sx={{ display: "block", width: "100%", height: "100%", textDecoration: "none", color: "inherit" }}><CardContent>
+        <CalendarMonth color="info" /><Typography variant="h6">{todayItems.length} sự kiện hôm nay</Typography><Typography variant="body2" color="text.secondary">Lớp, buổi học và lịch bận</Typography>
       </CardContent></Card></Grid>
     </Grid>
 
-    <Typography sx={{ fontWeight: 900 }}>Thao tác nhanh</Typography>
+    <Typography component="h2" variant="h6">Thao tác nhanh</Typography>
     <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
       <Button startIcon={<Add />} variant="contained" component={Link} to="/admin/lessons/new">Ghi nhận buổi học</Button>
       <Button variant="outlined" component={Link} to="/admin/lessons/new?type=MAKEUP">Buổi học bù</Button>
       <Button variant="outlined" component={Link} to="/admin/busy-slots/new">Thêm lịch bận</Button>
     </Stack>
 
-    <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontWeight: 900 }}>Lịch hôm nay</Typography><Button size="small" component={Link} to="/admin/calendar">Xem lịch tuần</Button></Stack>
+    <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography component="h2" variant="h6">Lịch hôm nay</Typography><Button size="small" component={Link} to="/admin/calendar">Xem lịch tuần</Button></Stack>
     {data && todayItems.length === 0 && <EmptyState message="Hôm nay chưa có lớp, buổi học hoặc lịch bận." />}
-    {todayItems.map((item) => <Card key={item.key} variant="outlined" component={Link} to={item.href} sx={{ textDecoration: "none", color: "inherit" }} data-testid="dashboard-today-event"><CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-      <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}><Stack sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800 }}>{item.title}</Typography><Typography color="text.secondary">{item.time}</Typography></Stack><Typography variant="body2" color="primary" sx={{ fontWeight: 700 }}>{item.label}</Typography></Stack>
-    </CardContent></Card>)}
+    <Box data-testid="dashboard-events" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
+      {todayItems.map((item) => <Card key={item.key} variant="outlined" component={Link} to={item.href} sx={{ textDecoration: "none", color: "inherit" }} data-testid="dashboard-today-event"><CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+        <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}><Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.time}</Typography></Stack><Typography variant="body2" color="primary" sx={{ fontWeight: 600, textAlign: "right" }}>{item.label}</Typography></Stack>
+      </CardContent></Card>)}
+    </Box>
   </Stack>;
 }

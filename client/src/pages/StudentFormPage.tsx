@@ -28,7 +28,7 @@ export function StudentFormPage() {
     } catch (err) { setError(err instanceof Error ? err.message : "Không thể lưu học sinh."); } finally { setSaving(false); }
   };
   if (loading) return <LoadingState />;
-  return <Stack component="form" spacing={2} onSubmit={submit}><Typography variant="h5" sx={{ fontWeight: 900 }}>{editing ? "Sửa học sinh" : "Thêm học sinh"}</Typography>
+  return <Stack component="form" spacing={2} onSubmit={submit} data-testid="bounded-form" sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto" }}><Typography component="h1" variant="h5">{editing ? "Sửa học sinh" : "Thêm học sinh"}</Typography>
     {error && <Alert severity="error">{error}</Alert>}<TextField required label="Họ và tên" value={fullName} onChange={(e) => setFullName(e.target.value)} />
     <TextField label="Tên gọi" value={nickname} onChange={(e) => setNickname(e.target.value)} /><TextField type="date" label="Ngày sinh" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
     <TextField label="Tên phụ huynh" value={parentName} onChange={(e) => setParentName(e.target.value)} /><TextField label="Số điện thoại phụ huynh" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />

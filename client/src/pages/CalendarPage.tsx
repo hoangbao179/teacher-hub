@@ -1,5 +1,5 @@
 import { Add, ChevronLeft, ChevronRight } from "@mui/icons-material";
-import { Alert, Button, Card, CardContent, Chip, IconButton, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, IconButton, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ReconciliationState, WeekScheduleResponse } from "@teacher/shared";
@@ -73,14 +73,16 @@ export function CalendarPage() {
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     {!data && !error && <LoadingCards />}
     {data && grouped.length === 0 && <EmptyState message="Tuần này chưa có lịch dự kiến, buổi học hoặc lịch bận." />}
+    <Box data-testid="calendar-day-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 2, alignItems: "start" }}>
     {grouped.map(([date, items]) => <Stack key={date} spacing={1} data-testid="calendar-day">
-      <Typography sx={{ fontWeight: 900, mt: 1 }}>{displayDate(date)}</Typography>
+      <Typography variant="h6" sx={{ mt: 1 }}>{displayDate(date)}</Typography>
       {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: `${item.color}.main` }} data-testid="calendar-event">
         <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
-          <Stack sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800 }}>{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}</Typography></Stack>
+          <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}</Typography></Stack>
           <Chip size="small" color={item.color} label={item.subtitle} />
         </Stack></CardContent>
       </Card>)}
     </Stack>)}
+    </Box>
   </Stack>;
 }

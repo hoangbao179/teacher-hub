@@ -29,6 +29,8 @@
     "db:backup": "node scripts/backup-db.mjs",
     "db:restore": "node scripts/restore-db.mjs",
     "check:repo": "node scripts/check-repo.mjs",
+    "package:source": "node scripts/package-source.mjs",
+    "check:package": "node scripts/check-package.mjs",
     "check:fast": "npm run typecheck && npm run lint && npm run test && npm run build",
     "check:full": "npm run check",
     "verify": "npm run check",

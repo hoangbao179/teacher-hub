@@ -41,7 +41,7 @@ export function LoginPage() {
         onSubmit={submit}
         sx={{ p: 3, width: "100%", maxWidth: 420 }}
       >
-        <Typography id="login-title" component="h1" variant="h5" sx={{ fontWeight: 800 }}>
+        <Typography id="login-title" component="h1" variant="h5">
           Đăng nhập cô giáo
         </Typography>
         {error && (

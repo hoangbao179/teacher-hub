@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, document, localStorage, URL */
+/* global process, fetch, setTimeout, console, document, localStorage, URL, getComputedStyle */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -101,10 +101,28 @@ try {
 
   await page.goto(`http://127.0.0.1:5175/admin/lessons/new?classId=${group.id}`);
   await page.getByText("Thông tin buổi học", { exact: true }).first().waitFor();
+  const lessonTypography = await page.evaluate(async () => {
+    await document.fonts.ready;
+    const titleStyle = getComputedStyle(document.querySelector("h1"));
+    return {
+      fontLoaded: document.fonts.check('400 16px "Be Vietnam Pro"'),
+      family: getComputedStyle(document.body).fontFamily,
+      titleSize: titleStyle.fontSize,
+      titleWeight: titleStyle.fontWeight,
+      rawEnums: document.body.innerText.match(/\b(ACTIVE|PRESENT|ABSENT|FREE|REGULAR|MAKEUP|EXTRA|DRAFT|COMPLETED)\b/g) ?? [],
+    };
+  });
+  if (!lessonTypography.fontLoaded || !lessonTypography.family.includes("Be Vietnam Pro")) throw new Error(`Lesson wizard font is not loaded: ${JSON.stringify(lessonTypography)}`);
+  if (lessonTypography.titleSize !== "21px" || lessonTypography.titleWeight !== "700") throw new Error(`Unexpected lesson title typography: ${JSON.stringify(lessonTypography)}`);
+  if (lessonTypography.rawEnums.length) throw new Error(`Lesson wizard exposes raw enum labels: ${lessonTypography.rawEnums.join(", ")}`);
   await page.locator('input[type="time"]').nth(3).fill("20:00");
+  await page.waitForTimeout(150);
   await noHorizontalScroll(page);
   const sticky = await page.getByRole("button", { name: "Lưu và tiếp tục" }).boundingBox();
   if (!sticky || sticky.y + sticky.height > 844) throw new Error("Sticky primary action is outside mobile viewport");
+  const mobileNavigation = await page.getByTestId("mobile-navigation").boundingBox();
+  const stickyBar = await page.getByTestId("sticky-action-bar").boundingBox();
+  if (!mobileNavigation || !stickyBar || stickyBar.y + stickyBar.height > mobileNavigation.y) throw new Error("Sticky primary action overlaps mobile navigation");
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
   await page.getByText("Học sinh Mẫu Một").waitFor();
   const secondCard = page.locator(".MuiCard-root").filter({ hasText: "Học sinh Mẫu Hai" });

@@ -52,11 +52,27 @@ services:
       start_period: 20s
   web:
     build:
-      {
-        context: .,
-        dockerfile: Dockerfile.web,
-        args: { VITE_API_BASE_URL: "" },
-      }
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        VITE_API_BASE_URL: ""
+        VITE_PUBLIC_CONTENT_MODE: production
+        VITE_PUBLIC_SITE_URL: ${PUBLIC_URL:?required}
+        VITE_PUBLIC_TEACHER_NAME: ${PUBLIC_TEACHER_NAME:?required}
+        VITE_PUBLIC_BRAND_NAME: ${PUBLIC_BRAND_NAME:?required}
+        VITE_PUBLIC_SUBJECT_LINE: ${PUBLIC_SUBJECT_LINE:?required}
+        VITE_PUBLIC_DESCRIPTION: ${PUBLIC_DESCRIPTION:?required}
+        VITE_PUBLIC_INTRODUCTION: ${PUBLIC_INTRODUCTION:?required}
+        VITE_PUBLIC_ZALO_URL: ${PUBLIC_ZALO_URL:?required}
+        VITE_PUBLIC_PHONE_DISPLAY: ${PUBLIC_PHONE_DISPLAY:?required}
+        VITE_PUBLIC_PHONE_E164: ${PUBLIC_PHONE_E164:?required}
+        VITE_PUBLIC_FACEBOOK_URL: ${PUBLIC_FACEBOOK_URL:?required}
+        VITE_PUBLIC_HERO_MOBILE_URL: ${PUBLIC_HERO_MOBILE_URL:?required}
+        VITE_PUBLIC_HERO_DESKTOP_URL: ${PUBLIC_HERO_DESKTOP_URL:?required}
+        VITE_PUBLIC_VIDEOS_JSON: ${PUBLIC_VIDEOS_JSON:?required}
+        VITE_PUBLIC_TESTIMONIALS_JSON: ${PUBLIC_TESTIMONIALS_JSON:?required}
+        VITE_PUBLIC_SEO_TITLE: ${PUBLIC_SEO_TITLE:?required}
+        VITE_PUBLIC_SEO_DESCRIPTION: ${PUBLIC_SEO_DESCRIPTION:?required}
     restart: unless-stopped
     depends_on:
       api: { condition: service_healthy }

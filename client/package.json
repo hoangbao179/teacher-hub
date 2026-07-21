@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "validate:public": "node scripts/validate-public-config.mjs",
+    "validate:public:self-test": "node scripts/validate-public-config.mjs --self-test",
+    "build:production": "npm run validate:public && tsc && vite build --mode production",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --max-warnings 0",
     "test:e2e": "node scripts/public-homepage.e2e.mjs && node scripts/browser-smoke.mjs && node scripts/lesson-wizard.e2e.mjs && node scripts/tuition-management.e2e.mjs && node scripts/schedule-operations.e2e.mjs",
@@ -14,6 +17,7 @@
   "dependencies": {
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
+    "@fontsource/be-vietnam-pro": "5.3.0",
     "@mui/icons-material": "9.2.0",
     "@mui/material": "9.2.0",
     "@teacher/shared": "0.1.0",

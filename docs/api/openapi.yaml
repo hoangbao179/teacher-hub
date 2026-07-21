@@ -617,7 +617,7 @@ components:
           allOf: [{$ref: '#/components/schemas/AttendanceInput'}]
     LessonDetail:
       type: object
-      required: [id, classId, className, sessionDate, scheduledStartTime, scheduledEndTime, lessonType, status, participants]
+      required: [id, classId, className, sessionDate, scheduledStartTime, scheduledEndTime, lessonType, status, completedAt, participants]
       properties:
         id: {type: integer, format: int64}
         classId: {type: integer, format: int64}
@@ -630,6 +630,7 @@ components:
         actualDurationMinutes: {type: integer, nullable: true}
         lessonType: {$ref: '#/components/schemas/LessonType'}
         status: {$ref: '#/components/schemas/LessonStatus'}
+        completedAt: {type: string, format: date-time, nullable: true, description: Persisted completion time; null while not completed}
         content: {type: string, nullable: true}
         homework: {type: string, nullable: true}
         note: {type: string, nullable: true}
@@ -644,15 +645,19 @@ components:
       properties:
         data:
           type: object
-          required: [lessonId, lesson, actualDurationMinutes, presentCount, absentCount, freeCount, tuitionImpacts]
+          required: [lessonId, completedAt, attendanceCount, newlyDueCycles, lesson, actualDurationMinutes, presentCount, absentCount, freeCount, tuitionImpacts, recalculationConflict]
           properties:
             lessonId: {type: integer, format: int64}
+            completedAt: {type: string, format: date-time, description: Persisted completion time returned unchanged on idempotent replay}
+            attendanceCount: {type: integer}
+            newlyDueCycles: {type: array, items: {type: object}}
             lesson: {$ref: '#/components/schemas/LessonDetail'}
             actualDurationMinutes: {type: integer}
             presentCount: {type: integer}
             absentCount: {type: integer}
             freeCount: {type: integer}
             tuitionImpacts: {type: array, items: {type: object}}
+            recalculationConflict: {type: object, nullable: true}
     TuitionCycleStatus: {type: string, enum: [ACCUMULATING, PAYMENT_DUE, PAID, INCOMPLETE, CANCELLED]}
     TuitionCycleListItem:
       type: object
