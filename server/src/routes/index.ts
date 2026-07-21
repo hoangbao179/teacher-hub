@@ -3,6 +3,7 @@ import { controllers } from "../container";
 import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/async-handler";
 import { loginRateLimit } from "../middleware/login-rate-limit";
+import { uploadLegacyWorkbook } from "../middleware/legacy-import-upload";
 
 export function createRouter(): Router {
   const router = Router();
@@ -34,6 +35,11 @@ export function createRouter(): Router {
   router.get("/api/students/:id", asyncHandler(controllers.students.detail));
   router.patch("/api/students/:id", asyncHandler(controllers.students.update));
   router.get("/api/students/:studentId/export.xlsx", asyncHandler(controllers.studentReports.export));
+  router.post(
+    "/api/students/:studentId/legacy-imports/preview",
+    uploadLegacyWorkbook,
+    asyncHandler(controllers.legacyImports.preview),
+  );
   router.post("/api/enrollments/:id/pause", asyncHandler(controllers.enrollments.pause));
   router.post("/api/enrollments/:id/resume", asyncHandler(controllers.enrollments.resume));
   router.post("/api/enrollments/:id/end", asyncHandler(controllers.enrollments.end));

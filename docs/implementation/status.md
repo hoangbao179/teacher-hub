@@ -104,11 +104,17 @@ existing tuition and PAID-boundary rules.
 
 ## Known limitations
 
-- Generic Excel import remains deferred beyond V1 as a separate controlled
-  legacy-migration task.
+- Apply legacy Excel vào dữ liệu nghiệp vụ vẫn được tách sang V16B; V16A đã có
+  parser, preview và audit reconciliation nhưng không ghi database.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production-specific public teacher/contact/domain values must be supplied through
   the validated `PUBLIC_*` deployment variables before a production build.
+
+## V16A
+
+Đã triển khai preview workbook lịch sử theo từng học sinh: parser hai sheet,
+chuẩn hóa ngày thiếu năm, đối soát lesson/học phí, chia năm học và mô phỏng gói
+8 buổi. Endpoint chỉ đọc file tạm đã xác thực, không tạo lesson/class/enrollment/tuition.
 
 ## V15
 

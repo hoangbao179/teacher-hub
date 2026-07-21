@@ -88,6 +88,26 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
         '413': {description: Báo cáo vượt giới hạn 5.000 dòng}
+  /api/students/{studentId}/legacy-imports/preview:
+    post:
+      summary: Phân tích và đối soát workbook lịch sử của một học sinh, không ghi dữ liệu nghiệp vụ
+      parameters:
+        - {in: path, name: studentId, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary, description: File XLSX tối đa 10 MB}
+      responses:
+        '200': {description: Preview-only, content: {application/json: {schema: {$ref: '#/components/schemas/LegacyImportPreviewEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '413': {description: File vượt quá 10 MB}
   /api/enrollments/{id}/pause:
     post: {summary: Tạm dừng ghi danh theo ngày hiệu lực, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã tạm dừng}}}
   /api/enrollments/{id}/resume:
@@ -894,6 +914,31 @@ components:
             paidCycleCount: {type: integer}
             from: {type: string, format: date, nullable: true}
             to: {type: string, format: date, nullable: true}
+    LegacyImportPreviewEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [mode, student, file, lessons, tuitionRows, paymentEvents, tuitionCycles, academicPeriods, classCandidates, summary, warnings]
+          properties:
+            mode: {type: string, enum: [PREVIEW_ONLY]}
+            student: {type: object}
+            file:
+              type: object
+              required: [name, size, sha256]
+              properties:
+                name: {type: string}
+                size: {type: integer, maximum: 10485760}
+                sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+            lessons: {type: array, items: {type: object}}
+            tuitionRows: {type: array, items: {type: object}}
+            paymentEvents: {type: array, items: {type: object}}
+            tuitionCycles: {type: array, items: {type: object}}
+            academicPeriods: {type: array, items: {type: object}}
+            classCandidates: {type: array, items: {type: object}}
+            summary: {type: object}
+            warnings: {type: array, items: {type: string}}
     ErrorEnvelope:
       type: object
       required: [error]

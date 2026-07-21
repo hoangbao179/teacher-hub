@@ -25,6 +25,8 @@ import { StudentService } from "./services/student.service";
 import { TuitionService } from "./services/tuition.service";
 import { StudentReportService } from "./services/student-report.service";
 import { EnrollmentService } from "./services/enrollment.service";
+import { LegacyImportController } from "./controllers/legacy-import.controller";
+import { LegacyImportService } from "./services/legacy-import.service";
 
 const users = new UserRepository();
 const classes = new ClassRepository();
@@ -44,6 +46,7 @@ const scheduleService = new ScheduleService(schedules, lessonService);
 const dashboardService = new DashboardService(tuition, schedules);
 const enrollmentService = new EnrollmentService(enrollments);
 const studentReportService = new StudentReportService(studentReports);
+const legacyImportService = new LegacyImportService(studentService, classService);
 
 export const controllers = {
   health: new HealthController(),
@@ -56,4 +59,5 @@ export const controllers = {
   dashboard: new DashboardController(dashboardService),
   enrollments: new EnrollmentController(enrollmentService),
   studentReports: new StudentReportController(studentReportService),
+  legacyImports: new LegacyImportController(legacyImportService),
 };

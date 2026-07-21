@@ -18,7 +18,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import type { ClassListItem, IncompleteCycleAction, PaymentMethod, StudentDetail, TuitionMode } from "@teacher/shared";
-import { Download } from "@mui/icons-material";
+import { Download, UploadFile } from "@mui/icons-material";
 import { api } from "../api/client";
 import { downloadStudentReport, endEnrollment as endEnrollmentApi, transferEnrollment } from "../api/students";
 import { createAdvanceReceipt } from "../api/tuition";
@@ -115,6 +115,9 @@ export function StudentDetailPage() {
         <Button component={Link} to={`/admin/students/${item!.id}/edit`} variant="outlined">Sửa thông tin</Button>
         <Button startIcon={<Download />} variant="contained" disabled={busy} onClick={exportReport}>
           {busy ? "Đang tạo báo cáo…" : "Xuất báo cáo Excel"}
+        </Button>
+        <Button component={Link} to={`/admin/students/${item!.id}/legacy-import`} startIcon={<UploadFile />} variant="outlined">
+          Import lịch sử
         </Button>
       </Stack>
       <Card>
