@@ -50,6 +50,26 @@ Hãy đổi password trước khi dùng thật.
 `npm run db:reset:dev` xóa toàn bộ business data trên MySQL cục bộ nhưng giữ
 `users` và `schema_migrations`; không chạy lệnh này với dữ liệu cần giữ.
 
+## Cấu hình nội dung công khai của cô Vy
+
+`client/src/content/publicHome.ts` là nguồn duy nhất cho branding, chương trình
+Tiếng Anh lớp 1–9, phương pháp, media, video, phản hồi, liên hệ và SEO. Các giá trị
+theo deployment được khai báo bằng `VITE_PUBLIC_*` theo `client/.env.example`.
+
+Các giá trị liên hệ/domain trong file example là placeholder phát triển và luôn
+được gắn nhãn trên Homepage. Trước khi build production, cung cấp số điện thoại,
+Zalo, Facebook và domain thật; đồng bộ domain đó vào `client/public/sitemap.xml`
+và `client/public/robots.txt`, sau đó chạy:
+
+```bash
+npm -w client run validate:public
+npm -w client run build:production
+```
+
+Validator production từ chối domain/số điện thoại/liên hệ mẫu và nội dung phản
+hồi “minh họa”. Không đặt secret vào biến `VITE_*` vì mọi giá trị này được nhúng
+vào trình duyệt.
+
 ## Trước khi code tính năng
 
 1. Đọc `AGENTS.md`.

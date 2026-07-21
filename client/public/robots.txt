@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin
 
-Sitemap: https://teacher-class-hub.example/sitemap.xml
+Sitemap: https://configure-public-domain.invalid/sitemap.xml

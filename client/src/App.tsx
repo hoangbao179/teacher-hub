@@ -32,13 +32,20 @@ function Protected() {
     <Navigate to="/admin/login" replace state={{ from: location.pathname + location.search }} />
   );
 }
+function GuestOnly() {
+  const { user, bootstrapping } = useAuth();
+  if (bootstrapping) return <LoadingState />;
+  return user ? <Navigate to="/admin" replace /> : <Outlet />;
+}
 export function App() {
   return (
     <Suspense fallback={<LoadingState />}>
       <RouteMetadata />
       <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/admin/login" element={<LoginPage />} />
+      <Route element={<GuestOnly />}>
+        <Route path="/admin/login" element={<LoginPage />} />
+      </Route>
       <Route element={<Protected />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<DashboardPage />} />

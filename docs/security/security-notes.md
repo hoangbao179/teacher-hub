@@ -7,8 +7,10 @@
 - Request IDs và JSON logs chỉ ghi method/path/status/duration/error class; không ghi
   token, password, request body, lesson notes hay workbook.
 - Production rejects missing DB fields, non-HTTPS public CORS, wrong timezone and weak JWT.
-- JWT trong localStorage vẫn chịu rủi ro XSS; CSP/Helmet, không chèn HTML tùy ý và one-admin
-  scope giảm bề mặt nhưng không thay thế rotation/revocation tập trung.
+- JWT trong Web Storage (localStorage khi ghi nhớ, sessionStorage nếu không) vẫn chịu rủi
+  ro XSS; CSP/Helmet, không chèn HTML tùy ý và one-admin scope giảm bề mặt nhưng không thay
+  thế rotation/revocation tập trung. Ứng dụng chỉ lưu token/email theo lựa chọn, tuyệt đối
+  không lưu mật khẩu thô; việc lưu mật khẩu thuộc trình quản lý mật khẩu của trình duyệt.
 - Nginx phục vụ web đặt CSP chỉ cho phép asset/API cùng origin, thumbnail
   `https://i.ytimg.com` và iframe `https://www.youtube-nocookie.com`; `style-src
   'unsafe-inline'` hiện cần cho Emotion/MUI, còn script inline không được phép.

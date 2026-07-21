@@ -22,68 +22,75 @@ const parseArray = <T>(raw: string | undefined, fallback: T[]): T[] => {
 
 const defaultVideos: PublicVideo[] = [
   {
-    title: "Một cách trực quan để hiểu phân số",
-    description: "Video học tập tham khảo dành cho phụ huynh và học sinh.",
-    url: "https://www.youtube.com/watch?v=U2ovEuEUxXQ",
-  },
-  {
-    title: "Rèn tư duy giải quyết bài toán",
-    description: "Gợi ý cách đọc đề, chia bước và kiểm tra kết quả.",
-    url: "https://youtu.be/QrJ-KfLzngQ",
+    title: "Từ vựng tiếng Anh qua ngữ cảnh",
+    description: "Video tham khảo giúp học sinh nhỏ tuổi nghe, nhắc lại và ghi nhớ từ mới trong tình huống gần gũi.",
+    url: "https://www.youtube.com/watch?v=H6SSRhF9K3A",
   },
 ];
 
 const defaultTestimonials: PublicTestimonial[] = [
   {
-    quote: "Con chủ động làm bài hơn và biết nói rõ phần mình chưa hiểu. Gia đình dễ theo dõi tiến bộ sau mỗi buổi.",
-    attribution: "Phụ huynh học sinh lớp 5 (minh họa)",
-  },
-  {
-    quote: "Cách hướng dẫn nhẹ nhàng nhưng có kế hoạch rõ ràng giúp con tự tin hơn khi học Toán.",
-    attribution: "Phụ huynh học sinh THCS (minh họa)",
+    quote: "Khu vực này chỉ minh họa cách hiển thị phản hồi. Nội dung thật cần được phụ huynh đồng ý trước khi đăng.",
+    attribution: "Nội dung minh họa — chưa phải phản hồi thực tế",
   },
 ];
 
 export const isDemoContent = import.meta.env.VITE_PUBLIC_CONTENT_MODE !== "production";
-const publicSiteUrl = value("VITE_PUBLIC_SITE_URL", "https://teacher-class-hub.example").replace(/\/$/, "");
-const phoneDisplay = value("VITE_PUBLIC_PHONE_DISPLAY", "0900 000 000");
-const phoneE164 = value("VITE_PUBLIC_PHONE_E164", "+84900000000");
+const publicSiteUrl = value("VITE_PUBLIC_SITE_URL", "https://configure-public-domain.invalid").replace(/\/$/, "");
+const phoneDisplay = value("VITE_PUBLIC_PHONE_DISPLAY", "Chưa cấu hình");
+const phoneE164 = value("VITE_PUBLIC_PHONE_E164", "+84000000000");
 
 /**
- * Public-only configuration. Demo fallbacks are visibly labeled by HomePage and
- * are rejected by `npm -w client run build:production`.
+ * Source of truth for every deployment-specific public value. Development
+ * fallbacks are visibly labeled on the Homepage and rejected by production
+ * validation. VITE_* values are public browser configuration, never secrets.
  */
 export const publicHomeContent = {
   siteUrl: publicSiteUrl,
-  teacherName: value("VITE_PUBLIC_TEACHER_NAME", "Cô giáo An"),
-  brandName: value("VITE_PUBLIC_BRAND_NAME", "Lớp học cùng cô An"),
-  subjectLine: value("VITE_PUBLIC_SUBJECT_LINE", "Học chắc nền tảng, tiến bộ bền vững mỗi ngày"),
-  description: value("VITE_PUBLIC_DESCRIPTION", "Đồng hành cùng học sinh tiểu học và trung học cơ sở bằng lộ trình rõ ràng, bài học dễ hiểu và phản hồi sát sao sau từng buổi."),
-  introduction: value("VITE_PUBLIC_INTRODUCTION", "Mỗi học sinh có một nhịp học riêng. Cô theo sát năng lực, giúp con hiểu bản chất và hình thành thói quen tự học thay vì chỉ ghi nhớ đáp án."),
-  hero: {
-    mobileUrl: value("VITE_PUBLIC_HERO_MOBILE_URL", "/images/teacher-hero-720.webp"),
-    desktopUrl: value("VITE_PUBLIC_HERO_DESKTOP_URL", "/images/teacher-hero-1440.webp"),
+  teacherName: value("VITE_PUBLIC_TEACHER_NAME", "Cô Vy"),
+  brandName: value("VITE_PUBLIC_BRAND_NAME", "Lớp học cô Vy"),
+  subject: "Tiếng Anh",
+  levels: "Lớp 1–9",
+  heroHeading: value("VITE_PUBLIC_HERO_HEADING", "Tiếng Anh vững nền tảng, tự tin tiến bộ mỗi ngày"),
+  heroDescription: value("VITE_PUBLIC_DESCRIPTION", "Kèm cặp 1–1 và lớp nhóm nhỏ, bám sát năng lực từng học sinh."),
+  introduction: value("VITE_PUBLIC_INTRODUCTION", "Cô Vy đồng hành cùng học sinh từ lớp 1 đến lớp 9 theo mục tiêu phù hợp: xây nền, củng cố phần còn yếu và bám sát chương trình trên trường."),
+  media: {
+    heroMobile: value("VITE_PUBLIC_HERO_MOBILE_URL", "/images/teacher-english-hero-720.jpg"),
+    heroDesktop: value("VITE_PUBLIC_HERO_DESKTOP_URL", "/images/teacher-english-hero-1440.jpg"),
+    ogImage: value("VITE_PUBLIC_OG_IMAGE_URL", "/images/teacher-english-hero-1440.jpg"),
   },
   contact: {
-    zaloUrl: value("VITE_PUBLIC_ZALO_URL", "https://zalo.me/0900000000"),
+    zaloUrl: value("VITE_PUBLIC_ZALO_URL", "https://zalo.me/84000000000"),
     phoneDisplay,
     phoneHref: `tel:${phoneE164}`,
-    facebookUrl: value("VITE_PUBLIC_FACEBOOK_URL", "https://www.facebook.com/"),
+    facebookUrl: value("VITE_PUBLIC_FACEBOOK_URL", "https://www.facebook.com/chua-cau-hinh-co-vy"),
   },
   methods: [
-    { title: "Dễ hiểu và thực tế", detail: "Giải thích từ gốc, liên hệ ví dụ gần gũi và kiểm tra lại ngay trong buổi học." },
-    { title: "Thực hành có mục tiêu", detail: "Bài tập vừa sức, tăng dần độ khó và tập trung đúng phần con còn vướng." },
-    { title: "Phản hồi liên tục", detail: "Theo dõi từng buổi, nhận xét rõ điểm tiến bộ và nội dung cần củng cố." },
+    { title: "Bám sát năng lực", detail: "Xác định phần kiến thức còn hổng và chọn nhịp học phù hợp với từng học sinh." },
+    { title: "Học để sử dụng", detail: "Kết hợp phát âm, từ vựng, mẫu câu và ngữ pháp trong bài tập có ngữ cảnh." },
+    { title: "Củng cố đều đặn", detail: "Ôn lại kiến thức, luyện kỹ năng và phản hồi rõ nội dung cần tiếp tục rèn." },
   ],
   programs: [
-    { level: "Tiểu học", title: "Xây nền Toán vững", detail: "Hiểu số, phép tính và tư duy giải bài toán có lời văn." },
-    { level: "THCS", title: "Bám sát và mở rộng", detail: "Củng cố kiến thức trên lớp, rèn phương pháp trình bày và tự kiểm tra." },
-    { level: "Cá nhân hóa", title: "1 kèm 1 hoặc lớp nhóm nhỏ", detail: "Lộ trình phù hợp năng lực và mục tiêu của từng học sinh." },
+    {
+      level: "Tiếng Anh lớp 1–5",
+      title: "Phát âm, phonics và xây nền",
+      detail: "Làm quen âm, từ vựng và mẫu câu; xây nền đọc, nghe và phản xạ phù hợp với lứa tuổi.",
+    },
+    {
+      level: "Tiếng Anh lớp 6–9",
+      title: "Bám sát chương trình trên trường",
+      detail: "Củng cố từ vựng, ngữ pháp, đọc hiểu và viết; hệ thống kiến thức để ôn kiểm tra.",
+    },
+    {
+      level: "Kèm cặp và ôn thi",
+      title: "Theo mục tiêu của từng học sinh",
+      detail: "Hỗ trợ học sinh mất gốc, kèm cặp 1–1 hoặc lớp nhóm nhỏ, củng cố kiến thức và ôn thi Nguyễn Tri Phương theo năng lực từng em.",
+    },
   ],
   videos: parseArray<PublicVideo>(import.meta.env.VITE_PUBLIC_VIDEOS_JSON, defaultVideos),
   testimonials: parseArray<PublicTestimonial>(import.meta.env.VITE_PUBLIC_TESTIMONIALS_JSON, defaultTestimonials),
   seo: {
-    title: value("VITE_PUBLIC_SEO_TITLE", "Cô giáo An | Học Toán chắc nền tảng, tiến bộ bền vững"),
-    description: value("VITE_PUBLIC_SEO_DESCRIPTION", "Lớp Toán 1 kèm 1 và nhóm nhỏ cho học sinh tiểu học, THCS với lộ trình cá nhân hóa và phản hồi sát sao."),
+    title: value("VITE_PUBLIC_SEO_TITLE", "Lớp học tiếng Anh cô Vy | Tiếng Anh lớp 1–9"),
+    description: value("VITE_PUBLIC_SEO_DESCRIPTION", "Kèm cặp tiếng Anh 1–1 và lớp nhóm nhỏ cho học sinh lớp 1–9, củng cố kiến thức, bám sát chương trình và ôn thi Nguyễn Tri Phương."),
   },
 } as const;

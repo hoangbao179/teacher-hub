@@ -24,19 +24,19 @@ export function RouteMetadata() {
     if (!canonical.parentElement) document.head.append(canonical);
 
     document.documentElement.lang = "vi";
-    document.title = isPublicHome ? publicHomeContent.seo.title : "Quản trị | Teacher Class Hub";
+    document.title = isPublicHome ? publicHomeContent.seo.title : `Quản trị | ${publicHomeContent.brandName}`;
     setMeta("description", isPublicHome ? publicHomeContent.seo.description : "Khu vực quản trị riêng của giáo viên.");
     setMeta("robots", isPublicHome ? "index,follow,max-image-preview:large" : "noindex,nofollow,noarchive");
     setMeta("og:title", publicHomeContent.seo.title, true);
     setMeta("og:description", publicHomeContent.seo.description, true);
     setMeta("og:type", "website", true);
     setMeta("og:url", `${publicHomeContent.siteUrl}/`, true);
-    setMeta("og:image", `${publicHomeContent.siteUrl}/images/teacher-hero-1440.webp`, true);
+    setMeta("og:image", `${publicHomeContent.siteUrl}${publicHomeContent.media.ogImage}`, true);
     setMeta("og:locale", "vi_VN", true);
     setMeta("twitter:card", "summary_large_image");
     setMeta("twitter:title", publicHomeContent.seo.title);
     setMeta("twitter:description", publicHomeContent.seo.description);
-    setMeta("twitter:image", `${publicHomeContent.siteUrl}/images/teacher-hero-1440.webp`);
+    setMeta("twitter:image", `${publicHomeContent.siteUrl}${publicHomeContent.media.ogImage}`);
 
     const existing = document.getElementById("public-person-structured-data");
     if (isPublicHome) {
@@ -48,8 +48,8 @@ export function RouteMetadata() {
         "@type": "Person",
         name: publicHomeContent.teacherName,
         url: `${publicHomeContent.siteUrl}/`,
-        jobTitle: "Giáo viên",
-        description: publicHomeContent.description,
+        jobTitle: "Giáo viên Tiếng Anh",
+        description: publicHomeContent.heroDescription,
       });
       if (!script.parentElement) document.head.append(script);
     } else {
@@ -59,4 +59,3 @@ export function RouteMetadata() {
 
   return null;
 }
-

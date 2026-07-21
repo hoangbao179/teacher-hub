@@ -1,4 +1,5 @@
 import type { ApiEnvelope } from "@teacher/shared";
+import { clearToken, getToken } from "../auth/authStorage";
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 let unauthorizedHandler: (() => void) | null = null;
@@ -28,7 +29,7 @@ export async function apiEnvelope<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<ApiEnvelope<T>> {
-  const token = localStorage.getItem("teacher-token");
+  const token = getToken();
   let response: Response;
   try {
     response = await fetch(`${baseUrl}${path}`, {
@@ -42,8 +43,8 @@ export async function apiEnvelope<T>(
   } catch {
     throw new ApiError(0, "NETWORK_ERROR", "Không thể kết nối máy chủ. Kiểm tra mạng rồi thử lại.");
   }
-  if (response.status === 401) {
-    localStorage.removeItem("teacher-token");
+  if (response.status === 401 && path !== "/api/auth/login") {
+    clearToken();
     unauthorizedHandler?.();
   }
   if (response.status === 204) return { data: undefined as T };
@@ -60,7 +61,7 @@ export async function apiEnvelope<T>(
 }
 
 export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string }> {
-  const token = localStorage.getItem("teacher-token");
+  const token = getToken();
   let response: Response;
   try {
     response = await fetch(`${baseUrl}${path}`, {
@@ -70,7 +71,7 @@ export async function apiDownload(path: string): Promise<{ blob: Blob; filename:
     throw new ApiError(0, "NETWORK_ERROR", "Không thể kết nối máy chủ để tải báo cáo. Vui lòng thử lại.");
   }
   if (response.status === 401) {
-    localStorage.removeItem("teacher-token");
+    clearToken();
     unauthorizedHandler?.();
   }
   if (!response.ok) {

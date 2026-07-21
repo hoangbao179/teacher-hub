@@ -121,15 +121,15 @@ export function HomePage() {
       <Box component="main">
         <Box component="section" aria-labelledby="hero-heading" sx={{ position: "relative", minHeight: { xs: 610, sm: 620 }, display: "grid", alignItems: "end", color: "white", bgcolor: "#24173f" }}>
           <Box component="picture" sx={{ position: "absolute", inset: 0 }}>
-            <source media="(max-width: 720px)" srcSet={content.hero.mobileUrl} />
-            <Box component="img" src={content.hero.desktopUrl} alt={`${content.teacherName} chuẩn bị bài giảng tại bàn học`} width="1440" height="900" fetchPriority="high" sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: { xs: "62% center", md: "center" } }} />
+            <source media="(max-width: 720px)" srcSet={content.media.heroMobile} />
+            <Box component="img" src={content.media.heroDesktop} alt="Góc học tập tiếng Anh với sách, thẻ từ và đồ dùng học tập" width="1440" height="900" fetchPriority="high" sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
           </Box>
           <Box aria-hidden="true" sx={{ position: "absolute", inset: 0, background: { xs: "linear-gradient(0deg,rgba(22,12,42,.94) 5%,rgba(22,12,42,.45) 68%,rgba(22,12,42,.15))", md: "linear-gradient(90deg,rgba(22,12,42,.92),rgba(22,12,42,.54) 47%,rgba(22,12,42,.08) 75%)" } }} />
           <Container maxWidth="lg" sx={{ position: "relative", pb: { xs: 6, sm: 9 }, pt: 12 }}>
             <Box sx={{ maxWidth: 610 }}>
-              <Typography color="#e8ddff" sx={{ fontWeight: 700 }}>{content.teacherName}</Typography>
-              <Typography id="hero-heading" component="h1" sx={{ fontSize: { xs: "2.15rem", sm: "3.25rem" }, lineHeight: 1.08, fontWeight: 800, mt: 1 }}>{content.subjectLine}</Typography>
-              <Typography sx={{ mt: 2, fontSize: { xs: "0.95rem", sm: "1.08rem" }, maxWidth: 560 }}>{content.description}</Typography>
+              <Typography color="#e8ddff" sx={{ fontWeight: 700 }}>{content.teacherName} · {content.subject} {content.levels}</Typography>
+              <Typography id="hero-heading" component="h1" sx={{ fontSize: { xs: "2.05rem", sm: "3.25rem" }, lineHeight: 1.08, fontWeight: 800, mt: 1 }}>{content.heroHeading}</Typography>
+              <Typography sx={{ mt: 2, fontSize: { xs: "0.95rem", sm: "1.08rem" }, maxWidth: 560 }}>{content.heroDescription}</Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 3, alignItems: "stretch" }}>
                 <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" endIcon={<ArrowForward />}>Nhắn Zalo cho cô</Button>
                 <Button component="a" href={content.contact.phoneHref} variant="outlined" size="large" startIcon={<Phone />} sx={{ color: "white", borderColor: "rgba(255,255,255,.72)", "&:hover": { borderColor: "white", bgcolor: "rgba(255,255,255,.08)" } }}>Gọi {content.contact.phoneDisplay}</Button>
@@ -140,11 +140,11 @@ export function HomePage() {
 
         <Container maxWidth="lg">
           <Box component="section" id="about" aria-labelledby="about-heading" sx={sectionSx}>
-            <Typography variant="overline" color="primary">VỀ CÔ GIÁO</Typography>
-            <Typography id="about-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Học đúng cách trước khi học thật nhiều</Typography>
+            <Typography variant="overline" color="primary">GIỚI THIỆU CÔ VY</Typography>
+            <Typography id="about-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Đồng hành theo năng lực từng học sinh</Typography>
             <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 760 }}>{content.introduction}</Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 4 }}>
-              {["Theo sát năng lực", "Lộ trình rõ ràng", "Phản hồi sau từng buổi"].map((item) => (
+              {["Kèm cặp 1–1", "Lớp nhóm nhỏ", "Củng cố kiến thức"].map((item) => (
                 <Stack key={item} direction="row" spacing={1} sx={{ flex: 1, alignItems: "center" }}><CheckCircleOutlined color="success" /><Typography variant="subtitle2">{item}</Typography></Stack>
               ))}
             </Stack>
@@ -153,25 +153,25 @@ export function HomePage() {
 
         <Box sx={{ bgcolor: "#f7f5ff" }}>
           <Container maxWidth="lg">
-            <Box component="section" id="method" aria-labelledby="method-heading" sx={sectionSx}>
-              <Typography variant="overline" color="primary">PHƯƠNG PHÁP GIẢNG DẠY</Typography>
-              <Typography id="method-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Nhẹ nhàng, rõ ràng và có mục tiêu</Typography>
+            <Box component="section" id="programs" aria-labelledby="programs-heading" sx={sectionSx}>
+              <Typography variant="overline" color="primary">CHƯƠNG TRÌNH HỌC</Typography>
+              <Typography id="programs-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Tiếng Anh lớp 1–9 theo từng mục tiêu</Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 4 }}>
-                {content.methods.map((method, index) => {
-                  const Icon = [LightbulbOutlined, AutoStories, CheckCircleOutlined][index];
-                  return <Card key={method.title} variant="outlined" sx={{ height: "100%" }}><CardContent><Icon color="primary" /><Typography component="h3" variant="h6" sx={{ mt: 1.5 }}>{method.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{method.detail}</Typography></CardContent></Card>;
-                })}
+                {content.programs.map((program) => <Card key={program.title} variant="outlined" sx={{ height: "100%", borderColor: "#d9cef8", boxShadow: "0 6px 18px rgba(57, 42, 94, .06)" }}><CardContent><Chip label={program.level} color="primary" variant="outlined" /><Typography component="h3" variant="h6" sx={{ mt: 1.5 }}>{program.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{program.detail}</Typography></CardContent></Card>)}
               </Box>
             </Box>
           </Container>
         </Box>
 
         <Container maxWidth="lg">
-          <Box component="section" id="programs" aria-labelledby="programs-heading" sx={sectionSx}>
-            <Typography variant="overline" color="primary">CHƯƠNG TRÌNH HỌC</Typography>
-            <Typography id="programs-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Phù hợp từng giai đoạn và mục tiêu</Typography>
+          <Box component="section" id="method" aria-labelledby="method-heading" sx={sectionSx}>
+            <Typography variant="overline" color="primary">PHƯƠNG PHÁP GIẢNG DẠY</Typography>
+            <Typography id="method-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Rõ ràng, vừa sức và có mục tiêu</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 4 }}>
-              {content.programs.map((program) => <Card key={program.title} variant="outlined"><CardContent><Chip label={program.level} color="primary" variant="outlined" /><Typography component="h3" variant="h6" sx={{ mt: 1.5 }}>{program.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{program.detail}</Typography></CardContent></Card>)}
+              {content.methods.map((method, index) => {
+                const Icon = [LightbulbOutlined, AutoStories, CheckCircleOutlined][index];
+                return <Card key={method.title} variant="outlined" sx={{ height: "100%", bgcolor: ["#f6f1ff", "#eef7ff", "#eefaf5"][index] }}><CardContent><Icon color="primary" /><Typography component="h3" variant="h6" sx={{ mt: 1.5 }}>{method.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{method.detail}</Typography></CardContent></Card>;
+              })}
             </Box>
           </Box>
 
@@ -189,9 +189,9 @@ export function HomePage() {
           <Container maxWidth="lg">
             <Box component="section" id="feedback" aria-labelledby="feedback-heading" sx={sectionSx}>
               <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
-              <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Tiến bộ nhìn thấy qua từng buổi học</Typography>
+              <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{isDemoContent ? "Mẫu bố cục phản hồi phụ huynh" : "Phản hồi từ phụ huynh"}</Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2, mt: 4 }}>
-                {content.testimonials.map((item) => <Card component="figure" key={item.attribution} variant="outlined" sx={{ m: 0 }}><CardContent><Typography component="blockquote" sx={{ m: 0 }}>“{item.quote}”</Typography><Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 600 }}>— {item.attribution}</Typography></CardContent></Card>)}
+                {content.testimonials.map((item) => <Card component="figure" key={item.attribution} variant="outlined" sx={{ m: 0 }}><CardContent>{isDemoContent && <Chip size="small" label="Nội dung minh họa" color="warning" variant="outlined" sx={{ mb: 1.5 }} />}<Typography component="blockquote" sx={{ m: 0 }}>“{item.quote}”</Typography><Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 600 }}>— {item.attribution}</Typography></CardContent></Card>)}
               </Box>
             </Box>
           </Container>

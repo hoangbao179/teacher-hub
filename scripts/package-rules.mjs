@@ -49,6 +49,20 @@ export function sensitiveTextReason(text) {
   return null;
 }
 
+export function rawPasswordPersistenceReason(file, text) {
+  const normalized = normalizeArchivePath(file);
+  if (!normalized.startsWith("client/src/")) return null;
+  const patterns = [
+    ["Web Storage", /\b(?:localStorage|sessionStorage)\s*\.\s*setItem\s*\([\s\S]{0,300}?\bpassword\b/i],
+    ["client-readable cookie", /\bdocument\s*\.\s*cookie\s*=[^\n]{0,300}\bpassword\b/i],
+    ["IndexedDB", /\bindexedDB\b[\s\S]{0,500}\bpassword\b/i],
+    ["client configuration", /\bimport\.meta\.env\.[A-Z0-9_]*PASSWORD\b/i],
+    ["client log", /\bconsole\.(?:log|info|warn|error|debug)\s*\([^\n]{0,300}\bpassword\b/i],
+  ];
+  const match = patterns.find(([, pattern]) => pattern.test(text));
+  return match ? `raw password may be persisted through ${match[0]}` : null;
+}
+
 export function assertRuleSelfTests() {
   const prohibited = [
     ".git/config", "server/.env", "client/node_modules/x", "client/dist/app.js",
@@ -63,6 +77,16 @@ export function assertRuleSelfTests() {
   for (const value of sensitive) if (!sensitiveTextReason(value)) throw new Error("Package-rule sensitive-content self-test failed");
   if (prohibitedArchiveReason("server/.env.example")) throw new Error("Package-rule self-test rejected an approved env example");
   if (sensitiveTextReason("JWT_SECRET=replace-with-random-secret")) throw new Error("Package-rule self-test rejected a safe placeholder");
+  for (const source of [
+    'localStorage.setItem("credential", password)',
+    'sessionStorage.setItem("password", input.password)',
+    'document.cookie = `password=${password}`',
+    'indexedDB.open("saved-password")',
+    'const configured = import.meta.env.VITE_LOGIN_PASSWORD',
+    'console.log("password", password)',
+  ]) if (!rawPasswordPersistenceReason("client/src/probe.ts", source)) throw new Error("Raw-password persistence self-test failed");
+  if (rawPasswordPersistenceReason("client/src/probe.ts", 'fetch("/login", { body: JSON.stringify({ password }) })'))
+    throw new Error("Raw-password persistence self-test rejected an in-flight login request");
 }
 
 export function archiveNames(packageJson) {

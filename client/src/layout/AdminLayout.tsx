@@ -2,7 +2,7 @@ import {
   CalendarMonth,
   Groups,
   Home,
-  Menu,
+  Person,
   Payments,
   Logout,
 } from "@mui/icons-material";
@@ -30,7 +30,7 @@ const nav = [
   ["/admin/calendar", <CalendarMonth key="calendar" />, "Lịch"],
   ["/admin/classes", <Groups key="classes" />, "Lớp học"],
   ["/admin/tuition", <Payments key="tuition" />, "Học phí"],
-  ["/admin/students", <Menu key="students" />, "Học sinh"],
+  ["/admin/students", <Person key="students" data-testid="student-navigation-icon" />, "Học sinh"],
 ] as const;
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -53,7 +53,7 @@ export function AdminLayout() {
         sx={{ borderBottom: 1, borderColor: "divider", zIndex: (theme) => theme.zIndex.drawer + 1 }}
       >
         <Toolbar sx={{ minHeight: `${uiTokens.navigationHeight}px !important`, px: { xs: 2, md: 3 } }}>
-          <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>Teacher Class Hub</Typography>
+          <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>Lớp học cô Vy</Typography>
           <IconButton aria-label="Đăng xuất" onClick={() => void auth.logout().then(() => navigate("/admin/login"))}>
             <Logout />
           </IconButton>
@@ -113,6 +113,7 @@ export function AdminLayout() {
           zIndex: 20,
           borderTop: 1,
           borderColor: "divider",
+          bgcolor: "background.paper",
           pb: "env(safe-area-inset-bottom)",
           height: `calc(${uiTokens.navigationHeight}px + env(safe-area-inset-bottom))`,
         }}

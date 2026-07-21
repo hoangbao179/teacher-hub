@@ -8,7 +8,7 @@ async function ensureClass(connection: PoolConnection, name: string, type: "GROU
   const [result] = await connection.execute<ResultSetHeader>(
     `INSERT INTO classes(name,class_type,subject,default_package_price,default_duration_minutes,start_date,status,closed_at,note)
      VALUES (?,?,?, ?,90,CURDATE(),?,IF(?='CLOSED',NOW(),NULL),'DEV_SEED')`,
-    [name, type, "English", price, status, status],
+    [name, type, "Tiếng Anh", price, status, status],
   );
   await connection.execute(
     "INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,?,CURDATE())",
@@ -54,15 +54,31 @@ async function ensureSchedule(connection: PoolConnection, classId: number, day: 
   );
 }
 
+async function upgradeLegacyDevClasses(connection: PoolConnection): Promise<void> {
+  const renames = [
+    ["DEV - Lớp nhóm A", "DEV - Tiếng Anh lớp 6 nhóm nhỏ"],
+    ["DEV - Lớp 1 kèm 1", "DEV - Tiếng Anh 1 kèm 1"],
+    ["DEV - Lớp tạm dừng", "DEV - Ôn ngữ pháp tạm dừng"],
+    ["DEV - Lớp đã đóng", "DEV - Phonics đã đóng"],
+  ] as const;
+  for (const [oldName, newName] of renames) {
+    await connection.execute(
+      "UPDATE classes SET name=?, subject='Tiếng Anh' WHERE name=? AND note='DEV_SEED'",
+      [newName, oldName],
+    );
+  }
+}
+
 async function seed(): Promise<void> {
   if (process.env.NODE_ENV === "production") throw new Error("Không được seed dữ liệu dev trong production.");
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const groupId = await ensureClass(connection, "DEV - Lớp nhóm A", "GROUP", "ACTIVE", 2400000);
-    const oneToOneId = await ensureClass(connection, "DEV - Lớp 1 kèm 1", "ONE_TO_ONE", "ACTIVE", 2800000);
-    await ensureClass(connection, "DEV - Lớp tạm dừng", "GROUP", "PAUSED", 2200000);
-    await ensureClass(connection, "DEV - Lớp đã đóng", "GROUP", "CLOSED", 2200000);
+    await upgradeLegacyDevClasses(connection);
+    const groupId = await ensureClass(connection, "DEV - Tiếng Anh lớp 6 nhóm nhỏ", "GROUP", "ACTIVE", 2400000);
+    const oneToOneId = await ensureClass(connection, "DEV - Tiếng Anh 1 kèm 1", "ONE_TO_ONE", "ACTIVE", 2800000);
+    await ensureClass(connection, "DEV - Ôn ngữ pháp tạm dừng", "GROUP", "PAUSED", 2200000);
+    await ensureClass(connection, "DEV - Phonics đã đóng", "GROUP", "CLOSED", 2200000);
     const students = await Promise.all(["Học sinh Mẫu Một", "Học sinh Mẫu Hai", "Học sinh Mẫu Ba", "Học sinh Mẫu Bốn", "Học sinh Mẫu Năm"].map((name) => ensureStudent(connection, name)));
     await ensureEnrollment(connection, groupId, students[0], "CLASS_DEFAULT");
     await ensureEnrollment(connection, groupId, students[1], "CUSTOM", 2000000);

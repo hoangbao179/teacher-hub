@@ -10,6 +10,9 @@
   điện thoại, Zalo, Facebook, public base URL, SEO title/description, hero assets,
   video JSON và testimonial JSON đã được phép công khai. Docker web chạy validation
   và từ chối build nếu còn giá trị demo/placeholder.
+- `PUBLIC_HERO_HEADING` và `PUBLIC_OG_IMAGE_URL` phải khớp nội dung/ảnh Cô Vy đã
+  duyệt. Đồng bộ domain thật vào `client/public/sitemap.xml` và `robots.txt` trước
+  release; không thay placeholder bằng dữ liệu đoán.
 - Chụp backup, kiểm tra restore gần nhất, rồi chạy image/tag đã duyệt.
 
 ## Triển khai
@@ -26,6 +29,10 @@ Kiểm tra `/health`, `/ready`, Homepage, login và critical API. Bootstrap admi
 thao tác chủ động một lần; production không chạy seed. Web phục vụ asset immutable,
 API/MySQL có healthcheck/restart và volume `mysql-data:/var/lib/mysql`. Đặt TLS ở
 reverse proxy/firewall, chỉ public cổng HTTP(S), không public MySQL.
+
+Ở `/admin/login`, chọn **Ghi nhớ đăng nhập trên thiết bị này** chỉ trên thiết bị
+riêng. Chế độ này giữ JWT/email theo hạn JWT; bỏ chọn dùng phiên trình duyệt. Ứng
+dụng không lưu mật khẩu thô—nếu cần, dùng password manager của trình duyệt.
 
 Nginx container áp dụng CSP tương thích MUI, ảnh thumbnail và YouTube nocookie.
 TLS terminator phải thêm HSTS sau khi kiểm tra HTTPS/subdomain; xem

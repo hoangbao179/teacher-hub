@@ -18,7 +18,7 @@ export function ClassFormPage() {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [type, setType] = useState<ClassType>("GROUP");
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState("Tiếng Anh");
   const [price, setPrice] = useState(1);
   const [duration, setDuration] = useState(90);
   const [startDate, setStartDate] = useState(today);

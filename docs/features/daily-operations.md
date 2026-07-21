@@ -22,3 +22,13 @@ student, attendance or tuition fields.
 
 Dashboard, class detail and calendar link “Buổi học bù” to the existing M2 lesson
 wizard with `MAKEUP` preselected. The wizard still requires explicit participants.
+
+The admin shell is branded “Lớp học cô Vy”. On mobile its five equal-width primary
+actions are Hôm nay, Lịch, Lớp học, Học phí and Học sinh; labels keep one size and
+one line, while the person icon identifies Học sinh. The fixed navigation and sticky
+actions include bottom safe-area spacing. Desktop keeps the permanent sidebar.
+
+Dashboard greeting comes from the authenticated display name and all metric values
+remain server-authoritative. Lavender, mint and blue distinguish the three metrics
+without changing their priority or links. Student cards render only returned data:
+full name, optional nickname, class, Vietnamese state and current tuition progress.

@@ -7,26 +7,38 @@ import {
   type ReactNode,
 } from "react";
 import type { AuthUser, LoginRequest, LoginResponse } from "@teacher/shared";
-import { api, setUnauthorizedHandler } from "../api/client";
+import { api, ApiError, setUnauthorizedHandler } from "../api/client";
+import {
+  clearRememberedEmail,
+  clearToken,
+  getToken,
+  saveRememberedEmail,
+  saveRememberPreference,
+  saveToken,
+} from "./authStorage";
 
 interface AuthContextValue {
   user: AuthUser | null;
   bootstrapping: boolean;
-  login(input: LoginRequest): Promise<void>;
+  sessionMessage: string;
+  clearSessionMessage(): void;
+  login(input: LoginRequest, remember: boolean): Promise<void>;
   logout(): Promise<void>;
 }
 const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [bootstrapping, setBootstrapping] = useState(() => Boolean(localStorage.getItem("teacher-token")));
+  const [bootstrapping, setBootstrapping] = useState(() => Boolean(getToken()));
+  const [sessionMessage, setSessionMessage] = useState("");
 
   useEffect(() => {
     const clearSession = () => {
-      localStorage.removeItem("teacher-token");
+      clearToken();
       setUser(null);
+      setSessionMessage("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
     };
     setUnauthorizedHandler(clearSession);
-    const token = localStorage.getItem("teacher-token");
+    const token = getToken();
     if (!token) {
       return () => setUnauthorizedHandler(null);
     }
@@ -35,8 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((authoritativeUser) => {
         if (active) setUser(authoritativeUser);
       })
-      .catch(() => {
-        if (active) clearSession();
+      .catch((error: unknown) => {
+        if (!active) return;
+        if (error instanceof ApiError && error.status === 0) {
+          setUser(null);
+          setSessionMessage("Không thể kết nối máy chủ. Vui lòng thử lại.");
+        } else {
+          clearSession();
+        }
       })
       .finally(() => {
         if (active) setBootstrapping(false);
@@ -51,21 +69,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       bootstrapping,
-      async login(input) {
+      sessionMessage,
+      clearSessionMessage() { setSessionMessage(""); },
+      async login(input, remember) {
         const result = await api<LoginResponse>("/api/auth/login", {
           method: "POST",
           body: JSON.stringify(input),
         });
-        localStorage.setItem("teacher-token", result.token);
+        saveToken(result.token, remember);
+        saveRememberPreference(remember);
+        if (remember) saveRememberedEmail(input.email);
+        else clearRememberedEmail();
+        setSessionMessage("");
         setUser(result.user);
       },
       async logout() {
         try { await api<void>("/api/auth/logout", { method: "POST" }); } catch { /* local logout remains authoritative */ }
-        localStorage.removeItem("teacher-token");
+        clearToken();
+        // Keep the explicitly remembered email/preference for the next login.
         setUser(null);
       },
     }),
-    [user, bootstrapping],
+    [user, bootstrapping, sessionMessage],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

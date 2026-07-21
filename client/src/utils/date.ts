@@ -22,3 +22,9 @@ export function displayDate(date: string): string {
   return new Intl.DateTimeFormat("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" })
     .format(new Date(`${date}T00:00:00Z`));
 }
+
+export function displayDashboardDate(date: string): string {
+  const value = new Date(`${date}T00:00:00Z`);
+  const weekday = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][value.getUTCDay()];
+  return `${weekday}, ${date.slice(8, 10)}/${date.slice(5, 7)}`;
+}

@@ -1,6 +1,7 @@
 import {
   Button,
   Alert,
+  Avatar,
   Card,
   CardContent,
   Chip,
@@ -16,6 +17,20 @@ import { api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader, ProgressCount } from "../components/UiKit";
 import { EmptyState } from "../components/EmptyState";
+
+function studentStatus(item: StudentListItem): string {
+  if (item.status === "INACTIVE") return "Ngừng hoạt động";
+  if (!item.enrollmentStatus) return "Chưa có lớp";
+  if (item.enrollmentStatus === "PAUSED") return "Tạm dừng";
+  if (item.enrollmentStatus === "ENDED") return "Đã ngừng học";
+  return "Đang học";
+}
+
+function studentInitial(name: string): string {
+  const word = name.trim().split(/\s+/).reverse().find((part) => /^\p{L}/u.test(part));
+  return word?.slice(0, 1).toLocaleUpperCase("vi-VN") || "?";
+}
+
 export function StudentsPage() {
   const [items, setItems] = useState<StudentListItem[] | null>(null);
   const [error, setError] = useState("");
@@ -38,27 +53,28 @@ export function StudentsPage() {
           sx={{ textDecoration: "none" }}
         >
           <CardContent>
-            <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-              <Typography color="text.primary" variant="subtitle1" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
-                {item.fullName}
-              </Typography>
-              <Chip
-                size="small"
-                color={item.hasPaymentDue ? "warning" : "default"}
-                label={
-                  item.tuitionMode === "FREE"
-                    ? "Miễn phí"
-                    : item.hasPaymentDue
-                      ? "Cần thu"
-                      : "Đang học"
-                }
-              />
+            <Stack direction="row" spacing={1.25} sx={{ alignItems: "flex-start" }}>
+              <Avatar sx={{ width: 38, height: 38, bgcolor: "#eee8ff", color: "primary.main", fontSize: 16, fontWeight: 700 }}>
+                {studentInitial(item.fullName)}
+              </Avatar>
+              <Stack spacing={0.25} sx={{ minWidth: 0, flex: 1 }}>
+                <Typography color="text.primary" variant="subtitle1" sx={{ overflowWrap: "anywhere" }}>
+                  {item.fullName}
+                </Typography>
+                {item.nickname && <Typography variant="body2" color="text.secondary">Tên gọi: {item.nickname}</Typography>}
+                <Typography variant="body2" color="text.secondary">{item.className ?? "Chưa có lớp"}</Typography>
+              </Stack>
+              <Stack spacing={0.5} sx={{ alignItems: "flex-end", flexShrink: 0 }}>
+                <Chip
+                  size="small"
+                  color={item.enrollmentStatus === "ACTIVE" && item.status === "ACTIVE" ? "success" : item.enrollmentStatus === "PAUSED" ? "warning" : "default"}
+                  label={studentStatus(item)}
+                />
+                {(item.hasPaymentDue || item.tuitionMode === "FREE") && <Chip size="small" color={item.hasPaymentDue ? "warning" : "default"} variant="outlined" label={item.hasPaymentDue ? "Cần thu" : "Miễn phí"} />}
+              </Stack>
             </Stack>
-            <Typography color="text.secondary">
-              {item.className ?? "Chưa có lớp"}
-            </Typography>
-            {item.tuitionMode !== "FREE" && (
-              <ProgressCount value={item.currentProgress ?? 0} />
+            {item.enrollmentStatus === "ACTIVE" && item.tuitionMode !== "FREE" && (
+              <Box sx={{ mt: 1.25 }}><ProgressCount value={item.currentProgress ?? 0} /></Box>
             )}
           </CardContent>
         </Card>

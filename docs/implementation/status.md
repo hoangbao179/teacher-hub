@@ -2,9 +2,10 @@
 
 ## Current milestone
 
-M6 release-candidate preparation is complete. M6A through M6D are PASS and the
-artifact is `RELEASE_CANDIDATE_READY` for a separate full-system review. It is
-not production-approved.
+V1.1 Cô Vy branding and mobile polish checkpoint is complete. V11A, V11B,
+V11C and V11D are PASS. The reviewable release-candidate artifact is not a
+production approval; real operator configuration is still required and the
+independent full-system review has not started.
 
 ## Status
 
@@ -52,6 +53,14 @@ UIC: PASS on 21/07/2026. Evidence is in
 UID: PASS on 21/07/2026. Evidence is in
 `.agent-reports/UID-implementation.md` and
 `.agent-reports/UID-verification.md`.
+V11A: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V11A-implementation.md` and `.agent-reports/V11A-verification.md`.
+V11B: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V11B-implementation.md` and `.agent-reports/V11B-verification.md`.
+V11C: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V11C-implementation.md` and `.agent-reports/V11C-verification.md`.
+V11D: PASS on 21/07/2026. Evidence is in
+`.agent-reports/V11D-implementation.md` and `.agent-reports/V11D-verification.md`.
 
 ## Scope boundary
 

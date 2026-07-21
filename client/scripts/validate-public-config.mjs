@@ -6,13 +6,13 @@ import { loadEnv } from "vite";
 const clientRoot = path.resolve(import.meta.dirname, "..");
 const required = [
   "VITE_PUBLIC_SITE_URL", "VITE_PUBLIC_TEACHER_NAME", "VITE_PUBLIC_BRAND_NAME",
-  "VITE_PUBLIC_SUBJECT_LINE", "VITE_PUBLIC_DESCRIPTION", "VITE_PUBLIC_INTRODUCTION",
+  "VITE_PUBLIC_HERO_HEADING", "VITE_PUBLIC_DESCRIPTION", "VITE_PUBLIC_INTRODUCTION",
   "VITE_PUBLIC_ZALO_URL", "VITE_PUBLIC_PHONE_DISPLAY", "VITE_PUBLIC_PHONE_E164",
-  "VITE_PUBLIC_FACEBOOK_URL", "VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL",
+  "VITE_PUBLIC_FACEBOOK_URL", "VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL", "VITE_PUBLIC_OG_IMAGE_URL",
   "VITE_PUBLIC_VIDEOS_JSON", "VITE_PUBLIC_TESTIMONIALS_JSON", "VITE_PUBLIC_SEO_TITLE",
   "VITE_PUBLIC_SEO_DESCRIPTION",
 ];
-const placeholder = /example(?:\.|$)|localhost|0900\s*000\s*000|84900000000|cô giáo an|cùng cô an|replace|change-me|placeholder|sample|minh họa/i;
+const placeholder = /example(?:\.|$)|\.invalid(?:\/|$)|localhost|0900\s*000\s*000|84000000000|84900000000|cô giáo an|cùng cô an|chưa cấu hình|replace|change-me|placeholder|sample|minh họa/i;
 
 export function validatePublicConfig(env) {
   const errors = [];
@@ -33,7 +33,7 @@ export function validatePublicConfig(env) {
   checkUrl("VITE_PUBLIC_ZALO_URL", ["zalo.me"]);
   checkUrl("VITE_PUBLIC_FACEBOOK_URL", ["facebook.com"]);
   if (!/^\+[1-9]\d{7,14}$/.test(env.VITE_PUBLIC_PHONE_E164 ?? "")) errors.push("VITE_PUBLIC_PHONE_E164 must use E.164 format");
-  for (const key of ["VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL"])
+  for (const key of ["VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL", "VITE_PUBLIC_OG_IMAGE_URL"])
     if (!/^\/(?!\/)|^https:\/\//.test(env[key] ?? "")) errors.push(`${key} must be a root-relative or HTTPS asset URL`);
   for (const [key, fields] of [["VITE_PUBLIC_VIDEOS_JSON", ["title", "description", "url"]], ["VITE_PUBLIC_TESTIMONIALS_JSON", ["quote", "attribution"]]]) {
     try {
@@ -46,20 +46,29 @@ export function validatePublicConfig(env) {
 
 const validFixture = {
   VITE_PUBLIC_CONTENT_MODE: "production", VITE_PUBLIC_SITE_URL: "https://teacherhub.vn",
-  VITE_PUBLIC_TEACHER_NAME: "Cô Nguyễn", VITE_PUBLIC_BRAND_NAME: "Lớp Toán Cô Nguyễn",
-  VITE_PUBLIC_SUBJECT_LINE: "Hiểu bản chất, tiến bộ mỗi ngày", VITE_PUBLIC_DESCRIPTION: "Thông tin lớp học đã được giáo viên xác nhận.",
+  VITE_PUBLIC_TEACHER_NAME: "Cô Vy", VITE_PUBLIC_BRAND_NAME: "Lớp học cô Vy",
+  VITE_PUBLIC_HERO_HEADING: "Tiếng Anh vững nền tảng", VITE_PUBLIC_DESCRIPTION: "Thông tin lớp học đã được giáo viên xác nhận.",
   VITE_PUBLIC_INTRODUCTION: "Giáo viên đồng hành theo lộ trình phù hợp với từng học sinh.",
   VITE_PUBLIC_ZALO_URL: "https://zalo.me/84912345678", VITE_PUBLIC_PHONE_DISPLAY: "0912 345 678",
-  VITE_PUBLIC_PHONE_E164: "+84912345678", VITE_PUBLIC_FACEBOOK_URL: "https://www.facebook.com/loptoancogiao",
-  VITE_PUBLIC_HERO_MOBILE_URL: "/images/teacher-hero-720.webp", VITE_PUBLIC_HERO_DESKTOP_URL: "/images/teacher-hero-1440.webp",
+  VITE_PUBLIC_PHONE_E164: "+84912345678", VITE_PUBLIC_FACEBOOK_URL: "https://www.facebook.com/lophocanhngucovy",
+  VITE_PUBLIC_HERO_MOBILE_URL: "/images/teacher-english-hero-720.jpg", VITE_PUBLIC_HERO_DESKTOP_URL: "/images/teacher-english-hero-1440.jpg", VITE_PUBLIC_OG_IMAGE_URL: "/images/teacher-english-hero-1440.jpg",
   VITE_PUBLIC_VIDEOS_JSON: '[{"title":"Bài học","description":"Giới thiệu","url":"https://youtu.be/abc123"}]',
   VITE_PUBLIC_TESTIMONIALS_JSON: '[{"quote":"Phản hồi đã được cho phép công khai","attribution":"Phụ huynh lớp 6"}]',
-  VITE_PUBLIC_SEO_TITLE: "Lớp Toán Cô Nguyễn", VITE_PUBLIC_SEO_DESCRIPTION: "Thông tin lớp Toán và phương pháp học.",
+  VITE_PUBLIC_SEO_TITLE: "Lớp học tiếng Anh cô Vy", VITE_PUBLIC_SEO_DESCRIPTION: "Thông tin lớp tiếng Anh và phương pháp học.",
 };
 
 if (process.argv.includes("--self-test")) {
   if (validatePublicConfig(validFixture).length) throw new Error("Valid marketing fixture was rejected");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_PHONE_DISPLAY: "0900 000 000" }).length) throw new Error("Placeholder marketing fixture was accepted");
+  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_SITE_URL: "https://configure-public-domain.invalid" }).length) throw new Error("Placeholder public domain was accepted");
+  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_TEACHER_NAME: "Cô giáo An" }).length) throw new Error("Old demo teacher was accepted");
+  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_TEACHER_NAME: "replace-with-teacher" }).length) throw new Error("Placeholder teacher was accepted");
+  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_ZALO_URL: "https://zalo.me/84000000000" }).length) throw new Error("Placeholder Zalo was accepted");
+  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_PHONE_E164: "+84000000000" }).length) throw new Error("Placeholder E.164 phone was accepted");
+  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_SEO_TITLE: "" }).length) throw new Error("Missing SEO title was accepted");
+  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_SEO_DESCRIPTION: "" }).length) throw new Error("Missing SEO description was accepted");
+  const confidentialProbe = "confidential-value-must-not-be-printed";
+  if (validatePublicConfig({ ...validFixture, VITE_PUBLIC_SITE_URL: confidentialProbe }).join("\n").includes(confidentialProbe)) throw new Error("Validator exposed a confidential input value");
   console.log("Public marketing validation self-test passed");
 } else {
   const env = { ...loadEnv("production", clientRoot, ""), ...process.env };

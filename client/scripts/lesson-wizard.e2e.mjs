@@ -90,13 +90,13 @@ try {
   const page = await context.newPage();
   await page.goto("http://127.0.0.1:5175/admin/login");
   await page.getByLabel("Email").fill("lesson-e2e@example.test");
-  await page.getByLabel("Mật khẩu").fill("lesson-e2e-password-123");
+  await page.locator('input[name="password"]').fill("lesson-e2e-password-123");
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await page.waitForURL("**/admin");
   const token = await page.evaluate(() => localStorage.getItem("teacher-token"));
   if (!token) throw new Error("Login did not persist token");
   const classes = await api("/api/classes", token);
-  const group = classes.find((item) => item.name === "DEV - Lớp nhóm A");
+  const group = classes.find((item) => item.name === "DEV - Tiếng Anh lớp 6 nhóm nhỏ");
   if (!group) throw new Error("Seeded group class not found");
 
   await page.goto(`http://127.0.0.1:5175/admin/lessons/new?classId=${group.id}`);

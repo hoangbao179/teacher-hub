@@ -81,7 +81,7 @@ export function ConfirmationDialog({ open, title, children, confirmLabel, confir
 }
 
 export function StickyActionBar({ children }: { children: ReactNode }) {
-  return <Box data-testid="sticky-action-bar" sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1 }}>
+  return <Box data-testid="sticky-action-bar" sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + env(safe-area-inset-bottom) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1 }}>
     <Stack direction="row" spacing={1}>{children}</Stack>
   </Box>;
 }

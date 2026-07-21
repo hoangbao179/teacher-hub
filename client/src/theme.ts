@@ -23,6 +23,12 @@ export const uiTokens = {
     surface: "#ffffff",
     subtleSurface: "#f2f0fa",
     border: "#dedce7",
+    lavender: "#f0ebff",
+    lavenderBorder: "#d8ccff",
+    mint: "#ecf8f1",
+    mintBorder: "#c9ead7",
+    blue: "#edf6ff",
+    blueBorder: "#cce3f8",
   },
   breakpoints: { mobile: 360, wideMobile: 390, tablet: 768, desktop: 1200 },
   status: {
@@ -104,6 +110,26 @@ export const theme = createTheme({
     },
     MuiChip: {
       styleOverrides: { root: { height: 26, fontSize: 12.5, fontWeight: 500 }, label: { paddingInline: 9 } },
+    },
+    MuiBottomNavigationAction: {
+      styleOverrides: {
+        root: {
+          flex: "1 1 20%",
+          minWidth: 0,
+          maxWidth: "none",
+          padding: "6px 2px 7px",
+          color: "#686574",
+          "&.Mui-selected": { color: "#6d3df5", backgroundColor: "#f5f1ff" },
+          "& .MuiSvgIcon-root": { fontSize: 20 },
+        },
+        label: {
+          fontSize: "0.6875rem",
+          lineHeight: 1.2,
+          fontWeight: 500,
+          whiteSpace: "nowrap",
+          "&.Mui-selected": { fontSize: "0.6875rem", fontWeight: 700 },
+        },
+      },
     },
     MuiDialog: {
       styleOverrides: { paper: { margin: 16, maxHeight: "calc(100dvh - 32px)", backgroundColor: uiTokens.colors.surface, backgroundImage: "none" } },

@@ -1,9 +1,9 @@
 {
-  "name": "Lớp học cùng cô An",
-  "short_name": "Lớp cô An",
+  "name": "Lớp học tiếng Anh cô Vy",
+  "short_name": "Lớp cô Vy",
   "start_url": "/",
   "display": "browser",
-  "background_color": "#ffffff",
+  "background_color": "#f8f5ff",
   "theme_color": "#6d3df5",
   "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }

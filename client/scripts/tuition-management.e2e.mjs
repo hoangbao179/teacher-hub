@@ -95,7 +95,7 @@ try {
   const page = await context.newPage();
   await page.goto("http://127.0.0.1:5176/admin/login");
   await page.getByLabel("Email").fill("tuition-e2e@example.test");
-  await page.getByLabel("Mật khẩu").fill("tuition-e2e-password-123");
+  await page.locator('input[name="password"]').fill("tuition-e2e-password-123");
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await page.waitForURL("**/admin");
   const token = await page.evaluate(() => localStorage.getItem("teacher-token"));

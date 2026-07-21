@@ -7,8 +7,14 @@
 - [x] Environment validation, secret placeholders, dependency/license/security review completed.
 - [x] Health/readiness, login, admin bootstrap and restore procedures documented.
 - [x] M6A, M6B, M6C and M6D reports end in PASS.
+- [x] V11A, V11B, V11C and V11D reports end in PASS; final Cô Vy branding,
+  authentication storage and mobile navigation evidence is recorded.
 - [x] Source packaging uses a controlled allowlist, produces SHA-256 and passes
   `npm run check:package`; reports, private data, env files and build output are excluded.
+
+Docker Desktop's Linux engine was unavailable during V11D verification, so the
+compose build was not run and is not claimed as evidence. It remains part of the
+deployment operator gate below.
 
 ## Deployment operator gate (repeat per environment)
 

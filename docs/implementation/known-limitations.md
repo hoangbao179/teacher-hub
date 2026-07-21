@@ -1,7 +1,8 @@
 # Known limitations
 
 - Một giáo viên/admin và một API instance; limiter không chia sẻ giữa nhiều replica.
-- JWT localStorage, không refresh/revoke tập trung; logout xóa token phía client.
+- JWT dùng localStorage khi chọn ghi nhớ hoặc sessionStorage khi không chọn; V1 chưa có
+  refresh/revoke tập trung và logout xóa token phía client khỏi cả hai nơi.
 - Không import Excel legacy, notification, payment gateway, partial payment, CMS,
   parent account, multi-teacher, offline PWA hay paid-cycle unlock.
 - Calendar desktop không drag/drop; mobile week list là flow chuẩn.

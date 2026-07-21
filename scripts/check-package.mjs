@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { archiveNames, assertRuleSelfTests, normalizeArchivePath, prohibitedArchiveReason, sensitiveTextReason } from "./package-rules.mjs";
+import { archiveNames, assertRuleSelfTests, normalizeArchivePath, prohibitedArchiveReason, rawPasswordPersistenceReason, sensitiveTextReason } from "./package-rules.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
@@ -54,6 +54,8 @@ try {
       if (buffer.includes(0)) continue;
       const reason = sensitiveTextReason(buffer.toString("utf8"));
       if (reason) failures.push(`Likely sensitive content (${reason}) in ${relative}`);
+      const passwordReason = rawPasswordPersistenceReason(relative, buffer.toString("utf8"));
+      if (passwordReason) failures.push(`${passwordReason} in ${relative}`);
     }
   }
 } finally {

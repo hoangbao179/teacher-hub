@@ -90,10 +90,19 @@ export function TuitionPage() {
       <Tabs
         value={status}
         onChange={(_event, value: VisibleStatus) => { beginReload(); setStatus(value); setPage(1); setSort(value === "PAYMENT_DUE" ? "OLDEST_DUE" : "NEWEST"); }}
-        variant="scrollable"
-        scrollButtons={false}
+        variant="fullWidth"
         aria-label="Trạng thái học phí"
-        sx={{ maxWidth: "100%", "& .MuiTab-root": { minWidth: "max-content", px: 1.5 } }}
+        sx={{
+          maxWidth: "100%",
+          "& .MuiTab-root": {
+            minWidth: 0,
+            minHeight: 52,
+            px: 0.5,
+            fontSize: { xs: 11.5, sm: 13 },
+            lineHeight: 1.2,
+            whiteSpace: "normal",
+          },
+        }}
       >
         {statuses.map((item) => <Tab key={item.value} label={item.label} value={item.value} />)}
       </Tabs>

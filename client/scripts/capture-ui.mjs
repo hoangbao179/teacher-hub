@@ -34,15 +34,10 @@ const testEnv = {
   JWT_SECRET: "ui-capture-secret-with-at-least-32-characters",
   BOOTSTRAP_ADMIN_EMAIL: "ui-capture@example.test",
   BOOTSTRAP_ADMIN_PASSWORD: "ui-capture-password-123",
-  BOOTSTRAP_ADMIN_DISPLAY_NAME: "UI Capture Teacher",
+  BOOTSTRAP_ADMIN_DISPLAY_NAME: "Cô Vy",
   PORT: String(apiPort),
   CORS_ORIGIN: origin,
   VITE_API_BASE_URL: apiOrigin,
-  VITE_PUBLIC_SITE_URL: "https://teacher.example.test",
-  VITE_PUBLIC_ZALO_URL: "https://zalo.me/84900000000",
-  VITE_PUBLIC_PHONE_DISPLAY: "0900 000 000",
-  VITE_PUBLIC_PHONE_E164: "+84900000000",
-  VITE_PUBLIC_FACEBOOK_URL: "https://www.facebook.com/teacher.example.test",
 };
 const children = [];
 let browser;
@@ -103,7 +98,7 @@ try {
 
   await page.goto(`${origin}/admin/login`);
   await page.getByLabel("Email").fill(testEnv.BOOTSTRAP_ADMIN_EMAIL);
-  await page.getByLabel("Mật khẩu").fill(testEnv.BOOTSTRAP_ADMIN_PASSWORD);
+  await page.locator('input[name="password"]').fill(testEnv.BOOTSTRAP_ADMIN_PASSWORD);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await page.waitForURL("**/admin");
   const token = await page.evaluate(() => localStorage.getItem("teacher-token"));

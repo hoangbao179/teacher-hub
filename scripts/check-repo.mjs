@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { assertRuleSelfTests } from "./package-rules.mjs";
+import { assertRuleSelfTests, rawPasswordPersistenceReason } from "./package-rules.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const failures = [];
@@ -61,6 +61,10 @@ for (const file of clientFiles) {
   const source = read(file);
   for (const { label, pattern } of fakeActionPatterns)
     if (pattern.test(source)) failures.push(`${label} in ${file}`);
+  const passwordReason = rawPasswordPersistenceReason(file, source);
+  if (passwordReason) failures.push(`${passwordReason} in ${file}`);
+  if (/Cô giáo An|Học Toán|Xây nền Toán|Teacher Class Hub/i.test(source))
+    failures.push(`Stale visible branding/content in ${file}`);
 }
 
 const obsoleteFiles = ["client/src/pages/LessonCompletePlaceholderPage.tsx"];
