@@ -12,6 +12,8 @@
 Review bắt buộc ở 360, 375, 390, 393, 400, 412 và 430 px, cộng tablet và desktop.
 Mobile là ưu tiên: cards/lists thay bảng rộng, touch target tối thiểu 44 px, sticky
 action không che nội dung. Desktop dùng sidebar khi đủ rộng.
+Homepage dùng section padding khoảng 32–40 px trên mobile và 48–56 px trên desktop.
+Hero theo dải 400/410/420/450 px ở các mốc 360/390/400/430 và khoảng 510 px desktop.
 
 ## Typography
 
@@ -38,3 +40,6 @@ transition không thiết yếu nhưng vẫn giữ điều khiển thủ công.
 Mobile bottom navigation có năm mục: Hôm nay, Lịch, Lớp học, Học phí, Học sinh.
 Nhãn luôn một dòng, vùng bấm bằng nhau và cộng safe-area bottom. Sticky button nằm
 trên navigation. Desktop sidebar giữ cùng thứ tự/nhãn tại breakpoint phù hợp.
+
+Filter dài trên mobile mở trong dialog/bottom sheet; search chính vẫn nhìn thấy trực tiếp.
+Date/time dùng native picker, không cố style popup desktop của trình duyệt.

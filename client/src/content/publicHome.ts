@@ -53,6 +53,8 @@ const parseTestimonials = (raw: string | undefined, fallback: PublicTestimonial[
     typeof item.published === "boolean") ? parsed : fallback;
 };
 
+const placeholderContact = /\.invalid(?:\/|$)|localhost|84000000000|84900000000|chua-cau-hinh|chưa-cấu-hình|example(?:\.|\/|$)/i;
+
 const defaultVideos: PublicVideo[] = [
   {
     title: "Từ vựng tiếng Anh qua ngữ cảnh",
@@ -97,8 +99,16 @@ const heroMobile = value("VITE_PUBLIC_HERO_MOBILE_URL", "/images/teacher-english
 const heroDesktop = value("VITE_PUBLIC_HERO_DESKTOP_URL", "/images/teacher-english-hero-1440.jpg");
 const alternateHeroMobile = value("VITE_PUBLIC_HERO_ALT_MOBILE_URL", "/images/teacher-hero-720.webp");
 const alternateHeroDesktop = value("VITE_PUBLIC_HERO_ALT_DESKTOP_URL", "/images/teacher-hero-1440.webp");
-const phoneDisplay = value("VITE_PUBLIC_PHONE_DISPLAY", "");
-const phoneE164 = value("VITE_PUBLIC_PHONE_E164", "");
+const secondaryHeroMobile = value("VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL", "/images/teacher-secondary-study-720.jpg");
+const secondaryHeroDesktop = value("VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL", "/images/teacher-secondary-study-1440.jpg");
+const rawZaloUrl = value("VITE_PUBLIC_ZALO_URL", "");
+const rawFacebookUrl = value("VITE_PUBLIC_FACEBOOK_URL", "");
+const rawPhoneDisplay = value("VITE_PUBLIC_PHONE_DISPLAY", "");
+const rawPhoneE164 = value("VITE_PUBLIC_PHONE_E164", "");
+const zaloUrl = isConfiguredExternalUrl(rawZaloUrl, "zalo.me") ? rawZaloUrl : isDevelopmentContent ? "https://zalo.me/84912345678" : rawZaloUrl;
+const facebookUrl = isConfiguredExternalUrl(rawFacebookUrl, "facebook.com") ? rawFacebookUrl : isDevelopmentContent ? "https://www.facebook.com/lophocanhngucovy" : rawFacebookUrl;
+const phoneDisplay = isConfiguredPhone(`tel:${rawPhoneE164}`, rawPhoneDisplay) ? rawPhoneDisplay : isDevelopmentContent ? "0912 345 678" : rawPhoneDisplay;
+const phoneE164 = isConfiguredPhone(`tel:${rawPhoneE164}`, rawPhoneDisplay) ? rawPhoneE164 : isDevelopmentContent ? "+84912345678" : rawPhoneE164;
 
 /**
  * Source of truth for deployment-specific public content and temporary media.
@@ -129,8 +139,8 @@ export const publicHomeContent = {
       eyebrow: "Xây nền đúng nhịp cho từng học sinh",
       title: "Tiếng Anh lớp 1–5",
       description: "Phonics, phát âm, từ vựng và mẫu câu",
-      mobileImage: heroMobile,
-      desktopImage: heroDesktop,
+      mobileImage: alternateHeroMobile,
+      desktopImage: alternateHeroDesktop,
       focalPosition: "68% center",
       alt: "Sách tiếng Anh, thẻ chữ cái và bút màu trên bàn học",
     },
@@ -139,22 +149,24 @@ export const publicHomeContent = {
       eyebrow: "Củng cố kiến thức và bám sát chương trình",
       title: "Tiếng Anh lớp 6–9",
       description: "Ngữ pháp, đọc hiểu, viết và kỹ năng làm bài",
-      mobileImage: alternateHeroMobile,
-      desktopImage: alternateHeroDesktop,
-      focalPosition: "62% center",
+      mobileImage: secondaryHeroMobile,
+      desktopImage: secondaryHeroDesktop,
+      focalPosition: "58% center",
       alt: "Không gian học tập với sách, vở và máy tính",
     },
   ] satisfies PublicHeroSlide[],
   introduction: value("VITE_PUBLIC_INTRODUCTION", "Cô Vy đồng hành cùng học sinh từ lớp 1 đến lớp 9 theo mục tiêu phù hợp: xây nền, củng cố phần còn yếu và bám sát chương trình trên trường."),
   media: {
     ogImage: value("VITE_PUBLIC_OG_IMAGE_URL", "/images/teacher-english-hero-1440.jpg"),
-    teacherPhoto: value("VITE_PUBLIC_TEACHER_PHOTO_URL", ""),
+    teacherPhoto: value("VITE_PUBLIC_TEACHER_PHOTO_URL", "/images/teacher-hero-720.webp"),
+    teacherPhotoAlt: value("VITE_PUBLIC_TEACHER_PHOTO_ALT", "Không gian dạy và học tiếng Anh của cô Vy"),
+    teacherPhotoFocalPosition: value("VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION", "center"),
   },
   contact: {
-    zaloUrl: value("VITE_PUBLIC_ZALO_URL", ""),
+    zaloUrl,
     phoneDisplay,
     phoneHref: phoneE164 ? `tel:${phoneE164}` : "",
-    facebookUrl: value("VITE_PUBLIC_FACEBOOK_URL", ""),
+    facebookUrl,
   },
   methods: [
     { title: "Bám sát năng lực", detail: "Xác định phần kiến thức còn hổng và chọn nhịp học phù hợp với từng học sinh." },
@@ -193,8 +205,6 @@ export const publicHomeContent = {
     description: value("VITE_PUBLIC_SEO_DESCRIPTION", "Kèm cặp tiếng Anh 1–1 và lớp nhóm nhỏ cho học sinh lớp 1–9 tại Huế, củng cố kiến thức, bám sát chương trình và ôn thi Nguyễn Tri Phương."),
   },
 } as const;
-
-const placeholderContact = /\.invalid(?:\/|$)|localhost|84000000000|84900000000|chua-cau-hinh|chưa-cấu-hình|example(?:\.|\/|$)/i;
 
 export function isConfiguredExternalUrl(raw: string, host: "zalo.me" | "facebook.com"): boolean {
   if (!raw || placeholderContact.test(raw)) return false;

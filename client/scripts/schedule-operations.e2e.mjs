@@ -138,12 +138,12 @@ try {
     throw new Error(`Unexpected dashboard aggregate ${JSON.stringify(initialDashboard)}`);
 
   await page.reload();
-  await page.getByTestId("dashboard-tuition-card").getByText(`${expectedDue} chu kỳ cần thu`).waitFor();
+  await page.getByTestId("dashboard-tuition-card").getByText(`${expectedDue} khoản học phí cần thu`).waitFor();
   await page.getByText(`${expectedUnpaid.toLocaleString("vi-VN")}đ chưa thu`).waitFor();
   await page.getByTestId("dashboard-tuition-card").click();
   await page.waitForURL("**/admin/tuition?status=PAYMENT_DUE");
   await page.goto("http://127.0.0.1:5177/admin");
-  await page.getByTestId("dashboard-unrecorded-card").getByText(`${expectedUnrecorded} buổi chưa ghi`).waitFor();
+  await page.getByTestId("dashboard-unrecorded-card").getByText(`${expectedUnrecorded} buổi cần xác nhận`).waitFor();
   await page.getByTestId("dashboard-unrecorded-card").click();
   await page.waitForURL("**/admin/reconciliation");
   await page.goto(`http://127.0.0.1:5177/admin/reconciliation?from=${today}&to=${today}&classId=${klass.id}&state=UNRECORDED`);
@@ -236,7 +236,7 @@ try {
 
   await page.goto("http://127.0.0.1:5177/admin");
   const finalDashboard = await api("/api/dashboard", token);
-  await page.getByTestId("dashboard-unrecorded-card").getByText(`${finalDashboard.unrecordedCount} buổi chưa ghi`).waitFor();
+  await page.getByTestId("dashboard-unrecorded-card").getByText(`${finalDashboard.unrecordedCount} buổi cần xác nhận`).waitFor();
   await page.getByText(`Dạy ở trường ${suffix}`).waitFor();
   await page.route("**/api/dashboard", (route) => route.abort("failed"));
   await page.reload();

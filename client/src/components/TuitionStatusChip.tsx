@@ -2,10 +2,10 @@ import { Chip } from "@mui/material";
 import type { TuitionCycleStatus } from "@teacher/shared";
 
 const labels: Record<TuitionCycleStatus, string> = {
-  ACCUMULATING: "Đang tích lũy",
+  ACCUMULATING: "Chưa đủ 8 buổi",
   PAYMENT_DUE: "Cần thu",
   PAID: "Đã thu",
-  INCOMPLETE: "Chưa hoàn thành",
+  INCOMPLETE: "Dở dang",
   CANCELLED: "Đã hủy",
 };
 

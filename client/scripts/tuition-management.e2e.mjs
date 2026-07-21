@@ -132,7 +132,7 @@ try {
   await page.goto("http://127.0.0.1:5176/admin/tuition");
   await page.getByRole("heading", { name: "Học phí" }).waitFor();
   await page.getByLabel("Tìm học sinh").fill(dueStudentName);
-  await page.getByRole("button", { name: "Tìm", exact: true }).click();
+  await page.getByLabel("Tìm học sinh").press("Enter");
   const dueCard = page.getByTestId("tuition-cycle-card").filter({ hasText: dueStudentName });
   await dueCard.waitFor();
   await dueCard.getByRole("link", { name: "Xem chi tiết" }).click();
@@ -156,9 +156,9 @@ try {
   await confirm.click({ noWaitAfter: true });
   if (!(await confirm.isDisabled())) throw new Error("Duplicate payment submission was not disabled");
   await page.waitForURL(`**/admin/tuition/${due.id}`);
-  await page.getByText("Đã ghi nhận thanh toán toàn bộ chu kỳ.").waitFor();
+  await page.getByText("Đã ghi nhận thanh toán toàn bộ đợt học phí.").waitFor();
   await page.reload();
-  await page.getByText("Chu kỳ đã thu và đang ở trạng thái chỉ đọc.").waitFor();
+  await page.getByText("Đợt học phí đã thu và đang ở trạng thái chỉ đọc.").waitFor();
   if (await page.getByRole("link", { name: "Đánh dấu đã thu" }).count()) throw new Error("PAID detail still exposed payment action");
   await page.screenshot({ path: path.join(artifactDir, "tuition-paid-390.png"), fullPage: true });
 
@@ -186,7 +186,7 @@ try {
       dashboardAfterPayment.totalUnpaidAmount !== dashboardBeforePayment.totalUnpaidAmount - due.packagePriceSnapshot)
     throw new Error("Dashboard tuition aggregate did not refresh after payment");
   await page.goto("http://127.0.0.1:5176/admin");
-  await page.getByTestId("dashboard-tuition-card").getByText(`${dashboardAfterPayment.paymentDueCount} chu kỳ cần thu`).waitFor();
+  await page.getByTestId("dashboard-tuition-card").getByText(`${dashboardAfterPayment.paymentDueCount} khoản học phí cần thu`).waitFor();
   const replay = await api(`/api/tuition-cycles/${due.id}/mark-paid`, token, "POST", {
     paidAmount: due.packagePriceSnapshot,
     paidAt: paidDetail.paidAt,
@@ -199,17 +199,23 @@ try {
   if (JSON.stringify(accumulatingAfter) !== JSON.stringify(accumulatingBefore)) throw new Error("Next accumulating cycle changed after payment");
 
   await page.goto("http://127.0.0.1:5176/admin/tuition");
-  await page.getByRole("tab", { name: "Đang tích lũy" }).click();
+  await page.getByRole("button", { name: /^Lọc/ }).click();
+  await page.getByTestId("tuition-status-filter").click();
+  await page.getByRole("option", { name: "Đang học" }).click();
+  await page.getByRole("button", { name: "Áp dụng" }).click();
   await page.getByLabel("Tìm học sinh").fill(dueStudentName);
-  await page.getByRole("button", { name: "Tìm", exact: true }).click();
+  await page.getByLabel("Tìm học sinh").press("Enter");
   await page.getByText("2/8", { exact: true }).waitFor();
-  await page.getByRole("tab", { name: "Chưa hoàn thành" }).click();
+  await page.getByRole("button", { name: /^Lọc/ }).click();
+  await page.getByTestId("tuition-status-filter").click();
+  await page.getByRole("option", { name: "Dở dang" }).click();
+  await page.getByRole("button", { name: "Áp dụng" }).click();
   await page.getByLabel("Tìm học sinh").fill(incompleteStudentName);
-  await page.getByRole("button", { name: "Tìm", exact: true }).click();
+  await page.getByLabel("Tìm học sinh").press("Enter");
   await page.getByTestId("tuition-cycle-card").filter({ hasText: incompleteStudentName }).waitFor();
   await page.getByLabel("Tìm học sinh").fill("Không có học sinh này");
-  await page.getByRole("button", { name: "Tìm", exact: true }).click();
-  await page.getByText("Không có chu kỳ học phí phù hợp.").waitFor();
+  await page.getByLabel("Tìm học sinh").press("Enter");
+  await page.getByText("Không có đợt học phí phù hợp.").waitFor();
   await page.setViewportSize({ width: 360, height: 800 });
   await noHorizontalScroll(page);
   console.log(`Playwright tuition E2E passed; screenshot: ${path.join(artifactDir, "tuition-paid-390.png")}`);

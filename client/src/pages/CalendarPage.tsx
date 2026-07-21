@@ -8,10 +8,12 @@ import { EmptyState } from "../components/EmptyState";
 import { LoadingCards } from "../components/LoadingCards";
 import { addDays, displayDate, todayInHoChiMinh, weekStart } from "../utils/date";
 import { PageHeader, visibleStatusLabel } from "../components/UiKit";
+import { classColor } from "../utils/classColor";
 
 type CalendarEntry = {
   key: string; date: string; startTime: string; endTime: string; title: string;
   subtitle: string; color: "default" | "primary" | "success" | "warning" | "error" | "info";
+  classId?: number;
   href?: string;
 };
 
@@ -33,14 +35,14 @@ export function CalendarPage() {
     const values: CalendarEntry[] = [];
     const linkedLessonIds = new Set(data.occurrences.map((item) => item.linkedLessonId).filter((id): id is number => id != null));
     for (const item of data.occurrences) values.push({
-      key: `occurrence-${item.key}`, date: item.occurrenceDate, startTime: item.scheduledStartTime,
+      key: `occurrence-${item.key}`, classId: item.classId, date: item.occurrenceDate, startTime: item.scheduledStartTime,
       endTime: item.scheduledEndTime, title: item.className,
       subtitle: item.projectionSource === "RESCHEDULED" && item.state === "UNRECORDED" ? "Lịch thay thế" : stateLabel[item.state],
       color: item.state === "UNRECORDED" ? "warning" : item.state === "RECORDED" ? "success" : item.state === "SKIPPED" ? "default" : "info",
       href: item.linkedLessonId ? `/admin/lessons/${item.linkedLessonId}/edit` : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
     });
     for (const item of data.lessons.filter((lesson) => !linkedLessonIds.has(lesson.id))) values.push({
-      key: `lesson-${item.id}`, date: item.date, startTime: item.startTime, endTime: item.endTime,
+      key: `lesson-${item.id}`, classId: item.classId, date: item.date, startTime: item.startTime, endTime: item.endTime,
       title: item.className, subtitle: `${visibleStatusLabel(item.lessonType)} · ${visibleStatusLabel(item.status)}`,
       color: item.status === "COMPLETED" ? "success" : item.status === "DRAFT" ? "primary" : "default",
       href: `/admin/lessons/${item.id}/edit`,
@@ -68,7 +70,7 @@ export function CalendarPage() {
     <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
       <Button variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`}>Ghi nhận buổi học</Button>
       <Button variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`}>Buổi học bù</Button>
-      <Button variant="outlined" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`}>Đối soát tuần</Button>
+      <Button variant="outlined" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`}>Kiểm tra lịch tuần</Button>
     </Stack>
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     {!data && !error && <LoadingCards />}
@@ -76,7 +78,7 @@ export function CalendarPage() {
     <Box data-testid="calendar-day-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 2, alignItems: "start" }}>
     {grouped.map(([date, items]) => <Stack key={date} spacing={1} data-testid="calendar-day">
       <Typography variant="h6" sx={{ mt: 1 }}>{displayDate(date)}</Typography>
-      {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: `${item.color}.main` }} data-testid="calendar-event">
+      {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: item.classId ? classColor(item.classId).accent : `${item.color}.main` }} data-testid="calendar-event">
         <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
           <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}</Typography></Stack>
           <Chip size="small" color={item.color} label={item.subtitle} />

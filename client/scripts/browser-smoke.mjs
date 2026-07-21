@@ -102,6 +102,12 @@ class Cdp {
     await this.wait(`!![...document.querySelectorAll('[role=option]')].find(x=>x.textContent.includes(${JSON.stringify(option)}))`, `option ${option}`);
     await this.eval(`[...document.querySelectorAll('[role=option]')].find(x=>x.textContent.includes(${JSON.stringify(option)})).click()`);
   }
+  async selectDialog(label, option) {
+    const opened = await this.eval(`(() => { const dialog=document.querySelector('[role=dialog]'); const label=dialog && [...dialog.querySelectorAll('label')].find(x=>x.textContent.includes(${JSON.stringify(label)})); const direct=label && document.getElementById(label.htmlFor); const combos=dialog ? [...dialog.querySelectorAll('[role=combobox]')] : []; const el=(direct && direct.matches('[role=combobox]') ? direct : null) || (label && combos.find(x=>label.parentElement?.contains(x))) || (${JSON.stringify(label)}==='Sắp xếp' ? combos[1] : combos[0]); if(!el) return false; el.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0})); return true; })()`);
+    if (!opened) throw new Error(`Dialog select not found: ${label}`);
+    await this.wait(`!![...document.querySelectorAll('[role=option]')].find(x=>x.textContent.includes(${JSON.stringify(option)}))`, `option ${option}`);
+    await this.eval(`[...document.querySelectorAll('[role=option]')].find(x=>x.textContent.includes(${JSON.stringify(option)})).click()`);
+  }
 }
 
 try {
@@ -174,11 +180,23 @@ try {
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 360, height: 800, deviceScaleFactor: 1, mobile: true });
   await cdp.send("Page.reload"); await new Promise((resolve) => setTimeout(resolve, 350)); await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "360px dashboard");
   if (await cdp.eval("document.documentElement.scrollWidth-document.documentElement.clientWidth") > 1) throw new Error("Dashboard overflows at 360px");
+  for (const viewport of [{ width: 400, height: 930 }, { width: 430, height: 932 }]) {
+    await cdp.send("Emulation.setDeviceMetricsOverride", { ...viewport, deviceScaleFactor: 1, mobile: true });
+    await cdp.send("Page.reload"); await new Promise((resolve) => setTimeout(resolve, 250));
+    await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", `${viewport.width}px dashboard`);
+    if (await cdp.eval("document.documentElement.scrollWidth-document.documentElement.clientWidth") > 1) throw new Error(`Dashboard overflows at ${viewport.width}px`);
+  }
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await cdp.send("Page.reload"); await new Promise((resolve) => setTimeout(resolve, 350)); await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "restored mobile dashboard");
 
   await cdp.clickText("Lớp học"); await cdp.wait("location.pathname==='/admin/classes' && document.body.innerText.includes('Thêm lớp')", "classes"); await cdp.screenshot("class-list-390"); await cdp.clickText("Thêm lớp");
   await cdp.wait("location.pathname==='/admin/classes/new' && document.body.innerText.includes('Tên lớp')", "class form");
+  const classDefaults = await cdp.eval(`(() => {
+    const valueFor = (needle) => { const label=[...document.querySelectorAll('label')].find((item)=>item.textContent.includes(needle)); return label ? document.getElementById(label.htmlFor)?.value : undefined; };
+    return { price: valueFor('Giá gói'), subject: valueFor('Môn học'), sections: [...document.querySelectorAll('h2')].map((item)=>item.textContent) };
+  })()`);
+  if (classDefaults.price !== "" || classDefaults.subject !== "Tiếng Anh" || !["Thông tin lớp", "Học phí", "Lịch học hằng tuần", "Ghi chú"].every((item) => classDefaults.sections.includes(item)))
+    throw new Error(`Unexpected new-class defaults/sections: ${JSON.stringify(classDefaults)}`);
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   const formWidth = await cdp.eval("document.querySelector('[data-testid=bounded-form]').getBoundingClientRect().width");
   if (formWidth > 681 || formWidth < 580) throw new Error(`Desktop form width is not bounded appropriately: ${formWidth}px`);
@@ -206,6 +224,13 @@ try {
   await cdp.screenshot("tuition-mode-dialog-390"); await cdp.select("Chế độ", "Giá riêng"); await cdp.wait("document.body.innerText.includes('Giá riêng / 8 buổi')", "custom price input"); await cdp.setInput("Giá riêng", "1900000"); await cdp.clickDialogText("Lưu");
   await cdp.wait("document.body.innerText.includes('Đã cập nhật chế độ học phí')", "tuition success"); await cdp.send("Page.reload");
   await cdp.wait("document.body.innerText.includes('1.900.000')", "persisted custom tuition");
+
+  await cdp.eval("location.assign('http://127.0.0.1:5174/admin/students')");
+  await cdp.wait("!!document.querySelector('[data-testid=student-list-page]')", "student list filters");
+  await cdp.setInput("Tìm tên", classPath.includes("classes") ? "Browser Smoke" : studentName);
+  await cdp.wait(`document.body.innerText.includes(${JSON.stringify(studentName)})`, "student search by class");
+  await cdp.clickText("Lọc"); await cdp.wait("!!document.querySelector('[role=dialog]')", "student filter dialog");
+  await cdp.selectDialog("Sắp xếp", "Tên Z–A"); await cdp.clickDialogText("Áp dụng");
 
   await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${classPath}`)})`); await cdp.wait("document.body.innerText.includes('Tạm dừng')", "class action");
   await cdp.eval("window.confirm=()=>true"); await cdp.clickText("Tạm dừng"); await cdp.wait("document.body.innerText.includes('Đã tạm dừng lớp')", "class pause success");

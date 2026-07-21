@@ -40,3 +40,6 @@ multi-instance production deployment requires a shared store such as Redis.
 While blocked, submit is disabled and the live-region message counts down in
 seconds before re-enabling automatically. If `Retry-After` is unavailable, the
 client uses a finite friendly fallback rather than an indefinite wait message.
+
+Local Vite is fixed to port 5173 with `strictPort: true`; a port conflict fails fast
+instead of silently moving the login/API workflow to 5174.

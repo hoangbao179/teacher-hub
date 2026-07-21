@@ -30,17 +30,17 @@ export function TuitionDetailPage() {
   useEffect(() => { void load(); }, [load]);
 
   if (!item && !error) return <LoadingState />;
-  if (!item) return <Alert severity="error" action={<Button color="inherit" onClick={() => { setError(""); void load(); }}>Thử lại</Button>}>{error || "Không tải được chu kỳ."}</Alert>;
+  if (!item) return <Alert severity="error" action={<Button color="inherit" onClick={() => { setError(""); void load(); }}>Thử lại</Button>}>{error || "Không tải được đợt học phí."}</Alert>;
   const visibleItems = item.items.filter((entry) => entry.attendanceStatus === "PRESENT");
   return (
     <Stack spacing={2} data-testid="tuition-detail-page" sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
       <Button component={Link} to="/admin/tuition" startIcon={<ArrowBack />} sx={{ alignSelf: "flex-start" }}>Học phí</Button>
       {success && <Alert severity="success">{success}</Alert>}
-      <PageHeader title={`${item.studentName} · Chu kỳ #${item.cycleNumber}`} subtitle={item.className} action={<TuitionStatusChip status={item.status} />} />
+      <PageHeader title={`${item.studentName} · Đợt học phí ${item.cycleNumber}`} subtitle={item.className} action={<TuitionStatusChip status={item.status} />} />
 
       <Card>
         <CardContent>
-          <InfoRow label="Giá gói (snapshot)" value={money(item.packagePriceSnapshot)} strong />
+          <InfoRow label="Học phí đã chốt" value={money(item.packagePriceSnapshot)} strong />
           <InfoRow label="Tiến độ" value={`${item.itemCount}/${item.targetCount} buổi`} />
           <InfoRow label="Ngày bắt đầu" value={displayDate(item.startedAt)} />
           <InfoRow label="Ngày buổi 8" value={displayDate(item.reachedTargetAt)} />
@@ -50,7 +50,7 @@ export function TuitionDetailPage() {
         </CardContent>
       </Card>
 
-      <Typography component="h2" variant="h6">{visibleItems.length} buổi trong chu kỳ</Typography>
+      <Typography component="h2" variant="h6">{visibleItems.length} buổi được tính học phí</Typography>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 1 }}>
         {visibleItems.map((entry) => (
           <Card key={entry.attendanceId} variant="outlined" data-testid="tuition-cycle-item">
@@ -72,7 +72,7 @@ export function TuitionDetailPage() {
         ))}
       </Box>
       <Alert severity="info">Thời lượng thực tế chỉ để theo dõi, không thay đổi số buổi học phí.</Alert>
-      {item.status === "PAID" && <Alert icon={<Lock />} severity="success">Chu kỳ đã thu và đang ở trạng thái chỉ đọc.</Alert>}
+      {item.status === "PAID" && <Alert icon={<Lock />} severity="success">Đợt học phí đã thu và đang ở trạng thái chỉ đọc.</Alert>}
       {item.status === "PAYMENT_DUE" && (
         <StickyActionBar>
           <Button

@@ -8,7 +8,10 @@ const required = [
   "VITE_PUBLIC_SITE_URL", "VITE_PUBLIC_TEACHER_NAME", "VITE_PUBLIC_BRAND_NAME",
   "VITE_PUBLIC_HERO_HEADING", "VITE_PUBLIC_DESCRIPTION", "VITE_PUBLIC_INTRODUCTION",
   "VITE_PUBLIC_ZALO_URL", "VITE_PUBLIC_PHONE_DISPLAY", "VITE_PUBLIC_PHONE_E164",
-  "VITE_PUBLIC_FACEBOOK_URL", "VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL", "VITE_PUBLIC_OG_IMAGE_URL",
+  "VITE_PUBLIC_FACEBOOK_URL", "VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL",
+  "VITE_PUBLIC_HERO_ALT_MOBILE_URL", "VITE_PUBLIC_HERO_ALT_DESKTOP_URL",
+  "VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL", "VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL",
+  "VITE_PUBLIC_TEACHER_PHOTO_URL", "VITE_PUBLIC_TEACHER_PHOTO_ALT", "VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION", "VITE_PUBLIC_OG_IMAGE_URL",
   "VITE_PUBLIC_VIDEOS_JSON", "VITE_PUBLIC_TESTIMONIALS_JSON", "VITE_PUBLIC_SEO_TITLE",
   "VITE_PUBLIC_SEO_DESCRIPTION",
 ];
@@ -33,8 +36,10 @@ export function validatePublicConfig(env) {
   checkUrl("VITE_PUBLIC_ZALO_URL", ["zalo.me"]);
   checkUrl("VITE_PUBLIC_FACEBOOK_URL", ["facebook.com"]);
   if (!/^\+[1-9]\d{7,14}$/.test(env.VITE_PUBLIC_PHONE_E164 ?? "")) errors.push("VITE_PUBLIC_PHONE_E164 must use E.164 format");
-  for (const key of ["VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL", "VITE_PUBLIC_OG_IMAGE_URL"])
+  for (const key of ["VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL", "VITE_PUBLIC_HERO_ALT_MOBILE_URL", "VITE_PUBLIC_HERO_ALT_DESKTOP_URL", "VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL", "VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL", "VITE_PUBLIC_TEACHER_PHOTO_URL", "VITE_PUBLIC_OG_IMAGE_URL"])
     if (!/^\/(?!\/)|^https:\/\//.test(env[key] ?? "")) errors.push(`${key} must be a root-relative or HTTPS asset URL`);
+  const heroMedia = [env.VITE_PUBLIC_HERO_DESKTOP_URL, env.VITE_PUBLIC_HERO_ALT_DESKTOP_URL, env.VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL];
+  if (new Set(heroMedia).size !== heroMedia.length) errors.push("The three hero slides must use distinct media URLs");
   try {
     const items = JSON.parse(env.VITE_PUBLIC_VIDEOS_JSON ?? "");
     const fields = ["title", "description", "url"];
@@ -62,7 +67,10 @@ const validFixture = {
   VITE_PUBLIC_INTRODUCTION: "Giáo viên đồng hành theo lộ trình phù hợp với từng học sinh.",
   VITE_PUBLIC_ZALO_URL: "https://zalo.me/84912345678", VITE_PUBLIC_PHONE_DISPLAY: "0912 345 678",
   VITE_PUBLIC_PHONE_E164: "+84912345678", VITE_PUBLIC_FACEBOOK_URL: "https://www.facebook.com/lophocanhngucovy",
-  VITE_PUBLIC_HERO_MOBILE_URL: "/images/teacher-english-hero-720.jpg", VITE_PUBLIC_HERO_DESKTOP_URL: "/images/teacher-english-hero-1440.jpg", VITE_PUBLIC_OG_IMAGE_URL: "/images/teacher-english-hero-1440.jpg",
+  VITE_PUBLIC_HERO_MOBILE_URL: "/images/teacher-english-hero-720.jpg", VITE_PUBLIC_HERO_DESKTOP_URL: "/images/teacher-english-hero-1440.jpg",
+  VITE_PUBLIC_HERO_ALT_MOBILE_URL: "/images/teacher-hero-720.webp", VITE_PUBLIC_HERO_ALT_DESKTOP_URL: "/images/teacher-hero-1440.webp",
+  VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL: "/images/teacher-secondary-study-720.jpg", VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL: "/images/teacher-secondary-study-1440.jpg",
+  VITE_PUBLIC_TEACHER_PHOTO_URL: "/images/teacher-hero-720.webp", VITE_PUBLIC_TEACHER_PHOTO_ALT: "Không gian dạy học tiếng Anh của cô Vy", VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION: "center", VITE_PUBLIC_OG_IMAGE_URL: "/images/teacher-english-hero-1440.jpg",
   VITE_PUBLIC_VIDEOS_JSON: '[{"title":"Bài học","description":"Giới thiệu","url":"https://youtu.be/abc123"}]',
   VITE_PUBLIC_TESTIMONIALS_JSON: '[{"id":"verified-1","guardianLabel":"Phụ huynh lớp 6","studentLevel":"Lớp 6","location":"Huế","quote":"Phản hồi đã được cho phép công khai","verified":true,"published":true}]',
   VITE_PUBLIC_SEO_TITLE: "Lớp học tiếng Anh cô Vy", VITE_PUBLIC_SEO_DESCRIPTION: "Thông tin lớp tiếng Anh và phương pháp học.",

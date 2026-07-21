@@ -15,6 +15,7 @@ import { api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, PageHeader, StatusBadge } from "../components/UiKit";
 import { EmptyState } from "../components/EmptyState";
+import { classColor } from "../utils/classColor";
 export function ClassesPage() {
   const [items, setItems] = useState<ClassListItem[] | null>(null);
   const [error, setError] = useState("");
@@ -31,18 +32,18 @@ export function ClassesPage() {
         </Button>} />
       {error && <Alert severity="warning">{error}</Alert>}
       <Box data-testid="class-card-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
-      {items?.map((item) => (
+      {items?.map((item) => { const tone = classColor(item.id); return (
         <Card
           key={item.id}
           component={Link}
           to={`/admin/classes/${item.id}`}
-          data-class-tone={item.type === "ONE_TO_ONE" ? "mint" : "blue"}
-          sx={{ textDecoration: "none", borderLeft: "4px solid", borderLeftColor: item.type === "ONE_TO_ONE" ? "#78cfa5" : "#8a78df", boxShadow: "0 3px 12px rgba(36,29,62,.07)" }}
+          data-class-tone={item.id % 5}
+          sx={{ textDecoration: "none", borderLeft: "4px solid", borderLeftColor: tone.accent, boxShadow: "0 3px 12px rgba(36,29,62,.07)" }}
         >
           <CardContent>
             <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
               <Stack direction="row" spacing={1} sx={{ minWidth: 0, alignItems: "center" }}>
-                <Box sx={{ display: "grid", placeItems: "center", width: 32, height: 32, flexShrink: 0, borderRadius: 2, bgcolor: item.type === "ONE_TO_ONE" ? "#e2f6eb" : "#eeeaff", color: item.type === "ONE_TO_ONE" ? "#168754" : "#624bd2" }}>{item.type === "ONE_TO_ONE" ? <Person sx={{ fontSize: 19 }} /> : <Groups sx={{ fontSize: 19 }} />}</Box>
+                <Box sx={{ display: "grid", placeItems: "center", width: 32, height: 32, flexShrink: 0, borderRadius: 2, bgcolor: tone.soft, color: tone.text }}>{item.type === "ONE_TO_ONE" ? <Person sx={{ fontSize: 19 }} /> : <Groups sx={{ fontSize: 19 }} />}</Box>
                 <Typography variant="subtitle1" sx={{ minWidth: 0, overflowWrap: "anywhere" }} color="text.primary">{item.name}</Typography>
               </Stack>
               <StatusBadge status={item.status} />
@@ -54,7 +55,7 @@ export function ClassesPage() {
             <Typography color="primary" sx={{ fontWeight: 700 }}><CurrencyDisplay value={item.defaultPackagePrice} /> / 8 buổi</Typography>
           </CardContent>
         </Card>
-      ))}
+      ); })}
       </Box>
       {items?.length === 0 && <EmptyState message="Chưa có lớp học. Chọn Thêm lớp để bắt đầu." />}
     </Stack>

@@ -8,6 +8,8 @@ quản trị và không công khai giá học phí.
 ## Carousel và nội dung
 
 - Hero có ba slide cấu hình tập trung trong `client/src/content/publicHome.ts`.
+- Ba slide dùng ba media khác nhau. Hero cao khoảng 400 px ở 360, 410 px ở 390,
+  420 px ở 400, tối đa 450 px ở 430 và 510 px trên desktop 1440×900.
 - Slide tự chuyển mỗi 5,5 giây, dừng khi hover/focus/tab ẩn; previous/next,
   indicators, bàn phím và swipe đều hoạt động.
 - `prefers-reduced-motion` tắt autoplay/transition nhưng giữ điều hướng thủ công.
@@ -26,10 +28,13 @@ Video dài chỉ tạo iframe `youtube-nocookie.com` sau tương tác và không
 
 - Production chỉ hiển thị testimonial có cả `published=true` và `verified=true`;
   bản chưa xác minh không được trình bày như phản hồi khách hàng thật.
-- Development có thể hiện draft với badge `Nội dung mẫu`; khi không có phản hồi
-  publishable, trang dùng chủ đề phụ huynh quan tâm thay vì tạo lời chứng thực giả.
+- Development có thể preview ba testimonial đã cấu hình mà không gắn nhãn nội bộ.
+  Khi preview/testimonial hợp lệ đang hiển thị, FAQ fallback không render cùng lúc.
+  Production không có testimonial hợp lệ thì dùng **Phụ huynh thường quan tâm**.
 - Zalo hợp lệ là CTA chính; điện thoại và Facebook hợp lệ là phụ. Action thiếu/sai
   bị ẩn, không dùng link `#` và external link dùng `noopener noreferrer`.
+- Local development có bộ contact tạm đã cấu hình để section không rỗng; production
+  bắt buộc qua validation với contact thật trước build.
 
 ## Cấu hình, SEO và accessibility
 
@@ -41,3 +46,5 @@ nhưng chưa verified. Đồng bộ domain thật vào sitemap/robots trước r
 Trang dùng landmark, một H1, heading tuần tự, focus-visible, touch target tối thiểu
 44 px, ảnh responsive và không phụ thuộc animation. Canonical/Open Graph/Twitter và
 Person JSON-LD lấy từ cấu hình public đã duyệt.
+
+Footer phải giữ nguyên: `2026 — từ người hâm mộ cô Vy, with love ❤️`.

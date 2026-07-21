@@ -16,15 +16,27 @@ học sinh lớp 1–9, không tạo cảm giác mầm non.
 
 ## Phân cấp màu
 
-- Dashboard metric: lavender cho học phí, mint cho buổi chưa ghi, soft blue cho lịch.
-- Lớp ONE_TO_ONE: mint; GROUP: violet/blue. ACTIVE: green; PAUSED: warm orange;
-  CLOSED: neutral outline.
+- Dashboard metric: lavender cho học phí, mint cho buổi cần xác nhận, soft blue cho lịch;
+  thao tác nhanh dùng grid một nút chính và hai nút phụ bằng nhau.
+- Mỗi lớp có accent pastel ổn định tính từ `classId`, dùng nhất quán ở card/lịch mà không
+  thay schema. ACTIVE: green; PAUSED: warm orange; CLOSED: neutral outline.
 - Học sinh dùng avatar pastel ổn định theo ID và progress bar tím rõ, không tạo dữ
   liệu giả ở client.
 - Lesson wizard: Thông tin blue, Điểm danh mint, Nội dung yellow, Xác nhận purple;
   nhãn/số vẫn truyền đạt trạng thái khi không nhìn màu.
-- Học phí: Đang tích lũy blue, Cần thu orange, Đã thu green, Chưa hoàn thành neutral.
+- Học phí: Chưa đủ 8 buổi blue, Cần thu orange, Đã thu green, Dở dang neutral.
   Không hiển thị raw enum.
+
+## Bộ lọc và biểu mẫu
+
+- Danh sách học sinh tìm theo họ tên, tên gọi và lớp; mặc định A–Z, hỗ trợ Z–A và lọc
+  Đang học/Tạm dừng/Đã nghỉ/Miễn phí/Cần thu ở dialog mobile.
+- Học phí mobile chỉ để search và nút **Lọc** trên mặt chính; trạng thái/lớp/sắp xếp
+  được áp dụng một lần từ dialog. Desktop giữ filter inline.
+- Lớp mới mặc định môn Tiếng Anh, giá để trống và format VND; form chia Thông tin lớp,
+  Học phí, Lịch học hằng tuần và Ghi chú.
+- Giao diện lịch dùng **Xác nhận lịch dạy**/**Kiểm tra lịch tuần**. Input ngày/giờ tiếp
+  tục dùng native picker cho iPhone/Android.
 
 ## Ranh giới hành vi
 

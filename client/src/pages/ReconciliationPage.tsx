@@ -127,8 +127,8 @@ export function ReconciliationPage() {
 
   return (
     <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page">
-      <Typography component="h1" variant="h5">Đối soát buổi học</Typography>
-      <Typography color="text.secondary">Xác nhận lịch dự kiến thành bản nháp buổi học, nghỉ hoặc đổi lịch. Học phí chỉ thay đổi sau khi hoàn tất ghi nhận.</Typography>
+      <Typography component="h1" variant="h5">Xác nhận lịch dạy</Typography>
+      <Typography color="text.secondary">Kiểm tra các buổi theo lịch và chọn Đã dạy, Nghỉ hoặc Đổi lịch. Học phí chỉ thay đổi sau khi hoàn tất ghi nhận.</Typography>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setItems(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
       {warnings.length > 0 && <Alert severity="warning" onClose={() => setWarnings([])} data-testid="schedule-conflict-warning">

@@ -7,5 +7,8 @@ Screenshot đã duyệt trong `v2-branding/` được chụp từ ứng dụng c
 tham chiếu styling hiện hành cho màn hình tương ứng. Khi có V2, không hoàn nguyên
 màu sắc/layout về P0. P0 vẫn hữu ích cho workflow chưa có V2.
 
+V13 cập nhật lại các ảnh V2 của Homepage, Dashboard, danh sách học sinh và học phí
+sau khi hoàn thiện hero/filter/thuật ngữ mobile; chỉ ảnh tài liệu chính thức được lưu tại đây.
+
 Business rule không đến từ text/số liệu trong wireframe được tạo. Khi xung đột,
 tuân theo priority trong `AGENTS.md` và `docs/README.md`; ảnh chỉ mô tả visual.

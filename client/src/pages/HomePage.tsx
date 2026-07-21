@@ -20,7 +20,6 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   Container,
   IconButton,
   Stack,
@@ -101,7 +100,7 @@ function LearningVideo({ video }: { video: (typeof content.videos)[number] }) {
   );
 }
 
-const sectionSx = { py: { xs: 5, sm: 7, md: 8 }, scrollMarginTop: 72 } as const;
+const sectionSx = { py: { xs: 4, sm: 5, md: 7 }, scrollMarginTop: 72 } as const;
 const programTone = {
   mint: { background: "linear-gradient(145deg, #fff8cf 0%, #e9f9ef 100%)", border: "#cfe8d8", icon: "#1d8b61" },
   blue: { background: "linear-gradient(145deg, #eaf5ff 0%, #f0eaff 100%)", border: "#d4d8f5", icon: "#5f48d5" },
@@ -168,8 +167,7 @@ function HeroCarousel({ showZalo }: { showZalo: boolean }) {
       }}
       sx={{
         position: "relative",
-        height: { xs: "clamp(470px, calc(100vw + 110px), 500px)", sm: "clamp(540px, 72vw, 580px)", lg: 620 },
-        "@media (min-width:400px) and (max-width:599.95px)": { height: "clamp(490px, calc(100vw + 90px), 520px)" },
+        height: { xs: "clamp(400px, calc(100vw + 20px), 450px)", sm: 480, md: 510 },
         display: "grid", alignItems: "end", color: "white", bgcolor: "#24173f", overflow: "hidden", outline: 0, touchAction: "pan-y",
       }}
     >
@@ -209,7 +207,7 @@ function HeroCarousel({ showZalo }: { showZalo: boolean }) {
         <ChatBubbleOutlined sx={{ position: "absolute", left: "52%", top: "18%", color: "rgba(255,255,255,.75)", fontSize: 30 }} />
       </Box>
 
-      <Container maxWidth="lg" sx={{ position: "relative", pb: { xs: 5.5, sm: 7 }, pt: 7 }}>
+      <Container maxWidth="lg" sx={{ position: "relative", pb: { xs: 4.5, sm: 5.5 }, pt: { xs: 5, sm: 6 } }}>
         <Box role="group" aria-roledescription="slide" aria-label={`${active + 1} / ${slides.length}: ${slide.title}`} sx={{ maxWidth: 620 }}>
           <Typography sx={{ color: "#e8ddff", fontSize: { xs: 12.5, sm: 14 }, fontWeight: 700 }}>{slide.eyebrow}</Typography>
           <Typography id="hero-heading" component="h1" sx={{ fontSize: { xs: "1.9rem", sm: "3rem" }, lineHeight: 1.08, fontWeight: 800, mt: 0.75, maxWidth: 590 }}>{slide.title}</Typography>
@@ -225,8 +223,8 @@ function HeroCarousel({ showZalo }: { showZalo: boolean }) {
         </Box>
       </Container>
 
-      <IconButton aria-label="Slide trước" onClick={() => move(-1)} sx={{ position: "absolute", left: { xs: 8, sm: 18 }, top: { xs: "25%", sm: "42%" }, bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronLeft /></IconButton>
-      <IconButton aria-label="Slide tiếp theo" onClick={() => move(1)} sx={{ position: "absolute", right: { xs: 8, sm: 18 }, top: { xs: "25%", sm: "42%" }, bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronRight /></IconButton>
+      <IconButton aria-label="Slide trước" onClick={() => move(-1)} sx={{ position: "absolute", left: { xs: 8, sm: 18 }, top: { xs: "30%", sm: "42%" }, bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronLeft /></IconButton>
+      <IconButton aria-label="Slide tiếp theo" onClick={() => move(1)} sx={{ position: "absolute", right: { xs: 8, sm: 18 }, top: { xs: "30%", sm: "42%" }, bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronRight /></IconButton>
       <Stack direction="row" spacing={0.75} sx={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)" }}>
         {slides.map((item, index) => (
           <IconButton
@@ -249,7 +247,7 @@ export function HomePage() {
   const showFacebook = isConfiguredExternalUrl(content.contact.facebookUrl, "facebook.com");
   const showPhone = isConfiguredPhone(content.contact.phoneHref, content.contact.phoneDisplay);
   const verifiedTestimonials = publishableTestimonials(content.testimonials);
-  const developmentDrafts = isDevelopmentContent ? content.testimonials.filter((item) => !item.published || !item.verified) : [];
+  const visibleTestimonials = isDevelopmentContent ? [...content.testimonials] : verifiedTestimonials;
 
   return (
     <Box sx={{ bgcolor: "#fff", color: "text.primary", overflowX: "clip" }}>
@@ -269,14 +267,19 @@ export function HomePage() {
 
         <Container maxWidth="lg">
           <Box component="section" id="about" aria-labelledby="about-heading" sx={sectionSx}>
-            <Typography variant="overline" color="primary">GIỚI THIỆU CÔ VY</Typography>
-            <Typography id="about-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Đồng hành theo năng lực từng học sinh</Typography>
-            <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 760 }}>{content.introduction}</Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 3.5 }}>
-              {["Kèm cặp 1–1", "Lớp nhóm nhỏ", "Củng cố kiến thức"].map((item) => (
-                <Stack key={item} direction="row" spacing={1} sx={{ flex: 1, alignItems: "center" }}><CheckCircleOutlined color="success" /><Typography variant="subtitle2">{item}</Typography></Stack>
-              ))}
-            </Stack>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0, .8fr) minmax(0, 1.2fr)" }, gap: { xs: 2.5, md: 4 }, alignItems: "center" }}>
+              <Box component="img" src={content.media.teacherPhoto} alt={content.media.teacherPhotoAlt} loading="lazy" width="720" height="540" sx={{ width: "100%", maxHeight: { xs: 260, md: 330 }, objectFit: "cover", objectPosition: content.media.teacherPhotoFocalPosition, borderRadius: 3, boxShadow: "0 12px 30px rgba(55,40,90,.12)" }} />
+              <Box>
+                <Typography variant="overline" color="primary">GIỚI THIỆU CÔ VY</Typography>
+                <Typography id="about-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Đồng hành theo năng lực từng học sinh</Typography>
+                <Typography color="text.secondary" sx={{ mt: 2 }}>{content.introduction}</Typography>
+                <Stack spacing={1.25} sx={{ mt: 2.5 }}>
+                  {["Kèm cặp 1–1", "Lớp nhóm nhỏ", "Củng cố kiến thức"].map((item) => (
+                    <Stack key={item} direction="row" spacing={1} sx={{ alignItems: "center" }}><CheckCircleOutlined color="success" /><Typography variant="subtitle2">{item}</Typography></Stack>
+                  ))}
+                </Stack>
+              </Box>
+            </Box>
           </Box>
         </Container>
 
@@ -328,45 +331,37 @@ export function HomePage() {
           <Container maxWidth="lg">
             <Box component="section" id="feedback" aria-labelledby="feedback-heading" sx={sectionSx}>
               <Typography variant="overline" color="primary">PHỤ HUYNH VÀ CÔ VY</Typography>
-              <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{verifiedTestimonials.length ? "Phản hồi từ phụ huynh" : "Phụ huynh thường quan tâm"}</Typography>
-              {verifiedTestimonials.length ? (
-                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2, mt: 3.5 }}>
-                  {verifiedTestimonials.map((item) => <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, borderRadius: 3 }}><CardContent><Typography component="blockquote" sx={{ m: 0 }}>“{item.quote}”</Typography><Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 600 }}>— {item.guardianLabel} · {item.studentLevel} · {item.location}</Typography></CardContent></Card>)}
+              <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{visibleTestimonials.length ? "Phản hồi từ phụ huynh" : "Phụ huynh thường quan tâm"}</Typography>
+              {visibleTestimonials.length ? (
+                <Box data-testid="testimonial-list" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 3.5 }}>
+                  {visibleTestimonials.map((item) => <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, borderRadius: 3 }}><CardContent><Typography component="blockquote" sx={{ m: 0 }}>“{item.quote}”</Typography><Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 600 }}>— {item.guardianLabel} · {item.studentLevel} · {item.location}</Typography></CardContent></Card>)}
                 </Box>
               ) : (
                 <Box data-testid="testimonial-fallback" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 1.5, mt: 3 }}>
                   {content.parentTopics.map((topic, index) => <Card key={topic} variant="outlined" sx={{ borderRadius: 3, bgcolor: ["#fff9df", "#edf7ff", "#eefaf5"][index] }}><CardContent><ChatBubbleOutlined color="primary" aria-hidden="true" /><Typography component="h3" variant="subtitle1" sx={{ mt: 1 }}>{topic}</Typography></CardContent></Card>)}
                 </Box>
               )}
-              {developmentDrafts.length > 0 && (
-                <Box sx={{ mt: 4 }}>
-                  <Typography component="h3" variant="h6">Bản nháp để thay bằng phản hồi đã xác minh</Typography>
-                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 1.5, mt: 2 }}>
-                    {developmentDrafts.map((item) => <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, borderRadius: 3 }}><CardContent><Chip size="small" label="Nội dung mẫu" color="warning" variant="outlined" sx={{ mb: 1.5 }} /><Typography component="blockquote" variant="body2" sx={{ m: 0 }}>“{item.quote}”</Typography><Typography component="figcaption" variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5, fontWeight: 600 }}>— {item.guardianLabel} · {item.studentLevel} · {item.location}</Typography></CardContent></Card>)}
-                  </Box>
-                </Box>
-              )}
             </Box>
           </Container>
         </Box>
 
-        <Container maxWidth="md">
+        {(showZalo || showPhone || showFacebook) && <Container maxWidth="md">
           <Box component="section" id="contact" aria-labelledby="contact-heading" sx={{ ...sectionSx, textAlign: "center" }}>
             <MenuBook color="primary" sx={{ fontSize: 38 }} />
             <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Trao đổi về mục tiêu học của con</Typography>
             <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 680, mx: "auto" }}>Cô Vy sẽ tư vấn lộ trình phù hợp với trình độ, thời gian học và mục tiêu của từng học sinh.</Typography>
             <Box sx={{ mt: 3, maxWidth: 580, mx: "auto" }}>
-              {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth>Nhắn Zalo cho cô Vy</Button>}
+              {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth startIcon={<ChatBubbleOutlined />} sx={{ background: "linear-gradient(105deg, #6d3df5, #398de5)" }}>Nhắn Zalo cho cô Vy</Button>}
               {showZalo && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>Trao đổi nhanh về tình hình học của con</Typography>}
               {(showPhone || showFacebook) && (
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", gap: 1.25, mt: 2 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", "@media (max-width:359px)": { gridTemplateColumns: "1fr" }, gap: 1.25, mt: 2 }}>
                   {showPhone && <Button component="a" href={content.contact.phoneHref} variant="outlined" size="large" startIcon={<Phone />}>Gọi cô Vy</Button>}
                   {showFacebook && <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="outlined" size="large" startIcon={<Facebook />}>Facebook</Button>}
                 </Box>
               )}
             </Box>
           </Box>
-        </Container>
+        </Container>}
       </Box>
 
       <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", py: 3, bgcolor: "#faf9fd" }}>

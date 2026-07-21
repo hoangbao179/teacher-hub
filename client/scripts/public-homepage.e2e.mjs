@@ -63,6 +63,8 @@ try {
   assert(await carousel.getAttribute("aria-roledescription") === "carousel", "Carousel semantics are missing");
   assert(await carousel.locator('img[fetchpriority="high"]').count() === 1, "The first hero image is not the sole high-priority image");
   assert(await carousel.locator('img[loading="lazy"]').count() === 2, "Later hero images are not lazy loaded");
+  const heroSources = await carousel.locator("picture img").evaluateAll((images) => images.map((image) => image.getAttribute("src")));
+  assert(new Set(heroSources).size === 3, `Hero slides do not use three distinct images: ${heroSources.join(", ")}`);
 
   await page.getByRole("button", { name: "Slide tiếp theo" }).click();
   assert(await carousel.getAttribute("data-active-slide") === "primary", "Next control did not advance the carousel");
@@ -89,13 +91,14 @@ try {
   await page.mouse.up();
   assert(await carousel.getAttribute("data-active-slide") === "primary", "Horizontal swipe did not advance the carousel");
 
-  for (const heading of ["Đồng hành theo năng lực", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Phụ huynh thường quan tâm", "Trao đổi về mục tiêu"]) {
+  for (const heading of ["Đồng hành theo năng lực", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Phản hồi từ phụ huynh", "Trao đổi về mục tiêu"]) {
     await page.getByRole("heading", { name: new RegExp(heading) }).first().waitFor();
   }
   for (const program of ["Tiếng Anh lớp 1–5", "Tiếng Anh lớp 6–9", "Kèm cặp và ôn thi"])
     await page.getByRole("heading", { level: 3, name: program, exact: true }).waitFor();
-  await page.getByTestId("testimonial-fallback").waitFor();
-  assert(await page.getByText("Nội dung mẫu", { exact: true }).count() >= 1, "Development testimonial draft lacks its sample badge");
+  await page.getByTestId("testimonial-list").waitFor();
+  assert(await page.getByTestId("testimonial-fallback").count() === 0, "FAQ fallback rendered with development testimonials");
+  assert(await page.getByText("Nội dung mẫu", { exact: true }).count() === 0, "Development testimonial exposes a sample badge");
 
   const contactTargets = await page.locator('a[href^="https://zalo.me/"],a[href^="tel:"],a[href^="https://www.facebook.com/"]').evaluateAll((links) => links.map((link) => ({ href: link.getAttribute("href"), target: link.getAttribute("target"), rel: link.getAttribute("rel") })));
   assert(contactTargets.length >= 4, `Expected configured contact links, found ${contactTargets.length}`);
@@ -151,9 +154,12 @@ try {
       };
     });
     assert(metrics.overflow <= 1, `Homepage overflow at ${viewport.width}px: ${metrics.overflow}px`);
-    if (viewport.width <= 393) assert(metrics.heroHeight >= 470 && metrics.heroHeight <= 500, `Hero height ${metrics.heroHeight}px is outside 470–500 at ${viewport.width}px`);
-    else if (viewport.width <= 430) assert(metrics.heroHeight >= 490 && metrics.heroHeight <= 520, `Hero height ${metrics.heroHeight}px is outside 490–520 at ${viewport.width}px`);
-    else assert(metrics.heroHeight <= 660, `Desktop hero is excessively tall: ${metrics.heroHeight}px`);
+    if (viewport.width === 360) assert(metrics.heroHeight >= 390 && metrics.heroHeight <= 410, `Hero height ${metrics.heroHeight}px is outside 390–410 at 360px`);
+    else if (viewport.width < 390) assert(metrics.heroHeight >= 390 && metrics.heroHeight <= 420, `Hero height ${metrics.heroHeight}px is outside 390–420 at ${viewport.width}px`);
+    else if (viewport.width <= 393) assert(metrics.heroHeight >= 410 && metrics.heroHeight <= 430, `Hero height ${metrics.heroHeight}px is outside 410–430 at ${viewport.width}px`);
+    else if (viewport.width <= 412) assert(metrics.heroHeight >= 420 && metrics.heroHeight <= 442, `Hero height ${metrics.heroHeight}px is outside 420–442 at ${viewport.width}px`);
+    else if (viewport.width <= 430) assert(metrics.heroHeight <= 450, `Hero height ${metrics.heroHeight}px exceeds 450 at ${viewport.width}px`);
+    else assert(metrics.heroHeight >= 500 && metrics.heroHeight <= 520, `Desktop hero height ${metrics.heroHeight}px is outside 500–520`);
     if (viewport.width <= 430) assert(metrics.aboutTop < viewport.height, `Next section is not discoverable at ${viewport.width}px`);
     assert(metrics.labels.includes("Nhắn Zalo cho cô Vy"), `Primary Zalo CTA is not visible at ${viewport.width}px`);
     await page.screenshot({ path: path.join(artifactDir, `homepage-${viewport.width}x${viewport.height}.png`), fullPage: true });

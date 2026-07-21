@@ -4,7 +4,12 @@
 
 ## Hero carousel
 
-Mỗi slide có `mobileImage`, `desktopImage`, `focalPosition` và `alt`. Slide đầu hiện dùng `VITE_PUBLIC_HERO_MOBILE_URL`/`VITE_PUBLIC_HERO_DESKTOP_URL`; slide 2 dùng cùng bộ ảnh với focal point khác; slide 3 dùng `VITE_PUBLIC_HERO_ALT_MOBILE_URL`/`VITE_PUBLIC_HERO_ALT_DESKTOP_URL`.
+Mỗi slide có `mobileImage`, `desktopImage`, `focalPosition` và `alt`, và ba slide phải
+dùng ba media khác nhau:
+
+- slide 1: `VITE_PUBLIC_HERO_MOBILE_URL`/`VITE_PUBLIC_HERO_DESKTOP_URL`;
+- slide 2: `VITE_PUBLIC_HERO_ALT_MOBILE_URL`/`VITE_PUBLIC_HERO_ALT_DESKTOP_URL`;
+- slide 3: `VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL`/`VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL`.
 
 - Mobile nên có tỉ lệ gần 4:5, tối thiểu 720px chiều ngang.
 - Desktop nên có tỉ lệ gần 16:10, tối thiểu 1440×900.
@@ -30,10 +35,12 @@ Link thiếu, placeholder hoặc sai host bị ẩn khỏi visitor. Production v
 
 ## Ảnh giáo viên
 
-`VITE_PUBLIC_TEACHER_PHOTO_URL` dành cho ảnh thật khi cô Vy phê duyệt. Ảnh tạm không được mô tả hay trình bày như chân dung xác thực của cô Vy.
+`VITE_PUBLIC_TEACHER_PHOTO_URL`, `VITE_PUBLIC_TEACHER_PHOTO_ALT` và
+`VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION` cấu hình tập trung khu giới thiệu. Ảnh tạm
+không được mô tả hay trình bày như chân dung xác thực của cô Vy.
 
 ## Phản hồi phụ huynh
 
-Mỗi item trong `VITE_PUBLIC_TESTIMONIALS_JSON` có `id`, `guardianLabel`, `studentLevel`, `location`, `quote`, `verified`, `published` và `date` tùy chọn. Chỉ item có cả `verified=true` và `published=true` mới được hiển thị như phản hồi thật. Production validation từ chối `published=true` khi `verified=false`. Khi chưa có phản hồi đủ điều kiện, Homepage hiển thị các chủ đề phụ huynh thường quan tâm.
+Mỗi item trong `VITE_PUBLIC_TESTIMONIALS_JSON` có `id`, `guardianLabel`, `studentLevel`, `location`, `quote`, `verified`, `published` và `date` tùy chọn. Development có thể preview item cấu hình mà không lộ metadata/nhãn mẫu. Production chỉ hiển thị item có cả `verified=true` và `published=true`, đồng thời validation từ chối `published=true` khi `verified=false`. Testimonial và FAQ không render đồng thời; production không có phản hồi đủ điều kiện mới hiển thị các chủ đề phụ huynh thường quan tâm.
 
 Không đưa tên đầy đủ, số điện thoại, thông tin riêng tư hoặc lời chứng thực chưa được phụ huynh chấp thuận vào cấu hình production.

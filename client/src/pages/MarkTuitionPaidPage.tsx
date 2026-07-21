@@ -58,7 +58,7 @@ export function MarkTuitionPaidPage() {
         paymentMethod: method,
         paymentNote: note.trim() || undefined,
       });
-      navigate(`/admin/tuition/${item.id}`, { replace: true, state: { success: "Đã ghi nhận thanh toán toàn bộ chu kỳ." } });
+      navigate(`/admin/tuition/${item.id}`, { replace: true, state: { success: "Đã ghi nhận thanh toán toàn bộ đợt học phí." } });
     } catch (reason) {
       setConfirming(false);
       setError(reason instanceof Error ? reason.message : "Không thể ghi nhận thanh toán.");
@@ -66,21 +66,21 @@ export function MarkTuitionPaidPage() {
   };
 
   if (!item && !error) return <LoadingState />;
-  if (!item) return <Alert severity="error" action={<Button color="inherit" onClick={() => { setError(""); setRetry((value) => value + 1); }}>Thử lại</Button>}>{error || "Không tải được chu kỳ."}</Alert>;
+  if (!item) return <Alert severity="error" action={<Button color="inherit" onClick={() => { setError(""); setRetry((value) => value + 1); }}>Thử lại</Button>}>{error || "Không tải được đợt học phí."}</Alert>;
   return (
     <Stack spacing={2} data-testid="mark-tuition-paid-page" data-form-width="bounded" sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto" }}>
-      <Button component={Link} to={`/admin/tuition/${item.id}`} startIcon={<ArrowBack />} sx={{ alignSelf: "flex-start" }}>Chi tiết chu kỳ</Button>
+      <Button component={Link} to={`/admin/tuition/${item.id}`} startIcon={<ArrowBack />} sx={{ alignSelf: "flex-start" }}>Chi tiết đợt học phí</Button>
       <Typography component="h1" variant="h5">Đánh dấu đã thu</Typography>
       {error && <Alert severity="error">{error}</Alert>}
       <Card><CardContent>
         <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-          <Stack><Typography variant="subtitle1">{item.studentName}</Typography><Typography variant="body2" color="text.secondary">{item.className} · Chu kỳ #{item.cycleNumber}</Typography></Stack>
+          <Stack><Typography variant="subtitle1">{item.studentName}</Typography><Typography variant="body2" color="text.secondary">{item.className} · Đợt học phí {item.cycleNumber}</Typography></Stack>
           <TuitionStatusChip status={item.status} />
         </Stack>
         <Typography color="primary" variant="h6" sx={{ mt: 1 }}>{money(item.packagePriceSnapshot)}</Typography>
       </CardContent></Card>
       {item.status !== "PAYMENT_DUE" ? (
-        <Alert severity="info">Chu kỳ này không còn ở trạng thái cần thu. Thông tin hiện tại chỉ đọc.</Alert>
+        <Alert severity="info">Đợt học phí này không còn ở trạng thái cần thu. Thông tin hiện tại chỉ đọc.</Alert>
       ) : <>
         <TextField
           label="Số tiền"
@@ -88,7 +88,7 @@ export function MarkTuitionPaidPage() {
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
           error={amount !== "" && !amountValid}
-          helperText={!amountValid ? `Phải thu toàn bộ đúng ${money(item.packagePriceSnapshot)}; V1 không hỗ trợ thanh toán một phần.` : "Giá snapshot của chu kỳ."}
+          helperText={!amountValid ? `Phải thu toàn bộ đúng ${money(item.packagePriceSnapshot)}; V1 không hỗ trợ thanh toán một phần.` : "Mức học phí đã chốt của đợt."}
           slotProps={{ htmlInput: { min: 1, step: 1 } }}
         />
         <TextField label="Ngày thu" type="date" value={paidAt} onChange={(event) => setPaidAt(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
@@ -100,7 +100,7 @@ export function MarkTuitionPaidPage() {
           </RadioGroup>
         </FormControl>
         <TextField label="Ghi chú (tùy chọn)" value={note} onChange={(event) => setNote(event.target.value)} multiline minRows={3} slotProps={{ htmlInput: { maxLength: 1000 } }} />
-        <Alert severity="warning">Sau khi xác nhận, chu kỳ và tám buổi liên quan sẽ được khóa.</Alert>
+        <Alert severity="warning">Sau khi xác nhận, đợt học phí và tám buổi liên quan sẽ được khóa.</Alert>
         <StickyActionBar>
           <Button variant="contained" size="large" fullWidth disabled={busy || !amountValid || !paidAt} onClick={() => setConfirming(true)}>
             Xác nhận đã thu

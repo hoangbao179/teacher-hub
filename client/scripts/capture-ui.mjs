@@ -118,6 +118,7 @@ try {
     { name: "login", path: "/admin/login", public: true },
     { name: "dashboard", path: "/admin" },
     { name: "class-list", path: "/admin/classes" },
+    { name: "class-form", path: "/admin/classes/new" },
     { name: "class-detail", path: firstClass ? `/admin/classes/${firstClass.id}` : null },
     { name: "student-list", path: "/admin/students" },
     { name: "student-detail", path: firstStudent ? `/admin/students/${firstStudent.id}` : null },
