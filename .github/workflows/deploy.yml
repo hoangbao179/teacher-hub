@@ -35,7 +35,6 @@ jobs:
           --health-retries=10
     env:
       NODE_ENV: test
-      TZ: Asia/Ho_Chi_Minh
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
       DB_USER: root
@@ -103,7 +102,6 @@ jobs:
           cache-to: type=gha,mode=max,scope=teacher-hub-web
           build-args: |
             VITE_API_BASE_URL=
-            VITE_PUBLIC_ZALO_URL=${{ vars.VITE_PUBLIC_ZALO_URL }}
 
   deploy:
     name: Deploy exact revision to production

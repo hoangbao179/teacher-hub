@@ -18,16 +18,13 @@ Tạo environment `production`. Tạo đúng các repository/environment secrets
 `PROD_SSH_KNOWN_HOSTS` phải là dòng host key đã đối chiếu fingerprint qua console hoặc
 kênh tin cậy. Workflow bật `StrictHostKeyChecking=yes` và không gọi `ssh-keyscan`.
 
-Tạo đúng hai repository/environment variables sau:
+Tạo repository/environment variable sau:
 
-- `GHCR_OWNER`: tên owner GitHub viết thường;
-- `VITE_PUBLIC_ZALO_URL`: URL HTTPS `zalo.me` thật, có path liên hệ.
+- `GHCR_OWNER`: tên owner GitHub viết thường.
 
-`VITE_PUBLIC_ZALO_URL` được nhúng vào bundle trình duyệt nên tuyệt đối không đặt secret.
 Workflow cố định `VITE_API_BASE_URL` rỗng để browser gọi cùng origin. Text Homepage, SEO,
-site URL, Facebook và đường dẫn media không phải GitHub Variables; chúng nằm trong
-`client/src/content/publicHome.ts`. Không đưa DB password, JWT hoặc deployment secret vào
-GitHub Variables hay build args.
+site URL, Zalo, Facebook và đường dẫn media nằm trong `client/src/content/publicHome.ts`.
+Không đưa DB password, JWT hoặc deployment secret vào GitHub Variables hay build args.
 
 Ảnh local nằm trong `client/public/images` và được đóng gói vào Docker Web image. Muốn thay
 ảnh, thay file trong thư mục này, cập nhật đường dẫn/alt/focal trong source nếu cần, commit
@@ -77,17 +74,16 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 ## Server `.env`
 
-Các biến trong `/opt/teacher-hub/.env`:
+Các biến trong `/opt/teacher-hub/.env` được giữ tối thiểu:
 
-- Image/runtime: `GHCR_OWNER`, `IMAGE_TAG`, `CORS_ORIGIN`, `HEALTHCHECK_URL`.
-- Database: `MYSQL_ROOT_PASSWORD`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`.
-- API: `JWT_SECRET`, `JWT_EXPIRES_IN`, `ADMIN_PASSWORD_MIN_LENGTH`,
-  `LOGIN_RATE_LIMIT_WINDOW_SECONDS`, `LOGIN_RATE_LIMIT_MAX_FAILURES`.
+- Image/runtime: `GHCR_OWNER`, `IMAGE_TAG`.
+- Database secrets: `MYSQL_ROOT_PASSWORD`, `DB_PASSWORD`.
+- API secret: `JWT_SECRET`.
 
-`CORS_ORIGIN` phải là `https://tienganhcovy.com`. `IMAGE_TAG` để rỗng ở bootstrap đầu
-tiên; workflow sẽ ghi full commit SHA trước khi Compose chạy. `HEALTHCHECK_URL` có thể để
-rỗng để dùng `https://tienganhcovy.com/ready`. Không đưa password, token, IP hoặc JWT vào
-GitHub Variables, workflow log hay repository.
+`IMAGE_TAG` để rỗng ở bootstrap đầu tiên; workflow sẽ ghi full commit SHA trước khi Compose
+chạy. Database name/user, CORS production, timezone, JWT lifetime, password policy,
+rate-limit và healthcheck URL được cố định trong source hoặc Compose. Không đưa password,
+token, IP hoặc JWT vào GitHub Variables, workflow log hay repository.
 
 Server `.env` chỉ chứa runtime/deployment config và secret như image tag, CORS,
 healthcheck, database và JWT. Không đặt text Homepage hoặc đường dẫn ảnh vào file này.
@@ -97,15 +93,12 @@ lưu password bootstrap trong `.env` hoặc shell history:
 
 ```bash
 cd /opt/teacher-hub
-read -r -p 'Admin username: ' BOOTSTRAP_ADMIN_USERNAME
 read -r -s -p 'Admin password: ' BOOTSTRAP_ADMIN_PASSWORD
 printf '\n'
-export BOOTSTRAP_ADMIN_USERNAME BOOTSTRAP_ADMIN_PASSWORD
-export BOOTSTRAP_ADMIN_DISPLAY_NAME='Cô Vy'
+export BOOTSTRAP_ADMIN_PASSWORD
 docker compose --env-file .env -f docker-compose.deploy.yml run --rm \
-  -e BOOTSTRAP_ADMIN_USERNAME -e BOOTSTRAP_ADMIN_PASSWORD \
-  -e BOOTSTRAP_ADMIN_DISPLAY_NAME api node dist/db/bootstrap-admin.js
-unset BOOTSTRAP_ADMIN_USERNAME BOOTSTRAP_ADMIN_PASSWORD BOOTSTRAP_ADMIN_DISPLAY_NAME
+  -e BOOTSTRAP_ADMIN_PASSWORD api node dist/db/bootstrap-admin.js
+unset BOOTSTRAP_ADMIN_PASSWORD
 ```
 
 ## Luồng deploy và rollback

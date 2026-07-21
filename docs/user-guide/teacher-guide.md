@@ -8,11 +8,11 @@ localStorage; khi bỏ chọn, JWT nằm trong sessionStorage và username khôn
 Ứng dụng không bao giờ lưu mật khẩu thô. Đề nghị lưu mật khẩu, nếu có, thuộc password
 manager của trình duyệt. Nút góc phải đăng xuất và xóa token ở cả hai nơi.
 
-Để đổi mật khẩu, chạy `npm run admin:reset-password`, chọn username mặc định rồi
-nhập hai lần mật khẩu được che. Nếu cần áp dụng lại toàn bộ bootstrap credential,
-sửa `BOOTSTRAP_ADMIN_USERNAME`/`BOOTSTRAP_ADMIN_PASSWORD` và chủ động chạy
+Để đổi mật khẩu, chạy `npm run admin:reset-password` rồi nhập hai lần mật khẩu được che
+cho username cố định `covy`. Nếu cần áp dụng lại bootstrap credential,
+sửa `BOOTSTRAP_ADMIN_PASSWORD` và chủ động chạy
 `npm run db:bootstrap-admin`; sửa `.env` hoặc chạy `npm run dev` không tự đổi database.
-Mức tối thiểu V1 là 6 ký tự nhưng nên tăng trước khi public rộng.
+Mức tối thiểu V1 được cố định là 6 ký tự.
 
 Nếu nhập sai quá nhiều, form hiển thị countdown theo `Retry-After`, giữ nguyên nội
 dung và tự mở lại nút đăng nhập ở 0. Trong development, restart API là cách đơn giản
@@ -54,10 +54,9 @@ biên chu kỳ Đã thu.
 
 ## Homepage và liên hệ
 
-Text, domain, Facebook, SEO và media Homepage nằm trong
-`client/src/content/publicHome.ts`; người triển khai chỉ cấu hình
-`VITE_PUBLIC_ZALO_URL`. Production từ chối Zalo thiếu hoặc sai; không tự điền thông tin
-đoán. Ảnh public hiện có thể là media tạm trong `client/public/images` theo
+Text, domain, Zalo, Facebook, SEO và media Homepage nằm trong
+`client/src/content/publicHome.ts`; người triển khai không cấu hình nội dung công khai
+qua biến môi trường. Ảnh public nằm trong `client/public/images` theo
 `docs/content/replacing-public-media.md`. Testimonial chưa xác minh không được công khai
 như phản hồi thật.
 

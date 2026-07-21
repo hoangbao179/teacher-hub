@@ -32,9 +32,7 @@ const testEnv = {
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: `${process.env.DB_NAME ?? "teacher_hub"}_test`,
   JWT_SECRET: "ui-capture-secret-with-at-least-32-characters",
-  BOOTSTRAP_ADMIN_USERNAME: "ui-capture",
   BOOTSTRAP_ADMIN_PASSWORD: "ui-capture-password-123",
-  BOOTSTRAP_ADMIN_DISPLAY_NAME: "Cô Vy",
   PORT: String(apiPort),
   CORS_ORIGIN: origin,
   VITE_API_BASE_URL: apiOrigin,
@@ -97,7 +95,7 @@ try {
   await page.route("https://i.ytimg.com/**", (route) => route.fulfill({ status: 200, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360"><rect width="100%" height="100%" fill="#ded7f8"/></svg>' }));
 
   await page.goto(`${origin}/admin/login`);
-  await page.getByLabel("Tên đăng nhập").fill(testEnv.BOOTSTRAP_ADMIN_USERNAME);
+  await page.getByLabel("Tên đăng nhập").fill("covy");
   await page.locator('input[name="password"]').fill(testEnv.BOOTSTRAP_ADMIN_PASSWORD);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await page.waitForURL("**/admin");

@@ -8,7 +8,8 @@
 - Vite báo cổng 5173 đang dùng: trên Windows chạy `netstat -ano | findstr :5173`,
   xác minh PID rồi `taskkill /PID <PID> /F`. Vite dùng strict port và không tự
   chuyển sang 5174.
-- CORS: `CORS_ORIGIN` là danh sách origin đầy đủ, production dùng HTTPS.
+- CORS: production chỉ chấp nhận origin cố định `https://tienganhcovy.com`; test và
+  development có thể truyền origin riêng cho tiến trình API.
 - Sai ngày/giờ: host/container `TZ=Asia/Ho_Chi_Minh`, MySQL `+07:00`; dữ liệu ngày học là DATE.
 - Excel lỗi: giữ request ID, student/filter và log; không gửi workbook chứa dữ liệu phụ huynh công khai.
 - Migration lỗi: dừng deploy, không sửa migration cũ, kiểm tra backup và log request/startup đã khử secret.

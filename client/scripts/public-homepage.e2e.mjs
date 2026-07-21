@@ -10,10 +10,6 @@ const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
 const artifactDir = path.join(root, ".agent-reports", "v1-2-homepage");
 fs.mkdirSync(artifactDir, { recursive: true });
-const env = {
-  ...process.env,
-  VITE_PUBLIC_ZALO_URL: "https://zalo.me/lien-he-co-vy",
-};
 let child;
 let browser;
 
@@ -33,7 +29,7 @@ async function waitUrl(url, timeout = 30_000) {
 try {
   child = spawn(process.execPath, [path.join(root, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
     cwd: clientRoot,
-    env,
+    env: process.env,
     stdio: ["ignore", "pipe", "pipe"],
   });
   child.stdout.on("data", (chunk) => process.stdout.write(chunk));
@@ -57,25 +53,33 @@ try {
   assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1");
   assert(await carousel.getAttribute("aria-roledescription") === "carousel", "Carousel semantics are missing");
   assert(await carousel.locator('img[fetchpriority="high"]').count() === 1, "The first hero image is not the sole high-priority image");
-  assert(await carousel.locator('img[loading="lazy"]').count() === 2, "Later hero images are not lazy loaded");
+  assert(await carousel.locator('img[loading="lazy"]').count() === 1, "The later hero image is not lazy loaded");
   const heroSources = await carousel.locator("picture img").evaluateAll((images) => images.map((image) => image.getAttribute("src")));
-  assert(new Set(heroSources).size === 3, `Hero slides do not use three distinct images: ${heroSources.join(", ")}`);
+  assert(JSON.stringify(heroSources) === JSON.stringify([
+    "/images/teacher-english-hero-1440.jpg",
+    "/images/teacher-secondary-study-1440.jpg",
+  ]), `Hero slides do not use the two approved desktop images: ${heroSources.join(", ")}`);
+  const heroMobileSources = await carousel.locator("picture source").evaluateAll((sources) => sources.map((source) => source.getAttribute("srcset")));
+  assert(JSON.stringify(heroMobileSources) === JSON.stringify([
+    "/images/teacher-english-hero-720.jpg",
+    "/images/teacher-secondary-study-720.jpg",
+  ]), `Hero slides do not use the two approved mobile images: ${heroMobileSources.join(", ")}`);
 
   await page.getByRole("button", { name: "Slide tiếp theo" }).click();
-  assert(await carousel.getAttribute("data-active-slide") === "primary", "Next control did not advance the carousel");
+  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Next control did not advance the carousel");
   await page.getByRole("button", { name: "Slide trước" }).click();
   assert(await carousel.getAttribute("data-active-slide") === "foundation", "Previous control did not return the carousel");
-  await page.getByRole("button", { name: /Chuyển đến slide 3:/ }).click();
-  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Pagination indicator did not select slide 3");
+  await page.getByRole("button", { name: /Chuyển đến slide 2:/ }).click();
+  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Pagination indicator did not select slide 2");
   await carousel.focus();
   await carousel.press("ArrowLeft");
-  assert(await carousel.getAttribute("data-active-slide") === "primary", "Keyboard navigation did not select the previous slide");
+  assert(await carousel.getAttribute("data-active-slide") === "foundation", "Keyboard navigation did not select the previous slide");
 
   await page.getByRole("button", { name: /Chuyển đến slide 1:/ }).click();
   await page.evaluate(() => (document.activeElement instanceof HTMLElement) && document.activeElement.blur());
   await page.mouse.move(4, 4);
   await page.waitForTimeout(5_800);
-  assert(await carousel.getAttribute("data-active-slide") === "primary", "Carousel did not auto-transition after 5–6 seconds");
+  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Carousel did not auto-transition after 5–6 seconds");
 
   await page.getByRole("button", { name: /Chuyển đến slide 1:/ }).click();
   const box = await carousel.boundingBox();
@@ -84,7 +88,7 @@ try {
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.45, { steps: 5 });
   await page.mouse.up();
-  assert(await carousel.getAttribute("data-active-slide") === "primary", "Horizontal swipe did not advance the carousel");
+  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Horizontal swipe did not advance the carousel");
 
   for (const heading of ["Xin chào, cô là Uyên Vy.", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Phản hồi từ phụ huynh", "Cùng cô Vy tìm cách học phù hợp cho con"]) {
     await page.getByRole("heading", { name: new RegExp(heading) }).first().waitFor();
@@ -95,8 +99,13 @@ try {
   for (const label of ["Lớp 1–9", "1–1 hoặc nhóm nhỏ", "Tại Huế"])
     await page.getByText(label, { exact: true }).waitFor();
   await page.getByText("2026 — từ người hâm mộ cô Vy, with love ❤️", { exact: true }).waitFor();
-  for (const program of ["Tiếng Anh lớp 1–5", "Tiếng Anh lớp 6–9", "Kèm cặp và ôn thi"])
+  for (const program of ["Tiếng Anh tiểu học – lớp 1–5", "Tiếng Anh THCS – lớp 6–9", "Luyện thi theo mục tiêu"])
     await page.getByRole("heading", { level: 3, name: program, exact: true }).waitFor();
+  for (const programDetail of ["Củng cố kiến thức trên trường", "Luyện thi Nguyễn Tri Phương", "Luyện thi 9 lên 10"])
+    await page.getByText(programDetail, { exact: true }).first().waitFor();
+  const teacherPhoto = page.locator('#about img[src="/images/covy-image.png"]');
+  await teacherPhoto.waitFor();
+  assert(await teacherPhoto.evaluate((image) => getComputedStyle(image).objectFit) === "cover", "Teacher photo does not use object-fit: cover");
   await page.getByTestId("testimonial-list").waitFor();
   assert(await page.getByTestId("testimonial-fallback").count() === 0, "FAQ fallback rendered with development testimonials");
   assert(await page.getByText("Nội dung mẫu", { exact: true }).count() === 0, "Development testimonial exposes a sample badge");
@@ -145,10 +154,11 @@ try {
   assert(!/Cô giáo An|Học Toán|Xây nền Toán/i.test(metadata.body), "Old teacher or mathematics branding remains");
   assert(!/\b\d{1,3}(?:[. ]\d{3})+\s*(?:đ|VND)\b/i.test(metadata.body), "Homepage exposes a public tuition price");
   for (const teacherCopy of [
-    "Đồng hành cùng học sinh lớp 1–9 tại Huế.",
-    "Tập trung xây nền, củng cố phần còn yếu và giúp học sinh tự tin hơn.",
+    "Đồng hành cùng học sinh lớp 1–9 tại Huế. Kèm cặp 1–1, lớp nhóm nhỏ, củng cố phần còn yếu và luyện thi theo mục tiêu.",
     "Kèm cặp 1–1 và nhóm nhỏ",
     "Theo sát năng lực từng học sinh",
+    "Luyện thi Nguyễn Tri Phương",
+    "Luyện thi 9 lên 10",
   ]) assert(metadata.body.includes(teacherCopy), `Teacher introduction is missing: ${teacherCopy}`);
   assert(metadata.body.includes("2026 — từ người hâm mộ cô Vy, with love ❤️"), "Personalized footer copy is missing");
 
@@ -172,12 +182,9 @@ try {
       };
     });
     assert(metrics.overflow <= 1, `Homepage overflow at ${viewport.width}px: ${metrics.overflow}px`);
-    if (viewport.width === 360) assert(metrics.heroHeight >= 390 && metrics.heroHeight <= 410, `Hero height ${metrics.heroHeight}px is outside 390–410 at 360px`);
-    else if (viewport.width < 390) assert(metrics.heroHeight >= 390 && metrics.heroHeight <= 420, `Hero height ${metrics.heroHeight}px is outside 390–420 at ${viewport.width}px`);
-    else if (viewport.width <= 393) assert(metrics.heroHeight >= 410 && metrics.heroHeight <= 430, `Hero height ${metrics.heroHeight}px is outside 410–430 at ${viewport.width}px`);
-    else if (viewport.width <= 412) assert(metrics.heroHeight >= 420 && metrics.heroHeight <= 442, `Hero height ${metrics.heroHeight}px is outside 420–442 at ${viewport.width}px`);
-    else if (viewport.width <= 430) assert(metrics.heroHeight <= 450, `Hero height ${metrics.heroHeight}px exceeds 450 at ${viewport.width}px`);
-    else assert(metrics.heroHeight >= 500 && metrics.heroHeight <= 520, `Desktop hero height ${metrics.heroHeight}px is outside 500–520`);
+    if (viewport.width <= 420) assert(metrics.heroHeight >= 360 && metrics.heroHeight <= 420, `Hero height ${metrics.heroHeight}px is outside 360–420 at ${viewport.width}px`);
+    else if (viewport.width <= 430) assert(metrics.heroHeight === 420, `Hero height ${metrics.heroHeight}px is not capped at 420 at ${viewport.width}px`);
+    else assert(metrics.heroHeight >= 460 && metrics.heroHeight <= 520, `Desktop hero height ${metrics.heroHeight}px is outside 460–520`);
     if (viewport.width <= 430) assert(metrics.aboutTop < viewport.height, `Next section is not discoverable at ${viewport.width}px`);
     assert(metrics.labels.includes("Nhắn Zalo"), `Contact Zalo CTA is not visible at ${viewport.width}px`);
     const contactButtons = await page.getByTestId("contact-actions").getByRole("link").evaluateAll((links) => links.map((link) => {

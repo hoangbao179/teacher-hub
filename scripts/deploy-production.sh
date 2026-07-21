@@ -78,9 +78,7 @@ wait_for_healthy() {
 }
 
 wait_for_readiness() {
-  local healthcheck_url
-  healthcheck_url="$(read_env_value HEALTHCHECK_URL)"
-  healthcheck_url="${healthcheck_url:-https://tienganhcovy.com/ready}"
+  local healthcheck_url="https://tienganhcovy.com/ready"
 
   for ((attempt = 1; attempt <= 45; attempt += 1)); do
     if compose exec -T web wget -q -O - http://127.0.0.1:8080/ready >/dev/null 2>&1 \

@@ -19,9 +19,7 @@ const testEnv = {
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: `${process.env.DB_NAME ?? "teacher_hub"}_test`,
   JWT_SECRET: "lesson-e2e-secret-with-at-least-32-characters",
-  BOOTSTRAP_ADMIN_USERNAME: "lesson-e2e",
   BOOTSTRAP_ADMIN_PASSWORD: "lesson-e2e-password-123",
-  BOOTSTRAP_ADMIN_DISPLAY_NAME: "Lesson E2E Teacher",
   PORT: "4101",
   CORS_ORIGIN: "http://127.0.0.1:5175",
 };
@@ -89,7 +87,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto("http://127.0.0.1:5175/admin/login");
-  await page.getByLabel("Tên đăng nhập").fill("lesson-e2e");
+  await page.getByLabel("Tên đăng nhập").fill("covy");
   await page.locator('input[name="password"]').fill("lesson-e2e-password-123");
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await page.waitForURL("**/admin");

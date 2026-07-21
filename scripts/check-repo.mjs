@@ -124,7 +124,7 @@ const nginx = read("deploy/nginx.conf");
 for (const header of ["Content-Security-Policy", "frame-ancestors 'none'", "Referrer-Policy", "Permissions-Policy", "X-Content-Type-Options"])
   if (!nginx.includes(header)) failures.push(`Nginx security header/config is missing: ${header}`);
 const clientPackage = JSON.parse(read("client/package.json"));
-if (!clientPackage.scripts?.["build:production"]?.includes("validate:public")) failures.push("Production client build does not validate public marketing configuration");
+if (!clientPackage.scripts?.["build:production"]?.includes("vite build --mode production")) failures.push("Production client build does not use Vite production mode");
 if (!read("Dockerfile.web").includes("build:production")) failures.push("Web image bypasses production marketing validation");
 
 const status = fs.existsSync(path.join(root, "docs/implementation/status.md")) ? read("docs/implementation/status.md") : "";

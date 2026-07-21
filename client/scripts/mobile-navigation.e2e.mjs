@@ -20,9 +20,7 @@ const testEnv = {
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: `${process.env.DB_NAME ?? "teacher_hub"}_test`,
   JWT_SECRET: "mobile-navigation-e2e-secret-with-at-least-32-characters",
-  BOOTSTRAP_ADMIN_USERNAME: "mobile-nav-e2e",
   BOOTSTRAP_ADMIN_PASSWORD: "mobile-nav-e2e-password-123",
-  BOOTSTRAP_ADMIN_DISPLAY_NAME: "Cô Vy",
   PORT: String(apiPort),
   CORS_ORIGIN: origin,
   VITE_API_BASE_URL: `http://127.0.0.1:${apiPort}`,
@@ -149,7 +147,7 @@ try {
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByLabel("Tên đăng nhập").fill(testEnv.BOOTSTRAP_ADMIN_USERNAME);
+  await page.getByLabel("Tên đăng nhập").fill("covy");
   await page.locator('input[name="password"]').fill(testEnv.BOOTSTRAP_ADMIN_PASSWORD);
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await page.waitForURL(`${origin}/admin`);

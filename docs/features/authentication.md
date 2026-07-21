@@ -15,24 +15,23 @@ The application never persists the raw password. Browser password saving, when o
 is owned by the browser password manager. The remember option should be cleared on a
 shared device. V1 has no refresh-token or centralized token-revocation service.
 
-The single teacher account is provisioned with `BOOTSTRAP_ADMIN_USERNAME` and
+The single teacher account uses the fixed username `covy` and is provisioned with
 `BOOTSTRAP_ADMIN_PASSWORD`; email is not required for login or bootstrap. Usernames
 are case-insensitive and may contain `a-z`, `0-9`, `.`, `_` and `-`.
 Bootstrap updates the matching account; when exactly one legacy account exists it
 renames that account instead of creating a second admin. It refuses to guess when
 multiple unmatched users exist.
 
-Password policy is centralized through `ADMIN_PASSWORD_MIN_LENGTH`; V1 defaults
-to an intentionally minimal 6 characters for bootstrap and reset. Changing an
-environment value does not mutate the database: run `npm run db:bootstrap-admin`
+Password policy is centralized at a fixed minimum of 6 characters for bootstrap and
+reset. Run `npm run db:bootstrap-admin`
 to apply bootstrap credentials, or `npm run admin:reset-password` to update an
 existing admin with hidden confirmation, bcrypt hashing and an
 `ADMIN_PASSWORD_RESET` audit event. Raw passwords are never written to storage,
 logs or audit data.
 
-Login failures are limited per current client-IP/normalized-username key. Defaults
-are 60 seconds/20 failures outside production and 300 seconds/10 failures in
-production; both are configurable with validated `LOGIN_RATE_LIMIT_*` values.
+Login failures are limited per current client-IP/normalized-username key. The fixed
+limits are 60 seconds/20 failures in development and 300 seconds/10 failures in
+production; tests use a short 3-second/2-failure window.
 The API returns `Retry-After` on HTTP 429 and the login form shows an accessible
 countdown while preserving input. A successful login clears its key. The current
 store is process-local memory, so restart clears development state and future

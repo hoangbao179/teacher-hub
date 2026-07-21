@@ -36,10 +36,9 @@ Mặc định:
 - Health: `http://localhost:4000/health`
 - MySQL native: `localhost:3306` (theo `server/.env`)
 
-Thông tin admin ban đầu lấy từ `server/.env`:
+Username admin được cố định là `covy`; mật khẩu bootstrap lấy từ `server/.env`:
 
 ```env
-BOOTSTRAP_ADMIN_USERNAME=covy
 BOOTSTRAP_ADMIN_PASSWORD=change-me-now
 ```
 
@@ -56,22 +55,14 @@ nhật credential trong database.
 ## Cấu hình nội dung công khai của cô Vy
 
 `client/src/content/publicHome.ts` là nguồn duy nhất cho branding, chương trình
-Tiếng Anh lớp 1–9, phương pháp, media, video, phản hồi, liên hệ và SEO. Các giá trị
-ổn định nằm trong source; chỉ URL Zalo thay đổi theo deployment bằng
-`VITE_PUBLIC_ZALO_URL` trong `client/.env.example`.
-
-Development có Zalo fallback an toàn; trước khi build production phải cung cấp URL Zalo
-HTTPS thật. Site URL, SEO, Facebook, sitemap và robots đã được cố định cho
+Tiếng Anh lớp 1–9, phương pháp, media, video, phản hồi, liên hệ và SEO. Zalo,
+Facebook, site URL, SEO, sitemap và robots đều được cố định trong source cho
 `https://tienganhcovy.com`. Ảnh local nằm trong `client/public/images` và được đóng gói vào
 Docker Web image. Sau khi đổi ảnh, commit rồi deploy image mới. Chạy:
 
 ```bash
-npm -w client run validate:public
 npm -w client run build:production
 ```
-
-Validator production từ chối Zalo thiếu, placeholder, sai host hoặc không dùng HTTPS.
-Không đặt secret vào biến `VITE_*` vì giá trị được nhúng vào trình duyệt.
 
 ## Trước khi code tính năng
 

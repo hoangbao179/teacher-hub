@@ -10,7 +10,7 @@ dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4108;
 const webPort = 5188;
 const origin = `http://127.0.0.1:${webPort}`;
-const username = "auth-e2e";
+const username = "covy";
 const bootstrapE2ePassword = "auth-e2e-password-123";
 const password = "v12c42";
 const artifactDir = path.join(root, ".agent-reports", "v1-2-admin");
@@ -23,15 +23,10 @@ const testEnv = {
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: `${process.env.DB_NAME ?? "teacher_hub"}_test`,
   JWT_SECRET: "auth-e2e-secret-with-at-least-32-characters",
-  BOOTSTRAP_ADMIN_USERNAME: username,
   BOOTSTRAP_ADMIN_PASSWORD: bootstrapE2ePassword,
-  BOOTSTRAP_ADMIN_DISPLAY_NAME: "Cô Vy",
   PORT: String(apiPort),
   CORS_ORIGIN: origin,
   VITE_API_BASE_URL: `http://127.0.0.1:${apiPort}`,
-  LOGIN_RATE_LIMIT_WINDOW_SECONDS: "3",
-  LOGIN_RATE_LIMIT_MAX_FAILURES: "2",
-  ADMIN_RESET_USERNAME: username,
   ADMIN_RESET_PASSWORD: password,
   ADMIN_RESET_PASSWORD_CONFIRMATION: password,
 };

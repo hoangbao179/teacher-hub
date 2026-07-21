@@ -13,7 +13,7 @@ Review bắt buộc ở 360, 375, 390, 393, 400, 412 và 430 px, cộng tablet v
 Mobile là ưu tiên: cards/lists thay bảng rộng, touch target tối thiểu 44 px, sticky
 action không che nội dung. Desktop dùng sidebar khi đủ rộng.
 Homepage dùng section padding khoảng 32–40 px trên mobile và 48–56 px trên desktop.
-Hero theo dải 400/410/420/450 px ở các mốc 360/390/400/430 và khoảng 510 px desktop.
+Hero cao khoảng 360–420 px trên mobile và 460–520 px trên desktop.
 
 ## Typography
 

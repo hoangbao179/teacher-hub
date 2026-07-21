@@ -33,8 +33,6 @@ export interface PublicProgram {
   accent: "mint" | "blue" | "coral";
 }
 
-const placeholderContact = /\.invalid(?:\/|$)|localhost|chua-cau-hinh|chưa-cấu-hình|example(?:\.|\/|$)/i;
-
 const defaultVideos: PublicVideo[] = [
   {
     title: "Từ vựng tiếng Anh qua ngữ cảnh",
@@ -74,13 +72,11 @@ const developmentTestimonialDrafts: PublicTestimonial[] = [
 ];
 
 export const isDevelopmentContent = import.meta.env.DEV;
-const rawZaloUrl = import.meta.env.VITE_PUBLIC_ZALO_URL?.trim() ?? "";
-const zaloUrl = isConfiguredExternalUrl(rawZaloUrl, "zalo.me") ? rawZaloUrl : isDevelopmentContent ? "https://zalo.me/" : rawZaloUrl;
+const zaloUrl = "https://zalo.me/";
 const facebookUrl = "https://www.facebook.com/uyenvy.le.12";
 
 /**
- * Source of truth for stable Homepage content and local media.
- * Only the Zalo URL remains deployment-specific; VITE_* values must never contain secrets.
+ * Source of truth for stable Homepage content, contact links and local media.
  */
 export const publicHomeContent = {
   siteUrl: "https://tienganhcovy.com",
@@ -103,16 +99,6 @@ export const publicHomeContent = {
       alt: "Góc học tập tiếng Anh với sách, thẻ từ và đồ dùng học tập",
     },
     {
-      id: "primary",
-      eyebrow: "Xây nền đúng nhịp cho từng học sinh",
-      title: "Tiếng Anh lớp 1–5",
-      description: "Phonics, phát âm, từ vựng và mẫu câu",
-      mobileImage: "/images/teacher-hero-720.webp",
-      desktopImage: "/images/teacher-hero-1440.webp",
-      focalPosition: "68% center",
-      alt: "Sách tiếng Anh, thẻ chữ cái và bút màu trên bàn học",
-    },
-    {
       id: "secondary",
       eyebrow: "Củng cố kiến thức và bám sát chương trình",
       title: "Tiếng Anh lớp 6–9",
@@ -126,14 +112,20 @@ export const publicHomeContent = {
   introduction: "Cô Vy đồng hành cùng học sinh từ lớp 1 đến lớp 9 theo mục tiêu phù hợp: xây nền, củng cố phần còn yếu và bám sát chương trình trên trường.",
   teacherProfile: {
     greeting: "Xin chào, cô là Uyên Vy.",
-    biography: "Đồng hành cùng học sinh lớp 1–9 tại Huế. Tập trung xây nền, củng cố phần còn yếu và giúp học sinh tự tin hơn.",
-    highlights: ["Tiếng Anh lớp 1–9", "Kèm cặp 1–1 và nhóm nhỏ", "Theo sát năng lực từng học sinh"],
+    biography: "Đồng hành cùng học sinh lớp 1–9 tại Huế. Kèm cặp 1–1, lớp nhóm nhỏ, củng cố phần còn yếu và luyện thi theo mục tiêu.",
+    highlights: [
+      "Tiếng Anh lớp 1–9",
+      "Kèm cặp 1–1 và nhóm nhỏ",
+      "Theo sát năng lực từng học sinh",
+      "Luyện thi Nguyễn Tri Phương",
+      "Luyện thi 9 lên 10",
+    ],
   },
   media: {
     ogImage: "/images/teacher-english-hero-1440.jpg",
-    teacherPhoto: "/images/teacher-hero-720.webp",
-    teacherPhotoAlt: "Không gian dạy và học tiếng Anh của cô Vy",
-    teacherPhotoFocalPosition: "center",
+    teacherPhoto: "/images/covy-image.png",
+    teacherPhotoAlt: "Cô Uyên Vy trong không gian dạy học tiếng Anh",
+    teacherPhotoFocalPosition: "center 42%",
   },
   contact: {
     zaloUrl,
@@ -154,21 +146,21 @@ export const publicHomeContent = {
   ],
   programs: [
     {
-      title: "Tiếng Anh lớp 1–5",
-      summary: "Xây nền ngôn ngữ vững vàng, vừa sức với lứa tuổi.",
-      topics: ["Phonics", "Phát âm", "Từ vựng", "Mẫu câu", "Xây nền"],
+      title: "Tiếng Anh tiểu học – lớp 1–5",
+      summary: "Xây nền từ vựng, phát âm và mẫu câu vừa sức.",
+      topics: ["Củng cố kiến thức trên trường", "Rèn nền tảng đều đặn"],
       accent: "mint",
     },
     {
-      title: "Tiếng Anh lớp 6–9",
-      summary: "Bám sát chương trình và rèn kỹ năng làm bài.",
-      topics: ["Từ vựng", "Ngữ pháp", "Đọc hiểu", "Viết", "Ôn kiểm tra"],
+      title: "Tiếng Anh THCS – lớp 6–9",
+      summary: "Bám sát chương trình, củng cố ngữ pháp và kỹ năng làm bài.",
+      topics: ["Củng cố kiến thức trên trường", "Ôn tập theo phần còn yếu"],
       accent: "blue",
     },
     {
-      title: "Kèm cặp và ôn thi",
-      summary: "Lộ trình theo phần kiến thức và mục tiêu từng em.",
-      topics: ["Học sinh mất gốc", "Kèm cặp 1–1", "Lớp nhóm nhỏ", "Củng cố kiến thức", "Ôn thi Nguyễn Tri Phương"],
+      title: "Luyện thi theo mục tiêu",
+      summary: "Lộ trình tập trung theo kỳ thi và năng lực từng học sinh.",
+      topics: ["Luyện thi Nguyễn Tri Phương", "Luyện thi 9 lên 10"],
       accent: "coral",
     },
   ] satisfies PublicProgram[],
@@ -185,16 +177,6 @@ export const publicHomeContent = {
   },
   footer: "2026 — từ người hâm mộ cô Vy, with love ❤️",
 } as const;
-
-export function isConfiguredExternalUrl(raw: string, host: "zalo.me" | "facebook.com"): boolean {
-  if (!raw || placeholderContact.test(raw)) return false;
-  try {
-    const url = new URL(raw);
-    return url.protocol === "https:" && (url.hostname === host || url.hostname.endsWith(`.${host}`)) && (host !== "facebook.com" || url.pathname.replaceAll("/", "").length > 0);
-  } catch {
-    return false;
-  }
-}
 
 export function publishableTestimonials(items: readonly PublicTestimonial[]): PublicTestimonial[] {
   return items.filter((item) => item.published && item.verified);

@@ -6,12 +6,11 @@ Web image; Homepage không lấy đường dẫn ảnh từ biến môi trườn
 
 ## Hero carousel
 
-Mỗi slide có `mobileImage`, `desktopImage`, `focalPosition` và `alt`, và ba slide phải
-dùng ba media khác nhau. Các file hiện tại:
+Mỗi slide có `mobileImage`, `desktopImage`, `focalPosition` và `alt`, và hai slide phải
+dùng hai media khác nhau. Các file hiện tại:
 
 - slide 1: `teacher-english-hero-720.jpg` và `teacher-english-hero-1440.jpg`;
-- slide 2: `teacher-hero-720.webp` và `teacher-hero-1440.webp`;
-- slide 3: `teacher-secondary-study-720.jpg` và `teacher-secondary-study-1440.jpg`.
+- slide 2: `teacher-secondary-study-720.jpg` và `teacher-secondary-study-1440.jpg`.
 
 - Mobile nên có tỉ lệ gần 4:5, tối thiểu 720px chiều ngang.
 - Desktop nên có tỉ lệ gần 16:10, tối thiểu 1440×900.
@@ -26,8 +25,8 @@ image mới chứa asset mới. Không sửa business logic hoặc cấu trúc p
 ## Video, ảnh giáo viên và phản hồi
 
 Video dài, ảnh khu giới thiệu, alt/focal position và testimonial hiện có đều nằm trong
-`publicHome.ts`. Player YouTube privacy-enhanced chỉ được tạo sau tương tác; thumbnail tải
-trước. Ảnh tạm không được mô tả hay trình bày như chân dung xác thực của cô Vy.
+`publicHome.ts`. Khu giới thiệu dùng `covy-image.png`. Player YouTube privacy-enhanced chỉ
+được tạo sau tương tác; thumbnail tải trước.
 
 Production chỉ hiển thị testimonial có cả `verified=true` và `published=true`. Không đưa
 tên đầy đủ, số điện thoại, thông tin riêng tư hoặc lời chứng thực chưa được phụ huynh chấp
@@ -35,9 +34,8 @@ thuận vào source.
 
 ## Liên hệ
 
-Chỉ `VITE_PUBLIC_ZALO_URL` thay đổi theo deployment và phải là URL HTTPS `zalo.me` thật.
-Development dùng fallback an toàn khi biến này chưa hợp lệ; production validation bắt buộc
-một URL liên hệ có path hợp lệ. Không hardcode số điện thoại và không thêm lại CTA gọi điện.
+Zalo và Facebook là URL cố định trong `publicHome.ts`, không thay đổi theo deployment.
+Không hardcode số điện thoại và không thêm lại CTA gọi điện.
 
 Site URL là `https://tienganhcovy.com`; Facebook dùng URL đã duyệt
 `https://www.facebook.com/uyenvy.le.12`. Cả hai nằm trong `publicHome.ts`.

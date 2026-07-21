@@ -31,7 +31,6 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  isConfiguredExternalUrl,
   isDevelopmentContent,
   publicHomeContent as content,
   publishableTestimonials,
@@ -112,7 +111,7 @@ const testimonialTone = [
   { background: "linear-gradient(145deg, #f2edff, #fbf9ff)", border: "#d9cef7", accent: "#7655c8" },
 ] as const;
 
-function HeroCarousel({ showZalo }: { showZalo: boolean }) {
+function HeroCarousel() {
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -172,7 +171,7 @@ function HeroCarousel({ showZalo }: { showZalo: boolean }) {
       }}
       sx={{
         position: "relative",
-        height: { xs: "clamp(400px, calc(100vw + 20px), 450px)", sm: 480, md: 510 },
+        height: { xs: "clamp(360px, 100vw, 420px)", sm: 440, md: 480 },
         display: "grid", alignItems: "end", color: "white", bgcolor: "#24173f", overflow: "hidden", outline: 0, touchAction: "pan-y",
       }}
     >
@@ -217,14 +216,12 @@ function HeroCarousel({ showZalo }: { showZalo: boolean }) {
           <Typography sx={{ color: "#e8ddff", fontSize: { xs: 12.5, sm: 14 }, fontWeight: 700 }}>{slide.eyebrow}</Typography>
           <Typography id="hero-heading" component="h1" sx={{ fontSize: { xs: "1.9rem", sm: "3rem" }, lineHeight: 1.08, fontWeight: 800, mt: 0.75, maxWidth: 590 }}>{slide.title}</Typography>
           <Typography sx={{ mt: 1.25, fontSize: { xs: "0.95rem", sm: "1.14rem" }, fontWeight: 600, maxWidth: 560 }}>{slide.description}</Typography>
-          {showZalo && (
-            <Box sx={{ mt: { xs: 2, sm: 2.5 }, maxWidth: { sm: 360 } }}>
-              <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth endIcon={<ArrowForward />}>
-                {content.contact.heroCtaLabel}
-              </Button>
-              <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "rgba(255,255,255,.86)", textAlign: "center" }}>{content.contact.heroCtaHint}</Typography>
-            </Box>
-          )}
+          <Box sx={{ mt: { xs: 2, sm: 2.5 }, maxWidth: { sm: 360 } }}>
+            <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth endIcon={<ArrowForward />}>
+              {content.contact.heroCtaLabel}
+            </Button>
+            <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "rgba(255,255,255,.86)", textAlign: "center" }}>{content.contact.heroCtaHint}</Typography>
+          </Box>
         </Box>
       </Container>
 
@@ -248,8 +245,6 @@ function HeroCarousel({ showZalo }: { showZalo: boolean }) {
 }
 
 export function HomePage() {
-  const showZalo = isConfiguredExternalUrl(content.contact.zaloUrl, "zalo.me");
-  const showFacebook = isConfiguredExternalUrl(content.contact.facebookUrl, "facebook.com");
   const verifiedTestimonials = publishableTestimonials(content.testimonials);
   const visibleTestimonials = isDevelopmentContent ? [...content.testimonials] : verifiedTestimonials;
 
@@ -267,12 +262,12 @@ export function HomePage() {
       </AppBar>
 
       <Box component="main">
-        <HeroCarousel showZalo={showZalo} />
+        <HeroCarousel />
 
         <Container maxWidth="lg">
           <Box component="section" id="about" aria-labelledby="about-heading" sx={sectionSx}>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0, .8fr) minmax(0, 1.2fr)" }, gap: { xs: 2.5, md: 4 }, alignItems: "center" }}>
-              <Box component="img" src={content.media.teacherPhoto} alt={content.media.teacherPhotoAlt} loading="lazy" width="720" height="540" sx={{ width: "100%", maxHeight: { xs: 260, md: 330 }, objectFit: "cover", objectPosition: content.media.teacherPhotoFocalPosition, borderRadius: 3, boxShadow: "0 12px 30px rgba(55,40,90,.12)" }} />
+              <Box component="img" src={content.media.teacherPhoto} alt={content.media.teacherPhotoAlt} loading="lazy" width="1448" height="1086" sx={{ width: "100%", height: { xs: 260, md: 330 }, objectFit: "cover", objectPosition: content.media.teacherPhotoFocalPosition, borderRadius: 3, boxShadow: "0 12px 30px rgba(55,40,90,.12)" }} />
               <Box>
                 <Typography variant="overline" color="primary">GIỚI THIỆU CÔ VY</Typography>
                 <Typography id="about-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{content.teacherProfile.greeting}</Typography>
@@ -356,7 +351,7 @@ export function HomePage() {
           </Container>
         </Box>
 
-        {(showZalo || showFacebook) && <Container maxWidth="md" sx={{ py: { xs: 4, sm: 5, md: 7 } }}>
+        <Container maxWidth="md" sx={{ py: { xs: 4, sm: 5, md: 7 } }}>
           <Box component="section" id="contact" aria-labelledby="contact-heading" sx={{
             px: { xs: 2, sm: 4 }, py: { xs: 3.5, sm: 4.5 }, scrollMarginTop: 72, textAlign: "center",
             border: "1px solid #ddd2f5", borderRadius: { xs: 3, sm: 4 },
@@ -369,13 +364,13 @@ export function HomePage() {
             <Stack direction="row" useFlexGap sx={{ justifyContent: "center", flexWrap: "wrap", gap: 1, mt: 2 }}>{content.contact.highlights.map((item) => <Chip key={item} size="small" label={item} />)}</Stack>
             <Box sx={{ mt: 3, maxWidth: 580, mx: "auto" }}>
               <Box data-testid="contact-actions" sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
-                {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<ChatBubbleOutlined />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", background: "linear-gradient(105deg, #713bea, #268edc)" }}>{content.contact.zaloLabel}</Button>}
-                {showFacebook && <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<Facebook />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", color: "#174b77", background: "linear-gradient(105deg, #dcedff, #bfe2ff)", "&:hover": { background: "linear-gradient(105deg, #cfe6ff, #add9ff)" } }}>{content.contact.facebookLabel}</Button>}
+                <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<ChatBubbleOutlined />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", background: "linear-gradient(105deg, #713bea, #268edc)" }}>{content.contact.zaloLabel}</Button>
+                <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<Facebook />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", color: "#174b77", background: "linear-gradient(105deg, #dcedff, #bfe2ff)", "&:hover": { background: "linear-gradient(105deg, #cfe6ff, #add9ff)" } }}>{content.contact.facebookLabel}</Button>
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{content.contact.followUp}</Typography>
             </Box>
           </Box>
-        </Container>}
+        </Container>
       </Box>
 
       <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", pt: 1, pb: "calc(8px + env(safe-area-inset-bottom, 0px))", bgcolor: "#faf9fd" }}>

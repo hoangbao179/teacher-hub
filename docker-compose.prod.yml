@@ -4,8 +4,8 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
-      MYSQL_DATABASE: ${DB_NAME:-teacher_class_hub}
-      MYSQL_USER: ${DB_USER:-teacher_app}
+      MYSQL_DATABASE: teacher_class_hub
+      MYSQL_USER: teacher_app
       MYSQL_PASSWORD: ${DB_PASSWORD:?required}
       TZ: Asia/Ho_Chi_Minh
     command:
@@ -30,20 +30,8 @@ services:
       mysql: { condition: service_healthy }
     environment:
       NODE_ENV: production
-      PORT: 4000
-      TZ: Asia/Ho_Chi_Minh
-      CORS_ORIGIN: ${PUBLIC_URL:?required}
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: ${DB_USER:-teacher_app}
       DB_PASSWORD: ${DB_PASSWORD:?required}
-      DB_NAME: ${DB_NAME:-teacher_class_hub}
-      DB_CONNECTION_LIMIT: 5
       JWT_SECRET: ${JWT_SECRET:?required}
-      JWT_EXPIRES_IN: 7d
-      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
-      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
-      BOOTSTRAP_ADMIN_DISPLAY_NAME: ${BOOTSTRAP_ADMIN_DISPLAY_NAME:-Cô Vy}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:4000/ready"]
       interval: 30s
@@ -56,7 +44,6 @@ services:
       dockerfile: Dockerfile.web
       args:
         VITE_API_BASE_URL: ""
-        VITE_PUBLIC_ZALO_URL: ${PUBLIC_ZALO_URL:?required}
     restart: unless-stopped
     depends_on:
       api: { condition: service_healthy }

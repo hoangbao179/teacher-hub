@@ -13,7 +13,7 @@ email address.
 - Change the login section heading to “Đăng nhập”.
 - Add a forward-only users migration for a unique username and optional legacy email.
 - Change shared/OpenAPI/client/server auth contracts from email to username.
-- Configure bootstrap admin with `BOOTSTRAP_ADMIN_USERNAME` and password.
+- Configure bootstrap admin with the fixed username `covy` and a password secret.
 - Preserve password hashing, login rate limiting, remember-session semantics and
   backend-authoritative `/me` bootstrap.
 - Update auth E2E, package rules, environment examples and operator documentation.

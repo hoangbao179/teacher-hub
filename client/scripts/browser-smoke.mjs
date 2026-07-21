@@ -13,8 +13,7 @@ const testEnv = {
   ...process.env, NODE_ENV: "test", DB_HOST: process.env.DB_HOST ?? "127.0.0.1", DB_PORT: process.env.DB_PORT ?? "3306",
   DB_USER: process.env.DB_USER ?? "root", DB_PASSWORD: process.env.DB_PASSWORD ?? "", DB_NAME: nativeTestDatabase,
   JWT_SECRET: "browser-smoke-secret-with-at-least-32-characters",
-  BOOTSTRAP_ADMIN_USERNAME: "smoke-e2e", BOOTSTRAP_ADMIN_PASSWORD: "smoke-password-123",
-  BOOTSTRAP_ADMIN_DISPLAY_NAME: "Smoke Teacher", PORT: "4100", CORS_ORIGIN: "http://127.0.0.1:5174",
+  BOOTSTRAP_ADMIN_PASSWORD: "smoke-password-123", PORT: "4100", CORS_ORIGIN: "http://127.0.0.1:5174",
 };
 const children = [];
 let chromeProfile;
@@ -128,7 +127,7 @@ try {
   const cdp = new Cdp(target.webSocketDebuggerUrl); await cdp.open();
   await cdp.wait("document.body && document.body.innerText.includes('Đăng nhập')", "login page");
   await cdp.screenshot("admin-login-390");
-  await cdp.setInput("Tên đăng nhập", "smoke-e2e"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");
+  await cdp.setInput("Tên đăng nhập", "covy"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");
   await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "dashboard");
   const typographyAudit = await cdp.eval(`(async () => {
     await document.fonts.ready;
@@ -237,7 +236,7 @@ try {
   await cdp.clickDialogText("Xác nhận"); await cdp.wait("document.body.innerText.includes('Đã tạm dừng lớp')", "class pause success");
   await cdp.clickLabel("Đăng xuất"); await cdp.wait("location.pathname==='/admin/login' && !localStorage.getItem('teacher-token')", "logout");
   await cdp.wait("document.body.innerText.includes('Đăng nhập') && !!document.querySelector('input[type=password]')", "login form after logout");
-  await cdp.setInput("Tên đăng nhập", "smoke-e2e"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");
+  await cdp.setInput("Tên đăng nhập", "covy"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");
   await cdp.wait("location.pathname.startsWith('/admin') && location.pathname!=='/admin/login' && !!localStorage.getItem('teacher-token')", "login after logout");
   await cdp.eval(`location.assign(${JSON.stringify("http://127.0.0.1:5174/admin/khong-ton-tai")})`);
   await cdp.wait("location.pathname==='/admin/khong-ton-tai' && document.body.innerText.includes('Không tìm thấy trang') && document.body.innerText.includes('Học phí')", "protected not found");

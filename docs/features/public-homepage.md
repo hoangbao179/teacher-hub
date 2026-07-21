@@ -7,15 +7,15 @@ quản trị và không công khai giá học phí.
 
 ## Carousel và nội dung
 
-- Hero có ba slide cấu hình tập trung trong `client/src/content/publicHome.ts`.
-- Ba slide dùng ba media khác nhau. Hero cao khoảng 400 px ở 360, 410 px ở 390,
-  420 px ở 400, tối đa 450 px ở 430 và 510 px trên desktop 1440×900.
+- Hero có hai slide cấu hình tập trung trong `client/src/content/publicHome.ts`.
+- Hai slide dùng hai media khác nhau. Hero cao trong khoảng 360–420 px trên mobile
+  và khoảng 480 px trên desktop.
 - Slide tự chuyển mỗi 5,5 giây, dừng khi hover/focus/tab ẩn; previous/next,
   indicators, bàn phím và swipe đều hoạt động.
 - `prefers-reduced-motion` tắt autoplay/transition nhưng giữ điều hướng thủ công.
 - Ảnh slide đầu được ưu tiên tải; ảnh sau lazy/preload để tránh tranh tài nguyên.
-- Ba card chương trình là Tiếng Anh lớp 1–5, lớp 6–9 và ôn thi/chuyển cấp; đây là
-  mô tả mục tiêu học, không phải bảng giá.
+- Ba card chương trình là Tiếng Anh tiểu học lớp 1–5, Tiếng Anh THCS lớp 6–9 và
+  luyện thi Nguyễn Tri Phương/9 lên 10; đây là mô tả mục tiêu học, không phải bảng giá.
 
 ## Media tạm thời
 
@@ -34,16 +34,13 @@ Video dài chỉ tạo iframe `youtube-nocookie.com` sau tương tác và không
 - Homepage không hiển thị CTA gọi điện và production không yêu cầu cấu hình phone. Zalo và
   Facebook nằm cùng một hàng, rộng bằng nhau trên mobile; Facebook dùng URL công khai cố định
   `https://www.facebook.com/uyenvy.le.12`. External link dùng `noopener noreferrer`.
-- Local development dùng Zalo fallback an toàn để section không rỗng; production
-  bắt buộc qua validation với URL Zalo thật trước build.
+- Zalo và Facebook là liên kết cố định trong source, không phải cấu hình deployment.
 
 ## Cấu hình, SEO và accessibility
 
-Text, SEO, Facebook, video/testimonial và đường dẫn media local nằm ở
-`client/src/content/publicHome.ts`. Chỉ `VITE_PUBLIC_ZALO_URL` được cấu hình theo deployment;
-biến frontend này không được chứa secret. Production validation từ chối Zalo thiếu,
-placeholder, sai host hoặc không dùng HTTPS. Domain production được cố định trong source,
-sitemap và robots.
+Text, SEO, Zalo, Facebook, video/testimonial, alt text và đường dẫn media local nằm ở
+`client/src/content/publicHome.ts`. Homepage không dùng biến môi trường cho nội dung công
+khai. Domain production được cố định trong source, sitemap và robots.
 
 Trang dùng landmark, một H1, heading tuần tự, focus-visible, touch target tối thiểu
 44 px, ảnh responsive và không phụ thuộc animation. Canonical/Open Graph/Twitter và

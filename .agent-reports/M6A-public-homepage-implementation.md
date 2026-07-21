@@ -96,9 +96,8 @@ Screenshot: `C:\Users\HOANGBAO\AppData\Local\Temp\teacher-hub-m6a-home-mobile.pn
 ## Known gaps
 
 - Docker was unavailable and is not an M6A gate.
-- Source defaults are fictional release-candidate content. A real deployment must
-  set the documented `VITE_PUBLIC_*` identity/contact/domain values and synchronize
-  the two static public crawler files.
+- Source defaults were fictional release-candidate content at this milestone. Stable
+  identity/contact/domain values now live in source with the static crawler files.
 
 ## Documentation updated
 

@@ -11,8 +11,8 @@ services:
     mem_limit: 512m
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
-      MYSQL_DATABASE: ${DB_NAME:?required}
-      MYSQL_USER: ${DB_USER:?required}
+      MYSQL_DATABASE: teacher_class_hub
+      MYSQL_USER: teacher_app
       MYSQL_PASSWORD: ${DB_PASSWORD:?required}
       TZ: Asia/Ho_Chi_Minh
     command:
@@ -44,20 +44,8 @@ services:
     environment:
       NODE_ENV: production
       NODE_OPTIONS: --max-old-space-size=256
-      PORT: 4000
-      TZ: Asia/Ho_Chi_Minh
-      CORS_ORIGIN: ${CORS_ORIGIN:?required}
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: ${DB_USER:?required}
       DB_PASSWORD: ${DB_PASSWORD:?required}
-      DB_NAME: ${DB_NAME:?required}
-      DB_CONNECTION_LIMIT: 5
       JWT_SECRET: ${JWT_SECRET:?required}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      ADMIN_PASSWORD_MIN_LENGTH: ${ADMIN_PASSWORD_MIN_LENGTH:-6}
-      LOGIN_RATE_LIMIT_WINDOW_SECONDS: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:-300}
-      LOGIN_RATE_LIMIT_MAX_FAILURES: ${LOGIN_RATE_LIMIT_MAX_FAILURES:-10}
     networks:
       - backend
     healthcheck:

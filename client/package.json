@@ -6,13 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "validate:public": "node scripts/validate-public-config.mjs",
-    "validate:public:self-test": "node scripts/validate-public-config.mjs --self-test",
-    "build:production": "npm run validate:public && tsc && vite build --mode production",
+    "build:production": "tsc && vite build --mode production",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --max-warnings 0",
     "test": "node --test scripts/retry-after.unit.mjs",
-    "test:e2e": "node scripts/validate-public-config.mjs --self-test && node scripts/public-homepage.e2e.mjs && node scripts/auth-session.e2e.mjs && node scripts/mobile-navigation.e2e.mjs && node scripts/browser-smoke.mjs && node scripts/lesson-wizard.e2e.mjs && node scripts/tuition-management.e2e.mjs && node scripts/schedule-operations.e2e.mjs && node scripts/legacy-import.e2e.mjs",
+    "test:e2e": "node scripts/public-homepage.e2e.mjs && node scripts/auth-session.e2e.mjs && node scripts/mobile-navigation.e2e.mjs && node scripts/browser-smoke.mjs && node scripts/lesson-wizard.e2e.mjs && node scripts/tuition-management.e2e.mjs && node scripts/schedule-operations.e2e.mjs && node scripts/legacy-import.e2e.mjs",
     "test:e2e:legacy-import": "node scripts/legacy-import.e2e.mjs",
     "preview": "vite preview"
   },
