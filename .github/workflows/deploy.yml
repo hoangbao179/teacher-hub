@@ -18,6 +18,8 @@ jobs:
   publish:
     name: Build and publish immutable images
     runs-on: ubuntu-24.04
+    env:
+      GHCR_OWNER: ${{ vars.GHCR_OWNER || github.repository_owner }}
     permissions:
       contents: read
       packages: write
@@ -26,8 +28,6 @@ jobs:
         with:
           ref: ${{ inputs.source_sha }}
       - name: Validate image owner
-        env:
-          GHCR_OWNER: ${{ vars.GHCR_OWNER }}
         run: |
           if [[ ! "$GHCR_OWNER" =~ ^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$ ]]; then
             echo "GHCR_OWNER must be a lowercase GitHub owner name."
@@ -46,8 +46,8 @@ jobs:
           file: Dockerfile.api
           push: true
           tags: |
-            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:${{ inputs.source_sha }}
-            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-api:latest
+            ghcr.io/${{ env.GHCR_OWNER }}/teacher-hub-api:${{ inputs.source_sha }}
+            ghcr.io/${{ env.GHCR_OWNER }}/teacher-hub-api:latest
           cache-from: type=gha,scope=teacher-hub-api
           cache-to: type=gha,mode=max,scope=teacher-hub-api
       - name: Build and push Web image
@@ -57,8 +57,8 @@ jobs:
           file: Dockerfile.web
           push: true
           tags: |
-            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:${{ inputs.source_sha }}
-            ghcr.io/${{ vars.GHCR_OWNER }}/teacher-hub-web:latest
+            ghcr.io/${{ env.GHCR_OWNER }}/teacher-hub-web:${{ inputs.source_sha }}
+            ghcr.io/${{ env.GHCR_OWNER }}/teacher-hub-web:latest
           cache-from: type=gha,scope=teacher-hub-web
           cache-to: type=gha,mode=max,scope=teacher-hub-web
           build-args: |
