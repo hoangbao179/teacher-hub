@@ -100,7 +100,7 @@ export function ReconciliationPage() {
     try {
       const results = await scheduleApi.bulkCreateDrafts({ keys: selected });
       const ok = results.filter((item) => item.success).length;
-      setSuccess(`Đã tạo ${ok}/${results.length} bản nháp buổi học độc lập. Mở từng bản nháp để điểm danh và hoàn tất.`);
+      setSuccess(`Đã tạo ${ok}/${results.length} buổi để ghi nhận. Mở từng buổi để điểm danh và hoàn tất.`);
       setSelected([]); setBulkConfirm(false); setReload((value) => value + 1);
     } catch (value) { setError((value as Error).message); }
     finally { setBusyKey(""); }
@@ -152,7 +152,7 @@ export function ReconciliationPage() {
       {selectable.length > 0 && <Card variant="outlined"><CardContent><Stack spacing={1}>
         <FormControlLabel control={<Checkbox checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectable.map((item) => item.key))} />} label={`Chọn tất cả (${selected.length} đã chọn)`} />
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-          <Button variant="contained" disabled={!selected.length || Boolean(busyKey)} onClick={() => setBulkConfirm(true)}>Tạo {selected.length} bản nháp</Button>
+          <Button variant="contained" disabled={!selected.length || Boolean(busyKey)} onClick={() => setBulkConfirm(true)}>Tạo {selected.length} buổi để ghi nhận</Button>
           <Button variant="outlined" color="error" disabled={!selected.length || Boolean(busyKey)} onClick={() => setSkipDialog({ keys: selected, bulk: true })}>Cho {selected.length} buổi nghỉ</Button>
         </Stack>
       </Stack></CardContent></Card>}
@@ -175,7 +175,9 @@ export function ReconciliationPage() {
             <Button size="small" color="error" variant="outlined" disabled={Boolean(busyKey)} onClick={() => { setMakeupRequired(true); setSkipDialog({ keys: [item.key], bulk: false }); }}>Nghỉ</Button>
             {!replacement && <Button size="small" variant="outlined" disabled={Boolean(busyKey)} onClick={() => openReschedule(item)}>Đổi lịch</Button>}
           </Stack>}
-          {item.linkedLessonId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/lessons/${item.linkedLessonId}/edit`)}>Mở buổi học</Button>}
+          {item.linkedLessonId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/lessons/${item.linkedLessonId}/edit`)}>
+            {item.linkedLessonStatus === "DRAFT" ? "Tiếp tục ghi nhận" : item.linkedLessonStatus === "COMPLETED" ? "Xem buổi đã ghi" : item.linkedLessonStatus === "CANCELLED" ? "Xem buổi đã hủy" : "Xem buổi học"}
+          </Button>}
           {item.state === "SKIPPED" && <Button size="small" variant="contained" onClick={() => navigate(`/admin/lessons/new?classId=${item.classId}&type=MAKEUP&source=${encodeURIComponent(item.originalKey)}`)}>Tạo buổi học bù</Button>}
         </Stack></CardContent></Card>;
       })}
@@ -202,7 +204,7 @@ export function ReconciliationPage() {
       </Dialog>
 
       <Dialog open={bulkConfirm} onClose={() => { if (!busyKey) setBulkConfirm(false); }} fullWidth maxWidth="xs">
-        <DialogTitle>Tạo {selected.length} bản nháp buổi học?</DialogTitle><DialogContent><Alert severity="info">Mỗi buổi là một bản nháp riêng. Bạn vẫn phải mở từng buổi để điểm danh và hoàn tất.</Alert></DialogContent><DialogActions><Button disabled={Boolean(busyKey)} onClick={() => setBulkConfirm(false)}>Hủy</Button><Button data-testid="confirm-bulk-drafts" variant="contained" disabled={!selected.length || Boolean(busyKey)} onClick={() => void submitBulkDrafts()}>{busyKey ? "Đang tạo…" : "Tạo bản nháp"}</Button></DialogActions>
+        <DialogTitle>Tạo {selected.length} buổi để ghi nhận?</DialogTitle><DialogContent><Alert severity="info">Mỗi buổi được tạo riêng. Bạn vẫn cần mở từng buổi để điểm danh và hoàn tất.</Alert></DialogContent><DialogActions><Button disabled={Boolean(busyKey)} onClick={() => setBulkConfirm(false)}>Hủy</Button><Button data-testid="confirm-bulk-drafts" variant="contained" disabled={!selected.length || Boolean(busyKey)} onClick={() => void submitBulkDrafts()}>{busyKey ? "Đang tạo…" : "Tạo buổi"}</Button></DialogActions>
       </Dialog>
     </Stack>
   );

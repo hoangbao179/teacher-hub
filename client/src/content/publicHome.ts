@@ -102,13 +102,8 @@ const alternateHeroDesktop = value("VITE_PUBLIC_HERO_ALT_DESKTOP_URL", "/images/
 const secondaryHeroMobile = value("VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL", "/images/teacher-secondary-study-720.jpg");
 const secondaryHeroDesktop = value("VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL", "/images/teacher-secondary-study-1440.jpg");
 const rawZaloUrl = value("VITE_PUBLIC_ZALO_URL", "");
-const rawFacebookUrl = value("VITE_PUBLIC_FACEBOOK_URL", "");
-const rawPhoneDisplay = value("VITE_PUBLIC_PHONE_DISPLAY", "");
-const rawPhoneE164 = value("VITE_PUBLIC_PHONE_E164", "");
 const zaloUrl = isConfiguredExternalUrl(rawZaloUrl, "zalo.me") ? rawZaloUrl : isDevelopmentContent ? "https://zalo.me/84912345678" : rawZaloUrl;
-const facebookUrl = isConfiguredExternalUrl(rawFacebookUrl, "facebook.com") ? rawFacebookUrl : isDevelopmentContent ? "https://www.facebook.com/lophocanhngucovy" : rawFacebookUrl;
-const phoneDisplay = isConfiguredPhone(`tel:${rawPhoneE164}`, rawPhoneDisplay) ? rawPhoneDisplay : isDevelopmentContent ? "0912 345 678" : rawPhoneDisplay;
-const phoneE164 = isConfiguredPhone(`tel:${rawPhoneE164}`, rawPhoneDisplay) ? rawPhoneE164 : isDevelopmentContent ? "+84912345678" : rawPhoneE164;
+const facebookUrl = "https://www.facebook.com/uyenvy.le.12";
 
 /**
  * Source of truth for deployment-specific public content and temporary media.
@@ -169,8 +164,6 @@ export const publicHomeContent = {
   },
   contact: {
     zaloUrl,
-    phoneDisplay,
-    phoneHref: phoneE164 ? `tel:${phoneE164}` : "",
     facebookUrl,
   },
   methods: [
@@ -219,10 +212,6 @@ export function isConfiguredExternalUrl(raw: string, host: "zalo.me" | "facebook
   } catch {
     return false;
   }
-}
-
-export function isConfiguredPhone(href: string, label: string): boolean {
-  return /^tel:\+[1-9]\d{7,14}$/.test(href) && Boolean(label.trim()) && !placeholderContact.test(`${href} ${label}`);
 }
 
 export function publishableTestimonials(items: readonly PublicTestimonial[]): PublicTestimonial[] {

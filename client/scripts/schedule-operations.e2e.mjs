@@ -223,9 +223,23 @@ try {
 
   for (const time of ["14:00–15:00", "16:00–17:00"])
     await page.getByTestId("occurrence-card").filter({ hasText: time }).getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Tạo 2 bản nháp" }).click();
+  await page.getByRole("button", { name: "Tạo 2 buổi để ghi nhận" }).click();
   await page.getByTestId("confirm-bulk-drafts").click();
-  await page.getByText("Đã tạo 2/2 bản nháp buổi học độc lập.", { exact: false }).waitFor();
+  await page.getByText("Đã tạo 2/2 buổi để ghi nhận.", { exact: false }).waitFor();
+  await page.getByRole("button", { name: "Xem buổi đã ghi" }).waitFor();
+  await page.getByRole("button", { name: "Tiếp tục ghi nhận" }).first().waitFor();
+  if ((await page.locator("body").innerText()).includes("bản nháp")) throw new Error("Reconciliation still exposes technical draft wording");
+
+  await page.route("**/api/schedule/occurrences?*", async (route) => {
+    const response = await route.fetch();
+    const payload = await response.json();
+    const draft = payload?.data?.find((item) => item.linkedLessonStatus === "DRAFT");
+    if (draft) draft.linkedLessonStatus = "CANCELLED";
+    await route.fulfill({ response, json: payload });
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Xem buổi đã hủy" }).waitFor();
+  await page.unroute("**/api/schedule/occurrences?*");
 
   await page.goto(`http://127.0.0.1:5177/admin/lessons/new?type=MAKEUP&date=${today}`);
   await page.getByLabel("Loại buổi").waitFor();
@@ -303,6 +317,41 @@ try {
   await page.getByRole("button", { name: "Xác nhận" }).click();
   await page.getByText("Đã mở lại lớp theo ngày hiệu lực.").waitFor();
 
+  const classFixtures = [
+    { id: 91001, name: "Lớp Alpha đang dạy", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 4, paymentDueCount: 0 },
+    { id: 91002, name: "Lớp Beta tạm dừng", type: "ONE_TO_ONE", subject: "Tiếng Anh", status: "PAUSED", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 1, paymentDueCount: 0 },
+    { id: 91003, name: "Lớp Gamma đã đóng", type: "GROUP", subject: "Tiếng Anh", status: "CLOSED", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 0, paymentDueCount: 0 },
+  ];
+  await page.route("**/api/classes", (route) => route.request().method() === "GET"
+    ? route.fulfill({ status: 200, contentType: "application/json", json: { data: classFixtures } })
+    : route.continue());
+  await page.goto("http://127.0.0.1:5177/admin/classes");
+  await page.getByText("Lớp Alpha đang dạy", { exact: true }).waitFor();
+  await page.getByText("Lớp Beta tạm dừng", { exact: true }).waitFor();
+  if (await page.getByText("Lớp Gamma đã đóng", { exact: true }).count()) throw new Error("Closed class is visible in the default filter");
+  await page.getByRole("combobox", { name: "Hiển thị" }).click();
+  await page.getByRole("option", { name: "Đã đóng (1)" }).click();
+  await page.getByText("Lớp Gamma đã đóng", { exact: true }).waitFor();
+  await page.getByLabel("Tìm theo tên lớp").fill("không tồn tại");
+  await page.getByText("Không có lớp phù hợp với tìm kiếm và bộ lọc đã chọn.").waitFor();
+  await page.getByLabel("Tìm theo tên lớp").fill("Gamma");
+  await page.getByText("Lớp Gamma đã đóng", { exact: true }).waitFor();
+  await page.getByRole("combobox", { name: "Hiển thị" }).click();
+  await page.getByRole("option", { name: "Tất cả", exact: true }).click();
+  await page.getByLabel("Tìm theo tên lớp").fill("");
+  for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 430, height: 932 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await noHorizontalScroll(page);
+  }
+  await page.unroute("**/api/classes");
+
+  await page.goto(`http://127.0.0.1:5177/admin/reconciliation?from=${today}&to=${today}&classId=${klass.id}&state=ALL`);
+  await page.getByTestId("reconciliation-page").waitFor();
+  for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 430, height: 932 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await noHorizontalScroll(page);
+  }
+
   await page.goto("http://127.0.0.1:5177/admin");
   const finalDashboard = await api("/api/dashboard", token);
   await page.getByTestId("dashboard-unrecorded-card").getByText(`${finalDashboard.unrecordedCount} buổi cần xác nhận`).waitFor();
@@ -310,7 +359,7 @@ try {
   await page.route("**/api/dashboard", (route) => route.abort("failed"));
   await page.reload();
   await page.getByText("Không thể kết nối máy chủ. Kiểm tra mạng rồi thử lại.").waitFor();
-  console.log(`Playwright M5B operations passed at 390x844; inspected screenshot: ${screenshot}`);
+  console.log(`Playwright Classes/Reconciliation operations passed at required mobile and desktop viewports; inspected screenshot: ${screenshot}`);
 } finally {
   if (browser) await browser.close();
   for (const child of children.reverse()) { try { child.kill(); } catch { /* already stopped */ } }

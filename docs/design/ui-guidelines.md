@@ -34,6 +34,8 @@ không quá nặng; hierarchy phải rõ khi zoom và trên màn hình hẹp.
 Motion phải tiết chế. Carousel chỉ tự chuyển 5–6 giây, dừng khi hover/focus/tab ẩn;
 không có animation liên tục gây phân tâm. `prefers-reduced-motion` tắt autoplay và
 transition không thiết yếu nhưng vẫn giữ điều khiển thủ công.
+Anchor trên Homepage dùng smooth scroll, chừa khoảng cho sticky header và trở về cuộn
+bình thường khi `prefers-reduced-motion: reduce`.
 
 ## Navigation
 

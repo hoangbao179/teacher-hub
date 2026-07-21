@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, URL, document, getComputedStyle, HTMLElement */
+/* global process, fetch, setTimeout, console, URL, document, getComputedStyle, HTMLElement, window */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -15,9 +15,6 @@ const env = {
   VITE_PUBLIC_CONTENT_MODE: "demo",
   VITE_PUBLIC_SITE_URL: "https://teacher.example.test",
   VITE_PUBLIC_ZALO_URL: "https://zalo.me/84912345678",
-  VITE_PUBLIC_PHONE_DISPLAY: "0912 345 678",
-  VITE_PUBLIC_PHONE_E164: "+84912345678",
-  VITE_PUBLIC_FACEBOOK_URL: "https://www.facebook.com/lophocanhngucovy",
 };
 let child;
 let browser;
@@ -95,7 +92,7 @@ try {
     await page.getByRole("heading", { name: new RegExp(heading) }).first().waitFor();
   }
   await page.getByText("Ba mẹ có thể nhắn cô Vy để chia sẻ tình hình học hiện tại, thời gian phù hợp và phần con đang cần hỗ trợ. Cô sẽ trao đổi thêm về lớp học và cách học phù hợp.", { exact: true }).waitFor();
-  await page.getByRole("link", { name: "Nhắn cô Vy qua Zalo", exact: true }).waitFor();
+  await page.getByRole("link", { name: "Nhắn Zalo", exact: true }).waitFor();
   await page.getByText("Trao đổi về tình hình học và lịch học của con", { exact: true }).waitFor();
   for (const label of ["Lớp 1–9", "1–1 hoặc nhóm nhỏ", "Tại Huế"])
     await page.getByText(label, { exact: true }).waitFor();
@@ -105,15 +102,25 @@ try {
   await page.getByTestId("testimonial-list").waitFor();
   assert(await page.getByTestId("testimonial-fallback").count() === 0, "FAQ fallback rendered with development testimonials");
   assert(await page.getByText("Nội dung mẫu", { exact: true }).count() === 0, "Development testimonial exposes a sample badge");
+  const testimonialBackgrounds = await page.getByTestId("testimonial-list").locator("figure").evaluateAll((cards) => cards.map((card) => getComputedStyle(card).backgroundImage));
+  assert(new Set(testimonialBackgrounds).size === 3, "Testimonial cards do not use three distinct pastel backgrounds");
 
   const contactTargets = await page.locator('a[href^="https://zalo.me/"],a[href^="tel:"],a[href^="https://www.facebook.com/"]').evaluateAll((links) => links.map((link) => ({ href: link.getAttribute("href"), target: link.getAttribute("target"), rel: link.getAttribute("rel") })));
-  assert(contactTargets.length >= 4, `Expected configured contact links, found ${contactTargets.length}`);
-  assert(contactTargets.some((item) => item.href === "tel:+84912345678"), "Phone CTA is not a canonical tel link");
+  assert(contactTargets.length >= 3, `Expected configured contact links, found ${contactTargets.length}`);
+  assert(!contactTargets.some((item) => item.href?.startsWith("tel:")), "Homepage still renders a phone CTA");
+  assert(contactTargets.some((item) => item.href === "https://www.facebook.com/uyenvy.le.12"), "Facebook CTA does not use the approved URL");
   for (const item of contactTargets.filter((link) => link.href?.startsWith("http"))) {
     new URL(item.href);
     assert(item.target === "_blank" && item.rel?.includes("noopener") && item.rel?.includes("noreferrer"), `Unsafe external link: ${item.href}`);
   }
   assert(await page.locator('a[href="#"]').count() === 0, "Homepage contains a placeholder href");
+  assert(await page.getByText("Cô Vy sẽ tư vấn lộ trình phù hợp", { exact: false }).count() === 0, "Repeated contact copy is still visible");
+  assert(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior) === "smooth", "Homepage does not enable smooth anchor scrolling");
+  await page.getByRole("link", { name: "Liên hệ", exact: true }).click();
+  await page.waitForFunction(() => window.location.hash === "#contact");
+  await page.waitForTimeout(1_000);
+  const contactOffset = await page.locator("#contact").evaluate((element) => element.getBoundingClientRect().top);
+  assert(contactOffset >= 60 && contactOffset < 844, `Contact section is hidden or overlapped after anchor navigation: ${contactOffset}px`);
 
   if (await page.locator('iframe[src*="youtube"]').count()) throw new Error("YouTube iframe loaded before interaction");
   await page.getByRole("button", { name: /Phát video:/ }).first().click();
@@ -173,7 +180,14 @@ try {
     else if (viewport.width <= 430) assert(metrics.heroHeight <= 450, `Hero height ${metrics.heroHeight}px exceeds 450 at ${viewport.width}px`);
     else assert(metrics.heroHeight >= 500 && metrics.heroHeight <= 520, `Desktop hero height ${metrics.heroHeight}px is outside 500–520`);
     if (viewport.width <= 430) assert(metrics.aboutTop < viewport.height, `Next section is not discoverable at ${viewport.width}px`);
-    assert(metrics.labels.includes("Nhắn cô Vy qua Zalo"), `Primary Zalo CTA is not visible at ${viewport.width}px`);
+    assert(metrics.labels.includes("Nhắn Zalo"), `Contact Zalo CTA is not visible at ${viewport.width}px`);
+    const contactButtons = await page.getByTestId("contact-actions").getByRole("link").evaluateAll((links) => links.map((link) => {
+      const box = link.getBoundingClientRect();
+      return { width: box.width, top: box.top, whiteSpace: getComputedStyle(link).whiteSpace };
+    }));
+    assert(contactButtons.length === 2, `Expected two contact buttons at ${viewport.width}px`);
+    assert(Math.abs(contactButtons[0].width - contactButtons[1].width) <= 1 && Math.abs(contactButtons[0].top - contactButtons[1].top) <= 1, `Contact buttons are not equal-width on one row at ${viewport.width}px`);
+    assert(contactButtons.every((button) => button.whiteSpace === "nowrap"), `Contact button wraps at ${viewport.width}px`);
     await page.screenshot({ path: path.join(artifactDir, `homepage-${viewport.width}x${viewport.height}.png`), fullPage: true });
   }
 
@@ -185,6 +199,7 @@ try {
   await reducedPage.waitForTimeout(5_800);
   assert(await reducedCarousel.getAttribute("data-active-slide") === reducedBefore, "Reduced motion did not disable autoplay");
   assert(await reducedCarousel.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.playState === "running").length) === 0, "Reduced-motion carousel still has a running animation");
+  assert(await reducedPage.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior) === "auto", "Reduced motion does not restore normal scrolling");
   await reducedPage.getByRole("button", { name: "Slide tiếp theo" }).click();
   assert(await reducedCarousel.getAttribute("data-active-slide") !== reducedBefore, "Reduced motion disabled manual navigation");
   await reducedContext.close();

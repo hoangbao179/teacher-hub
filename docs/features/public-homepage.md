@@ -31,8 +31,9 @@ Video dài chỉ tạo iframe `youtube-nocookie.com` sau tương tác và không
 - Development có thể preview ba testimonial đã cấu hình mà không gắn nhãn nội bộ.
   Khi preview/testimonial hợp lệ đang hiển thị, FAQ fallback không render cùng lúc.
   Production không có testimonial hợp lệ thì dùng **Phụ huynh thường quan tâm**.
-- Zalo hợp lệ là CTA chính; điện thoại và Facebook hợp lệ là phụ. Action thiếu/sai
-  bị ẩn, không dùng link `#` và external link dùng `noopener noreferrer`.
+- Homepage không hiển thị CTA gọi điện và production không yêu cầu cấu hình phone. Zalo và
+  Facebook nằm cùng một hàng, rộng bằng nhau trên mobile; Facebook dùng URL công khai cố định
+  `https://www.facebook.com/uyenvy.le.12`. External link dùng `noopener noreferrer`.
 - Local development có bộ contact tạm đã cấu hình để section không rỗng; production
   bắt buộc qua validation với contact thật trước build.
 
@@ -47,7 +48,10 @@ Trang dùng landmark, một H1, heading tuần tự, focus-visible, touch target
 44 px, ảnh responsive và không phụ thuộc animation. Canonical/Open Graph/Twitter và
 Person JSON-LD lấy từ cấu hình public đã duyệt.
 
+Link **Liên hệ** giữ anchor `#contact`; trang cuộn mượt và chừa khoảng cho sticky header.
+Khi người dùng bật reduced motion, thao tác trở về cuộn bình thường.
+
 Footer phải giữ nguyên: `2026 — từ người hâm mộ cô Vy, with love ❤️`.
 
-Contact V15 dùng tiêu đề “Cùng cô Vy tìm cách học phù hợp cho con”, CTA “Nhắn cô
-Vy qua Zalo” và chip Lớp 1–9, 1–1 hoặc nhóm nhỏ, Tại Huế trong section hiện có.
+Contact dùng tiêu đề “Cùng cô Vy tìm cách học phù hợp cho con”, hai CTA Zalo/Facebook
+và chip Lớp 1–9, 1–1 hoặc nhóm nhỏ, Tại Huế trong section hiện có.

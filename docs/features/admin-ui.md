@@ -29,6 +29,8 @@ học sinh lớp 1–9, không tạo cảm giác mầm non.
 
 ## Bộ lọc và biểu mẫu
 
+- Danh sách lớp mặc định hiển thị lớp **Đang dạy** và **Tạm dừng** trong bộ lọc **Đang
+  quản lý**. Lớp **Đã đóng** vẫn truy cập được qua bộ lọc; tìm kiếm tên lớp chạy client-side.
 - Danh sách học sinh tìm theo họ tên, tên gọi và lớp; mặc định A–Z, hỗ trợ Z–A và lọc
   Đang học/Tạm dừng/Đã nghỉ/Miễn phí/Cần thu ở dialog mobile.
 - Học phí mobile chỉ để search và nút **Lọc** trên mặt chính; trạng thái/lớp/sắp xếp
@@ -36,7 +38,8 @@ học sinh lớp 1–9, không tạo cảm giác mầm non.
 - Lớp mới mặc định môn Tiếng Anh, giá để trống và format VND; form chia Thông tin lớp,
   Học phí, Lịch học hằng tuần và Ghi chú.
 - Giao diện lịch dùng **Xác nhận lịch dạy**/**Kiểm tra lịch tuần**. Input ngày/giờ tiếp
-  tục dùng native picker cho iPhone/Android.
+  tục dùng native picker cho iPhone/Android. Các buổi backend `DRAFT` được diễn đạt là
+  buổi cần/đang ghi nhận, không hiển thị thuật ngữ kỹ thuật “bản nháp” trong màn xác nhận.
 
 ## Ranh giới hành vi
 

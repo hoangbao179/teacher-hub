@@ -7,9 +7,9 @@ import {
   ChevronRight,
   EditOutlined,
   Facebook,
+  FormatQuote,
   LightbulbOutlined,
   MenuBook,
-  Phone,
   PlayArrow,
   School,
   StarOutlined,
@@ -32,7 +32,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   isConfiguredExternalUrl,
-  isConfiguredPhone,
   isDevelopmentContent,
   publicHomeContent as content,
   publishableTestimonials,
@@ -107,6 +106,11 @@ const programTone = {
   blue: { background: "linear-gradient(145deg, #eaf5ff 0%, #f0eaff 100%)", border: "#d4d8f5", icon: "#5f48d5" },
   coral: { background: "linear-gradient(145deg, #fff0e9 0%, #f2ebff 100%)", border: "#efd4d5", icon: "#c55b61" },
 } as const;
+const testimonialTone = [
+  { background: "linear-gradient(145deg, #fff9df, #fffdf4)", border: "#eee0a8", accent: "#a36a00" },
+  { background: "linear-gradient(145deg, #edf7ff, #f7fbff)", border: "#c8e1f5", accent: "#347aaa" },
+  { background: "linear-gradient(145deg, #f2edff, #fbf9ff)", border: "#d9cef7", accent: "#7655c8" },
+] as const;
 
 function HeroCarousel({ showZalo }: { showZalo: boolean }) {
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
@@ -246,7 +250,6 @@ function HeroCarousel({ showZalo }: { showZalo: boolean }) {
 export function HomePage() {
   const showZalo = isConfiguredExternalUrl(content.contact.zaloUrl, "zalo.me");
   const showFacebook = isConfiguredExternalUrl(content.contact.facebookUrl, "facebook.com");
-  const showPhone = isConfiguredPhone(content.contact.phoneHref, content.contact.phoneDisplay);
   const verifiedTestimonials = publishableTestimonials(content.testimonials);
   const visibleTestimonials = isDevelopmentContent ? [...content.testimonials] : verifiedTestimonials;
 
@@ -335,7 +338,14 @@ export function HomePage() {
               <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{visibleTestimonials.length ? "Phản hồi từ phụ huynh" : "Phụ huynh thường quan tâm"}</Typography>
               {visibleTestimonials.length ? (
                 <Box data-testid="testimonial-list" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 3.5 }}>
-                  {visibleTestimonials.map((item) => <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, borderRadius: 3 }}><CardContent><Typography component="blockquote" sx={{ m: 0 }}>“{item.quote}”</Typography><Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 600 }}>— {item.guardianLabel} · {item.studentLevel} · {item.location}</Typography></CardContent></Card>)}
+                  {visibleTestimonials.map((item, index) => {
+                    const tone = testimonialTone[index % testimonialTone.length];
+                    return <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, borderRadius: 3, background: tone.background, borderColor: tone.border }}><CardContent>
+                      <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
+                      <Typography component="blockquote" sx={{ m: 0 }}>{item.quote}</Typography>
+                      <Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 600 }}>— {item.guardianLabel} · {item.studentLevel} · {item.location}</Typography>
+                    </CardContent></Card>;
+                  })}
                 </Box>
               ) : (
                 <Box data-testid="testimonial-fallback" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 1.5, mt: 3 }}>
@@ -346,29 +356,30 @@ export function HomePage() {
           </Container>
         </Box>
 
-        {(showZalo || showPhone || showFacebook) && <Container maxWidth="md">
-          <Box component="section" id="contact" aria-labelledby="contact-heading" sx={{ ...sectionSx, textAlign: "center" }}>
+        {(showZalo || showFacebook) && <Container maxWidth="md" sx={{ py: { xs: 4, sm: 5, md: 7 } }}>
+          <Box component="section" id="contact" aria-labelledby="contact-heading" sx={{
+            px: { xs: 2, sm: 4 }, py: { xs: 3.5, sm: 4.5 }, scrollMarginTop: 72, textAlign: "center",
+            border: "1px solid #ddd2f5", borderRadius: { xs: 3, sm: 4 },
+            background: "radial-gradient(circle at 8% 18%, rgba(255,255,255,.9) 0 7px, transparent 8px), radial-gradient(circle at 92% 82%, rgba(109,61,245,.1) 0 18px, transparent 19px), linear-gradient(135deg, #f5efff 0%, #edf8ff 52%, #effaf4 100%)",
+            boxShadow: "0 12px 30px rgba(57,42,94,.08)",
+          }}>
             <MenuBook color="primary" sx={{ fontSize: 38 }} />
             <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Cùng cô Vy tìm cách học phù hợp cho con</Typography>
             <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 680, mx: "auto" }}>Ba mẹ có thể nhắn cô Vy để chia sẻ tình hình học hiện tại, thời gian phù hợp và phần con đang cần hỗ trợ. Cô sẽ trao đổi thêm về lớp học và cách học phù hợp.</Typography>
             <Stack direction="row" useFlexGap sx={{ justifyContent: "center", flexWrap: "wrap", gap: 1, mt: 2 }}><Chip size="small" label="Lớp 1–9" /><Chip size="small" label="1–1 hoặc nhóm nhỏ" /><Chip size="small" label="Tại Huế" /></Stack>
-            <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 680, mx: "auto" }}>Cô Vy sẽ tư vấn lộ trình phù hợp với trình độ, thời gian học và mục tiêu của từng học sinh.</Typography>
             <Box sx={{ mt: 3, maxWidth: 580, mx: "auto" }}>
-              {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth startIcon={<ChatBubbleOutlined />} sx={{ background: "linear-gradient(105deg, #6d3df5, #398de5)" }}>Nhắn cô Vy qua Zalo</Button>}
-              {showZalo && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>Trao đổi về tình hình học và lịch học của con</Typography>}
-              {(showPhone || showFacebook) && (
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", "@media (max-width:359px)": { gridTemplateColumns: "1fr" }, gap: 1.25, mt: 2 }}>
-                  {showPhone && <Button component="a" href={content.contact.phoneHref} variant="outlined" size="large" startIcon={<Phone />}>Gọi điện</Button>}
-                  {showFacebook && <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="outlined" size="large" startIcon={<Facebook />}>Facebook</Button>}
-                </Box>
-              )}
+              <Box data-testid="contact-actions" sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
+                {showZalo && <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<ChatBubbleOutlined />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", background: "linear-gradient(105deg, #713bea, #268edc)" }}>Nhắn Zalo</Button>}
+                {showFacebook && <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" startIcon={<Facebook />} sx={{ minWidth: 0, px: 1, whiteSpace: "nowrap", color: "#174b77", background: "linear-gradient(105deg, #dcedff, #bfe2ff)", "&:hover": { background: "linear-gradient(105deg, #cfe6ff, #add9ff)" } }}>Facebook</Button>}
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Trao đổi về tình hình học và lịch học của con</Typography>
             </Box>
           </Box>
         </Container>}
       </Box>
 
-      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", py: 3, bgcolor: "#faf9fd" }}>
-        <Container maxWidth="lg"><Typography color="text.secondary" sx={{ textAlign: "center" }}>2026 — từ người hâm mộ cô Vy, with love ❤️</Typography></Container>
+      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", pt: 1, pb: "calc(8px + env(safe-area-inset-bottom, 0px))", bgcolor: "#faf9fd" }}>
+        <Container maxWidth="lg"><Typography color="text.secondary" sx={{ textAlign: "center", fontSize: 12, lineHeight: 1.4 }}>2026 — từ người hâm mộ cô Vy, with love ❤️</Typography></Container>
       </Box>
     </Box>
   );

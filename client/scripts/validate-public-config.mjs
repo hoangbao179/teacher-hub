@@ -7,8 +7,7 @@ const clientRoot = path.resolve(import.meta.dirname, "..");
 const required = [
   "VITE_PUBLIC_SITE_URL", "VITE_PUBLIC_TEACHER_NAME", "VITE_PUBLIC_BRAND_NAME",
   "VITE_PUBLIC_HERO_HEADING", "VITE_PUBLIC_DESCRIPTION", "VITE_PUBLIC_INTRODUCTION",
-  "VITE_PUBLIC_ZALO_URL", "VITE_PUBLIC_PHONE_DISPLAY", "VITE_PUBLIC_PHONE_E164",
-  "VITE_PUBLIC_FACEBOOK_URL", "VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL",
+  "VITE_PUBLIC_ZALO_URL", "VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL",
   "VITE_PUBLIC_HERO_ALT_MOBILE_URL", "VITE_PUBLIC_HERO_ALT_DESKTOP_URL",
   "VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL", "VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL",
   "VITE_PUBLIC_TEACHER_PHOTO_URL", "VITE_PUBLIC_TEACHER_PHOTO_ALT", "VITE_PUBLIC_TEACHER_PHOTO_FOCAL_POSITION", "VITE_PUBLIC_OG_IMAGE_URL",
@@ -29,13 +28,10 @@ export function validatePublicConfig(env) {
     try {
       const url = new URL(env[key]);
       if (url.protocol !== "https:" || (hosts && !hosts.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`)))) errors.push(`${key} must use an approved HTTPS URL`);
-      if (key === "VITE_PUBLIC_FACEBOOK_URL" && url.pathname.replaceAll("/", "") === "") errors.push(`${key} must not target the Facebook root`);
     } catch { errors.push(`${key} must be a valid URL`); }
   };
   checkUrl("VITE_PUBLIC_SITE_URL");
   checkUrl("VITE_PUBLIC_ZALO_URL", ["zalo.me"]);
-  checkUrl("VITE_PUBLIC_FACEBOOK_URL", ["facebook.com"]);
-  if (!/^\+[1-9]\d{7,14}$/.test(env.VITE_PUBLIC_PHONE_E164 ?? "")) errors.push("VITE_PUBLIC_PHONE_E164 must use E.164 format");
   for (const key of ["VITE_PUBLIC_HERO_MOBILE_URL", "VITE_PUBLIC_HERO_DESKTOP_URL", "VITE_PUBLIC_HERO_ALT_MOBILE_URL", "VITE_PUBLIC_HERO_ALT_DESKTOP_URL", "VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL", "VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL", "VITE_PUBLIC_TEACHER_PHOTO_URL", "VITE_PUBLIC_OG_IMAGE_URL"])
     if (!/^\/(?!\/)|^https:\/\//.test(env[key] ?? "")) errors.push(`${key} must be a root-relative or HTTPS asset URL`);
   const heroMedia = [env.VITE_PUBLIC_HERO_DESKTOP_URL, env.VITE_PUBLIC_HERO_ALT_DESKTOP_URL, env.VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL];
@@ -65,8 +61,7 @@ const validFixture = {
   VITE_PUBLIC_TEACHER_NAME: "Cô Vy", VITE_PUBLIC_BRAND_NAME: "Lớp học cô Vy",
   VITE_PUBLIC_HERO_HEADING: "Tiếng Anh vững nền tảng", VITE_PUBLIC_DESCRIPTION: "Thông tin lớp học đã được giáo viên xác nhận.",
   VITE_PUBLIC_INTRODUCTION: "Giáo viên đồng hành theo lộ trình phù hợp với từng học sinh.",
-  VITE_PUBLIC_ZALO_URL: "https://zalo.me/84912345678", VITE_PUBLIC_PHONE_DISPLAY: "0912 345 678",
-  VITE_PUBLIC_PHONE_E164: "+84912345678", VITE_PUBLIC_FACEBOOK_URL: "https://www.facebook.com/lophocanhngucovy",
+  VITE_PUBLIC_ZALO_URL: "https://zalo.me/84912345678",
   VITE_PUBLIC_HERO_MOBILE_URL: "/images/teacher-english-hero-720.jpg", VITE_PUBLIC_HERO_DESKTOP_URL: "/images/teacher-english-hero-1440.jpg",
   VITE_PUBLIC_HERO_ALT_MOBILE_URL: "/images/teacher-hero-720.webp", VITE_PUBLIC_HERO_ALT_DESKTOP_URL: "/images/teacher-hero-1440.webp",
   VITE_PUBLIC_HERO_SECONDARY_MOBILE_URL: "/images/teacher-secondary-study-720.jpg", VITE_PUBLIC_HERO_SECONDARY_DESKTOP_URL: "/images/teacher-secondary-study-1440.jpg",
@@ -78,12 +73,11 @@ const validFixture = {
 
 if (process.argv.includes("--self-test")) {
   if (validatePublicConfig(validFixture).length) throw new Error("Valid marketing fixture was rejected");
-  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_PHONE_DISPLAY: "0900 000 000" }).length) throw new Error("Placeholder marketing fixture was accepted");
+  if (validatePublicConfig({ ...validFixture, VITE_PUBLIC_PHONE_DISPLAY: undefined, VITE_PUBLIC_PHONE_E164: undefined }).length) throw new Error("Optional phone configuration was rejected");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_SITE_URL: "https://configure-public-domain.invalid" }).length) throw new Error("Placeholder public domain was accepted");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_TEACHER_NAME: "Cô giáo An" }).length) throw new Error("Old demo teacher was accepted");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_TEACHER_NAME: "replace-with-teacher" }).length) throw new Error("Placeholder teacher was accepted");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_ZALO_URL: "https://zalo.me/84000000000" }).length) throw new Error("Placeholder Zalo was accepted");
-  if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_PHONE_E164: "+84000000000" }).length) throw new Error("Placeholder E.164 phone was accepted");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_TESTIMONIALS_JSON: '[{"id":"unsafe","guardianLabel":"Phụ huynh","studentLevel":"Lớp 7","location":"Huế","quote":"Chưa xác minh","verified":false,"published":true}]' }).some((item) => item.includes("unverified"))) throw new Error("Published unverified testimonial was accepted");
   if (validatePublicConfig({ ...validFixture, VITE_PUBLIC_TESTIMONIALS_JSON: "[]" }).length) throw new Error("Empty testimonial fallback configuration was rejected");
   if (!validatePublicConfig({ ...validFixture, VITE_PUBLIC_SEO_TITLE: "" }).length) throw new Error("Missing SEO title was accepted");

@@ -149,7 +149,11 @@ export const theme = createTheme({
           "--app-content-width": `${uiTokens.contentWidth}px`,
           "--app-form-width": `${uiTokens.formWidth}px`,
         },
+        html: { scrollBehavior: "smooth", scrollPaddingTop: "72px" },
         body: { overflowWrap: "break-word" },
+        "@media (prefers-reduced-motion: reduce)": {
+          html: { scrollBehavior: "auto" },
+        },
       },
     },
   },

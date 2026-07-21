@@ -1,14 +1,17 @@
-import { Add, Groups, Person } from "@mui/icons-material";
+import { Add, Groups, Person, Search } from "@mui/icons-material";
 import {
   Alert,
   Button,
   Card,
   CardContent,
   Box,
+  InputAdornment,
+  MenuItem,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ClassListItem } from "@teacher/shared";
 import { api } from "../api/client";
@@ -16,14 +19,27 @@ import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, PageHeader, StatusBadge } from "../components/UiKit";
 import { EmptyState } from "../components/EmptyState";
 import { classColor } from "../utils/classColor";
+
+type ClassFilter = "MANAGED" | "ACTIVE" | "PAUSED" | "CLOSED" | "ALL";
+
 export function ClassesPage() {
   const [items, setItems] = useState<ClassListItem[] | null>(null);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<ClassFilter>("MANAGED");
   useEffect(() => {
     api<ClassListItem[]>("/api/classes")
       .then(setItems)
       .catch((e) => setError(e.message));
   }, []);
+  const closedCount = items?.filter((item) => item.status === "CLOSED").length ?? 0;
+  const visibleItems = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase("vi");
+    return items?.filter((item) => {
+      const matchesStatus = filter === "ALL" || (filter === "MANAGED" ? item.status !== "CLOSED" : item.status === filter);
+      return matchesStatus && (!normalizedQuery || item.name.toLocaleLowerCase("vi").includes(normalizedQuery));
+    }) ?? [];
+  }, [filter, items, query]);
   if (!items && !error) return <LoadingState />;
   return (
     <Stack spacing={2}>
@@ -31,8 +47,30 @@ export function ClassesPage() {
           Thêm lớp
         </Button>} />
       {error && <Alert severity="warning">{error}</Alert>}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ maxWidth: "var(--app-form-width)" }}>
+        <TextField
+          fullWidth
+          label="Tìm theo tên lớp"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search fontSize="small" /></InputAdornment> } }}
+        />
+        <TextField
+          select
+          fullWidth
+          label="Hiển thị"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value as ClassFilter)}
+        >
+          <MenuItem value="MANAGED">Đang quản lý</MenuItem>
+          <MenuItem value="ACTIVE">Đang dạy</MenuItem>
+          <MenuItem value="PAUSED">Tạm dừng</MenuItem>
+          <MenuItem value="CLOSED">Đã đóng{closedCount ? ` (${closedCount})` : ""}</MenuItem>
+          <MenuItem value="ALL">Tất cả</MenuItem>
+        </TextField>
+      </Stack>
       <Box data-testid="class-card-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
-      {items?.map((item) => { const tone = classColor(item.id); return (
+      {visibleItems.map((item) => { const tone = classColor(item.id); return (
         <Card
           key={item.id}
           component={Link}
@@ -58,6 +96,7 @@ export function ClassesPage() {
       ); })}
       </Box>
       {items?.length === 0 && <EmptyState message="Chưa có lớp học. Chọn Thêm lớp để bắt đầu." />}
+      {items && items.length > 0 && visibleItems.length === 0 && <EmptyState message="Không có lớp phù hợp với tìm kiếm và bộ lọc đã chọn." />}
     </Stack>
   );
 }
