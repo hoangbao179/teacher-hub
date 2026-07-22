@@ -1,7 +1,7 @@
 # V13 Final UX and local operations — Acceptance
 
-- Homepage hero đúng dải chiều cao, ba ảnh khác nhau, carousel/reduced-motion/contact/
-  testimonial độc quyền với FAQ hoạt động và footer giữ nguyên tuyệt đối.
+- Homepage responsive, contact/testimonial độc quyền với FAQ hoạt động và footer giữ
+  nguyên tuyệt đối; phần hero chuyển cảnh trước đây không còn thuộc giao diện hiện hành.
 - Dashboard quick action dùng grid, thuật ngữ dễ hiểu và metric pastel từ API thật.
 - Học phí mobile có search + dialog lọc; UI dùng đợt học phí, Chưa đủ 8 buổi và Dở dang.
 - Học sinh tìm tên/tên gọi/lớp, sort A–Z/Z–A, lọc trạng thái và không thêm dữ liệu giả.

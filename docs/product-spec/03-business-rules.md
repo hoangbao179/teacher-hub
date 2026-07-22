@@ -63,8 +63,8 @@ UI hiển thị ba lựa chọn:
 
 ## BR-09. Trang public
 - Nội dung do developer sửa, không có CMS V1.
-- Hero là carousel ba slide responsive; tự chuyển sau 5–6 giây, có điều khiển
-  chuột/bàn phím/swipe và dừng animation/autoplay khi người dùng chọn reduced motion.
+- Homepage bắt đầu bằng section giới thiệu giáo viên responsive, không dùng hero
+  chuyển cảnh.
 - Video dài nhúng YouTube và chỉ tải player khi người dùng tương tác.
 - Không hiển thị học phí công khai.
 - CTA ưu tiên Zalo, sau đó điện thoại và Facebook.

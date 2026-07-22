@@ -5,19 +5,15 @@ lớp 1–1 và nhóm nhỏ. Nội dung nhấn mạnh vững nền tảng, bám 
 ôn kiểm tra và chuẩn bị Nguyễn Tri Phương. Trang không cần đăng nhập, không gọi API
 quản trị và không công khai giá học phí.
 
-## Carousel và nội dung
+## Nội dung
 
-- Hero có hai slide cấu hình tập trung trong `client/src/content/publicHome.ts`.
-- Hai slide dùng hai media khác nhau. Hero cao trong khoảng 360–420 px trên mobile
-  và khoảng 480 px trên desktop.
-- Slide tự chuyển mỗi 5,5 giây, dừng khi hover/focus/tab ẩn; previous/next,
-  indicators, bàn phím và swipe đều hoạt động.
-- `prefers-reduced-motion` tắt autoplay/transition nhưng giữ điều hướng thủ công.
-- Ảnh slide đầu được ưu tiên tải; ảnh sau lazy/preload để tránh tranh tài nguyên.
+- Homepage bắt đầu trực tiếp bằng section giới thiệu cô Vy; không có hero chuyển cảnh.
+- Ảnh giới thiệu và nội dung public được cấu hình tập trung trong
+  `client/src/content/publicHome.ts`.
 - Ba card chương trình là Tiếng Anh tiểu học lớp 1–5, Tiếng Anh THCS lớp 6–9 và
   luyện thi Nguyễn Tri Phương/9 lên 10; đây là mô tả mục tiêu học, không phải bảng giá.
 - Trên mobile, hai video vuốt ngang thủ công với scroll snap, hé card kế tiếp và có
-  chỉ dẫn ngắn nhưng không hiện scrollbar; video không tự chuyển như testimonial.
+  chỉ dẫn ngắn nhưng không hiện scrollbar.
 
 ## Media tạm thời
 
@@ -31,7 +27,7 @@ Video dài chỉ tạo iframe `youtube-nocookie.com` sau tương tác và không
 - Homepage hiển thị ba testimonial mẫu được cấu hình trực tiếp trong
   `client/src/content/publicHome.ts`; giữ cấu trúc này để thay bằng phản hồi thật sau này.
 - Chỉ dùng tên phụ huynh/học sinh viết tắt, không hiển thị ảnh đại diện, trường học,
-  điểm số hoặc thông tin cá nhân. Mobile dùng carousel tự chuyển, hỗ trợ vuốt và chấm
+  điểm số hoặc thông tin cá nhân. Mobile dùng danh sách vuốt ngang tự chuyển và chấm
   điều hướng nhưng không hiện scrollbar; desktop hiển thị ba card trên cùng một hàng.
 - Homepage không hiển thị CTA gọi điện và production không yêu cầu cấu hình phone. Zalo và
   Facebook nằm cùng một hàng, rộng bằng nhau trên mobile; Facebook dùng URL công khai cố định

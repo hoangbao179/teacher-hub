@@ -50,7 +50,6 @@ try {
 
   await page.getByRole("heading", { level: 1, name: "Lớp học cô Vy" }).waitFor();
   assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1");
-  assert(await page.getByTestId("hero-carousel").count() === 0, "Homepage still renders the removed slideshow");
 
   for (const heading of ["Xin chào, cô là Uyên Vy.", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Những phản hồi dành cho cô Vy", "Cùng cô Vy tìm cách học phù hợp cho con"]) {
     await page.getByRole("heading", { name: new RegExp(heading) }).first().waitFor();
@@ -80,7 +79,7 @@ try {
   const testimonialBackgrounds = await page.getByTestId("testimonial-list").locator("figure").evaluateAll((cards) => cards.map((card) => getComputedStyle(card).backgroundImage));
   assert(new Set(testimonialBackgrounds).size === 3, "Testimonial cards do not use three distinct pastel backgrounds");
   const testimonialDots = page.getByLabel("Chọn phản hồi phụ huynh").getByRole("button");
-  assert(await testimonialDots.count() === 3, "Mobile testimonial carousel must have three navigation dots");
+  assert(await testimonialDots.count() === 3, "Mobile testimonial list must have three navigation dots");
   await page.getByTestId("testimonial-list").scrollIntoViewIfNeeded();
   const initialTestimonial = await page.locator('[aria-label^="Xem phản hồi"][aria-current="true"]').getAttribute("aria-label");
   await page.waitForFunction((initial) => document.querySelector('[aria-label^="Xem phản hồi"][aria-current="true"]')?.getAttribute("aria-label") !== initial, initialTestimonial, { timeout: 6_000 });
@@ -135,11 +134,15 @@ try {
   assert(!/Cô giáo An|Học Toán|Xây nền Toán/i.test(metadata.body), "Old teacher or mathematics branding remains");
   assert(!/\b\d{1,3}(?:[. ]\d{3})+\s*(?:đ|VND)\b/i.test(metadata.body), "Homepage exposes a public tuition price");
   for (const teacherCopy of [
-    "Đồng hành cùng học sinh lớp 1–9 tại Huế. Kèm cặp 1–1, lớp nhóm nhỏ, củng cố phần còn yếu và luyện thi theo mục tiêu.",
-    "Kèm cặp 1–1 và nhóm nhỏ",
-    "Theo sát năng lực từng học sinh",
-    "Luyện thi Nguyễn Tri Phương",
-    "Luyện thi 9 lên 10",
+    "GIỚI THIỆU CÔ VY",
+    "Xin chào, cô là Uyên Vy.",
+    "Cô Vy là giáo viên tiếng Anh tại Huế, đồng hành cùng học sinh từ mầm non đến lớp 9. Cô tập trung củng cố phần kiến thức còn yếu, xây nền tảng chắc và giúp học sinh tự tin hơn khi sử dụng tiếng Anh.",
+    "5 năm kinh nghiệm giảng dạy",
+    "Cử nhân ngành Ngôn ngữ Anh",
+    "VSTEP 8.5/10 – trình độ C1",
+    "Chứng chỉ Nghiệp vụ Sư phạm",
+    "Chứng chỉ quốc tế TESOL 120h",
+    "Từng giảng dạy tại các trung tâm tiếng Anh",
   ]) assert(metadata.body.includes(teacherCopy), `Teacher introduction is missing: ${teacherCopy}`);
   assert(metadata.body.includes("2026 — từ người hâm mộ cô Vy, with love ❤️"), "Personalized footer copy is missing");
 

@@ -14,7 +14,7 @@
 - M6C: PASS — system-wide mobile/accessibility/performance polish and UI regression.
 - M6D: PASS — production readiness and release-candidate preparation.
 - V1.1 (V11A–V11E): PASS — Cô Vy branding, auth/session and mobile navigation polish.
-- V12A: PASS — three-slide Homepage, programs, verified testimonial policy and contact priority.
+- V12A: PASS — public Homepage content, programs, verified testimonial policy and contact priority; phần hero chuyển cảnh đã được loại bỏ sau đó.
 - V12B: PASS — Login/Admin visual polish with preserved server-authoritative behavior.
 - V12C: PASS — centralized password policy, audited reset, configurable limiter/countdown and strict Vite port.
 - V12D: PASS — synchronized documentation and real-app V2 visual references.

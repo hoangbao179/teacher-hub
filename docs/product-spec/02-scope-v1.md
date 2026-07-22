@@ -2,8 +2,8 @@
 
 ## Trong phạm vi
 - Đăng nhập một giáo viên.
-- Trang public mobile-first cho Cô Vy tại Huế: carousel ba slide Tiếng Anh lớp
-  1–9, chương trình 1–1/nhóm nhỏ, video dài từ YouTube và CTA ưu tiên Zalo.
+- Trang public mobile-first cho Cô Vy tại Huế: giới thiệu giáo viên, chương trình
+  Tiếng Anh lớp 1–9 và 1–1/nhóm nhỏ, video dài từ YouTube và CTA ưu tiên Zalo.
 - Lớp 1 kèm 1 và lớp nhóm dùng chung cấu trúc.
 - Một học sinh chỉ có tối đa một ghi danh đang hoạt động.
 - Giá gói 8 buổi mặc định ở lớp; cho phép giá riêng hoặc miễn phí hoàn toàn theo học sinh.

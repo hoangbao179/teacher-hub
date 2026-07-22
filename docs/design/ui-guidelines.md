@@ -13,7 +13,7 @@ Review bắt buộc ở 360, 375, 390, 393, 400, 412 và 430 px, cộng tablet v
 Mobile là ưu tiên: cards/lists thay bảng rộng, touch target tối thiểu 44 px, sticky
 action không che nội dung. Desktop dùng sidebar khi đủ rộng.
 Homepage dùng section padding khoảng 32–40 px trên mobile và 48–56 px trên desktop.
-Hero cao khoảng 360–420 px trên mobile và 460–520 px trên desktop.
+Homepage bắt đầu bằng section giới thiệu responsive, không có hero chuyển cảnh.
 
 ## Typography
 
@@ -31,9 +31,9 @@ không quá nặng; hierarchy phải rõ khi zoom và trên màn hình hẹp.
 
 ## Motion
 
-Motion phải tiết chế. Carousel chỉ tự chuyển 5–6 giây, dừng khi hover/focus/tab ẩn;
-không có animation liên tục gây phân tâm. `prefers-reduced-motion` tắt autoplay và
-transition không thiết yếu nhưng vẫn giữ điều khiển thủ công.
+Motion phải tiết chế, không có animation liên tục gây phân tâm.
+`prefers-reduced-motion` tắt autoplay và transition không thiết yếu nhưng vẫn giữ
+điều khiển thủ công.
 Anchor trên Homepage dùng smooth scroll, chừa khoảng cho sticky header và trở về cuộn
 bình thường khi `prefers-reduced-motion: reduce`.
 

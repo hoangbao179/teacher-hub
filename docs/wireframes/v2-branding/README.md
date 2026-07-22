@@ -6,8 +6,6 @@ thật hay workbook riêng tư.
 
 | File | Route/state | Viewport | Quyết định visual hiện hành | P0 được thay về styling |
 |---|---|---:|---|---|
-| `01-homepage-mobile.png` | `/`, slide đầu, nội dung development | 390×844 | Hero mobile, typography, CTA và thứ tự section | `01-homepage-public-mobile.png` |
-| `02-homepage-desktop.png` | `/`, slide đầu | 1440×900 | Hero desktop, max-width và decorative balance | `01-homepage-public-mobile.png` (desktop styling mới) |
 | `03-login-mobile.png` | `/admin/login`, form idle | 390×844 | Brand card, education accents và field density | Không có P0 riêng; thay generic auth styling |
 | `04-dashboard-mobile.png` | `/admin`, API test data | 390×844 | Metric cards, lưới thao tác nhanh và lịch hôm nay | `02-admin-dashboard.png` |
 | `05-student-list-mobile.png` | `/admin/students`, synthetic list | 390×844 | Tìm kiếm, lọc gọn, avatar/progress/status card | `11-student-list.png` |
@@ -23,6 +21,8 @@ Các ảnh này là authority cho visual/layout của màn hình ghi trong bản
 nguồn business rule hoặc dữ liệu mẫu. Wireframe P0 tiếp tục mô tả workflow và
 information hierarchy khi chưa bị spec/ADR/acceptance thay thế.
 
-Homepage đang dùng media tạm; ảnh, testimonial preview và contact development có
-thể đổi theo `docs/content/replacing-public-media.md` mà không làm thay đổi cấu trúc
-carousel, thứ tự contact, rule xác minh testimonial hay nghiệp vụ admin.
+Hai ảnh Homepage `01-homepage-mobile.png` và `02-homepage-desktop.png` ghi lại giao
+diện cũ nên không còn là authority cho Homepage hiện hành. Homepage đang dùng media
+tạm; ảnh, testimonial preview và contact development có thể đổi theo
+`docs/content/replacing-public-media.md` mà không làm thay đổi thứ tự contact, rule
+xác minh testimonial hay nghiệp vụ admin.

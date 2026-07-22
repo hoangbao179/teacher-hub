@@ -70,13 +70,14 @@ export const publicHomeContent = {
   introduction: "Cô Vy đồng hành cùng học sinh từ lớp 1 đến lớp 9 theo mục tiêu phù hợp: xây nền, củng cố phần còn yếu và bám sát chương trình trên trường.",
   teacherProfile: {
     greeting: "Xin chào, cô là Uyên Vy.",
-    biography: "Đồng hành cùng học sinh lớp 1–9 tại Huế. Kèm cặp 1–1, lớp nhóm nhỏ, củng cố phần còn yếu và luyện thi theo mục tiêu.",
+    biography: "Cô Vy là giáo viên tiếng Anh tại Huế, đồng hành cùng học sinh từ mầm non đến lớp 9. Cô tập trung củng cố phần kiến thức còn yếu, xây nền tảng chắc và giúp học sinh tự tin hơn khi sử dụng tiếng Anh.",
     highlights: [
-      "Tiếng Anh lớp 1–9",
-      "Kèm cặp 1–1 và nhóm nhỏ",
-      "Theo sát năng lực từng học sinh",
-      "Luyện thi Nguyễn Tri Phương",
-      "Luyện thi 9 lên 10",
+      "5 năm kinh nghiệm giảng dạy",
+      "Cử nhân ngành Ngôn ngữ Anh",
+      "VSTEP 8.5/10 – trình độ C1",
+      "Chứng chỉ Nghiệp vụ Sư phạm",
+      "Chứng chỉ quốc tế TESOL 120h",
+      "Từng giảng dạy tại các trung tâm tiếng Anh",
     ],
   },
   media: {
