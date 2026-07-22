@@ -22,14 +22,18 @@ wizard M2/M3. Tạo draft, nghỉ và đổi lịch đều idempotent với cùn
 Bulk create-draft và bulk-skip xử lý độc lập từng occurrence, trả kết quả thành
 công/lỗi theo item. Bulk không hoàn thành lesson và không tạo attendance/học phí.
 
-Đổi lịch chỉ áp dụng một occurrence, không sửa lịch lặp. Lịch dạy ở trường là `teacher_busy_slots`, không có học sinh/học phí.
+Đổi lịch chỉ áp dụng một occurrence, không sửa lịch lặp. Lịch dạy tại trường/trung
+tâm là `teacher_busy_slots.slot_type=EXTERNAL_CLASS`, không tạo class, enrollment,
+lesson, attendance hoặc tuition.
 
 Conflict detection dùng khoảng thời gian half-open và trả cảnh báo khi trùng với
 projection, lesson (gồm học bù/đổi lịch) hoặc lịch bận. Cảnh báo không âm thầm chặn
 nhập dữ liệu lịch sử và không tự thay đổi sự kiện khác.
 
-Lịch bận hỗ trợ một lần hoặc lặp hằng tuần trong khoảng hiệu lực. Các mutation lưu
-actor/audit nhưng không có quan hệ enrollment, attendance hay tuition.
+Lịch bận loại `EXTERNAL_CLASS`, `PERSONAL` hoặc `OTHER` hỗ trợ một lần hoặc lặp
+hằng tuần trong khoảng hiệu lực. `EXTERNAL_CLASS` lưu loại và tên đơn vị bên
+ngoài. Các mutation lưu actor/audit nhưng không có quan hệ enrollment, attendance
+hay tuition.
 
 V14 giữ recurring schedule theo version. PATCH đóng version cũ và tạo row mới;
 DELETE chỉ end-date. Projection kết hợp effective range với class active periods,

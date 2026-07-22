@@ -189,7 +189,7 @@ try {
   for (const action of [
     { label: "Ghi nhận buổi học", path: "/admin/lessons/new" },
     { label: "Buổi học bù", path: "/admin/lessons/new?type=MAKEUP" },
-    { label: "Thêm lịch bận", path: "/admin/busy-slots/new" },
+    { label: "Thêm lịch dạy ngoài", path: "/admin/busy-slots/new?type=EXTERNAL_CLASS" },
   ]) {
     await page.goto(`${origin}/admin`);
     await page.getByRole("link", { name: action.label, exact: true }).click();

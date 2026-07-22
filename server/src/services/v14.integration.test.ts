@@ -185,7 +185,7 @@ integration("V14 preserves history and enforces pause, cancel, makeup and tempor
   assert.equal(cycleItems.length, 1);
 
   await schedules.createBusySlot({
-    title: "Bận", recurrenceType: "ONCE", specificDate: "2026-07-28",
+    slotType: "OTHER", title: "Bận", recurrenceType: "ONCE", specificDate: "2026-07-28",
     startTime: "18:00", endTime: "19:30",
   });
   const temporaryInput = {

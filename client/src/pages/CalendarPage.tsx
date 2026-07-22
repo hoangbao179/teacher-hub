@@ -12,7 +12,8 @@ import { classColor } from "../utils/classColor";
 
 type CalendarEntry = {
   key: string; date: string; startTime: string; endTime: string; title: string;
-  subtitle: string; color: "default" | "primary" | "success" | "warning" | "error" | "info";
+  subtitle: string; color: "default" | "primary" | "secondary" | "success" | "warning" | "error" | "info";
+  detail?: string;
   classId?: number;
   href?: string;
   warnings?: ScheduleConflictWarning[];
@@ -52,7 +53,9 @@ export function CalendarPage() {
     });
     for (const item of data.busyOccurrences) values.push({
       key: `busy-${item.id}-${item.date}`, date: item.date, startTime: item.startTime, endTime: item.endTime,
-      title: item.title, subtitle: item.location ? `Lịch bận · ${item.location}` : "Lịch bận", color: "error",
+      title: item.title,
+      subtitle: item.slotType === "EXTERNAL_CLASS" ? (item.organizationType === "SCHOOL" ? "Trường" : "Trung tâm") : item.slotType === "PERSONAL" ? "Cá nhân" : "Khác",
+      detail: [item.organizationName, item.location].filter(Boolean).join(" · "), color: item.slotType === "EXTERNAL_CLASS" ? "secondary" : "error",
       href: `/admin/busy-slots/${item.id}/edit`,
     });
     return values.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.key.localeCompare(b.key));
@@ -64,7 +67,7 @@ export function CalendarPage() {
   }, [entries]);
 
   return <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="weekly-calendar">
-    <PageHeader title="Lịch tuần" action={<Button size="small" startIcon={<Add />} component={Link} to="/admin/busy-slots">Lịch bận</Button>} />
+    <PageHeader title="Lịch tuần" action={<Stack direction="row" spacing={0.5}><Button size="small" variant="contained" startIcon={<Add />} component={Link} to="/admin/busy-slots/new?type=EXTERNAL_CLASS">Thêm lịch dạy ngoài</Button><Button size="small" variant="outlined" component={Link} to="/admin/busy-slots/new">Thêm lịch bận</Button></Stack>} />
     <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", width: "100%", maxWidth: 500 }}>
       <IconButton aria-label="Tuần trước" onClick={() => { setData(null); setError(""); setFrom(addDays(from, -7)); }}><ChevronLeft /></IconButton>
       <TextField fullWidth type="date" label="Tuần bắt đầu" value={from} onChange={(event) => { setData(null); setError(""); setFrom(weekStart(event.target.value)); }} slotProps={{ inputLabel: { shrink: true } }} />
@@ -83,7 +86,7 @@ export function CalendarPage() {
       <Typography variant="h6" sx={{ mt: 1 }}>{displayDate(date)}</Typography>
       {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: item.classId ? classColor(item.classId).accent : `${item.color}.main` }} data-testid="calendar-event">
         <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
-          <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}</Typography></Stack>
+          <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}{item.detail ? ` · ${item.detail}` : ""}</Typography></Stack>
           <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>{Boolean(item.warnings?.length) && <IconButton size="small" color="warning" aria-label={`Xem ${item.warnings!.length} cảnh báo trùng lịch`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setConflicts(item.warnings!); }}><WarningAmber fontSize="small" /></IconButton>}<Chip size="small" color={item.color} label={item.subtitle} /></Stack>
         </Stack></CardContent>
       </Card>)}

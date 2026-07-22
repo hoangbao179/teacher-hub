@@ -50,6 +50,9 @@ interface LessonEvent {
 
 interface BusyOccurrence {
   id: number;
+  slotType: TeacherBusySlot["slotType"];
+  organizationType: TeacherBusySlot["organizationType"];
+  organizationName: string | null;
   title: string;
   date: string;
   startTime: string;
@@ -488,8 +491,8 @@ export class ScheduleRepository {
       await connection.beginTransaction();
       const [created] = await connection.execute<ResultSetHeader>(
         `INSERT INTO teacher_busy_slots
-          (title,recurrence_type,day_of_week,specific_date,start_time,end_time,effective_from,effective_to,location,note,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)`, busyValues(input, actorUserId),
+          (slot_type,organization_type,organization_name,title,recurrence_type,day_of_week,specific_date,start_time,end_time,effective_from,effective_to,location,note,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, busyValues(input, actorUserId),
       );
       await this.audit.record(connection, { actorUserId, action: "TEACHER_BUSY_SLOT_CREATED", entityType: "TEACHER_BUSY_SLOT", entityId: created.insertId, newValues: input });
       await connection.commit(); return created.insertId;
@@ -504,8 +507,8 @@ export class ScheduleRepository {
       const [rows] = await connection.query<RowDataPacket[]>("SELECT * FROM teacher_busy_slots WHERE id=? FOR UPDATE", [id]);
       if (!rows[0]) { await connection.rollback(); return false; }
       await connection.execute(
-        `UPDATE teacher_busy_slots SET title=?,recurrence_type=?,day_of_week=?,specific_date=?,start_time=?,end_time=?,
-          effective_from=?,effective_to=?,location=?,note=? WHERE id=?`, [...busyValues(input).slice(0, 10), id],
+        `UPDATE teacher_busy_slots SET slot_type=?,organization_type=?,organization_name=?,title=?,recurrence_type=?,day_of_week=?,specific_date=?,start_time=?,end_time=?,
+          effective_from=?,effective_to=?,location=?,note=? WHERE id=?`, [...busyValues(input).slice(0, 13), id],
       );
       await this.audit.record(connection, { actorUserId, action: "TEACHER_BUSY_SLOT_UPDATED", entityType: "TEACHER_BUSY_SLOT", entityId: id, previousValues: rows[0], newValues: input });
       await connection.commit(); return true;
@@ -569,7 +572,8 @@ export class ScheduleRepository {
       busyOccurrences,
       classSchedules: schedules.map((row) => ({ classId: Number(row.class_id), className: String(row.class_name),
         dayOfWeek: Number(row.day_of_week), startTime: String(row.start_text), endTime: String(row.end_text) })),
-      busySlots: busy.map((row) => ({ id: row.id, title: row.title, dayOfWeek: row.dayOfWeek,
+      busySlots: busy.map((row) => ({ id: row.id, slotType: row.slotType, organizationType: row.organizationType,
+        organizationName: row.organizationName, title: row.title, dayOfWeek: row.dayOfWeek,
         specificDate: row.specificDate, startTime: row.startTime, endTime: row.endTime, location: row.location })),
     };
   }
@@ -730,11 +734,13 @@ export class ScheduleRepository {
     const events: BusyOccurrence[] = [];
     for (const slot of slots) {
       if (slot.recurrenceType === "ONCE" && slot.specificDate)
-        events.push({ id: slot.id, title: slot.title, date: slot.specificDate, startTime: slot.startTime, endTime: slot.endTime, location: slot.location });
+        events.push({ id: slot.id, slotType: slot.slotType, organizationType: slot.organizationType, organizationName: slot.organizationName,
+          title: slot.title, date: slot.specificDate, startTime: slot.startTime, endTime: slot.endTime, location: slot.location });
       if (slot.recurrenceType === "WEEKLY")
         for (let date = from; date <= to; date = addDays(date, 1))
           if (weekdayIso(date) === slot.dayOfWeek && date >= (slot.effectiveFrom ?? date) && (!slot.effectiveTo || date <= slot.effectiveTo))
-            events.push({ id: slot.id, title: slot.title, date, startTime: slot.startTime, endTime: slot.endTime, location: slot.location });
+            events.push({ id: slot.id, slotType: slot.slotType, organizationType: slot.organizationType, organizationName: slot.organizationName,
+              title: slot.title, date, startTime: slot.startTime, endTime: slot.endTime, location: slot.location });
     }
     return events.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.id - b.id);
   }
@@ -756,14 +762,17 @@ function mapException(row: RowDataPacket): ProjectionExceptionInput {
     makeupRequired: row.makeup_required == null ? true : Boolean(row.makeup_required) };
 }
 function mapBusySlot(row: RowDataPacket): TeacherBusySlot {
-  return { id: Number(row.id), title: String(row.title), recurrenceType: row.recurrence_type,
+  return { id: Number(row.id), slotType: row.slot_type, organizationType: row.organization_type ?? null,
+    organizationName: row.organization_name == null ? null : String(row.organization_name), title: String(row.title), recurrenceType: row.recurrence_type,
     dayOfWeek: row.day_of_week == null ? null : Number(row.day_of_week) as 1 | 2 | 3 | 4 | 5 | 6 | 7, specificDate: row.specific_date_text ?? null,
     startTime: String(row.start_text), endTime: String(row.end_text), effectiveFrom: row.effective_from_text ?? null,
     effectiveTo: row.effective_to_text ?? null, location: row.location == null ? null : String(row.location),
     note: row.note == null ? null : String(row.note), conflicts: [] };
 }
 function busyValues(input: TeacherBusySlotInput, actorUserId?: number): Array<string | number | null> {
-  return [input.title.trim(), input.recurrenceType, input.recurrenceType === "WEEKLY" ? input.dayOfWeek ?? null : null,
+  return [input.slotType, input.slotType === "EXTERNAL_CLASS" ? input.organizationType ?? null : null,
+    input.slotType === "EXTERNAL_CLASS" ? input.organizationName?.trim() || null : null,
+    input.title.trim(), input.recurrenceType, input.recurrenceType === "WEEKLY" ? input.dayOfWeek ?? null : null,
     input.recurrenceType === "ONCE" ? input.specificDate ?? null : null, input.startTime, input.endTime,
     input.recurrenceType === "WEEKLY" ? input.effectiveFrom ?? null : null,
     input.recurrenceType === "WEEKLY" ? input.effectiveTo ?? null : null,

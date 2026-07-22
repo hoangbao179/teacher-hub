@@ -131,3 +131,9 @@ chuẩn hóa ngày thiếu năm, đối soát lesson/học phí, chia năm học
 
 Đã triển khai replacement cancellation, entitlement học bù, bulk reschedule,
 conflict/lịch bận, thu trước, settlement đợt dở, chuyển lớp và contact Homepage.
+
+## SUPPORT-EXTERNAL-TEACHING-SCHEDULES
+
+TeacherBusySlot đã phân loại lịch dạy ngoài, cá nhân và khác. Lịch trường/trung
+tâm hiển thị trên Calendar/Dashboard và cảnh báo trùng nhưng không tham gia Class,
+occurrence chưa ghi nhận, enrollment, lesson, attendance hoặc tuition.

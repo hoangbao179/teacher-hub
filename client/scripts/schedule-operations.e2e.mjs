@@ -159,15 +159,18 @@ try {
   await page.getByTestId("lesson-success").waitFor();
 
   await page.goto("http://127.0.0.1:5177/admin");
-  await page.getByRole("link", { name: "Thêm lịch bận" }).click();
-  await page.waitForURL("**/admin/busy-slots/new");
-  await page.getByLabel("Tiêu đề lịch bận").fill(`Dạy ở trường ${suffix}`);
+  await page.getByRole("link", { name: "Thêm lịch dạy ngoài" }).click();
+  await page.waitForURL("**/admin/busy-slots/new?type=EXTERNAL_CLASS");
+  await page.getByLabel("Loại đơn vị").click();
+  await page.getByRole("option", { name: "Trường" }).click();
+  await page.getByLabel("Tên trường/trung tâm").fill("Trường mẫu");
+  await page.getByLabel("Tên lớp").fill(`Dạy ở trường ${suffix}`);
   await page.getByLabel("Ngày bận").fill(today);
   await page.getByLabel("Bắt đầu").fill("18:30");
   await page.getByLabel("Kết thúc").fill("19:30");
   await page.getByLabel("Địa điểm (tùy chọn)").fill("Trường mẫu");
-  await page.getByRole("button", { name: "Lưu lịch bận" }).click();
-  await page.getByText("Đã tạo lịch bận.").waitFor();
+  await page.getByRole("button", { name: "Lưu lịch" }).click();
+  await page.getByText("Đã tạo lịch.").waitFor();
   await page.getByTestId("busy-conflict-warning").waitFor();
 
   await page.goto(`http://127.0.0.1:5177/admin/reconciliation?from=${today}&to=${today}&classId=${klass.id}&state=ALL`);
@@ -250,7 +253,9 @@ try {
 
   await page.goto("http://127.0.0.1:5177/admin/calendar");
   await page.getByTestId("calendar-event").first().waitFor();
-  await page.getByText(`Dạy ở trường ${suffix}`).waitFor();
+  const externalCalendarCard = page.getByTestId("calendar-event").filter({ hasText: `Dạy ở trường ${suffix}` });
+  await externalCalendarCard.waitFor();
+  await externalCalendarCard.getByText("Trường", { exact: true }).waitFor();
   await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Buổi học bù · Bản nháp" }).first().waitFor();
   await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "10:00–11:00" }).filter({ hasText: "Nghỉ" }).waitFor();
   const conflictButton = page.getByRole("button", { name: /Xem \d+ cảnh báo trùng lịch/ }).first();
@@ -258,8 +263,7 @@ try {
   await page.getByRole("heading", { name: "Chi tiết trùng lịch" }).waitFor();
   await page.getByText(/Trùng (lớp khác|buổi học|lịch bận)/).first().waitFor();
   await page.keyboard.press("Escape");
-  await page.getByRole("link", { name: "Lịch bận", exact: true }).click();
-  await page.waitForURL("**/admin/busy-slots");
+  await page.goto("http://127.0.0.1:5177/admin/busy-slots");
   await page.getByTestId("busy-slot-list").getByText(`Dạy ở trường ${suffix}`).waitFor();
   await page.goto("http://127.0.0.1:5177/admin/calendar");
   const weekBefore = await page.getByLabel("Tuần bắt đầu").inputValue();
@@ -291,8 +295,8 @@ try {
   await page.getByRole("option", { name: weekdayLabel }).click();
   await page.getByLabel("Hiệu lực từ").fill(addDays(today, -7));
   await page.getByLabel("Hiệu lực đến (tùy chọn)").fill(addDays(today, 7));
-  await page.getByRole("button", { name: "Lưu lịch bận" }).click();
-  await page.getByText("Đã cập nhật lịch bận.").waitFor();
+  await page.getByRole("button", { name: "Lưu lịch" }).click();
+  await page.getByText("Đã cập nhật lịch.").waitFor();
 
   await page.goto(`http://127.0.0.1:5177/admin/classes/${klass.id}`);
   await page.getByRole("button", { name: "Đổi lịch tạm thời" }).click();
@@ -357,7 +361,9 @@ try {
   await page.goto("http://127.0.0.1:5177/admin");
   const finalDashboard = await api("/api/dashboard", token);
   await page.getByTestId("dashboard-unrecorded-card").getByText(`${finalDashboard.unrecordedCount} buổi cần xác nhận`).waitFor();
-  await page.getByText(`Dạy ở trường ${suffix}`).waitFor();
+  const externalDashboardCard = page.getByTestId("dashboard-today-event").filter({ hasText: `Dạy ở trường ${suffix}` });
+  await externalDashboardCard.getByText("Trường", { exact: true }).waitFor();
+  if (await externalDashboardCard.getByRole("button").count()) throw new Error("External schedule exposed a lesson action");
   await page.route("**/api/dashboard", (route) => route.abort("failed"));
   await page.reload();
   await page.getByText("Không thể kết nối máy chủ. Kiểm tra mạng rồi thử lại.").waitFor();

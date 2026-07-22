@@ -196,8 +196,13 @@ export interface OutstandingMakeupItem {
 }
 
 export type BusySlotRecurrenceType = "ONCE" | "WEEKLY";
+export type TeacherBusySlotType = "EXTERNAL_CLASS" | "PERSONAL" | "OTHER";
+export type ExternalOrganizationType = "SCHOOL" | "CENTER";
 
 export interface TeacherBusySlotInput {
+  slotType: TeacherBusySlotType;
+  organizationType?: ExternalOrganizationType;
+  organizationName?: string;
   title: string;
   recurrenceType: BusySlotRecurrenceType;
   dayOfWeek?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -211,8 +216,10 @@ export interface TeacherBusySlotInput {
 }
 
 export interface TeacherBusySlot extends Omit<TeacherBusySlotInput,
-  "dayOfWeek" | "specificDate" | "effectiveFrom" | "effectiveTo" | "location" | "note"> {
+  "organizationType" | "organizationName" | "dayOfWeek" | "specificDate" | "effectiveFrom" | "effectiveTo" | "location" | "note"> {
   id: number;
+  organizationType: ExternalOrganizationType | null;
+  organizationName: string | null;
   dayOfWeek: 1 | 2 | 3 | 4 | 5 | 6 | 7 | null;
   specificDate: string | null;
   effectiveFrom: string | null;
@@ -251,6 +258,9 @@ export interface CalendarLessonEvent {
 
 export interface CalendarBusyOccurrence {
   id: number;
+  slotType: TeacherBusySlotType;
+  organizationType: ExternalOrganizationType | null;
+  organizationName: string | null;
   title: string;
   date: string;
   startTime: string;
@@ -273,6 +283,9 @@ export interface WeekScheduleResponse {
   }>;
   busySlots: Array<{
     id: number;
+    slotType: TeacherBusySlotType;
+    organizationType: ExternalOrganizationType | null;
+    organizationName: string | null;
     title: string;
     dayOfWeek: number | null;
     specificDate: string | null;

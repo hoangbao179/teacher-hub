@@ -24,8 +24,10 @@
   và không sửa định nghĩa lịch lặp.
 
 ## TeacherBusySlot
-- id, title, recurrenceType, dayOfWeek/specificDate, startTime, endTime,
-  effectiveFrom, effectiveTo, location, note, createdBy, createdAt, updatedAt.
+- id, slotType (`EXTERNAL_CLASS`/`PERSONAL`/`OTHER`), organizationType
+  (`SCHOOL`/`CENTER`, chỉ dùng cho `EXTERNAL_CLASS`), organizationName, title,
+  recurrenceType, dayOfWeek/specificDate, startTime, endTime, effectiveFrom,
+  effectiveTo, location, note, createdBy, createdAt, updatedAt.
 - Không có student, enrollment, attendance hoặc tuition behavior.
 
 ## LessonSession

@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { BusySlotRecurrenceType, ScheduleConflictWarning, TeacherBusySlotInput } from "@teacher/shared";
+import type { BusySlotRecurrenceType, ExternalOrganizationType, ScheduleConflictWarning, TeacherBusySlotInput, TeacherBusySlotType } from "@teacher/shared";
 import { scheduleApi } from "../api/schedule";
 import { LoadingState } from "../components/LoadingState";
 import { ConfirmationDialog, FormSection, PageHeader, StickyActionBar } from "../components/UiKit";
@@ -22,6 +22,10 @@ export function BusySlotFormPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const today = todayInHoChiMinh();
+  const initialSlotType = params.get("type") === "EXTERNAL_CLASS" ? "EXTERNAL_CLASS" : "PERSONAL";
+  const [slotType, setSlotType] = useState<TeacherBusySlotType>(initialSlotType);
+  const [organizationType, setOrganizationType] = useState<ExternalOrganizationType>("SCHOOL");
+  const [organizationName, setOrganizationName] = useState("");
   const [title, setTitle] = useState("");
   const [recurrenceType, setRecurrenceType] = useState<BusySlotRecurrenceType>("ONCE");
   const [specificDate, setSpecificDate] = useState(params.get("date") ?? today);
@@ -42,6 +46,7 @@ export function BusySlotFormPage() {
   useEffect(() => {
     if (!slotId) return;
     scheduleApi.busySlot(slotId).then((slot) => {
+      setSlotType(slot.slotType); setOrganizationType(slot.organizationType ?? "SCHOOL"); setOrganizationName(slot.organizationName ?? "");
       setTitle(slot.title); setRecurrenceType(slot.recurrenceType); setSpecificDate(slot.specificDate ?? today);
       setDayOfWeek(slot.dayOfWeek ?? 1); setStartTime(slot.startTime); setEndTime(slot.endTime);
       setEffectiveFrom(slot.effectiveFrom ?? today); setEffectiveTo(slot.effectiveTo ?? "");
@@ -50,11 +55,14 @@ export function BusySlotFormPage() {
   }, [slotId, today]);
 
   function payload(): TeacherBusySlotInput {
+    const identity = { slotType, title,
+      organizationType: slotType === "EXTERNAL_CLASS" ? organizationType : undefined,
+      organizationName: slotType === "EXTERNAL_CLASS" ? organizationName : undefined };
     return recurrenceType === "ONCE" ? {
-      title, recurrenceType, specificDate, startTime, endTime,
+      ...identity, recurrenceType, specificDate, startTime, endTime,
       location: location || undefined, note: note || undefined,
     } : {
-      title, recurrenceType, dayOfWeek, startTime, endTime, effectiveFrom,
+      ...identity, recurrenceType, dayOfWeek, startTime, endTime, effectiveFrom,
       effectiveTo: effectiveTo || undefined, location: location || undefined, note: note || undefined,
     };
   }
@@ -63,7 +71,7 @@ export function BusySlotFormPage() {
     setBusy(true); setError(""); setSuccess("");
     try {
       const result = slotId ? await scheduleApi.updateBusySlot(slotId, payload()) : await scheduleApi.createBusySlot(payload());
-      setWarnings(result.conflicts); setSuccess(slotId ? "Đã cập nhật lịch bận." : "Đã tạo lịch bận.");
+      setWarnings(result.conflicts); setSuccess(slotId ? "Đã cập nhật lịch." : "Đã tạo lịch.");
     } catch (value) { setError((value as Error).message); }
     finally { setBusy(false); }
   }
@@ -77,15 +85,26 @@ export function BusySlotFormPage() {
   }
 
   if (loading) return <LoadingState />;
-  const valid = title.trim() && startTime && endTime > startTime &&
+  const valid = title.trim() && (slotType !== "EXTERNAL_CLASS" || organizationName.trim()) && startTime && endTime > startTime &&
     (recurrenceType === "ONCE" ? specificDate : effectiveFrom && (!effectiveTo || effectiveTo >= effectiveFrom));
   return <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="busy-slot-form" data-form-width="bounded">
-    <PageHeader title={slotId ? "Sửa lịch bận" : "Thêm lịch bận"} subtitle="Lịch bận dùng để hiển thị và cảnh báo trùng. Hệ thống không tự nghỉ hoặc tự đổi lịch lớp." />
+    <PageHeader title={slotId ? "Sửa lịch" : slotType === "EXTERNAL_CLASS" ? "Thêm lịch dạy ngoài" : "Thêm lịch bận"} subtitle="Lịch này chỉ dùng để hiển thị và cảnh báo trùng, không tạo học sinh, điểm danh hoặc học phí." />
     {error && <Alert severity="error" action={slotId ? <Button color="inherit" onClick={() => window.location.reload()}>Thử lại</Button> : undefined}>{error}</Alert>}
     {success && <Alert severity="success">{success}</Alert>}
     {warnings.length > 0 && <Alert severity="warning" data-testid="busy-conflict-warning">Có {warnings.length} cảnh báo trùng lịch: {warnings.map((item) => `${item.title} ${item.date} ${item.startTime}–${item.endTime}`).join("; ")}</Alert>}
-    <FormSection title="Thông tin lịch bận">
-      <TextField required label="Tiêu đề lịch bận" value={title} onChange={(event) => setTitle(event.target.value)} />
+    <FormSection title="Thông tin lịch">
+      <TextField select required label="Loại lịch" value={slotType} onChange={(event) => setSlotType(event.target.value as TeacherBusySlotType)}>
+        <MenuItem value="EXTERNAL_CLASS">Lịch dạy ngoài</MenuItem>
+        <MenuItem value="PERSONAL">Cá nhân</MenuItem>
+        <MenuItem value="OTHER">Khác</MenuItem>
+      </TextField>
+      {slotType === "EXTERNAL_CLASS" && <>
+        <TextField select required label="Loại đơn vị" value={organizationType} onChange={(event) => setOrganizationType(event.target.value as ExternalOrganizationType)}>
+          <MenuItem value="SCHOOL">Trường</MenuItem><MenuItem value="CENTER">Trung tâm</MenuItem>
+        </TextField>
+        <TextField required label="Tên trường/trung tâm" value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} />
+      </>}
+      <TextField required label={slotType === "EXTERNAL_CLASS" ? "Tên lớp" : "Tiêu đề lịch"} value={title} onChange={(event) => setTitle(event.target.value)} />
       <RadioGroup row value={recurrenceType} onChange={(event) => setRecurrenceType(event.target.value as BusySlotRecurrenceType)}>
         <FormControlLabel value="ONCE" control={<Radio />} label="Một lần" />
         <FormControlLabel value="WEEKLY" control={<Radio />} label="Hằng tuần" />
@@ -105,11 +124,11 @@ export function BusySlotFormPage() {
       </Stack>
       <TextField label="Địa điểm (tùy chọn)" value={location} onChange={(event) => setLocation(event.target.value)} />
       <TextField multiline minRows={2} label="Ghi chú lịch bận (tùy chọn)" value={note} onChange={(event) => setNote(event.target.value)} />
-      <Alert severity="info">Lịch bận không có học sinh, điểm danh hoặc học phí.</Alert>
+      <Alert severity="info">Lịch này không có học sinh, điểm danh hoặc học phí trên hệ thống.</Alert>
     </FormSection>
     <StickyActionBar>
       {slotId && <Button color="error" variant="outlined" disabled={busy} onClick={() => setConfirmDelete(true)}>Xóa</Button>}
-      <Button fullWidth size="large" variant="contained" disabled={!valid || busy} onClick={() => void submit()} sx={{ width: { md: "auto" }, alignSelf: { md: "flex-start" } }}>{busy ? "Đang lưu…" : "Lưu lịch bận"}</Button>
+      <Button fullWidth size="large" variant="contained" disabled={!valid || busy} onClick={() => void submit()} sx={{ width: { md: "auto" }, alignSelf: { md: "flex-start" } }}>{busy ? "Đang lưu…" : "Lưu lịch"}</Button>
     </StickyActionBar>
     <ConfirmationDialog open={confirmDelete} title="Xóa lịch bận?" confirmLabel="Xóa lịch bận" destructive busy={busy} onCancel={() => setConfirmDelete(false)} onConfirm={() => void remove()}>
       Thao tác chỉ xóa lịch bận này và không ảnh hưởng buổi học hoặc học phí.

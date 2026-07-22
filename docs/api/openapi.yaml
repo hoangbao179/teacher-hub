@@ -606,8 +606,11 @@ components:
                   alreadyReplaced: {type: boolean}
     TeacherBusySlotInput:
       type: object
-      required: [title, recurrenceType, startTime, endTime]
+      required: [slotType, title, recurrenceType, startTime, endTime]
       properties:
+        slotType: {type: string, enum: [EXTERNAL_CLASS, PERSONAL, OTHER]}
+        organizationType: {type: string, enum: [SCHOOL, CENTER], nullable: true, description: Bắt buộc khi slotType là EXTERNAL_CLASS}
+        organizationName: {type: string, maxLength: 160, nullable: true, description: Bắt buộc khi slotType là EXTERNAL_CLASS}
         title: {type: string, maxLength: 160}
         recurrenceType: {type: string, enum: [ONCE, WEEKLY]}
         dayOfWeek: {type: integer, minimum: 1, maximum: 7, nullable: true}
@@ -657,9 +660,12 @@ components:
         lessonType: {$ref: '#/components/schemas/LessonType'}
     CalendarBusyOccurrence:
       type: object
-      required: [id, title, date, startTime, endTime]
+      required: [id, slotType, title, date, startTime, endTime]
       properties:
         id: {type: integer, format: int64}
+        slotType: {type: string, enum: [EXTERNAL_CLASS, PERSONAL, OTHER]}
+        organizationType: {type: string, enum: [SCHOOL, CENTER], nullable: true}
+        organizationName: {type: string, nullable: true}
         title: {type: string}
         date: {type: string, format: date}
         startTime: {type: string}

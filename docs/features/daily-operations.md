@@ -17,8 +17,10 @@ skipped originals and expanded one-time/weekly busy slots. Week navigation chang
 only the projection window; no drag/drop mutation exists in V1.
 
 `/admin/busy-slots/new` and `/admin/busy-slots/{id}/edit` manage teacher-only
-availability. Conflict warnings are visible but non-blocking. The form exposes no
-student, attendance or tuition fields.
+availability, including external school/center teaching schedules. Calendar offers
+separate add actions; calendar and Dashboard label school, center and personal
+items. Conflict warnings are visible but non-blocking. The form exposes no student,
+attendance or tuition fields.
 
 Dashboard, class detail and calendar link “Buổi học bù” to the existing M2 lesson
 wizard with `MAKEUP` preselected. The wizard still requires explicit participants.

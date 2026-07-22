@@ -310,6 +310,16 @@ export class ScheduleService {
   }
 
   private validateBusySlot(input: TeacherBusySlotInput): void {
+    if (!(["EXTERNAL_CLASS", "PERSONAL", "OTHER"] as const).includes(input.slotType))
+      throw new AppError(400, "VALIDATION_ERROR", "Loại lịch không hợp lệ.");
+    if (input.slotType === "EXTERNAL_CLASS") {
+      if (!input.organizationType || !(["SCHOOL", "CENTER"] as const).includes(input.organizationType))
+        throw new AppError(400, "VALIDATION_ERROR", "Lịch dạy ngoài cần chọn trường hoặc trung tâm.");
+      if (!input.organizationName?.trim() || input.organizationName.trim().length > 160)
+        throw new AppError(400, "VALIDATION_ERROR", "Tên đơn vị là bắt buộc và tối đa 160 ký tự.");
+    } else if (input.organizationType != null || input.organizationName != null) {
+      throw new AppError(400, "VALIDATION_ERROR", "Chỉ lịch dạy ngoài mới có thông tin đơn vị.");
+    }
     if (!input.title?.trim() || input.title.trim().length > 160)
       throw new AppError(400, "VALIDATION_ERROR", "Tiêu đề lịch bận là bắt buộc và tối đa 160 ký tự.");
     this.validateTimeRange(input.startTime, input.endTime);

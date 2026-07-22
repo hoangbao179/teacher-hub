@@ -12,7 +12,7 @@ import { useAuth } from "../auth/AuthContext";
 import { uiTokens } from "../theme";
 import { classColor } from "../utils/classColor";
 
-interface TodayItem { key: string; classId?: number; title: string; time: string; label: string; href: string }
+interface TodayItem { key: string; classId?: number; external?: boolean; title: string; time: string; label: string; href: string }
 
 export function DashboardPage() {
   const auth = useAuth();
@@ -38,8 +38,8 @@ export function DashboardPage() {
       href: `/admin/lessons/${item.id}/edit`,
     });
     for (const item of data.todaySchedule.busyOccurrences) values.push({
-      key: `busy-${item.id}-${item.date}`, title: item.title, time: `${item.startTime}–${item.endTime}`,
-      label: "Lịch bận", href: `/admin/busy-slots/${item.id}/edit`,
+      key: `busy-${item.id}-${item.date}`, external: item.slotType === "EXTERNAL_CLASS", title: item.title, time: `${item.startTime}–${item.endTime}`,
+      label: item.slotType === "EXTERNAL_CLASS" ? (item.organizationType === "SCHOOL" ? "Trường" : "Trung tâm") : item.slotType === "PERSONAL" ? "Cá nhân" : "Khác", href: `/admin/busy-slots/${item.id}/edit`,
     });
     return values;
   }, [data]);
@@ -67,13 +67,13 @@ export function DashboardPage() {
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(220px, 260px) repeat(2, minmax(180px, 220px))" }, gap: 1, justifyContent: "start" }}>
       <Button startIcon={<Add />} variant="contained" component={Link} to="/admin/lessons/new" sx={{ gridColumn: { xs: "1 / -1", md: "auto" } }}>Ghi nhận buổi học</Button>
       <Button variant="outlined" component={Link} to="/admin/lessons/new?type=MAKEUP">Buổi học bù</Button>
-      <Button variant="outlined" component={Link} to="/admin/busy-slots/new">Thêm lịch bận</Button>
+      <Button variant="outlined" component={Link} to="/admin/busy-slots/new?type=EXTERNAL_CLASS">Thêm lịch dạy ngoài</Button>
     </Box>
 
     <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography component="h2" variant="h6">Lịch hôm nay</Typography><Button size="small" component={Link} to="/admin/calendar">Xem lịch tuần</Button></Stack>
     {data && todayItems.length === 0 && <EmptyState message="Hôm nay chưa có lớp, buổi học hoặc lịch bận." />}
     <Box data-testid="dashboard-events" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
-      {todayItems.map((item) => { const tone = classColor(item.classId ?? item.key); return <Card key={item.key} variant="outlined" component={Link} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 4, borderLeftColor: tone.accent }} data-testid="dashboard-today-event"><CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+      {todayItems.map((item) => { const tone = classColor(item.classId ?? item.key); return <Card key={item.key} variant="outlined" component={Link} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 4, borderLeftColor: item.external ? "secondary.main" : tone.accent }} data-testid="dashboard-today-event"><CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
         <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}><Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.time}</Typography></Stack><Typography variant="body2" color="primary" sx={{ fontWeight: 600, textAlign: "right" }}>{item.label}</Typography></Stack>
       </CardContent></Card>; })}
     </Box>

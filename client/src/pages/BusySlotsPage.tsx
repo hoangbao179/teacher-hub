@@ -25,6 +25,8 @@ export function BusySlotsPage() {
     try {
       if (pending.action === "DELETE") await scheduleApi.deleteBusySlot(pending.slot.id);
       else await scheduleApi.updateBusySlot(pending.slot.id, {
+        slotType: pending.slot.slotType, organizationType: pending.slot.organizationType ?? undefined,
+        organizationName: pending.slot.organizationName ?? undefined,
         title: pending.slot.title, recurrenceType: "WEEKLY", dayOfWeek: pending.slot.dayOfWeek!,
         startTime: pending.slot.startTime, endTime: pending.slot.endTime,
         effectiveFrom: pending.slot.effectiveFrom!, effectiveTo: today,
@@ -47,7 +49,7 @@ export function BusySlotsPage() {
     <Typography variant="h6">{title}</Typography>
     {!slots.length && <EmptyState message="Không có lịch bận trong nhóm này." />}
     {slots.map((slot) => <Card key={slot.id} variant="outlined"><CardContent><Stack spacing={1}>
-      <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}><Typography variant="subtitle1">{slot.title}</Typography><Chip size="small" label={slot.recurrenceType === "ONCE" ? "Một lần" : "Hằng tuần"} /></Stack>
+      <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}><Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{slot.title}</Typography>{slot.organizationName && <Typography variant="body2" color="text.secondary">{slot.organizationName}</Typography>}</Stack><Stack direction="row" spacing={0.5}><Chip size="small" color={slot.slotType === "EXTERNAL_CLASS" ? "secondary" : "default"} label={slot.slotType === "EXTERNAL_CLASS" ? (slot.organizationType === "SCHOOL" ? "Trường" : "Trung tâm") : slot.slotType === "PERSONAL" ? "Cá nhân" : "Khác"} /><Chip size="small" label={slot.recurrenceType === "ONCE" ? "Một lần" : "Hằng tuần"} /></Stack></Stack>
       <Typography color="text.secondary">{slot.recurrenceType === "ONCE" ? displayDate(slot.specificDate!) : weekday[slot.dayOfWeek ?? 0]} · {slot.startTime}–{slot.endTime}</Typography>
       {slot.recurrenceType === "WEEKLY" && <Typography variant="body2">Hiệu lực: {displayDate(slot.effectiveFrom!)} – {slot.effectiveTo ? displayDate(slot.effectiveTo) : "không giới hạn"}</Typography>}
       {slot.location && <Typography variant="body2">Địa điểm: {slot.location}</Typography>}
@@ -61,7 +63,7 @@ export function BusySlotsPage() {
     </Stack></CardContent></Card>)}
   </Stack>;
   return <Stack spacing={2} data-testid="busy-slot-list" sx={{ minWidth: 0 }}>
-    <PageHeader title="Lịch bận" action={<Button component={Link} to="/admin/busy-slots/new" variant="contained" size="small" startIcon={<Add />}>Thêm lịch bận</Button>} />
+    <PageHeader title="Lịch bận và lịch dạy ngoài" action={<Stack direction="row" spacing={0.5}><Button component={Link} to="/admin/busy-slots/new?type=EXTERNAL_CLASS" variant="contained" size="small" startIcon={<Add />}>Thêm lịch dạy ngoài</Button><Button component={Link} to="/admin/busy-slots/new" variant="outlined" size="small">Thêm lịch bận</Button></Stack>} />
     <Alert severity="info">Lịch bận chỉ dùng để hiển thị và cảnh báo trùng. Hệ thống không tự nghỉ hoặc tự đổi lịch lớp.</Alert>
     {error && <Alert severity="error">{error}</Alert>}{!items && !error && <LoadingCards />}
     {items && <>{section("Đang áp dụng", groups.active)}{section("Sắp tới", groups.upcoming)}{section("Đã kết thúc", groups.ended)}</>}
