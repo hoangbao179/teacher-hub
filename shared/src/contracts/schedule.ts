@@ -199,29 +199,51 @@ export type BusySlotRecurrenceType = "ONCE" | "WEEKLY";
 export type TeacherBusySlotType = "EXTERNAL_CLASS" | "PERSONAL" | "OTHER";
 export type ExternalOrganizationType = "SCHOOL" | "CENTER";
 
-export interface TeacherBusySlotInput {
+export interface BusySlotWeeklyScheduleInput {
+  id?: number;
+  dayOfWeek: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  startTime: string;
+  endTime: string;
+}
+
+interface TeacherBusySlotBaseInput {
   slotType: TeacherBusySlotType;
   organizationType?: ExternalOrganizationType;
   organizationName?: string;
   title: string;
-  recurrenceType: BusySlotRecurrenceType;
-  dayOfWeek?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
-  specificDate?: string;
-  startTime: string;
-  endTime: string;
-  effectiveFrom?: string;
-  effectiveTo?: string;
   location?: string;
   note?: string;
 }
 
-export interface TeacherBusySlot extends Omit<TeacherBusySlotInput,
-  "organizationType" | "organizationName" | "dayOfWeek" | "specificDate" | "effectiveFrom" | "effectiveTo" | "location" | "note"> {
+export type TeacherBusySlotInput = TeacherBusySlotBaseInput & ({
+  recurrenceType: "ONCE";
+  specificDate: string;
+  startTime: string;
+  endTime: string;
+  schedules?: never;
+  effectiveFrom?: never;
+  effectiveTo?: never;
+} | {
+  recurrenceType: "WEEKLY";
+  schedules: BusySlotWeeklyScheduleInput[];
+  effectiveFrom: string;
+  effectiveTo?: string;
+  specificDate?: never;
+  startTime?: never;
+  endTime?: never;
+});
+
+export interface TeacherBusySlot {
   id: number;
+  slotType: TeacherBusySlotType;
   organizationType: ExternalOrganizationType | null;
   organizationName: string | null;
-  dayOfWeek: 1 | 2 | 3 | 4 | 5 | 6 | 7 | null;
+  title: string;
+  recurrenceType: BusySlotRecurrenceType;
+  schedules: BusySlotWeeklyScheduleInput[];
   specificDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
   effectiveFrom: string | null;
   effectiveTo: string | null;
   location: string | null;
@@ -258,6 +280,7 @@ export interface CalendarLessonEvent {
 
 export interface CalendarBusyOccurrence {
   id: number;
+  scheduleId: number | null;
   slotType: TeacherBusySlotType;
   organizationType: ExternalOrganizationType | null;
   organizationName: string | null;
@@ -281,16 +304,5 @@ export interface WeekScheduleResponse {
     startTime: string;
     endTime: string;
   }>;
-  busySlots: Array<{
-    id: number;
-    slotType: TeacherBusySlotType;
-    organizationType: ExternalOrganizationType | null;
-    organizationName: string | null;
-    title: string;
-    dayOfWeek: number | null;
-    specificDate: string | null;
-    startTime: string;
-    endTime: string;
-    location: string | null;
-  }>;
+  busySlots: TeacherBusySlot[];
 }

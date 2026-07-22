@@ -31,9 +31,11 @@ projection, lesson (gồm học bù/đổi lịch) hoặc lịch bận. Cảnh b
 nhập dữ liệu lịch sử và không tự thay đổi sự kiện khác.
 
 Lịch bận loại `EXTERNAL_CLASS`, `PERSONAL` hoặc `OTHER` hỗ trợ một lần hoặc lặp
-hằng tuần trong khoảng hiệu lực. `EXTERNAL_CLASS` lưu loại và tên đơn vị bên
-ngoài. Các mutation lưu actor/audit nhưng không có quan hệ enrollment, attendance
-hay tuition.
+hằng tuần trong khoảng hiệu lực. Một parent `WEEKLY` có một hoặc nhiều row
+`teacher_busy_slot_schedules`; mỗi row được bung occurrence và kiểm tra conflict
+độc lập. `EXTERNAL_CLASS` lưu loại và tên đơn vị bên ngoài. Mutation parent và
+danh sách lịch con nằm trong cùng transaction, nhưng không có quan hệ enrollment,
+attendance hay tuition.
 
 V14 giữ recurring schedule theo version. PATCH đóng version cũ và tạo row mới;
 DELETE chỉ end-date. Projection kết hợp effective range với class active periods,

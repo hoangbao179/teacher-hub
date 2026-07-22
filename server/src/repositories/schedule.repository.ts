@@ -1,5 +1,6 @@
 import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import type {
+  BusySlotWeeklyScheduleInput,
   CreateRecurringScheduleRequest,
   EndRecurringScheduleRequest,
   RescheduleOccurrenceRequest,
@@ -50,6 +51,7 @@ interface LessonEvent {
 
 interface BusyOccurrence {
   id: number;
+  scheduleId: number | null;
   slotType: TeacherBusySlot["slotType"];
   organizationType: TeacherBusySlot["organizationType"];
   organizationName: string | null;
@@ -422,7 +424,7 @@ export class ScheduleRepository {
 
   async listBusySlots(from: string, to: string): Promise<TeacherBusySlot[]> {
     const rows = await this.busyRows(from, to);
-    return rows.map(mapBusySlot);
+    return this.hydrateBusySlots(rows);
   }
 
   async listAllBusySlots(): Promise<TeacherBusySlot[]> {
@@ -433,7 +435,7 @@ export class ScheduleRepository {
         DATE_FORMAT(effective_to,'%Y-%m-%d') effective_to_text
        FROM teacher_busy_slots ORDER BY COALESCE(specific_date,effective_from),start_time`,
     );
-    return rows.map(mapBusySlot);
+    return this.hydrateBusySlots(rows);
   }
 
   async listOutstandingMakeups(): Promise<OutstandingMakeupItem[]> {
@@ -494,6 +496,7 @@ export class ScheduleRepository {
           (slot_type,organization_type,organization_name,title,recurrence_type,day_of_week,specific_date,start_time,end_time,effective_from,effective_to,location,note,created_by)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, busyValues(input, actorUserId),
       );
+      await this.replaceBusySlotSchedules(connection, created.insertId, input);
       await this.audit.record(connection, { actorUserId, action: "TEACHER_BUSY_SLOT_CREATED", entityType: "TEACHER_BUSY_SLOT", entityId: created.insertId, newValues: input });
       await connection.commit(); return created.insertId;
     } catch (error) { await connection.rollback(); throw error; }
@@ -510,6 +513,7 @@ export class ScheduleRepository {
         `UPDATE teacher_busy_slots SET slot_type=?,organization_type=?,organization_name=?,title=?,recurrence_type=?,day_of_week=?,specific_date=?,start_time=?,end_time=?,
           effective_from=?,effective_to=?,location=?,note=? WHERE id=?`, [...busyValues(input).slice(0, 13), id],
       );
+      await this.replaceBusySlotSchedules(connection, id, input);
       await this.audit.record(connection, { actorUserId, action: "TEACHER_BUSY_SLOT_UPDATED", entityType: "TEACHER_BUSY_SLOT", entityId: id, previousValues: rows[0], newValues: input });
       await connection.commit(); return true;
     } catch (error) { await connection.rollback(); throw error; }
@@ -537,7 +541,7 @@ export class ScheduleRepository {
         DATE_FORMAT(effective_to,'%Y-%m-%d') effective_to_text
        FROM teacher_busy_slots WHERE id=?`, [id],
     );
-    return rows[0] ? mapBusySlot(rows[0]) : null;
+    return rows[0] ? (await this.hydrateBusySlots(rows))[0] ?? null : null;
   }
 
   async listUnrecorded(from: string, to: string): Promise<UnrecordedSession[]> {
@@ -572,9 +576,7 @@ export class ScheduleRepository {
       busyOccurrences,
       classSchedules: schedules.map((row) => ({ classId: Number(row.class_id), className: String(row.class_name),
         dayOfWeek: Number(row.day_of_week), startTime: String(row.start_text), endTime: String(row.end_text) })),
-      busySlots: busy.map((row) => ({ id: row.id, slotType: row.slotType, organizationType: row.organizationType,
-        organizationName: row.organizationName, title: row.title, dayOfWeek: row.dayOfWeek,
-        specificDate: row.specificDate, startTime: row.startTime, endTime: row.endTime, location: row.location })),
+      busySlots: busy,
     };
   }
 
@@ -729,18 +731,50 @@ export class ScheduleRepository {
     return rows;
   }
 
+  private async hydrateBusySlots(rows: RowDataPacket[]): Promise<TeacherBusySlot[]> {
+    if (!rows.length) return [];
+    const ids = rows.map((row) => Number(row.id));
+    const [scheduleRows] = await pool.query<RowDataPacket[]>(
+      `SELECT id,teacher_busy_slot_id,day_of_week,
+        TIME_FORMAT(start_time,'%H:%i') start_text,TIME_FORMAT(end_time,'%H:%i') end_text
+       FROM teacher_busy_slot_schedules
+       WHERE teacher_busy_slot_id IN (${ids.map(() => "?").join(",")})
+       ORDER BY teacher_busy_slot_id,display_order,id`, ids,
+    );
+    const schedules = new Map<number, BusySlotWeeklyScheduleInput[]>();
+    for (const row of scheduleRows) {
+      const parentId = Number(row.teacher_busy_slot_id);
+      schedules.set(parentId, [...(schedules.get(parentId) ?? []), {
+        id: Number(row.id), dayOfWeek: Number(row.day_of_week) as BusySlotWeeklyScheduleInput["dayOfWeek"],
+        startTime: String(row.start_text), endTime: String(row.end_text),
+      }]);
+    }
+    return rows.map((row) => mapBusySlot(row, schedules.get(Number(row.id)) ?? []));
+  }
+
+  private async replaceBusySlotSchedules(connection: PoolConnection, id: number, input: TeacherBusySlotInput): Promise<void> {
+    await connection.execute("DELETE FROM teacher_busy_slot_schedules WHERE teacher_busy_slot_id=?", [id]);
+    if (input.recurrenceType !== "WEEKLY") return;
+    for (const [index, schedule] of input.schedules.entries())
+      await connection.execute(
+        `INSERT INTO teacher_busy_slot_schedules
+          (teacher_busy_slot_id,day_of_week,start_time,end_time,display_order) VALUES (?,?,?,?,?)`,
+        [id, schedule.dayOfWeek, schedule.startTime, schedule.endTime, index],
+      );
+  }
+
   private async expandBusyEvents(from: string, to: string): Promise<BusyOccurrence[]> {
-    const slots = (await this.busyRows(from, to)).map(mapBusySlot);
+    const slots = await this.hydrateBusySlots(await this.busyRows(from, to));
     const events: BusyOccurrence[] = [];
     for (const slot of slots) {
       if (slot.recurrenceType === "ONCE" && slot.specificDate)
-        events.push({ id: slot.id, slotType: slot.slotType, organizationType: slot.organizationType, organizationName: slot.organizationName,
-          title: slot.title, date: slot.specificDate, startTime: slot.startTime, endTime: slot.endTime, location: slot.location });
-      if (slot.recurrenceType === "WEEKLY")
+        events.push({ id: slot.id, scheduleId: null, slotType: slot.slotType, organizationType: slot.organizationType, organizationName: slot.organizationName,
+          title: slot.title, date: slot.specificDate, startTime: slot.startTime!, endTime: slot.endTime!, location: slot.location });
+      if (slot.recurrenceType === "WEEKLY") for (const schedule of slot.schedules)
         for (let date = from; date <= to; date = addDays(date, 1))
-          if (weekdayIso(date) === slot.dayOfWeek && date >= (slot.effectiveFrom ?? date) && (!slot.effectiveTo || date <= slot.effectiveTo))
-            events.push({ id: slot.id, slotType: slot.slotType, organizationType: slot.organizationType, organizationName: slot.organizationName,
-              title: slot.title, date, startTime: slot.startTime, endTime: slot.endTime, location: slot.location });
+          if (weekdayIso(date) === schedule.dayOfWeek && date >= (slot.effectiveFrom ?? date) && (!slot.effectiveTo || date <= slot.effectiveTo))
+            events.push({ id: slot.id, scheduleId: schedule.id ?? null, slotType: slot.slotType, organizationType: slot.organizationType, organizationName: slot.organizationName,
+              title: slot.title, date, startTime: schedule.startTime, endTime: schedule.endTime, location: slot.location });
     }
     return events.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.id - b.id);
   }
@@ -761,19 +795,20 @@ function mapException(row: RowDataPacket): ProjectionExceptionInput {
     replacementCancelReason: row.replacement_cancel_reason == null ? null : String(row.replacement_cancel_reason),
     makeupRequired: row.makeup_required == null ? true : Boolean(row.makeup_required) };
 }
-function mapBusySlot(row: RowDataPacket): TeacherBusySlot {
+function mapBusySlot(row: RowDataPacket, schedules: BusySlotWeeklyScheduleInput[]): TeacherBusySlot {
   return { id: Number(row.id), slotType: row.slot_type, organizationType: row.organization_type ?? null,
     organizationName: row.organization_name == null ? null : String(row.organization_name), title: String(row.title), recurrenceType: row.recurrence_type,
-    dayOfWeek: row.day_of_week == null ? null : Number(row.day_of_week) as 1 | 2 | 3 | 4 | 5 | 6 | 7, specificDate: row.specific_date_text ?? null,
-    startTime: String(row.start_text), endTime: String(row.end_text), effectiveFrom: row.effective_from_text ?? null,
+    schedules, specificDate: row.specific_date_text ?? null,
+    startTime: row.start_text == null ? null : String(row.start_text), endTime: row.end_text == null ? null : String(row.end_text), effectiveFrom: row.effective_from_text ?? null,
     effectiveTo: row.effective_to_text ?? null, location: row.location == null ? null : String(row.location),
     note: row.note == null ? null : String(row.note), conflicts: [] };
 }
 function busyValues(input: TeacherBusySlotInput, actorUserId?: number): Array<string | number | null> {
   return [input.slotType, input.slotType === "EXTERNAL_CLASS" ? input.organizationType ?? null : null,
     input.slotType === "EXTERNAL_CLASS" ? input.organizationName?.trim() || null : null,
-    input.title.trim(), input.recurrenceType, input.recurrenceType === "WEEKLY" ? input.dayOfWeek ?? null : null,
-    input.recurrenceType === "ONCE" ? input.specificDate ?? null : null, input.startTime, input.endTime,
+    input.title.trim(), input.recurrenceType, null,
+    input.recurrenceType === "ONCE" ? input.specificDate : null,
+    input.recurrenceType === "ONCE" ? input.startTime : null, input.recurrenceType === "ONCE" ? input.endTime : null,
     input.recurrenceType === "WEEKLY" ? input.effectiveFrom ?? null : null,
     input.recurrenceType === "WEEKLY" ? input.effectiveTo ?? null : null,
     input.location?.trim() || null, input.note?.trim() || null, actorUserId ?? null];

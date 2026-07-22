@@ -27,8 +27,7 @@ export function BusySlotsPage() {
       else await scheduleApi.updateBusySlot(pending.slot.id, {
         slotType: pending.slot.slotType, organizationType: pending.slot.organizationType ?? undefined,
         organizationName: pending.slot.organizationName ?? undefined,
-        title: pending.slot.title, recurrenceType: "WEEKLY", dayOfWeek: pending.slot.dayOfWeek!,
-        startTime: pending.slot.startTime, endTime: pending.slot.endTime,
+        title: pending.slot.title, recurrenceType: "WEEKLY", schedules: pending.slot.schedules,
         effectiveFrom: pending.slot.effectiveFrom!, effectiveTo: today,
         location: pending.slot.location ?? undefined, note: pending.slot.note ?? undefined,
       });
@@ -50,7 +49,8 @@ export function BusySlotsPage() {
     {!slots.length && <EmptyState message="Không có lịch bận trong nhóm này." />}
     {slots.map((slot) => <Card key={slot.id} variant="outlined"><CardContent><Stack spacing={1}>
       <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}><Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{slot.title}</Typography>{slot.organizationName && <Typography variant="body2" color="text.secondary">{slot.organizationName}</Typography>}</Stack><Stack direction="row" spacing={0.5}><Chip size="small" color={slot.slotType === "EXTERNAL_CLASS" ? "secondary" : "default"} label={slot.slotType === "EXTERNAL_CLASS" ? (slot.organizationType === "SCHOOL" ? "Trường" : "Trung tâm") : slot.slotType === "PERSONAL" ? "Cá nhân" : "Khác"} /><Chip size="small" label={slot.recurrenceType === "ONCE" ? "Một lần" : "Hằng tuần"} /></Stack></Stack>
-      <Typography color="text.secondary">{slot.recurrenceType === "ONCE" ? displayDate(slot.specificDate!) : weekday[slot.dayOfWeek ?? 0]} · {slot.startTime}–{slot.endTime}</Typography>
+      {slot.recurrenceType === "ONCE" ? <Typography color="text.secondary">{displayDate(slot.specificDate!)} · {slot.startTime}–{slot.endTime}</Typography> :
+        <Stack spacing={0.25}>{slot.schedules.map((schedule) => <Typography key={schedule.id ?? `${schedule.dayOfWeek}-${schedule.startTime}`} color="text.secondary" variant="body2">{weekday[schedule.dayOfWeek]} · {schedule.startTime}–{schedule.endTime}</Typography>)}</Stack>}
       {slot.recurrenceType === "WEEKLY" && <Typography variant="body2">Hiệu lực: {displayDate(slot.effectiveFrom!)} – {slot.effectiveTo ? displayDate(slot.effectiveTo) : "không giới hạn"}</Typography>}
       {slot.location && <Typography variant="body2">Địa điểm: {slot.location}</Typography>}
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>

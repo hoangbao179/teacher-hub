@@ -56,5 +56,6 @@ class_enrollments ─ tuition_cycles ─ tuition_cycle_sessions ─ lesson_atten
 - `schedule_exceptions` identifies one original occurrence by recurring schedule
   and date, snapshots its original time, and stores reason/note/actor. A reschedule
   stores replacement date/time without mutating the recurring definition.
-- `teacher_busy_slots` stores only teacher availability metadata and actor. It has
-  no enrollment, attendance or tuition foreign key.
+- `teacher_busy_slots` stores only shared teacher-availability metadata and actor;
+  weekly time patterns live in `teacher_busy_slot_schedules` with cascade delete.
+  Neither table has an enrollment, attendance or tuition foreign key.

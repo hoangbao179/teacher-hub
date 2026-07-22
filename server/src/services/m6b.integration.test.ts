@@ -22,7 +22,7 @@ async function clean(): Promise<void> {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
       "tuition_receipt_allocations", "tuition_receipts", "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants",
-      "lesson_sessions", "schedule_exceptions", "teacher_busy_slots", "recurring_schedules", "enrollment_active_periods",
+      "lesson_sessions", "schedule_exceptions", "teacher_busy_slot_schedules", "teacher_busy_slots", "recurring_schedules", "enrollment_active_periods",
       "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs",
       "students", "classes", "users",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);

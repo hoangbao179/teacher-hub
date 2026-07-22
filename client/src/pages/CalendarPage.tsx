@@ -1,5 +1,5 @@
 import { Add, ChevronLeft, ChevronRight, WarningAmber } from "@mui/icons-material";
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogContent, DialogTitle, IconButton, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogContent, DialogTitle, IconButton, Menu, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ReconciliationState, ScheduleConflictWarning, WeekScheduleResponse } from "@teacher/shared";
@@ -29,6 +29,7 @@ export function CalendarPage() {
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
   const [conflicts, setConflicts] = useState<ScheduleConflictWarning[]>([]);
+  const [addMenuAnchor, setAddMenuAnchor] = useState<HTMLElement | null>(null);
   useEffect(() => {
     scheduleApi.week(from).then(setData).catch((value: Error) => setError(value.message));
   }, [from, reload]);
@@ -52,7 +53,7 @@ export function CalendarPage() {
       href: `/admin/lessons/${item.id}/edit`,
     });
     for (const item of data.busyOccurrences) values.push({
-      key: `busy-${item.id}-${item.date}`, date: item.date, startTime: item.startTime, endTime: item.endTime,
+      key: `busy-${item.id}-${item.scheduleId ?? "once"}-${item.date}`, date: item.date, startTime: item.startTime, endTime: item.endTime,
       title: item.title,
       subtitle: item.slotType === "EXTERNAL_CLASS" ? (item.organizationType === "SCHOOL" ? "Trường" : "Trung tâm") : item.slotType === "PERSONAL" ? "Cá nhân" : "Khác",
       detail: [item.organizationName, item.location].filter(Boolean).join(" · "), color: item.slotType === "EXTERNAL_CLASS" ? "secondary" : "error",
@@ -67,16 +68,21 @@ export function CalendarPage() {
   }, [entries]);
 
   return <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="weekly-calendar">
-    <PageHeader title="Lịch tuần" action={<Stack direction="row" spacing={0.5}><Button size="small" variant="contained" startIcon={<Add />} component={Link} to="/admin/busy-slots/new?type=EXTERNAL_CLASS">Thêm lịch dạy ngoài</Button><Button size="small" variant="outlined" component={Link} to="/admin/busy-slots/new">Thêm lịch bận</Button></Stack>} />
+    <PageHeader title="Lịch tuần" action={<Button size="small" variant="contained" startIcon={<Add />} onClick={(event) => setAddMenuAnchor(event.currentTarget)}>Thêm lịch</Button>} />
+    <Menu anchorEl={addMenuAnchor} open={Boolean(addMenuAnchor)} onClose={() => setAddMenuAnchor(null)}>
+      <MenuItem component={Link} to="/admin/busy-slots/new?type=EXTERNAL_CLASS" onClick={() => setAddMenuAnchor(null)}>Lịch dạy tại trường/trung tâm</MenuItem>
+      <MenuItem component={Link} to="/admin/busy-slots/new" onClick={() => setAddMenuAnchor(null)}>Lịch bận cá nhân</MenuItem>
+    </Menu>
     <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", width: "100%", maxWidth: 500 }}>
       <IconButton aria-label="Tuần trước" onClick={() => { setData(null); setError(""); setFrom(addDays(from, -7)); }}><ChevronLeft /></IconButton>
       <TextField fullWidth type="date" label="Tuần bắt đầu" value={from} onChange={(event) => { setData(null); setError(""); setFrom(weekStart(event.target.value)); }} slotProps={{ inputLabel: { shrink: true } }} />
       <IconButton aria-label="Tuần sau" onClick={() => { setData(null); setError(""); setFrom(addDays(from, 7)); }}><ChevronRight /></IconButton>
     </Stack>
-    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(3, max-content)" }, gap: 1, justifyContent: "start" }}>
-      <Button variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`}>Ghi nhận buổi học</Button>
+    <Box data-testid="calendar-quick-actions" sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, max-content)" }, gap: 1, justifyContent: "start" }}>
+      <Button variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`} sx={{ gridColumn: { xs: "1 / -1", md: "auto" } }}>Ghi nhận buổi học</Button>
       <Button variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`}>Buổi học bù</Button>
-      <Button variant="outlined" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`}>Kiểm tra lịch tuần</Button>
+      <Button variant="outlined" onClick={(event) => setAddMenuAnchor(event.currentTarget)}>Thêm lịch</Button>
+      <Button variant="text" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`} sx={{ gridColumn: { xs: "1 / -1", md: "auto" }, justifySelf: { xs: "start", md: "auto" } }}>Kiểm tra lịch tuần</Button>
     </Box>
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     {!data && !error && <LoadingCards />}

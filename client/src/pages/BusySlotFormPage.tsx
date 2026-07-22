@@ -1,5 +1,6 @@
 import {
   Alert,
+  Box,
   Button,
   FormControlLabel,
   MenuItem,
@@ -7,14 +8,18 @@ import {
   RadioGroup,
   Stack,
   TextField,
+  Typography,
 } from "@mui/material";
+import { Add, Delete } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { BusySlotRecurrenceType, ExternalOrganizationType, ScheduleConflictWarning, TeacherBusySlotInput, TeacherBusySlotType } from "@teacher/shared";
+import type { BusySlotRecurrenceType, BusySlotWeeklyScheduleInput, ExternalOrganizationType, ScheduleConflictWarning, TeacherBusySlotInput, TeacherBusySlotType } from "@teacher/shared";
 import { scheduleApi } from "../api/schedule";
 import { LoadingState } from "../components/LoadingState";
 import { ConfirmationDialog, FormSection, PageHeader, StickyActionBar } from "../components/UiKit";
 import { todayInHoChiMinh } from "../utils/date";
+
+const emptySchedule: BusySlotWeeklyScheduleInput = { dayOfWeek: 1, startTime: "08:00", endTime: "09:00" };
 
 export function BusySlotFormPage() {
   const { id } = useParams();
@@ -29,7 +34,7 @@ export function BusySlotFormPage() {
   const [title, setTitle] = useState("");
   const [recurrenceType, setRecurrenceType] = useState<BusySlotRecurrenceType>("ONCE");
   const [specificDate, setSpecificDate] = useState(params.get("date") ?? today);
-  const [dayOfWeek, setDayOfWeek] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
+  const [schedules, setSchedules] = useState<BusySlotWeeklyScheduleInput[]>([{ ...emptySchedule }]);
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("09:00");
   const [effectiveFrom, setEffectiveFrom] = useState(today);
@@ -48,7 +53,8 @@ export function BusySlotFormPage() {
     scheduleApi.busySlot(slotId).then((slot) => {
       setSlotType(slot.slotType); setOrganizationType(slot.organizationType ?? "SCHOOL"); setOrganizationName(slot.organizationName ?? "");
       setTitle(slot.title); setRecurrenceType(slot.recurrenceType); setSpecificDate(slot.specificDate ?? today);
-      setDayOfWeek(slot.dayOfWeek ?? 1); setStartTime(slot.startTime); setEndTime(slot.endTime);
+      setSchedules(slot.schedules.length ? slot.schedules : [{ ...emptySchedule }]);
+      setStartTime(slot.startTime ?? "08:00"); setEndTime(slot.endTime ?? "09:00");
       setEffectiveFrom(slot.effectiveFrom ?? today); setEffectiveTo(slot.effectiveTo ?? "");
       setLocation(slot.location ?? ""); setNote(slot.note ?? "");
     }).catch((value: Error) => setError(value.message)).finally(() => setLoading(false));
@@ -62,7 +68,7 @@ export function BusySlotFormPage() {
       ...identity, recurrenceType, specificDate, startTime, endTime,
       location: location || undefined, note: note || undefined,
     } : {
-      ...identity, recurrenceType, dayOfWeek, startTime, endTime, effectiveFrom,
+      ...identity, recurrenceType, schedules, effectiveFrom,
       effectiveTo: effectiveTo || undefined, location: location || undefined, note: note || undefined,
     };
   }
@@ -85,8 +91,10 @@ export function BusySlotFormPage() {
   }
 
   if (loading) return <LoadingState />;
-  const valid = title.trim() && (slotType !== "EXTERNAL_CLASS" || organizationName.trim()) && startTime && endTime > startTime &&
-    (recurrenceType === "ONCE" ? specificDate : effectiveFrom && (!effectiveTo || effectiveTo >= effectiveFrom));
+  const scheduleKeys = schedules.map((item) => `${item.dayOfWeek}:${item.startTime}`);
+  const schedulesValid = schedules.length > 0 && schedules.every((item) => item.startTime && item.endTime > item.startTime) && new Set(scheduleKeys).size === scheduleKeys.length;
+  const valid = title.trim() && (slotType !== "EXTERNAL_CLASS" || organizationName.trim()) &&
+    (recurrenceType === "ONCE" ? specificDate && startTime && endTime > startTime : schedulesValid && effectiveFrom && (!effectiveTo || effectiveTo >= effectiveFrom));
   return <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="busy-slot-form" data-form-width="bounded">
     <PageHeader title={slotId ? "Sửa lịch" : slotType === "EXTERNAL_CLASS" ? "Thêm lịch dạy ngoài" : "Thêm lịch bận"} subtitle="Lịch này chỉ dùng để hiển thị và cảnh báo trùng, không tạo học sinh, điểm danh hoặc học phí." />
     {error && <Alert severity="error" action={slotId ? <Button color="inherit" onClick={() => window.location.reload()}>Thử lại</Button> : undefined}>{error}</Alert>}
@@ -109,21 +117,34 @@ export function BusySlotFormPage() {
         <FormControlLabel value="ONCE" control={<Radio />} label="Một lần" />
         <FormControlLabel value="WEEKLY" control={<Radio />} label="Hằng tuần" />
       </RadioGroup>
-      {recurrenceType === "ONCE" ? <TextField required type="date" label="Ngày bận" value={specificDate} onChange={(event) => setSpecificDate(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} /> : <>
-        <TextField select required label="Thứ trong tuần" value={dayOfWeek} onChange={(event) => setDayOfWeek(Number(event.target.value) as typeof dayOfWeek)}>
-          {[1, 2, 3, 4, 5, 6, 7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}
-        </TextField>
+      {recurrenceType === "ONCE" ? <>
+        <TextField required type="date" label={slotType === "EXTERNAL_CLASS" ? "Ngày dạy" : "Ngày bận"} value={specificDate} onChange={(event) => setSpecificDate(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <Stack direction="row" spacing={1}>
+          <TextField fullWidth required type="time" label="Bắt đầu" value={startTime} onChange={(event) => setStartTime(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField fullWidth required type="time" label="Kết thúc" value={endTime} onChange={(event) => setEndTime(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        </Stack>
+      </> : <>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
           <TextField fullWidth required type="date" label="Hiệu lực từ" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           <TextField fullWidth type="date" label="Hiệu lực đến (tùy chọn)" value={effectiveTo} onChange={(event) => setEffectiveTo(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         </Stack>
+        <Typography variant="subtitle2">{slotType === "EXTERNAL_CLASS" ? "Lịch dạy hằng tuần" : "Lịch hằng tuần"}</Typography>
+        {schedules.map((schedule, index) => <Box key={`${schedule.id ?? "new"}-${index}`} data-testid="busy-weekly-schedule" sx={{ border: 1, borderColor: "divider", borderRadius: 2, p: 1.25 }}>
+          <Stack spacing={1}>
+            <TextField select required size="small" label="Thứ" value={schedule.dayOfWeek} onChange={(event) => setSchedules((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, dayOfWeek: Number(event.target.value) as BusySlotWeeklyScheduleInput["dayOfWeek"] } : item))}>
+              {[1, 2, 3, 4, 5, 6, 7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}
+            </TextField>
+            <Stack direction="row" spacing={1}>
+              <TextField fullWidth required size="small" type="time" label="Bắt đầu" value={schedule.startTime} onChange={(event) => setSchedules((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, startTime: event.target.value } : item))} slotProps={{ inputLabel: { shrink: true } }} />
+              <TextField fullWidth required size="small" type="time" label="Kết thúc" value={schedule.endTime} onChange={(event) => setSchedules((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, endTime: event.target.value } : item))} slotProps={{ inputLabel: { shrink: true } }} />
+            </Stack>
+            <Button size="small" color="error" startIcon={<Delete />} disabled={schedules.length === 1} onClick={() => setSchedules((items) => items.filter((_, itemIndex) => itemIndex !== index))} sx={{ alignSelf: "flex-start" }}>Xóa buổi</Button>
+          </Stack>
+        </Box>)}
+        <Button startIcon={<Add />} onClick={() => setSchedules((items) => [...items, { ...emptySchedule }])} sx={{ alignSelf: "flex-start" }}>Thêm buổi</Button>
       </>}
-      <Stack direction="row" spacing={1}>
-        <TextField fullWidth required type="time" label="Bắt đầu" value={startTime} onChange={(event) => setStartTime(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField fullWidth required type="time" label="Kết thúc" value={endTime} onChange={(event) => setEndTime(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-      </Stack>
       <TextField label="Địa điểm (tùy chọn)" value={location} onChange={(event) => setLocation(event.target.value)} />
-      <TextField multiline minRows={2} label="Ghi chú lịch bận (tùy chọn)" value={note} onChange={(event) => setNote(event.target.value)} />
+      <TextField multiline minRows={1} label={slotType === "EXTERNAL_CLASS" ? "Ghi chú (tùy chọn)" : "Ghi chú lịch bận (tùy chọn)"} value={note} onChange={(event) => setNote(event.target.value)} />
       <Alert severity="info">Lịch này không có học sinh, điểm danh hoặc học phí trên hệ thống.</Alert>
     </FormSection>
     <StickyActionBar>

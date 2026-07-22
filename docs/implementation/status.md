@@ -137,3 +137,9 @@ conflict/lịch bận, thu trước, settlement đợt dở, chuyển lớp và 
 TeacherBusySlot đã phân loại lịch dạy ngoài, cá nhân và khác. Lịch trường/trung
 tâm hiển thị trên Calendar/Dashboard và cảnh báo trùng nhưng không tham gia Class,
 occurrence chưa ghi nhận, enrollment, lesson, attendance hoặc tuition.
+
+## SUPPORT-MULTIPLE-EXTERNAL-CLASS-SCHEDULES
+
+Một TeacherBusySlot tuần quản lý nhiều khung giờ con trong một transaction. Dữ
+liệu tuần cũ được backfill; Calendar/Dashboard bung đủ occurrence và Calendar dùng
+menu “Thêm lịch” với hierarchy mobile/desktop rõ ràng.

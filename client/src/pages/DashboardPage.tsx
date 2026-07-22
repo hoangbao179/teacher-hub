@@ -38,7 +38,7 @@ export function DashboardPage() {
       href: `/admin/lessons/${item.id}/edit`,
     });
     for (const item of data.todaySchedule.busyOccurrences) values.push({
-      key: `busy-${item.id}-${item.date}`, external: item.slotType === "EXTERNAL_CLASS", title: item.title, time: `${item.startTime}–${item.endTime}`,
+      key: `busy-${item.id}-${item.scheduleId ?? "once"}-${item.date}`, external: item.slotType === "EXTERNAL_CLASS", title: item.title, time: `${item.startTime}–${item.endTime}`,
       label: item.slotType === "EXTERNAL_CLASS" ? (item.organizationType === "SCHOOL" ? "Trường" : "Trung tâm") : item.slotType === "PERSONAL" ? "Cá nhân" : "Khác", href: `/admin/busy-slots/${item.id}/edit`,
     });
     return values;

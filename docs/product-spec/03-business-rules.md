@@ -10,7 +10,7 @@
 1. `RecurringSchedule` là lịch dự kiến, không tự động được coi là đã học.
 2. Đổi lịch chỉ áp dụng cho một occurrence cụ thể, không thay đổi lịch lặp của lớp.
 3. Nghỉ/hủy occurrence không tính buổi và không tính phí.
-4. Lịch dạy tại trường/trung tâm là `TeacherBusySlot` loại `EXTERNAL_CLASS`, dùng để hiển thị và cảnh báo trùng lịch; không có học sinh, ghi danh, buổi học, điểm danh hoặc học phí trên hệ thống.
+4. Lịch dạy tại trường/trung tâm là một `TeacherBusySlot` loại `EXTERNAL_CLASS` có thể chứa nhiều khung giờ hằng tuần, dùng để hiển thị và cảnh báo trùng lịch; không có học sinh, ghi danh, buổi học, điểm danh hoặc học phí trên hệ thống.
 
 ## BR-03. Buổi học và thời gian
 1. Lưu riêng giờ dự kiến và giờ thực tế.

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import test from "node:test";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { occurrenceKey, replacementOccurrenceKey } from "../domain/schedule-projection";
@@ -19,7 +21,7 @@ async function clean(): Promise<void> {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
       "tuition_receipt_allocations", "tuition_receipts", "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants",
-      "lesson_sessions", "schedule_exceptions", "teacher_busy_slots", "recurring_schedules", "enrollment_active_periods",
+      "lesson_sessions", "schedule_exceptions", "teacher_busy_slot_schedules", "teacher_busy_slots", "recurring_schedules", "enrollment_active_periods",
       "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments",
       "audit_logs", "students", "classes", "users",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
@@ -154,18 +156,44 @@ integration("skip, reschedule, replacement draft and busy-slot conflicts are ope
 
   const updated = await schedules.updateBusySlot(busy.slot.id, {
     slotType: "EXTERNAL_CLASS", organizationType: "SCHOOL", organizationName: "Trường M5A",
-    title: "Dạy ở trường cập nhật", recurrenceType: "WEEKLY", dayOfWeek: 4,
-    startTime: "08:00", endTime: "10:00", effectiveFrom: "2026-07-01", effectiveTo: "2026-08-01",
+    title: "Dạy ở trường cập nhật", recurrenceType: "WEEKLY",
+    schedules: [{ dayOfWeek: 4, startTime: "08:00", endTime: "10:00" }],
+    effectiveFrom: "2026-07-01", effectiveTo: "2026-08-01",
   }, data.actorId);
   assert.equal(updated.slot.recurrenceType, "WEEKLY");
   assert.equal((await schedules.listBusySlots("2026-07-20", "2026-07-31")).length, 1);
   await schedules.deleteBusySlot(busy.slot.id, data.actorId);
   assert.equal((await schedules.listBusySlots("2026-07-20", "2026-07-31")).length, 0);
+  const [deletedSchedules] = await pool.query<RowDataPacket[]>(
+    "SELECT id FROM teacher_busy_slot_schedules WHERE teacher_busy_slot_id=?", [busy.slot.id],
+  );
+  assert.equal(deletedSchedules.length, 0);
 });
 
-integration("external school and center schedules appear without managed-class side effects", async () => {
+integration("0011 schema backfills legacy weekly busy slots", async () => {
+  await clean();
+  const [legacy] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO teacher_busy_slots
+      (slot_type,title,recurrence_type,day_of_week,start_time,end_time,effective_from)
+     VALUES ('OTHER','Lịch tuần cũ','WEEKLY',3,'13:00','14:30','2026-07-01')`,
+  );
+  const sql = await readFile(path.join(process.cwd(), "src/db/migrations/0011_multiple_busy_slot_schedules.sql"), "utf8");
+  const backfill = sql.match(/INSERT INTO teacher_busy_slot_schedules[\s\S]*?end_time IS NOT NULL/)?.[0];
+  assert.ok(backfill);
+  await pool.query(backfill);
+  const slot = await new ScheduleRepository().findBusySlot(legacy.insertId);
+  assert.deepEqual(slot?.schedules.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })),
+    [{ dayOfWeek: 3, startTime: "13:00", endTime: "14:30" }]);
+  const [migration] = await pool.query<RowDataPacket[]>(
+    "SELECT version FROM schema_migrations WHERE version='0011_multiple_busy_slot_schedules.sql'",
+  );
+  assert.equal(migration.length, 1);
+});
+
+integration("multiple external schedules project, conflict and update atomically without managed-class side effects", async () => {
   const data = await fixture();
   const { schedules } = services();
+  const repository = new ScheduleRepository();
   const [before] = await pool.query<RowDataPacket[]>(
     `SELECT
       (SELECT COUNT(*) FROM students) students,
@@ -176,15 +204,28 @@ integration("external school and center schedules appear without managed-class s
   );
   const school = await schedules.createBusySlot({
     slotType: "EXTERNAL_CLASS", organizationType: "SCHOOL", organizationName: "Trường Nguyễn Huệ",
-    title: "Tiếng Anh 7A", recurrenceType: "WEEKLY", dayOfWeek: 1,
-    startTime: "18:15", endTime: "19:15", effectiveFrom: "2026-07-20", effectiveTo: "2026-08-31",
+    title: "Tiếng Anh 7A", recurrenceType: "WEEKLY",
+    schedules: [1, 2, 3, 4].map((dayOfWeek) => ({
+      dayOfWeek: dayOfWeek as 1 | 2 | 3 | 4, startTime: "18:15", endTime: "19:15",
+    })),
+    effectiveFrom: "2026-07-20", effectiveTo: "2026-08-31",
     location: "Phòng 12", note: "Lịch do nhà trường quản lý",
   }, data.actorId);
-  assert.ok(school.conflicts.some((item) => item.kind === "PROJECTED_OCCURRENCE"));
+  const conflictDates = new Set(school.conflicts.filter((item) => item.kind === "PROJECTED_OCCURRENCE" && item.date <= "2026-07-26").map((item) => item.date));
+  assert.deepEqual([...conflictDates].sort(), ["2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23"]);
   const center = await schedules.createBusySlot({
     slotType: "EXTERNAL_CLASS", organizationType: "CENTER", organizationName: "Trung tâm Ánh Dương",
-    title: "Lớp giao tiếp", recurrenceType: "ONCE", specificDate: "2026-07-21",
-    startTime: "09:00", endTime: "10:30", location: "Cơ sở 2",
+    title: "Lớp giao tiếp", recurrenceType: "WEEKLY",
+    schedules: [
+      { dayOfWeek: 2, startTime: "09:00", endTime: "10:30" },
+      { dayOfWeek: 6, startTime: "09:00", endTime: "10:30" },
+    ],
+    effectiveFrom: "2026-07-20", location: "Cơ sở 2",
+  }, data.actorId);
+  const oneTime = await schedules.createBusySlot({
+    slotType: "EXTERNAL_CLASS", organizationType: "CENTER", organizationName: "Trung tâm Ánh Dương",
+    title: "Chuyên đề một lần", recurrenceType: "ONCE", specificDate: "2026-07-24",
+    startTime: "09:00", endTime: "10:30",
   }, data.actorId);
   const personal = await schedules.createBusySlot({
     slotType: "PERSONAL", title: "Khám sức khỏe", recurrenceType: "ONCE", specificDate: "2026-07-22",
@@ -192,11 +233,39 @@ integration("external school and center schedules appear without managed-class s
   }, data.actorId);
 
   const week = await schedules.week("2026-07-20");
-  assert.equal(week.busyOccurrences.find((item) => item.id === school.slot.id)?.organizationType, "SCHOOL");
-  assert.equal(week.busyOccurrences.find((item) => item.id === center.slot.id)?.organizationType, "CENTER");
+  assert.equal(week.busyOccurrences.filter((item) => item.id === school.slot.id).length, 4);
+  assert.equal(week.busyOccurrences.filter((item) => item.id === center.slot.id).length, 2);
+  assert.equal(week.busyOccurrences.filter((item) => item.id === oneTime.slot.id).length, 1);
   assert.equal(week.busyOccurrences.find((item) => item.id === personal.slot.id)?.slotType, "PERSONAL");
-  assert.equal((await schedules.listBusySlots()).length, 3);
+  assert.equal((await schedules.listBusySlots()).length, 4);
   assert.equal((await schedules.occurrences({ from: "2026-07-20", to: "2026-07-26", state: "UNRECORDED", lookbackDays: 60 })).length, 5);
+
+  const common = {
+    slotType: "EXTERNAL_CLASS" as const, organizationType: "SCHOOL" as const, organizationName: "Trường Nguyễn Huệ",
+    title: "Tiếng Anh 7A", recurrenceType: "WEEKLY" as const, effectiveFrom: "2026-07-20", effectiveTo: "2026-08-31",
+    location: "Phòng 12", note: "Lịch do nhà trường quản lý",
+  };
+  const added = await schedules.updateBusySlot(school.slot.id, { ...common, schedules: [
+    ...school.slot.schedules, { dayOfWeek: 5, startTime: "18:15", endTime: "19:15" },
+  ] }, data.actorId);
+  assert.equal(added.slot.schedules.length, 5);
+  const removed = await schedules.updateBusySlot(school.slot.id, { ...common,
+    schedules: added.slot.schedules.filter((item) => item.dayOfWeek !== 2),
+  }, data.actorId);
+  assert.equal(removed.slot.schedules.length, 4);
+  await assert.rejects(() => schedules.updateBusySlot(school.slot.id, { ...common,
+    schedules: [removed.slot.schedules[0], { ...removed.slot.schedules[0], id: undefined }],
+  }, data.actorId), (error: unknown) => error instanceof AppError && error.code === "VALIDATION_ERROR");
+  assert.equal((await schedules.getBusySlot(school.slot.id)).schedules.length, 4);
+
+  await assert.rejects(() => repository.updateBusySlot(center.slot.id, {
+    slotType: "EXTERNAL_CLASS", organizationType: "CENTER", organizationName: "Trung tâm Ánh Dương",
+    title: "Không được lưu", recurrenceType: "WEEKLY", effectiveFrom: "2026-07-20",
+    schedules: [{ dayOfWeek: 2, startTime: "11:00", endTime: "10:00" }],
+  }, data.actorId));
+  const rolledBack = await schedules.getBusySlot(center.slot.id);
+  assert.equal(rolledBack.title, "Lớp giao tiếp");
+  assert.equal(rolledBack.schedules.length, 2);
 
   const [after] = await pool.query<RowDataPacket[]>(
     `SELECT

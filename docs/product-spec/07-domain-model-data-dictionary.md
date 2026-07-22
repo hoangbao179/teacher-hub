@@ -26,8 +26,10 @@
 ## TeacherBusySlot
 - id, slotType (`EXTERNAL_CLASS`/`PERSONAL`/`OTHER`), organizationType
   (`SCHOOL`/`CENTER`, chỉ dùng cho `EXTERNAL_CLASS`), organizationName, title,
-  recurrenceType, dayOfWeek/specificDate, startTime, endTime, effectiveFrom,
+  recurrenceType, specificDate/startTime/endTime cho lịch một lần, effectiveFrom,
   effectiveTo, location, note, createdBy, createdAt, updatedAt.
+- Lịch `WEEKLY` có một hoặc nhiều `TeacherBusySlotSchedule`: id,
+  teacherBusySlotId, dayOfWeek, startTime, endTime, displayOrder, timestamps.
 - Không có student, enrollment, attendance hoặc tuition behavior.
 
 ## LessonSession

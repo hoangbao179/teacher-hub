@@ -165,9 +165,20 @@ try {
   await page.getByRole("option", { name: "Trường" }).click();
   await page.getByLabel("Tên trường/trung tâm").fill("Trường mẫu");
   await page.getByLabel("Tên lớp").fill(`Dạy ở trường ${suffix}`);
-  await page.getByLabel("Ngày bận").fill(today);
-  await page.getByLabel("Bắt đầu").fill("18:30");
-  await page.getByLabel("Kết thúc").fill("19:30");
+  await page.getByLabel("Hằng tuần").check();
+  await page.getByLabel("Hiệu lực từ").fill(addDays(today, -7));
+  await page.getByLabel("Hiệu lực đến (tùy chọn)").fill(addDays(today, 7));
+  const todayWeekdayLabel = weekdayIso(today) === 7 ? "Chủ nhật" : `Thứ ${weekdayIso(today) + 1}`;
+  await page.getByTestId("busy-weekly-schedule").first().getByLabel("Thứ").click();
+  await page.getByRole("option", { name: todayWeekdayLabel }).click();
+  await page.getByTestId("busy-weekly-schedule").first().getByLabel("Bắt đầu").fill("18:30");
+  await page.getByTestId("busy-weekly-schedule").first().getByLabel("Kết thúc").fill("19:30");
+  await page.getByRole("button", { name: "Thêm buổi" }).click();
+  const secondWeeklySchedule = page.getByTestId("busy-weekly-schedule").nth(1);
+  await secondWeeklySchedule.getByLabel("Thứ").click();
+  await page.getByRole("option", { name: todayWeekdayLabel }).click();
+  await secondWeeklySchedule.getByLabel("Bắt đầu").fill("19:30");
+  await secondWeeklySchedule.getByLabel("Kết thúc").fill("20:30");
   await page.getByLabel("Địa điểm (tùy chọn)").fill("Trường mẫu");
   await page.getByRole("button", { name: "Lưu lịch" }).click();
   await page.getByText("Đã tạo lịch.").waitFor();
@@ -254,8 +265,8 @@ try {
   await page.goto("http://127.0.0.1:5177/admin/calendar");
   await page.getByTestId("calendar-event").first().waitFor();
   const externalCalendarCard = page.getByTestId("calendar-event").filter({ hasText: `Dạy ở trường ${suffix}` });
-  await externalCalendarCard.waitFor();
-  await externalCalendarCard.getByText("Trường", { exact: true }).waitFor();
+  if (await externalCalendarCard.count() !== 2) throw new Error("Weekly external schedules did not create two calendar occurrences");
+  await externalCalendarCard.first().getByText("Trường", { exact: true }).waitFor();
   await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "Buổi học bù · Bản nháp" }).first().waitFor();
   await page.getByTestId("calendar-event").filter({ hasText: className }).filter({ hasText: "10:00–11:00" }).filter({ hasText: "Nghỉ" }).waitFor();
   const conflictButton = page.getByRole("button", { name: /Xem \d+ cảnh báo trùng lịch/ }).first();
@@ -271,28 +282,40 @@ try {
   await page.waitForFunction((value) => document.querySelector('input[type="date"]')?.value !== value, weekBefore);
   await page.getByLabel("Tuần trước").click();
   await assertNoRawEnums(page);
-  for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 430, height: 900 }, { width: 768, height: 900 }, { width: 1280, height: 800 }]) {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport);
     await noHorizontalScroll(page);
+    await page.screenshot({ path: path.join(artifactDir, `weekly-calendar-${viewport.width}x${viewport.height}.png`), fullPage: true });
   }
-  await page.setViewportSize({ width: 360, height: 800 });
-  const actionBoxes = await Promise.all(["Ghi nhận buổi học", "Buổi học bù", "Kiểm tra lịch tuần"].map((name) => page.getByRole("link", { name, exact: true }).boundingBox()));
-  if (!actionBoxes.every(Boolean) || actionBoxes.some((box) => Math.abs(box.width - actionBoxes[0].width) > 1 || Math.abs(box.x - actionBoxes[0].x) > 1 || box.height < 44) || !(actionBoxes[0].y < actionBoxes[1].y && actionBoxes[1].y < actionBoxes[2].y))
-    throw new Error(`Calendar quick actions are not aligned at 360px: ${JSON.stringify(actionBoxes)}`);
-  await page.setViewportSize({ width: 1280, height: 800 });
-  const desktopActionBoxes = await Promise.all(["Ghi nhận buổi học", "Buổi học bù", "Kiểm tra lịch tuần"].map((name) => page.getByRole("link", { name, exact: true }).boundingBox()));
-  if (!desktopActionBoxes.every(Boolean) || desktopActionBoxes.some((box) => Math.abs(box.y - desktopActionBoxes[0].y) > 1) || desktopActionBoxes.reduce((total, box) => total + box.width, 0) > 600)
-    throw new Error(`Calendar quick actions are not compact at 1280px: ${JSON.stringify(desktopActionBoxes)}`);
   await page.setViewportSize({ width: 390, height: 844 });
-  const screenshot = path.join(artifactDir, "weekly-calendar-390.png");
-  await page.screenshot({ path: screenshot, fullPage: true });
+  const quickActions = page.getByTestId("calendar-quick-actions");
+  const [primaryBox, makeupBox, addBox, checkBox] = await Promise.all([
+    quickActions.getByRole("link", { name: "Ghi nhận buổi học", exact: true }).boundingBox(),
+    quickActions.getByRole("link", { name: "Buổi học bù", exact: true }).boundingBox(),
+    quickActions.getByRole("button", { name: "Thêm lịch", exact: true }).boundingBox(),
+    quickActions.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).boundingBox(),
+  ]);
+  if (![primaryBox, makeupBox, addBox, checkBox].every(Boolean) || primaryBox.width < makeupBox.width + addBox.width || Math.abs(makeupBox.y - addBox.y) > 1 || !(primaryBox.y < makeupBox.y && makeupBox.y < checkBox.y))
+    throw new Error(`Calendar mobile hierarchy is incorrect: ${JSON.stringify({ primaryBox, makeupBox, addBox, checkBox })}`);
+  await page.getByRole("button", { name: "Thêm lịch", exact: true }).first().click();
+  await page.getByRole("menuitem", { name: "Lịch dạy tại trường/trung tâm" }).waitFor();
+  await page.getByRole("menuitem", { name: "Lịch bận cá nhân" }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const desktopActionBoxes = await Promise.all(["Ghi nhận buổi học", "Buổi học bù", "Kiểm tra lịch tuần"].map((name) => quickActions.getByRole("link", { name, exact: true }).boundingBox()));
+  desktopActionBoxes.push(await quickActions.getByRole("button", { name: "Thêm lịch", exact: true }).boundingBox());
+  if (!desktopActionBoxes.every(Boolean) || desktopActionBoxes.some((box) => Math.abs(box.y - desktopActionBoxes[0].y) > 1) || desktopActionBoxes.reduce((total, box) => total + box.width, 0) > 800)
+    throw new Error(`Calendar quick actions are not compact at 1440px: ${JSON.stringify(desktopActionBoxes)}`);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const screenshot = path.join(artifactDir, "weekly-calendar-390x844.png");
 
-  await page.getByTestId("calendar-event").filter({ hasText: `Dạy ở trường ${suffix}` }).click();
+  await page.getByTestId("calendar-event").filter({ hasText: `Dạy ở trường ${suffix}` }).first().click();
   await page.waitForURL("**/admin/busy-slots/*/edit");
-  await page.getByLabel("Hằng tuần").check();
-  await page.getByLabel("Thứ trong tuần").click();
-  const weekdayLabel = weekdayIso(today) === 7 ? "Chủ nhật" : `Thứ ${weekdayIso(today) + 1}`;
-  await page.getByRole("option", { name: weekdayLabel }).click();
+  await page.getByTestId("busy-weekly-schedule").first().waitFor();
+  if (await page.getByTestId("busy-weekly-schedule").count() !== 2) throw new Error("Edit form did not load all weekly schedules");
+  await page.getByRole("button", { name: "Thêm buổi" }).click();
+  if (await page.getByTestId("busy-weekly-schedule").count() !== 3) throw new Error("Add weekly schedule did not update form");
+  await page.getByTestId("busy-weekly-schedule").last().getByRole("button", { name: "Xóa buổi" }).click();
   await page.getByLabel("Hiệu lực từ").fill(addDays(today, -7));
   await page.getByLabel("Hiệu lực đến (tùy chọn)").fill(addDays(today, 7));
   await page.getByRole("button", { name: "Lưu lịch" }).click();
@@ -362,7 +385,8 @@ try {
   const finalDashboard = await api("/api/dashboard", token);
   await page.getByTestId("dashboard-unrecorded-card").getByText(`${finalDashboard.unrecordedCount} buổi cần xác nhận`).waitFor();
   const externalDashboardCard = page.getByTestId("dashboard-today-event").filter({ hasText: `Dạy ở trường ${suffix}` });
-  await externalDashboardCard.getByText("Trường", { exact: true }).waitFor();
+  if (await externalDashboardCard.count() !== 2) throw new Error("Dashboard did not show both external weekly schedules");
+  await externalDashboardCard.first().getByText("Trường", { exact: true }).waitFor();
   if (await externalDashboardCard.getByRole("button").count()) throw new Error("External schedule exposed a lesson action");
   await page.route("**/api/dashboard", (route) => route.abort("failed"));
   await page.reload();

@@ -310,6 +310,7 @@ export class ScheduleService {
   }
 
   private validateBusySlot(input: TeacherBusySlotInput): void {
+    const raw = input as TeacherBusySlotInput & Record<string, unknown>;
     if (!(["EXTERNAL_CLASS", "PERSONAL", "OTHER"] as const).includes(input.slotType))
       throw new AppError(400, "VALIDATION_ERROR", "Loại lịch không hợp lệ.");
     if (input.slotType === "EXTERNAL_CLASS") {
@@ -322,18 +323,27 @@ export class ScheduleService {
     }
     if (!input.title?.trim() || input.title.trim().length > 160)
       throw new AppError(400, "VALIDATION_ERROR", "Tiêu đề lịch bận là bắt buộc và tối đa 160 ký tự.");
-    this.validateTimeRange(input.startTime, input.endTime);
     if (input.recurrenceType === "ONCE") {
-      if (!input.specificDate || input.dayOfWeek != null || input.effectiveFrom != null || input.effectiveTo != null)
+      if (!input.specificDate || raw.dayOfWeek != null || raw.schedules != null || raw.effectiveFrom != null || raw.effectiveTo != null)
         throw new AppError(400, "VALIDATION_ERROR", "Lịch bận một lần cần ngày cụ thể và không có hiệu lực tuần.");
       this.validateDate(input.specificDate, "Ngày lịch bận");
+      this.validateTimeRange(input.startTime, input.endTime);
     } else if (input.recurrenceType === "WEEKLY") {
-      if (!Number.isInteger(input.dayOfWeek) || input.dayOfWeek! < 1 || input.dayOfWeek! > 7 || input.specificDate != null || !input.effectiveFrom)
-        throw new AppError(400, "VALIDATION_ERROR", "Lịch bận tuần cần thứ và ngày bắt đầu hiệu lực.");
+      if (raw.dayOfWeek != null || raw.startTime != null || raw.endTime != null || raw.specificDate != null || !input.effectiveFrom || !Array.isArray(input.schedules) || !input.schedules.length)
+        throw new AppError(400, "VALIDATION_ERROR", "Lịch bận tuần cần ít nhất một buổi và ngày bắt đầu hiệu lực.");
       this.validateDate(input.effectiveFrom, "Ngày hiệu lực");
       if (input.effectiveTo) {
         this.validateDate(input.effectiveTo, "Ngày kết thúc");
         if (input.effectiveTo < input.effectiveFrom) throw new AppError(400, "VALIDATION_ERROR", "Khoảng hiệu lực không hợp lệ.");
+      }
+      const starts = new Set<string>();
+      for (const schedule of input.schedules) {
+        if (!Number.isInteger(schedule.dayOfWeek) || schedule.dayOfWeek < 1 || schedule.dayOfWeek > 7)
+          throw new AppError(400, "VALIDATION_ERROR", "Thứ trong tuần không hợp lệ.");
+        this.validateTimeRange(schedule.startTime, schedule.endTime);
+        const key = `${schedule.dayOfWeek}:${schedule.startTime}`;
+        if (starts.has(key)) throw new AppError(400, "VALIDATION_ERROR", "Không thể có hai buổi cùng thứ và giờ bắt đầu.");
+        starts.add(key);
       }
     } else throw new AppError(400, "VALIDATION_ERROR", "Kiểu lịch bận không hợp lệ.");
     if ((input.location?.length ?? 0) > 255 || (input.note?.length ?? 0) > 2000)
@@ -341,15 +351,16 @@ export class ScheduleService {
   }
 
   private async busyConflicts(input: TeacherBusySlotInput) {
-    const dates: string[] = [];
-    if (input.recurrenceType === "ONCE") dates.push(input.specificDate!);
+    const ranges: Array<{ date: string; startTime: string; endTime: string }> = [];
+    if (input.recurrenceType === "ONCE") ranges.push({ date: input.specificDate, startTime: input.startTime, endTime: input.endTime });
     else {
       const end = input.effectiveTo && input.effectiveTo < addDays(input.effectiveFrom!, 60)
         ? input.effectiveTo : addDays(input.effectiveFrom!, 60);
       for (let date = input.effectiveFrom!; date <= end; date = addDays(date, 1))
-        if (weekdayIso(date) === input.dayOfWeek) dates.push(date);
+        for (const schedule of input.schedules)
+          if (weekdayIso(date) === schedule.dayOfWeek) ranges.push({ date, startTime: schedule.startTime, endTime: schedule.endTime });
     }
-    const warnings = (await Promise.all(dates.map((date) => this.repository.detectConflicts(date, input.startTime, input.endTime)))).flat();
+    const warnings = (await Promise.all(ranges.map((range) => this.repository.detectConflicts(range.date, range.startTime, range.endTime)))).flat();
     return [...new Map(warnings.map((item) => [`${item.kind}:${item.id ?? item.occurrenceKey}:${item.date}:${item.startTime}`, item])).values()];
   }
 
