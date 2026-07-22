@@ -8,11 +8,7 @@ export interface PublicTestimonial {
   id: string;
   guardianLabel: string;
   studentLevel: string;
-  location: string;
   quote: string;
-  verified: boolean;
-  published: boolean;
-  date?: string;
 }
 
 export interface PublicProgram {
@@ -35,37 +31,28 @@ const defaultVideos: PublicVideo[] = [
   },
 ];
 
-const developmentTestimonialDrafts: PublicTestimonial[] = [
+// Nội dung mẫu, giữ cấu trúc này để thay bằng phản hồi thật sau này.
+const parentTestimonials: PublicTestimonial[] = [
   {
-    id: "draft-guardian-m-grade-3",
-    guardianLabel: "Phụ huynh bé M.",
-    studentLevel: "Lớp 3",
-    location: "Huế",
-    quote: "Sau một thời gian học cùng cô Vy, con chủ động đọc từ mới và tự tin hơn khi làm bài trên lớp. Cô theo sát từng phần con còn yếu và trao đổi khá kỹ với gia đình.",
-    verified: false,
-    published: false,
+    id: "guardian-m-grade-2",
+    guardianLabel: "Mẹ bé M.",
+    studentLevel: "Học sinh lớp 2",
+    quote: "Trước đây bé khá ngại học tiếng Anh, nhất là phần đọc và nhớ từ. Học với cô một thời gian, bé chủ động xem lại bài hơn, về nhà còn tự đọc lại những từ cô đã hướng dẫn.",
   },
   {
-    id: "draft-guardian-h-grade-7",
-    guardianLabel: "Phụ huynh em H.",
-    studentLevel: "Lớp 7",
-    location: "Huế",
-    quote: "Trước đây con khá sợ ngữ pháp. Cô Vy chia nhỏ kiến thức, cho luyện lại phần căn bản nên con dễ theo hơn và kết quả kiểm tra cũng ổn định hơn.",
-    verified: false,
-    published: false,
+    id: "guardian-n-grade-6",
+    guardianLabel: "Mẹ bé N.",
+    studentLevel: "Học sinh lớp 6",
+    quote: "Con bị hổng ngữ pháp nên lúc làm bài thường khá rối và dễ nản. Cô chỉ lại từng phần, giao bài vừa sức nên dần dần con hiểu bài hơn và làm bài cũng chắc hơn trước.",
   },
   {
-    id: "draft-guardian-n-grade-9",
-    guardianLabel: "Phụ huynh em N.",
-    studentLevel: "Lớp 9",
-    location: "TP. Huế",
-    quote: "Cô hướng dẫn con ôn theo từng mục tiêu, sửa kỹ phần đọc hiểu và viết. Gia đình dễ theo dõi nội dung mỗi buổi và biết con cần củng cố thêm phần nào.",
-    verified: false,
-    published: false,
+    id: "guardian-h-grade-9",
+    guardianLabel: "Phụ huynh bé H.",
+    studentLevel: "Học sinh lớp 9",
+    quote: "Giai đoạn ôn thi gia đình khá lo vì con chưa biết nên tập trung vào phần nào. Cô theo sát, sửa kỹ từng lỗi và hướng dẫn cách làm bài nên con bình tĩnh và tự tin hơn nhiều.",
   },
 ];
 
-export const isDevelopmentContent = import.meta.env.DEV;
 const zaloUrl = "https://zalo.me/";
 const facebookUrl = "https://www.facebook.com/uyenvy.le.12";
 
@@ -134,19 +121,10 @@ export const publicHomeContent = {
     },
   ] satisfies PublicProgram[],
   videos: defaultVideos,
-  testimonials: developmentTestimonialDrafts,
-  parentTopics: [
-    "Con mất gốc nên bắt đầu từ đâu?",
-    "Học 1–1 hay học nhóm phù hợp hơn?",
-    "Làm sao theo dõi tiến bộ của con?",
-  ],
+  testimonials: parentTestimonials,
   seo: {
     title: "Lớp học tiếng Anh cô Vy | Tiếng Anh lớp 1–9 tại Huế",
     description: "Kèm cặp tiếng Anh 1–1 và lớp nhóm nhỏ cho học sinh lớp 1–9 tại Huế.",
   },
   footer: "2026 — từ người hâm mộ cô Vy, with love ❤️",
 } as const;
-
-export function publishableTestimonials(items: readonly PublicTestimonial[]): PublicTestimonial[] {
-  return items.filter((item) => item.published && item.verified);
-}

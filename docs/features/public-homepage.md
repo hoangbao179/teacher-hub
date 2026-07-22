@@ -26,11 +26,11 @@ Video dài chỉ tạo iframe `youtube-nocookie.com` sau tương tác và không
 
 ## Phản hồi và liên hệ
 
-- Production chỉ hiển thị testimonial có cả `published=true` và `verified=true`;
-  bản chưa xác minh không được trình bày như phản hồi khách hàng thật.
-- Development có thể preview ba testimonial đã cấu hình mà không gắn nhãn nội bộ.
-  Khi preview/testimonial hợp lệ đang hiển thị, FAQ fallback không render cùng lúc.
-  Production không có testimonial hợp lệ thì dùng **Phụ huynh thường quan tâm**.
+- Homepage hiển thị ba testimonial mẫu được cấu hình trực tiếp trong
+  `client/src/content/publicHome.ts`; giữ cấu trúc này để thay bằng phản hồi thật sau này.
+- Chỉ dùng tên phụ huynh/học sinh viết tắt, không hiển thị ảnh đại diện, trường học,
+  điểm số hoặc thông tin cá nhân. Mobile dùng cuộn ngang với scroll snap, desktop hiển
+  thị ba card trên cùng một hàng.
 - Homepage không hiển thị CTA gọi điện và production không yêu cầu cấu hình phone. Zalo và
   Facebook nằm cùng một hàng, rộng bằng nhau trên mobile; Facebook dùng URL công khai cố định
   `https://www.facebook.com/uyenvy.le.12`. External link dùng `noopener noreferrer`.

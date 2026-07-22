@@ -24,11 +24,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  isDevelopmentContent,
-  publicHomeContent as content,
-  publishableTestimonials,
-} from "../content/publicHome";
+import { publicHomeContent as content } from "../content/publicHome";
 
 function youtubeId(url: string): string | null {
   try {
@@ -108,9 +104,6 @@ const testimonialTone = [
 ] as const;
 
 export function HomePage() {
-  const verifiedTestimonials = publishableTestimonials(content.testimonials);
-  const visibleTestimonials = isDevelopmentContent ? [...content.testimonials] : verifiedTestimonials;
-
   return (
     <Box sx={{ bgcolor: "#fff", color: "text.primary", overflowX: "clip" }}>
       <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -190,24 +183,21 @@ export function HomePage() {
         <Box sx={{ bgcolor: "#f7f5ff" }}>
           <Container maxWidth="lg">
             <Box component="section" id="feedback" aria-labelledby="feedback-heading" sx={sectionSx}>
-              <Typography variant="overline" color="primary">PHỤ HUYNH VÀ CÔ VY</Typography>
-              <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{visibleTestimonials.length ? "Phản hồi từ phụ huynh" : "Phụ huynh thường quan tâm"}</Typography>
-              {visibleTestimonials.length ? (
-                <Box data-testid="testimonial-list" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 3.5 }}>
-                  {visibleTestimonials.map((item, index) => {
+              <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
+              <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Những phản hồi dành cho cô Vy</Typography>
+              <Box data-testid="testimonial-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(3, minmax(0, 1fr))" }, alignItems: "stretch", gap: 2, mt: 3.5, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "thin", pb: { xs: 1, md: 0 } }}>
+                  {content.testimonials.map((item, index) => {
                     const tone = testimonialTone[index % testimonialTone.length];
-                    return <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, borderRadius: 3, background: tone.background, borderColor: tone.border }}><CardContent>
+                    return <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, flex: { xs: "0 0 90vw", md: "initial" }, maxWidth: { xs: "calc(100vw - 32px)", md: "none" }, height: "100%", scrollSnapAlign: "start", borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}><CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
                       <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
-                      <Typography component="blockquote" sx={{ m: 0 }}>{item.quote}</Typography>
-                      <Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 600 }}>— {item.guardianLabel} · {item.studentLevel} · {item.location}</Typography>
+                      <Typography component="blockquote" sx={{ m: 0, flexGrow: 1 }}>{item.quote}</Typography>
+                      <Box component="figcaption" sx={{ mt: 2.5 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{item.guardianLabel}</Typography>
+                        <Typography variant="caption" color="text.secondary">{item.studentLevel}</Typography>
+                      </Box>
                     </CardContent></Card>;
                   })}
-                </Box>
-              ) : (
-                <Box data-testid="testimonial-fallback" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 1.5, mt: 3 }}>
-                  {content.parentTopics.map((topic, index) => <Card key={topic} variant="outlined" sx={{ borderRadius: 3, bgcolor: ["#fff9df", "#edf7ff", "#eefaf5"][index] }}><CardContent><ChatBubbleOutlined color="primary" aria-hidden="true" /><Typography component="h3" variant="subtitle1" sx={{ mt: 1 }}>{topic}</Typography></CardContent></Card>)}
-                </Box>
-              )}
+              </Box>
             </Box>
           </Container>
         </Box>

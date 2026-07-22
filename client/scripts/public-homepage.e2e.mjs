@@ -52,7 +52,7 @@ try {
   assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1");
   assert(await page.getByTestId("hero-carousel").count() === 0, "Homepage still renders the removed slideshow");
 
-  for (const heading of ["Xin chào, cô là Uyên Vy.", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Phản hồi từ phụ huynh", "Cùng cô Vy tìm cách học phù hợp cho con"]) {
+  for (const heading of ["Xin chào, cô là Uyên Vy.", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Những phản hồi dành cho cô Vy", "Cùng cô Vy tìm cách học phù hợp cho con"]) {
     await page.getByRole("heading", { name: new RegExp(heading) }).first().waitFor();
   }
   await page.getByText("Ba mẹ có thể nhắn cô Vy để chia sẻ tình hình học hiện tại, thời gian phù hợp và phần con đang cần hỗ trợ. Cô sẽ trao đổi thêm về lớp học và cách học phù hợp.", { exact: true }).waitFor();
@@ -69,8 +69,14 @@ try {
   await teacherPhoto.waitFor();
   assert(await teacherPhoto.evaluate((image) => getComputedStyle(image).objectFit) === "cover", "Teacher photo does not use object-fit: cover");
   await page.getByTestId("testimonial-list").waitFor();
-  assert(await page.getByTestId("testimonial-fallback").count() === 0, "FAQ fallback rendered with development testimonials");
-  assert(await page.getByText("Nội dung mẫu", { exact: true }).count() === 0, "Development testimonial exposes a sample badge");
+  assert(await page.getByText("Phụ huynh thường quan tâm", { exact: true }).count() === 0, "Removed parent FAQ heading is still rendered");
+  assert(await page.getByText("PHỤ HUYNH VÀ CÔ VY", { exact: true }).count() === 0, "Removed parent FAQ eyebrow is still rendered");
+  assert(await page.getByTestId("testimonial-list").locator("figure").count() === 3, "Homepage must render exactly three testimonials");
+  for (const testimonial of [
+    ["Mẹ bé M.", "Học sinh lớp 2", "Trước đây bé khá ngại học tiếng Anh, nhất là phần đọc và nhớ từ. Học với cô một thời gian, bé chủ động xem lại bài hơn, về nhà còn tự đọc lại những từ cô đã hướng dẫn."],
+    ["Mẹ bé N.", "Học sinh lớp 6", "Con bị hổng ngữ pháp nên lúc làm bài thường khá rối và dễ nản. Cô chỉ lại từng phần, giao bài vừa sức nên dần dần con hiểu bài hơn và làm bài cũng chắc hơn trước."],
+    ["Phụ huynh bé H.", "Học sinh lớp 9", "Giai đoạn ôn thi gia đình khá lo vì con chưa biết nên tập trung vào phần nào. Cô theo sát, sửa kỹ từng lỗi và hướng dẫn cách làm bài nên con bình tĩnh và tự tin hơn nhiều."],
+  ]) for (const copy of testimonial) await page.getByText(copy, { exact: true }).waitFor();
   const testimonialBackgrounds = await page.getByTestId("testimonial-list").locator("figure").evaluateAll((cards) => cards.map((card) => getComputedStyle(card).backgroundImage));
   assert(new Set(testimonialBackgrounds).size === 3, "Testimonial cards do not use three distinct pastel backgrounds");
 
@@ -159,6 +165,16 @@ try {
       assert(videoLayout.scrollWidth > videoLayout.clientWidth, `Mobile videos are not horizontally scrollable at ${viewport.width}px`);
     } else {
       assert(videoLayout.display === "grid" && videoLayout.cards.length === 2 && Math.abs(videoLayout.cards[0].y - videoLayout.cards[1].y) <= 1 && Math.abs(videoLayout.cards[0].width - videoLayout.cards[1].width) <= 1, "Desktop videos are not two equal cards on one row");
+    }
+    const testimonialLayout = await page.getByTestId("testimonial-list").evaluate((element) => {
+      const cards = [...element.children].map((child) => child.getBoundingClientRect());
+      return { display: getComputedStyle(element).display, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, cards };
+    });
+    if (viewport.width < 900) {
+      assert(testimonialLayout.display === "flex" && testimonialLayout.cards.every((card) => card.width >= viewport.width * 0.83 && card.width <= viewport.width * 0.92), `Mobile testimonial card width is not one card per viewport at ${viewport.width}px`);
+      assert(testimonialLayout.scrollWidth > testimonialLayout.clientWidth, `Mobile testimonials are not horizontally scrollable at ${viewport.width}px`);
+    } else {
+      assert(testimonialLayout.display === "grid" && testimonialLayout.cards.length === 3 && testimonialLayout.cards.every((card) => Math.abs(card.y - testimonialLayout.cards[0].y) <= 1 && Math.abs(card.height - testimonialLayout.cards[0].height) <= 1), "Desktop testimonials are not three equal-height cards on one row");
     }
     const contactButtons = await page.getByTestId("contact-actions").getByRole("link").evaluateAll((links) => links.map((link) => {
       const box = link.getBoundingClientRect();
