@@ -16,6 +16,8 @@ quản trị và không công khai giá học phí.
 - Ảnh slide đầu được ưu tiên tải; ảnh sau lazy/preload để tránh tranh tài nguyên.
 - Ba card chương trình là Tiếng Anh tiểu học lớp 1–5, Tiếng Anh THCS lớp 6–9 và
   luyện thi Nguyễn Tri Phương/9 lên 10; đây là mô tả mục tiêu học, không phải bảng giá.
+- Trên mobile, hai video vuốt ngang thủ công với scroll snap, hé card kế tiếp và có
+  chỉ dẫn ngắn nhưng không hiện scrollbar; video không tự chuyển như testimonial.
 
 ## Media tạm thời
 

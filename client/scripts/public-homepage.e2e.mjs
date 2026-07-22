@@ -165,13 +165,17 @@ try {
     assert(metrics.labels.includes("Nhắn Zalo"), `Contact Zalo CTA is not visible at ${viewport.width}px`);
     const videoLayout = await page.getByTestId("learning-video-list").evaluate((element) => {
       const cards = [...element.children].map((child) => child.getBoundingClientRect());
-      return { display: getComputedStyle(element).display, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, cards };
+      return { display: getComputedStyle(element).display, scrollbarWidth: getComputedStyle(element).scrollbarWidth, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, cards };
     });
+    const videoSwipeHintDisplay = await page.getByTestId("video-swipe-hint").evaluate((element) => getComputedStyle(element).display);
     if (viewport.width < 768) {
-      assert(videoLayout.display === "flex" && videoLayout.cards[0].width >= viewport.width * 0.88 && videoLayout.cards[0].width <= viewport.width * 0.92, `Mobile video card width is not 88–92vw at ${viewport.width}px`);
+      assert(videoLayout.display === "flex" && videoLayout.cards[0].width >= viewport.width * 0.84 && videoLayout.cards[0].width <= viewport.width * 0.86, `Mobile video card width is not 84–86vw at ${viewport.width}px`);
       assert(videoLayout.scrollWidth > videoLayout.clientWidth, `Mobile videos are not horizontally scrollable at ${viewport.width}px`);
+      assert(videoLayout.scrollbarWidth === "none", `Mobile video scrollbar is visible at ${viewport.width}px`);
+      assert(videoSwipeHintDisplay !== "none", `Mobile video swipe hint is hidden at ${viewport.width}px`);
     } else {
       assert(videoLayout.display === "grid" && videoLayout.cards.length === 2 && Math.abs(videoLayout.cards[0].y - videoLayout.cards[1].y) <= 1 && Math.abs(videoLayout.cards[0].width - videoLayout.cards[1].width) <= 1, "Desktop videos are not two equal cards on one row");
+      assert(videoSwipeHintDisplay === "none", "Desktop should not render the mobile video swipe hint");
     }
     const testimonialLayout = await page.getByTestId("testimonial-list").evaluate((element) => {
       const cards = [...element.children].map((child) => child.getBoundingClientRect());
