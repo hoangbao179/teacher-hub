@@ -79,6 +79,13 @@ try {
   ]) for (const copy of testimonial) await page.getByText(copy, { exact: true }).waitFor();
   const testimonialBackgrounds = await page.getByTestId("testimonial-list").locator("figure").evaluateAll((cards) => cards.map((card) => getComputedStyle(card).backgroundImage));
   assert(new Set(testimonialBackgrounds).size === 3, "Testimonial cards do not use three distinct pastel backgrounds");
+  const testimonialDots = page.getByLabel("Chọn phản hồi phụ huynh").getByRole("button");
+  assert(await testimonialDots.count() === 3, "Mobile testimonial carousel must have three navigation dots");
+  await page.getByTestId("testimonial-list").scrollIntoViewIfNeeded();
+  const initialTestimonial = await page.locator('[aria-label^="Xem phản hồi"][aria-current="true"]').getAttribute("aria-label");
+  await page.waitForFunction((initial) => document.querySelector('[aria-label^="Xem phản hồi"][aria-current="true"]')?.getAttribute("aria-label") !== initial, initialTestimonial, { timeout: 6_000 });
+  await page.getByRole("button", { name: "Xem phản hồi 3" }).click();
+  await page.waitForFunction(() => document.querySelector('[aria-label="Xem phản hồi 3"]')?.getAttribute("aria-current") === "true");
 
   const contactTargets = await page.locator('a[href^="https://zalo.me/"],a[href^="tel:"],a[href^="https://www.facebook.com/"]').evaluateAll((links) => links.map((link) => ({ href: link.getAttribute("href"), target: link.getAttribute("target"), rel: link.getAttribute("rel") })));
   assert(contactTargets.length >= 2, `Expected configured contact links, found ${contactTargets.length}`);
@@ -171,7 +178,7 @@ try {
       return { display: getComputedStyle(element).display, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, cards };
     });
     if (viewport.width < 900) {
-      assert(testimonialLayout.display === "flex" && testimonialLayout.cards.every((card) => card.width >= viewport.width * 0.83 && card.width <= viewport.width * 0.92), `Mobile testimonial card width is not one card per viewport at ${viewport.width}px`);
+      assert(testimonialLayout.display === "flex" && testimonialLayout.cards.every((card) => card.width >= viewport.width * 0.88 && card.width <= viewport.width * 0.94), `Mobile testimonial card width is not one card per viewport at ${viewport.width}px`);
       assert(testimonialLayout.scrollWidth > testimonialLayout.clientWidth, `Mobile testimonials are not horizontally scrollable at ${viewport.width}px`);
     } else {
       assert(testimonialLayout.display === "grid" && testimonialLayout.cards.length === 3 && testimonialLayout.cards.every((card) => Math.abs(card.y - testimonialLayout.cards[0].y) <= 1 && Math.abs(card.height - testimonialLayout.cards[0].height) <= 1), "Desktop testimonials are not three equal-height cards on one row");

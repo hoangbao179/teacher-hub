@@ -29,8 +29,8 @@ Video dài chỉ tạo iframe `youtube-nocookie.com` sau tương tác và không
 - Homepage hiển thị ba testimonial mẫu được cấu hình trực tiếp trong
   `client/src/content/publicHome.ts`; giữ cấu trúc này để thay bằng phản hồi thật sau này.
 - Chỉ dùng tên phụ huynh/học sinh viết tắt, không hiển thị ảnh đại diện, trường học,
-  điểm số hoặc thông tin cá nhân. Mobile dùng cuộn ngang với scroll snap, desktop hiển
-  thị ba card trên cùng một hàng.
+  điểm số hoặc thông tin cá nhân. Mobile dùng carousel tự chuyển, hỗ trợ vuốt và chấm
+  điều hướng nhưng không hiện scrollbar; desktop hiển thị ba card trên cùng một hàng.
 - Homepage không hiển thị CTA gọi điện và production không yêu cầu cấu hình phone. Zalo và
   Facebook nằm cùng một hàng, rộng bằng nhau trên mobile; Facebook dùng URL công khai cố định
   `https://www.facebook.com/uyenvy.le.12`. External link dùng `noopener noreferrer`.

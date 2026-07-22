@@ -22,7 +22,7 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { publicHomeContent as content } from "../content/publicHome";
 
@@ -104,6 +104,48 @@ const testimonialTone = [
 ] as const;
 
 export function HomePage() {
+  const testimonialListRef = useRef<HTMLDivElement>(null);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [testimonialsInView, setTestimonialsInView] = useState(false);
+
+  const scrollToTestimonial = useCallback((index: number) => {
+    const list = testimonialListRef.current;
+    const card = list?.children.item(index) as HTMLElement | null;
+    if (!list || !card) return;
+    const left = card.getBoundingClientRect().left - list.getBoundingClientRect().left + list.scrollLeft;
+    list.scrollTo({ left, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    const list = testimonialListRef.current;
+    if (!list) return;
+    const observer = new IntersectionObserver(([entry]) => setTestimonialsInView(entry.isIntersecting), { threshold: 0.35 });
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!testimonialsInView || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setTimeout(() => {
+      if (window.matchMedia("(max-width: 899.95px)").matches && !document.hidden) {
+        scrollToTestimonial((activeTestimonial + 1) % content.testimonials.length);
+      }
+    }, 4_200);
+    return () => window.clearTimeout(timer);
+  }, [activeTestimonial, scrollToTestimonial, testimonialsInView]);
+
+  const updateActiveTestimonial = () => {
+    const list = testimonialListRef.current;
+    if (!list) return;
+    const listLeft = list.getBoundingClientRect().left;
+    const closestIndex = [...list.children].reduce((closest, card, index) => {
+      const currentDistance = Math.abs(card.getBoundingClientRect().left - listLeft);
+      const closestDistance = Math.abs(list.children.item(closest)!.getBoundingClientRect().left - listLeft);
+      return currentDistance < closestDistance ? index : closest;
+    }, 0);
+    setActiveTestimonial(closestIndex);
+  };
+
   return (
     <Box sx={{ bgcolor: "#fff", color: "text.primary", overflowX: "clip" }}>
       <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -185,10 +227,10 @@ export function HomePage() {
             <Box component="section" id="feedback" aria-labelledby="feedback-heading" sx={sectionSx}>
               <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
               <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Những phản hồi dành cho cô Vy</Typography>
-              <Box data-testid="testimonial-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(3, minmax(0, 1fr))" }, alignItems: "stretch", gap: 2, mt: 3.5, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "thin", pb: { xs: 1, md: 0 } }}>
+              <Box ref={testimonialListRef} onScroll={updateActiveTestimonial} data-testid="testimonial-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(3, minmax(0, 1fr))" }, alignItems: "stretch", gap: 2, mt: 3.5, overflowX: { xs: "auto", md: "visible" }, scrollBehavior: "smooth", scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
                   {content.testimonials.map((item, index) => {
                     const tone = testimonialTone[index % testimonialTone.length];
-                    return <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, flex: { xs: "0 0 90vw", md: "initial" }, maxWidth: { xs: "calc(100vw - 32px)", md: "none" }, height: "100%", scrollSnapAlign: "start", borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}><CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                    return <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, flex: { xs: "0 0 100%", md: "initial" }, height: "100%", scrollSnapAlign: "start", borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}><CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
                       <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
                       <Typography component="blockquote" sx={{ m: 0, flexGrow: 1 }}>{item.quote}</Typography>
                       <Box component="figcaption" sx={{ mt: 2.5 }}>
@@ -197,6 +239,13 @@ export function HomePage() {
                       </Box>
                     </CardContent></Card>;
                   })}
+              </Box>
+              <Box aria-label="Chọn phản hồi phụ huynh" sx={{ display: { xs: "flex", md: "none" }, justifyContent: "center", mt: 1 }}>
+                {content.testimonials.map((item, index) => (
+                  <IconButton key={item.id} aria-label={`Xem phản hồi ${index + 1}`} aria-current={activeTestimonial === index ? "true" : undefined} onClick={() => scrollToTestimonial(index)} sx={{ width: 44, height: 44 }}>
+                    <Box component="span" sx={{ width: activeTestimonial === index ? 22 : 8, height: 8, borderRadius: 4, bgcolor: activeTestimonial === index ? "primary.main" : "grey.400", transition: "width 240ms ease, background-color 240ms ease", "@media (prefers-reduced-motion: reduce)": { transition: "none" } }} />
+                  </IconButton>
+                ))}
               </Box>
             </Box>
           </Container>
