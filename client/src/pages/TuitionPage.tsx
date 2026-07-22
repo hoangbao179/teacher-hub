@@ -119,36 +119,37 @@ export function TuitionPage() {
   return (
     <Stack spacing={2} data-testid="tuition-list-page">
       <Typography component="h1" variant="h5">Học phí</Typography>
-      <Box sx={{ display: { xs: "none", sm: "block" } }}>
+      <Box sx={{ display: { xs: "none", md: "block" } }}>
         <Tabs value={status} onChange={(_event, value: VisibleStatus) => updateDesktopStatus(value)} variant="fullWidth" aria-label="Trạng thái học phí">
           {statuses.map((item) => <Tab key={item.value} label={item.label} value={item.value} />)}
         </Tabs>
       </Box>
 
-      <Stack component="form" onSubmit={submitSearch} direction="row" spacing={1}>
+      <Stack component="form" onSubmit={submitSearch} direction="row" spacing={1} sx={{ width: "100%", maxWidth: { md: 760 } }}>
         <TextField
           fullWidth
           size="small"
+          sx={{ width: { md: 560 }, flex: { md: "0 1 560px" } }}
           label="Tìm học sinh"
           value={searchDraft}
           onChange={(event) => setSearchDraft(event.target.value)}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }}
         />
-        <Button type="submit" variant="outlined" sx={{ display: { xs: "none", sm: "inline-flex" } }}>Tìm</Button>
-        <Button type="button" variant="outlined" startIcon={<FilterList />} onClick={openFilters} sx={{ display: { xs: "inline-flex", sm: "none" }, whiteSpace: "nowrap" }}>
+        <Button type="submit" variant="outlined" sx={{ display: { xs: "none", md: "inline-flex" } }}>Tìm</Button>
+        <Button type="button" variant="outlined" startIcon={<FilterList />} onClick={openFilters} sx={{ display: { xs: "inline-flex", md: "none" }, whiteSpace: "nowrap" }}>
           Lọc{appliedFilterCount ? ` (${appliedFilterCount})` : ""}
         </Button>
       </Stack>
 
-      <Stack direction="row" spacing={1} sx={{ display: { xs: "none", sm: "flex" } }}>
-        <FormControl size="small" fullWidth>
+      <Stack direction="row" spacing={1} sx={{ display: { xs: "none", md: "flex" }, width: "100%", maxWidth: 580 }}>
+        <FormControl size="small" sx={{ width: 280 }}>
           <InputLabel>Lớp</InputLabel>
           <Select label="Lớp" value={classId} onChange={(event) => { beginReload(); setClassId(event.target.value); setPage(1); }}>
             <MenuItem value="">Tất cả lớp</MenuItem>
             {classes.map((item) => <MenuItem key={item.id} value={String(item.id)}>{item.name}</MenuItem>)}
           </Select>
         </FormControl>
-        <FormControl size="small" fullWidth>
+        <FormControl size="small" sx={{ width: 280 }}>
           <InputLabel>Sắp xếp</InputLabel>
           <Select label="Sắp xếp" value={sort} onChange={(event) => { beginReload(); setSort(event.target.value as TuitionCycleSort); setPage(1); }}>
             <MenuItem value="OLDEST_DUE">Cũ nhất cần thu</MenuItem>

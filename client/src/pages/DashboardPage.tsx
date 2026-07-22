@@ -64,8 +64,8 @@ export function DashboardPage() {
     </Grid>
 
     <Typography component="h2" variant="h6">Thao tác nhanh</Typography>
-    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
-      <Button startIcon={<Add />} variant="contained" component={Link} to="/admin/lessons/new" sx={{ gridColumn: "1 / -1" }}>Ghi nhận buổi học</Button>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(220px, 260px) repeat(2, minmax(180px, 220px))" }, gap: 1, justifyContent: "start" }}>
+      <Button startIcon={<Add />} variant="contained" component={Link} to="/admin/lessons/new" sx={{ gridColumn: { xs: "1 / -1", md: "auto" } }}>Ghi nhận buổi học</Button>
       <Button variant="outlined" component={Link} to="/admin/lessons/new?type=MAKEUP">Buổi học bù</Button>
       <Button variant="outlined" component={Link} to="/admin/busy-slots/new">Thêm lịch bận</Button>
     </Box>

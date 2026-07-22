@@ -49,9 +49,10 @@ try {
   await page.goto(origin, { waitUntil: "networkidle" });
 
   const carousel = page.getByTestId("hero-carousel");
-  await page.getByRole("heading", { level: 1, name: "Tiếng Anh vững nền tảng" }).waitFor();
+  await page.getByRole("heading", { level: 1, name: "Lớp học cô Vy" }).waitFor();
   assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1");
   assert(await carousel.getAttribute("aria-roledescription") === "carousel", "Carousel semantics are missing");
+  assert((await carousel.innerText()).trim() === "", "Hero must not overlay copy or CTA on its images");
   assert(await carousel.locator('img[fetchpriority="high"]').count() === 1, "The first hero image is not the sole high-priority image");
   assert(await carousel.locator('img[loading="lazy"]').count() === 1, "The later hero image is not lazy loaded");
   const heroSources = await carousel.locator("picture img").evaluateAll((images) => images.map((image) => image.getAttribute("src")));
@@ -69,19 +70,21 @@ try {
   assert(await carousel.getAttribute("data-active-slide") === "secondary", "Next control did not advance the carousel");
   await page.getByRole("button", { name: "Slide trước" }).click();
   assert(await carousel.getAttribute("data-active-slide") === "foundation", "Previous control did not return the carousel");
-  await page.getByRole("button", { name: /Chuyển đến slide 2:/ }).click();
+  await page.getByRole("button", { name: "Chuyển đến slide 2" }).click();
   assert(await carousel.getAttribute("data-active-slide") === "secondary", "Pagination indicator did not select slide 2");
   await carousel.focus();
   await carousel.press("ArrowLeft");
   assert(await carousel.getAttribute("data-active-slide") === "foundation", "Keyboard navigation did not select the previous slide");
 
-  await page.getByRole("button", { name: /Chuyển đến slide 1:/ }).click();
+  await page.getByRole("button", { name: "Chuyển đến slide 1" }).click();
   await page.evaluate(() => (document.activeElement instanceof HTMLElement) && document.activeElement.blur());
-  await page.mouse.move(4, 4);
-  await page.waitForTimeout(5_800);
-  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Carousel did not auto-transition after 5–6 seconds");
+  const autoplayBox = await carousel.boundingBox();
+  assert(Boolean(autoplayBox), "Carousel has no layout box");
+  await page.mouse.move(autoplayBox.x + autoplayBox.width / 2, autoplayBox.y + autoplayBox.height / 2);
+  await page.waitForTimeout(2_250);
+  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Carousel did not auto-transition after 2 seconds while hovered");
 
-  await page.getByRole("button", { name: /Chuyển đến slide 1:/ }).click();
+  await page.getByRole("button", { name: "Chuyển đến slide 1" }).click();
   const box = await carousel.boundingBox();
   assert(Boolean(box), "Carousel has no layout box");
   await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.45);
@@ -113,7 +116,7 @@ try {
   assert(new Set(testimonialBackgrounds).size === 3, "Testimonial cards do not use three distinct pastel backgrounds");
 
   const contactTargets = await page.locator('a[href^="https://zalo.me/"],a[href^="tel:"],a[href^="https://www.facebook.com/"]').evaluateAll((links) => links.map((link) => ({ href: link.getAttribute("href"), target: link.getAttribute("target"), rel: link.getAttribute("rel") })));
-  assert(contactTargets.length >= 3, `Expected configured contact links, found ${contactTargets.length}`);
+  assert(contactTargets.length >= 2, `Expected configured contact links, found ${contactTargets.length}`);
   assert(!contactTargets.some((item) => item.href?.startsWith("tel:")), "Homepage still renders a phone CTA");
   assert(contactTargets.some((item) => item.href === "https://www.facebook.com/uyenvy.le.12"), "Facebook CTA does not use the approved URL");
   for (const item of contactTargets.filter((link) => link.href?.startsWith("http"))) {
@@ -130,6 +133,9 @@ try {
   assert(contactOffset >= 60 && contactOffset < 844, `Contact section is hidden or overlapped after anchor navigation: ${contactOffset}px`);
 
   if (await page.locator('iframe[src*="youtube"]').count()) throw new Error("YouTube iframe loaded before interaction");
+  assert(await page.getByTestId("learning-video-list").locator("article").count() === 2, "Homepage must render exactly two learning videos");
+  const videoThumbnails = await page.getByTestId("learning-video-list").locator('img[src*="i.ytimg.com"]').evaluateAll((images) => images.map((image) => image.getAttribute("src")));
+  assert(new Set(videoThumbnails).size === 2 && videoThumbnails.some((src) => src?.includes("qD1pnquN_DM")), `Learning videos are missing or duplicated: ${videoThumbnails.join(", ")}`);
   await page.getByRole("button", { name: /Phát video:/ }).first().click();
   const iframe = page.locator('iframe[src*="youtube-nocookie.com/embed/"]').first();
   await iframe.waitFor();
@@ -182,11 +188,20 @@ try {
       };
     });
     assert(metrics.overflow <= 1, `Homepage overflow at ${viewport.width}px: ${metrics.overflow}px`);
-    if (viewport.width <= 420) assert(metrics.heroHeight >= 360 && metrics.heroHeight <= 420, `Hero height ${metrics.heroHeight}px is outside 360–420 at ${viewport.width}px`);
-    else if (viewport.width <= 430) assert(metrics.heroHeight === 420, `Hero height ${metrics.heroHeight}px is not capped at 420 at ${viewport.width}px`);
-    else assert(metrics.heroHeight >= 460 && metrics.heroHeight <= 520, `Desktop hero height ${metrics.heroHeight}px is outside 460–520`);
+    if (viewport.width <= 430) assert(metrics.heroHeight >= 230 && metrics.heroHeight <= 250, `Hero height ${metrics.heroHeight}px is outside 230–250 at ${viewport.width}px`);
+    else assert(metrics.heroHeight === 300, `Desktop hero height ${metrics.heroHeight}px is not 300px`);
     if (viewport.width <= 430) assert(metrics.aboutTop < viewport.height, `Next section is not discoverable at ${viewport.width}px`);
     assert(metrics.labels.includes("Nhắn Zalo"), `Contact Zalo CTA is not visible at ${viewport.width}px`);
+    const videoLayout = await page.getByTestId("learning-video-list").evaluate((element) => {
+      const cards = [...element.children].map((child) => child.getBoundingClientRect());
+      return { display: getComputedStyle(element).display, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, cards };
+    });
+    if (viewport.width < 768) {
+      assert(videoLayout.display === "flex" && videoLayout.cards[0].width >= viewport.width * 0.88 && videoLayout.cards[0].width <= viewport.width * 0.92, `Mobile video card width is not 88–92vw at ${viewport.width}px`);
+      assert(videoLayout.scrollWidth > videoLayout.clientWidth, `Mobile videos are not horizontally scrollable at ${viewport.width}px`);
+    } else {
+      assert(videoLayout.display === "grid" && videoLayout.cards.length === 2 && Math.abs(videoLayout.cards[0].y - videoLayout.cards[1].y) <= 1 && Math.abs(videoLayout.cards[0].width - videoLayout.cards[1].width) <= 1, "Desktop videos are not two equal cards on one row");
+    }
     const contactButtons = await page.getByTestId("contact-actions").getByRole("link").evaluateAll((links) => links.map((link) => {
       const box = link.getBoundingClientRect();
       return { width: box.width, top: box.top, whiteSpace: getComputedStyle(link).whiteSpace };

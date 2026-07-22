@@ -136,6 +136,19 @@ try {
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
   await page.reload();
   await page.getByLabel("Nội dung buổi học").waitFor();
+  const mobileTextareaHeights = await page.locator("textarea").evaluateAll((elements) => elements.filter((element) => element.offsetParent !== null).map((element) => element.getBoundingClientRect().height));
+  if (!mobileTextareaHeights.length || mobileTextareaHeights.some((height) => height > 110)) throw new Error(`Empty mobile multiline fields are too tall: ${mobileTextareaHeights.join(", ")}`);
+  await noHorizontalScroll(page);
+  await page.screenshot({ path: path.join(artifactDir, "lesson-content-390.png"), fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const desktopContentMetrics = await page.getByTestId("lesson-wizard").evaluate((element) => ({
+    width: element.getBoundingClientRect().width,
+    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    textareaHeights: [...element.querySelectorAll("textarea")].filter((textarea) => textarea.offsetParent !== null).map((textarea) => textarea.getBoundingClientRect().height),
+  }));
+  if (desktopContentMetrics.width < 600 || desktopContentMetrics.width > 640 || desktopContentMetrics.overflow > 1 || desktopContentMetrics.textareaHeights.some((height) => height > 100)) throw new Error(`Invalid desktop lesson-content density: ${JSON.stringify(desktopContentMetrics)}`);
+  await page.screenshot({ path: path.join(artifactDir, "lesson-content-1440.png"), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.getByLabel("Nội dung buổi học").fill("Nội dung Playwright M2C");
   await page.getByLabel("Bài tập về nhà").fill("Bài tập Playwright M2C");
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();

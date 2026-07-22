@@ -99,10 +99,10 @@ export function MarkTuitionPaidPage() {
             <FormControlLabel value="BANK_TRANSFER" control={<Radio />} label="Chuyển khoản" />
           </RadioGroup>
         </FormControl>
-        <TextField label="Ghi chú (tùy chọn)" value={note} onChange={(event) => setNote(event.target.value)} multiline minRows={3} slotProps={{ htmlInput: { maxLength: 1000 } }} />
+        <TextField label="Ghi chú (tùy chọn)" value={note} onChange={(event) => setNote(event.target.value)} multiline minRows={2} slotProps={{ htmlInput: { maxLength: 1000 } }} />
         <Alert severity="warning">Sau khi xác nhận, đợt học phí và tám buổi liên quan sẽ được khóa.</Alert>
         <StickyActionBar>
-          <Button variant="contained" size="large" fullWidth disabled={busy || !amountValid || !paidAt} onClick={() => setConfirming(true)}>
+          <Button variant="contained" size="large" fullWidth disabled={busy || !amountValid || !paidAt} onClick={() => setConfirming(true)} sx={{ width: { md: "auto" }, alignSelf: { md: "flex-start" } }}>
             Xác nhận đã thu
           </Button>
         </StickyActionBar>

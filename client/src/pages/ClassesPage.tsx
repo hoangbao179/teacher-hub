@@ -47,9 +47,11 @@ export function ClassesPage() {
           Thêm lớp
         </Button>} />
       {error && <Alert severity="warning">{error}</Alert>}
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ maxWidth: "var(--app-form-width)" }}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ width: "100%", maxWidth: 700 }}>
         <TextField
           fullWidth
+          size="small"
+          sx={{ width: { md: 440 }, flex: { md: "0 1 440px" } }}
           label="Tìm theo tên lớp"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -58,6 +60,8 @@ export function ClassesPage() {
         <TextField
           select
           fullWidth
+          size="small"
+          sx={{ width: { md: 260 }, flex: { md: "0 0 260px" } }}
           label="Hiển thị"
           value={filter}
           onChange={(event) => setFilter(event.target.value as ClassFilter)}

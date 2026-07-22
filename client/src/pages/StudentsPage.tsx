@@ -108,25 +108,26 @@ export function StudentsPage() {
       <PageHeader title="Học sinh" action={<Button component={Link} to="/admin/students/new" startIcon={<Add />} variant="contained">Thêm học sinh</Button>} />
       {error && <Alert severity="warning">{error}</Alert>}
 
-      <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={1} sx={{ width: "100%", maxWidth: { md: 700 } }}>
         <TextField
           fullWidth
           size="small"
+          sx={{ width: { md: 620 }, flex: { md: "0 1 620px" } }}
           label="Tìm tên, tên gọi hoặc lớp"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> } }}
         />
-        <Button variant="outlined" startIcon={<FilterList />} onClick={openFilters} sx={{ display: { xs: "inline-flex", sm: "none" }, whiteSpace: "nowrap" }}>
+        <Button variant="outlined" startIcon={<FilterList />} onClick={openFilters} sx={{ display: { xs: "inline-flex", md: "none" }, whiteSpace: "nowrap" }}>
           Lọc{filter !== "ALL" || sort !== "AZ" ? " •" : ""}
         </Button>
       </Stack>
 
-      <Stack direction="row" spacing={1} sx={{ display: { xs: "none", sm: "flex" } }}>
-        <FormControl size="small" fullWidth><InputLabel>Trạng thái</InputLabel><Select label="Trạng thái" value={filter} onChange={(event) => setFilter(event.target.value as StudentFilter)}>
+      <Stack direction="row" spacing={1} sx={{ display: { xs: "none", md: "flex" }, width: "100%", maxWidth: 580 }}>
+        <FormControl size="small" sx={{ width: 280 }}><InputLabel>Trạng thái</InputLabel><Select label="Trạng thái" value={filter} onChange={(event) => setFilter(event.target.value as StudentFilter)}>
           {filterOptions.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
         </Select></FormControl>
-        <FormControl size="small" fullWidth><InputLabel>Sắp xếp</InputLabel><Select label="Sắp xếp" value={sort} onChange={(event) => setSort(event.target.value as StudentSort)}>
+        <FormControl size="small" sx={{ width: 280 }}><InputLabel>Sắp xếp</InputLabel><Select label="Sắp xếp" value={sort} onChange={(event) => setSort(event.target.value as StudentSort)}>
           <MenuItem value="AZ">Tên A–Z</MenuItem><MenuItem value="ZA">Tên Z–A</MenuItem>
         </Select></FormControl>
       </Stack>

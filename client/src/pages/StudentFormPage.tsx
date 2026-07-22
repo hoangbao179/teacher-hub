@@ -33,6 +33,6 @@ export function StudentFormPage() {
     <TextField label="Tên gọi" value={nickname} onChange={(e) => setNickname(e.target.value)} /><TextField type="date" label="Ngày sinh" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
     <TextField label="Tên phụ huynh" value={parentName} onChange={(e) => setParentName(e.target.value)} /><TextField label="Số điện thoại phụ huynh" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />
     {editing && <FormControl><InputLabel>Trạng thái</InputLabel><Select label="Trạng thái" value={status} onChange={(e) => setStatus(e.target.value as StudentStatus)}><MenuItem value="ACTIVE">Hoạt động</MenuItem><MenuItem value="INACTIVE">Ngừng hoạt động</MenuItem></Select></FormControl>}
-    <TextField multiline minRows={3} label="Ghi chú" value={note} onChange={(e) => setNote(e.target.value)} /><Button type="submit" variant="contained" size="large" disabled={saving}>{saving ? "Đang lưu…" : "Lưu học sinh"}</Button>
+    <TextField multiline minRows={2} label="Ghi chú" value={note} onChange={(e) => setNote(e.target.value)} /><Button type="submit" variant="contained" size="large" disabled={saving} sx={{ alignSelf: { md: "flex-start" } }}>{saving ? "Đang lưu…" : "Lưu học sinh"}</Button>
   </Stack>;
 }

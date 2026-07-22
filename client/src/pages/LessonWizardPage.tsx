@@ -377,9 +377,9 @@ export function LessonWizardPage() {
       </Stack>}
 
       {step === 2 && <Stack spacing={2}>
-        <TextField multiline minRows={5} label="Nội dung buổi học" value={content} onChange={(event) => { setContent(event.target.value.slice(0, 2000)); markDirty(); }} helperText={`${content.length}/2000`} />
-        <TextField multiline minRows={4} label="Bài tập về nhà" value={homework} onChange={(event) => { setHomework(event.target.value.slice(0, 2000)); markDirty(); }} helperText={`${homework.length}/2000`} />
-        <TextField multiline minRows={3} label="Ghi chú chung" value={note} onChange={(event) => { setNote(event.target.value.slice(0, 1000)); markDirty(); }} helperText={`${note.length}/1000`} />
+        <TextField multiline minRows={3} label="Nội dung buổi học" value={content} onChange={(event) => { setContent(event.target.value.slice(0, 2000)); markDirty(); }} helperText={`${content.length}/2000`} />
+        <TextField multiline minRows={2} label="Bài tập về nhà" value={homework} onChange={(event) => { setHomework(event.target.value.slice(0, 2000)); markDirty(); }} helperText={`${homework.length}/2000`} />
+        <TextField multiline minRows={2} label="Ghi chú chung" value={note} onChange={(event) => { setNote(event.target.value.slice(0, 1000)); markDirty(); }} helperText={`${note.length}/1000`} />
       </Stack>}
 
       {step === 3 && <Card variant="outlined"><CardContent><Stack spacing={1}>
@@ -399,8 +399,8 @@ export function LessonWizardPage() {
       <Box data-testid="sticky-action-bar" data-wizard-action sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1, mt: 2, borderTop: 1, borderColor: "divider" }}>
         <Stack direction="row" spacing={1}>
           {lesson?.status === "DRAFT" && <Button color="error" variant="outlined" disabled={busy} onClick={() => setCancelOpen(true)}>Hủy bản nháp</Button>}
-          {step > 0 && <Button fullWidth variant="outlined" sx={{ minHeight: 48 }} disabled={busy} onClick={() => setStep((value) => value - 1)}>Quay lại</Button>}
-          <Button fullWidth variant="contained" sx={{ minHeight: 48 }} disabled={busy || lesson?.status === "CANCELLED" || (lesson?.status === "COMPLETED" && step === 3) || (step === 1 && !participants.length) || (step === 0 && scheduleWarnings.length > 0 && !conflictsConfirmed)} onClick={step === 0 ? saveInformation : step === 1 ? saveAttendance : step === 2 ? saveContent : complete}>
+          {step > 0 && <Button fullWidth variant="outlined" sx={{ minHeight: { xs: 48, md: 40 }, width: { md: 180 } }} disabled={busy} onClick={() => setStep((value) => value - 1)}>Quay lại</Button>}
+          <Button fullWidth variant="contained" sx={{ minHeight: { xs: 48, md: 40 }, width: { md: 220 } }} disabled={busy || lesson?.status === "CANCELLED" || (lesson?.status === "COMPLETED" && step === 3) || (step === 1 && !participants.length) || (step === 0 && scheduleWarnings.length > 0 && !conflictsConfirmed)} onClick={step === 0 ? saveInformation : step === 1 ? saveAttendance : step === 2 ? saveContent : complete}>
             {busy ? "Đang lưu…" : step === 3 ? (lesson?.status === "COMPLETED" ? "Đã hoàn thành" : "Hoàn tất ghi nhận") : "Lưu và tiếp tục"}
           </Button>
         </Stack>

@@ -178,6 +178,24 @@ try {
     };
   })()`);
   if (desktopShell.mobileNav !== "none" || desktopShell.desktopNav === "none" || desktopShell.contentWidth < 900 || desktopShell.eventColumns < 2 || desktopShell.overflow > 1) throw new Error(`Invalid desktop shell: ${JSON.stringify(desktopShell)}`);
+  await cdp.screenshot("dashboard-1440");
+  for (const pageAudit of [
+    { path: "/admin/calendar", testId: "weekly-calendar", name: "calendar-1440" },
+    { path: "/admin/tuition", testId: "tuition-list-page", name: "tuition-1440" },
+    { path: "/admin/students", testId: "student-list-page", name: "students-1440" },
+  ]) {
+    await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${pageAudit.path}`)})`);
+    await cdp.wait(`!!document.querySelector('[data-testid=${pageAudit.testId}]')`, pageAudit.name);
+    const desktopDensity = await cdp.eval(`(() => ({
+      overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth,
+      inputHeights: [...document.querySelectorAll('.MuiOutlinedInput-root')].filter((element) => element.offsetParent !== null).map((element) => element.getBoundingClientRect().height),
+      buttonHeights: [...document.querySelectorAll('.MuiButton-root')].filter((element) => element.offsetParent !== null).map((element) => element.getBoundingClientRect().height),
+    }))()`);
+    if (desktopDensity.overflow > 1 || desktopDensity.inputHeights.some((height) => height > 39) || desktopDensity.buttonHeights.some((height) => height > 42)) throw new Error(`Invalid desktop density on ${pageAudit.path}: ${JSON.stringify(desktopDensity)}`);
+    await cdp.screenshot(pageAudit.name);
+  }
+  await cdp.eval("location.assign('http://127.0.0.1:5174/admin')");
+  await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "desktop dashboard restore");
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 360, height: 800, deviceScaleFactor: 1, mobile: true });
   await cdp.send("Page.reload"); await new Promise((resolve) => setTimeout(resolve, 350)); await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "360px dashboard");
   if (await cdp.eval("document.documentElement.scrollWidth-document.documentElement.clientWidth") > 1) throw new Error("Dashboard overflows at 360px");
@@ -189,6 +207,23 @@ try {
   }
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await cdp.send("Page.reload"); await new Promise((resolve) => setTimeout(resolve, 350)); await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "restored mobile dashboard");
+  for (const pageAudit of [
+    { path: "/admin/calendar", testId: "weekly-calendar", name: "calendar-390" },
+    { path: "/admin/tuition", testId: "tuition-list-page", name: "tuition-390" },
+    { path: "/admin/students", testId: "student-list-page", name: "students-390" },
+  ]) {
+    await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${pageAudit.path}`)})`);
+    await cdp.wait(`!!document.querySelector('[data-testid=${pageAudit.testId}]')`, pageAudit.name);
+    const mobileDensity = await cdp.eval(`(() => ({
+      overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth,
+      inputHeights: [...document.querySelectorAll('.MuiOutlinedInput-root')].filter((element) => element.offsetParent !== null).map((element) => element.getBoundingClientRect().height),
+      buttonHeights: [...document.querySelectorAll('.MuiButton-root')].filter((element) => element.offsetParent !== null).map((element) => element.getBoundingClientRect().height),
+    }))()`);
+    if (mobileDensity.overflow > 1 || mobileDensity.inputHeights.some((height) => height < 44) || mobileDensity.buttonHeights.some((height) => height < 44)) throw new Error(`Invalid mobile density on ${pageAudit.path}: ${JSON.stringify(mobileDensity)}`);
+    await cdp.screenshot(pageAudit.name);
+  }
+  await cdp.eval("location.assign('http://127.0.0.1:5174/admin')");
+  await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "mobile dashboard restore");
 
   await cdp.clickText("Lớp học"); await cdp.wait("location.pathname==='/admin/classes' && document.body.innerText.includes('Thêm lớp')", "classes"); await cdp.screenshot("class-list-390"); await cdp.clickText("Thêm lớp");
   await cdp.wait("location.pathname==='/admin/classes/new' && document.body.innerText.includes('Tên lớp')", "class form");

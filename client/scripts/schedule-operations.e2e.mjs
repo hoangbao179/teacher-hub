@@ -273,8 +273,12 @@ try {
   }
   await page.setViewportSize({ width: 360, height: 800 });
   const actionBoxes = await Promise.all(["Ghi nhận buổi học", "Buổi học bù", "Kiểm tra lịch tuần"].map((name) => page.getByRole("link", { name, exact: true }).boundingBox()));
-  if (!actionBoxes.every(Boolean) || Math.abs(actionBoxes[0].width - actionBoxes[1].width) > 1 || Math.abs(actionBoxes[0].x - actionBoxes[2].x) > 1 || actionBoxes[2].width < actionBoxes[0].width * 1.9)
+  if (!actionBoxes.every(Boolean) || actionBoxes.some((box) => Math.abs(box.width - actionBoxes[0].width) > 1 || Math.abs(box.x - actionBoxes[0].x) > 1 || box.height < 44) || !(actionBoxes[0].y < actionBoxes[1].y && actionBoxes[1].y < actionBoxes[2].y))
     throw new Error(`Calendar quick actions are not aligned at 360px: ${JSON.stringify(actionBoxes)}`);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const desktopActionBoxes = await Promise.all(["Ghi nhận buổi học", "Buổi học bù", "Kiểm tra lịch tuần"].map((name) => page.getByRole("link", { name, exact: true }).boundingBox()));
+  if (!desktopActionBoxes.every(Boolean) || desktopActionBoxes.some((box) => Math.abs(box.y - desktopActionBoxes[0].y) > 1) || desktopActionBoxes.reduce((total, box) => total + box.width, 0) > 600)
+    throw new Error(`Calendar quick actions are not compact at 1280px: ${JSON.stringify(desktopActionBoxes)}`);
   await page.setViewportSize({ width: 390, height: 844 });
   const screenshot = path.join(artifactDir, "weekly-calendar-390.png");
   await page.screenshot({ path: screenshot, fullPage: true });

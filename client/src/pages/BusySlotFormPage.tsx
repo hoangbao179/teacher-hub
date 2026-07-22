@@ -104,12 +104,12 @@ export function BusySlotFormPage() {
         <TextField fullWidth required type="time" label="Kết thúc" value={endTime} onChange={(event) => setEndTime(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       </Stack>
       <TextField label="Địa điểm (tùy chọn)" value={location} onChange={(event) => setLocation(event.target.value)} />
-      <TextField multiline minRows={3} label="Ghi chú lịch bận (tùy chọn)" value={note} onChange={(event) => setNote(event.target.value)} />
+      <TextField multiline minRows={2} label="Ghi chú lịch bận (tùy chọn)" value={note} onChange={(event) => setNote(event.target.value)} />
       <Alert severity="info">Lịch bận không có học sinh, điểm danh hoặc học phí.</Alert>
     </FormSection>
     <StickyActionBar>
       {slotId && <Button color="error" variant="outlined" disabled={busy} onClick={() => setConfirmDelete(true)}>Xóa</Button>}
-      <Button fullWidth size="large" variant="contained" disabled={!valid || busy} onClick={() => void submit()}>{busy ? "Đang lưu…" : "Lưu lịch bận"}</Button>
+      <Button fullWidth size="large" variant="contained" disabled={!valid || busy} onClick={() => void submit()} sx={{ width: { md: "auto" }, alignSelf: { md: "flex-start" } }}>{busy ? "Đang lưu…" : "Lưu lịch bận"}</Button>
     </StickyActionBar>
     <ConfirmationDialog open={confirmDelete} title="Xóa lịch bận?" confirmLabel="Xóa lịch bận" destructive busy={busy} onCancel={() => setConfirmDelete(false)} onConfirm={() => void remove()}>
       Thao tác chỉ xóa lịch bận này và không ảnh hưởng buổi học hoặc học phí.

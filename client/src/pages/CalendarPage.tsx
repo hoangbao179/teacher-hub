@@ -65,15 +65,15 @@ export function CalendarPage() {
 
   return <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="weekly-calendar">
     <PageHeader title="Lịch tuần" action={<Button size="small" startIcon={<Add />} component={Link} to="/admin/busy-slots">Lịch bận</Button>} />
-    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+    <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", width: "100%", maxWidth: 500 }}>
       <IconButton aria-label="Tuần trước" onClick={() => { setData(null); setError(""); setFrom(addDays(from, -7)); }}><ChevronLeft /></IconButton>
       <TextField fullWidth type="date" label="Tuần bắt đầu" value={from} onChange={(event) => { setData(null); setError(""); setFrom(weekStart(event.target.value)); }} slotProps={{ inputLabel: { shrink: true } }} />
       <IconButton aria-label="Tuần sau" onClick={() => { setData(null); setError(""); setFrom(addDays(from, 7)); }}><ChevronRight /></IconButton>
     </Stack>
-    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
-      <Button fullWidth variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`}>Ghi nhận buổi học</Button>
-      <Button fullWidth variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`}>Buổi học bù</Button>
-      <Button fullWidth variant="outlined" component={Link} sx={{ gridColumn: "1 / -1" }} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`}>Kiểm tra lịch tuần</Button>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(3, max-content)" }, gap: 1, justifyContent: "start" }}>
+      <Button variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`}>Ghi nhận buổi học</Button>
+      <Button variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`}>Buổi học bù</Button>
+      <Button variant="outlined" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`}>Kiểm tra lịch tuần</Button>
     </Box>
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     {!data && !error && <LoadingCards />}

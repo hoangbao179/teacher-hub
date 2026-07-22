@@ -17,7 +17,7 @@ export const uiTokens = {
   navigationHeight: 64,
   desktopNavigationWidth: 232,
   contentWidth: 1160,
-  formWidth: 680,
+  formWidth: 620,
   colors: {
     canvas: "#f7f7fb",
     surface: "#ffffff",
@@ -93,14 +93,24 @@ export const theme = createTheme({
     MuiButtonBase: {
       styleOverrides: {
         root: {
-          minHeight: uiTokens.touchTarget,
           "&:focus-visible": { outline: "3px solid #2f6fed", outlineOffset: 2 },
         },
       },
     },
     MuiButton: {
       defaultProps: { disableElevation: true },
-      styleOverrides: { root: { minHeight: uiTokens.buttonHeight, borderRadius: uiTokens.compactRadius, paddingInline: 16 } },
+      styleOverrides: {
+        root: {
+          minHeight: uiTokens.buttonHeight,
+          borderRadius: uiTokens.compactRadius,
+          paddingInline: 16,
+          "@media (min-width:768px)": { minHeight: 38, paddingInline: 14 },
+        },
+        sizeLarge: { "@media (min-width:768px)": { minHeight: 42, paddingInline: 14 } },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: { root: { minWidth: uiTokens.touchTarget, minHeight: uiTokens.touchTarget } },
     },
     MuiCard: {
       styleOverrides: { root: { backgroundImage: "none", borderColor: uiTokens.colors.border } },
@@ -137,8 +147,19 @@ export const theme = createTheme({
     MuiDialogTitle: { styleOverrides: { root: { fontSize: 18, lineHeight: 1.4, fontWeight: 700 } } },
     MuiOutlinedInput: {
       styleOverrides: {
-        root: { minHeight: uiTokens.touchTarget },
-        input: { padding: "11px 14px", "&.MuiInputBase-inputMultiline": { padding: 0 } },
+        root: {
+          minHeight: uiTokens.touchTarget,
+          "&.MuiInputBase-multiline": { padding: "10px 12px" },
+          "@media (min-width:768px)": {
+            minHeight: 38,
+            "&.MuiInputBase-multiline": { minHeight: 0, padding: "8px 12px" },
+          },
+        },
+        input: {
+          padding: "10px 12px",
+          "&.MuiInputBase-inputMultiline": { padding: 0 },
+          "@media (min-width:768px)": { padding: "8px 12px" },
+        },
       },
     },
     MuiFormLabel: { styleOverrides: { root: { fontSize: 14 } } },

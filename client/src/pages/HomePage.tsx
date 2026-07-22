@@ -1,18 +1,15 @@
 import {
-  ArrowForward,
   AutoStories,
   ChatBubbleOutlined,
   CheckCircleOutlined,
   ChevronLeft,
   ChevronRight,
-  EditOutlined,
   Facebook,
   FormatQuote,
   LightbulbOutlined,
   MenuBook,
   PlayArrow,
   School,
-  StarOutlined,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -53,7 +50,7 @@ function LearningVideo({ video }: { video: (typeof content.videos)[number] }) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
 
   return (
-    <Card component="article" variant="outlined" sx={{ overflow: "hidden", height: "100%", borderRadius: 3 }}>
+    <Card component="article" variant="outlined" sx={{ overflow: "hidden", height: "100%", borderRadius: 3, display: "flex", flexDirection: "column" }}>
       {id && playing ? (
         <Box
           component="iframe"
@@ -91,7 +88,7 @@ function LearningVideo({ video }: { video: (typeof content.videos)[number] }) {
           <Typography color="text.secondary">Video hiện chưa khả dụng.</Typography>
         </Box>
       )}
-      <CardContent>
+      <CardContent sx={{ flex: 1 }}>
         <Typography component="h3" variant="h6">{video.title}</Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5 }}>{video.description}</Typography>
       </CardContent>
@@ -152,8 +149,6 @@ function HeroCarousel() {
       data-testid="hero-carousel"
       data-active-slide={slide.id}
       tabIndex={0}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false); }}
       onKeyDown={(event) => {
@@ -171,7 +166,7 @@ function HeroCarousel() {
       }}
       sx={{
         position: "relative",
-        height: { xs: "clamp(360px, 100vw, 420px)", sm: 440, md: 480 },
+        height: { xs: 240, sm: 276, md: 300 },
         display: "grid", alignItems: "end", color: "white", bgcolor: "#24173f", overflow: "hidden", outline: 0, touchAction: "pan-y",
       }}
     >
@@ -182,7 +177,7 @@ function HeroCarousel() {
           aria-hidden={index !== active}
           sx={{
             position: "absolute", inset: 0, opacity: index === active ? 1 : 0,
-            transition: reduceMotion ? "none" : "opacity 520ms ease",
+            transition: reduceMotion ? "none" : "opacity 400ms ease",
           }}
         >
           <source media="(max-width: 720px)" srcSet={item.mobileImage} />
@@ -196,42 +191,19 @@ function HeroCarousel() {
             fetchPriority={index === 0 ? "high" : "auto"}
             sx={{
               width: "100%", height: "100%", objectFit: "cover", objectPosition: item.focalPosition,
-              transform: index === active && !reduceMotion ? "scale(1.015)" : "scale(1)",
-              transition: reduceMotion ? "none" : "transform 5.5s ease-out",
             }}
           />
         </Box>
       ))}
-      <Box aria-hidden="true" sx={{ position: "absolute", inset: 0, background: { xs: "linear-gradient(0deg,rgba(22,12,42,.95) 2%,rgba(22,12,42,.5) 72%,rgba(22,12,42,.18))", md: "linear-gradient(90deg,rgba(22,12,42,.93),rgba(22,12,42,.52) 48%,rgba(22,12,42,.08) 78%)" } }} />
+      <Box aria-hidden="true" sx={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(22,12,42,.28),transparent 24%)" }} />
 
-      <Box aria-hidden="true" sx={{ position: "absolute", inset: 0, pointerEvents: "none", display: { xs: "none", sm: "block" } }}>
-        <AutoStories sx={{ position: "absolute", right: "8%", top: "16%", color: "#ffe799", fontSize: 38, transform: "rotate(8deg)" }} />
-        <StarOutlined sx={{ position: "absolute", right: "20%", top: "8%", color: "#d9ceff", fontSize: 26 }} />
-        <EditOutlined sx={{ position: "absolute", right: "4%", bottom: "23%", color: "#a9e8ce", fontSize: 34, transform: "rotate(-12deg)" }} />
-        <ChatBubbleOutlined sx={{ position: "absolute", left: "52%", top: "18%", color: "rgba(255,255,255,.75)", fontSize: 30 }} />
-      </Box>
-
-      <Container maxWidth="lg" sx={{ position: "relative", pb: { xs: 4.5, sm: 5.5 }, pt: { xs: 5, sm: 6 } }}>
-        <Box role="group" aria-roledescription="slide" aria-label={`${active + 1} / ${slides.length}: ${slide.title}`} sx={{ maxWidth: 620 }}>
-          <Typography sx={{ color: "#e8ddff", fontSize: { xs: 12.5, sm: 14 }, fontWeight: 700 }}>{slide.eyebrow}</Typography>
-          <Typography id="hero-heading" component="h1" sx={{ fontSize: { xs: "1.9rem", sm: "3rem" }, lineHeight: 1.08, fontWeight: 800, mt: 0.75, maxWidth: 590 }}>{slide.title}</Typography>
-          <Typography sx={{ mt: 1.25, fontSize: { xs: "0.95rem", sm: "1.14rem" }, fontWeight: 600, maxWidth: 560 }}>{slide.description}</Typography>
-          <Box sx={{ mt: { xs: 2, sm: 2.5 }, maxWidth: { sm: 360 } }}>
-            <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" size="large" fullWidth endIcon={<ArrowForward />}>
-              {content.contact.heroCtaLabel}
-            </Button>
-            <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "rgba(255,255,255,.86)", textAlign: "center" }}>{content.contact.heroCtaHint}</Typography>
-          </Box>
-        </Box>
-      </Container>
-
-      <IconButton aria-label="Slide trước" onClick={() => move(-1)} sx={{ position: "absolute", left: { xs: 8, sm: 18 }, top: { xs: "30%", sm: "42%" }, bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronLeft /></IconButton>
-      <IconButton aria-label="Slide tiếp theo" onClick={() => move(1)} sx={{ position: "absolute", right: { xs: 8, sm: 18 }, top: { xs: "30%", sm: "42%" }, bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronRight /></IconButton>
-      <Stack direction="row" spacing={0.75} sx={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)" }}>
+      <IconButton aria-label="Slide trước" onClick={() => move(-1)} sx={{ position: "absolute", left: { xs: 8, sm: 18 }, top: "50%", transform: "translateY(-50%)", bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronLeft /></IconButton>
+      <IconButton aria-label="Slide tiếp theo" onClick={() => move(1)} sx={{ position: "absolute", right: { xs: 8, sm: 18 }, top: "50%", transform: "translateY(-50%)", bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronRight /></IconButton>
+      <Stack direction="row" spacing={0.25} sx={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)" }}>
         {slides.map((item, index) => (
           <IconButton
             key={item.id}
-            aria-label={`Chuyển đến slide ${index + 1}: ${item.title}`}
+            aria-label={`Chuyển đến slide ${index + 1}`}
             aria-current={index === active ? "true" : undefined}
             onClick={() => setActive(index)}
             sx={{ minWidth: 44, width: 44, height: 44, p: 0 }}
@@ -254,7 +226,7 @@ export function HomePage() {
         <Container maxWidth="lg">
           <Toolbar disableGutters sx={{ minHeight: 64 }}>
             <School color="primary" aria-hidden="true" />
-            <Typography variant="subtitle1" sx={{ ml: 1, flexGrow: 1 }}>{content.brandName}</Typography>
+            <Typography component="h1" variant="subtitle1" sx={{ ml: 1, flexGrow: 1 }}>{content.brandName}</Typography>
             <Button component="a" href="#contact" size="small">Liên hệ</Button>
             <Button component={Link} to="/admin/login" size="small" color="inherit">Quản trị</Button>
           </Toolbar>
@@ -320,8 +292,8 @@ export function HomePage() {
             <Typography variant="overline" color="primary">VIDEO HỌC TẬP</Typography>
             <Typography id="videos-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Xem thử cách tiếp cận bài học</Typography>
             <Typography color="text.secondary" sx={{ mt: 1 }}>Player chỉ được tải sau khi bạn chọn phát video.</Typography>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2, mt: 3.5 }}>
-              {content.videos.map((video) => <LearningVideo key={video.url} video={video} />)}
+            <Box data-testid="learning-video-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 1.5, md: 2.5 }, mt: 3.5, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, pb: { xs: 1, md: 0 }, scrollbarWidth: "thin" }}>
+              {content.videos.map((video) => <Box key={video.url} sx={{ flex: { xs: "0 0 90vw", md: "initial" }, maxWidth: { xs: 560, md: "none" }, scrollSnapAlign: "start" }}><LearningVideo video={video} /></Box>)}
             </Box>
           </Box>
         </Container>

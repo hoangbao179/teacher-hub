@@ -104,6 +104,6 @@ export function ClassFormPage() {
       <Button startIcon={<Add />} onClick={() => setSchedules((old) => [...old, { ...emptySchedule }])}>Thêm lịch</Button>
     </FormSection>
     <FormSection title="Ghi chú"><TextField multiline minRows={2} label="Ghi chú" value={note} onChange={(e) => setNote(e.target.value)} /></FormSection>
-    <Button type="submit" variant="contained" size="large" disabled={saving}>{saving ? "Đang lưu…" : "Lưu lớp"}</Button>
+    <Button type="submit" variant="contained" size="large" disabled={saving} sx={{ alignSelf: { md: "flex-start" } }}>{saving ? "Đang lưu…" : "Lưu lớp"}</Button>
   </Stack>;
 }

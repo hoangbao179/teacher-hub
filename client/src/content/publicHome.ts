@@ -6,9 +6,6 @@ export interface PublicVideo {
 
 export interface PublicHeroSlide {
   id: string;
-  eyebrow: string;
-  title: string;
-  description: string;
   mobileImage: string;
   desktopImage: string;
   focalPosition: string;
@@ -38,6 +35,11 @@ const defaultVideos: PublicVideo[] = [
     title: "Từ vựng tiếng Anh qua ngữ cảnh",
     description: "Video tham khảo giúp học sinh nghe, nhắc lại và ghi nhớ từ mới trong tình huống gần gũi.",
     url: "https://www.youtube.com/watch?v=H6SSRhF9K3A",
+  },
+  {
+    title: "Hoạt động hằng ngày bằng tiếng Anh",
+    description: "Video tham khảo giúp học sinh luyện nghe và nhắc lại những từ, mẫu câu quen thuộc trong một ngày.",
+    url: "https://www.youtube.com/watch?v=qD1pnquN_DM",
   },
 ];
 
@@ -86,13 +88,10 @@ export const publicHomeContent = {
   levels: "Lớp 1–9",
   location: "Huế",
   heroDescription: "Kèm cặp 1–1 và lớp nhóm nhỏ, bám sát năng lực từng học sinh.",
-  carouselIntervalMs: 5_500,
+  carouselIntervalMs: 2_000,
   heroSlides: [
     {
       id: "foundation",
-      eyebrow: "Cô Vy · Tiếng Anh lớp 1–9 tại Huế",
-      title: "Tiếng Anh vững nền tảng",
-      description: "Tự tin tiến bộ mỗi ngày",
       mobileImage: "/images/teacher-english-hero-720.jpg",
       desktopImage: "/images/teacher-english-hero-1440.jpg",
       focalPosition: "center",
@@ -100,9 +99,6 @@ export const publicHomeContent = {
     },
     {
       id: "secondary",
-      eyebrow: "Củng cố kiến thức và bám sát chương trình",
-      title: "Tiếng Anh lớp 6–9",
-      description: "Ngữ pháp, đọc hiểu, viết và kỹ năng làm bài",
       mobileImage: "/images/teacher-secondary-study-720.jpg",
       desktopImage: "/images/teacher-secondary-study-1440.jpg",
       focalPosition: "58% center",
@@ -130,8 +126,6 @@ export const publicHomeContent = {
   contact: {
     zaloUrl,
     facebookUrl,
-    heroCtaLabel: "Nhắn Zalo cho cô Vy",
-    heroCtaHint: "Trao đổi nhanh về tình hình học của con",
     heading: "Cùng cô Vy tìm cách học phù hợp cho con",
     description: "Ba mẹ có thể nhắn cô Vy để chia sẻ tình hình học hiện tại, thời gian phù hợp và phần con đang cần hỗ trợ. Cô sẽ trao đổi thêm về lớp học và cách học phù hợp.",
     highlights: ["Lớp 1–9", "1–1 hoặc nhóm nhỏ", "Tại Huế"],
