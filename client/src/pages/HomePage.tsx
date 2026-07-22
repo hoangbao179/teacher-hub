@@ -51,26 +51,27 @@ function LearningVideo({ video }: { video: (typeof content.videos)[number] }) {
 
   return (
     <Card component="article" variant="outlined" sx={{ overflow: "hidden", height: "100%", borderRadius: 3, display: "flex", flexDirection: "column" }}>
-      {id && playing ? (
-        <Box
-          component="iframe"
-          title={video.title}
-          src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1`}
-          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          sx={{ width: "100%", aspectRatio: "16 / 9", display: "block", border: 0 }}
-        />
-      ) : id && !thumbnailFailed ? (
-        <Box sx={{ position: "relative", aspectRatio: "16 / 9", bgcolor: "grey.900" }}>
+      <Box data-testid="learning-video-media" sx={{ position: "relative", aspectRatio: "16 / 9", flexShrink: 0, overflow: "hidden", bgcolor: "grey.100" }}>
+        {id && playing ? (
+          <Box
+            component="iframe"
+            title={video.title}
+            src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1`}
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", border: 0 }}
+          />
+        ) : id && !thumbnailFailed ? (
+          <>
           <Box
             component="img"
-            src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`}
+            src={`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`}
             alt=""
-            width="480"
-            height="360"
+            width="1280"
+            height="720"
             loading="lazy"
             onError={() => setThumbnailFailed(true)}
-            sx={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.86 }}
+            sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.9 }}
           />
           <IconButton
             aria-label={`Phát video: ${video.title}`}
@@ -82,12 +83,13 @@ function LearningVideo({ video }: { video: (typeof content.videos)[number] }) {
           >
             <PlayArrow fontSize="large" />
           </IconButton>
-        </Box>
-      ) : (
-        <Box role="status" sx={{ aspectRatio: "16 / 9", display: "grid", placeItems: "center", bgcolor: "grey.100", p: 2 }}>
+          </>
+        ) : (
+        <Box role="status" sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", p: 2 }}>
           <Typography color="text.secondary">Video hiện chưa khả dụng.</Typography>
         </Box>
-      )}
+        )}
+      </Box>
       <CardContent sx={{ flex: 1 }}>
         <Typography component="h3" variant="h6">{video.title}</Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5 }}>{video.description}</Typography>

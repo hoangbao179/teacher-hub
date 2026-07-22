@@ -135,11 +135,14 @@ try {
   if (await page.locator('iframe[src*="youtube"]').count()) throw new Error("YouTube iframe loaded before interaction");
   assert(await page.getByTestId("learning-video-list").locator("article").count() === 2, "Homepage must render exactly two learning videos");
   const videoThumbnails = await page.getByTestId("learning-video-list").locator('img[src*="i.ytimg.com"]').evaluateAll((images) => images.map((image) => image.getAttribute("src")));
-  assert(new Set(videoThumbnails).size === 2 && videoThumbnails.some((src) => src?.includes("qD1pnquN_DM")), `Learning videos are missing or duplicated: ${videoThumbnails.join(", ")}`);
+  assert(new Set(videoThumbnails).size === 2 && videoThumbnails.every((src) => src?.endsWith("/maxresdefault.jpg")) && videoThumbnails.some((src) => src?.includes("qD1pnquN_DM")), `Learning videos are missing, duplicated or not 16:9 thumbnails: ${videoThumbnails.join(", ")}`);
+  const mediaBeforePlay = await page.getByTestId("learning-video-media").first().boundingBox();
   await page.getByRole("button", { name: /Phát video:/ }).first().click();
   const iframe = page.locator('iframe[src*="youtube-nocookie.com/embed/"]').first();
   await iframe.waitFor();
   assert(Boolean(await iframe.getAttribute("title")), "Learning video iframe has no accessible title");
+  const mediaAfterPlay = await page.getByTestId("learning-video-media").first().boundingBox();
+  assert(mediaBeforePlay && mediaAfterPlay && Math.abs(mediaBeforePlay.width - mediaAfterPlay.width) <= 1 && Math.abs(mediaBeforePlay.height - mediaAfterPlay.height) <= 1, `Video media frame shifts after play: ${JSON.stringify({ mediaBeforePlay, mediaAfterPlay })}`);
 
   const metadata = await page.evaluate(() => ({
     title: document.title,
