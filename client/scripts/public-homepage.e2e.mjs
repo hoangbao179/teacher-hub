@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, URL, document, getComputedStyle, HTMLElement, window */
+/* global process, fetch, setTimeout, console, URL, document, getComputedStyle, window */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -48,50 +48,9 @@ try {
   }));
   await page.goto(origin, { waitUntil: "networkidle" });
 
-  const carousel = page.getByTestId("hero-carousel");
   await page.getByRole("heading", { level: 1, name: "Lớp học cô Vy" }).waitFor();
   assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1");
-  assert(await carousel.getAttribute("aria-roledescription") === "carousel", "Carousel semantics are missing");
-  assert((await carousel.innerText()).trim() === "", "Hero must not overlay copy or CTA on its images");
-  assert(await carousel.locator('img[fetchpriority="high"]').count() === 1, "The first hero image is not the sole high-priority image");
-  assert(await carousel.locator('img[loading="lazy"]').count() === 1, "The later hero image is not lazy loaded");
-  const heroSources = await carousel.locator("picture img").evaluateAll((images) => images.map((image) => image.getAttribute("src")));
-  assert(JSON.stringify(heroSources) === JSON.stringify([
-    "/images/teacher-english-hero-1440.jpg",
-    "/images/teacher-secondary-study-1440.jpg",
-  ]), `Hero slides do not use the two approved desktop images: ${heroSources.join(", ")}`);
-  const heroMobileSources = await carousel.locator("picture source").evaluateAll((sources) => sources.map((source) => source.getAttribute("srcset")));
-  assert(JSON.stringify(heroMobileSources) === JSON.stringify([
-    "/images/teacher-english-hero-720.jpg",
-    "/images/teacher-secondary-study-720.jpg",
-  ]), `Hero slides do not use the two approved mobile images: ${heroMobileSources.join(", ")}`);
-
-  await page.getByRole("button", { name: "Slide tiếp theo" }).click();
-  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Next control did not advance the carousel");
-  await page.getByRole("button", { name: "Slide trước" }).click();
-  assert(await carousel.getAttribute("data-active-slide") === "foundation", "Previous control did not return the carousel");
-  await page.getByRole("button", { name: "Chuyển đến slide 2" }).click();
-  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Pagination indicator did not select slide 2");
-  await carousel.focus();
-  await carousel.press("ArrowLeft");
-  assert(await carousel.getAttribute("data-active-slide") === "foundation", "Keyboard navigation did not select the previous slide");
-
-  await page.getByRole("button", { name: "Chuyển đến slide 1" }).click();
-  await page.evaluate(() => (document.activeElement instanceof HTMLElement) && document.activeElement.blur());
-  const autoplayBox = await carousel.boundingBox();
-  assert(Boolean(autoplayBox), "Carousel has no layout box");
-  await page.mouse.move(autoplayBox.x + autoplayBox.width / 2, autoplayBox.y + autoplayBox.height / 2);
-  await page.waitForTimeout(2_250);
-  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Carousel did not auto-transition after 2 seconds while hovered");
-
-  await page.getByRole("button", { name: "Chuyển đến slide 1" }).click();
-  const box = await carousel.boundingBox();
-  assert(Boolean(box), "Carousel has no layout box");
-  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.45);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.45, { steps: 5 });
-  await page.mouse.up();
-  assert(await carousel.getAttribute("data-active-slide") === "secondary", "Horizontal swipe did not advance the carousel");
+  assert(await page.getByTestId("hero-carousel").count() === 0, "Homepage still renders the removed slideshow");
 
   for (const heading of ["Xin chào, cô là Uyên Vy.", "Tiếng Anh lớp 1–9", "Rõ ràng, vừa sức", "Xem thử cách", "Phản hồi từ phụ huynh", "Cùng cô Vy tìm cách học phù hợp cho con"]) {
     await page.getByRole("heading", { name: new RegExp(heading) }).first().waitFor();
@@ -179,21 +138,17 @@ try {
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.goto(origin, { waitUntil: "domcontentloaded" });
-    await page.getByTestId("hero-carousel").waitFor();
+    await page.locator("#about").waitFor();
     const metrics = await page.evaluate(() => {
-      const hero = document.querySelector('[data-testid="hero-carousel"]');
       const about = document.querySelector("#about");
       return {
-        heroHeight: hero?.getBoundingClientRect().height ?? 0,
         aboutTop: about?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         labels: [...document.querySelectorAll("button,a")].filter((item) => getComputedStyle(item).display !== "none").map((item) => item.textContent?.trim()),
       };
     });
     assert(metrics.overflow <= 1, `Homepage overflow at ${viewport.width}px: ${metrics.overflow}px`);
-    if (viewport.width <= 430) assert(metrics.heroHeight >= 230 && metrics.heroHeight <= 250, `Hero height ${metrics.heroHeight}px is outside 230–250 at ${viewport.width}px`);
-    else assert(metrics.heroHeight === 300, `Desktop hero height ${metrics.heroHeight}px is not 300px`);
-    if (viewport.width <= 430) assert(metrics.aboutTop < viewport.height, `Next section is not discoverable at ${viewport.width}px`);
+    if (viewport.width <= 430) assert(metrics.aboutTop < viewport.height, `Introduction is not discoverable at ${viewport.width}px`);
     assert(metrics.labels.includes("Nhắn Zalo"), `Contact Zalo CTA is not visible at ${viewport.width}px`);
     const videoLayout = await page.getByTestId("learning-video-list").evaluate((element) => {
       const cards = [...element.children].map((child) => child.getBoundingClientRect());
@@ -218,14 +173,7 @@ try {
   const reducedContext = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   const reducedPage = await reducedContext.newPage();
   await reducedPage.goto(origin, { waitUntil: "domcontentloaded" });
-  const reducedCarousel = reducedPage.getByTestId("hero-carousel");
-  const reducedBefore = await reducedCarousel.getAttribute("data-active-slide");
-  await reducedPage.waitForTimeout(5_800);
-  assert(await reducedCarousel.getAttribute("data-active-slide") === reducedBefore, "Reduced motion did not disable autoplay");
-  assert(await reducedCarousel.evaluate((element) => element.getAnimations({ subtree: true }).filter((animation) => animation.playState === "running").length) === 0, "Reduced-motion carousel still has a running animation");
   assert(await reducedPage.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior) === "auto", "Reduced motion does not restore normal scrolling");
-  await reducedPage.getByRole("button", { name: "Slide tiếp theo" }).click();
-  assert(await reducedCarousel.getAttribute("data-active-slide") !== reducedBefore, "Reduced motion disabled manual navigation");
   await reducedContext.close();
 
   await page.goto(`${origin}/admin/login`);

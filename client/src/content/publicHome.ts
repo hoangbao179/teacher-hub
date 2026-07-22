@@ -4,14 +4,6 @@ export interface PublicVideo {
   url: string;
 }
 
-export interface PublicHeroSlide {
-  id: string;
-  mobileImage: string;
-  desktopImage: string;
-  focalPosition: string;
-  alt: string;
-}
-
 export interface PublicTestimonial {
   id: string;
   guardianLabel: string;
@@ -88,23 +80,6 @@ export const publicHomeContent = {
   levels: "Lớp 1–9",
   location: "Huế",
   heroDescription: "Kèm cặp 1–1 và lớp nhóm nhỏ, bám sát năng lực từng học sinh.",
-  carouselIntervalMs: 2_000,
-  heroSlides: [
-    {
-      id: "foundation",
-      mobileImage: "/images/teacher-english-hero-720.jpg",
-      desktopImage: "/images/teacher-english-hero-1440.jpg",
-      focalPosition: "center",
-      alt: "Góc học tập tiếng Anh với sách, thẻ từ và đồ dùng học tập",
-    },
-    {
-      id: "secondary",
-      mobileImage: "/images/teacher-secondary-study-720.jpg",
-      desktopImage: "/images/teacher-secondary-study-1440.jpg",
-      focalPosition: "58% center",
-      alt: "Không gian học tập với sách, vở và máy tính",
-    },
-  ] satisfies PublicHeroSlide[],
   introduction: "Cô Vy đồng hành cùng học sinh từ lớp 1 đến lớp 9 theo mục tiêu phù hợp: xây nền, củng cố phần còn yếu và bám sát chương trình trên trường.",
   teacherProfile: {
     greeting: "Xin chào, cô là Uyên Vy.",

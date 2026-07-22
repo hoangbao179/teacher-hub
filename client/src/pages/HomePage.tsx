@@ -2,8 +2,6 @@ import {
   AutoStories,
   ChatBubbleOutlined,
   CheckCircleOutlined,
-  ChevronLeft,
-  ChevronRight,
   Facebook,
   FormatQuote,
   LightbulbOutlined,
@@ -23,9 +21,8 @@ import {
   Stack,
   Toolbar,
   Typography,
-  useMediaQuery,
 } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   isDevelopmentContent,
@@ -110,114 +107,6 @@ const testimonialTone = [
   { background: "linear-gradient(145deg, #f2edff, #fbf9ff)", border: "#d9cef7", accent: "#7655c8" },
 ] as const;
 
-function HeroCarousel() {
-  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [tabHidden, setTabHidden] = useState(() => document.hidden);
-  const pointerStart = useRef<number | null>(null);
-  const slides = content.heroSlides;
-
-  const move = (direction: number) => setActive((current) => (current + direction + slides.length) % slides.length);
-
-  useEffect(() => {
-    const onVisibility = () => setTabHidden(document.hidden);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
-
-  useEffect(() => {
-    const preload = window.setTimeout(() => {
-      for (const slide of slides.slice(1)) {
-        const mobile = new Image(); mobile.src = slide.mobileImage;
-        const desktop = new Image(); desktop.src = slide.desktopImage;
-      }
-    }, 0);
-    return () => window.clearTimeout(preload);
-  }, [slides]);
-
-  useEffect(() => {
-    if (reduceMotion || paused || tabHidden) return;
-    const timer = window.setInterval(() => setActive((current) => (current + 1) % slides.length), content.carouselIntervalMs);
-    return () => window.clearInterval(timer);
-  }, [paused, reduceMotion, slides.length, tabHidden]);
-
-  const slide = slides[active];
-  return (
-    <Box
-      component="section"
-      aria-roledescription="carousel"
-      aria-label="Chương trình tiếng Anh của cô Vy"
-      data-testid="hero-carousel"
-      data-active-slide={slide.id}
-      tabIndex={0}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false); }}
-      onKeyDown={(event) => {
-        if (event.key === "ArrowLeft") { event.preventDefault(); move(-1); }
-        if (event.key === "ArrowRight") { event.preventDefault(); move(1); }
-        if (event.key === "Home") { event.preventDefault(); setActive(0); }
-        if (event.key === "End") { event.preventDefault(); setActive(slides.length - 1); }
-      }}
-      onPointerDown={(event) => { pointerStart.current = event.clientX; }}
-      onPointerUp={(event) => {
-        if (pointerStart.current == null) return;
-        const distance = event.clientX - pointerStart.current;
-        pointerStart.current = null;
-        if (Math.abs(distance) >= 42) move(distance > 0 ? -1 : 1);
-      }}
-      sx={{
-        position: "relative",
-        height: { xs: 240, sm: 276, md: 300 },
-        display: "grid", alignItems: "end", color: "white", bgcolor: "#24173f", overflow: "hidden", outline: 0, touchAction: "pan-y",
-      }}
-    >
-      {slides.map((item, index) => (
-        <Box
-          component="picture"
-          key={item.id}
-          aria-hidden={index !== active}
-          sx={{
-            position: "absolute", inset: 0, opacity: index === active ? 1 : 0,
-            transition: reduceMotion ? "none" : "opacity 400ms ease",
-          }}
-        >
-          <source media="(max-width: 720px)" srcSet={item.mobileImage} />
-          <Box
-            component="img"
-            src={item.desktopImage}
-            alt={index === active ? item.alt : ""}
-            width="1440"
-            height="900"
-            loading={index === 0 ? "eager" : "lazy"}
-            fetchPriority={index === 0 ? "high" : "auto"}
-            sx={{
-              width: "100%", height: "100%", objectFit: "cover", objectPosition: item.focalPosition,
-            }}
-          />
-        </Box>
-      ))}
-      <Box aria-hidden="true" sx={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(22,12,42,.28),transparent 24%)" }} />
-
-      <IconButton aria-label="Slide trước" onClick={() => move(-1)} sx={{ position: "absolute", left: { xs: 8, sm: 18 }, top: "50%", transform: "translateY(-50%)", bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronLeft /></IconButton>
-      <IconButton aria-label="Slide tiếp theo" onClick={() => move(1)} sx={{ position: "absolute", right: { xs: 8, sm: 18 }, top: "50%", transform: "translateY(-50%)", bgcolor: "rgba(255,255,255,.9)", color: "#4c2db7", "&:hover": { bgcolor: "white" } }}><ChevronRight /></IconButton>
-      <Stack direction="row" spacing={0.25} sx={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)" }}>
-        {slides.map((item, index) => (
-          <IconButton
-            key={item.id}
-            aria-label={`Chuyển đến slide ${index + 1}`}
-            aria-current={index === active ? "true" : undefined}
-            onClick={() => setActive(index)}
-            sx={{ minWidth: 44, width: 44, height: 44, p: 0 }}
-          >
-            <Box sx={{ width: index === active ? 24 : 8, height: 8, borderRadius: 8, bgcolor: index === active ? "white" : "rgba(255,255,255,.58)", transition: reduceMotion ? "none" : "width 180ms ease" }} />
-          </IconButton>
-        ))}
-      </Stack>
-    </Box>
-  );
-}
-
 export function HomePage() {
   const verifiedTestimonials = publishableTestimonials(content.testimonials);
   const visibleTestimonials = isDevelopmentContent ? [...content.testimonials] : verifiedTestimonials;
@@ -236,8 +125,6 @@ export function HomePage() {
       </AppBar>
 
       <Box component="main">
-        <HeroCarousel />
-
         <Container maxWidth="lg">
           <Box component="section" id="about" aria-labelledby="about-heading" sx={sectionSx}>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0, .8fr) minmax(0, 1.2fr)" }, gap: { xs: 2.5, md: 4 }, alignItems: "center" }}>
