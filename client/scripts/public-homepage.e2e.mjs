@@ -324,10 +324,14 @@ try {
       const contents = [...document.querySelectorAll('[data-testid="testimonial-list"] .MuiCardContent-root')];
       const quotes = [...document.querySelectorAll('[data-testid="testimonial-list"] blockquote')];
       const dots = document.querySelector('[data-testid="testimonial-dots"]');
+      const contact = document.querySelector('[data-testid="contact-section"] > div');
+      const actions = [...document.querySelectorAll('[data-testid="contact-actions"] a')];
       const listRect = list?.getBoundingClientRect();
       const sectionRect = section?.getBoundingClientRect();
       const dotsRect = dots?.getBoundingClientRect();
-      return listRect && sectionRect && dotsRect ? {
+      const contactRect = contact?.getBoundingClientRect();
+      const actionRects = actions.map((action) => action.getBoundingClientRect());
+      return listRect && sectionRect && dotsRect && contactRect ? {
         listWidth: listRect.width,
         cardWidths: cards.map((card) => card.width),
         listOverflow: list.scrollWidth - list.clientWidth,
@@ -340,6 +344,10 @@ try {
         dotsWidth: dotsRect.width,
         dotsGap: dotsRect.top - listRect.bottom,
         dotsCenterOffset: Math.abs((dotsRect.left + dotsRect.right) / 2 - (listRect.left + listRect.right) / 2),
+        contactWidth: contactRect.width,
+        contactCenterOffset: Math.abs((contactRect.left + contactRect.right) / 2 - (sectionRect.left + sectionRect.right) / 2),
+        actionRects: actionRects.map((action) => ({ top: action.top, height: action.height })),
+        actionWhiteSpace: actions.map((action) => window.getComputedStyle(action).whiteSpace),
       } : null;
     });
     assert(sliderMetrics !== null, `Testimonial slider is missing at ${viewport.width}px`);
@@ -349,28 +357,24 @@ try {
     assert(sliderMetrics.dotsCenterOffset <= 1, `Testimonial dots are not centered below the card at ${viewport.width}px`);
     if (viewport.width <= 430) {
       assert(Math.abs(sliderMetrics.listWidth - sliderMetrics.sectionWidth) <= 1, `Mobile testimonial must fill its section at ${viewport.width}px`);
+      assert(Math.abs(sliderMetrics.contactWidth - sliderMetrics.sectionWidth) <= 1, `Mobile contact must fill its section at ${viewport.width}px`);
       assert(sliderMetrics.contentPaddingLeft.every((padding) => padding >= 20 && padding <= 22), `Mobile testimonial padding is incorrect at ${viewport.width}px`);
       assert(sliderMetrics.quoteFontSizes.every((fontSize) => fontSize >= 15.5), `Mobile testimonial quote is too small at ${viewport.width}px`);
-      assert(sliderMetrics.contentMinHeights.every((height) => height !== "250px" && Number.parseFloat(height) <= 220), `Mobile testimonial retains excessive min-height at ${viewport.width}px`);
-    }
-    if (viewport.width >= 768) {
-      const desktopMetrics = await page.evaluate(() => {
-        const contact = document.querySelector('[data-testid="contact-section"] > div')?.getBoundingClientRect();
-        return {
-          contactWidth: contact?.width ?? 0,
-          contactCenterOffset: contact ? Math.abs((contact.left + contact.right) / 2 - window.innerWidth / 2) : Number.POSITIVE_INFINITY,
-        };
-      });
-      assert(desktopMetrics.contactWidth >= 720 && desktopMetrics.contactWidth <= 800, `Desktop contact width is out of range: ${desktopMetrics.contactWidth}px`);
-      assert(desktopMetrics.contactCenterOffset <= 1, `Desktop contact is not centered: ${desktopMetrics.contactCenterOffset}px`);
+      assert(sliderMetrics.contentMinHeights.every((height) => height === "0px"), `Mobile testimonial must size to its content at ${viewport.width}px`);
+      assert(sliderMetrics.actionRects.length === 2, `Mobile contact must have two actions at ${viewport.width}px`);
+      assert(Math.abs(sliderMetrics.actionRects[0].top - sliderMetrics.actionRects[1].top) <= 1, `Mobile contact actions are not on one row at ${viewport.width}px`);
+      assert(sliderMetrics.actionRects.every((action) => action.height >= 44), `Mobile contact actions are shorter than 44px at ${viewport.width}px`);
+      assert(sliderMetrics.actionWhiteSpace.every((whiteSpace) => whiteSpace === "nowrap"), `Mobile contact action label wraps at ${viewport.width}px`);
     }
     if (viewport.width === 1440) {
-      assert(sliderMetrics.listWidth <= 760, `Desktop testimonial width exceeds 760px: ${sliderMetrics.listWidth}px`);
+      assert(sliderMetrics.listWidth >= 895 && sliderMetrics.listWidth <= 900, `Desktop testimonial width is not approximately 900px: ${sliderMetrics.listWidth}px`);
       assert(sliderMetrics.centerOffset <= 1, `Desktop testimonial is not centered: ${sliderMetrics.centerOffset}px`);
-      assert(sliderMetrics.contentWidths.every((width) => width <= 620), "Desktop testimonial content exceeds 620px");
+      assert(sliderMetrics.contentWidths.every((width) => width >= 680 && width <= 720), "Desktop testimonial content must remain within 680–720px");
       assert(sliderMetrics.contentPaddingLeft.every((padding) => padding >= 28 && padding <= 32), "Desktop testimonial padding must remain within 28–32px");
       assert(sliderMetrics.contentMinHeights.every((height) => height === "0px"), "Desktop testimonial content must not use a minimum height");
       assert(Math.abs(sliderMetrics.dotsWidth - sliderMetrics.listWidth) <= 1, "Desktop testimonial dots must align to the carousel width");
+      assert(sliderMetrics.contactWidth >= 895 && sliderMetrics.contactWidth <= 900, `Desktop contact width is not approximately 900px: ${sliderMetrics.contactWidth}px`);
+      assert(sliderMetrics.contactCenterOffset <= 1, `Desktop contact is not centered: ${sliderMetrics.contactCenterOffset}px`);
     }
     if (screenshotDir && screenshotWidths.has(viewport.width)) {
       await page.screenshot({ path: path.join(screenshotDir, `homepage-${viewport.width}x${viewport.height}.png`), fullPage: true });

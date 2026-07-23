@@ -267,9 +267,9 @@ export function HomePage() {
             </Box>
           </Box>
 
-          <Box component="section" id="feedback" aria-label="Phản hồi phụ huynh" sx={{ ...sectionSx, position: "relative" }}>
+          <Box component="section" id="feedback" aria-label="Phản hồi phụ huynh" sx={{ ...sectionSx, position: "relative", py: { xs: 4, sm: 4, md: 4 } }}>
             <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
-            <Box data-testid="testimonial-list" sx={{ mt: 2, maxWidth: { md: 760 }, mx: { md: "auto" }, overflow: "hidden", borderRadius: 3 }}>
+            <Box data-testid="testimonial-list" sx={{ width: "100%", maxWidth: 900, mt: 2, mx: "auto", overflow: "hidden", borderRadius: 3 }}>
               <Box
                 data-testid="testimonial-track"
                 sx={{
@@ -284,7 +284,7 @@ export function HomePage() {
                   const tone = testimonialTone[index % testimonialTone.length];
                   return (
                     <Card component="figure" aria-hidden={index !== activeTestimonial} key={item.id} variant="outlined" sx={{ m: 0, flex: "0 0 100%", minWidth: 0, borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
-                      <CardContent sx={{ minHeight: { xs: 216, sm: 220, md: "unset" }, display: "flex", flexDirection: "column", maxWidth: { xs: 780, md: 620 }, mx: "auto", p: { xs: 2.5, md: 4 }, "&:last-child": { pb: { xs: 2.5, md: 4 } } }}>
+                      <CardContent sx={{ width: "100%", maxWidth: 720, boxSizing: "border-box", display: "flex", flexDirection: "column", mx: "auto", p: { xs: 2.5, md: 4 }, "&:last-child": { pb: { xs: 2.5, md: 4 } } }}>
                         <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
                         <Typography component="blockquote" sx={{ m: 0, fontSize: { xs: 16, md: "inherit" }, lineHeight: { xs: 1.55, md: "inherit" } }}>{item.quote}</Typography>
                         <Box component="figcaption" sx={{ mt: 2.5 }}>
@@ -297,22 +297,22 @@ export function HomePage() {
                 })}
               </Box>
             </Box>
-            <Stack data-testid="testimonial-dots" direction="row" aria-hidden="true" sx={{ maxWidth: { md: 760 }, mx: { md: "auto" }, justifyContent: "center", gap: 0.75, mt: 1.5 }}>
+            <Stack data-testid="testimonial-dots" direction="row" aria-hidden="true" sx={{ width: "100%", maxWidth: 900, mx: "auto", justifyContent: "center", gap: 0.75, mt: 1.5 }}>
               {content.testimonials.map((item, index) => (
                 <Box key={item.id} sx={{ width: index === activeTestimonial ? 20 : 7, height: 7, borderRadius: 4, bgcolor: index === activeTestimonial ? "primary.main" : "action.disabled", transition: "width 200ms ease", "@media (prefers-reduced-motion: reduce)": { transition: "none" } }} />
               ))}
             </Stack>
           </Box>
 
-          <Box component="section" id="contact" aria-labelledby="contact-heading" data-testid="contact-section" sx={{ ...compactSectionSx, scrollMarginTop: 72 }}>
-            <Box sx={{ maxWidth: 760, mx: "auto", px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 }, textAlign: { sm: "center" }, border: "1px solid #ddd2f5", borderRadius: 3, background: "linear-gradient(135deg, #f5efff 0%, #edf8ff 52%, #effaf4 100%)", boxShadow: "0 10px 24px rgba(57,42,94,.07)" }}>
+          <Box component="section" id="contact" aria-labelledby="contact-heading" data-testid="contact-section" sx={{ ...compactSectionSx, pt: { xs: 2, sm: 3, md: 2 }, scrollMarginTop: 72 }}>
+            <Box sx={{ width: "100%", maxWidth: 900, boxSizing: "border-box", mx: "auto", px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 }, textAlign: { sm: "center" }, border: "1px solid #ddd2f5", borderRadius: 3, background: "linear-gradient(135deg, #f5efff 0%, #edf8ff 52%, #effaf4 100%)", boxShadow: "0 10px 24px rgba(57,42,94,.07)" }}>
               <MenuBook color="primary" sx={{ fontSize: 30 }} />
               <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 0.75 }}>{content.contact.heading}</Typography>
               <Typography color="text.secondary" sx={{ mt: 1 }}>{content.contact.description}</Typography>
               <Stack direction="row" useFlexGap sx={{ justifyContent: { sm: "center" }, flexWrap: "wrap", gap: 0.75, mt: 2 }}>{content.contact.highlights.map((item) => <Chip key={item} size="small" label={item} />)}</Stack>
-              <Box data-testid="contact-actions" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1, mt: 2.5, maxWidth: 440, mx: "auto" }}>
-                <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" startIcon={<ChatBubbleOutlined />} sx={{ minWidth: 0, px: 1 }}>Nhắn Zalo</Button>
-                <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label={content.contact.facebookAriaLabel} variant="outlined" startIcon={<Facebook />} sx={{ minWidth: 0, px: 1 }}>{content.contact.facebookLabel}</Button>
+              <Box data-testid="contact-actions" sx={{ display: "flex", gap: 1, mt: 2.5, maxWidth: 440, mx: "auto" }}>
+                <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" startIcon={<ChatBubbleOutlined />} sx={{ flex: 1, minWidth: 0, minHeight: 44, px: 1, fontSize: 14, whiteSpace: "nowrap", "& .MuiButton-startIcon": { flexShrink: 0 } }}>Nhắn Zalo</Button>
+                <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label={content.contact.facebookAriaLabel} variant="outlined" startIcon={<Facebook />} sx={{ flex: 1, minWidth: 0, minHeight: 44, px: 1, fontSize: 14, whiteSpace: "nowrap", "& .MuiButton-startIcon": { flexShrink: 0 } }}>{content.contact.facebookLabel}</Button>
               </Box>
             </Box>
           </Box>
