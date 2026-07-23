@@ -104,34 +104,6 @@ const testimonialTone = [
   { background: "linear-gradient(145deg, #f2edff, #fbf9ff)", border: "#d9cef7", accent: "#7655c8" },
 ] as const;
 
-function DecorativeBackdrop() {
-  return (
-    <Box
-      component="svg"
-      aria-hidden="true"
-      viewBox="0 0 1200 420"
-      preserveAspectRatio="none"
-      sx={{
-        position: "absolute",
-        inset: 0,
-        display: { xs: "none", sm: "block" },
-        width: "100%",
-        height: "100%",
-        color: "#7056c7",
-        opacity: 0.16,
-        pointerEvents: "none",
-      }}
-    >
-      <path d="M88 75l4 10 11 1-8 7 3 11-10-6-10 6 3-11-8-7 11-1z" fill="currentColor" />
-      <path d="M1080 65a30 30 0 1 0 22 49 25 25 0 1 1-22-49z" fill="#efb84e" />
-      <path d="M102 316c21-9 43-9 64 0v49c-21-9-43-9-64 0zm64 0c21-9 43-9 64 0v49c-21-9-43-9-64 0z" fill="none" stroke="#58a58a" strokeWidth="4" />
-      <circle cx="1120" cy="332" r="8" fill="#dc7b7b" />
-      <circle cx="1150" cy="302" r="4" fill="#58a58a" />
-      <circle cx="1048" cy="355" r="5" fill="#7056c7" />
-    </Box>
-  );
-}
-
 export function HomePage() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
@@ -144,16 +116,8 @@ export function HomePage() {
   }, []);
 
   return (
-    <Box
-      data-testid="public-home"
-      sx={{
-        minHeight: "100vh",
-        color: "text.primary",
-        overflowX: "clip",
-        background: "linear-gradient(180deg, #fffaff 0%, #f7fbff 34%, #f8fff9 68%, #fffaf2 100%)",
-      }}
-    >
-      <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "rgba(255, 252, 255, .92)", backdropFilter: "blur(10px)" }}>
+    <Box sx={{ bgcolor: "#fff", color: "text.primary", overflowX: "clip" }}>
+      <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Container maxWidth="lg">
           <Toolbar disableGutters sx={{ minHeight: "56px !important", gap: 0.5 }}>
             <Box component="img" src={content.media.headerMark} alt="" width="32" height="32" sx={{ flexShrink: 0 }} />
@@ -165,9 +129,8 @@ export function HomePage() {
       </AppBar>
 
       <Box component="main">
-        <Box sx={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg, #f7f0ff 0%, #edf8ff 54%, #effaf4 100%)" }}>
-          <DecorativeBackdrop />
-          <Container maxWidth="lg" sx={{ position: "relative" }}>
+        <Box sx={{ background: "linear-gradient(135deg, #f7f0ff 0%, #edf8ff 54%, #effaf4 100%)" }}>
+          <Container maxWidth="lg">
             <Box component="section" aria-labelledby="hero-heading" sx={{ ...sectionSx, pt: { xs: 4, md: 6 } }}>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1.05fr) minmax(360px, .95fr)" }, gap: { xs: 3, md: 5 }, alignItems: "center" }}>
                 <Box>
@@ -215,9 +178,8 @@ export function HomePage() {
           </Box>
         </Container>
 
-        <Box sx={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg, rgba(247, 240, 255, .78), rgba(239, 248, 255, .72), rgba(241, 250, 245, .76))" }}>
-          <DecorativeBackdrop />
-          <Container maxWidth="lg" sx={{ position: "relative" }}>
+        <Box sx={{ bgcolor: "#faf8ff" }}>
+          <Container maxWidth="lg">
             <Box component="section" id="programs" aria-labelledby="programs-heading" sx={sectionSx}>
               <Typography variant="overline" color="primary">CHƯƠNG TRÌNH HỌC</Typography>
               <Typography id="programs-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Ba nhóm chương trình</Typography>
@@ -337,7 +299,7 @@ export function HomePage() {
         </Container>
       </Box>
 
-      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", pt: 1, pb: "calc(8px + env(safe-area-inset-bottom, 0px))", bgcolor: "rgba(250, 249, 253, .82)" }}>
+      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", pt: 1, pb: "calc(8px + env(safe-area-inset-bottom, 0px))", bgcolor: "#faf9fd" }}>
         <Container maxWidth="lg">
           <Typography color="text.secondary" sx={{ textAlign: "center", fontSize: 12, lineHeight: 1.4 }}>{content.footer.copy}</Typography>
         </Container>
