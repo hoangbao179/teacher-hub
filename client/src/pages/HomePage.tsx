@@ -2,19 +2,17 @@ import {
   AutoStories,
   ChatBubbleOutlined,
   CheckCircleOutlined,
-  ExpandMore,
   Facebook,
   FormatQuote,
   LightbulbOutlined,
   LocationOnOutlined,
   MenuBook,
   PlayArrow,
+  SchoolOutlined,
+  TrackChangesOutlined,
 } from "@mui/icons-material";
 import {
   AppBar,
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Box,
   Button,
   Card,
@@ -106,6 +104,34 @@ const testimonialTone = [
   { background: "linear-gradient(145deg, #f2edff, #fbf9ff)", border: "#d9cef7", accent: "#7655c8" },
 ] as const;
 
+function DecorativeBackdrop() {
+  return (
+    <Box
+      component="svg"
+      aria-hidden="true"
+      viewBox="0 0 1200 420"
+      preserveAspectRatio="none"
+      sx={{
+        position: "absolute",
+        inset: 0,
+        display: { xs: "none", sm: "block" },
+        width: "100%",
+        height: "100%",
+        color: "#7056c7",
+        opacity: 0.16,
+        pointerEvents: "none",
+      }}
+    >
+      <path d="M88 75l4 10 11 1-8 7 3 11-10-6-10 6 3-11-8-7 11-1z" fill="currentColor" />
+      <path d="M1080 65a30 30 0 1 0 22 49 25 25 0 1 1-22-49z" fill="#efb84e" />
+      <path d="M102 316c21-9 43-9 64 0v49c-21-9-43-9-64 0zm64 0c21-9 43-9 64 0v49c-21-9-43-9-64 0z" fill="none" stroke="#58a58a" strokeWidth="4" />
+      <circle cx="1120" cy="332" r="8" fill="#dc7b7b" />
+      <circle cx="1150" cy="302" r="4" fill="#58a58a" />
+      <circle cx="1048" cy="355" r="5" fill="#7056c7" />
+    </Box>
+  );
+}
+
 export function HomePage() {
   return (
     <Box sx={{ bgcolor: "#fff", color: "text.primary", overflowX: "clip" }}>
@@ -121,8 +147,9 @@ export function HomePage() {
       </AppBar>
 
       <Box component="main">
-        <Box sx={{ background: "linear-gradient(135deg, #f7f0ff 0%, #edf8ff 54%, #effaf4 100%)" }}>
-          <Container maxWidth="lg">
+        <Box sx={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg, #f7f0ff 0%, #edf8ff 54%, #effaf4 100%)" }}>
+          <DecorativeBackdrop />
+          <Container maxWidth="lg" sx={{ position: "relative" }}>
             <Box component="section" aria-labelledby="hero-heading" sx={{ ...sectionSx, pt: { xs: 4, md: 6 } }}>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1.05fr) minmax(360px, .95fr)" }, gap: { xs: 3, md: 5 }, alignItems: "center" }}>
                 <Box>
@@ -149,7 +176,7 @@ export function HomePage() {
 
         <Container maxWidth="lg">
           <Box component="section" id="about" aria-labelledby="about-heading" sx={sectionSx}>
-            <Typography variant="overline" color="primary">GIỚI THIỆU CÔ VY</Typography>
+            <Typography variant="overline" color="primary">GIỚI THIỆU</Typography>
             <Typography id="about-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{content.teacherProfile.heading}</Typography>
             <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 850 }}>{content.teacherProfile.biography}</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 2, mt: 3.5 }}>
@@ -170,18 +197,20 @@ export function HomePage() {
           </Box>
         </Container>
 
-        <Box sx={{ bgcolor: "#faf8ff" }}>
-          <Container maxWidth="lg">
+        <Box sx={{ position: "relative", overflow: "hidden", bgcolor: "#faf8ff" }}>
+          <DecorativeBackdrop />
+          <Container maxWidth="lg" sx={{ position: "relative" }}>
             <Box component="section" id="programs" aria-labelledby="programs-heading" sx={sectionSx}>
               <Typography variant="overline" color="primary">CHƯƠNG TRÌNH HỌC</Typography>
-              <Typography id="programs-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Các lớp tiếng Anh và luyện thi tại Huế</Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }, gap: 2, mt: 3.5 }}>
-                {content.programs.map((program) => {
+              <Typography id="programs-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Ba nhóm chương trình</Typography>
+              <Box data-testid="program-list" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, alignItems: "stretch", gap: 2, mt: 3.5 }}>
+                {content.programs.map((program, index) => {
                   const tone = programTone[program.accent];
+                  const Icon = [AutoStories, SchoolOutlined, TrackChangesOutlined][index];
                   return (
                     <Card component="article" key={program.title} variant="outlined" sx={{ height: "100%", background: tone.background, borderColor: tone.border, borderRadius: 3, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
                       <CardContent>
-                        <MenuBook aria-hidden="true" sx={{ color: tone.icon, fontSize: 30 }} />
+                        <Icon aria-hidden="true" sx={{ color: tone.icon, fontSize: 30 }} />
                         <Typography component="h3" variant="h6" sx={{ mt: 1 }}>{program.title}</Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>{program.summary}</Typography>
                         <Stack component="ul" spacing={0.75} sx={{ listStyle: "none", pl: 0, mb: 0, mt: 2 }}>
@@ -208,30 +237,6 @@ export function HomePage() {
             </Box>
           </Box>
 
-          {content.testimonials.length > 0 && (
-            <Box component="section" id="feedback" aria-labelledby="feedback-heading" sx={sectionSx}>
-              <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
-              <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Những phản hồi dành cho cô Vy</Typography>
-              <Box data-testid="testimonial-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(3, minmax(0, 1fr))" }, alignItems: "stretch", gap: 2, mt: 3.5, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
-                {content.testimonials.map((item, index) => {
-                  const tone = testimonialTone[index % testimonialTone.length];
-                  return (
-                    <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, flex: { xs: "0 0 100%", md: "initial" }, height: "100%", scrollSnapAlign: "start", borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
-                      <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-                        <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
-                        <Typography component="blockquote" sx={{ m: 0, flexGrow: 1 }}>{item.quote}</Typography>
-                        <Box component="figcaption" sx={{ mt: 2.5 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{item.guardianLabel}</Typography>
-                          <Typography variant="caption" color="text.secondary">{item.studentLevel}</Typography>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </Box>
-            </Box>
-          )}
-
           <Box component="section" id="locations" aria-labelledby="locations-heading" sx={compactSectionSx}>
             <Typography variant="overline" color="primary">ĐỊA ĐIỂM HỌC</Typography>
             <Typography id="locations-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{content.locations.heading}</Typography>
@@ -256,37 +261,43 @@ export function HomePage() {
           <Box component="section" id="videos" aria-labelledby="videos-heading" sx={compactSectionSx}>
             <Typography variant="overline" color="primary">VIDEO HỌC TẬP</Typography>
             <Typography id="videos-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Xem thử cách tiếp cận bài học</Typography>
-            <Typography color="text.secondary" sx={{ mt: 1 }}>Một số video tham khảo giúp học sinh luyện nghe, nhắc lại và ghi nhớ từ vựng qua ngữ cảnh.</Typography>
+            <Typography color="text.secondary" sx={{ mt: 1 }}>Video tham khảo để luyện nghe và ghi nhớ từ vựng qua ngữ cảnh.</Typography>
             <Typography data-testid="video-swipe-hint" variant="caption" color="primary" sx={{ display: { xs: "block", md: "none" }, mt: 2.5, textAlign: "right", fontWeight: 600 }}>Vuốt để xem thêm →</Typography>
             <Box data-testid="learning-video-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 1.5, md: 2.5 }, mt: { xs: 1, md: 3.5 }, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
               {content.videos.map((video) => <Box key={video.url} sx={{ flex: { xs: "0 0 85vw", md: "initial" }, maxWidth: { xs: 560, md: "none" }, scrollSnapAlign: "start" }}><LearningVideo video={video} /></Box>)}
             </Box>
           </Box>
 
-          <Box component="section" id="faq" aria-labelledby="faq-heading" data-testid="faq-layout" sx={{ ...compactSectionSx, display: "grid", gridTemplateAreas: { xs: '"intro" "questions" "contact"', md: '"intro questions" "contact questions"' }, gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, .52fr) minmax(0, 1fr)" }, gridTemplateRows: { md: "auto 1fr" }, columnGap: { md: 6 }, rowGap: { xs: 3, md: 3 }, alignItems: "start" }}>
-            <Box sx={{ gridArea: "intro" }}>
-              <Typography variant="overline" color="primary">GIẢI ĐÁP NHANH</Typography>
-              <Typography id="faq-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{content.faq.heading}</Typography>
+          <Box component="section" id="feedback" aria-labelledby="feedback-heading" sx={{ ...sectionSx, position: "relative" }}>
+            <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
+            <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Những thay đổi phụ huynh nhận thấy</Typography>
+            <Typography data-testid="testimonial-swipe-hint" variant="caption" color="primary" sx={{ display: { xs: "block", md: "none" }, mt: 2.5, textAlign: "right", fontWeight: 600 }}>Vuốt để xem thêm →</Typography>
+            <Box data-testid="testimonial-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(3, minmax(0, 1fr))" }, alignItems: "stretch", gap: 2, mt: { xs: 1, md: 3.5 }, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
+              {content.testimonials.map((item, index) => {
+                const tone = testimonialTone[index % testimonialTone.length];
+                return (
+                  <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, flex: { xs: "0 0 100%", md: "initial" }, minWidth: 0, height: "100%", scrollSnapAlign: "start", borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
+                    <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                      <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
+                      <Typography component="blockquote" sx={{ m: 0, flexGrow: 1 }}>{item.quote}</Typography>
+                      <Box component="figcaption" sx={{ mt: 2.5 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{item.guardianLabel}</Typography>
+                        <Typography variant="caption" color="text.secondary">{item.studentLevel}</Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </Box>
-            <Box data-testid="faq-questions" sx={{ gridArea: "questions" }}>
-              {content.faq.items.map((item) => (
-                <Accordion key={item.question} disableGutters elevation={0} sx={{ border: 1, borderColor: "divider", "&:not(:last-child)": { borderBottom: 0 }, "&:before": { display: "none" } }}>
-                  <AccordionSummary expandIcon={<ExpandMore />} aria-controls={`faq-${content.faq.items.indexOf(item)}-content`}>
-                    <Typography component="h3" variant="subtitle1">{item.question}</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails id={`faq-${content.faq.items.indexOf(item)}-content`}>
-                    <Typography color="text.secondary">{item.answer}</Typography>
-                  </AccordionDetails>
-                </Accordion>
-              ))}
-            </Box>
+          </Box>
 
-            <Box component="aside" id="contact" aria-labelledby="contact-heading" data-testid="faq-contact" sx={{ gridArea: "contact", px: { xs: 2, sm: 3, md: 2.5 }, py: { xs: 2.5, md: 2.5 }, scrollMarginTop: 72, border: "1px solid #ddd2f5", borderRadius: 3, background: "linear-gradient(135deg, #f5efff 0%, #edf8ff 52%, #effaf4 100%)", boxShadow: "0 10px 24px rgba(57,42,94,.07)" }}>
+          <Box component="section" id="contact" aria-labelledby="contact-heading" data-testid="contact-section" sx={{ ...compactSectionSx, scrollMarginTop: 72 }}>
+            <Box sx={{ maxWidth: 760, mx: "auto", px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 }, textAlign: { sm: "center" }, border: "1px solid #ddd2f5", borderRadius: 3, background: "linear-gradient(135deg, #f5efff 0%, #edf8ff 52%, #effaf4 100%)", boxShadow: "0 10px 24px rgba(57,42,94,.07)" }}>
               <MenuBook color="primary" sx={{ fontSize: 30 }} />
-              <Typography id="contact-heading" component="h2" variant="h6" sx={{ mt: 0.75 }}>{content.contact.heading}</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>{content.contact.description}</Typography>
-              <Stack direction="row" useFlexGap sx={{ flexWrap: "wrap", gap: 0.75, mt: 1.5 }}>{content.contact.highlights.map((item) => <Chip key={item} size="small" label={item} />)}</Stack>
-              <Box data-testid="contact-actions" sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1, mt: 2 }}>
+              <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 0.75 }}>{content.contact.heading}</Typography>
+              <Typography color="text.secondary" sx={{ mt: 1 }}>{content.contact.description}</Typography>
+              <Stack direction="row" useFlexGap sx={{ justifyContent: { sm: "center" }, flexWrap: "wrap", gap: 0.75, mt: 2 }}>{content.contact.highlights.map((item) => <Chip key={item} size="small" label={item} />)}</Stack>
+              <Box data-testid="contact-actions" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1, mt: 2.5, maxWidth: 440, mx: "auto" }}>
                 <Button component="a" href={content.contact.zaloUrl} target="_blank" rel="noopener noreferrer" variant="contained" startIcon={<ChatBubbleOutlined />} sx={{ minWidth: 0, px: 1 }}>Nhắn Zalo</Button>
                 <Button component="a" href={content.contact.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label={content.contact.facebookAriaLabel} variant="outlined" startIcon={<Facebook />} sx={{ minWidth: 0, px: 1 }}>{content.contact.facebookLabel}</Button>
               </Box>

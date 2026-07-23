@@ -8,12 +8,12 @@ không gọi API quản trị và không công khai học phí.
 - `client/src/content/publicHome.ts` là source of truth cho nội dung, liên hệ,
   địa điểm, chương trình và đường dẫn media của Homepage.
 - Homepage có đúng một H1: `Cô Vy dạy tiếng Anh tại Huế`.
-- Nội dung công khai gồm hero, hồ sơ giáo viên, chương trình học, phương pháp,
-  hình thức và địa điểm học, video tham khảo, FAQ và liên hệ.
-- Chương trình gồm tiếng Anh mầm non, tiểu học, THCS, luyện thi Nguyễn Tri
-  Phương, luyện thi lớp 9 lên 10 và giao tiếp cơ bản.
-- Không render testimonial cho đến khi có phản hồi thật đã được xác minh và
-  cho phép công khai.
+- Nội dung công khai gồm hero, hồ sơ giáo viên, ba nhóm chương trình, phương pháp,
+  hình thức và địa điểm học, video tham khảo, phản hồi phụ huynh và liên hệ.
+- Ba nhóm chương trình gồm tiếng Anh nền tảng, tiếng Anh THCS và luyện thi theo
+  mục tiêu.
+- Testimonial chỉ dùng phản hồi ẩn danh dựa trên chia sẻ thực tế đã được chủ
+  website xác nhận; không dùng avatar giả, số sao, điểm số hoặc review schema.
 - Video hiện tại là tài liệu tham khảo bên ngoài, không được mô tả là video hoặc
   phương pháp giảng dạy do cô Vy thực hiện. Iframe YouTube chỉ tải sau tương tác.
 

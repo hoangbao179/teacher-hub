@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, URL, document, window */
+/* global process, fetch, setTimeout, console, URL, document, window, getComputedStyle */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -10,6 +10,23 @@ const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
 const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến THCS";
 const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
+const expectedTestimonials = [
+  {
+    guardianLabel: "Mẹ bé M.",
+    studentLevel: "Học sinh lớp 2",
+    quote: "Trước đây bé khá ngại học tiếng Anh, nhất là phần đọc và nhớ từ. Học với cô một thời gian, bé chủ động xem lại bài hơn, về nhà còn tự đọc lại những từ đã học.",
+  },
+  {
+    guardianLabel: "Mẹ bé N.",
+    studentLevel: "Học sinh lớp 6",
+    quote: "Con bị hổng ngữ pháp nên lúc làm bài thường khá rối và dễ nản. Sau một thời gian được hướng dẫn lại từng phần, con hiểu bài hơn và làm bài cũng chắc hơn trước.",
+  },
+  {
+    guardianLabel: "Phụ huynh bé H.",
+    studentLevel: "Học sinh lớp 9",
+    quote: "Giai đoạn ôn thi gia đình khá lo vì con chưa biết nên tập trung vào phần nào. Nhờ được sửa kỹ từng lỗi và hướng dẫn cách làm bài, con bình tĩnh và tự tin hơn nhiều.",
+  },
+];
 let child;
 let browser;
 
@@ -43,14 +60,20 @@ try {
     "Cô Vy dạy tiếng Anh tại Huế",
     "101 Kiệt 245 Bùi Thị Xuân, Huế",
     "Nhận dạy trong khu vực Huế",
-    "Câu hỏi thường gặp về lớp tiếng Anh cô Vy",
+    "Những thay đổi phụ huynh nhận thấy",
+    "Mẹ bé M.",
+    "Mẹ bé N.",
+    "Phụ huynh bé H.",
     "application/ld+json",
     "LocalBusiness",
   ]) assert(sourceHtml.includes(sourceCopy), `Prerendered HTML is missing: ${sourceCopy}`);
   assert((sourceHtml.match(/<h1\b/g) ?? []).length === 1, "Prerendered Homepage must contain exactly one H1");
   assert(sourceHtml.includes("Cô Vy đồng hành cùng học sinh theo năng lực, tập trung xây nền tảng chắc, củng cố phần còn yếu và giúp các em tự tin hơn khi sử dụng tiếng Anh."), "Condensed teacher introduction is missing");
+  for (const testimonial of expectedTestimonials) {
+    for (const copy of Object.values(testimonial)) assert(sourceHtml.includes(copy), `Prerendered testimonial copy is missing: ${copy}`);
+  }
   assert(!sourceHtml.includes("Xin chào, cô là Uyên Vy."), "Old teacher greeting remains");
-  for (const forbiddenSource of ['href="tel:', '"telephone"', 'name="keywords"', "Điện thoại và Zalo", "0971 697 759", "Lê Bá Thân", "hai khu vực ở Huế", "101/245 Bùi Thị Xuân"]) {
+  for (const forbiddenSource of ['href="tel:', '"telephone"', 'name="keywords"', "Điện thoại và Zalo", "0971 697 759", "Lê Bá Thân", "hai khu vực ở Huế", "101/245 Bùi Thị Xuân", "GIẢI ĐÁP NHANH", "Câu hỏi thường gặp"]) {
     assert(!sourceHtml.includes(forbiddenSource), `Prerendered HTML contains forbidden content: ${forbiddenSource}`);
   }
   const notFoundSource = await (await fetch(`${origin}/404.html`)).text();
@@ -85,30 +108,29 @@ try {
   assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1");
   await page.getByRole("heading", { level: 1, name: "Cô Vy dạy tiếng Anh tại Huế", exact: true }).waitFor();
   for (const heading of [
-    "Giới thiệu giáo viên Uyên Vy",
-    "Các lớp tiếng Anh và luyện thi tại Huế",
-    "Địa điểm học tiếng Anh tại Huế",
+    "Người đồng hành cùng học sinh",
+    "Ba nhóm chương trình",
+    "Hình thức và địa điểm học",
     "Xem thử cách tiếp cận bài học",
-    "Liên hệ lớp tiếng Anh cô Vy",
+    "Những thay đổi phụ huynh nhận thấy",
+    "Trao đổi về lớp học",
   ]) await page.getByRole("heading", { level: 2, name: heading, exact: true }).waitFor();
-  await page.getByText("Một số video tham khảo giúp học sinh luyện nghe, nhắc lại và ghi nhớ từ vựng qua ngữ cảnh.", { exact: true }).waitFor();
+  await page.getByText("Video tham khảo để luyện nghe và ghi nhớ từ vựng qua ngữ cảnh.", { exact: true }).waitFor();
 
   for (const program of [
-    "Tiếng Anh mầm non",
-    "Tiếng Anh tiểu học",
+    "Tiếng Anh nền tảng",
     "Tiếng Anh THCS",
-    "Luyện thi Nguyễn Tri Phương",
-    "Luyện thi lớp 9 lên 10 môn Anh",
-    "Tiếng Anh giao tiếp cơ bản",
+    "Luyện thi theo mục tiêu",
   ]) await page.getByRole("heading", { level: 3, name: program, exact: true }).waitFor();
+  assert(await page.locator('[data-testid="program-list"] article').count() === 3, "Homepage must contain exactly three program cards");
 
-  await page.locator("address").getByText("Học tại nhà cô Vy", { exact: true }).waitFor();
+  await page.locator("address").getByText("Học tại địa chỉ lớp", { exact: true }).waitFor();
   await page.locator("address").getByText("101 Kiệt 245 Bùi Thị Xuân, Huế", { exact: true }).waitFor();
   await page.locator("address").getByText("Học tại nhà học sinh", { exact: true }).waitFor();
   await page.locator("address").getByText("Nhận dạy trong khu vực Huế", { exact: true }).waitFor();
   await page.getByText("Phụ huynh vui lòng liên hệ trước để trao đổi lịch học phù hợp.", { exact: true }).waitFor();
-  await page.getByRole("heading", { level: 2, name: "Câu hỏi thường gặp về lớp tiếng Anh cô Vy", exact: true }).waitFor();
-  assert(await page.getByRole("heading", { level: 3 }).filter({ hasText: /Cô Vy nhận dạy|Có lớp 1–1|Học sinh có thể|luyện thi/ }).count() >= 5, "FAQ questions are missing from the DOM");
+  assert(await page.getByText("GIẢI ĐÁP NHANH", { exact: true }).count() === 0, "FAQ eyebrow remains");
+  assert(await page.getByText(/Câu hỏi thường gặp/i).count() === 0, "FAQ heading remains");
   const header = page.locator("header");
   await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).waitFor();
   assert(await header.locator('img[src="/favicon.svg"]').count() === 1, "Header must contain one small brand mark");
@@ -166,7 +188,18 @@ try {
   assert(website.name === "Lớp tiếng Anh cô Vy", "WebSite name is incorrect");
   assert(business.name === "Lớp tiếng Anh cô Vy", "LocalBusiness name is incorrect");
   assert(business.address.streetAddress === "101 Kiệt 245 Bùi Thị Xuân", "LocalBusiness address is incorrect");
-  assert(!/PHỤ HUYNH CHIA SẺ|Những phản hồi dành cho cô Vy|Mẹ bé M\.|Mẹ bé N\.|Phụ huynh bé H\./i.test(metadata.body), "Sample testimonial content remains public");
+  const testimonialCards = page.locator('[data-testid="testimonial-list"] figure');
+  assert(await testimonialCards.count() === 3, "Homepage must contain exactly three testimonials");
+  for (const testimonial of expectedTestimonials) {
+    const card = testimonialCards.filter({ hasText: testimonial.guardianLabel });
+    assert(await card.count() === 1, `Testimonial guardian must appear exactly once: ${testimonial.guardianLabel}`);
+    await card.getByText(testimonial.studentLevel, { exact: true }).waitFor();
+    await card.getByText(testimonial.quote, { exact: true }).waitFor();
+  }
+  const sectionOrder = await page.locator("main section").evaluateAll((sections) => sections.map((section) => section.id).filter(Boolean));
+  for (const [before, after] of [["about", "programs"], ["programs", "method"], ["method", "locations"], ["locations", "videos"], ["videos", "feedback"], ["feedback", "contact"]]) {
+    assert(sectionOrder.indexOf(before) < sectionOrder.indexOf(after), `Homepage section order is incorrect: ${before} must precede ${after}`);
+  }
   assert(!/Điện thoại và Zalo|Gọi 0971|0971 697 759/i.test(metadata.body), "Phone copy remains public");
   const footer = page.locator("footer");
   assert((await footer.innerText()).trim() === "2026 — từ người hâm mộ cô Vy, with love ❤️", "Footer must contain only the required copy");
@@ -205,6 +238,7 @@ try {
 
   const viewports = [
     { width: 390, height: 844 },
+    { width: 430, height: 844 },
     { width: 768, height: 1024 },
     { width: 1440, height: 900 },
   ];
@@ -231,24 +265,36 @@ try {
     assert(metrics.brandOccurrences === 1, `Header repeats the brand name at ${viewport.width}px`);
     assert(await page.locator('[data-testid="contact-actions"] a').count() === 2, `Contact action count changed at ${viewport.width}px`);
     assert(await page.locator('a[href^="tel:"]').count() === 0, `tel link exists at ${viewport.width}px`);
-    if (viewport.width >= 768) {
-      const faqMetrics = await page.evaluate(() => {
-        const layout = document.querySelector('[data-testid="faq-layout"]')?.getBoundingClientRect();
-        const questions = document.querySelector('[data-testid="faq-questions"]')?.getBoundingClientRect();
-        const contact = document.querySelector('[data-testid="faq-contact"]')?.getBoundingClientRect();
-        const intro = document.querySelector('[data-testid="faq-layout"] > div')?.getBoundingClientRect();
-        return layout && questions && contact && intro ? {
-          questionsRatio: questions.width / layout.width,
-          rightGap: layout.right - questions.right,
-          contactGap: contact.top - intro.bottom,
-          contactWithinFaq: contact.top < questions.bottom,
+    assert(await page.locator('[data-testid="program-list"] article').count() === 3, `Program count changed at ${viewport.width}px`);
+    assert(await page.locator('[data-testid="testimonial-list"] figure').count() === 3, `Testimonial count changed at ${viewport.width}px`);
+    if (viewport.width < 768) {
+      const mobileTestimonialMetrics = await page.evaluate(() => {
+        const list = document.querySelector('[data-testid="testimonial-list"]');
+        const card = list?.querySelector("figure");
+        return list && card ? {
+          listWidth: list.getBoundingClientRect().width,
+          cardWidth: card.getBoundingClientRect().width,
+          scrollSnapType: getComputedStyle(list).scrollSnapType,
         } : null;
       });
-      assert(faqMetrics !== null, `FAQ desktop layout is missing at ${viewport.width}px`);
-      assert(faqMetrics.questionsRatio >= 0.6, `FAQ questions are too narrow at ${viewport.width}px`);
-      assert(faqMetrics.rightGap <= 2, `FAQ leaves unused space on the right at ${viewport.width}px`);
-      assert(faqMetrics.contactGap <= 32, `Contact card is too far from FAQ heading at ${viewport.width}px`);
-      assert(faqMetrics.contactWithinFaq, `Contact card is detached from FAQ at ${viewport.width}px`);
+      assert(mobileTestimonialMetrics !== null, `Mobile testimonial layout is missing at ${viewport.width}px`);
+      assert(Math.abs(mobileTestimonialMetrics.cardWidth - mobileTestimonialMetrics.listWidth) <= 1, `Mobile testimonial card must fill one viewport at ${viewport.width}px: card ${mobileTestimonialMetrics.cardWidth}px, list ${mobileTestimonialMetrics.listWidth}px`);
+      assert(mobileTestimonialMetrics.scrollSnapType.includes("x"), `Mobile testimonial scroll snap is missing at ${viewport.width}px`);
+    } else {
+      const desktopMetrics = await page.evaluate(() => {
+        const cards = [...document.querySelectorAll('[data-testid="testimonial-list"] figure')].map((card) => card.getBoundingClientRect());
+        const contact = document.querySelector('[data-testid="contact-section"] > div')?.getBoundingClientRect();
+        return {
+          cardTops: cards.map((card) => card.top),
+          cardHeights: cards.map((card) => card.height),
+          contactWidth: contact?.width ?? 0,
+          contactCenterOffset: contact ? Math.abs((contact.left + contact.right) / 2 - window.innerWidth / 2) : Number.POSITIVE_INFINITY,
+        };
+      });
+      assert(Math.max(...desktopMetrics.cardTops) - Math.min(...desktopMetrics.cardTops) <= 1, "Desktop testimonials must share one row");
+      assert(Math.max(...desktopMetrics.cardHeights) - Math.min(...desktopMetrics.cardHeights) <= 1, "Desktop testimonial cards must have equal height");
+      assert(desktopMetrics.contactWidth >= 720 && desktopMetrics.contactWidth <= 800, `Desktop contact width is out of range: ${desktopMetrics.contactWidth}px`);
+      assert(desktopMetrics.contactCenterOffset <= 1, `Desktop contact is not centered: ${desktopMetrics.contactCenterOffset}px`);
     }
   }
 
