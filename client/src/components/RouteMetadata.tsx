@@ -1,16 +1,11 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { publicHomeContent } from "../content/publicHome";
+import { publicHomeContent, publicHomeStructuredData } from "../content/publicHome";
 
-function setMeta(name: string, content: string, property = false) {
+function setMeta(name: string, value: string, property = false) {
   const attribute = property ? "property" : "name";
-  let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${name}"]`);
-  if (!element) {
-    element = document.createElement("meta");
-    element.setAttribute(attribute, name);
-    document.head.append(element);
-  }
-  element.content = content;
+  const element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${name}"]`);
+  if (element) element.content = value;
 }
 
 export function RouteMetadata() {
@@ -18,43 +13,27 @@ export function RouteMetadata() {
 
   useEffect(() => {
     const isPublicHome = pathname === "/";
-    const canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]') ?? document.createElement("link");
-    canonical.rel = "canonical";
-    canonical.href = isPublicHome ? `${publicHomeContent.siteUrl}/` : `${publicHomeContent.siteUrl}${pathname}`;
-    if (!canonical.parentElement) document.head.append(canonical);
+    const structuredData = document.getElementById("public-home-structured-data");
 
     document.documentElement.lang = "vi";
-    document.title = isPublicHome ? publicHomeContent.seo.title : `Quản trị | ${publicHomeContent.brandName}`;
-    setMeta("description", isPublicHome ? publicHomeContent.seo.description : "Khu vực quản trị riêng của giáo viên.");
-    setMeta("robots", isPublicHome ? "index,follow,max-image-preview:large" : "noindex,nofollow,noarchive");
-    setMeta("og:title", publicHomeContent.seo.title, true);
-    setMeta("og:description", publicHomeContent.seo.description, true);
-    setMeta("og:type", "website", true);
-    setMeta("og:url", `${publicHomeContent.siteUrl}/`, true);
-    setMeta("og:image", `${publicHomeContent.siteUrl}${publicHomeContent.media.ogImage}`, true);
-    setMeta("og:locale", "vi_VN", true);
-    setMeta("twitter:card", "summary_large_image");
-    setMeta("twitter:title", publicHomeContent.seo.title);
-    setMeta("twitter:description", publicHomeContent.seo.description);
-    setMeta("twitter:image", `${publicHomeContent.siteUrl}${publicHomeContent.media.ogImage}`);
-
-    const existing = document.getElementById("public-person-structured-data");
     if (isPublicHome) {
-      const script = existing ?? document.createElement("script");
-      script.id = "public-person-structured-data";
-      script.setAttribute("type", "application/ld+json");
-      script.textContent = JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "Person",
-        name: publicHomeContent.teacherName,
-        url: `${publicHomeContent.siteUrl}/`,
-        jobTitle: "Giáo viên Tiếng Anh",
-        description: publicHomeContent.heroDescription,
-      });
-      if (!script.parentElement) document.head.append(script);
-    } else {
-      existing?.remove();
+      document.title = publicHomeContent.seo.title;
+      setMeta("description", publicHomeContent.seo.description);
+      setMeta("robots", "index,follow,max-image-preview:large");
+      if (!structuredData) {
+        const script = document.createElement("script");
+        script.id = "public-home-structured-data";
+        script.type = "application/ld+json";
+        script.textContent = JSON.stringify(publicHomeStructuredData);
+        document.head.append(script);
+      }
+      return;
     }
+
+    document.title = `Quản trị | ${publicHomeContent.brandName}`;
+    setMeta("description", "Khu vực quản trị riêng của giáo viên.");
+    setMeta("robots", "noindex,nofollow,noarchive");
+    structuredData?.remove();
   }, [pathname]);
 
   return null;

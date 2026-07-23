@@ -4,13 +4,6 @@ export interface PublicVideo {
   url: string;
 }
 
-export interface PublicTestimonial {
-  id: string;
-  guardianLabel: string;
-  studentLevel: string;
-  quote: string;
-}
-
 export interface PublicProgram {
   title: string;
   summary: string;
@@ -18,83 +11,71 @@ export interface PublicProgram {
   accent: "mint" | "blue" | "coral";
 }
 
-const defaultVideos: PublicVideo[] = [
-  {
-    title: "Từ vựng tiếng Anh qua ngữ cảnh",
-    description: "Video tham khảo giúp học sinh nghe, nhắc lại và ghi nhớ từ mới trong tình huống gần gũi.",
-    url: "https://www.youtube.com/watch?v=H6SSRhF9K3A",
-  },
-  {
-    title: "Hoạt động hằng ngày bằng tiếng Anh",
-    description: "Video tham khảo giúp học sinh luyện nghe và nhắc lại những từ, mẫu câu quen thuộc trong một ngày.",
-    url: "https://www.youtube.com/watch?v=qD1pnquN_DM",
-  },
-];
-
-// Nội dung mẫu, giữ cấu trúc này để thay bằng phản hồi thật sau này.
-const parentTestimonials: PublicTestimonial[] = [
-  {
-    id: "guardian-m-grade-2",
-    guardianLabel: "Mẹ bé M.",
-    studentLevel: "Học sinh lớp 2",
-    quote: "Trước đây bé khá ngại học tiếng Anh, nhất là phần đọc và nhớ từ. Học với cô một thời gian, bé chủ động xem lại bài hơn, về nhà còn tự đọc lại những từ cô đã hướng dẫn.",
-  },
-  {
-    id: "guardian-n-grade-6",
-    guardianLabel: "Mẹ bé N.",
-    studentLevel: "Học sinh lớp 6",
-    quote: "Con bị hổng ngữ pháp nên lúc làm bài thường khá rối và dễ nản. Cô chỉ lại từng phần, giao bài vừa sức nên dần dần con hiểu bài hơn và làm bài cũng chắc hơn trước.",
-  },
-  {
-    id: "guardian-h-grade-9",
-    guardianLabel: "Phụ huynh bé H.",
-    studentLevel: "Học sinh lớp 9",
-    quote: "Giai đoạn ôn thi gia đình khá lo vì con chưa biết nên tập trung vào phần nào. Cô theo sát, sửa kỹ từng lỗi và hướng dẫn cách làm bài nên con bình tĩnh và tự tin hơn nhiều.",
-  },
-];
-
-const zaloUrl = "https://zalo.me/";
-const facebookUrl = "https://www.facebook.com/uyenvy.le.12";
+const siteUrl = "https://tienganhcovy.com";
 
 /**
- * Source of truth for stable Homepage content, contact links and local media.
+ * Source of truth for stable Homepage copy, contact details and local media.
  */
 export const publicHomeContent = {
-  siteUrl: "https://tienganhcovy.com",
-  teacherName: "Cô Vy",
-  brandName: "Lớp học cô Vy",
+  siteUrl,
+  teacherName: "Uyên Vy",
+  teacherBrandName: "Cô Vy",
+  brandName: "Lớp tiếng Anh cô Vy",
+  headerBrandName: "Lớp học cô Vy",
   subject: "Tiếng Anh",
-  levels: "Lớp 1–9",
+  levels: "Mầm non, tiểu học và THCS",
   location: "Huế",
-  heroDescription: "Kèm cặp 1–1 và lớp nhóm nhỏ, bám sát năng lực từng học sinh.",
-  introduction: "Cô Vy đồng hành cùng học sinh từ lớp 1 đến lớp 9 theo mục tiêu phù hợp: xây nền, củng cố phần còn yếu và bám sát chương trình trên trường.",
+  hero: {
+    eyebrow: "LỚP TIẾNG ANH CÔ VY · HUẾ",
+    heading: "Cô Vy dạy tiếng Anh tại Huế",
+    description: "Lớp tiếng Anh cho học sinh mầm non, tiểu học và THCS; học 1–1 hoặc nhóm nhỏ, củng cố kiến thức và luyện thi theo mục tiêu.",
+  },
   teacherProfile: {
+    heading: "Giới thiệu giáo viên Uyên Vy",
     greeting: "Xin chào, cô là Uyên Vy.",
-    biography: "Cô Vy là giáo viên tiếng Anh tại Huế, đồng hành cùng học sinh từ mầm non đến lớp 9. Cô tập trung củng cố phần kiến thức còn yếu, xây nền tảng chắc và giúp học sinh tự tin hơn khi sử dụng tiếng Anh.",
-    highlights: [
+    biography: "Cô Vy là giáo viên tiếng Anh tại Huế với 5 năm kinh nghiệm giảng dạy. Cô đồng hành cùng học sinh theo năng lực, tập trung xây nền tảng chắc, củng cố phần còn yếu và giúp các em tự tin hơn khi sử dụng tiếng Anh.",
+    experience: [
       "5 năm kinh nghiệm giảng dạy",
+      "Từng giảng dạy tại Kindle, Amigo và Let’s Shine",
+      "Hiện là giáo viên tại DTP Education Solutions",
+      "Thực tập tại Trường Tiểu học Phú Hòa, đạt 9.8/10 và đảm nhiệm vai trò Leader",
+    ],
+    qualifications: [
+      "Xếp loại giỏi chuyên ngành tiếng Anh sư phạm bậc tiểu học",
       "Cử nhân ngành Ngôn ngữ Anh",
-      "VSTEP 8.5/10 – trình độ C1",
-      "Chứng chỉ Nghiệp vụ Sư phạm",
+      "VSTEP 8.5/10, trình độ C1",
+      "Chứng chỉ nghiệp vụ sư phạm",
       "Chứng chỉ quốc tế TESOL 120h",
-      "Từng giảng dạy tại các trung tâm tiếng Anh",
     ],
   },
   media: {
-    ogImage: "/images/teacher-english-hero-1440.jpg",
-    teacherPhoto: "/images/covy-image.png",
-    teacherPhotoAlt: "Cô Uyên Vy trong không gian dạy học tiếng Anh",
+    ogImage: "/images/covy-image-1200.jpg",
+    teacherPhoto: "/images/covy-image-1200.jpg",
+    teacherPhotoSources: [
+      { srcSet: "/images/covy-image-480.webp 480w, /images/covy-image-768.webp 768w, /images/covy-image-1200.webp 1200w", type: "image/webp" },
+    ],
+    teacherPhotoAlt: "Cô Uyên Vy, giáo viên tiếng Anh tại Huế",
     teacherPhotoFocalPosition: "center 42%",
+    logo: "/logo-covy.svg",
+    logoAlt: "Logo Lớp tiếng Anh cô Vy",
+    headerMark: "/favicon.svg",
   },
   contact: {
-    zaloUrl,
-    facebookUrl,
-    heading: "Cùng cô Vy tìm cách học phù hợp cho con",
-    description: "Ba mẹ có thể nhắn cô Vy để chia sẻ tình hình học hiện tại, thời gian phù hợp và phần con đang cần hỗ trợ. Cô sẽ trao đổi thêm về lớp học và cách học phù hợp.",
-    highlights: ["Lớp 1–9", "1–1 hoặc nhóm nhỏ", "Tại Huế"],
-    zaloLabel: "Nhắn Zalo",
+    zaloUrl: "https://zalo.me/0971697759",
+    facebookUrl: "https://www.facebook.com/uyenvy.le.12",
     facebookLabel: "Facebook",
-    followUp: "Trao đổi về tình hình học và lịch học của con",
+    facebookAriaLabel: "Facebook Uyên Vy Lê",
+    heading: "Liên hệ lớp tiếng Anh cô Vy",
+    description: "Ba mẹ có thể nhắn Zalo hoặc Facebook để trao đổi về năng lực hiện tại, mục tiêu và lịch học phù hợp cho con.",
+    highlights: ["Học 1–1 hoặc nhóm nhỏ", "Mầm non đến THCS", "Tại Huế"],
+  },
+  locations: {
+    heading: "Địa điểm học tiếng Anh tại Huế",
+    description: "Lớp học được tổ chức tại hai khu vực ở Huế. Ba mẹ vui lòng liên hệ trước để trao đổi địa điểm và lịch học phù hợp.",
+    items: [
+      "Khu vực Lê Bá Thân, Huế",
+      "101/245 Bùi Thị Xuân, Huế",
+    ],
   },
   methods: [
     { title: "Bám sát năng lực", detail: "Xác định phần kiến thức còn hổng và chọn nhịp học phù hợp với từng học sinh." },
@@ -103,29 +84,108 @@ export const publicHomeContent = {
   ],
   programs: [
     {
-      title: "Tiếng Anh tiểu học – lớp 1–5",
-      summary: "Xây nền từ vựng, phát âm và mẫu câu vừa sức.",
-      topics: ["Củng cố kiến thức trên trường", "Rèn nền tảng đều đặn"],
+      title: "Tiếng Anh mầm non",
+      summary: "Làm quen với âm, từ vựng và mẫu câu cơ bản qua hoạt động vừa sức.",
+      topics: ["Tạo hứng thú với tiếng Anh", "Rèn nghe và phản xạ ban đầu"],
       accent: "mint",
     },
     {
-      title: "Tiếng Anh THCS – lớp 6–9",
-      summary: "Bám sát chương trình, củng cố ngữ pháp và kỹ năng làm bài.",
-      topics: ["Củng cố kiến thức trên trường", "Ôn tập theo phần còn yếu"],
+      title: "Tiếng Anh tiểu học",
+      summary: "Xây nền phát âm, từ vựng và mẫu câu; củng cố kiến thức theo chương trình.",
+      topics: ["Tiếng Anh lớp 1–5", "Học 1–1 hoặc nhóm nhỏ"],
       accent: "blue",
     },
     {
-      title: "Luyện thi theo mục tiêu",
-      summary: "Lộ trình tập trung theo kỳ thi và năng lực từng học sinh.",
-      topics: ["Luyện thi Nguyễn Tri Phương", "Luyện thi 9 lên 10"],
+      title: "Tiếng Anh THCS",
+      summary: "Củng cố ngữ pháp, kỹ năng làm bài và phần kiến thức còn yếu.",
+      topics: ["Tiếng Anh lớp 6–9", "Bám sát mục tiêu từng học sinh"],
+      accent: "coral",
+    },
+    {
+      title: "Luyện thi Nguyễn Tri Phương",
+      summary: "Ôn tập theo mục tiêu tuyển sinh và năng lực hiện tại của học sinh.",
+      topics: ["Củng cố kiến thức trọng tâm", "Luyện kỹ năng làm bài"],
+      accent: "mint",
+    },
+    {
+      title: "Luyện thi lớp 9 lên 10 môn Anh",
+      summary: "Hệ thống kiến thức và luyện dạng bài cho kỳ thi vào lớp 10 tại Huế.",
+      topics: ["Ôn theo phần còn yếu", "Rèn chiến lược làm bài"],
+      accent: "blue",
+    },
+    {
+      title: "Tiếng Anh giao tiếp cơ bản",
+      summary: "Luyện nghe, phát âm và mẫu câu thông dụng trong các tình huống quen thuộc.",
+      topics: ["Giao tiếp nền tảng", "Tăng sự tự tin khi sử dụng tiếng Anh"],
       accent: "coral",
     },
   ] satisfies PublicProgram[],
-  videos: defaultVideos,
-  testimonials: parentTestimonials,
+  videos: [
+    {
+      title: "Từ vựng tiếng Anh qua ngữ cảnh",
+      description: "Video học tiếng Anh tham khảo giúp học sinh nghe, nhắc lại và ghi nhớ từ mới trong tình huống gần gũi.",
+      url: "https://www.youtube.com/watch?v=H6SSRhF9K3A",
+    },
+    {
+      title: "Hoạt động hằng ngày bằng tiếng Anh",
+      description: "Video học tiếng Anh tham khảo giúp học sinh luyện nghe và nhắc lại từ, mẫu câu quen thuộc.",
+      url: "https://www.youtube.com/watch?v=qD1pnquN_DM",
+    },
+  ] satisfies PublicVideo[],
   seo: {
-    title: "Lớp học tiếng Anh cô Vy | Tiếng Anh lớp 1–9 tại Huế",
-    description: "Kèm cặp tiếng Anh 1–1 và lớp nhóm nhỏ cho học sinh lớp 1–9 tại Huế.",
+    title: "Cô Vy dạy tiếng Anh tại Huế | Lớp 1–9 và luyện thi",
+    description: "Lớp tiếng Anh cô Vy tại Huế dành cho mầm non, tiểu học và THCS; học 1–1 hoặc nhóm nhỏ, luyện thi Nguyễn Tri Phương và lớp 9 lên 10.",
   },
-  footer: "2026 — từ người hâm mộ cô Vy, with love ❤️",
+  footer: {
+    copy: "2026 — từ người hâm mộ cô Vy, with love ❤️",
+    adminLabel: "Quản trị",
+  },
+} as const;
+
+export const publicHomeStructuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      url: `${siteUrl}/`,
+      name: "Lớp tiếng Anh cô Vy",
+      inLanguage: "vi-VN",
+    },
+    {
+      "@type": "LocalBusiness",
+      "@id": `${siteUrl}/#business`,
+      name: "Lớp tiếng Anh cô Vy",
+      url: `${siteUrl}/`,
+      logo: `${siteUrl}/logo-covy.svg`,
+      image: `${siteUrl}/images/covy-image-1200.jpg`,
+      description: "Lớp tiếng Anh cô Vy tại Huế dành cho mầm non, tiểu học và THCS; học 1–1 hoặc nhóm nhỏ, luyện thi Nguyễn Tri Phương và lớp 9 lên 10.",
+      areaServed: {
+        "@type": "City",
+        name: "Huế",
+      },
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "101/245 Bùi Thị Xuân",
+        addressLocality: "Huế",
+        addressCountry: "VN",
+      },
+      sameAs: [
+        "https://www.facebook.com/uyenvy.le.12",
+        "https://zalo.me/0971697759",
+      ],
+      founder: { "@id": `${siteUrl}/#teacher` },
+    },
+    {
+      "@type": "Person",
+      "@id": `${siteUrl}/#teacher`,
+      name: "Uyên Vy",
+      alternateName: "Cô Vy",
+      url: `${siteUrl}/`,
+      image: `${siteUrl}/images/covy-image-1200.jpg`,
+      jobTitle: "Giáo viên tiếng Anh",
+      worksFor: { "@id": `${siteUrl}/#business` },
+      sameAs: ["https://www.facebook.com/uyenvy.le.12"],
+    },
+  ],
 } as const;

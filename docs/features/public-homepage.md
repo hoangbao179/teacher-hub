@@ -1,53 +1,46 @@
 # Public Homepage
 
-Trang `/` giới thiệu **Lớp học cô Vy**, chương trình Tiếng Anh lớp 1–9 tại Huế,
-lớp 1–1 và nhóm nhỏ. Nội dung nhấn mạnh vững nền tảng, bám sát chương trình trường,
-ôn kiểm tra và chuẩn bị Nguyễn Tri Phương. Trang không cần đăng nhập, không gọi API
-quản trị và không công khai giá học phí.
+Trang `/` giới thiệu **Lớp tiếng Anh cô Vy** tại Huế. Trang không cần đăng nhập,
+không gọi API quản trị và không công khai học phí.
 
-## Nội dung
+## Nội dung và cấu trúc
 
-- Homepage bắt đầu trực tiếp bằng section giới thiệu cô Vy; không có hero chuyển cảnh.
-- Ảnh giới thiệu và nội dung public được cấu hình tập trung trong
-  `client/src/content/publicHome.ts`.
-- Ba card chương trình là Tiếng Anh tiểu học lớp 1–5, Tiếng Anh THCS lớp 6–9 và
-  luyện thi Nguyễn Tri Phương/9 lên 10; đây là mô tả mục tiêu học, không phải bảng giá.
-- Trên mobile, hai video vuốt ngang thủ công với scroll snap, hé card kế tiếp và có
-  chỉ dẫn ngắn nhưng không hiện scrollbar.
+- `client/src/content/publicHome.ts` là source of truth cho nội dung, liên hệ,
+  địa điểm, chương trình và đường dẫn media của Homepage.
+- Homepage có đúng một H1: `Cô Vy dạy tiếng Anh tại Huế`.
+- Nội dung công khai gồm hero, hồ sơ giáo viên, chương trình học, phương pháp,
+  hai địa điểm học, video tham khảo và liên hệ.
+- Chương trình gồm tiếng Anh mầm non, tiểu học, THCS, luyện thi Nguyễn Tri
+  Phương, luyện thi lớp 9 lên 10 và giao tiếp cơ bản.
+- Không render testimonial cho đến khi có phản hồi thật đã được xác minh và
+  cho phép công khai.
+- Video hiện tại là tài liệu tham khảo bên ngoài, không được mô tả là video hoặc
+  phương pháp giảng dạy do cô Vy thực hiện. Iframe YouTube chỉ tải sau tương tác.
 
-## Media tạm thời
+## Liên hệ và địa điểm
 
-Ảnh hiện tại là asset tạm, không được mô tả như chân dung thật của Cô Vy. Thay
-ảnh/alt/focal point theo `docs/content/replacing-public-media.md` và chạy production validation,
-E2E cùng review mobile/desktop. Thay media không được làm đổi business logic.
-Video dài chỉ tạo iframe `youtube-nocookie.com` sau tương tác và không autoplay audio.
+- Zalo: `https://zalo.me/0971697759`.
+- Facebook: `https://www.facebook.com/uyenvy.le.12`.
+- Địa điểm hiển thị đúng như dữ liệu đã duyệt:
+  - Khu vực Lê Bá Thân, Huế.
+  - 101/245 Bùi Thị Xuân, Huế.
+- Không suy đoán số nhà tại Lê Bá Thân.
+- External link dùng `noopener noreferrer`; địa chỉ luôn có text crawlable.
 
-## Phản hồi và liên hệ
+## SEO và accessibility
 
-- Homepage hiển thị ba testimonial mẫu được cấu hình trực tiếp trong
-  `client/src/content/publicHome.ts`; giữ cấu trúc này để thay bằng phản hồi thật sau này.
-- Chỉ dùng tên phụ huynh/học sinh viết tắt, không hiển thị ảnh đại diện, trường học,
-  điểm số hoặc thông tin cá nhân. Mobile dùng danh sách vuốt ngang tự chuyển và chấm
-  điều hướng nhưng không hiện scrollbar; desktop hiển thị ba card trên cùng một hàng.
-- Homepage không hiển thị CTA gọi điện và production không yêu cầu cấu hình phone. Zalo và
-  Facebook nằm cùng một hàng, rộng bằng nhau trên mobile; Facebook dùng URL công khai cố định
-  `https://www.facebook.com/uyenvy.le.12`. External link dùng `noopener noreferrer`.
-- Zalo và Facebook là liên kết cố định trong source, không phải cấu hình deployment.
+Metadata public, canonical, Open Graph, Twitter và JSON-LD `@graph` có sẵn trong
+`client/index.html`. Graph chỉ gồm `WebSite`, `LocalBusiness` và `Person`, không
+có review/rating. `RouteMetadata` chỉ chuyển metadata sang `noindex` cho route
+admin sau khi SPA chạy.
 
-## Cấu hình, SEO và accessibility
+Build client prerender riêng route `/` vào `client/dist/index.html`; admin vẫn
+là SPA. Nginx gửi `X-Robots-Tag: noindex, nofollow, noarchive` cho `/admin` và
+`/admin/*`.
 
-Text, SEO, Zalo, Facebook, video/testimonial, alt text và đường dẫn media local nằm ở
-`client/src/content/publicHome.ts`. Homepage không dùng biến môi trường cho nội dung công
-khai. Domain production được cố định trong source, sitemap và robots.
+Trang giữ heading tuần tự, landmark, focus-visible, touch target phù hợp, ảnh
+responsive có kích thước cố định và không có page-level horizontal scroll tại
+các viewport 360–430 px.
 
-Trang dùng landmark, một H1, heading tuần tự, focus-visible, touch target tối thiểu
-44 px, ảnh responsive và không phụ thuộc animation. Canonical/Open Graph/Twitter và
-Person JSON-LD lấy từ cấu hình public đã duyệt.
-
-Link **Liên hệ** giữ anchor `#contact`; trang cuộn mượt và chừa khoảng cho sticky header.
-Khi người dùng bật reduced motion, thao tác trở về cuộn bình thường.
-
-Footer phải giữ nguyên: `2026 — từ người hâm mộ cô Vy, with love ❤️`.
-
-Contact dùng tiêu đề “Cùng cô Vy tìm cách học phù hợp cho con”, hai CTA Zalo/Facebook
-và chip Lớp 1–9, 1–1 hoặc nhóm nhỏ, Tại Huế trong section hiện có.
+Footer công khai giữ nguyên:
+`2026 — từ người hâm mộ cô Vy, with love ❤️`. Link quản trị được đặt riêng.

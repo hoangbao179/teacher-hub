@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "build:production": "tsc && vite build --mode production",
+    "build": "tsc && vite build && vite build --ssr src/entry-server.tsx --outDir .prerender && node scripts/prerender-home.mjs",
+    "build:production": "tsc && vite build --mode production && vite build --mode production --ssr src/entry-server.tsx --outDir .prerender && node scripts/prerender-home.mjs",
+    "assets:seo": "node scripts/generate-seo-assets.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --max-warnings 0",
     "test": "node --test scripts/retry-after.unit.mjs",

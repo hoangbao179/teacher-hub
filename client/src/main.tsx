@@ -10,7 +10,10 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
 import { AuthProvider } from "./auth/AuthContext";
 import { theme } from "./theme";
-ReactDOM.createRoot(document.getElementById("root")!).render(
+const root = document.getElementById("root")!;
+if (root.dataset.prerendered === "true") root.replaceChildren();
+
+ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
