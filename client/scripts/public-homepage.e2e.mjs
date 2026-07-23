@@ -275,16 +275,37 @@ try {
     assert(await page.locator('[data-testid="testimonial-list"] figure').count() === 3, `Testimonial count changed at ${viewport.width}px`);
     const sliderMetrics = await page.evaluate(() => {
       const list = document.querySelector('[data-testid="testimonial-list"]');
+      const section = document.querySelector("#feedback");
       const cards = [...document.querySelectorAll('[data-testid="testimonial-list"] figure')].map((card) => card.getBoundingClientRect());
-      return list ? {
-        listWidth: list.getBoundingClientRect().width,
+      const contents = [...document.querySelectorAll('[data-testid="testimonial-list"] .MuiCardContent-root')];
+      const dots = document.querySelector('[data-testid="testimonial-dots"]');
+      const listRect = list?.getBoundingClientRect();
+      const sectionRect = section?.getBoundingClientRect();
+      const dotsRect = dots?.getBoundingClientRect();
+      return listRect && sectionRect && dotsRect ? {
+        listWidth: listRect.width,
         cardWidths: cards.map((card) => card.width),
         listOverflow: list.scrollWidth - list.clientWidth,
+        sectionWidth: sectionRect.width,
+        centerOffset: Math.abs((listRect.left + listRect.right) / 2 - (sectionRect.left + sectionRect.right) / 2),
+        contentWidths: contents.map((content) => content.getBoundingClientRect().width),
+        contentPaddingLeft: contents.map((content) => Number.parseFloat(window.getComputedStyle(content).paddingLeft)),
+        contentMinHeights: contents.map((content) => window.getComputedStyle(content).minHeight),
+        dotsWidth: dotsRect.width,
+        dotsGap: dotsRect.top - listRect.bottom,
+        dotsCenterOffset: Math.abs((dotsRect.left + dotsRect.right) / 2 - (listRect.left + listRect.right) / 2),
       } : null;
     });
     assert(sliderMetrics !== null, `Testimonial slider is missing at ${viewport.width}px`);
     assert(sliderMetrics.cardWidths.every((width) => Math.abs(width - sliderMetrics.listWidth) <= 1), `Each testimonial slide must fill the slider at ${viewport.width}px`);
     assert(sliderMetrics.listOverflow > sliderMetrics.listWidth, `Testimonial slider track is not wider than one slide at ${viewport.width}px`);
+    assert(sliderMetrics.dotsGap >= 10 && sliderMetrics.dotsGap <= 14, `Testimonial dots must sit directly below the card at ${viewport.width}px`);
+    assert(sliderMetrics.dotsCenterOffset <= 1, `Testimonial dots are not centered below the card at ${viewport.width}px`);
+    if (viewport.width === 390) {
+      assert(Math.abs(sliderMetrics.listWidth - sliderMetrics.sectionWidth) <= 1, "Mobile testimonial width must remain unchanged");
+      assert(sliderMetrics.contentPaddingLeft.every((padding) => Math.abs(padding - 20) <= 1), "Mobile testimonial padding must remain unchanged");
+      assert(sliderMetrics.contentMinHeights.every((height) => height === "250px"), "Mobile testimonial height must remain unchanged");
+    }
     if (viewport.width >= 768) {
       const desktopMetrics = await page.evaluate(() => {
         const contact = document.querySelector('[data-testid="contact-section"] > div')?.getBoundingClientRect();
@@ -295,6 +316,14 @@ try {
       });
       assert(desktopMetrics.contactWidth >= 720 && desktopMetrics.contactWidth <= 800, `Desktop contact width is out of range: ${desktopMetrics.contactWidth}px`);
       assert(desktopMetrics.contactCenterOffset <= 1, `Desktop contact is not centered: ${desktopMetrics.contactCenterOffset}px`);
+    }
+    if (viewport.width === 1440) {
+      assert(Math.abs(sliderMetrics.listWidth - 760) <= 1, `Desktop testimonial width must be 760px, found ${sliderMetrics.listWidth}px`);
+      assert(sliderMetrics.centerOffset <= 1, `Desktop testimonial is not centered: ${sliderMetrics.centerOffset}px`);
+      assert(sliderMetrics.contentWidths.every((width) => width <= 620), "Desktop testimonial content exceeds 620px");
+      assert(sliderMetrics.contentPaddingLeft.every((padding) => padding >= 28 && padding <= 32), "Desktop testimonial padding must remain within 28–32px");
+      assert(sliderMetrics.contentMinHeights.every((height) => height === "0px"), "Desktop testimonial content must not use a minimum height");
+      assert(Math.abs(sliderMetrics.dotsWidth - sliderMetrics.listWidth) <= 1, "Desktop testimonial dots must align to the carousel width");
     }
   }
 

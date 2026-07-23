@@ -249,7 +249,7 @@ export function HomePage() {
 
           <Box component="section" id="feedback" aria-label="Phản hồi phụ huynh" sx={{ ...sectionSx, position: "relative" }}>
             <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
-            <Box data-testid="testimonial-list" sx={{ mt: 2, overflow: "hidden", borderRadius: 3 }}>
+            <Box data-testid="testimonial-list" sx={{ mt: 2, maxWidth: { md: 760 }, mx: { md: "auto" }, overflow: "hidden", borderRadius: 3 }}>
               <Box
                 data-testid="testimonial-track"
                 sx={{
@@ -264,7 +264,7 @@ export function HomePage() {
                   const tone = testimonialTone[index % testimonialTone.length];
                   return (
                     <Card component="figure" aria-hidden={index !== activeTestimonial} key={item.id} variant="outlined" sx={{ m: 0, flex: "0 0 100%", minWidth: 0, borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
-                      <CardContent sx={{ minHeight: { xs: 250, sm: 220 }, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: 780, mx: "auto", px: { xs: 2.5, sm: 5 } }}>
+                      <CardContent sx={{ minHeight: { xs: 250, sm: 220, md: "unset" }, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: { xs: 780, md: 620 }, mx: "auto", px: { xs: 2.5, sm: 5, md: 4 }, py: { md: 4 }, "&:last-child": { pb: { md: 4 } } }}>
                         <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
                         <Typography component="blockquote" sx={{ m: 0 }}>{item.quote}</Typography>
                         <Box component="figcaption" sx={{ mt: 2.5 }}>
@@ -277,7 +277,7 @@ export function HomePage() {
                 })}
               </Box>
             </Box>
-            <Stack direction="row" aria-hidden="true" sx={{ justifyContent: "center", gap: 0.75, mt: 1.5 }}>
+            <Stack data-testid="testimonial-dots" direction="row" aria-hidden="true" sx={{ maxWidth: { md: 760 }, mx: { md: "auto" }, justifyContent: "center", gap: 0.75, mt: 1.5 }}>
               {content.testimonials.map((item, index) => (
                 <Box key={item.id} sx={{ width: index === activeTestimonial ? 20 : 7, height: 7, borderRadius: 4, bgcolor: index === activeTestimonial ? "primary.main" : "action.disabled", transition: "width 200ms ease", "@media (prefers-reduced-motion: reduce)": { transition: "none" } }} />
               ))}
