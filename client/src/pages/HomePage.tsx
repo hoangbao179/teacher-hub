@@ -269,7 +269,7 @@ export function HomePage() {
 
           <Box component="section" id="feedback" aria-label="Phản hồi phụ huynh" sx={{ ...sectionSx, position: "relative", py: { xs: 4, sm: 4, md: 4 } }}>
             <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
-            <Box data-testid="testimonial-list" sx={{ width: "100%", maxWidth: 900, mt: 2, mx: "auto", overflow: "hidden", borderRadius: 3 }}>
+            <Box data-testid="testimonial-list" sx={{ width: "100%", maxWidth: 1152, mt: 2, mx: "auto", overflow: "hidden", borderRadius: 3 }}>
               <Box
                 data-testid="testimonial-track"
                 sx={{
@@ -297,7 +297,7 @@ export function HomePage() {
                 })}
               </Box>
             </Box>
-            <Stack data-testid="testimonial-dots" direction="row" aria-hidden="true" sx={{ width: "100%", maxWidth: 900, mx: "auto", justifyContent: "center", gap: 0.75, mt: 1.5 }}>
+            <Stack data-testid="testimonial-dots" direction="row" aria-hidden="true" sx={{ width: "100%", maxWidth: 1152, mx: "auto", justifyContent: "center", gap: 0.75, mt: 1.5 }}>
               {content.testimonials.map((item, index) => (
                 <Box key={item.id} sx={{ width: index === activeTestimonial ? 20 : 7, height: 7, borderRadius: 4, bgcolor: index === activeTestimonial ? "primary.main" : "action.disabled", transition: "width 200ms ease", "@media (prefers-reduced-motion: reduce)": { transition: "none" } }} />
               ))}
@@ -305,7 +305,7 @@ export function HomePage() {
           </Box>
 
           <Box component="section" id="contact" aria-labelledby="contact-heading" data-testid="contact-section" sx={{ ...compactSectionSx, pt: { xs: 2, sm: 3, md: 2 }, scrollMarginTop: 72 }}>
-            <Box sx={{ width: "100%", maxWidth: 900, boxSizing: "border-box", mx: "auto", px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 }, textAlign: { sm: "center" }, border: "1px solid #ddd2f5", borderRadius: 3, background: "linear-gradient(135deg, #f5efff 0%, #edf8ff 52%, #effaf4 100%)", boxShadow: "0 10px 24px rgba(57,42,94,.07)" }}>
+            <Box sx={{ width: "100%", maxWidth: 1152, boxSizing: "border-box", mx: "auto", px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 }, textAlign: { sm: "center" }, border: "1px solid #ddd2f5", borderRadius: 3, background: "linear-gradient(135deg, #f5efff 0%, #edf8ff 52%, #effaf4 100%)", boxShadow: "0 10px 24px rgba(57,42,94,.07)" }}>
               <MenuBook color="primary" sx={{ fontSize: 30 }} />
               <Typography id="contact-heading" component="h2" variant="h4" sx={{ mt: 0.75 }}>{content.contact.heading}</Typography>
               <Typography color="text.secondary" sx={{ mt: 1 }}>{content.contact.description}</Typography>

@@ -367,13 +367,15 @@ try {
       assert(sliderMetrics.actionWhiteSpace.every((whiteSpace) => whiteSpace === "nowrap"), `Mobile contact action label wraps at ${viewport.width}px`);
     }
     if (viewport.width === 1440) {
-      assert(sliderMetrics.listWidth >= 895 && sliderMetrics.listWidth <= 900, `Desktop testimonial width is not approximately 900px: ${sliderMetrics.listWidth}px`);
+      assert(Math.abs(sliderMetrics.listWidth - sliderMetrics.sectionWidth) <= 1, `Desktop testimonial must fill the 1152px container: ${sliderMetrics.listWidth}px`);
+      assert(sliderMetrics.listWidth >= 1147 && sliderMetrics.listWidth <= 1152, `Desktop testimonial width is not approximately 1152px: ${sliderMetrics.listWidth}px`);
       assert(sliderMetrics.centerOffset <= 1, `Desktop testimonial is not centered: ${sliderMetrics.centerOffset}px`);
       assert(sliderMetrics.contentWidths.every((width) => width >= 680 && width <= 720), "Desktop testimonial content must remain within 680–720px");
       assert(sliderMetrics.contentPaddingLeft.every((padding) => padding >= 28 && padding <= 32), "Desktop testimonial padding must remain within 28–32px");
       assert(sliderMetrics.contentMinHeights.every((height) => height === "0px"), "Desktop testimonial content must not use a minimum height");
       assert(Math.abs(sliderMetrics.dotsWidth - sliderMetrics.listWidth) <= 1, "Desktop testimonial dots must align to the carousel width");
-      assert(sliderMetrics.contactWidth >= 895 && sliderMetrics.contactWidth <= 900, `Desktop contact width is not approximately 900px: ${sliderMetrics.contactWidth}px`);
+      assert(Math.abs(sliderMetrics.contactWidth - sliderMetrics.sectionWidth) <= 1, `Desktop contact must fill the 1152px container: ${sliderMetrics.contactWidth}px`);
+      assert(sliderMetrics.contactWidth >= 1147 && sliderMetrics.contactWidth <= 1152, `Desktop contact width is not approximately 1152px: ${sliderMetrics.contactWidth}px`);
       assert(sliderMetrics.contactCenterOffset <= 1, `Desktop contact is not centered: ${sliderMetrics.contactCenterOffset}px`);
     }
     if (screenshotDir && screenshotWidths.has(viewport.width)) {
