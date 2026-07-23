@@ -9,7 +9,7 @@ không gọi API quản trị và không công khai học phí.
   địa điểm, chương trình và đường dẫn media của Homepage.
 - Homepage có đúng một H1: `Cô Vy dạy tiếng Anh tại Huế`.
 - Nội dung công khai gồm hero, hồ sơ giáo viên, chương trình học, phương pháp,
-  hai địa điểm học, video tham khảo và liên hệ.
+  hình thức và địa điểm học, video tham khảo, FAQ và liên hệ.
 - Chương trình gồm tiếng Anh mầm non, tiểu học, THCS, luyện thi Nguyễn Tri
   Phương, luyện thi lớp 9 lên 10 và giao tiếp cơ bản.
 - Không render testimonial cho đến khi có phản hồi thật đã được xác minh và
@@ -21,10 +21,9 @@ không gọi API quản trị và không công khai học phí.
 
 - Zalo: `https://zalo.me/0971697759`.
 - Facebook: `https://www.facebook.com/uyenvy.le.12`.
-- Địa điểm hiển thị đúng như dữ liệu đã duyệt:
-  - Khu vực Lê Bá Thân, Huế.
-  - 101/245 Bùi Thị Xuân, Huế.
-- Không suy đoán số nhà tại Lê Bá Thân.
+- Học sinh có thể học tại nhà cô Vy ở `101 Kiệt 245 Bùi Thị Xuân, Huế`.
+- Cô Vy cũng nhận dạy tại nhà học sinh trong khu vực Huế.
+- Phụ huynh liên hệ trước để trao đổi lịch và hình thức học phù hợp.
 - External link dùng `noopener noreferrer`; địa chỉ luôn có text crawlable.
 
 ## SEO và accessibility

@@ -11,7 +11,18 @@ export interface PublicProgram {
   accent: "mint" | "blue" | "coral";
 }
 
+export interface PublicTestimonial {
+  id: string;
+  guardianLabel: string;
+  studentLevel: string;
+  quote: string;
+  verified: true;
+}
+
 const siteUrl = "https://tienganhcovy.com";
+
+// Chỉ thêm phản hồi thật đã được xác minh và cho phép công khai.
+const verifiedParentTestimonials: PublicTestimonial[] = [];
 
 /**
  * Source of truth for stable Homepage copy, contact details and local media.
@@ -21,19 +32,18 @@ export const publicHomeContent = {
   teacherName: "Uyên Vy",
   teacherBrandName: "Cô Vy",
   brandName: "Lớp tiếng Anh cô Vy",
-  headerBrandName: "Lớp học cô Vy",
+  headerBrandName: "Lớp tiếng Anh cô Vy",
   subject: "Tiếng Anh",
   levels: "Mầm non, tiểu học và THCS",
   location: "Huế",
   hero: {
     eyebrow: "LỚP TIẾNG ANH CÔ VY · HUẾ",
     heading: "Cô Vy dạy tiếng Anh tại Huế",
-    description: "Lớp tiếng Anh cho học sinh mầm non, tiểu học và THCS; học 1–1 hoặc nhóm nhỏ, củng cố kiến thức và luyện thi theo mục tiêu.",
+    description: "Lớp tiếng Anh tại Huế cho học sinh mầm non, tiểu học và THCS; học 1–1 hoặc theo lớp, củng cố kiến thức và luyện thi theo mục tiêu.",
   },
   teacherProfile: {
     heading: "Giới thiệu giáo viên Uyên Vy",
-    greeting: "Xin chào, cô là Uyên Vy.",
-    biography: "Cô Vy là giáo viên tiếng Anh tại Huế với 5 năm kinh nghiệm giảng dạy. Cô đồng hành cùng học sinh theo năng lực, tập trung xây nền tảng chắc, củng cố phần còn yếu và giúp các em tự tin hơn khi sử dụng tiếng Anh.",
+    biography: "Cô Vy đồng hành cùng học sinh theo năng lực, tập trung xây nền tảng chắc, củng cố phần còn yếu và giúp các em tự tin hơn khi sử dụng tiếng Anh.",
     experience: [
       "5 năm kinh nghiệm giảng dạy",
       "Từng giảng dạy tại Kindle, Amigo và Let’s Shine",
@@ -67,15 +77,19 @@ export const publicHomeContent = {
     facebookAriaLabel: "Facebook Uyên Vy Lê",
     heading: "Liên hệ lớp tiếng Anh cô Vy",
     description: "Ba mẹ có thể nhắn Zalo hoặc Facebook để trao đổi về năng lực hiện tại, mục tiêu và lịch học phù hợp cho con.",
-    highlights: ["Học 1–1 hoặc nhóm nhỏ", "Mầm non đến THCS", "Tại Huế"],
+    highlights: ["Lớp 1–1 và lớp nhóm", "Mầm non đến THCS", "Tại Huế"],
   },
   locations: {
     heading: "Địa điểm học tiếng Anh tại Huế",
-    description: "Lớp học được tổ chức tại hai khu vực ở Huế. Ba mẹ vui lòng liên hệ trước để trao đổi địa điểm và lịch học phù hợp.",
-    items: [
-      "Khu vực Lê Bá Thân, Huế",
-      "101/245 Bùi Thị Xuân, Huế",
-    ],
+    teacherHome: {
+      title: "Học tại nhà cô Vy",
+      detail: "101 Kiệt 245 Bùi Thị Xuân, Huế",
+    },
+    studentHome: {
+      title: "Học tại nhà học sinh",
+      detail: "Nhận dạy trong khu vực Huế",
+    },
+    note: "Phụ huynh vui lòng liên hệ trước để trao đổi lịch học phù hợp.",
   },
   methods: [
     { title: "Bám sát năng lực", detail: "Xác định phần kiến thức còn hổng và chọn nhịp học phù hợp với từng học sinh." },
@@ -92,7 +106,7 @@ export const publicHomeContent = {
     {
       title: "Tiếng Anh tiểu học",
       summary: "Xây nền phát âm, từ vựng và mẫu câu; củng cố kiến thức theo chương trình.",
-      topics: ["Tiếng Anh lớp 1–5", "Học 1–1 hoặc nhóm nhỏ"],
+      topics: ["Tiếng Anh lớp 1–5", "Học 1–1 hoặc theo lớp"],
       accent: "blue",
     },
     {
@@ -132,9 +146,35 @@ export const publicHomeContent = {
       url: "https://www.youtube.com/watch?v=qD1pnquN_DM",
     },
   ] satisfies PublicVideo[],
+  testimonials: verifiedParentTestimonials,
+  faq: {
+    heading: "Câu hỏi thường gặp về lớp tiếng Anh cô Vy",
+    items: [
+      {
+        question: "Cô Vy nhận dạy học sinh ở độ tuổi nào?",
+        answer: "Cô Vy nhận dạy học sinh mầm non, tiểu học và THCS, cùng các chương trình luyện thi theo mục tiêu.",
+      },
+      {
+        question: "Có lớp 1–1 và lớp nhóm không?",
+        answer: "Có. Hình thức học được sắp xếp theo nhu cầu và chương trình phù hợp.",
+      },
+      {
+        question: "Học sinh có thể học ở đâu?",
+        answer: "Học sinh có thể học tại nhà cô Vy ở 101 Kiệt 245 Bùi Thị Xuân, Huế, hoặc tại nhà học sinh trong khu vực Huế.",
+      },
+      {
+        question: "Cô Vy có luyện thi lớp 10 môn tiếng Anh không?",
+        answer: "Có chương trình củng cố kiến thức và luyện dạng bài phù hợp cho kỳ thi vào lớp 10.",
+      },
+      {
+        question: "Có luyện thi Nguyễn Tri Phương không?",
+        answer: "Có ôn tập theo năng lực hiện tại và mục tiêu của học sinh.",
+      },
+    ],
+  },
   seo: {
-    title: "Cô Vy dạy tiếng Anh tại Huế | Lớp 1–9 và luyện thi",
-    description: "Lớp tiếng Anh cô Vy tại Huế dành cho mầm non, tiểu học và THCS; học 1–1 hoặc nhóm nhỏ, luyện thi Nguyễn Tri Phương và lớp 9 lên 10.",
+    title: "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến THCS",
+    description: "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.",
   },
   footer: {
     copy: "2026 — từ người hâm mộ cô Vy, with love ❤️",
@@ -149,6 +189,7 @@ export const publicHomeStructuredData = {
       "@id": `${siteUrl}/#website`,
       url: `${siteUrl}/`,
       name: "Lớp tiếng Anh cô Vy",
+      alternateName: ["Tiếng Anh cô Vy", "Cô Vy"],
       inLanguage: "vi-VN",
     },
     {
@@ -158,14 +199,14 @@ export const publicHomeStructuredData = {
       url: `${siteUrl}/`,
       logo: `${siteUrl}/logo-covy.svg`,
       image: `${siteUrl}/images/covy-image-1200.jpg`,
-      description: "Lớp tiếng Anh cô Vy tại Huế dành cho mầm non, tiểu học và THCS; học 1–1 hoặc nhóm nhỏ, luyện thi Nguyễn Tri Phương và lớp 9 lên 10.",
+      description: "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.",
       areaServed: {
         "@type": "City",
         name: "Huế",
       },
       address: {
         "@type": "PostalAddress",
-        streetAddress: "101/245 Bùi Thị Xuân",
+        streetAddress: "101 Kiệt 245 Bùi Thị Xuân",
         addressLocality: "Huế",
         addressCountry: "VN",
       },

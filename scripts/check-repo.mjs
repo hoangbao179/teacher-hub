@@ -136,6 +136,10 @@ for (const [file, requiredMarkers] of [
 const nginx = read("deploy/nginx.conf");
 for (const header of ["Content-Security-Policy", "frame-ancestors 'none'", "Referrer-Policy", "Permissions-Policy", "X-Content-Type-Options"])
   if (!nginx.includes(header)) failures.push(`Nginx security header/config is missing: ${header}`);
+for (const marker of ["error_page 404 /404.html;", "location = /404.html", "try_files $uri $uri/ =404;", 'X-Robots-Tag "noindex, nofollow, noarchive"'])
+  if (!nginx.includes(marker)) failures.push(`Nginx 404/indexing behavior is missing: ${marker}`);
+if (!nginx.includes("location ^~ /admin/") || !nginx.includes("try_files $uri /index.html;"))
+  failures.push("Nginx admin SPA fallback is missing");
 const clientPackage = JSON.parse(read("client/package.json"));
 if (!clientPackage.scripts?.["build:production"]?.includes("vite build --mode production")) failures.push("Production client build does not use Vite production mode");
 if (!read("Dockerfile.web").includes("build:production")) failures.push("Web image bypasses production marketing validation");

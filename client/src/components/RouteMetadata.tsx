@@ -30,9 +30,10 @@ export function RouteMetadata() {
       return;
     }
 
-    document.title = `Quản trị | ${publicHomeContent.brandName}`;
-    setMeta("description", "Khu vực quản trị riêng của giáo viên.");
-    setMeta("robots", "noindex,nofollow,noarchive");
+    const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
+    document.title = isAdmin ? `Quản trị | ${publicHomeContent.brandName}` : `Không tìm thấy trang | ${publicHomeContent.brandName}`;
+    setMeta("description", isAdmin ? "Khu vực quản trị riêng của giáo viên." : "Trang bạn tìm không tồn tại. Quay về trang chủ lớp tiếng Anh cô Vy tại Huế.");
+    setMeta("robots", isAdmin ? "noindex,nofollow,noarchive" : "noindex,follow");
     structuredData?.remove();
   }, [pathname]);
 

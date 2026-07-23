@@ -8,8 +8,8 @@ const root = path.resolve(import.meta.dirname, "../..");
 const clientRoot = path.join(root, "client");
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
-const expectedTitle = "Cô Vy dạy tiếng Anh tại Huế | Lớp 1–9 và luyện thi";
-const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho mầm non, tiểu học và THCS; học 1–1 hoặc nhóm nhỏ, luyện thi Nguyễn Tri Phương và lớp 9 lên 10.";
+const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến THCS";
+const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
 let child;
 let browser;
 
@@ -41,14 +41,22 @@ try {
   for (const sourceCopy of [
     "<h1",
     "Cô Vy dạy tiếng Anh tại Huế",
-    "Khu vực Lê Bá Thân, Huế",
-    "101/245 Bùi Thị Xuân, Huế",
+    "101 Kiệt 245 Bùi Thị Xuân, Huế",
+    "Nhận dạy trong khu vực Huế",
+    "Câu hỏi thường gặp về lớp tiếng Anh cô Vy",
     "application/ld+json",
     "LocalBusiness",
   ]) assert(sourceHtml.includes(sourceCopy), `Prerendered HTML is missing: ${sourceCopy}`);
-  for (const forbiddenSource of ['href="tel:', '"telephone"', "Điện thoại và Zalo", "0971 697 759"]) {
-    assert(!sourceHtml.includes(forbiddenSource), `Prerendered HTML still contains phone semantics: ${forbiddenSource}`);
+  assert((sourceHtml.match(/<h1\b/g) ?? []).length === 1, "Prerendered Homepage must contain exactly one H1");
+  assert(sourceHtml.includes("Cô Vy đồng hành cùng học sinh theo năng lực, tập trung xây nền tảng chắc, củng cố phần còn yếu và giúp các em tự tin hơn khi sử dụng tiếng Anh."), "Condensed teacher introduction is missing");
+  assert(!sourceHtml.includes("Xin chào, cô là Uyên Vy."), "Old teacher greeting remains");
+  for (const forbiddenSource of ['href="tel:', '"telephone"', 'name="keywords"', "Điện thoại và Zalo", "0971 697 759", "Lê Bá Thân", "hai khu vực ở Huế", "101/245 Bùi Thị Xuân"]) {
+    assert(!sourceHtml.includes(forbiddenSource), `Prerendered HTML contains forbidden content: ${forbiddenSource}`);
   }
+  const notFoundSource = await (await fetch(`${origin}/404.html`)).text();
+  assert(notFoundSource.includes("Ôi, trang này đi lạc rồi!"), "Static 404 content is missing");
+  assert(notFoundSource.includes('name="robots" content="noindex,follow"'), "Static 404 must be noindex,follow");
+  assert(!notFoundSource.includes("public-home-structured-data"), "Static 404 must not contain Homepage structured data");
 
   const adminResponse = await fetch(`${origin}/admin/login`);
   assert(adminResponse.headers.get("x-robots-tag") === "noindex, nofollow, noarchive", "Admin response is missing X-Robots-Tag");
@@ -94,11 +102,15 @@ try {
     "Tiếng Anh giao tiếp cơ bản",
   ]) await page.getByRole("heading", { level: 3, name: program, exact: true }).waitFor();
 
-  for (const address of ["Khu vực Lê Bá Thân, Huế", "101/245 Bùi Thị Xuân, Huế"]) {
-    await page.locator("address").getByText(address, { exact: true }).waitFor();
-  }
+  await page.locator("address").getByText("Học tại nhà cô Vy", { exact: true }).waitFor();
+  await page.locator("address").getByText("101 Kiệt 245 Bùi Thị Xuân, Huế", { exact: true }).waitFor();
+  await page.locator("address").getByText("Học tại nhà học sinh", { exact: true }).waitFor();
+  await page.locator("address").getByText("Nhận dạy trong khu vực Huế", { exact: true }).waitFor();
+  await page.getByText("Phụ huynh vui lòng liên hệ trước để trao đổi lịch học phù hợp.", { exact: true }).waitFor();
+  await page.getByRole("heading", { level: 2, name: "Câu hỏi thường gặp về lớp tiếng Anh cô Vy", exact: true }).waitFor();
+  assert(await page.getByRole("heading", { level: 3 }).filter({ hasText: /Cô Vy nhận dạy|Có lớp 1–1|Học sinh có thể|luyện thi/ }).count() >= 5, "FAQ questions are missing from the DOM");
   const header = page.locator("header");
-  await header.getByText("Lớp học cô Vy", { exact: true }).waitFor();
+  await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).waitFor();
   assert(await header.locator('img[src="/favicon.svg"]').count() === 1, "Header must contain one small brand mark");
   assert(await header.locator('img[src="/logo-covy.svg"]').count() === 0, "Stacked wordmark must not appear in the Header");
   assert(await header.getByRole("link").count() === 2, "Header must contain only Contact and Admin links");
@@ -132,10 +144,16 @@ try {
     canonical: document.querySelector('link[rel="canonical"]')?.getAttribute("href"),
     favicon: document.querySelector('link[rel="icon"][type="image/svg+xml"]')?.getAttribute("href"),
     structured: document.querySelector('#public-home-structured-data')?.textContent,
+    ogTitle: document.querySelector('meta[property="og:title"]')?.getAttribute("content"),
+    ogDescription: document.querySelector('meta[property="og:description"]')?.getAttribute("content"),
+    twitterTitle: document.querySelector('meta[name="twitter:title"]')?.getAttribute("content"),
+    twitterDescription: document.querySelector('meta[name="twitter:description"]')?.getAttribute("content"),
     body: document.body.innerText,
   }));
   assert(metadata.title === expectedTitle, `Unexpected title: ${metadata.title}`);
   assert(metadata.description === expectedDescription, `Unexpected description: ${metadata.description}`);
+  assert(metadata.ogTitle === expectedTitle && metadata.twitterTitle === expectedTitle, "Social titles are not synchronized");
+  assert(metadata.ogDescription === expectedDescription && metadata.twitterDescription === expectedDescription, "Social descriptions are not synchronized");
   assert(metadata.canonical === "https://tienganhcovy.com/", `Unexpected canonical: ${metadata.canonical}`);
   assert(metadata.favicon === "/favicon.svg", "SVG favicon is missing");
   const graph = JSON.parse(metadata.structured ?? "{}")["@graph"];
@@ -143,12 +161,30 @@ try {
   for (const type of ["WebSite", "LocalBusiness", "Person"]) assert(graph.some((item) => item["@type"] === type), `${type} structured data is missing`);
   assert(!graph.some((item) => item.review || item.aggregateRating), "Review or rating structured data must not be present");
   assert(!JSON.stringify(graph).includes('"telephone"'), "Structured data still contains telephone semantics");
+  const website = graph.find((item) => item["@type"] === "WebSite");
+  const business = graph.find((item) => item["@type"] === "LocalBusiness");
+  assert(website.name === "Lớp tiếng Anh cô Vy", "WebSite name is incorrect");
+  assert(business.name === "Lớp tiếng Anh cô Vy", "LocalBusiness name is incorrect");
+  assert(business.address.streetAddress === "101 Kiệt 245 Bùi Thị Xuân", "LocalBusiness address is incorrect");
   assert(!/PHỤ HUYNH CHIA SẺ|Những phản hồi dành cho cô Vy|Mẹ bé M\.|Mẹ bé N\.|Phụ huynh bé H\./i.test(metadata.body), "Sample testimonial content remains public");
   assert(!/Điện thoại và Zalo|Gọi 0971|0971 697 759/i.test(metadata.body), "Phone copy remains public");
   const footer = page.locator("footer");
   assert((await footer.innerText()).trim() === "2026 — từ người hâm mộ cô Vy, with love ❤️", "Footer must contain only the required copy");
   assert(await footer.getByText("Quản trị", { exact: true }).count() === 0, "Admin text remains in the Footer");
   assert(await page.locator('a[href^="tel:"]').count() === 0, "Homepage still contains a tel link");
+
+  await page.goto(`${origin}/trang-khong-ton-tai`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { level: 1, name: "Ôi, trang này đi lạc rồi!", exact: true }).waitFor();
+  await page.getByRole("link", { name: "Về trang chủ", exact: true }).waitFor();
+  const notFoundZalo = page.getByRole("link", { name: "Nhắn Zalo", exact: true });
+  assert(await notFoundZalo.getAttribute("href") === "https://zalo.me/0971697759", "Public 404 Zalo URL is incorrect");
+  assert(await notFoundZalo.getAttribute("target") === "_blank" && (await notFoundZalo.getAttribute("rel"))?.includes("noopener"), "Public 404 Zalo link is unsafe");
+  assert(await page.locator('meta[name="robots"]').getAttribute("content") === "noindex,follow", "Client-side public 404 must be noindex,follow");
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    assert(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1, `Public 404 horizontal overflow at ${viewport.width}px`);
+  }
+  await page.goto(origin, { waitUntil: "networkidle" });
 
   await header.getByRole("link", { name: "Liên hệ", exact: true }).click();
   await page.waitForFunction(() => window.location.hash === "#contact");
@@ -169,7 +205,7 @@ try {
 
   const viewports = [
     { width: 390, height: 844 },
-    { width: 400, height: 930 },
+    { width: 768, height: 1024 },
     { width: 1440, height: 900 },
   ];
   for (const viewport of viewports) {
@@ -179,7 +215,7 @@ try {
     const metrics = await page.evaluate(() => {
       const header = document.querySelector("header");
       const items = header ? [...header.querySelectorAll("img, span, a")].map((item) => item.getBoundingClientRect()) : [];
-      const brandOccurrences = (header?.textContent?.match(/Lớp học cô Vy/g) ?? []).length;
+      const brandOccurrences = (header?.textContent?.match(/Lớp tiếng Anh cô Vy/g) ?? []).length;
       return {
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         headerHeight: header?.getBoundingClientRect().height ?? 0,
@@ -195,6 +231,25 @@ try {
     assert(metrics.brandOccurrences === 1, `Header repeats the brand name at ${viewport.width}px`);
     assert(await page.locator('[data-testid="contact-actions"] a').count() === 2, `Contact action count changed at ${viewport.width}px`);
     assert(await page.locator('a[href^="tel:"]').count() === 0, `tel link exists at ${viewport.width}px`);
+    if (viewport.width >= 768) {
+      const faqMetrics = await page.evaluate(() => {
+        const layout = document.querySelector('[data-testid="faq-layout"]')?.getBoundingClientRect();
+        const questions = document.querySelector('[data-testid="faq-questions"]')?.getBoundingClientRect();
+        const contact = document.querySelector('[data-testid="faq-contact"]')?.getBoundingClientRect();
+        const intro = document.querySelector('[data-testid="faq-layout"] > div')?.getBoundingClientRect();
+        return layout && questions && contact && intro ? {
+          questionsRatio: questions.width / layout.width,
+          rightGap: layout.right - questions.right,
+          contactGap: contact.top - intro.bottom,
+          contactWithinFaq: contact.top < questions.bottom,
+        } : null;
+      });
+      assert(faqMetrics !== null, `FAQ desktop layout is missing at ${viewport.width}px`);
+      assert(faqMetrics.questionsRatio >= 0.6, `FAQ questions are too narrow at ${viewport.width}px`);
+      assert(faqMetrics.rightGap <= 2, `FAQ leaves unused space on the right at ${viewport.width}px`);
+      assert(faqMetrics.contactGap <= 32, `Contact card is too far from FAQ heading at ${viewport.width}px`);
+      assert(faqMetrics.contactWithinFaq, `Contact card is detached from FAQ at ${viewport.width}px`);
+    }
   }
 
   await context.close();
