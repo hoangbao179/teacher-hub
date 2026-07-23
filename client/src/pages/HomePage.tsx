@@ -284,7 +284,7 @@ export function HomePage() {
                   const tone = testimonialTone[index % testimonialTone.length];
                   return (
                     <Card component="figure" aria-hidden={index !== activeTestimonial} key={item.id} variant="outlined" sx={{ m: 0, flex: "0 0 100%", minWidth: 0, borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
-                      <CardContent sx={{ width: "100%", maxWidth: 720, boxSizing: "border-box", display: "flex", flexDirection: "column", mx: "auto", p: { xs: 2.5, md: 4 }, "&:last-child": { pb: { xs: 2.5, md: 4 } } }}>
+                      <CardContent sx={{ width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", p: { xs: 2.5, md: 4 }, "&:last-child": { pb: { xs: 2.5, md: 4 } } }}>
                         <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
                         <Typography component="blockquote" sx={{ m: 0, fontSize: { xs: 16, md: "inherit" }, lineHeight: { xs: 1.55, md: "inherit" } }}>{item.quote}</Typography>
                         <Box component="figcaption" sx={{ mt: 2.5 }}>
