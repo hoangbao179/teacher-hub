@@ -80,9 +80,10 @@ try {
     "Giới thiệu giáo viên Uyên Vy",
     "Các lớp tiếng Anh và luyện thi tại Huế",
     "Địa điểm học tiếng Anh tại Huế",
-    "Video học tiếng Anh tham khảo",
+    "Xem thử cách tiếp cận bài học",
     "Liên hệ lớp tiếng Anh cô Vy",
   ]) await page.getByRole("heading", { level: 2, name: heading, exact: true }).waitFor();
+  await page.getByText("Một số video tham khảo giúp học sinh luyện nghe, nhắc lại và ghi nhớ từ vựng qua ngữ cảnh.", { exact: true }).waitFor();
 
   for (const program of [
     "Tiếng Anh mầm non",
@@ -103,6 +104,8 @@ try {
   assert(await header.getByRole("link").count() === 2, "Header must contain only Contact and Admin links");
   await header.getByRole("link", { name: "Liên hệ", exact: true }).waitFor();
   await header.getByRole("link", { name: "Quản trị", exact: true }).waitFor();
+  assert(await page.getByRole("link", { name: "Quản trị", exact: true }).count() === 1, "Admin link must exist only once in the Header");
+  assert(await page.getByRole("heading", { level: 2, name: "Video học tiếng Anh tham khảo", exact: true }).count() === 0, "Old video heading remains");
 
   const hero = page.locator("section").filter({ has: page.locator("#hero-heading") }).first();
   assert(await hero.getByRole("link").count() === 0 && await hero.getByRole("button").count() === 0, "Hero must not contain contact CTAs");
@@ -142,7 +145,9 @@ try {
   assert(!JSON.stringify(graph).includes('"telephone"'), "Structured data still contains telephone semantics");
   assert(!/PHỤ HUYNH CHIA SẺ|Những phản hồi dành cho cô Vy|Mẹ bé M\.|Mẹ bé N\.|Phụ huynh bé H\./i.test(metadata.body), "Sample testimonial content remains public");
   assert(!/Điện thoại và Zalo|Gọi 0971|0971 697 759/i.test(metadata.body), "Phone copy remains public");
-  assert(metadata.body.includes("2026 — từ người hâm mộ cô Vy, with love ❤️"), "Required footer copy is missing");
+  const footer = page.locator("footer");
+  assert((await footer.innerText()).trim() === "2026 — từ người hâm mộ cô Vy, with love ❤️", "Footer must contain only the required copy");
+  assert(await footer.getByText("Quản trị", { exact: true }).count() === 0, "Admin text remains in the Footer");
   assert(await page.locator('a[href^="tel:"]').count() === 0, "Homepage still contains a tel link");
 
   await header.getByRole("link", { name: "Liên hệ", exact: true }).click();

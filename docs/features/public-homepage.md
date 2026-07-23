@@ -43,4 +43,4 @@ responsive có kích thước cố định và không có page-level horizontal 
 các viewport 360–430 px.
 
 Footer công khai giữ nguyên:
-`2026 — từ người hâm mộ cô Vy, with love ❤️`. Link quản trị được đặt riêng.
+`2026 — từ người hâm mộ cô Vy, with love ❤️`. Link quản trị chỉ nằm ở header.

@@ -216,8 +216,8 @@ export function HomePage() {
 
           <Box component="section" id="videos" aria-labelledby="videos-heading" sx={sectionSx}>
             <Typography variant="overline" color="primary">VIDEO HỌC TẬP</Typography>
-            <Typography id="videos-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Video học tiếng Anh tham khảo</Typography>
-            <Typography color="text.secondary" sx={{ mt: 1 }}>Các video tham khảo bên ngoài; player chỉ được tải sau khi bạn chọn phát.</Typography>
+            <Typography id="videos-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Xem thử cách tiếp cận bài học</Typography>
+            <Typography color="text.secondary" sx={{ mt: 1 }}>Một số video tham khảo giúp học sinh luyện nghe, nhắc lại và ghi nhớ từ vựng qua ngữ cảnh.</Typography>
             <Typography data-testid="video-swipe-hint" variant="caption" color="primary" sx={{ display: { xs: "block", md: "none" }, mt: 2.5, textAlign: "right", fontWeight: 600 }}>Vuốt để xem thêm →</Typography>
             <Box data-testid="learning-video-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 1.5, md: 2.5 }, mt: { xs: 1, md: 3.5 }, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
               {content.videos.map((video) => <Box key={video.url} sx={{ flex: { xs: "0 0 85vw", md: "initial" }, maxWidth: { xs: 560, md: "none" }, scrollSnapAlign: "start" }}><LearningVideo video={video} /></Box>)}
@@ -239,12 +239,9 @@ export function HomePage() {
         </Container>
       </Box>
 
-      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", py: 2, pb: "calc(16px + env(safe-area-inset-bottom, 0px))", bgcolor: "#faf9fd" }}>
+      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", pt: 1, pb: "calc(8px + env(safe-area-inset-bottom, 0px))", bgcolor: "#faf9fd" }}>
         <Container maxWidth="lg">
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: "center", justifyContent: "center" }}>
-            <Typography color="text.secondary" sx={{ textAlign: "center", fontSize: 13 }}>{content.footer.copy}</Typography>
-            <Button component={Link} to="/admin/login" size="small" color="inherit" sx={{ fontSize: 12, opacity: 0.7 }}>{content.footer.adminLabel}</Button>
-          </Stack>
+          <Typography color="text.secondary" sx={{ textAlign: "center", fontSize: 12, lineHeight: 1.4 }}>{content.footer.copy}</Typography>
         </Container>
       </Box>
     </Box>

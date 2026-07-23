@@ -138,7 +138,6 @@ export const publicHomeContent = {
   },
   footer: {
     copy: "2026 — từ người hâm mộ cô Vy, with love ❤️",
-    adminLabel: "Quản trị",
   },
 } as const;
 
