@@ -13,7 +13,9 @@ không gọi API quản trị và không công khai học phí.
 - Ba nhóm chương trình gồm tiếng Anh nền tảng, tiếng Anh THCS và luyện thi theo
   mục tiêu.
 - Testimonial chỉ dùng phản hồi ẩn danh dựa trên chia sẻ thực tế đã được chủ
-  website xác nhận; không dùng avatar giả, số sao, điểm số hoặc review schema.
+  website xác nhận; hiển thị lần lượt và tự chuyển sau 3 giây, không dùng avatar
+  giả, số sao, điểm số hoặc review schema. Tự chuyển được tắt khi người dùng bật
+  `prefers-reduced-motion`.
 - Video hiện tại là tài liệu tham khảo bên ngoài, không được mô tả là video hoặc
   phương pháp giảng dạy do cô Vy thực hiện. Iframe YouTube chỉ tải sau tương tác.
 

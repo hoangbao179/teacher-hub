@@ -24,7 +24,7 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { publicHomeContent as content } from "../content/publicHome";
 
@@ -133,6 +133,16 @@ function DecorativeBackdrop() {
 }
 
 export function HomePage() {
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const interval = window.setInterval(() => {
+      setActiveTestimonial((current) => (current + 1) % content.testimonials.length);
+    }, 3000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   return (
     <Box sx={{ bgcolor: "#fff", color: "text.primary", overflowX: "clip" }}>
       <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -262,33 +272,46 @@ export function HomePage() {
             <Typography variant="overline" color="primary">VIDEO HỌC TẬP</Typography>
             <Typography id="videos-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Xem thử cách tiếp cận bài học</Typography>
             <Typography color="text.secondary" sx={{ mt: 1 }}>Video tham khảo để luyện nghe và ghi nhớ từ vựng qua ngữ cảnh.</Typography>
-            <Typography data-testid="video-swipe-hint" variant="caption" color="primary" sx={{ display: { xs: "block", md: "none" }, mt: 2.5, textAlign: "right", fontWeight: 600 }}>Vuốt để xem thêm →</Typography>
-            <Box data-testid="learning-video-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 1.5, md: 2.5 }, mt: { xs: 1, md: 3.5 }, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
+            <Box data-testid="learning-video-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 1.5, md: 2.5 }, mt: 3.5, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
               {content.videos.map((video) => <Box key={video.url} sx={{ flex: { xs: "0 0 85vw", md: "initial" }, maxWidth: { xs: 560, md: "none" }, scrollSnapAlign: "start" }}><LearningVideo video={video} /></Box>)}
             </Box>
           </Box>
 
-          <Box component="section" id="feedback" aria-labelledby="feedback-heading" sx={{ ...sectionSx, position: "relative" }}>
+          <Box component="section" id="feedback" aria-label="Phản hồi phụ huynh" sx={{ ...sectionSx, position: "relative" }}>
             <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
-            <Typography id="feedback-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Những thay đổi phụ huynh nhận thấy</Typography>
-            <Typography data-testid="testimonial-swipe-hint" variant="caption" color="primary" sx={{ display: { xs: "block", md: "none" }, mt: 2.5, textAlign: "right", fontWeight: 600 }}>Vuốt để xem thêm →</Typography>
-            <Box data-testid="testimonial-list" sx={{ display: { xs: "flex", md: "grid" }, gridTemplateColumns: { md: "repeat(3, minmax(0, 1fr))" }, alignItems: "stretch", gap: 2, mt: { xs: 1, md: 3.5 }, overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
-              {content.testimonials.map((item, index) => {
-                const tone = testimonialTone[index % testimonialTone.length];
-                return (
-                  <Card component="figure" key={item.id} variant="outlined" sx={{ m: 0, flex: { xs: "0 0 100%", md: "initial" }, minWidth: 0, height: "100%", scrollSnapAlign: "start", borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
-                    <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-                      <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
-                      <Typography component="blockquote" sx={{ m: 0, flexGrow: 1 }}>{item.quote}</Typography>
-                      <Box component="figcaption" sx={{ mt: 2.5 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{item.guardianLabel}</Typography>
-                        <Typography variant="caption" color="text.secondary">{item.studentLevel}</Typography>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <Box data-testid="testimonial-list" sx={{ mt: 2, overflow: "hidden", borderRadius: 3 }}>
+              <Box
+                data-testid="testimonial-track"
+                sx={{
+                  display: "flex",
+                  alignItems: "stretch",
+                  transform: `translateX(-${activeTestimonial * 100}%)`,
+                  transition: "transform 420ms ease",
+                  "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+                }}
+              >
+                {content.testimonials.map((item, index) => {
+                  const tone = testimonialTone[index % testimonialTone.length];
+                  return (
+                    <Card component="figure" aria-hidden={index !== activeTestimonial} key={item.id} variant="outlined" sx={{ m: 0, flex: "0 0 100%", minWidth: 0, borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
+                      <CardContent sx={{ minHeight: { xs: 250, sm: 220 }, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: 780, mx: "auto", px: { xs: 2.5, sm: 5 } }}>
+                        <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
+                        <Typography component="blockquote" sx={{ m: 0 }}>{item.quote}</Typography>
+                        <Box component="figcaption" sx={{ mt: 2.5 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{item.guardianLabel}</Typography>
+                          <Typography variant="caption" color="text.secondary">{item.studentLevel}</Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Box>
             </Box>
+            <Stack direction="row" aria-hidden="true" sx={{ justifyContent: "center", gap: 0.75, mt: 1.5 }}>
+              {content.testimonials.map((item, index) => (
+                <Box key={item.id} sx={{ width: index === activeTestimonial ? 20 : 7, height: 7, borderRadius: 4, bgcolor: index === activeTestimonial ? "primary.main" : "action.disabled", transition: "width 200ms ease", "@media (prefers-reduced-motion: reduce)": { transition: "none" } }} />
+              ))}
+            </Stack>
           </Box>
 
           <Box component="section" id="contact" aria-labelledby="contact-heading" data-testid="contact-section" sx={{ ...compactSectionSx, scrollMarginTop: 72 }}>

@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, URL, document, window, getComputedStyle */
+/* global process, fetch, setTimeout, console, URL, document, window */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -60,7 +60,6 @@ try {
     "Cô Vy dạy tiếng Anh tại Huế",
     "101 Kiệt 245 Bùi Thị Xuân, Huế",
     "Nhận dạy trong khu vực Huế",
-    "Những thay đổi phụ huynh nhận thấy",
     "Mẹ bé M.",
     "Mẹ bé N.",
     "Phụ huynh bé H.",
@@ -73,7 +72,7 @@ try {
     for (const copy of Object.values(testimonial)) assert(sourceHtml.includes(copy), `Prerendered testimonial copy is missing: ${copy}`);
   }
   assert(!sourceHtml.includes("Xin chào, cô là Uyên Vy."), "Old teacher greeting remains");
-  for (const forbiddenSource of ['href="tel:', '"telephone"', 'name="keywords"', "Điện thoại và Zalo", "0971 697 759", "Lê Bá Thân", "hai khu vực ở Huế", "101/245 Bùi Thị Xuân", "GIẢI ĐÁP NHANH", "Câu hỏi thường gặp"]) {
+  for (const forbiddenSource of ['href="tel:', '"telephone"', 'name="keywords"', "Điện thoại và Zalo", "0971 697 759", "Lê Bá Thân", "hai khu vực ở Huế", "101/245 Bùi Thị Xuân", "GIẢI ĐÁP NHANH", "Câu hỏi thường gặp", "Những thay đổi phụ huynh nhận thấy", "Vuốt để xem thêm"]) {
     assert(!sourceHtml.includes(forbiddenSource), `Prerendered HTML contains forbidden content: ${forbiddenSource}`);
   }
   const notFoundSource = await (await fetch(`${origin}/404.html`)).text();
@@ -112,7 +111,6 @@ try {
     "Ba nhóm chương trình",
     "Hình thức và địa điểm học",
     "Xem thử cách tiếp cận bài học",
-    "Những thay đổi phụ huynh nhận thấy",
     "Trao đổi về lớp học",
   ]) await page.getByRole("heading", { level: 2, name: heading, exact: true }).waitFor();
   await page.getByText("Video tham khảo để luyện nghe và ghi nhớ từ vựng qua ngữ cảnh.", { exact: true }).waitFor();
@@ -131,6 +129,8 @@ try {
   await page.getByText("Phụ huynh vui lòng liên hệ trước để trao đổi lịch học phù hợp.", { exact: true }).waitFor();
   assert(await page.getByText("GIẢI ĐÁP NHANH", { exact: true }).count() === 0, "FAQ eyebrow remains");
   assert(await page.getByText(/Câu hỏi thường gặp/i).count() === 0, "FAQ heading remains");
+  assert(await page.getByText("Những thay đổi phụ huynh nhận thấy", { exact: true }).count() === 0, "Removed testimonial heading remains");
+  assert(await page.getByText("Vuốt để xem thêm", { exact: false }).count() === 0, "Testimonial swipe hint remains");
   const header = page.locator("header");
   await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).waitFor();
   assert(await header.locator('img[src="/favicon.svg"]').count() === 1, "Header must contain one small brand mark");
@@ -196,6 +196,12 @@ try {
     await card.getByText(testimonial.studentLevel, { exact: true }).waitFor();
     await card.getByText(testimonial.quote, { exact: true }).waitFor();
   }
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const firstTestimonial = testimonialCards.filter({ hasText: expectedTestimonials[0].guardianLabel });
+  const secondTestimonial = testimonialCards.filter({ hasText: expectedTestimonials[1].guardianLabel });
+  assert(await firstTestimonial.getAttribute("aria-hidden") === "false", "The first testimonial must be initially visible");
+  await page.waitForTimeout(3200);
+  assert(await secondTestimonial.getAttribute("aria-hidden") === "false", "Testimonials must advance automatically after three seconds");
   const sectionOrder = await page.locator("main section").evaluateAll((sections) => sections.map((section) => section.id).filter(Boolean));
   for (const [before, after] of [["about", "programs"], ["programs", "method"], ["method", "locations"], ["locations", "videos"], ["videos", "feedback"], ["feedback", "contact"]]) {
     assert(sectionOrder.indexOf(before) < sectionOrder.indexOf(after), `Homepage section order is incorrect: ${before} must precede ${after}`);
@@ -267,32 +273,26 @@ try {
     assert(await page.locator('a[href^="tel:"]').count() === 0, `tel link exists at ${viewport.width}px`);
     assert(await page.locator('[data-testid="program-list"] article').count() === 3, `Program count changed at ${viewport.width}px`);
     assert(await page.locator('[data-testid="testimonial-list"] figure').count() === 3, `Testimonial count changed at ${viewport.width}px`);
-    if (viewport.width < 768) {
-      const mobileTestimonialMetrics = await page.evaluate(() => {
-        const list = document.querySelector('[data-testid="testimonial-list"]');
-        const card = list?.querySelector("figure");
-        return list && card ? {
-          listWidth: list.getBoundingClientRect().width,
-          cardWidth: card.getBoundingClientRect().width,
-          scrollSnapType: getComputedStyle(list).scrollSnapType,
-        } : null;
-      });
-      assert(mobileTestimonialMetrics !== null, `Mobile testimonial layout is missing at ${viewport.width}px`);
-      assert(Math.abs(mobileTestimonialMetrics.cardWidth - mobileTestimonialMetrics.listWidth) <= 1, `Mobile testimonial card must fill one viewport at ${viewport.width}px: card ${mobileTestimonialMetrics.cardWidth}px, list ${mobileTestimonialMetrics.listWidth}px`);
-      assert(mobileTestimonialMetrics.scrollSnapType.includes("x"), `Mobile testimonial scroll snap is missing at ${viewport.width}px`);
-    } else {
+    const sliderMetrics = await page.evaluate(() => {
+      const list = document.querySelector('[data-testid="testimonial-list"]');
+      const cards = [...document.querySelectorAll('[data-testid="testimonial-list"] figure')].map((card) => card.getBoundingClientRect());
+      return list ? {
+        listWidth: list.getBoundingClientRect().width,
+        cardWidths: cards.map((card) => card.width),
+        listOverflow: list.scrollWidth - list.clientWidth,
+      } : null;
+    });
+    assert(sliderMetrics !== null, `Testimonial slider is missing at ${viewport.width}px`);
+    assert(sliderMetrics.cardWidths.every((width) => Math.abs(width - sliderMetrics.listWidth) <= 1), `Each testimonial slide must fill the slider at ${viewport.width}px`);
+    assert(sliderMetrics.listOverflow > sliderMetrics.listWidth, `Testimonial slider track is not wider than one slide at ${viewport.width}px`);
+    if (viewport.width >= 768) {
       const desktopMetrics = await page.evaluate(() => {
-        const cards = [...document.querySelectorAll('[data-testid="testimonial-list"] figure')].map((card) => card.getBoundingClientRect());
         const contact = document.querySelector('[data-testid="contact-section"] > div')?.getBoundingClientRect();
         return {
-          cardTops: cards.map((card) => card.top),
-          cardHeights: cards.map((card) => card.height),
           contactWidth: contact?.width ?? 0,
           contactCenterOffset: contact ? Math.abs((contact.left + contact.right) / 2 - window.innerWidth / 2) : Number.POSITIVE_INFINITY,
         };
       });
-      assert(Math.max(...desktopMetrics.cardTops) - Math.min(...desktopMetrics.cardTops) <= 1, "Desktop testimonials must share one row");
-      assert(Math.max(...desktopMetrics.cardHeights) - Math.min(...desktopMetrics.cardHeights) <= 1, "Desktop testimonial cards must have equal height");
       assert(desktopMetrics.contactWidth >= 720 && desktopMetrics.contactWidth <= 800, `Desktop contact width is out of range: ${desktopMetrics.contactWidth}px`);
       assert(desktopMetrics.contactCenterOffset <= 1, `Desktop contact is not centered: ${desktopMetrics.contactCenterOffset}px`);
     }
