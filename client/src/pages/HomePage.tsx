@@ -144,8 +144,16 @@ export function HomePage() {
   }, []);
 
   return (
-    <Box sx={{ bgcolor: "#fff", color: "text.primary", overflowX: "clip" }}>
-      <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
+    <Box
+      data-testid="public-home"
+      sx={{
+        minHeight: "100vh",
+        color: "text.primary",
+        overflowX: "clip",
+        background: "linear-gradient(180deg, #fffaff 0%, #f7fbff 34%, #f8fff9 68%, #fffaf2 100%)",
+      }}
+    >
+      <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "rgba(255, 252, 255, .92)", backdropFilter: "blur(10px)" }}>
         <Container maxWidth="lg">
           <Toolbar disableGutters sx={{ minHeight: "56px !important", gap: 0.5 }}>
             <Box component="img" src={content.media.headerMark} alt="" width="32" height="32" sx={{ flexShrink: 0 }} />
@@ -207,7 +215,7 @@ export function HomePage() {
           </Box>
         </Container>
 
-        <Box sx={{ position: "relative", overflow: "hidden", bgcolor: "#faf8ff" }}>
+        <Box sx={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg, rgba(247, 240, 255, .78), rgba(239, 248, 255, .72), rgba(241, 250, 245, .76))" }}>
           <DecorativeBackdrop />
           <Container maxWidth="lg" sx={{ position: "relative" }}>
             <Box component="section" id="programs" aria-labelledby="programs-heading" sx={sectionSx}>
@@ -329,7 +337,7 @@ export function HomePage() {
         </Container>
       </Box>
 
-      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", pt: 1, pb: "calc(8px + env(safe-area-inset-bottom, 0px))", bgcolor: "#faf9fd" }}>
+      <Box component="footer" sx={{ borderTop: 1, borderColor: "divider", pt: 1, pb: "calc(8px + env(safe-area-inset-bottom, 0px))", bgcolor: "rgba(250, 249, 253, .82)" }}>
         <Container maxWidth="lg">
           <Typography color="text.secondary" sx={{ textAlign: "center", fontSize: 12, lineHeight: 1.4 }}>{content.footer.copy}</Typography>
         </Container>

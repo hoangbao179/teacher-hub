@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, URL, document, window */
+/* global process, fetch, setTimeout, console, URL, document, window, getComputedStyle */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -104,6 +104,8 @@ try {
   }));
   await page.goto(origin, { waitUntil: "networkidle" });
 
+  const homeBackground = await page.locator('[data-testid="public-home"]').evaluate((element) => getComputedStyle(element).backgroundImage);
+  assert(homeBackground.includes("linear-gradient"), "Homepage must use the approved soft background treatment");
   assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1");
   await page.getByRole("heading", { level: 1, name: "Cô Vy dạy tiếng Anh tại Huế", exact: true }).waitFor();
   for (const heading of [
