@@ -67,6 +67,7 @@ try {
     "Mẹ bé M.",
     "Mẹ bé N.",
     "Phụ huynh bé H.",
+    "Những thay đổi phụ huynh nhận thấy",
     "application/ld+json",
     "LocalBusiness",
   ]) assert(sourceHtml.includes(sourceCopy), `Prerendered HTML is missing: ${sourceCopy}`);
@@ -76,7 +77,7 @@ try {
     for (const copy of Object.values(testimonial)) assert(sourceHtml.includes(copy), `Prerendered testimonial copy is missing: ${copy}`);
   }
   assert(!sourceHtml.includes("Xin chào, cô là Uyên Vy."), "Old teacher greeting remains");
-  for (const forbiddenSource of ['href="tel:', '"telephone"', 'name="keywords"', "Điện thoại và Zalo", "0971 697 759", "Lê Bá Thân", "hai khu vực ở Huế", "101/245 Bùi Thị Xuân", "GIẢI ĐÁP NHANH", "Câu hỏi thường gặp", "Những thay đổi phụ huynh nhận thấy", "Vuốt để xem thêm"]) {
+  for (const forbiddenSource of ['href="tel:', '"telephone"', 'name="keywords"', "Điện thoại và Zalo", "0971 697 759", "Lê Bá Thân", "hai khu vực ở Huế", "101/245 Bùi Thị Xuân", "GIẢI ĐÁP NHANH", "Câu hỏi thường gặp", "Vuốt để xem thêm"]) {
     assert(!sourceHtml.includes(forbiddenSource), `Prerendered HTML contains forbidden content: ${forbiddenSource}`);
   }
   const notFoundSource = await (await fetch(`${origin}/404.html`)).text();
@@ -140,7 +141,9 @@ try {
   await page.getByText("Phụ huynh vui lòng liên hệ trước để trao đổi lịch học phù hợp.", { exact: true }).waitFor();
   assert(await page.getByText("GIẢI ĐÁP NHANH", { exact: true }).count() === 0, "FAQ eyebrow remains");
   assert(await page.getByText(/Câu hỏi thường gặp/i).count() === 0, "FAQ heading remains");
-  assert(await page.getByText("Những thay đổi phụ huynh nhận thấy", { exact: true }).count() === 0, "Removed testimonial heading remains");
+  const testimonialHeading = page.locator("#feedback h2").filter({ hasText: "Những thay đổi phụ huynh nhận thấy" });
+  assert(await testimonialHeading.count() === 1, "Desktop testimonial heading is missing");
+  assert(await testimonialHeading.isHidden(), "Desktop testimonial heading must remain hidden on mobile");
   assert(await page.getByText("Vuốt để xem thêm", { exact: false }).count() === 0, "Testimonial swipe hint remains");
   const header = page.locator("header");
   await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).waitFor();
@@ -320,12 +323,14 @@ try {
     const sliderMetrics = await page.evaluate(() => {
       const list = document.querySelector('[data-testid="testimonial-list"]');
       const section = document.querySelector("#feedback");
-      const cards = [...document.querySelectorAll('[data-testid="testimonial-list"] figure')].map((card) => card.getBoundingClientRect());
+      const cardElements = [...document.querySelectorAll('[data-testid="testimonial-list"] figure')];
+      const cards = cardElements.map((card) => card.getBoundingClientRect());
       const contents = [...document.querySelectorAll('[data-testid="testimonial-list"] .MuiCardContent-root')];
       const quotes = [...document.querySelectorAll('[data-testid="testimonial-list"] blockquote')];
       const dots = document.querySelector('[data-testid="testimonial-dots"]');
       const contact = document.querySelector('[data-testid="contact-section"] > div');
       const actions = [...document.querySelectorAll('[data-testid="contact-actions"] a')];
+      const heading = document.querySelector("#feedback h2");
       const listRect = list?.getBoundingClientRect();
       const sectionRect = section?.getBoundingClientRect();
       const dotsRect = dots?.getBoundingClientRect();
@@ -333,7 +338,9 @@ try {
       const actionRects = actions.map((action) => action.getBoundingClientRect());
       return listRect && sectionRect && dotsRect && contactRect ? {
         listWidth: listRect.width,
-        cardWidths: cards.map((card) => card.width),
+        cards: cards.map((card) => ({ width: card.width, height: card.height, top: card.top, left: card.left, right: card.right })),
+        visibleCardCount: cards.filter((card) => Math.min(card.right, listRect.right) - Math.max(card.left, listRect.left) >= card.width - 1).length,
+        cardAriaHidden: cardElements.map((card) => card.getAttribute("aria-hidden")),
         listOverflow: list.scrollWidth - list.clientWidth,
         sectionWidth: sectionRect.width,
         centerOffset: Math.abs((listRect.left + listRect.right) / 2 - (sectionRect.left + sectionRect.right) / 2),
@@ -344,6 +351,8 @@ try {
         dotsWidth: dotsRect.width,
         dotsGap: dotsRect.top - listRect.bottom,
         dotsCenterOffset: Math.abs((dotsRect.left + dotsRect.right) / 2 - (listRect.left + listRect.right) / 2),
+        dotsDisplay: window.getComputedStyle(dots).display,
+        headingDisplay: heading ? window.getComputedStyle(heading).display : "",
         contactWidth: contactRect.width,
         contactCenterOffset: Math.abs((contactRect.left + contactRect.right) / 2 - (sectionRect.left + sectionRect.right) / 2),
         actionRects: actionRects.map((action) => ({ top: action.top, height: action.height })),
@@ -351,10 +360,25 @@ try {
       } : null;
     });
     assert(sliderMetrics !== null, `Testimonial slider is missing at ${viewport.width}px`);
-    assert(sliderMetrics.cardWidths.every((width) => Math.abs(width - sliderMetrics.listWidth) <= 1), `Each testimonial slide must fill the slider at ${viewport.width}px`);
-    assert(sliderMetrics.listOverflow > sliderMetrics.listWidth, `Testimonial slider track is not wider than one slide at ${viewport.width}px`);
-    assert(sliderMetrics.dotsGap >= 10 && sliderMetrics.dotsGap <= 14, `Testimonial dots must sit directly below the card at ${viewport.width}px`);
-    assert(sliderMetrics.dotsCenterOffset <= 1, `Testimonial dots are not centered below the card at ${viewport.width}px`);
+    if (viewport.width < 768) {
+      assert(sliderMetrics.cards.every((card) => Math.abs(card.width - sliderMetrics.listWidth) <= 1), `Each mobile testimonial slide must fill the slider at ${viewport.width}px`);
+      assert(sliderMetrics.listOverflow > sliderMetrics.listWidth, `Mobile testimonial track is not wider than one slide at ${viewport.width}px`);
+      assert(sliderMetrics.visibleCardCount === 1, `Mobile must show exactly one testimonial at ${viewport.width}px`);
+      assert(sliderMetrics.dotsDisplay !== "none", `Mobile testimonial dots are hidden at ${viewport.width}px`);
+      assert(sliderMetrics.headingDisplay === "none", `Desktop testimonial heading is visible below md at ${viewport.width}px`);
+      assert(sliderMetrics.dotsGap >= 10 && sliderMetrics.dotsGap <= 14, `Testimonial dots must sit directly below the card at ${viewport.width}px`);
+      assert(sliderMetrics.dotsCenterOffset <= 1, `Testimonial dots are not centered below the card at ${viewport.width}px`);
+    } else {
+      const expectedCardWidth = (sliderMetrics.listWidth - 40) / 3;
+      assert(sliderMetrics.cards.every((card) => Math.abs(card.width - expectedCardWidth) <= 1), `Desktop testimonial cards do not use three equal columns at ${viewport.width}px`);
+      assert(sliderMetrics.visibleCardCount === 3, `Desktop must show all three testimonials at ${viewport.width}px`);
+      assert(Math.max(...sliderMetrics.cards.map((card) => card.top)) - Math.min(...sliderMetrics.cards.map((card) => card.top)) <= 1, `Desktop testimonials are not on one row at ${viewport.width}px`);
+      assert(Math.max(...sliderMetrics.cards.map((card) => card.height)) - Math.min(...sliderMetrics.cards.map((card) => card.height)) <= 1, `Desktop testimonial heights are not equal at ${viewport.width}px`);
+      assert(sliderMetrics.listOverflow <= 1, `Desktop testimonial grid overflows at ${viewport.width}px`);
+      assert(sliderMetrics.dotsDisplay === "none", `Desktop testimonial dots remain visible at ${viewport.width}px`);
+      assert(sliderMetrics.headingDisplay !== "none", `Desktop testimonial heading is hidden at ${viewport.width}px`);
+      assert(sliderMetrics.cardAriaHidden.every((value) => value === null), `Desktop testimonials remain hidden from accessibility at ${viewport.width}px`);
+    }
     if (viewport.width <= 430) {
       assert(Math.abs(sliderMetrics.listWidth - sliderMetrics.sectionWidth) <= 1, `Mobile testimonial must fill its section at ${viewport.width}px`);
       assert(Math.abs(sliderMetrics.contactWidth - sliderMetrics.sectionWidth) <= 1, `Mobile contact must fill its section at ${viewport.width}px`);
@@ -370,10 +394,9 @@ try {
       assert(Math.abs(sliderMetrics.listWidth - sliderMetrics.sectionWidth) <= 1, `Desktop testimonial must fill the 1152px container: ${sliderMetrics.listWidth}px`);
       assert(sliderMetrics.listWidth >= 1147 && sliderMetrics.listWidth <= 1152, `Desktop testimonial width is not approximately 1152px: ${sliderMetrics.listWidth}px`);
       assert(sliderMetrics.centerOffset <= 1, `Desktop testimonial is not centered: ${sliderMetrics.centerOffset}px`);
-      assert(sliderMetrics.contentWidths.every((width) => sliderMetrics.listWidth - width >= 1 && sliderMetrics.listWidth - width <= 2), "Desktop testimonial content must fill the card content box");
+      assert(sliderMetrics.contentWidths.every((width, index) => sliderMetrics.cards[index].width - width >= 1 && sliderMetrics.cards[index].width - width <= 2), "Desktop testimonial content must fill each card content box");
       assert(sliderMetrics.contentPaddingLeft.every((padding) => padding >= 28 && padding <= 32), "Desktop testimonial padding must remain within 28–32px");
       assert(sliderMetrics.contentMinHeights.every((height) => height === "0px"), "Desktop testimonial content must not use a minimum height");
-      assert(Math.abs(sliderMetrics.dotsWidth - sliderMetrics.listWidth) <= 1, "Desktop testimonial dots must align to the carousel width");
       assert(Math.abs(sliderMetrics.contactWidth - sliderMetrics.sectionWidth) <= 1, `Desktop contact must fill the 1152px container: ${sliderMetrics.contactWidth}px`);
       assert(sliderMetrics.contactWidth >= 1147 && sliderMetrics.contactWidth <= 1152, `Desktop contact width is not approximately 1152px: ${sliderMetrics.contactWidth}px`);
       assert(sliderMetrics.contactCenterOffset <= 1, `Desktop contact is not centered: ${sliderMetrics.contactCenterOffset}px`);

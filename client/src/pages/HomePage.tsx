@@ -23,6 +23,8 @@ import {
   Stack,
   Toolbar,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -118,14 +120,16 @@ const headerLinkSx = {
 
 export function HomePage() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (isDesktop || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const interval = window.setInterval(() => {
       setActiveTestimonial((current) => (current + 1) % content.testimonials.length);
     }, 3000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [isDesktop]);
 
   return (
     <Box
@@ -267,23 +271,26 @@ export function HomePage() {
             </Box>
           </Box>
 
-          <Box component="section" id="feedback" aria-label="Phản hồi phụ huynh" sx={{ ...sectionSx, position: "relative", py: { xs: 4, sm: 4, md: 4 } }}>
+          <Box component="section" id="feedback" aria-label="Phản hồi phụ huynh" sx={{ ...sectionSx, position: "relative", pt: { xs: 4, sm: 4, md: 2 }, pb: { xs: 4, sm: 4, md: 4 } }}>
             <Typography variant="overline" color="primary">PHỤ HUYNH CHIA SẺ</Typography>
-            <Box data-testid="testimonial-list" sx={{ width: "100%", maxWidth: 1152, mt: 2, mx: "auto", overflow: "hidden", borderRadius: 3 }}>
+            <Typography component="h2" variant="h4" sx={{ display: { xs: "none", md: "block" }, mt: 1 }}>Những thay đổi phụ huynh nhận thấy</Typography>
+            <Box data-testid="testimonial-list" sx={{ width: "100%", maxWidth: 1152, mt: { xs: 2, md: 3 }, mx: "auto", overflow: "hidden", borderRadius: 3 }}>
               <Box
                 data-testid="testimonial-track"
                 sx={{
-                  display: "flex",
+                  display: { xs: "flex", md: "grid" },
+                  gridTemplateColumns: { md: "repeat(3, minmax(0, 1fr))" },
+                  gap: { md: 2.5 },
                   alignItems: "stretch",
-                  transform: `translateX(-${activeTestimonial * 100}%)`,
-                  transition: "transform 420ms ease",
+                  transform: { xs: `translateX(-${activeTestimonial * 100}%)`, md: "none" },
+                  transition: { xs: "transform 420ms ease", md: "none" },
                   "@media (prefers-reduced-motion: reduce)": { transition: "none" },
                 }}
               >
                 {content.testimonials.map((item, index) => {
                   const tone = testimonialTone[index % testimonialTone.length];
                   return (
-                    <Card component="figure" aria-hidden={index !== activeTestimonial} key={item.id} variant="outlined" sx={{ m: 0, flex: "0 0 100%", minWidth: 0, borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
+                    <Card component="figure" aria-hidden={isDesktop ? undefined : index !== activeTestimonial} key={item.id} variant="outlined" sx={{ m: 0, flex: { xs: "0 0 100%", md: "initial" }, minWidth: 0, height: { md: "100%" }, borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
                       <CardContent sx={{ width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", p: { xs: 2.5, md: 4 }, "&:last-child": { pb: { xs: 2.5, md: 4 } } }}>
                         <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
                         <Typography component="blockquote" sx={{ m: 0, fontSize: { xs: 16, md: "inherit" }, lineHeight: { xs: 1.55, md: "inherit" } }}>{item.quote}</Typography>
@@ -297,7 +304,7 @@ export function HomePage() {
                 })}
               </Box>
             </Box>
-            <Stack data-testid="testimonial-dots" direction="row" aria-hidden="true" sx={{ width: "100%", maxWidth: 1152, mx: "auto", justifyContent: "center", gap: 0.75, mt: 1.5 }}>
+            <Stack data-testid="testimonial-dots" direction="row" aria-hidden="true" sx={{ display: { xs: "flex", md: "none" }, width: "100%", maxWidth: 1152, mx: "auto", justifyContent: "center", gap: 0.75, mt: 1.5 }}>
               {content.testimonials.map((item, index) => (
                 <Box key={item.id} sx={{ width: index === activeTestimonial ? 20 : 7, height: 7, borderRadius: 4, bgcolor: index === activeTestimonial ? "primary.main" : "action.disabled", transition: "width 200ms ease", "@media (prefers-reduced-motion: reduce)": { transition: "none" } }} />
               ))}
