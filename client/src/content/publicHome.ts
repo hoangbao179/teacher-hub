@@ -64,7 +64,7 @@ export const publicHomeContent = {
     description: "Đồng hành cùng học sinh từ nền tảng đến luyện thi, theo hình thức 1–1 hoặc lớp nhóm.",
   },
   teacherProfile: {
-    heading: "Người đồng hành cùng học sinh",
+    heading: "Đồng hành cùng học sinh",
     biography: "Cô Vy đồng hành cùng học sinh theo năng lực, tập trung xây nền tảng chắc, củng cố phần còn yếu và giúp các em tự tin hơn khi sử dụng tiếng Anh.",
     experience: [
       "5 năm kinh nghiệm giảng dạy",

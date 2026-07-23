@@ -103,6 +103,18 @@ const testimonialTone = [
   { background: "linear-gradient(145deg, #edf7ff, #f7fbff)", border: "#c8e1f5", accent: "#347aaa" },
   { background: "linear-gradient(145deg, #f2edff, #fbf9ff)", border: "#d9cef7", accent: "#7655c8" },
 ] as const;
+const headerLinkSx = {
+  whiteSpace: "nowrap",
+  flexShrink: 0,
+  minWidth: 0,
+  "@media (max-width:599.95px)": {
+    minHeight: "unset",
+    px: 0.75,
+    py: 0,
+    fontSize: 13,
+    lineHeight: 1.4,
+  },
+} as const;
 
 export function HomePage() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -116,14 +128,22 @@ export function HomePage() {
   }, []);
 
   return (
-    <Box sx={{ bgcolor: "#fff", color: "text.primary", overflowX: "clip" }}>
+    <Box
+      sx={{
+        bgcolor: "#fff",
+        color: "text.primary",
+        overflowX: "clip",
+        "& h1, & h2, & h3, & h4, & h5, & h6": { textWrap: "balance" },
+        "& p, & blockquote": { textWrap: "pretty" },
+      }}
+    >
       <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Container maxWidth="lg">
-          <Toolbar disableGutters sx={{ minHeight: "56px !important", gap: 0.5 }}>
-            <Box component="img" src={content.media.headerMark} alt="" width="32" height="32" sx={{ flexShrink: 0 }} />
-            <Typography component="span" variant="subtitle1" noWrap sx={{ ml: 0.5, flexGrow: 1, fontWeight: 800 }}>{content.headerBrandName}</Typography>
-            <Button component="a" href="#contact" size="small">Liên hệ</Button>
-            <Button component={Link} to="/admin/login" size="small" color="inherit">Quản trị</Button>
+          <Toolbar disableGutters sx={{ minHeight: "56px !important", gap: { xs: 0.25, sm: 0.5 } }}>
+            <Box data-testid="header-logo" component="img" src={content.media.headerMark} alt="" width="32" height="32" sx={{ width: { xs: 28, sm: 32 }, height: { xs: 28, sm: 32 }, flexShrink: 0 }} />
+            <Typography data-testid="header-brand" component="span" variant="subtitle1" sx={{ ml: { xs: 0.25, sm: 0.5 }, minWidth: 0, flexGrow: 1, fontWeight: 800, fontSize: { xs: 14, sm: 15 }, whiteSpace: "nowrap", overflow: "visible", textOverflow: "clip" }}>{content.headerBrandName}</Typography>
+            <Button data-testid="header-contact" component="a" href="#contact" size="small" sx={headerLinkSx}>Liên hệ</Button>
+            <Button data-testid="header-admin" component={Link} to="/admin/login" size="small" color="inherit" sx={headerLinkSx}>Quản trị</Button>
           </Toolbar>
         </Container>
       </AppBar>
@@ -208,7 +228,7 @@ export function HomePage() {
         <Container maxWidth="lg">
           <Box component="section" id="method" aria-labelledby="method-heading" sx={{ ...sectionSx, pb: { xs: 4, sm: 5, md: 4 } }}>
             <Typography variant="overline" color="primary">PHƯƠNG PHÁP GIẢNG DẠY</Typography>
-            <Typography id="method-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Rõ ràng, vừa sức và có mục tiêu</Typography>
+            <Typography id="method-heading" component="h2" variant="h4" sx={{ mt: 1 }}>Rõ ràng, vừa sức, đúng mục tiêu</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2, mt: 3.5 }}>
               {content.methods.map((method, index) => {
                 const Icon = [LightbulbOutlined, AutoStories, CheckCircleOutlined][index];
@@ -264,9 +284,9 @@ export function HomePage() {
                   const tone = testimonialTone[index % testimonialTone.length];
                   return (
                     <Card component="figure" aria-hidden={index !== activeTestimonial} key={item.id} variant="outlined" sx={{ m: 0, flex: "0 0 100%", minWidth: 0, borderRadius: 3, background: tone.background, borderColor: tone.border, boxShadow: "0 8px 22px rgba(57,42,94,.06)" }}>
-                      <CardContent sx={{ minHeight: { xs: 250, sm: 220, md: "unset" }, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: { xs: 780, md: 620 }, mx: "auto", px: { xs: 2.5, sm: 5, md: 4 }, py: { md: 4 }, "&:last-child": { pb: { md: 4 } } }}>
+                      <CardContent sx={{ minHeight: { xs: 216, sm: 220, md: "unset" }, display: "flex", flexDirection: "column", maxWidth: { xs: 780, md: 620 }, mx: "auto", p: { xs: 2.5, md: 4 }, "&:last-child": { pb: { xs: 2.5, md: 4 } } }}>
                         <FormatQuote aria-hidden="true" sx={{ color: tone.accent, fontSize: 30, mb: 0.5 }} />
-                        <Typography component="blockquote" sx={{ m: 0 }}>{item.quote}</Typography>
+                        <Typography component="blockquote" sx={{ m: 0, fontSize: { xs: 16, md: "inherit" }, lineHeight: { xs: 1.55, md: "inherit" } }}>{item.quote}</Typography>
                         <Box component="figcaption" sx={{ mt: 2.5 }}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{item.guardianLabel}</Typography>
                           <Typography variant="caption" color="text.secondary">{item.studentLevel}</Typography>

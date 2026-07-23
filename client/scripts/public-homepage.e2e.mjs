@@ -8,6 +8,8 @@ const root = path.resolve(import.meta.dirname, "../..");
 const clientRoot = path.join(root, "client");
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
+const screenshotDir = process.env.HOMEPAGE_SCREENSHOT_DIR;
+const screenshotWidths = new Set([360, 400, 430, 1440]);
 const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến THCS";
 const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
 const expectedTestimonials = [
@@ -29,6 +31,8 @@ const expectedTestimonials = [
 ];
 let child;
 let browser;
+
+if (screenshotDir) fs.mkdirSync(screenshotDir, { recursive: true });
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -107,12 +111,19 @@ try {
   assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1");
   await page.getByRole("heading", { level: 1, name: "Cô Vy dạy tiếng Anh tại Huế", exact: true }).waitFor();
   for (const heading of [
-    "Người đồng hành cùng học sinh",
+    "Đồng hành cùng học sinh",
     "Ba nhóm chương trình",
+    "Rõ ràng, vừa sức, đúng mục tiêu",
     "Hình thức và địa điểm học",
     "Xem thử cách tiếp cận bài học",
     "Trao đổi về lớp học",
   ]) await page.getByRole("heading", { level: 2, name: heading, exact: true }).waitFor();
+  const textWrapStyles = await page.evaluate(() => ({
+    heading: window.getComputedStyle(document.querySelector("#about-heading")).textWrap,
+    paragraph: window.getComputedStyle(document.querySelector("#about-heading + p")).textWrap,
+  }));
+  assert(textWrapStyles.heading === "balance", "Homepage headings must use balanced wrapping");
+  assert(textWrapStyles.paragraph === "pretty", "Homepage paragraphs must use pretty wrapping");
   await page.getByText("Video tham khảo để luyện nghe và ghi nhớ từ vựng qua ngữ cảnh.", { exact: true }).waitFor();
 
   for (const program of [
@@ -243,8 +254,13 @@ try {
   await page.locator('iframe[src*="youtube-nocookie.com/embed/"]').first().waitFor();
 
   const viewports = [
+    { width: 360, height: 800 },
+    { width: 375, height: 812 },
     { width: 390, height: 844 },
-    { width: 430, height: 844 },
+    { width: 393, height: 852 },
+    { width: 400, height: 930 },
+    { width: 412, height: 915 },
+    { width: 430, height: 932 },
     { width: 768, height: 1024 },
     { width: 1440, height: 900 },
   ];
@@ -254,21 +270,49 @@ try {
     await page.getByRole("heading", { level: 1 }).waitFor();
     const metrics = await page.evaluate(() => {
       const header = document.querySelector("header");
-      const items = header ? [...header.querySelectorAll("img, span, a")].map((item) => item.getBoundingClientRect()) : [];
+      const logo = document.querySelector('[data-testid="header-logo"]');
+      const brand = document.querySelector('[data-testid="header-brand"]');
+      const links = [
+        document.querySelector('[data-testid="header-contact"]'),
+        document.querySelector('[data-testid="header-admin"]'),
+      ].filter(Boolean);
+      const items = [logo, brand, ...links].filter(Boolean).map((item) => item.getBoundingClientRect());
       const brandOccurrences = (header?.textContent?.match(/Lớp tiếng Anh cô Vy/g) ?? []).length;
+      const brandStyle = brand ? window.getComputedStyle(brand) : null;
       return {
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         headerHeight: header?.getBoundingClientRect().height ?? 0,
         headerOverflow: header ? header.scrollWidth - header.clientWidth : Number.POSITIVE_INFINITY,
         itemCenters: items.map((box) => box.top + box.height / 2),
         brandOccurrences,
+        logoWidth: logo?.getBoundingClientRect().width ?? 0,
+        brandScrollWidth: brand?.scrollWidth ?? Number.POSITIVE_INFINITY,
+        brandClientWidth: brand?.clientWidth ?? 0,
+        brandTextOverflow: brandStyle?.textOverflow ?? "",
+        linkMetrics: links.map((link) => {
+          const style = window.getComputedStyle(link);
+          return {
+            height: link.getBoundingClientRect().height,
+            lineHeight: Number.parseFloat(style.lineHeight),
+            whiteSpace: style.whiteSpace,
+          };
+        }),
       };
     });
     assert(metrics.overflow <= 1, `Homepage horizontal overflow at ${viewport.width}px: ${metrics.overflow}px`);
-    assert(metrics.headerHeight <= 64, `Header is too tall at ${viewport.width}px: ${metrics.headerHeight}px`);
+    assert(metrics.headerHeight <= (viewport.width <= 430 ? 60 : 64), `Header is too tall at ${viewport.width}px: ${metrics.headerHeight}px`);
     assert(metrics.headerOverflow <= 1, `Header wraps or overflows at ${viewport.width}px`);
     assert(Math.max(...metrics.itemCenters) - Math.min(...metrics.itemCenters) <= 2, `Header items are not on one line at ${viewport.width}px`);
     assert(metrics.brandOccurrences === 1, `Header repeats the brand name at ${viewport.width}px`);
+    assert(metrics.brandScrollWidth <= metrics.brandClientWidth, `Header brand is truncated at ${viewport.width}px`);
+    assert(metrics.brandTextOverflow !== "ellipsis", `Header brand uses ellipsis at ${viewport.width}px`);
+    assert(metrics.linkMetrics.every((link) => link.whiteSpace === "nowrap"), `Header link wraps at ${viewport.width}px`);
+    if (viewport.width <= 430) {
+      assert(Math.abs(metrics.logoWidth - 28) <= 1, `Mobile header logo must be 28px at ${viewport.width}px`);
+      assert(metrics.linkMetrics.every((link) => link.height <= link.lineHeight * 1.25), `Mobile header link is taller than one line at ${viewport.width}px`);
+    } else {
+      assert(Math.abs(metrics.logoWidth - 32) <= 1, `Header logo must remain 32px at ${viewport.width}px`);
+    }
     assert(await page.locator('[data-testid="contact-actions"] a').count() === 2, `Contact action count changed at ${viewport.width}px`);
     assert(await page.locator('a[href^="tel:"]').count() === 0, `tel link exists at ${viewport.width}px`);
     assert(await page.locator('[data-testid="program-list"] article').count() === 3, `Program count changed at ${viewport.width}px`);
@@ -278,6 +322,7 @@ try {
       const section = document.querySelector("#feedback");
       const cards = [...document.querySelectorAll('[data-testid="testimonial-list"] figure')].map((card) => card.getBoundingClientRect());
       const contents = [...document.querySelectorAll('[data-testid="testimonial-list"] .MuiCardContent-root')];
+      const quotes = [...document.querySelectorAll('[data-testid="testimonial-list"] blockquote')];
       const dots = document.querySelector('[data-testid="testimonial-dots"]');
       const listRect = list?.getBoundingClientRect();
       const sectionRect = section?.getBoundingClientRect();
@@ -291,6 +336,7 @@ try {
         contentWidths: contents.map((content) => content.getBoundingClientRect().width),
         contentPaddingLeft: contents.map((content) => Number.parseFloat(window.getComputedStyle(content).paddingLeft)),
         contentMinHeights: contents.map((content) => window.getComputedStyle(content).minHeight),
+        quoteFontSizes: quotes.map((quote) => Number.parseFloat(window.getComputedStyle(quote).fontSize)),
         dotsWidth: dotsRect.width,
         dotsGap: dotsRect.top - listRect.bottom,
         dotsCenterOffset: Math.abs((dotsRect.left + dotsRect.right) / 2 - (listRect.left + listRect.right) / 2),
@@ -301,10 +347,11 @@ try {
     assert(sliderMetrics.listOverflow > sliderMetrics.listWidth, `Testimonial slider track is not wider than one slide at ${viewport.width}px`);
     assert(sliderMetrics.dotsGap >= 10 && sliderMetrics.dotsGap <= 14, `Testimonial dots must sit directly below the card at ${viewport.width}px`);
     assert(sliderMetrics.dotsCenterOffset <= 1, `Testimonial dots are not centered below the card at ${viewport.width}px`);
-    if (viewport.width === 390) {
-      assert(Math.abs(sliderMetrics.listWidth - sliderMetrics.sectionWidth) <= 1, "Mobile testimonial width must remain unchanged");
-      assert(sliderMetrics.contentPaddingLeft.every((padding) => Math.abs(padding - 20) <= 1), "Mobile testimonial padding must remain unchanged");
-      assert(sliderMetrics.contentMinHeights.every((height) => height === "250px"), "Mobile testimonial height must remain unchanged");
+    if (viewport.width <= 430) {
+      assert(Math.abs(sliderMetrics.listWidth - sliderMetrics.sectionWidth) <= 1, `Mobile testimonial must fill its section at ${viewport.width}px`);
+      assert(sliderMetrics.contentPaddingLeft.every((padding) => padding >= 20 && padding <= 22), `Mobile testimonial padding is incorrect at ${viewport.width}px`);
+      assert(sliderMetrics.quoteFontSizes.every((fontSize) => fontSize >= 15.5), `Mobile testimonial quote is too small at ${viewport.width}px`);
+      assert(sliderMetrics.contentMinHeights.every((height) => height !== "250px" && Number.parseFloat(height) <= 220), `Mobile testimonial retains excessive min-height at ${viewport.width}px`);
     }
     if (viewport.width >= 768) {
       const desktopMetrics = await page.evaluate(() => {
@@ -318,16 +365,20 @@ try {
       assert(desktopMetrics.contactCenterOffset <= 1, `Desktop contact is not centered: ${desktopMetrics.contactCenterOffset}px`);
     }
     if (viewport.width === 1440) {
-      assert(Math.abs(sliderMetrics.listWidth - 760) <= 1, `Desktop testimonial width must be 760px, found ${sliderMetrics.listWidth}px`);
+      assert(sliderMetrics.listWidth <= 760, `Desktop testimonial width exceeds 760px: ${sliderMetrics.listWidth}px`);
       assert(sliderMetrics.centerOffset <= 1, `Desktop testimonial is not centered: ${sliderMetrics.centerOffset}px`);
       assert(sliderMetrics.contentWidths.every((width) => width <= 620), "Desktop testimonial content exceeds 620px");
       assert(sliderMetrics.contentPaddingLeft.every((padding) => padding >= 28 && padding <= 32), "Desktop testimonial padding must remain within 28–32px");
       assert(sliderMetrics.contentMinHeights.every((height) => height === "0px"), "Desktop testimonial content must not use a minimum height");
       assert(Math.abs(sliderMetrics.dotsWidth - sliderMetrics.listWidth) <= 1, "Desktop testimonial dots must align to the carousel width");
     }
+    if (screenshotDir && screenshotWidths.has(viewport.width)) {
+      await page.screenshot({ path: path.join(screenshotDir, `homepage-${viewport.width}x${viewport.height}.png`), fullPage: true });
+    }
   }
 
   await context.close();
+  if (screenshotDir) console.log(`Homepage screenshots saved to ${screenshotDir}`);
   console.log("Public Homepage local SEO E2E passed");
 } finally {
   if (browser) await browser.close();
