@@ -28,6 +28,9 @@ const StudentFormPage = lazy(() => import("./pages/StudentFormPage").then((modul
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage").then((module) => ({ default: module.NotFoundPage })));
 const LearningHubPage = lazy(() => import("./features/learning/pages/LearningHubPage").then((module) => ({ default: module.LearningHubPage })));
 const LearningLevelPage = lazy(() => import("./features/learning/pages/LearningLevelPage").then((module) => ({ default: module.LearningLevelPage })));
+const LearningUnitPage = lazy(() => import("./features/learning/pages/LearningUnitPage").then((module) => ({ default: module.LearningUnitPage })));
+const LearningFlashcardsPage = lazy(() => import("./features/learning/pages/LearningFlashcardsPage").then((module) => ({ default: module.LearningFlashcardsPage })));
+const LearningListenPage = lazy(() => import("./features/learning/pages/LearningListenPage").then((module) => ({ default: module.LearningListenPage })));
 const LearningNotFoundPage = lazy(() => import("./features/learning/pages/LearningNotFoundPage").then((module) => ({ default: module.LearningNotFoundPage })));
 function AdminAuthBoundary() {
   return <AuthProvider><Outlet /></AuthProvider>;
@@ -55,6 +58,9 @@ export function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/hoc" element={<LearningHubPage />} />
       <Route path="/hoc/:levelSlug" element={<LearningLevelPage />} />
+      <Route path="/hoc/:levelSlug/:unitSlug" element={<LearningUnitPage />} />
+      <Route path="/hoc/:levelSlug/:unitSlug/flashcards" element={<LearningFlashcardsPage />} />
+      <Route path="/hoc/:levelSlug/:unitSlug/listen" element={<LearningListenPage />} />
       <Route path="/hoc/*" element={<LearningNotFoundPage />} />
       <Route element={<AdminAuthBoundary />}>
         <Route element={<GuestOnly />}>

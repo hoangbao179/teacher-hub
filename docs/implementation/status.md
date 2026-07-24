@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V17 và V18A are PASS.
+M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V17 và V18A–V18B are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
 
@@ -82,6 +82,9 @@ V17-PRODUCTION-CICD: PASS on 21/07/2026. Evidence is in
 V18A-PUBLIC-LEARNING-FOUNDATION: PASS on 24/07/2026. Evidence is in
 `.agent-reports/V18A-PUBLIC-LEARNING-FOUNDATION-implementation.md` and
 `.agent-reports/V18A-PUBLIC-LEARNING-FOUNDATION-verification.md`.
+V18B-PUBLIC-LEARNING-FLASHCARDS: PASS on 24/07/2026. Evidence is in
+`.agent-reports/V18B-PUBLIC-LEARNING-FLASHCARDS-implementation.md` and
+`.agent-reports/V18B-PUBLIC-LEARNING-FLASHCARDS-verification.md`.
 
 ## Scope boundary
 
@@ -110,6 +113,9 @@ existing tuition and PAID-boundary rules.
 V18A adds the isolated public `/hoc` learning shell, static validated vocabulary
 catalog, versioned local progress, level/Unit foundation and Homepage CTA without
 adding backend API, database, CMS or student authentication.
+V18B adds Unit overview, flashcards, pronunciation fallback, deterministic listen
+practice and backward-compatible per-Unit progress without changing the public
+catalog key or introducing backend state.
 
 ## Known limitations
 

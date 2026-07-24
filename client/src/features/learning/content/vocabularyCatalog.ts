@@ -63,3 +63,5 @@ export const learningUnits: readonly LearningUnit[] = [
 export const publishedUnits = learningUnits.filter((unit) => unit.status === "PUBLISHED");
 export const unitsForLevel = (levelSlug: string) => publishedUnits.filter((unit) => unit.levelSlug === levelSlug);
 export const levelBySlug = (slug: string) => learningLevels.find((level) => level.slug === slug);
+export const unitBySlugs = (levelSlug: string, unitSlug: string) =>
+  publishedUnits.find((unit) => unit.levelSlug === levelSlug && unit.slug === unitSlug);

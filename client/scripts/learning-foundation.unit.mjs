@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { learningLevels, learningUnits } from "../src/features/learning/content/vocabularyCatalog.ts";
+import { learningLevels, learningUnits, unitBySlugs } from "../src/features/learning/content/vocabularyCatalog.ts";
 import { validateLearningCatalog } from "../src/features/learning/content/validateCatalog.ts";
-import { LEARNING_PROGRESS_STORAGE_KEY, readLearningProgress, rememberLearningLocation, resetLearningProgress, writeLearningProgress } from "../src/features/learning/storage/learningProgressStorage.ts";
+import { LEARNING_PROGRESS_STORAGE_KEY, markVocabularyItem, readLearningProgress, rememberLearningLocation, resetLearningProgress, resetUnitProgress, unitProgressFor, writeLearningProgress } from "../src/features/learning/storage/learningProgressStorage.ts";
+import { audioStrategy, playPronunciation, stopPronunciation } from "../src/features/learning/audio/pronunciation.ts";
+import { createListenQuestion, seededRandom } from "../src/features/learning/listen/listenQuestions.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -20,6 +22,12 @@ test("catalog seed is valid and covers two available levels", () => {
     assert.ok(units.length >= 2);
     assert.ok(units.every((unit) => unit.vocabulary.length >= 10));
   }
+});
+
+test("content mapping only resolves a Unit inside its published level", () => {
+  assert.equal(unitBySlugs("mam-non", "con-vat-dang-yeu")?.id, "preschool-happy-animals");
+  assert.equal(unitBySlugs("lop-3", "con-vat-dang-yeu"), undefined);
+  assert.equal(unitBySlugs("mam-non", "khong-ton-tai"), undefined);
 });
 
 test("catalog validator rejects duplicate and broken references/content", () => {
@@ -52,4 +60,52 @@ test("progress storage safely handles corrupt schema and blocked writes", () => 
   const blocked = { getItem: () => null, setItem: () => { throw new Error("blocked"); }, removeItem: () => { throw new Error("blocked"); } };
   assert.equal(writeLearningProgress({ schemaVersion: 1, units: {} }, blocked), false);
   assert.equal(resetLearningProgress(blocked), false);
+});
+
+test("V18A Unit progress migrates without losing learned items", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(LEARNING_PROGRESS_STORAGE_KEY, JSON.stringify({ schemaVersion: 1, lastLevelSlug: "mam-non", units: { "con-vat-dang-yeu": { learnedItemIds: ["pa-1", "pa-2"], totalItems: 10, completed: false } } }));
+  const progress = readLearningProgress(storage);
+  assert.deepEqual(progress.units["con-vat-dang-yeu"].rememberedItemIds, ["pa-1", "pa-2"]);
+  assert.deepEqual(progress.units["con-vat-dang-yeu"].viewedItemIds, ["pa-1", "pa-2"]);
+  assert.equal(progress.units["con-vat-dang-yeu"].contentVersion, 1);
+});
+
+test("remembered and review states are mutually exclusive and Unit reset is scoped", () => {
+  const storage = new MemoryStorage();
+  const unit = learningUnits[0];
+  markVocabularyItem(unit, "pa-1", "REMEMBERED", storage);
+  markVocabularyItem(unit, "pa-1", "REVIEW", storage);
+  const unitProgress = unitProgressFor(readLearningProgress(storage), unit);
+  assert.deepEqual(unitProgress.rememberedItemIds, []);
+  assert.deepEqual(unitProgress.reviewItemIds, ["pa-1"]);
+  storage.setItem("website:other", "keep");
+  resetUnitProgress(unit.slug, storage);
+  assert.equal(readLearningProgress(storage).units[unit.slug], undefined);
+  assert.equal(storage.getItem("website:other"), "keep");
+});
+
+test("listen distractors are unique, deterministic and exclude duplicate answers", () => {
+  const vocabulary = learningUnits[0].vocabulary;
+  const first = createListenQuestion(vocabulary, 2, seededRandom(42));
+  const second = createListenQuestion(vocabulary, 2, seededRandom(42));
+  assert.deepEqual(first.options, second.options);
+  assert.equal(first.options.length, 4);
+  assert.equal(new Set(first.options).size, 4);
+  assert.ok(first.options.includes(first.correctMeaning));
+});
+
+test("audio selects asset, speech fallback and unavailable strategy without overlap", async () => {
+  const item = learningUnits[0].vocabulary[0];
+  const events = [];
+  class FakeUtterance { constructor(text) { this.text = text; } }
+  class FakeAudio { play() {} pause() {} }
+  const speech = { cancel: () => events.push("cancel"), speak: (utterance) => events.push(`speak:${utterance.text}`) };
+  assert.equal(audioStrategy({ ...item, audio: "/audio/cat.mp3" }, { Audio: FakeAudio, speechSynthesis: speech, SpeechSynthesisUtterance: FakeUtterance }), "ASSET");
+  assert.equal(audioStrategy(item, { speechSynthesis: speech, SpeechSynthesisUtterance: FakeUtterance }), "SPEECH");
+  assert.equal(await playPronunciation(item, { speechSynthesis: speech, SpeechSynthesisUtterance: FakeUtterance }), true);
+  assert.deepEqual(events, ["cancel", "speak:cat"]);
+  assert.equal(audioStrategy({ ...item, speechText: undefined }, {}), "UNAVAILABLE");
+  stopPronunciation();
+  assert.deepEqual(events, ["cancel", "speak:cat", "cancel"]);
 });

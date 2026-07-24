@@ -49,9 +49,15 @@ export interface LearningUnit {
 }
 
 export interface UnitLearningProgress {
-  learnedItemIds: string[];
-  totalItems: number;
-  completed: boolean;
+  contentVersion: number;
+  viewedItemIds: string[];
+  rememberedItemIds: string[];
+  reviewItemIds: string[];
+  lastItemIndex: number;
+  flashcardCompletedAt?: string;
+  listenCorrect: number;
+  listenTotal: number;
+  updatedAt: string;
 }
 
 export interface LearningProgress {

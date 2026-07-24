@@ -1,5 +1,5 @@
-import { ArrowBack, AutoStories, CheckCircle, HourglassTop, LockClock } from "@mui/icons-material";
-import { Box, Card, Chip, Container, LinearProgress, Stack, Typography } from "@mui/material";
+import { ArrowBack, ArrowForward, AutoStories, CheckCircle, HourglassTop } from "@mui/icons-material";
+import { Box, Card, CardActionArea, Chip, Container, LinearProgress, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { LearningShell } from "../components/LearningShell";
@@ -21,7 +21,7 @@ export function LearningLevelPage() {
 
   if (!level || !level.available || units.length === 0) return <LearningNotFoundPage />;
 
-  const learned = units.reduce((total, unit) => total + (progress.units[unit.slug]?.learnedItemIds.length ?? 0), 0);
+  const learned = units.reduce((total, unit) => total + (progress.units[unit.slug]?.rememberedItemIds.length ?? 0), 0);
   const total = units.reduce((sum, unit) => sum + unit.vocabulary.length, 0);
   const percent = total ? Math.round((learned / total) * 100) : 0;
 
@@ -50,23 +50,23 @@ export function LearningLevelPage() {
 
         <Container maxWidth="lg" sx={{ py: { xs: 4, sm: 5, md: 6 } }}>
           <Typography component="h2" sx={{ fontSize: { xs: 22, sm: 26 }, fontWeight: 800 }}>Chủ đề dành cho con</Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.75 }}>Nội dung flashcard sẽ được mở ở bước tiếp theo. Các chủ đề hiện được giới thiệu rõ ràng và chưa thể bấm.</Typography>
+          <Typography color="text.secondary" sx={{ mt: 0.75 }}>Chọn một chủ đề để học bằng flashcard hoặc luyện nghe.</Typography>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2,minmax(0,1fr))" }, gap: 2, mt: 3 }}>
             {units.map((unit, index) => {
               const unitProgress = progress.units[unit.slug];
-              const count = unitProgress?.learnedItemIds.length ?? 0;
-              const state = unitProgress?.completed ? "Đã học" : count > 0 ? "Đang học" : "Chưa học";
-              const StateIcon = unitProgress?.completed ? CheckCircle : count > 0 ? HourglassTop : AutoStories;
-              return <Card component="article" key={unit.id} variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: "22px", borderColor: `${level.accent}3d`, boxShadow: "0 8px 22px rgba(66,48,106,.06)" }}>
-                <Stack direction="row" spacing={2} sx={{ alignItems: "flex-start" }}>
+              const count = unitProgress?.rememberedItemIds.length ?? 0;
+              const state = unitProgress?.flashcardCompletedAt ? "Đã học" : (unitProgress?.viewedItemIds.length ?? 0) > 0 ? "Đang học" : "Chưa học";
+              const StateIcon = unitProgress?.flashcardCompletedAt ? CheckCircle : (unitProgress?.viewedItemIds.length ?? 0) > 0 ? HourglassTop : AutoStories;
+              return <Card component="article" key={unit.id} variant="outlined" sx={{ borderRadius: "22px", borderColor: `${level.accent}3d`, boxShadow: "0 8px 22px rgba(66,48,106,.06)" }}>
+                <CardActionArea component={Link} to={`/hoc/${level.slug}/${unit.slug}`} aria-label={`Mở Unit ${unit.title}`} sx={{ p: { xs: 2, sm: 2.5 }, height: "100%", borderRadius: "22px" }}><Stack direction="row" spacing={2} sx={{ alignItems: "flex-start" }}>
                   <Box aria-hidden="true" sx={{ flex: "0 0 64px", height: 64, display: "grid", placeItems: "center", bgcolor: index % 2 ? "#eaf8f3" : "#fff3d8", borderRadius: "18px", fontSize: 32 }}>{unit.icon}</Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography variant="overline" color="text.secondary">UNIT {index + 1}</Typography>
                     <Typography component="h3" sx={{ mt: 0.25, fontSize: 18, fontWeight: 800 }}>{unit.title}</Typography>
                     <Typography color="text.secondary" sx={{ mt: 0.5, fontSize: 13.5 }}>{unit.description}</Typography>
-                    <Stack direction="row" useFlexGap sx={{ mt: 1.5, flexWrap: "wrap", gap: 0.75 }}><Chip icon={<StateIcon />} label={`${state} · ${count}/${unit.vocabulary.length} từ`} /><Chip icon={<LockClock />} label="Bài học sắp mở" variant="outlined" /></Stack>
+                    <Stack direction="row" useFlexGap sx={{ mt: 1.5, flexWrap: "wrap", gap: 0.75, alignItems: "center" }}><Chip icon={<StateIcon />} label={`${state} · ${count}/${unit.vocabulary.length} từ nhớ`} /><ArrowForward aria-hidden="true" sx={{ ml: "auto", color: level.accent }} /></Stack>
                   </Box>
-                </Stack>
+                </Stack></CardActionArea>
               </Card>;
             })}
           </Box>

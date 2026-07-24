@@ -1,6 +1,6 @@
 # Góc học tiếng Anh miễn phí cùng cô Vy
 
-> Status: **V18A FOUNDATION IMPLEMENTED — PASS (24/07/2026)**
+> Status: **V18B FLASHCARDS IMPLEMENTED — PASS (24/07/2026)**
 > Technical name: **Public English Learning Corner**  
 > Target: public learning module sau V1  
 > Primary route family: `/hoc/*`  
@@ -115,10 +115,11 @@ Học sinh không cần nhập tên. Không thu thập dữ liệu định danh 
 | Route | Mục đích |
 |---|---|
 | `/hoc` | Learning hub và chọn level |
-| `/hoc/tu-vung/:levelSlug` | Danh sách Unit/chủ đề của level |
-| `/hoc/tu-vung/:levelSlug/:unitSlug` | Tổng quan Unit |
-| `/hoc/tu-vung/:levelSlug/:unitSlug/flashcard` | Học flashcard |
-| `/hoc/tu-vung/:levelSlug/:unitSlug/luyen-tap` | Luyện tập và kết quả |
+| `/hoc/:levelSlug` | Danh sách Unit/chủ đề của level |
+| `/hoc/:levelSlug/:unitSlug` | Tổng quan Unit |
+| `/hoc/:levelSlug/:unitSlug/flashcards` | Học flashcard |
+| `/hoc/:levelSlug/:unitSlug/listen` | Nghe từ và chọn nghĩa |
+| `/hoc/:levelSlug/:unitSlug/quiz` | Quiz tổng hợp dự kiến ở V18C |
 
 Quy tắc:
 
@@ -365,16 +366,18 @@ Kiểu dữ liệu:
 ```ts
 export type LearningProgressStore = {
   schemaVersion: 1;
-  selectedLevelSlug?: LearningLevelSlug;
+  lastLevelSlug?: LearningLevelSlug;
+  lastUnitSlug?: string;
   units: Record<string, {
     contentVersion: number;
-    knownWordIds: string[];
-    reviewWordIds: string[];
-    lastScorePercent?: number;
-    bestScorePercent?: number;
-    completedAttemptCount: number;
-    lastPracticedAt?: string;
-    completedAt?: string;
+    viewedItemIds: string[];
+    rememberedItemIds: string[];
+    reviewItemIds: string[];
+    lastItemIndex: number;
+    flashcardCompletedAt?: string;
+    listenCorrect: number;
+    listenTotal: number;
+    updatedAt: string;
   }>;
 };
 ```
@@ -444,11 +447,12 @@ Không hiển thị stack trace hoặc internal identifier ra public UI.
 
 ### V18B — Unit và flashcard
 
-- danh sách Unit;
-- tổng quan Unit;
-- flashcard;
-- audio fallback;
-- known/review local state.
+- **IMPLEMENTED — PASS 24/07/2026**;
+- danh sách và tổng quan Unit;
+- flashcard, swipe và keyboard;
+- audio asset/Web Speech fallback, không autoplay/overlap;
+- luyện nghe deterministic và remembered/review local state;
+- migration an toàn từ progress V18A và reset theo Unit.
 
 ### V18C — Quiz và kết quả
 

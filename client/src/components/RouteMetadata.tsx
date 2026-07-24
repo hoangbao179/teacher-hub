@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { publicHomeContent, publicHomeStructuredData } from "../content/publicHome";
-import { levelBySlug } from "../features/learning/content/vocabularyCatalog";
+import { levelBySlug, unitBySlugs } from "../features/learning/content/vocabularyCatalog";
 
 function setMeta(name: string, value: string, property = false) {
   const attribute = property ? "property" : "name";
@@ -33,13 +33,18 @@ export function RouteMetadata() {
 
     if (pathname === "/hoc" || pathname.startsWith("/hoc/")) {
       const segments = pathname.split("/").filter(Boolean);
-      const level = segments.length === 2 ? levelBySlug(segments[1]) : undefined;
-      const validLearningRoute = pathname === "/hoc" || Boolean(level?.available);
+      const level = segments.length >= 2 ? levelBySlug(segments[1]) : undefined;
+      const unit = segments.length >= 3 ? unitBySlugs(segments[1], segments[2]) : undefined;
+      const validAction = segments.length === 4 && ["flashcards", "listen"].includes(segments[3]);
+      const validLearningRoute = pathname === "/hoc"
+        || (segments.length === 2 && Boolean(level?.available))
+        || (segments.length === 3 && Boolean(unit))
+        || (validAction && Boolean(unit));
       document.title = validLearningRoute
-        ? level ? `${level.name} | Góc học tiếng Anh cùng cô Vy` : "Góc học tiếng Anh miễn phí cùng cô Vy"
+        ? unit ? `${unit.title} | Góc học tiếng Anh cùng cô Vy` : level ? `${level.name} | Góc học tiếng Anh cùng cô Vy` : "Góc học tiếng Anh miễn phí cùng cô Vy"
         : `Không tìm thấy bài học | ${publicHomeContent.brandName}`;
       setMeta("description", validLearningRoute
-        ? level ? `Chọn chủ đề từ vựng ${level.name} và học miễn phí cùng cô Vy.` : "Chọn cấp độ từ mầm non đến lớp 9 và học từ vựng tiếng Anh miễn phí cùng cô Vy."
+        ? unit ? `Học từ vựng chủ đề ${unit.title} bằng flashcard và luyện nghe cùng cô Vy.` : level ? `Chọn chủ đề từ vựng ${level.name} và học miễn phí cùng cô Vy.` : "Chọn cấp độ từ mầm non đến lớp 9 và học từ vựng tiếng Anh miễn phí cùng cô Vy."
         : "Bài học hoặc cấp độ này không tồn tại.");
       setMeta("robots", validLearningRoute ? "index,follow,max-image-preview:large" : "noindex,follow");
       structuredData?.remove();
