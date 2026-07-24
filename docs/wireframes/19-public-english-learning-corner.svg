@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F8F4FF"/><stop offset="1" stop-color="#EFFBFF"/></linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8B6FD9"/><stop offset="1" stop-color="#6C8FEF"/></linearGradient>
+    <style>
+      .title{font:700 42px Arial,sans-serif;fill:#372E57}.sub{font:500 19px Arial,sans-serif;fill:#6D6680}.phone{fill:#fff;stroke:#D9D0F2;stroke-width:2}.h1{font:700 21px Arial,sans-serif;fill:#2E2850}.h2{font:700 16px Arial,sans-serif;fill:#3A335B}.body{font:500 12px Arial,sans-serif;fill:#625C72}.small{font:600 10px Arial,sans-serif;fill:#6E6681}.white{fill:#fff}.button{font:700 12px Arial,sans-serif;fill:#fff}.pill{font:700 10px Arial,sans-serif}.nav{font:700 10px Arial,sans-serif;fill:#756E86}.line{stroke:#E8E3F3;stroke-width:1.5}
+    </style>
+  </defs>
+  <rect width="1600" height="1100" fill="url(#bg)"/>
+  <circle cx="90" cy="92" r="42" fill="#FFE8A8" opacity=".75"/><path d="M1450 70l9 20 22 2-17 14 5 22-19-12-19 12 5-22-17-14 22-2z" fill="#FFD76E" opacity=".8"/>
+  <path d="M125 955c60-58 122-52 183 0" fill="none" stroke="#A9E5D6" stroke-width="24" stroke-linecap="round" opacity=".75"/>
+  <text x="95" y="105" class="title">Góc học tiếng Anh miễn phí cùng cô Vy</text>
+  <text x="95" y="142" class="sub">Journey wireframe · mobile-first · mầm non đến lớp 9 · cute nhưng không quá trẻ con</text>
+
+  <!-- phone 1 -->
+  <g transform="translate(70 205)">
+    <rect class="phone" width="270" height="760" rx="34"/>
+    <rect x="18" y="18" width="234" height="48" rx="18" fill="#FFFFFF"/>
+    <circle cx="42" cy="42" r="14" fill="#8B6FD9"/><text x="64" y="46" class="h2">Cùng cô Vy</text><text x="215" y="46" class="nav">Trang chủ</text>
+    <rect x="18" y="80" width="234" height="194" rx="28" fill="url(#hero)"/>
+    <circle cx="218" cy="112" r="24" fill="#FFD975" opacity=".9"/><path d="M38 116c20-25 48-24 70 0" stroke="#A8E7E0" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <text x="34" y="145" class="small white">GÓC HỌC MIỄN PHÍ</text>
+    <text x="34" y="179" class="h1 white">Học tiếng Anh</text><text x="34" y="205" class="h1 white">vui hơn mỗi ngày!</text>
+    <text x="34" y="232" class="body white">Chọn lớp và bắt đầu bài học ngắn.</text>
+    <rect x="34" y="244" width="118" height="36" rx="18" fill="#FF8E8E"/><text x="55" y="267" class="button">Bắt đầu học</text>
+    <text x="20" y="312" class="h1">Con đang học lớp nào?</text>
+    <text x="20" y="334" class="body">Chọn một nhóm phù hợp để bắt đầu.</text>
+    <rect x="20" y="356" width="230" height="82" rx="22" fill="#FFF2C8" stroke="#F6D780"/><circle cx="52" cy="397" r="22" fill="#FFD86D"/><text x="87" y="390" class="h2">Mầm non</text><text x="87" y="412" class="body">Hình ảnh, âm thanh, từ đơn giản</text>
+    <rect x="20" y="450" width="230" height="96" rx="22" fill="#E9F8F3" stroke="#A9E5D6"/><text x="34" y="476" class="h2">Tiểu học</text><g class="pill"><rect x="34" y="490" width="35" height="30" rx="12" fill="#B9E9DF"/><text x="47" y="509" fill="#3D7469">1</text><rect x="75" y="490" width="35" height="30" rx="12" fill="#B9E9DF"/><text x="88" y="509" fill="#3D7469">2</text><rect x="116" y="490" width="35" height="30" rx="12" fill="#B9E9DF"/><text x="129" y="509" fill="#3D7469">3</text><rect x="157" y="490" width="35" height="30" rx="12" fill="#B9E9DF"/><text x="170" y="509" fill="#3D7469">4</text><rect x="198" y="490" width="35" height="30" rx="12" fill="#B9E9DF"/><text x="211" y="509" fill="#3D7469">5</text></g>
+    <rect x="20" y="558" width="230" height="96" rx="22" fill="#F1ECFF" stroke="#C8B9F1"/><text x="34" y="584" class="h2">THCS</text><g class="pill"><rect x="34" y="598" width="42" height="30" rx="12" fill="#D9CEF7"/><text x="50" y="617" fill="#5B4696">6</text><rect x="84" y="598" width="42" height="30" rx="12" fill="#D9CEF7"/><text x="100" y="617" fill="#5B4696">7</text><rect x="134" y="598" width="42" height="30" rx="12" fill="#D9CEF7"/><text x="150" y="617" fill="#5B4696">8</text><rect x="184" y="598" width="42" height="30" rx="12" fill="#E7E2F7"/><text x="198" y="617" fill="#8A819B">9</text></g><text x="183" y="646" class="small">Sắp có</text>
+    <line x1="20" y1="695" x2="250" y2="695" class="line"/><text x="34" y="724" class="nav">Trang học</text><text x="178" y="724" class="nav">Tiến độ</text>
+  </g>
+
+  <!-- phone 2 -->
+  <g transform="translate(370 205)">
+    <rect class="phone" width="270" height="760" rx="34"/>
+    <text x="22" y="48" class="nav">‹ Quay lại</text><text x="198" y="48" class="small">Lớp 3</text>
+    <rect x="18" y="74" width="234" height="112" rx="24" fill="#E9F8F3"/>
+    <circle cx="210" cy="108" r="25" fill="#FFCB7D"/><path d="M196 110h28M210 96v28" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+    <text x="32" y="108" class="small">TIẾNG ANH LỚP 3</text><text x="32" y="140" class="h1">Chọn bài học</text><text x="32" y="164" class="body">Mỗi bài chỉ khoảng 10–15 từ.</text>
+    <text x="20" y="224" class="h1">Chủ đề dành cho con</text>
+    <rect x="20" y="246" width="230" height="112" rx="22" fill="#FFF" stroke="#F3D9A2"/>
+    <rect x="34" y="260" width="62" height="62" rx="18" fill="#FFF2C8"/><text x="53" y="298" font-size="28">🐾</text><text x="112" y="276" class="small">UNIT 1</text><text x="112" y="301" class="h2">Animals</text><text x="112" y="322" class="body">12 từ · Mới</text><rect x="112" y="332" width="108" height="8" rx="4" fill="#F0EDF7"/><rect x="112" y="332" width="18" height="8" rx="4" fill="#FFBC6E"/>
+    <rect x="20" y="372" width="230" height="112" rx="22" fill="#FFF" stroke="#BDE5DB"/>
+    <rect x="34" y="386" width="62" height="62" rx="18" fill="#E9F8F3"/><text x="52" y="425" font-size="28">🎒</text><text x="112" y="402" class="small">UNIT 2</text><text x="112" y="427" class="h2">School things</text><text x="112" y="448" class="body">10 từ · Đang học</text><rect x="112" y="458" width="108" height="8" rx="4" fill="#F0EDF7"/><rect x="112" y="458" width="62" height="8" rx="4" fill="#77CDBB"/>
+    <rect x="20" y="498" width="230" height="112" rx="22" fill="#FFF" stroke="#D7CBF1"/>
+    <rect x="34" y="512" width="62" height="62" rx="18" fill="#F1ECFF"/><text x="52" y="551" font-size="28">🍎</text><text x="112" y="528" class="small">UNIT 3</text><text x="112" y="553" class="h2">Food &amp; drinks</text><text x="112" y="574" class="body">14 từ · Hoàn thành</text><rect x="112" y="584" width="108" height="8" rx="4" fill="#8B6FD9"/>
+    <rect x="20" y="636" width="230" height="54" rx="20" fill="#8B6FD9"/><text x="76" y="669" class="button">Tiếp tục bài đang học</text>
+  </g>
+
+  <!-- phone 3 -->
+  <g transform="translate(670 205)">
+    <rect class="phone" width="270" height="760" rx="34"/>
+    <text x="22" y="48" class="nav">‹ Animals</text><text x="207" y="48" class="small">4 / 12</text>
+    <rect x="20" y="78" width="230" height="10" rx="5" fill="#EEEAF7"/><rect x="20" y="78" width="78" height="10" rx="5" fill="#8B6FD9"/>
+    <rect x="20" y="112" width="230" height="390" rx="28" fill="#FFF" stroke="#D7CBF1" stroke-width="2"/>
+    <circle cx="214" cy="148" r="20" fill="#E9F8F3"/><text x="204" y="155" font-size="18">🔊</text>
+    <rect x="58" y="160" width="154" height="142" rx="30" fill="#FFF2C8"/><text x="105" y="250" font-size="72">🐘</text>
+    <text x="102" y="342" class="h1">elephant</text><text x="105" y="365" class="body">/ˈel.ɪ.fənt/ · noun</text>
+    <rect x="62" y="398" width="146" height="42" rx="20" fill="#8B6FD9"/><text x="101" y="424" class="button">Hiện nghĩa</text>
+    <text x="93" y="468" class="small">Chạm để xem ví dụ</text>
+    <rect x="20" y="530" width="108" height="54" rx="20" fill="#FFF0F0" stroke="#FFB8B8"/><text x="48" y="562" class="h2" fill="#A54E54">Cần ôn</text>
+    <rect x="142" y="530" width="108" height="54" rx="20" fill="#E9F8F3" stroke="#9CDBCD"/><text x="169" y="562" class="h2" fill="#31776A">Đã biết</text>
+    <rect x="20" y="610" width="54" height="48" rx="18" fill="#F4F1FA"/><text x="40" y="640" class="h2">‹</text><rect x="86" y="610" width="164" height="48" rx="18" fill="#6C8FEF"/><text x="142" y="640" class="button">Tiếp theo</text>
+    <text x="58" y="706" class="small">Không tự phát âm thanh</text>
+  </g>
+
+  <!-- phone 4 -->
+  <g transform="translate(970 205)">
+    <rect class="phone" width="270" height="760" rx="34"/>
+    <text x="22" y="48" class="nav">‹ Luyện tập</text><text x="190" y="48" class="small">Câu 3 / 10</text>
+    <rect x="20" y="76" width="230" height="10" rx="5" fill="#EEEAF7"/><rect x="20" y="76" width="69" height="10" rx="5" fill="#FF9C7E"/>
+    <text x="20" y="132" class="small">CHỌN NGHĨA ĐÚNG</text><text x="20" y="174" class="h1">elephant</text><text x="20" y="201" class="body">Từ này có nghĩa là gì?</text>
+    <rect x="20" y="234" width="230" height="62" rx="20" fill="#FFF" stroke="#DAD4E7"/><circle cx="48" cy="265" r="15" fill="#F1ECFF"/><text x="43" y="270" class="small">A</text><text x="78" y="270" class="h2">con hươu cao cổ</text>
+    <rect x="20" y="310" width="230" height="62" rx="20" fill="#F1ECFF" stroke="#8B6FD9" stroke-width="2"/><circle cx="48" cy="341" r="15" fill="#8B6FD9"/><text x="43" y="346" class="small white">B</text><text x="78" y="346" class="h2">con voi</text>
+    <rect x="20" y="386" width="230" height="62" rx="20" fill="#FFF" stroke="#DAD4E7"/><circle cx="48" cy="417" r="15" fill="#FFF2C8"/><text x="43" y="422" class="small">C</text><text x="78" y="422" class="h2">con khỉ</text>
+    <rect x="20" y="462" width="230" height="62" rx="20" fill="#FFF" stroke="#DAD4E7"/><circle cx="48" cy="493" r="15" fill="#E9F8F3"/><text x="43" y="498" class="small">D</text><text x="78" y="498" class="h2">con ngựa</text>
+    <rect x="20" y="558" width="230" height="54" rx="20" fill="#8B6FD9"/><text x="99" y="591" class="button">Kiểm tra</text>
+    <rect x="20" y="630" width="230" height="66" rx="20" fill="#E9F8F3"/><text x="38" y="658" class="h2" fill="#31776A">✓ Chính xác!</text><text x="38" y="681" class="body">Elephant nghĩa là con voi.</text>
+  </g>
+
+  <!-- phone 5 -->
+  <g transform="translate(1270 205)">
+    <rect class="phone" width="270" height="760" rx="34"/>
+    <circle cx="135" cy="126" r="58" fill="#FFF2C8"/><text x="101" y="145" font-size="64">⭐</text>
+    <text x="65" y="213" class="h1">Con làm tốt lắm!</text><text x="74" y="239" class="body">Hoàn thành bài Animals</text>
+    <rect x="20" y="272" width="230" height="118" rx="24" fill="url(#hero)"/>
+    <text x="95" y="315" class="small white">KẾT QUẢ</text><text x="91" y="360" font-family="Arial" font-weight="700" font-size="42" fill="#fff">80%</text>
+    <rect x="20" y="408" width="108" height="86" rx="20" fill="#E9F8F3"/><text x="62" y="439" class="small">ĐÚNG</text><text x="64" y="477" class="h1" fill="#31776A">8</text><rect x="142" y="408" width="108" height="86" rx="20" fill="#FFF0F0"/><text x="187" y="439" class="small">SAI</text><text x="188" y="477" class="h1" fill="#A54E54">2</text>
+    <text x="20" y="536" class="h2">Từ cần ôn lại</text><rect x="20" y="550" width="230" height="54" rx="18" fill="#FFF" stroke="#E2DDED"/><text x="36" y="583" class="body">giraffe · monkey</text>
+    <rect x="20" y="626" width="230" height="50" rx="18" fill="#8B6FD9"/><text x="86" y="656" class="button">Ôn lại từ sai</text>
+    <rect x="20" y="688" width="108" height="44" rx="16" fill="#E9F8F3"/><text x="44" y="715" class="h2" fill="#31776A">Unit khác</text><rect x="142" y="688" width="108" height="44" rx="16" fill="#EAF1FF"/><text x="172" y="715" class="h2" fill="#4468AE">Zalo cô Vy</text>
+  </g>
+
+  <text x="100" y="1026" class="h2">Visual notes</text>
+  <text x="100" y="1055" class="body">Lavender làm màu chính · pastel theo nhóm tuổi · card 20–24px · shadow mềm · decoration không tương tác · mobile 360–430px · Admin không bị ảnh hưởng</text>
+</svg>
