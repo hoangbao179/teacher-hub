@@ -1,6 +1,6 @@
 # Góc học tiếng Anh miễn phí cùng cô Vy
 
-> Status: **V18B FLASHCARDS IMPLEMENTED — PASS (24/07/2026)**
+> Status: **V18C–V18D COMPLETE — PASS (24/07/2026)**
 > Technical name: **Public English Learning Corner**  
 > Target: public learning module sau V1  
 > Primary route family: `/hoc/*`  
@@ -119,7 +119,9 @@ Học sinh không cần nhập tên. Không thu thập dữ liệu định danh 
 | `/hoc/:levelSlug/:unitSlug` | Tổng quan Unit |
 | `/hoc/:levelSlug/:unitSlug/flashcards` | Học flashcard |
 | `/hoc/:levelSlug/:unitSlug/listen` | Nghe từ và chọn nghĩa |
-| `/hoc/:levelSlug/:unitSlug/quiz` | Quiz tổng hợp dự kiến ở V18C |
+| `/hoc/:levelSlug/:unitSlug/quiz` | Quiz chọn nghĩa/từ, tối đa 10 câu |
+| `/hoc/:levelSlug/:unitSlug/result` | Kết quả lượt quiz gần nhất |
+| `/hoc/:levelSlug/:unitSlug/review` | Ôn từ sai hoặc đã đánh dấu cần ôn |
 
 Quy tắc:
 
@@ -377,6 +379,13 @@ export type LearningProgressStore = {
     flashcardCompletedAt?: string;
     listenCorrect: number;
     listenTotal: number;
+    quizAttempts: QuizAttempt[]; // tối đa 10 lượt gần nhất
+    bestScore?: number;
+    latestScore?: number;
+    wrongItemIds: string[];
+    completedAt?: string;
+    reviewCompletedAt?: string;
+    activeQuiz?: ActiveQuizSession; // resume sau refresh
     updatedAt: string;
   }>;
 };
@@ -456,6 +465,7 @@ Không hiển thị stack trace hoặc internal identifier ra public UI.
 
 ### V18C — Quiz và kết quả
 
+- **IMPLEMENTED — PASS 24/07/2026**;
 - question generator;
 - quiz UI;
 - scoring;
@@ -465,6 +475,7 @@ Không hiển thị stack trace hoặc internal identifier ra public UI.
 
 ### V18D — Release quality
 
+- **IMPLEMENTED — PASS 24/07/2026**;
 - SEO/prerender;
 - responsive toàn dải;
 - accessibility;

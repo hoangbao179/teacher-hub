@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react
 import { Link, useParams } from "react-router-dom";
 import { audioStrategy, playPronunciation, stopPronunciation } from "../audio/pronunciation";
 import { LearningShell } from "../components/LearningShell";
+import { VocabularyIllustration } from "../components/VocabularyIllustration";
 import { levelBySlug, unitBySlugs } from "../content/vocabularyCatalog";
 import { markVocabularyItem, readLearningProgress, recordViewedItem, unitProgressFor } from "../storage/learningProgressStorage";
 import type { LearningProgress } from "../types";
@@ -87,7 +88,7 @@ export function LearningFlashcardsPage() {
             {review && <Chip icon={<Replay />} label="Cần ôn" sx={{ bgcolor: "#fff0eb", color: "#a4493e" }} />}
             {unitProgress.flashcardCompletedAt && <Chip icon={<Star />} label="Hoàn thành Unit" sx={{ bgcolor: "#fff2ba", color: "#6c5000", animation: "learningCelebrate 500ms ease-out", "@keyframes learningCelebrate": { "0%": { transform: "scale(.85)" }, "65%": { transform: "scale(1.08)" }, "100%": { transform: "scale(1)" } }, "@media (prefers-reduced-motion: reduce)": { animation: "none" } }} />}
           </Stack>
-          <Box aria-hidden="true" sx={{ width: imageSize, height: imageSize, mt: 2, display: "grid", placeItems: "center", borderRadius: "28px", bgcolor: level.group === "EARLY" ? "#fff2c9" : "#eef7ff", fontSize: level.group === "EARLY" ? { xs: 72, sm: 88 } : { xs: 60, sm: 74 } }}>{item.image}</Box>
+          <VocabularyIllustration image={item.image} word={item.word} sx={{ width: imageSize, height: imageSize, mt: 2, display: "grid", placeItems: "center", borderRadius: "28px", bgcolor: level.group === "EARLY" ? "#fff2c9" : "#eef7ff", fontSize: level.group === "EARLY" ? { xs: 72, sm: 88 } : { xs: 60, sm: 74 } }} />
           <Typography component="h1" sx={{ mt: 2, fontSize: { xs: 34, sm: 44 }, lineHeight: 1.1, fontWeight: 800 }}>{item.word}</Typography>
           <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 16 }}>{item.phonetic}</Typography>
           <Typography sx={{ mt: 1.5, color: "#523a9d", fontSize: { xs: 19, sm: 22 }, fontWeight: 800 }}>{item.vietnameseMeaning}</Typography>

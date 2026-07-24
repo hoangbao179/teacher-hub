@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-labelledby="title">
+  <title id="title">Mèo con màu cam</title>
+  <rect width="200" height="200" rx="48" fill="#fff2c9"/>
+  <path d="M54 72 47 34l36 21h34l36-21-7 38c12 13 19 30 19 49 0 38-29 62-65 62s-65-24-65-62c0-19 7-36 19-49Z" fill="#f4a85b" stroke="#6c4938" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M71 112c7-7 14-7 21 0M108 112c7-7 14-7 21 0" fill="none" stroke="#5d4037" stroke-width="6" stroke-linecap="round"/>
+  <path d="m93 128 7 6 7-6" fill="#f58f9d" stroke="#5d4037" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M100 134v10m0 0c-7 6-14 6-20 0m20 0c7 6 14 6 20 0" fill="none" stroke="#5d4037" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -1,12 +1,20 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { publicHomeContent, publicHomeStructuredData } from "../content/publicHome";
-import { levelBySlug, unitBySlugs } from "../features/learning/content/vocabularyCatalog";
+import { learningRouteMetadata } from "../features/learning/seo/learningMetadata";
 
 function setMeta(name: string, value: string, property = false) {
   const attribute = property ? "property" : "name";
-  const element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${name}"]`);
-  if (element) element.content = value;
+  let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${name}"]`);
+  if (!element) { element = document.createElement("meta"); element.setAttribute(attribute, name); document.head.append(element); }
+  element.content = value;
+}
+
+function setCanonical(value?: string) {
+  let element = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!value) { element?.remove(); return; }
+  if (!element) { element = document.createElement("link"); element.rel = "canonical"; document.head.append(element); }
+  element.href = value;
 }
 
 export function RouteMetadata() {
@@ -21,6 +29,10 @@ export function RouteMetadata() {
       document.title = publicHomeContent.seo.title;
       setMeta("description", publicHomeContent.seo.description);
       setMeta("robots", "index,follow,max-image-preview:large");
+      setCanonical(`${publicHomeContent.siteUrl}/`);
+      setMeta("og:title", publicHomeContent.seo.title, true);
+      setMeta("og:description", publicHomeContent.seo.description, true);
+      setMeta("og:url", `${publicHomeContent.siteUrl}/`, true);
       if (!structuredData) {
         const script = document.createElement("script");
         script.id = "public-home-structured-data";
@@ -32,21 +44,15 @@ export function RouteMetadata() {
     }
 
     if (pathname === "/hoc" || pathname.startsWith("/hoc/")) {
-      const segments = pathname.split("/").filter(Boolean);
-      const level = segments.length >= 2 ? levelBySlug(segments[1]) : undefined;
-      const unit = segments.length >= 3 ? unitBySlugs(segments[1], segments[2]) : undefined;
-      const validAction = segments.length === 4 && ["flashcards", "listen"].includes(segments[3]);
-      const validLearningRoute = pathname === "/hoc"
-        || (segments.length === 2 && Boolean(level?.available))
-        || (segments.length === 3 && Boolean(unit))
-        || (validAction && Boolean(unit));
-      document.title = validLearningRoute
-        ? unit ? `${unit.title} | Góc học tiếng Anh cùng cô Vy` : level ? `${level.name} | Góc học tiếng Anh cùng cô Vy` : "Góc học tiếng Anh miễn phí cùng cô Vy"
-        : `Không tìm thấy bài học | ${publicHomeContent.brandName}`;
-      setMeta("description", validLearningRoute
-        ? unit ? `Học từ vựng chủ đề ${unit.title} bằng flashcard và luyện nghe cùng cô Vy.` : level ? `Chọn chủ đề từ vựng ${level.name} và học miễn phí cùng cô Vy.` : "Chọn cấp độ từ mầm non đến lớp 9 và học từ vựng tiếng Anh miễn phí cùng cô Vy."
-        : "Bài học hoặc cấp độ này không tồn tại.");
-      setMeta("robots", validLearningRoute ? "index,follow,max-image-preview:large" : "noindex,follow");
+      const metadata = learningRouteMetadata(pathname);
+      document.title = metadata.title;
+      setMeta("description", metadata.description);
+      setMeta("robots", metadata.robots);
+      setCanonical(metadata.canonical);
+      setMeta("og:title", metadata.title, true);
+      setMeta("og:description", metadata.description, true);
+      setMeta("og:url", metadata.canonical ?? `${publicHomeContent.siteUrl}${pathname}`, true);
+      setMeta("og:type", "website", true);
       structuredData?.remove();
       return;
     }
@@ -55,6 +61,7 @@ export function RouteMetadata() {
     document.title = isAdmin ? `Quản trị | ${publicHomeContent.brandName}` : `Không tìm thấy trang | ${publicHomeContent.brandName}`;
     setMeta("description", isAdmin ? "Khu vực quản trị riêng của giáo viên." : "Trang bạn tìm không tồn tại. Quay về trang chủ lớp tiếng Anh cô Vy tại Huế.");
     setMeta("robots", isAdmin ? "noindex,nofollow,noarchive" : "noindex,follow");
+    setCanonical(undefined);
     structuredData?.remove();
   }, [pathname]);
 

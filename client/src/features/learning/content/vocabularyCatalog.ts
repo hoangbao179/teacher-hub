@@ -28,7 +28,7 @@ export const learningUnits: readonly LearningUnit[] = [
   {
     id: "preschool-happy-animals", slug: "con-vat-dang-yeu", levelSlug: "mam-non", title: "Con vật đáng yêu", description: "Gọi tên những người bạn nhỏ quanh con.", icon: "🐾", status: "PUBLISHED", contentVersion: 1,
     vocabulary: words("pa", [
-      ["cat", "/kæt/", "con mèo", "🐱", "The cat is soft."], ["dog", "/dɒɡ/", "con chó", "🐶", "The dog can run."],
+      ["cat", "/kæt/", "con mèo", "/learning/animals/cat.svg", "The cat is soft."], ["dog", "/dɒɡ/", "con chó", "🐶", "The dog can run."],
       ["bird", "/bɜːd/", "con chim", "🐦"], ["fish", "/fɪʃ/", "con cá", "🐟"], ["duck", "/dʌk/", "con vịt", "🦆"],
       ["rabbit", "/ˈræb.ɪt/", "con thỏ", "🐰"], ["cow", "/kaʊ/", "con bò", "🐮"], ["pig", "/pɪɡ/", "con lợn", "🐷"],
       ["bee", "/biː/", "con ong", "🐝"], ["frog", "/frɒɡ/", "con ếch", "🐸"],

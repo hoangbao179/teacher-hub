@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { learningLevels, learningUnits, unitBySlugs } from "../src/features/learning/content/vocabularyCatalog.ts";
 import { validateLearningCatalog } from "../src/features/learning/content/validateCatalog.ts";
-import { LEARNING_PROGRESS_STORAGE_KEY, markVocabularyItem, readLearningProgress, rememberLearningLocation, resetLearningProgress, resetUnitProgress, unitProgressFor, writeLearningProgress } from "../src/features/learning/storage/learningProgressStorage.ts";
+import { LEARNING_PROGRESS_STORAGE_KEY, MAX_RECENT_QUIZ_ATTEMPTS, completeQuiz, markReviewedAsRemembered, markVocabularyItem, readLearningProgress, recordQuizAnswer, rememberLearningLocation, resetLearningProgress, resetUnitProgress, startOrResumeQuiz, unitProgressFor, writeLearningProgress } from "../src/features/learning/storage/learningProgressStorage.ts";
 import { audioStrategy, playPronunciation, stopPronunciation } from "../src/features/learning/audio/pronunciation.ts";
 import { createListenQuestion, seededRandom } from "../src/features/learning/listen/listenQuestions.ts";
+import { createQuizQuestions, quizItemOrder, scoreQuiz, seededQuizRandom } from "../src/features/learning/quiz/quizQuestions.ts";
+import { learningRouteMetadata } from "../src/features/learning/seo/learningMetadata.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -108,4 +110,96 @@ test("audio selects asset, speech fallback and unavailable strategy without over
   assert.equal(audioStrategy({ ...item, speechText: undefined }, {}), "UNAVAILABLE");
   stopPronunciation();
   assert.deepEqual(events, ["cancel", "speak:cat", "cancel"]);
+});
+
+test("quiz generator is deterministic with one unique correct option", () => {
+  const vocabulary = learningUnits[0].vocabulary;
+  const ids = quizItemOrder(vocabulary, seededQuizRandom(7));
+  const first = createQuizQuestions(vocabulary, ids, seededQuizRandom(9));
+  const second = createQuizQuestions(vocabulary, ids, seededQuizRandom(9));
+  assert.deepEqual(first, second);
+  assert.equal(first.length, 10);
+  assert.deepEqual(first.map((question) => question.direction).slice(0, 2), ["WORD_TO_MEANING", "MEANING_TO_WORD"]);
+  for (const question of first) {
+    assert.equal(question.options.length, 4);
+    assert.equal(new Set(question.options).size, 4);
+    assert.equal(question.options.filter((option) => option === question.correctValue).length, 1);
+  }
+});
+
+test("quiz generator uses three choices for a tiny Unit and skips a single-choice question", () => {
+  const vocabulary = learningUnits[0].vocabulary;
+  const tiny = createQuizQuestions(vocabulary.slice(0, 3), vocabulary.slice(0, 3).map((item) => item.id), seededQuizRandom(3));
+  assert.equal(tiny.length, 3);
+  assert.ok(tiny.every((question) => question.options.length === 3));
+  assert.deepEqual(createQuizQuestions(vocabulary.slice(0, 1), [vocabulary[0].id]), []);
+});
+
+test("quiz scoring calculates correct, wrong and rounded percentage", () => {
+  assert.deepEqual(scoreQuiz([
+    { itemId: "a", selectedValue: "A", correct: true },
+    { itemId: "b", selectedValue: "B", correct: false },
+    { itemId: "c", selectedValue: "C", correct: true },
+  ]), { totalQuestions: 3, correctCount: 2, wrongCount: 1, scorePercent: 67, wrongItemIds: ["b"] });
+});
+
+test("V18B progress migrates with safe V18C defaults and validates attempts", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(LEARNING_PROGRESS_STORAGE_KEY, JSON.stringify({ schemaVersion: 1, units: { "con-vat-dang-yeu": {
+    contentVersion: 1, viewedItemIds: ["pa-1"], rememberedItemIds: [], reviewItemIds: ["pa-2"], lastItemIndex: 1,
+    listenCorrect: 1, listenTotal: 2, quizAttempts: [{ id: "bad" }, { id: "ok", completedAt: "2026-07-24T00:00:00.000Z", totalQuestions: 2, correctCount: 9, scorePercent: 999, wrongItemIds: ["pa-2"] }], updatedAt: "2026-07-24T00:00:00.000Z",
+  } } }));
+  const migrated = readLearningProgress(storage).units["con-vat-dang-yeu"];
+  assert.equal(migrated.quizAttempts.length, 1);
+  assert.equal(migrated.quizAttempts[0].correctCount, 2);
+  assert.equal(migrated.quizAttempts[0].scorePercent, 100);
+  assert.equal(migrated.bestScore, 100);
+  assert.deepEqual(migrated.wrongItemIds, ["pa-2"]);
+});
+
+test("quiz session resumes, prevents duplicate answers and caps recent attempts", () => {
+  const storage = new MemoryStorage();
+  const unit = learningUnits[0];
+  const ids = unit.vocabulary.slice(0, 3).map((item) => item.id);
+  for (let attemptIndex = 0; attemptIndex < 12; attemptIndex += 1) {
+    startOrResumeQuiz(unit, ids, storage);
+    recordQuizAnswer(unit, { itemId: ids[0], selectedValue: "x", correct: false }, storage);
+    recordQuizAnswer(unit, { itemId: ids[0], selectedValue: "x", correct: false }, storage);
+    assert.equal(unitProgressFor(readLearningProgress(storage), unit).activeQuiz.answers.length, 1);
+    recordQuizAnswer(unit, { itemId: ids[1], selectedValue: "y", correct: true }, storage);
+    recordQuizAnswer(unit, { itemId: ids[2], selectedValue: "z", correct: true }, storage);
+    completeQuiz(unit, storage);
+  }
+  const progress = unitProgressFor(readLearningProgress(storage), unit);
+  assert.equal(progress.quizAttempts.length, MAX_RECENT_QUIZ_ATTEMPTS);
+  assert.equal(progress.latestScore, 67);
+  assert.equal(progress.bestScore, 67);
+  assert.deepEqual(progress.wrongItemIds, [ids[0]]);
+});
+
+test("review completion removes current review state but preserves quiz history", () => {
+  const storage = new MemoryStorage();
+  const unit = learningUnits[0];
+  const ids = unit.vocabulary.slice(0, 2).map((item) => item.id);
+  startOrResumeQuiz(unit, ids, storage);
+  recordQuizAnswer(unit, { itemId: ids[0], selectedValue: "x", correct: false }, storage);
+  recordQuizAnswer(unit, { itemId: ids[1], selectedValue: "y", correct: true }, storage);
+  completeQuiz(unit, storage);
+  markVocabularyItem(unit, ids[0], "REVIEW", storage);
+  markReviewedAsRemembered(unit, ids[0], storage);
+  const progress = unitProgressFor(readLearningProgress(storage), unit);
+  assert.deepEqual(progress.wrongItemIds, []);
+  assert.deepEqual(progress.reviewItemIds, []);
+  assert.ok(progress.rememberedItemIds.includes(ids[0]));
+  assert.equal(progress.quizAttempts.length, 1);
+  assert.ok(progress.reviewCompletedAt);
+});
+
+test("learning metadata indexes stable pages and noindexes temporary quiz state", () => {
+  const unit = learningRouteMetadata("/hoc/mam-non/con-vat-dang-yeu");
+  assert.equal(unit.valid, true);
+  assert.equal(unit.robots, "index,follow,max-image-preview:large");
+  assert.equal(unit.canonical, "https://tienganhcovy.com/hoc/mam-non/con-vat-dang-yeu");
+  for (const action of ["quiz", "result", "review"]) assert.equal(learningRouteMetadata(`/hoc/mam-non/con-vat-dang-yeu/${action}`).robots, "noindex,follow");
+  assert.equal(learningRouteMetadata("/hoc/lop-3/con-vat-dang-yeu/quiz").valid, false);
 });

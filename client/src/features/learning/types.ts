@@ -48,6 +48,28 @@ export interface LearningUnit {
   vocabulary: readonly VocabularyItem[];
 }
 
+export interface QuizAnswer {
+  itemId: string;
+  selectedValue: string;
+  correct: boolean;
+}
+
+export interface QuizAttempt {
+  id: string;
+  completedAt: string;
+  totalQuestions: number;
+  correctCount: number;
+  scorePercent: number;
+  wrongItemIds: string[];
+}
+
+export interface ActiveQuizSession {
+  questionItemIds: string[];
+  currentIndex: number;
+  answers: QuizAnswer[];
+  startedAt: string;
+}
+
 export interface UnitLearningProgress {
   contentVersion: number;
   viewedItemIds: string[];
@@ -57,6 +79,13 @@ export interface UnitLearningProgress {
   flashcardCompletedAt?: string;
   listenCorrect: number;
   listenTotal: number;
+  quizAttempts: QuizAttempt[];
+  bestScore?: number;
+  latestScore?: number;
+  wrongItemIds: string[];
+  completedAt?: string;
+  reviewCompletedAt?: string;
+  activeQuiz?: ActiveQuizSession;
   updatedAt: string;
 }
 

@@ -1,4 +1,4 @@
-import { ArrowBack, AutoStories, DeleteOutlined, Headphones, Star } from "@mui/icons-material";
+import { ArrowBack, AutoStories, DeleteOutlined, Headphones, Quiz, Star } from "@mui/icons-material";
 import { Box, Button, Card, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -43,6 +43,7 @@ export function LearningUnitPage() {
           <Stack spacing={1.25} sx={{ mt: 3 }}>
             <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/flashcards`} variant="contained" size="large" startIcon={<AutoStories />} sx={{ minHeight: "50px !important", bgcolor: "#7455d9", borderRadius: 3 }}>Học bằng Flashcard</Button>
             <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/listen`} variant="outlined" size="large" startIcon={<Headphones />} sx={{ minHeight: "50px !important", borderRadius: 3 }}>Nghe và chọn nghĩa</Button>
+            <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/quiz`} variant="outlined" size="large" startIcon={<Quiz />} sx={{ minHeight: "50px !important", borderRadius: 3, borderColor: "#7455d9", color: "#5c3fbd" }}>{unitProgress.activeQuiz ? "Tiếp tục luyện tập" : "Luyện tập chọn nghĩa"}</Button>
             <Button onClick={() => setConfirmReset(true)} color="inherit" startIcon={<DeleteOutlined />} sx={{ alignSelf: "center", mt: 1 }}>Xóa tiến độ Unit này</Button>
           </Stack>
         </Card>
