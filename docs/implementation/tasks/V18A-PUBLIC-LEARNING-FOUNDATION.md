@@ -25,8 +25,8 @@ docs/wireframes/19-public-english-learning-corner.png
 - Tạo `LearningLevelSlug` cho `mam-non`, `lop-1` đến `lop-9`.
 - Tạo type `VocabularyWord`, `VocabularyUnit` và catalog.
 - Tạo validator cho catalog published.
-- Seed tối thiểu 2 Unit published thuộc ít nhất 1 level.
-- Mỗi Unit có 10–15 từ và tối thiểu 1 từ thiếu image/audio để test fallback.
+- Seed 4 Unit published thuộc 2 level (`mam-non`, `lop-3`).
+- Mỗi Unit có 10 từ tự biên soạn, có minh họa và `speechText` fallback.
 - Không dùng nội dung có bản quyền không được phép.
 
 ### Public learning shell
@@ -54,8 +54,8 @@ Footer phải giữ nguyên:
 
 ### Local progress foundation
 
-- Tạo storage adapter với key `covy:english-learning-progress:v1`.
-- Lưu level gần nhất.
+- Tạo storage adapter với key `covy-learning-progress:v1`.
+- Lưu level, Unit gần nhất và progress cơ bản.
 - JSON hỏng, schema cũ hoặc write failure không làm crash trang.
 - Chưa cần hoàn thiện progress của flashcard/quiz trong V18A.
 
@@ -147,7 +147,7 @@ git diff --check
 ## Commit sau PASS
 
 ```text
-feat(learning): tạo nền tảng góc học tiếng Anh miễn phí
+feat(learning): bổ sung nền tảng góc học tiếng Anh
 ```
 
 Không push.

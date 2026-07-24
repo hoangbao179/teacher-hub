@@ -4,6 +4,7 @@ import { AdminLayout } from "./layout/AdminLayout";
 import { useAuth } from "./auth/AuthContext";
 import { LoadingState } from "./components/LoadingState";
 import { RouteMetadata } from "./components/RouteMetadata";
+import { AuthProvider } from "./auth/AuthContext";
 
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })));
 const LoginPage = lazy(() => import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })));
@@ -25,6 +26,12 @@ const LessonWizardPage = lazy(() => import("./pages/LessonWizardPage").then((mod
 const ClassFormPage = lazy(() => import("./pages/ClassFormPage").then((module) => ({ default: module.ClassFormPage })));
 const StudentFormPage = lazy(() => import("./pages/StudentFormPage").then((module) => ({ default: module.StudentFormPage })));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage").then((module) => ({ default: module.NotFoundPage })));
+const LearningHubPage = lazy(() => import("./features/learning/pages/LearningHubPage").then((module) => ({ default: module.LearningHubPage })));
+const LearningLevelPage = lazy(() => import("./features/learning/pages/LearningLevelPage").then((module) => ({ default: module.LearningLevelPage })));
+const LearningNotFoundPage = lazy(() => import("./features/learning/pages/LearningNotFoundPage").then((module) => ({ default: module.LearningNotFoundPage })));
+function AdminAuthBoundary() {
+  return <AuthProvider><Outlet /></AuthProvider>;
+}
 function Protected() {
   const { user, bootstrapping } = useAuth();
   const location = useLocation();
@@ -46,11 +53,15 @@ export function App() {
       <RouteMetadata />
       <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route element={<GuestOnly />}>
-        <Route path="/admin/login" element={<LoginPage />} />
-      </Route>
-      <Route element={<Protected />}>
-        <Route element={<AdminLayout />}>
+      <Route path="/hoc" element={<LearningHubPage />} />
+      <Route path="/hoc/:levelSlug" element={<LearningLevelPage />} />
+      <Route path="/hoc/*" element={<LearningNotFoundPage />} />
+      <Route element={<AdminAuthBoundary />}>
+        <Route element={<GuestOnly />}>
+          <Route path="/admin/login" element={<LoginPage />} />
+        </Route>
+        <Route element={<Protected />}>
+          <Route element={<AdminLayout />}>
           <Route path="/admin" element={<DashboardPage />} />
           <Route path="/admin/reconciliation" element={<ReconciliationPage />} />
           <Route path="/admin/unrecorded" element={<Navigate to="/admin/reconciliation" replace />} />
@@ -74,6 +85,7 @@ export function App() {
           <Route path="/admin/makeup-outstanding" element={<OutstandingMakeupsPage />} />
           <Route path="/admin/lessons/:id/edit" element={<LessonWizardPage />} />
           <Route path="/admin/*" element={<NotFoundPage admin />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />

@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V17 are PASS.
+M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V17 và V18A are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
 
@@ -79,6 +79,9 @@ V14: PASS on 21/07/2026. Evidence is in
 V17-PRODUCTION-CICD: PASS on 21/07/2026. Evidence is in
 `.agent-reports/V17-PRODUCTION-CICD-implementation.md` and
 `.agent-reports/V17-PRODUCTION-CICD-verification.md`.
+V18A-PUBLIC-LEARNING-FOUNDATION: PASS on 24/07/2026. Evidence is in
+`.agent-reports/V18A-PUBLIC-LEARNING-FOUNDATION-implementation.md` and
+`.agent-reports/V18A-PUBLIC-LEARNING-FOUNDATION-verification.md`.
 
 ## Scope boundary
 
@@ -104,6 +107,9 @@ V14 adds historical lesson/name snapshots, effective-dated class/enrollment
 activity, versioned recurring schedules, source-linked subset makeup lessons,
 atomic temporary rescheduling and shared conflict warnings while preserving
 existing tuition and PAID-boundary rules.
+V18A adds the isolated public `/hoc` learning shell, static validated vocabulary
+catalog, versioned local progress, level/Unit foundation and Homepage CTA without
+adding backend API, database, CMS or student authentication.
 
 ## Known limitations
 

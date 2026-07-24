@@ -140,6 +140,8 @@ for (const marker of ["error_page 404 /404.html;", "location = /404.html", "try_
   if (!nginx.includes(marker)) failures.push(`Nginx 404/indexing behavior is missing: ${marker}`);
 if (!nginx.includes("location ^~ /admin/") || !nginx.includes("try_files $uri /index.html;"))
   failures.push("Nginx admin SPA fallback is missing");
+if (!nginx.includes("location = /hoc") || !nginx.includes("location ^~ /hoc/") || !nginx.includes("try_files $uri $uri/ /index.html;"))
+  failures.push("Nginx public learning SPA fallback is missing");
 const clientPackage = JSON.parse(read("client/package.json"));
 if (!clientPackage.scripts?.["build:production"]?.includes("vite build --mode production")) failures.push("Production client build does not use Vite production mode");
 if (!read("Dockerfile.web").includes("build:production")) failures.push("Web image bypasses production marketing validation");

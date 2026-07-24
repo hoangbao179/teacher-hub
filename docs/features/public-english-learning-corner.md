@@ -1,6 +1,6 @@
 # Góc học tiếng Anh miễn phí cùng cô Vy
 
-> Status: **PROPOSED — NOT IMPLEMENTED**  
+> Status: **V18A FOUNDATION IMPLEMENTED — PASS (24/07/2026)**
 > Technical name: **Public English Learning Corner**  
 > Target: public learning module sau V1  
 > Primary route family: `/hoc/*`  
@@ -345,19 +345,19 @@ Ràng buộc Unit published:
 - media là local asset hoặc HTTPS đã duyệt;
 - không đưa nội dung có bản quyền không được phép vào repository.
 
-Seed nghiệm thu đầu tiên:
+Seed V18A đã triển khai:
 
-- ít nhất 1 level khả dụng;
-- ít nhất 2 Unit published;
-- mỗi Unit có 10–15 từ;
-- có ít nhất một từ thiếu image/audio để test graceful fallback.
+- 2 level khả dụng: `mam-non` và `lop-3`;
+- mỗi level có 2 Unit published;
+- mỗi Unit có 10 từ tự biên soạn;
+- mỗi từ có minh họa nhẹ và `speechText`; audio/flashcard đầy đủ để dành cho V18B.
 
 ## 10. Lưu tiến độ cục bộ
 
 Storage key:
 
 ```text
-covy:english-learning-progress:v1
+covy-learning-progress:v1
 ```
 
 Kiểu dữ liệu:

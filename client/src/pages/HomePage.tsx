@@ -1,5 +1,6 @@
 import {
   AutoStories,
+  ArrowForward,
   ChatBubbleOutlined,
   CheckCircleOutlined,
   Facebook,
@@ -201,6 +202,21 @@ export function HomePage() {
             </Box>
           </Box>
         </Container>
+
+        <Box sx={{ bgcolor: "#f8f4ff" }}>
+          <Container maxWidth="lg">
+            <Box component="section" aria-labelledby="free-learning-heading" data-testid="homepage-learning-cta" sx={{ py: { xs: 4, sm: 5 } }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0,1fr) auto" }, gap: 2.5, alignItems: "center", p: { xs: 2.5, sm: 3.5 }, border: "1px solid #d9cdf3", borderRadius: 3, background: "linear-gradient(135deg,#f1ebff 0%,#eaf7ff 55%,#fff3d8 100%)", boxShadow: "0 10px 24px rgba(57,42,94,.07)" }}>
+                <Box>
+                  <Typography variant="overline" color="primary">GÓC HỌC MIỄN PHÍ</Typography>
+                  <Typography id="free-learning-heading" component="h2" variant="h4" sx={{ mt: 0.75 }}>Học tiếng Anh cùng cô Vy</Typography>
+                  <Typography color="text.secondary" sx={{ mt: 0.75 }}>Chọn cấp độ, làm quen từ mới và xây thói quen học vui mỗi ngày.</Typography>
+                </Box>
+                <Button component={Link} to="/hoc" variant="contained" endIcon={<ArrowForward />} sx={{ minWidth: { sm: 156 }, borderRadius: 3 }}>Bắt đầu học</Button>
+              </Box>
+            </Box>
+          </Container>
+        </Box>
 
         <Box sx={{ bgcolor: "#faf8ff" }}>
           <Container maxWidth="lg">

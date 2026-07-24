@@ -1,5 +1,7 @@
 # V18A-PUBLIC-LEARNING-FOUNDATION Acceptance
 
+> Verified: **PASS — 24/07/2026**
+
 ## Public access và isolation
 
 - Người dùng chưa đăng nhập mở `/hoc` bình thường.
@@ -84,5 +86,5 @@ Tại 768 và 1440 px:
 ## Verdict
 
 ```text
-PASS | FAIL
+PASS
 ```
