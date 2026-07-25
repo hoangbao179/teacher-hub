@@ -19,6 +19,22 @@ export interface PublicTestimonial {
   verified: true;
 }
 
+export interface PublicTrustItem {
+  id: "experience" | "vstep" | "tesol" | "learning-format";
+  label: string;
+  detail: string;
+}
+
+export interface PublicLocation {
+  badge: string;
+  name: string;
+  address: string;
+  placeUrl: string;
+  directionsUrl: string;
+  latitude: number;
+  longitude: number;
+}
+
 const siteUrl = "https://tienganhcovy.com";
 
 // Phản hồi ẩn danh, dựa trên chia sẻ thực tế và đã được chủ website xác nhận.
@@ -63,11 +79,17 @@ export const publicHomeContent = {
     heading: "Cô Vy dạy tiếng Anh tại Huế",
     description: "Đồng hành cùng học sinh từ nền tảng đến luyện thi, theo hình thức 1–1 hoặc lớp nhóm.",
   },
+  trustItems: [
+    { id: "experience", label: "5 năm đồng hành cùng học sinh", detail: "Kiên nhẫn và sát năng lực" },
+    { id: "vstep", label: "VSTEP 8.5/10 · C1", detail: "Năng lực tiếng Anh" },
+    { id: "tesol", label: "TESOL quốc tế 120h", detail: "Chứng chỉ giảng dạy" },
+    { id: "learning-format", label: "Học 1–1 hoặc nhóm nhỏ", detail: "Nhịp học phù hợp" },
+  ] satisfies PublicTrustItem[],
   teacherProfile: {
     heading: "Đồng hành cùng học sinh",
     biography: "Cô Vy đồng hành cùng học sinh theo năng lực, tập trung xây nền tảng chắc, củng cố phần còn yếu và giúp các em tự tin hơn khi sử dụng tiếng Anh.",
     experience: [
-      "5 năm kinh nghiệm giảng dạy",
+      "5 năm đồng hành và hỗ trợ học sinh",
       "Từng giảng dạy tại Kindle, Amigo và Let’s Shine",
       "Hiện là giáo viên tại DTP Education Solutions",
       "Thực tập tại Trường Tiểu học Phú Hòa, đạt 9.8/10 và đảm nhiệm vai trò Leader",
@@ -102,16 +124,22 @@ export const publicHomeContent = {
     highlights: ["Học 1–1 hoặc lớp nhóm", "Trao đổi lịch trước khi học"],
   },
   locations: {
-    heading: "Hình thức và địa điểm học",
-    teacherHome: {
-      title: "Học tại địa chỉ lớp",
-      detail: "101 Kiệt 245 Bùi Thị Xuân, Huế",
+    eyebrow: "ĐỊA ĐIỂM HỌC",
+    heading: "Học trực tiếp tại Huế",
+    primary: {
+      badge: "Cơ sở duy nhất",
+      name: "Lớp tiếng Anh cô Vy",
+      address: "101 Kiệt 245 Bùi Thị Xuân, Phường Thủy Xuân, TP. Huế",
+      placeUrl: "https://www.google.com/maps/place/L%E1%BB%9Bp+ti%E1%BA%BFng+Anh+c%C3%B4+Vy/@16.4485604,107.5651109,693m/data=!3m1!1e3!4m14!1m7!3m6!1s0x3141a6afd96e3cb5:0xe354465f8ab597f0!2zMTAxIEtp4buHdCAyNDUgQsO5aSBUaOG7iyBYdcOibiwgVGjhu6d5IFh1w6JuLCBIdeG6vywgVmnhu4d0IE5hbQ!3b1!8m2!3d16.4484853!4d107.5649369!3m5!1s0x236f2c65f8d9d355:0x4759212f0d82a749!8m2!3d16.4484035!4d107.5651237!16s%2Fg%2F11zh28qgsd?entry=ttu&g_ep=EgoyMDI2MDcyMi4wIKXMDSoASAFQAw%3D%3D",
+      directionsUrl: "https://www.google.com/maps/dir/?api=1&destination=16.4484035%2C107.5651237",
+      latitude: 16.4484035,
+      longitude: 107.5651237,
+    } satisfies PublicLocation,
+    homeTeaching: {
+      title: "Nhận dạy tại nhà học sinh",
+      description: "Có nhận dạy tại nhà học sinh trong khu vực Huế.",
     },
-    studentHome: {
-      title: "Học tại nhà học sinh",
-      detail: "Nhận dạy trong khu vực Huế",
-    },
-    note: "Phụ huynh vui lòng liên hệ trước để trao đổi lịch học phù hợp.",
+    note: "Phụ huynh vui lòng liên hệ trước để trao đổi lịch học và phạm vi di chuyển phù hợp.",
   },
   methods: [
     { title: "Bám sát năng lực", detail: "Xác định phần kiến thức còn hổng và chọn nhịp học phù hợp với từng học sinh." },
@@ -186,12 +214,14 @@ export const publicHomeStructuredData = {
       address: {
         "@type": "PostalAddress",
         streetAddress: "101 Kiệt 245 Bùi Thị Xuân",
-        addressLocality: "Huế",
+        addressLocality: "Phường Thủy Xuân, TP. Huế",
         addressCountry: "VN",
       },
+      hasMap: publicHomeContent.locations.primary.placeUrl,
       sameAs: [
         "https://www.facebook.com/uyenvy.le.12",
         "https://zalo.me/0971697759",
+        publicHomeContent.locations.primary.placeUrl,
       ],
       founder: { "@id": `${siteUrl}/#teacher` },
     },

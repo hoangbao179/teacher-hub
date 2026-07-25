@@ -46,9 +46,9 @@ các viewport 360–430 px.
 Footer công khai giữ nguyên:
 `2026 — từ người hâm mộ cô Vy, with love ❤️`. Link quản trị chỉ nằm ở header.
 
-## Planned extension — V19A
+## V19A — Một cơ sở và Google Maps
 
-Source hiện tại vẫn phản ánh Homepage trước V19A; kế hoạch chưa được triển khai.
-V19A sẽ hợp nhất phần địa điểm thành một cơ sở duy nhất, trình bày nhận dạy tại
-nhà học sinh như một dịch vụ và không thêm review/rating giả. Chi tiết xem
+Homepage trình bày một cơ sở duy nhất, coi nhận dạy tại nhà học sinh là dịch vụ
+và hỗ trợ Google Maps Embed tùy chọn với card fallback khi không có API key.
+Structured data dùng cùng địa chỉ/map URL và không có review/rating giả. Chi tiết xem
 [Homepage một cơ sở và Google Maps](public-homepage-single-location-google-maps.md).

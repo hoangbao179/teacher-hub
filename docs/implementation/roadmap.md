@@ -19,7 +19,7 @@
 - V12C: PASS — centralized password policy, audited reset, configurable limiter/countdown and strict Vite port.
 - V12D: PASS — synchronized documentation and real-app V2 visual references.
 - V12E: PASS — full regression, responsive acceptance and controlled source-package release gate.
-- V19A: PLANNED — Homepage một cơ sở, Google Maps, trust strip và responsive polish.
+- V19A: PASS — Homepage một cơ sở, Google Maps tùy chọn với fallback, trust strip và responsive polish.
 
 After V12E, the next separate activity is independent full-system review. Its
 current status is **NOT STARTED**; do not treat RC status as production approval.

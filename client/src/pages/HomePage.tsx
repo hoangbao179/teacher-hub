@@ -3,14 +3,21 @@ import {
   ArrowForward,
   ChatBubbleOutlined,
   CheckCircleOutlined,
+  CastForEducationOutlined,
+  DirectionsOutlined,
   Facebook,
   FormatQuote,
+  GroupOutlined,
+  HomeWorkOutlined,
   LightbulbOutlined,
   LocationOnOutlined,
+  MapOutlined,
   MenuBook,
+  OpenInNewOutlined,
   PlayArrow,
   SchoolOutlined,
   TrackChangesOutlined,
+  WorkspacePremiumOutlined,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -118,6 +125,56 @@ const headerLinkSx = {
     lineHeight: 1.4,
   },
 } as const;
+const actionButtonSx = {
+  minHeight: 48,
+  minWidth: 0,
+  px: { xs: 1.25, sm: 2 },
+  whiteSpace: "nowrap",
+  fontSize: { xs: 13, sm: 14 },
+  borderRadius: 2.5,
+  "& .MuiButton-startIcon, & .MuiButton-endIcon": { flexShrink: 0 },
+} as const;
+
+const trustIcons = {
+  experience: SchoolOutlined,
+  vstep: WorkspacePremiumOutlined,
+  tesol: CastForEducationOutlined,
+  "learning-format": GroupOutlined,
+} as const;
+
+function LocationMapPanel() {
+  const [mapFailed, setMapFailed] = useState(false);
+  const location = content.locations.primary;
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_EMBED_API_KEY?.trim();
+  const showEmbed = Boolean(apiKey) && !mapFailed;
+
+  return (
+    <Card data-testid="homepage-map-panel" variant="outlined" sx={{ minHeight: { xs: 280, md: "100%" }, overflow: "hidden", borderRadius: 3, borderColor: "#d7dced", background: "linear-gradient(145deg, #edf7ff 0%, #f5f0ff 58%, #fff9e7 100%)" }}>
+      {showEmbed ? (
+        <Box
+          component="iframe"
+          title="Bản đồ Lớp tiếng Anh cô Vy"
+          src={`https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(apiKey)}&q=${location.latitude}%2C${location.longitude}`}
+          loading="lazy"
+          referrerPolicy="strict-origin-when-cross-origin"
+          onError={() => setMapFailed(true)}
+          sx={{ display: "block", width: "100%", height: "100%", minHeight: { xs: 320, md: 440 }, border: 0 }}
+        />
+      ) : (
+        <CardContent sx={{ minHeight: { xs: 280, md: 440 }, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", p: { xs: 3, sm: 4 } }}>
+          <Box sx={{ width: 68, height: 68, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "rgba(109,61,245,.1)", color: "primary.main" }}>
+            <MapOutlined aria-hidden="true" sx={{ fontSize: 38 }} />
+          </Box>
+          <Typography component="h3" variant="h6" sx={{ mt: 2 }}>{location.name}</Typography>
+          <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 420 }}>{location.address}</Typography>
+          <Button data-testid="google-maps-fallback-link" component="a" href={location.placeUrl} target="_blank" rel="noopener noreferrer" variant="outlined" endIcon={<OpenInNewOutlined />} sx={{ ...actionButtonSx, mt: 2.5 }}>
+            Mở Google Maps
+          </Button>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
 
 export function HomePage() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -156,12 +213,16 @@ export function HomePage() {
       <Box component="main">
         <Box sx={{ background: "linear-gradient(135deg, #f7f0ff 0%, #edf8ff 54%, #effaf4 100%)" }}>
           <Container maxWidth="lg">
-            <Box component="section" aria-labelledby="hero-heading" sx={{ ...sectionSx, pt: { xs: 4, md: 6 } }}>
+            <Box component="section" id="hero" aria-labelledby="hero-heading" sx={{ ...sectionSx, pt: { xs: 4, md: 6 } }}>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1.05fr) minmax(360px, .95fr)" }, gap: { xs: 3, md: 5 }, alignItems: "center" }}>
                 <Box>
                   <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>{content.hero.eyebrow}</Typography>
                   <Typography id="hero-heading" component="h1" variant="h3" sx={{ mt: 1, fontWeight: 800, fontSize: { xs: "2rem", md: "3rem" } }}>{content.hero.heading}</Typography>
-                  <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 650, fontSize: { md: "1.08rem" } }}>{content.hero.description}</Typography>
+                   <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 650, fontSize: { md: "1.08rem" } }}>{content.hero.description}</Typography>
+                   <Box data-testid="homepage-hero-actions" sx={{ display: "flex", flexDirection: "column", gap: 1.25, mt: 3, "@media (min-width:390px)": { flexDirection: "row" } }}>
+                     <Button component="a" href="#contact" variant="contained" sx={{ ...actionButtonSx, height: 48, px: 2 }}>Trao đổi về lớp học</Button>
+                     <Button component={Link} to="/hoc" variant="outlined" endIcon={<ArrowForward />} sx={{ ...actionButtonSx, height: 48, px: 2 }}>Góc học miễn phí</Button>
+                   </Box>
                 </Box>
                 <Box component="picture">
                   {content.media.teacherPhotoSources.map((source) => <source key={source.type} srcSet={source.srcSet} type={source.type} />)}
@@ -176,6 +237,23 @@ export function HomePage() {
                   />
                 </Box>
               </Box>
+            </Box>
+          </Container>
+        </Box>
+
+        <Box component="section" id="trust" aria-label="Thông tin tin cậy" data-testid="homepage-trust-strip" sx={{ bgcolor: "#fff", py: { xs: 2.5, md: 3 } }}>
+          <Container maxWidth="lg">
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: { xs: 1, sm: 1.5 } }}>
+              {content.trustItems.map((item, index) => {
+                const Icon = trustIcons[item.id];
+                return (
+                  <Box key={item.id} data-testid={`homepage-trust-item-${item.id}`} sx={{ minWidth: 0, p: { xs: 1.5, sm: 2 }, textAlign: "center", border: "1px solid", borderColor: ["#d8e8f6", "#ddd3f5", "#d5ebdf", "#f0dfbd"][index], borderRadius: 3, bgcolor: ["#f1f8ff", "#f6f1ff", "#f1faf5", "#fff9e9"][index] }}>
+                    <Icon aria-hidden="true" color="primary" sx={{ fontSize: { xs: 27, sm: 30 } }} />
+                    <Typography sx={{ mt: 0.75, fontWeight: 800, fontSize: { xs: 13, sm: 14.5 }, lineHeight: 1.35 }}>{item.label}</Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.25, fontSize: { xs: 11.5, sm: 12.5 }, lineHeight: 1.35 }}>{item.detail}</Typography>
+                  </Box>
+                );
+              })}
             </Box>
           </Container>
         </Box>
@@ -257,25 +335,36 @@ export function HomePage() {
             </Box>
           </Box>
 
-          <Box component="section" id="locations" aria-labelledby="locations-heading" sx={compactSectionSx}>
-            <Typography variant="overline" color="primary">ĐỊA ĐIỂM HỌC</Typography>
+          <Box component="section" id="locations" aria-labelledby="locations-heading" data-testid="homepage-location-section" sx={compactSectionSx}>
+            <Typography variant="overline" color="primary">{content.locations.eyebrow}</Typography>
             <Typography id="locations-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{content.locations.heading}</Typography>
-            <Card variant="outlined" sx={{ mt: 3, borderRadius: 3, background: "linear-gradient(135deg, #faf9ff 0%, #f3f8ff 52%, #f1faf5 100%)", borderColor: "divider" }}>
-              <CardContent component="address" sx={{ fontStyle: "normal", p: { xs: 2, sm: 2.5 }, "&:last-child": { pb: { xs: 2, sm: 2.5 } } }}>
-                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 2, md: 0 } }}>
-                  {[content.locations.teacherHome, content.locations.studentHome].map((location, index) => (
-                    <Stack key={location.title} direction="row" spacing={1.5} sx={{ alignItems: "flex-start", minWidth: 0, px: { md: index === 0 ? 1 : 3 }, borderLeft: { md: index === 1 ? 1 : 0 }, borderColor: "divider" }}>
-                    <LocationOnOutlined color="primary" aria-hidden="true" />
-                      <Box>
-                        <Typography sx={{ fontWeight: 700 }}>{location.title}</Typography>
-                        <Typography color="text.secondary" sx={{ mt: 0.25 }}>{location.detail}</Typography>
-                      </Box>
-                    </Stack>
-                  ))}
-                </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2.25, pt: 2, borderTop: 1, borderColor: "divider" }}>{content.locations.note}</Typography>
-              </CardContent>
-            </Card>
+            <Box data-testid="homepage-location-layout" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 2, md: 2.5 }, alignItems: "stretch", mt: 3 }}>
+              <Card data-testid="homepage-location-card" component="article" variant="outlined" sx={{ borderRadius: 3, background: "linear-gradient(145deg, #faf9ff 0%, #f4f0ff 55%, #fffaf0 100%)", borderColor: "#ded5f0" }}>
+                <CardContent sx={{ p: { xs: 2.5, sm: 3.5 }, "&:last-child": { pb: { xs: 2.5, sm: 3.5 } } }}>
+                  <Chip label={content.locations.primary.badge} color="primary" size="small" sx={{ fontWeight: 700 }} />
+                  <Stack component="address" direction="row" spacing={1.25} sx={{ mt: 2, alignItems: "flex-start", fontStyle: "normal" }}>
+                    <LocationOnOutlined color="primary" aria-hidden="true" sx={{ flexShrink: 0 }} />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography component="h3" variant="h6">{content.locations.primary.name}</Typography>
+                      <Typography color="text.secondary" sx={{ mt: 0.75 }}>{content.locations.primary.address}</Typography>
+                    </Box>
+                  </Stack>
+                  <Stack direction="row" spacing={1.25} sx={{ mt: 2.5, p: 2, alignItems: "flex-start", borderRadius: 2.5, bgcolor: "rgba(255,255,255,.72)", border: "1px solid #e1dcf0" }}>
+                    <HomeWorkOutlined color="primary" aria-hidden="true" sx={{ flexShrink: 0 }} />
+                    <Box>
+                      <Typography sx={{ fontWeight: 700 }}>{content.locations.homeTeaching.title}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{content.locations.homeTeaching.description}</Typography>
+                    </Box>
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2.25 }}>{content.locations.note}</Typography>
+                  <Box data-testid="homepage-location-actions" sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mt: 2.5 }}>
+                    <Button data-testid="google-maps-place-link" component="a" href={content.locations.primary.placeUrl} target="_blank" rel="noopener noreferrer" variant="contained" startIcon={<LocationOnOutlined />} endIcon={<OpenInNewOutlined />} sx={{ ...actionButtonSx, flex: 1, height: 48 }}>Xem trên Google Maps</Button>
+                    <Button data-testid="google-maps-directions-link" component="a" href={content.locations.primary.directionsUrl} target="_blank" rel="noopener noreferrer" variant="outlined" startIcon={<DirectionsOutlined />} sx={{ ...actionButtonSx, flex: 1, height: 48 }}>Chỉ đường</Button>
+                  </Box>
+                </CardContent>
+              </Card>
+              <LocationMapPanel />
+            </Box>
           </Box>
 
           <Box component="section" id="videos" aria-labelledby="videos-heading" sx={compactSectionSx}>

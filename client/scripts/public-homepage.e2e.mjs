@@ -9,9 +9,18 @@ const clientRoot = path.join(root, "client");
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
 const screenshotDir = process.env.HOMEPAGE_SCREENSHOT_DIR;
-const screenshotWidths = new Set([360, 400, 430, 1440]);
+const screenshotWidths = new Set([360, 400, 430, 768, 1440]);
 const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến THCS";
 const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
+const expectedAddress = "101 Kiệt 245 Bùi Thị Xuân, Phường Thủy Xuân, TP. Huế";
+const googleMapsPlaceUrl = "https://www.google.com/maps/place/L%E1%BB%9Bp+ti%E1%BA%BFng+Anh+c%C3%B4+Vy/@16.4485604,107.5651109,693m/data=!3m1!1e3!4m14!1m7!3m6!1s0x3141a6afd96e3cb5:0xe354465f8ab597f0!2zMTAxIEtp4buHdCAyNDUgQsO5aSBUaOG7iyBYdcOibiwgVGjhu6d5IFh1w6JuLCBIdeG6vywgVmnhu4d0IE5hbQ!3b1!8m2!3d16.4484853!4d107.5649369!3m5!1s0x236f2c65f8d9d355:0x4759212f0d82a749!8m2!3d16.4484035!4d107.5651237!16s%2Fg%2F11zh28qgsd?entry=ttu&g_ep=EgoyMDI2MDcyMi4wIKXMDSoASAFQAw%3D%3D";
+const googleMapsDirectionsUrl = "https://www.google.com/maps/dir/?api=1&destination=16.4484035%2C107.5651237";
+const expectedTrustItems = [
+  "5 năm đồng hành cùng học sinh",
+  "VSTEP 8.5/10 · C1",
+  "TESOL quốc tế 120h",
+  "Học 1–1 hoặc nhóm nhỏ",
+];
 const expectedTestimonials = [
   {
     guardianLabel: "Mẹ bé M.",
@@ -62,8 +71,10 @@ try {
   for (const sourceCopy of [
     "<h1",
     "Cô Vy dạy tiếng Anh tại Huế",
-    "101 Kiệt 245 Bùi Thị Xuân, Huế",
-    "Nhận dạy trong khu vực Huế",
+    expectedAddress,
+    "Cơ sở duy nhất",
+    "Có nhận dạy tại nhà học sinh trong khu vực Huế.",
+    ...expectedTrustItems,
     "Mẹ bé M.",
     "Mẹ bé N.",
     "Phụ huynh bé H.",
@@ -77,7 +88,7 @@ try {
     for (const copy of Object.values(testimonial)) assert(sourceHtml.includes(copy), `Prerendered testimonial copy is missing: ${copy}`);
   }
   assert(!sourceHtml.includes("Xin chào, cô là Uyên Vy."), "Old teacher greeting remains");
-  for (const forbiddenSource of ['href="tel:', '"telephone"', 'name="keywords"', "Điện thoại và Zalo", "0971 697 759", "Lê Bá Thân", "hai khu vực ở Huế", "101/245 Bùi Thị Xuân", "GIẢI ĐÁP NHANH", "Câu hỏi thường gặp", "Vuốt để xem thêm"]) {
+  for (const forbiddenSource of ['href="tel:', '"telephone"', 'name="keywords"', "Điện thoại và Zalo", "0971 697 759", "Lê Bá Thân", "hai khu vực ở Huế", "101/245 Bùi Thị Xuân", "GIẢI ĐÁP NHANH", "Câu hỏi thường gặp", "Vuốt để xem thêm", "Cơ sở 2", "1000+", "200+", "90% tiến bộ", "/kiem-tra-trinh-do"]) {
     assert(!sourceHtml.includes(forbiddenSource), `Prerendered HTML contains forbidden content: ${forbiddenSource}`);
   }
   const notFoundSource = await (await fetch(`${origin}/404.html`)).text();
@@ -115,7 +126,7 @@ try {
     "Đồng hành cùng học sinh",
     "Ba nhóm chương trình",
     "Rõ ràng, vừa sức, đúng mục tiêu",
-    "Hình thức và địa điểm học",
+    "Học trực tiếp tại Huế",
     "Xem thử cách tiếp cận bài học",
     "Trao đổi về lớp học",
   ]) await page.getByRole("heading", { level: 2, name: heading, exact: true }).waitFor();
@@ -134,11 +145,32 @@ try {
   ]) await page.getByRole("heading", { level: 3, name: program, exact: true }).waitFor();
   assert(await page.locator('[data-testid="program-list"] article').count() === 3, "Homepage must contain exactly three program cards");
 
-  await page.locator("address").getByText("Học tại địa chỉ lớp", { exact: true }).waitFor();
-  await page.locator("address").getByText("101 Kiệt 245 Bùi Thị Xuân, Huế", { exact: true }).waitFor();
-  await page.locator("address").getByText("Học tại nhà học sinh", { exact: true }).waitFor();
-  await page.locator("address").getByText("Nhận dạy trong khu vực Huế", { exact: true }).waitFor();
-  await page.getByText("Phụ huynh vui lòng liên hệ trước để trao đổi lịch học phù hợp.", { exact: true }).waitFor();
+  const trustStrip = page.getByTestId("homepage-trust-strip");
+  assert(await trustStrip.locator('[data-testid^="homepage-trust-item-"]').count() === 4, "Trust strip must contain exactly four items");
+  for (const item of expectedTrustItems) await trustStrip.getByText(item, { exact: true }).waitFor();
+  assert(!/(1000\+|200\+|90%)/.test(await trustStrip.innerText()), "Trust strip contains an unverified claim");
+
+  const locationSection = page.getByTestId("homepage-location-section");
+  const locationCard = page.getByTestId("homepage-location-card");
+  assert(await locationSection.getByTestId("homepage-location-card").count() === 1, "Homepage must contain one main location card");
+  await locationCard.getByText("Cơ sở duy nhất", { exact: true }).waitFor();
+  await locationCard.getByRole("heading", { level: 3, name: "Lớp tiếng Anh cô Vy", exact: true }).waitFor();
+  await locationCard.getByText(expectedAddress, { exact: true }).waitFor();
+  await locationCard.getByText("Nhận dạy tại nhà học sinh", { exact: true }).waitFor();
+  await locationCard.getByText("Có nhận dạy tại nhà học sinh trong khu vực Huế.", { exact: true }).waitFor();
+  await locationCard.getByText("Phụ huynh vui lòng liên hệ trước để trao đổi lịch học và phạm vi di chuyển phù hợp.", { exact: true }).waitFor();
+  assert(await locationSection.getByText("Cơ sở 2", { exact: false }).count() === 0, "A second location remains");
+  const placeLink = page.getByTestId("google-maps-place-link");
+  const directionsLink = page.getByTestId("google-maps-directions-link");
+  for (const [link, expectedUrl] of [[placeLink, googleMapsPlaceUrl], [directionsLink, googleMapsDirectionsUrl]]) {
+    assert(await link.getAttribute("href") === expectedUrl, `Unexpected Google Maps link: ${await link.getAttribute("href")}`);
+    assert(await link.getAttribute("target") === "_blank", "Google Maps link must open in a new tab");
+    const rel = await link.getAttribute("rel");
+    assert(rel?.includes("noopener") && rel?.includes("noreferrer"), "Google Maps link is missing noopener noreferrer");
+  }
+  assert(await page.getByTestId("homepage-map-panel").getByTestId("google-maps-fallback-link").count() === 1, "No-key Maps fallback is missing");
+  assert(await page.locator('iframe[src*="google.com/maps/embed"]').count() === 0, "Maps iframe must not load in default no-key E2E mode");
+  assert(!/(rating|review|đánh giá|\d\s*sao)/i.test(await locationSection.innerText()), "Location section contains rating or review UI");
   assert(await page.getByText("GIẢI ĐÁP NHANH", { exact: true }).count() === 0, "FAQ eyebrow remains");
   assert(await page.getByText(/Câu hỏi thường gặp/i).count() === 0, "FAQ heading remains");
   const testimonialHeading = page.locator("#feedback h2").filter({ hasText: "Những thay đổi phụ huynh nhận thấy" });
@@ -156,7 +188,10 @@ try {
   assert(await page.getByRole("heading", { level: 2, name: "Video học tiếng Anh tham khảo", exact: true }).count() === 0, "Old video heading remains");
 
   const hero = page.locator("section").filter({ has: page.locator("#hero-heading") }).first();
-  assert(await hero.getByRole("link").count() === 0 && await hero.getByRole("button").count() === 0, "Hero must not contain contact CTAs");
+  assert(await hero.getByRole("link").count() === 2, "Hero must contain exactly two CTAs");
+  assert(await hero.getByRole("link", { name: "Trao đổi về lớp học", exact: true }).getAttribute("href") === "#contact", "Hero contact CTA is incorrect");
+  assert(await hero.getByRole("link", { name: "Góc học miễn phí", exact: true }).getAttribute("href") === "/hoc", "Hero learning CTA is incorrect");
+  assert(await hero.locator('a[href="/kiem-tra-trinh-do"]').count() === 0, "Forbidden placement-test CTA exists");
 
   const links = await page.locator('[data-testid="contact-actions"] a').evaluateAll((items) => items.map((item) => ({
     href: item.getAttribute("href"),
@@ -202,6 +237,9 @@ try {
   assert(website.name === "Lớp tiếng Anh cô Vy", "WebSite name is incorrect");
   assert(business.name === "Lớp tiếng Anh cô Vy", "LocalBusiness name is incorrect");
   assert(business.address.streetAddress === "101 Kiệt 245 Bùi Thị Xuân", "LocalBusiness address is incorrect");
+  assert(business.address.addressLocality === "Phường Thủy Xuân, TP. Huế", "LocalBusiness locality is incorrect");
+  assert(business.hasMap === googleMapsPlaceUrl, "LocalBusiness hasMap is incorrect");
+  assert(business.sameAs.includes(googleMapsPlaceUrl), "Google Maps is missing from LocalBusiness sameAs");
   const testimonialCards = page.locator('[data-testid="testimonial-list"] figure');
   assert(await testimonialCards.count() === 3, "Homepage must contain exactly three testimonials");
   for (const testimonial of expectedTestimonials) {
@@ -217,7 +255,7 @@ try {
   await page.waitForTimeout(3200);
   assert(await secondTestimonial.getAttribute("aria-hidden") === "false", "Testimonials must advance automatically after three seconds");
   const sectionOrder = await page.locator("main section").evaluateAll((sections) => sections.map((section) => section.id).filter(Boolean));
-  for (const [before, after] of [["about", "programs"], ["programs", "method"], ["method", "locations"], ["locations", "videos"], ["videos", "feedback"], ["feedback", "contact"]]) {
+  for (const [before, after] of [["hero", "trust"], ["trust", "about"], ["about", "programs"], ["programs", "method"], ["method", "locations"], ["locations", "videos"], ["videos", "feedback"], ["feedback", "contact"]]) {
     assert(sectionOrder.indexOf(before) < sectionOrder.indexOf(after), `Homepage section order is incorrect: ${before} must precede ${after}`);
   }
   assert(!/Điện thoại và Zalo|Gọi 0971|0971 697 759/i.test(metadata.body), "Phone copy remains public");
@@ -269,7 +307,7 @@ try {
   ];
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
-    await page.goto(origin, { waitUntil: "domcontentloaded" });
+    await page.goto(origin, { waitUntil: "networkidle" });
     await page.getByRole("heading", { level: 1 }).waitFor();
     const metrics = await page.evaluate(() => {
       const header = document.querySelector("header");
@@ -315,6 +353,47 @@ try {
       assert(metrics.linkMetrics.every((link) => link.height <= link.lineHeight * 1.25), `Mobile header link is taller than one line at ${viewport.width}px`);
     } else {
       assert(Math.abs(metrics.logoWidth - 32) <= 1, `Header logo must remain 32px at ${viewport.width}px`);
+    }
+    const homepageLayout = await page.evaluate(() => {
+      const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
+      const trustCards = [...document.querySelectorAll('[data-testid^="homepage-trust-item-"]')].map((item) => item.getBoundingClientRect());
+      const locationCard = rect('[data-testid="homepage-location-card"]');
+      const mapPanel = rect('[data-testid="homepage-map-panel"]');
+      const address = [...document.querySelectorAll('[data-testid="homepage-location-card"] address p')].at(-1);
+      const mapActions = [...document.querySelectorAll('[data-testid="homepage-location-actions"] a')];
+      const heroActions = [...document.querySelectorAll('[data-testid="homepage-hero-actions"] a')];
+      const videoList = document.querySelector('[data-testid="learning-video-list"]');
+      const videoCards = [...document.querySelectorAll('[data-testid="learning-video-list"] > div')].map((item) => item.getBoundingClientRect());
+      return {
+        trustCards: trustCards.map((card) => ({ top: card.top, left: card.left, width: card.width, right: card.right })),
+        locationCard: locationCard && { top: locationCard.top, left: locationCard.left, right: locationCard.right, bottom: locationCard.bottom, width: locationCard.width },
+        mapPanel: mapPanel && { top: mapPanel.top, left: mapPanel.left, right: mapPanel.right, bottom: mapPanel.bottom, width: mapPanel.width },
+        addressFits: address ? address.scrollWidth <= address.clientWidth && address.scrollHeight <= address.clientHeight : false,
+        mapActions: mapActions.map((action) => ({ height: action.getBoundingClientRect().height, left: action.getBoundingClientRect().left, right: action.getBoundingClientRect().right })),
+        heroActionHeights: heroActions.map((action) => action.getBoundingClientRect().height),
+        videoOverflow: videoList ? videoList.scrollWidth - videoList.clientWidth : 0,
+        videoCards: videoCards.map((card) => ({ top: card.top, width: card.width })),
+      };
+    });
+    assert(homepageLayout.trustCards.length === 4, `Trust item count changed at ${viewport.width}px`);
+    assert(homepageLayout.locationCard && homepageLayout.mapPanel, `Location layout is missing at ${viewport.width}px`);
+    assert(homepageLayout.addressFits, `Location address is clipped at ${viewport.width}px`);
+    assert(homepageLayout.mapActions.length === 2, `Maps CTA count changed at ${viewport.width}px`);
+    assert(homepageLayout.mapActions.every((action) => action.height >= 44), `Maps CTA is shorter than 44px at ${viewport.width}px: ${homepageLayout.mapActions.map((action) => action.height).join(", ")}`);
+    assert(homepageLayout.mapActions.every((action) => action.left >= -1 && action.right <= viewport.width + 1), `Maps CTA overflows at ${viewport.width}px`);
+    assert(homepageLayout.heroActionHeights.length === 2 && homepageLayout.heroActionHeights.every((height) => height >= 44), `Hero CTA touch target is too small at ${viewport.width}px: ${homepageLayout.heroActionHeights.join(", ")}`);
+    if (viewport.width < 768) {
+      const trustRows = [...new Set(homepageLayout.trustCards.map((card) => Math.round(card.top)))];
+      assert(trustRows.length === 2 && homepageLayout.trustCards.filter((card) => Math.round(card.top) === trustRows[0]).length === 2, `Trust strip must use a 2-column mobile grid at ${viewport.width}px`);
+      assert(homepageLayout.mapPanel.top >= homepageLayout.locationCard.bottom - 1, `Fallback map panel must follow the location card at ${viewport.width}px`);
+      assert(homepageLayout.videoOverflow > 0, `Mobile video list must remain horizontally scrollable at ${viewport.width}px`);
+    } else {
+      assert(Math.abs(homepageLayout.locationCard.top - homepageLayout.mapPanel.top) <= 1, `Desktop location columns do not align at ${viewport.width}px`);
+      assert(Math.abs(homepageLayout.locationCard.width - homepageLayout.mapPanel.width) <= 2, `Desktop location columns are not balanced at ${viewport.width}px`);
+      assert(homepageLayout.locationCard.right <= homepageLayout.mapPanel.left, `Desktop location columns overlap at ${viewport.width}px`);
+      assert(Math.max(...homepageLayout.trustCards.map((card) => card.top)) - Math.min(...homepageLayout.trustCards.map((card) => card.top)) <= 1, `Desktop trust items are not on one row at ${viewport.width}px`);
+      assert(homepageLayout.videoOverflow <= 1, `Desktop video list overflows at ${viewport.width}px`);
+      assert(Math.abs(homepageLayout.videoCards[0].top - homepageLayout.videoCards[1].top) <= 1, `Desktop videos are not on one row at ${viewport.width}px`);
     }
     assert(await page.locator('[data-testid="contact-actions"] a').count() === 2, `Contact action count changed at ${viewport.width}px`);
     assert(await page.locator('a[href^="tel:"]').count() === 0, `tel link exists at ${viewport.width}px`);

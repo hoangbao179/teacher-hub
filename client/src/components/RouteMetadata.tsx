@@ -33,13 +33,11 @@ export function RouteMetadata() {
       setMeta("og:title", publicHomeContent.seo.title, true);
       setMeta("og:description", publicHomeContent.seo.description, true);
       setMeta("og:url", `${publicHomeContent.siteUrl}/`, true);
-      if (!structuredData) {
-        const script = document.createElement("script");
-        script.id = "public-home-structured-data";
-        script.type = "application/ld+json";
-        script.textContent = JSON.stringify(publicHomeStructuredData);
-        document.head.append(script);
-      }
+      const script = structuredData ?? document.createElement("script");
+      script.id = "public-home-structured-data";
+      script.setAttribute("type", "application/ld+json");
+      script.textContent = JSON.stringify(publicHomeStructuredData);
+      if (!structuredData) document.head.append(script);
       return;
     }
 
