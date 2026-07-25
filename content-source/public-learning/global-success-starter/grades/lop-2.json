@@ -1,0 +1,1211 @@
+{
+  "schemaVersion": 1,
+  "contentId": "global-success-grade-2-starter",
+  "contentVersion": "1.0.0",
+  "levelSlug": "lop-2",
+  "status": "DRAFT_REVIEW",
+  "unitCount": 16,
+  "vocabularyCount": 96,
+  "units": [
+    {
+      "id": "global-success-grade-2-unit-01",
+      "slug": "lop-2-unit-01-at-my-birthday-party",
+      "levelSlug": "lop-2",
+      "title": "Unit 1: At my birthday party",
+      "bookUnitTitle": "At my birthday party",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At my birthday party”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u01-birthday",
+          "word": "birthday",
+          "phonetic": "/bˈɜːθdeɪ/",
+          "vietnameseMeaning": "sinh nhật",
+          "image": "🎂",
+          "speechText": "birthday"
+        },
+        {
+          "id": "gs-g2-u01-cake",
+          "word": "cake",
+          "phonetic": "/kˈeɪk/",
+          "vietnameseMeaning": "bánh ngọt",
+          "image": "🍰",
+          "speechText": "cake"
+        },
+        {
+          "id": "gs-g2-u01-candle",
+          "word": "candle",
+          "phonetic": "/kˈandəl/",
+          "vietnameseMeaning": "nến",
+          "image": "🕯️",
+          "speechText": "candle"
+        },
+        {
+          "id": "gs-g2-u01-gift",
+          "word": "gift",
+          "phonetic": "/ɡˈɪft/",
+          "vietnameseMeaning": "món quà",
+          "image": "🎁",
+          "speechText": "gift"
+        },
+        {
+          "id": "gs-g2-u01-party",
+          "word": "party",
+          "phonetic": "/pˈɑːti/",
+          "vietnameseMeaning": "bữa tiệc",
+          "image": "🎉",
+          "speechText": "party"
+        },
+        {
+          "id": "gs-g2-u01-happy",
+          "word": "happy",
+          "phonetic": "/hˈapi/",
+          "vietnameseMeaning": "vui vẻ",
+          "image": "😊",
+          "speechText": "happy"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 1,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-02",
+      "slug": "lop-2-unit-02-in-the-backyard",
+      "levelSlug": "lop-2",
+      "title": "Unit 2: In the backyard",
+      "bookUnitTitle": "In the backyard",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the backyard”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u02-backyard",
+          "word": "backyard",
+          "phonetic": "/bˈakjɑːd/",
+          "vietnameseMeaning": "sân sau",
+          "image": "🏡",
+          "speechText": "backyard"
+        },
+        {
+          "id": "gs-g2-u02-dog",
+          "word": "dog",
+          "phonetic": "/dˈɒɡ/",
+          "vietnameseMeaning": "con chó",
+          "image": "🐶",
+          "speechText": "dog"
+        },
+        {
+          "id": "gs-g2-u02-tree",
+          "word": "tree",
+          "phonetic": "/tɹˈiː/",
+          "vietnameseMeaning": "cây",
+          "image": "🌳",
+          "speechText": "tree"
+        },
+        {
+          "id": "gs-g2-u02-ball",
+          "word": "ball",
+          "phonetic": "/bˈɔːl/",
+          "vietnameseMeaning": "quả bóng",
+          "image": "⚽",
+          "speechText": "ball"
+        },
+        {
+          "id": "gs-g2-u02-play",
+          "word": "play",
+          "phonetic": "/plˈeɪ/",
+          "vietnameseMeaning": "chơi",
+          "image": "🎈",
+          "speechText": "play"
+        },
+        {
+          "id": "gs-g2-u02-small",
+          "word": "small",
+          "phonetic": "/smˈɔːl/",
+          "vietnameseMeaning": "nhỏ",
+          "image": "🔹",
+          "speechText": "small"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 2,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-03",
+      "slug": "lop-2-unit-03-at-the-seaside",
+      "levelSlug": "lop-2",
+      "title": "Unit 3: At the seaside",
+      "bookUnitTitle": "At the seaside",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the seaside”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u03-sea",
+          "word": "sea",
+          "phonetic": "/sˈiː/",
+          "vietnameseMeaning": "biển",
+          "image": "🌊",
+          "speechText": "sea"
+        },
+        {
+          "id": "gs-g2-u03-sand",
+          "word": "sand",
+          "phonetic": "/sˈand/",
+          "vietnameseMeaning": "cát",
+          "image": "🏖️",
+          "speechText": "sand"
+        },
+        {
+          "id": "gs-g2-u03-shell",
+          "word": "shell",
+          "phonetic": "/ʃˈɛl/",
+          "vietnameseMeaning": "vỏ sò",
+          "image": "🐚",
+          "speechText": "shell"
+        },
+        {
+          "id": "gs-g2-u03-boat",
+          "word": "boat",
+          "phonetic": "/bˈəʊt/",
+          "vietnameseMeaning": "thuyền",
+          "image": "⛵",
+          "speechText": "boat"
+        },
+        {
+          "id": "gs-g2-u03-swim",
+          "word": "swim",
+          "phonetic": "/swˈɪm/",
+          "vietnameseMeaning": "bơi",
+          "image": "🏊",
+          "speechText": "swim"
+        },
+        {
+          "id": "gs-g2-u03-sun",
+          "word": "sun",
+          "phonetic": "/sˈʌn/",
+          "vietnameseMeaning": "mặt trời",
+          "image": "☀️",
+          "speechText": "sun"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 3,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-04",
+      "slug": "lop-2-unit-04-in-the-countryside",
+      "levelSlug": "lop-2",
+      "title": "Unit 4: In the countryside",
+      "bookUnitTitle": "In the countryside",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the countryside”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u04-field",
+          "word": "field",
+          "phonetic": "/fˈiːld/",
+          "vietnameseMeaning": "cánh đồng",
+          "image": "🌾",
+          "speechText": "field"
+        },
+        {
+          "id": "gs-g2-u04-river",
+          "word": "river",
+          "phonetic": "/ɹˈɪvə/",
+          "vietnameseMeaning": "con sông",
+          "image": "🏞️",
+          "speechText": "river"
+        },
+        {
+          "id": "gs-g2-u04-cow",
+          "word": "cow",
+          "phonetic": "/kˈaʊ/",
+          "vietnameseMeaning": "con bò",
+          "image": "🐄",
+          "speechText": "cow"
+        },
+        {
+          "id": "gs-g2-u04-farmer",
+          "word": "farmer",
+          "phonetic": "/fˈɑːmə/",
+          "vietnameseMeaning": "nông dân",
+          "image": "🧑‍🌾",
+          "speechText": "farmer"
+        },
+        {
+          "id": "gs-g2-u04-quiet",
+          "word": "quiet",
+          "phonetic": "/kwˈaɪət/",
+          "vietnameseMeaning": "yên tĩnh",
+          "image": "🤫",
+          "speechText": "quiet"
+        },
+        {
+          "id": "gs-g2-u04-village",
+          "word": "village",
+          "phonetic": "/vˈɪlɪdʒ/",
+          "vietnameseMeaning": "làng quê",
+          "image": "🏘️",
+          "speechText": "village"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 4,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-05",
+      "slug": "lop-2-unit-05-in-the-classroom",
+      "levelSlug": "lop-2",
+      "title": "Unit 5: In the classroom",
+      "bookUnitTitle": "In the classroom",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the classroom”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u05-teacher",
+          "word": "teacher",
+          "phonetic": "/tˈiːtʃə/",
+          "vietnameseMeaning": "giáo viên",
+          "image": "👩‍🏫",
+          "speechText": "teacher"
+        },
+        {
+          "id": "gs-g2-u05-student",
+          "word": "student",
+          "phonetic": "/stjˈuːdənt/",
+          "vietnameseMeaning": "học sinh",
+          "image": "🧑‍🎓",
+          "speechText": "student"
+        },
+        {
+          "id": "gs-g2-u05-desk",
+          "word": "desk",
+          "phonetic": "/dˈɛsk/",
+          "vietnameseMeaning": "bàn học",
+          "image": "🪑",
+          "speechText": "desk"
+        },
+        {
+          "id": "gs-g2-u05-board",
+          "word": "board",
+          "phonetic": "/bˈɔːd/",
+          "vietnameseMeaning": "bảng",
+          "image": "🟩",
+          "speechText": "board"
+        },
+        {
+          "id": "gs-g2-u05-pencil",
+          "word": "pencil",
+          "phonetic": "/pˈɛnsəl/",
+          "vietnameseMeaning": "bút chì",
+          "image": "✏️",
+          "speechText": "pencil"
+        },
+        {
+          "id": "gs-g2-u05-read",
+          "word": "read",
+          "phonetic": "/ɹˈiːd/",
+          "vietnameseMeaning": "đọc",
+          "image": "📖",
+          "speechText": "read"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 5,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-06",
+      "slug": "lop-2-unit-06-on-the-farm",
+      "levelSlug": "lop-2",
+      "title": "Unit 6: On the farm",
+      "bookUnitTitle": "On the farm",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “On the farm”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u06-farm",
+          "word": "farm",
+          "phonetic": "/fˈɑːm/",
+          "vietnameseMeaning": "nông trại",
+          "image": "🚜",
+          "speechText": "farm"
+        },
+        {
+          "id": "gs-g2-u06-cow",
+          "word": "cow",
+          "phonetic": "/kˈaʊ/",
+          "vietnameseMeaning": "bò",
+          "image": "🐄",
+          "speechText": "cow"
+        },
+        {
+          "id": "gs-g2-u06-pig",
+          "word": "pig",
+          "phonetic": "/pˈɪɡ/",
+          "vietnameseMeaning": "lợn",
+          "image": "🐷",
+          "speechText": "pig"
+        },
+        {
+          "id": "gs-g2-u06-chicken",
+          "word": "chicken",
+          "phonetic": "/tʃˈɪkɪn/",
+          "vietnameseMeaning": "gà",
+          "image": "🐔",
+          "speechText": "chicken"
+        },
+        {
+          "id": "gs-g2-u06-farmer",
+          "word": "farmer",
+          "phonetic": "/fˈɑːmə/",
+          "vietnameseMeaning": "nông dân",
+          "image": "🧑‍🌾",
+          "speechText": "farmer"
+        },
+        {
+          "id": "gs-g2-u06-feed",
+          "word": "feed",
+          "phonetic": "/fˈiːd/",
+          "vietnameseMeaning": "cho ăn",
+          "image": "🌾",
+          "speechText": "feed"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 6,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-07",
+      "slug": "lop-2-unit-07-in-the-kitchen",
+      "levelSlug": "lop-2",
+      "title": "Unit 7: In the kitchen",
+      "bookUnitTitle": "In the kitchen",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the kitchen”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u07-kitchen",
+          "word": "kitchen",
+          "phonetic": "/kˈɪtʃən/",
+          "vietnameseMeaning": "nhà bếp",
+          "image": "🍳",
+          "speechText": "kitchen"
+        },
+        {
+          "id": "gs-g2-u07-pan",
+          "word": "pan",
+          "phonetic": "/pˈan/",
+          "vietnameseMeaning": "cái chảo",
+          "image": "🍳",
+          "speechText": "pan"
+        },
+        {
+          "id": "gs-g2-u07-pot",
+          "word": "pot",
+          "phonetic": "/pˈɒt/",
+          "vietnameseMeaning": "cái nồi",
+          "image": "🥘",
+          "speechText": "pot"
+        },
+        {
+          "id": "gs-g2-u07-knife",
+          "word": "knife",
+          "phonetic": "/nˈaɪf/",
+          "vietnameseMeaning": "con dao",
+          "image": "🔪",
+          "speechText": "knife"
+        },
+        {
+          "id": "gs-g2-u07-cook",
+          "word": "cook",
+          "phonetic": "/kˈʊk/",
+          "vietnameseMeaning": "nấu ăn",
+          "image": "👩‍🍳",
+          "speechText": "cook"
+        },
+        {
+          "id": "gs-g2-u07-wash",
+          "word": "wash",
+          "phonetic": "/wˈɒʃ/",
+          "vietnameseMeaning": "rửa",
+          "image": "🫧",
+          "speechText": "wash"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 7,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-08",
+      "slug": "lop-2-unit-08-in-the-village",
+      "levelSlug": "lop-2",
+      "title": "Unit 8: In the village",
+      "bookUnitTitle": "In the village",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the village”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u08-village",
+          "word": "village",
+          "phonetic": "/vˈɪlɪdʒ/",
+          "vietnameseMeaning": "ngôi làng",
+          "image": "🏘️",
+          "speechText": "village"
+        },
+        {
+          "id": "gs-g2-u08-house",
+          "word": "house",
+          "phonetic": "/hˈaʊs/",
+          "vietnameseMeaning": "ngôi nhà",
+          "image": "🏠",
+          "speechText": "house"
+        },
+        {
+          "id": "gs-g2-u08-road",
+          "word": "road",
+          "phonetic": "/ɹˈəʊd/",
+          "vietnameseMeaning": "con đường",
+          "image": "🛣️",
+          "speechText": "road"
+        },
+        {
+          "id": "gs-g2-u08-tree",
+          "word": "tree",
+          "phonetic": "/tɹˈiː/",
+          "vietnameseMeaning": "cây",
+          "image": "🌳",
+          "speechText": "tree"
+        },
+        {
+          "id": "gs-g2-u08-people",
+          "word": "people",
+          "phonetic": "/pˈiːpəl/",
+          "vietnameseMeaning": "mọi người",
+          "image": "👨‍👩‍👧‍👦",
+          "speechText": "people"
+        },
+        {
+          "id": "gs-g2-u08-quiet",
+          "word": "quiet",
+          "phonetic": "/kwˈaɪət/",
+          "vietnameseMeaning": "yên tĩnh",
+          "image": "🤫",
+          "speechText": "quiet"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 8,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-09",
+      "slug": "lop-2-unit-09-in-the-grocery-store",
+      "levelSlug": "lop-2",
+      "title": "Unit 9: In the grocery store",
+      "bookUnitTitle": "In the grocery store",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the grocery store”.",
+      "icon": "🦉",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u09-rice",
+          "word": "rice",
+          "phonetic": "/ɹˈaɪs/",
+          "vietnameseMeaning": "gạo",
+          "image": "🍚",
+          "speechText": "rice"
+        },
+        {
+          "id": "gs-g2-u09-milk",
+          "word": "milk",
+          "phonetic": "/mˈɪlk/",
+          "vietnameseMeaning": "sữa",
+          "image": "🥛",
+          "speechText": "milk"
+        },
+        {
+          "id": "gs-g2-u09-egg",
+          "word": "egg",
+          "phonetic": "/ˈɛɡ/",
+          "vietnameseMeaning": "trứng",
+          "image": "🥚",
+          "speechText": "egg"
+        },
+        {
+          "id": "gs-g2-u09-bread",
+          "word": "bread",
+          "phonetic": "/bɹˈɛd/",
+          "vietnameseMeaning": "bánh mì",
+          "image": "🍞",
+          "speechText": "bread"
+        },
+        {
+          "id": "gs-g2-u09-fruit",
+          "word": "fruit",
+          "phonetic": "/fɹˈuːt/",
+          "vietnameseMeaning": "trái cây",
+          "image": "🍎",
+          "speechText": "fruit"
+        },
+        {
+          "id": "gs-g2-u09-basket",
+          "word": "basket",
+          "phonetic": "/bˈaskɪt/",
+          "vietnameseMeaning": "cái giỏ",
+          "image": "🧺",
+          "speechText": "basket"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 9,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-10",
+      "slug": "lop-2-unit-10-at-the-zoo",
+      "levelSlug": "lop-2",
+      "title": "Unit 10: At the zoo",
+      "bookUnitTitle": "At the zoo",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the zoo”.",
+      "icon": "💡",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u10-lion",
+          "word": "lion",
+          "phonetic": "/lˈaɪən/",
+          "vietnameseMeaning": "sư tử",
+          "image": "🦁",
+          "speechText": "lion"
+        },
+        {
+          "id": "gs-g2-u10-tiger",
+          "word": "tiger",
+          "phonetic": "/tˈaɪɡə/",
+          "vietnameseMeaning": "hổ",
+          "image": "🐯",
+          "speechText": "tiger"
+        },
+        {
+          "id": "gs-g2-u10-monkey",
+          "word": "monkey",
+          "phonetic": "/mˈʌnki/",
+          "vietnameseMeaning": "khỉ",
+          "image": "🐒",
+          "speechText": "monkey"
+        },
+        {
+          "id": "gs-g2-u10-elephant",
+          "word": "elephant",
+          "phonetic": "/ˈɛlɪfənt/",
+          "vietnameseMeaning": "voi",
+          "image": "🐘",
+          "speechText": "elephant"
+        },
+        {
+          "id": "gs-g2-u10-zebra",
+          "word": "zebra",
+          "phonetic": "/zˈɛbɹə/",
+          "vietnameseMeaning": "ngựa vằn",
+          "image": "🦓",
+          "speechText": "zebra"
+        },
+        {
+          "id": "gs-g2-u10-giraffe",
+          "word": "giraffe",
+          "phonetic": "/dʒɪɹˈaf/",
+          "vietnameseMeaning": "hươu cao cổ",
+          "image": "🦒",
+          "speechText": "giraffe"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 10,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-11",
+      "slug": "lop-2-unit-11-in-the-playground",
+      "levelSlug": "lop-2",
+      "title": "Unit 11: In the playground",
+      "bookUnitTitle": "In the playground",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the playground”.",
+      "icon": "🌍",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u11-slide",
+          "word": "slide",
+          "phonetic": "/slˈaɪd/",
+          "vietnameseMeaning": "cầu trượt",
+          "image": "🛝",
+          "speechText": "slide"
+        },
+        {
+          "id": "gs-g2-u11-swing",
+          "word": "swing",
+          "phonetic": "/swˈɪŋ/",
+          "vietnameseMeaning": "xích đu",
+          "image": "🎠",
+          "speechText": "swing"
+        },
+        {
+          "id": "gs-g2-u11-ball",
+          "word": "ball",
+          "phonetic": "/bˈɔːl/",
+          "vietnameseMeaning": "quả bóng",
+          "image": "⚽",
+          "speechText": "ball"
+        },
+        {
+          "id": "gs-g2-u11-run",
+          "word": "run",
+          "phonetic": "/ɹˈʌn/",
+          "vietnameseMeaning": "chạy",
+          "image": "🏃",
+          "speechText": "run"
+        },
+        {
+          "id": "gs-g2-u11-jump",
+          "word": "jump",
+          "phonetic": "/dʒˈʌmp/",
+          "vietnameseMeaning": "nhảy",
+          "image": "🤸",
+          "speechText": "jump"
+        },
+        {
+          "id": "gs-g2-u11-friend",
+          "word": "friend",
+          "phonetic": "/fɹˈɛnd/",
+          "vietnameseMeaning": "người bạn",
+          "image": "🧒",
+          "speechText": "friend"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 11,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-12",
+      "slug": "lop-2-unit-12-at-the-cafe",
+      "levelSlug": "lop-2",
+      "title": "Unit 12: At the cafe",
+      "bookUnitTitle": "At the cafe",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the cafe”.",
+      "icon": "🏆",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u12-cafe",
+          "word": "cafe",
+          "phonetic": "/kˈafeɪ/",
+          "vietnameseMeaning": "quán cà phê",
+          "image": "☕",
+          "speechText": "cafe"
+        },
+        {
+          "id": "gs-g2-u12-juice",
+          "word": "juice",
+          "phonetic": "/dʒˈuːs/",
+          "vietnameseMeaning": "nước ép",
+          "image": "🧃",
+          "speechText": "juice"
+        },
+        {
+          "id": "gs-g2-u12-cake",
+          "word": "cake",
+          "phonetic": "/kˈeɪk/",
+          "vietnameseMeaning": "bánh ngọt",
+          "image": "🍰",
+          "speechText": "cake"
+        },
+        {
+          "id": "gs-g2-u12-tea",
+          "word": "tea",
+          "phonetic": "/tˈiː/",
+          "vietnameseMeaning": "trà",
+          "image": "🍵",
+          "speechText": "tea"
+        },
+        {
+          "id": "gs-g2-u12-menu",
+          "word": "menu",
+          "phonetic": "/mˈɛnjuː/",
+          "vietnameseMeaning": "thực đơn",
+          "image": "📋",
+          "speechText": "menu"
+        },
+        {
+          "id": "gs-g2-u12-order",
+          "word": "order",
+          "phonetic": "/ˈɔːdə/",
+          "vietnameseMeaning": "gọi món",
+          "image": "🛎️",
+          "speechText": "order"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 12,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-13",
+      "slug": "lop-2-unit-13-at-the-maths-class",
+      "levelSlug": "lop-2",
+      "title": "Unit 13: At the maths class",
+      "bookUnitTitle": "At the maths class",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the maths class”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u13-number",
+          "word": "number",
+          "phonetic": "/nˈʌmbə/",
+          "vietnameseMeaning": "số",
+          "image": "🔢",
+          "speechText": "number"
+        },
+        {
+          "id": "gs-g2-u13-plus",
+          "word": "plus",
+          "phonetic": "/plˈʌs/",
+          "vietnameseMeaning": "cộng",
+          "image": "➕",
+          "speechText": "plus"
+        },
+        {
+          "id": "gs-g2-u13-minus",
+          "word": "minus",
+          "phonetic": "/mˈaɪnəs/",
+          "vietnameseMeaning": "trừ",
+          "image": "➖",
+          "speechText": "minus"
+        },
+        {
+          "id": "gs-g2-u13-count",
+          "word": "count",
+          "phonetic": "/kˈaʊnt/",
+          "vietnameseMeaning": "đếm",
+          "image": "🧮",
+          "speechText": "count"
+        },
+        {
+          "id": "gs-g2-u13-answer",
+          "word": "answer",
+          "phonetic": "/ˈansə/",
+          "vietnameseMeaning": "đáp án",
+          "image": "✅",
+          "speechText": "answer"
+        },
+        {
+          "id": "gs-g2-u13-class",
+          "word": "class",
+          "phonetic": "/klˈas/",
+          "vietnameseMeaning": "lớp học",
+          "image": "🏫",
+          "speechText": "class"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 13,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-14",
+      "slug": "lop-2-unit-14-at-home",
+      "levelSlug": "lop-2",
+      "title": "Unit 14: At home",
+      "bookUnitTitle": "At home",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At home”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u14-home",
+          "word": "home",
+          "phonetic": "/hˈəʊm/",
+          "vietnameseMeaning": "nhà",
+          "image": "🏠",
+          "speechText": "home"
+        },
+        {
+          "id": "gs-g2-u14-mother",
+          "word": "mother",
+          "phonetic": "/mˈʌðə/",
+          "vietnameseMeaning": "mẹ",
+          "image": "👩",
+          "speechText": "mother"
+        },
+        {
+          "id": "gs-g2-u14-father",
+          "word": "father",
+          "phonetic": "/fˈɑːðə/",
+          "vietnameseMeaning": "bố",
+          "image": "👨",
+          "speechText": "father"
+        },
+        {
+          "id": "gs-g2-u14-room",
+          "word": "room",
+          "phonetic": "/ɹˈuːm/",
+          "vietnameseMeaning": "căn phòng",
+          "image": "🚪",
+          "speechText": "room"
+        },
+        {
+          "id": "gs-g2-u14-cook",
+          "word": "cook",
+          "phonetic": "/kˈʊk/",
+          "vietnameseMeaning": "nấu ăn",
+          "image": "🍳",
+          "speechText": "cook"
+        },
+        {
+          "id": "gs-g2-u14-clean",
+          "word": "clean",
+          "phonetic": "/klˈiːn/",
+          "vietnameseMeaning": "dọn dẹp",
+          "image": "🧹",
+          "speechText": "clean"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 14,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-15",
+      "slug": "lop-2-unit-15-in-the-clothes-shop",
+      "levelSlug": "lop-2",
+      "title": "Unit 15: In the clothes shop",
+      "bookUnitTitle": "In the clothes shop",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the clothes shop”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u15-shirt",
+          "word": "shirt",
+          "phonetic": "/ʃˈɜːt/",
+          "vietnameseMeaning": "áo sơ mi",
+          "image": "👕",
+          "speechText": "shirt"
+        },
+        {
+          "id": "gs-g2-u15-dress",
+          "word": "dress",
+          "phonetic": "/dɹˈɛs/",
+          "vietnameseMeaning": "váy",
+          "image": "👗",
+          "speechText": "dress"
+        },
+        {
+          "id": "gs-g2-u15-skirt",
+          "word": "skirt",
+          "phonetic": "/skˈɜːt/",
+          "vietnameseMeaning": "chân váy",
+          "image": "🩳",
+          "speechText": "skirt"
+        },
+        {
+          "id": "gs-g2-u15-shoes",
+          "word": "shoes",
+          "phonetic": "/ʃˈuːz/",
+          "vietnameseMeaning": "giày",
+          "image": "👟",
+          "speechText": "shoes"
+        },
+        {
+          "id": "gs-g2-u15-hat",
+          "word": "hat",
+          "phonetic": "/hˈat/",
+          "vietnameseMeaning": "mũ",
+          "image": "🧢",
+          "speechText": "hat"
+        },
+        {
+          "id": "gs-g2-u15-wear",
+          "word": "wear",
+          "phonetic": "/wˈeə/",
+          "vietnameseMeaning": "mặc; đội",
+          "image": "🧥",
+          "speechText": "wear"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 15,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-2-unit-16",
+      "slug": "lop-2-unit-16-at-the-campsite",
+      "levelSlug": "lop-2",
+      "title": "Unit 16: At the campsite",
+      "bookUnitTitle": "At the campsite",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the campsite”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g2-u16-tent",
+          "word": "tent",
+          "phonetic": "/tˈɛnt/",
+          "vietnameseMeaning": "cái lều",
+          "image": "⛺",
+          "speechText": "tent"
+        },
+        {
+          "id": "gs-g2-u16-campfire",
+          "word": "campfire",
+          "phonetic": "/kˈampfaɪə/",
+          "vietnameseMeaning": "lửa trại",
+          "image": "🔥",
+          "speechText": "campfire"
+        },
+        {
+          "id": "gs-g2-u16-forest",
+          "word": "forest",
+          "phonetic": "/fˈɒɹɪst/",
+          "vietnameseMeaning": "khu rừng",
+          "image": "🌲",
+          "speechText": "forest"
+        },
+        {
+          "id": "gs-g2-u16-sleeping-bag",
+          "word": "sleeping bag",
+          "phonetic": "/slˈiːpɪŋ bˈaɡ/",
+          "vietnameseMeaning": "túi ngủ",
+          "image": "🛏️",
+          "speechText": "sleeping bag"
+        },
+        {
+          "id": "gs-g2-u16-torch",
+          "word": "torch",
+          "phonetic": "/tˈɔːtʃ/",
+          "vietnameseMeaning": "đèn pin",
+          "image": "🔦",
+          "speechText": "torch"
+        },
+        {
+          "id": "gs-g2-u16-camp",
+          "word": "camp",
+          "phonetic": "/kˈamp/",
+          "vietnameseMeaning": "cắm trại",
+          "image": "🏕️",
+          "speechText": "camp"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu vị trí",
+        "pattern": "I can see ...",
+        "exampleEnglish": "I can see a kite.",
+        "exampleVietnamese": "Em có thể nhìn thấy một cái diều.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 2,
+        "unitNumber": 16,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    }
+  ]
+}

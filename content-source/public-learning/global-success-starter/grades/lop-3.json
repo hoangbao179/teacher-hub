@@ -1,0 +1,1511 @@
+{
+  "schemaVersion": 1,
+  "contentId": "global-success-grade-3-starter",
+  "contentVersion": "1.0.0",
+  "levelSlug": "lop-3",
+  "status": "DRAFT_REVIEW",
+  "unitCount": 20,
+  "vocabularyCount": 120,
+  "units": [
+    {
+      "id": "global-success-grade-3-unit-01",
+      "slug": "lop-3-unit-01-hello",
+      "levelSlug": "lop-3",
+      "title": "Unit 1: Hello",
+      "bookUnitTitle": "Hello",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Hello”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u01-hello",
+          "word": "hello",
+          "phonetic": "/həlˈəʊ/",
+          "vietnameseMeaning": "xin chào",
+          "image": "👋",
+          "speechText": "hello"
+        },
+        {
+          "id": "gs-g3-u01-hi",
+          "word": "hi",
+          "phonetic": "/hˈaɪ/",
+          "vietnameseMeaning": "chào",
+          "image": "👋",
+          "speechText": "hi"
+        },
+        {
+          "id": "gs-g3-u01-goodbye",
+          "word": "goodbye",
+          "phonetic": "/ɡʊdbˈaɪ/",
+          "vietnameseMeaning": "tạm biệt",
+          "image": "👋",
+          "speechText": "goodbye"
+        },
+        {
+          "id": "gs-g3-u01-thanks",
+          "word": "thanks",
+          "phonetic": "/θˈaŋks/",
+          "vietnameseMeaning": "cảm ơn",
+          "image": "🙏",
+          "speechText": "thanks"
+        },
+        {
+          "id": "gs-g3-u01-fine",
+          "word": "fine",
+          "phonetic": "/fˈaɪn/",
+          "vietnameseMeaning": "khỏe",
+          "image": "😊",
+          "speechText": "fine"
+        },
+        {
+          "id": "gs-g3-u01-friend",
+          "word": "friend",
+          "phonetic": "/fɹˈɛnd/",
+          "vietnameseMeaning": "người bạn",
+          "image": "🧒",
+          "speechText": "friend"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 1,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-02",
+      "slug": "lop-3-unit-02-our-names",
+      "levelSlug": "lop-3",
+      "title": "Unit 2: Our names",
+      "bookUnitTitle": "Our names",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our names”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u02-name",
+          "word": "name",
+          "phonetic": "/nˈeɪm/",
+          "vietnameseMeaning": "tên",
+          "image": "🏷️",
+          "speechText": "name"
+        },
+        {
+          "id": "gs-g3-u02-my",
+          "word": "my",
+          "phonetic": "/mˈaɪ/",
+          "vietnameseMeaning": "của tôi",
+          "image": "🙋",
+          "speechText": "my"
+        },
+        {
+          "id": "gs-g3-u02-your",
+          "word": "your",
+          "phonetic": "/jˈɔː/",
+          "vietnameseMeaning": "của bạn",
+          "image": "👉",
+          "speechText": "your"
+        },
+        {
+          "id": "gs-g3-u02-what",
+          "word": "what",
+          "phonetic": "/wˈɒt/",
+          "vietnameseMeaning": "gì",
+          "image": "❓",
+          "speechText": "what"
+        },
+        {
+          "id": "gs-g3-u02-spell",
+          "word": "spell",
+          "phonetic": "/spˈɛl/",
+          "vietnameseMeaning": "đánh vần",
+          "image": "🔤",
+          "speechText": "spell"
+        },
+        {
+          "id": "gs-g3-u02-letter",
+          "word": "letter",
+          "phonetic": "/lˈɛtə/",
+          "vietnameseMeaning": "chữ cái",
+          "image": "🔠",
+          "speechText": "letter"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 2,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-03",
+      "slug": "lop-3-unit-03-our-friends",
+      "levelSlug": "lop-3",
+      "title": "Unit 3: Our friends",
+      "bookUnitTitle": "Our friends",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our friends”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u03-friend",
+          "word": "friend",
+          "phonetic": "/fɹˈɛnd/",
+          "vietnameseMeaning": "người bạn",
+          "image": "🧒",
+          "speechText": "friend"
+        },
+        {
+          "id": "gs-g3-u03-boy",
+          "word": "boy",
+          "phonetic": "/bˈɔɪ/",
+          "vietnameseMeaning": "bé trai",
+          "image": "👦",
+          "speechText": "boy"
+        },
+        {
+          "id": "gs-g3-u03-girl",
+          "word": "girl",
+          "phonetic": "/ɡˈɜːl/",
+          "vietnameseMeaning": "bé gái",
+          "image": "👧",
+          "speechText": "girl"
+        },
+        {
+          "id": "gs-g3-u03-kind",
+          "word": "kind",
+          "phonetic": "/kˈaɪnd/",
+          "vietnameseMeaning": "tốt bụng",
+          "image": "💛",
+          "speechText": "kind"
+        },
+        {
+          "id": "gs-g3-u03-happy",
+          "word": "happy",
+          "phonetic": "/hˈapi/",
+          "vietnameseMeaning": "vui vẻ",
+          "image": "😊",
+          "speechText": "happy"
+        },
+        {
+          "id": "gs-g3-u03-play",
+          "word": "play",
+          "phonetic": "/plˈeɪ/",
+          "vietnameseMeaning": "chơi",
+          "image": "🎈",
+          "speechText": "play"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 3,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-04",
+      "slug": "lop-3-unit-04-our-bodies",
+      "levelSlug": "lop-3",
+      "title": "Unit 4: Our bodies",
+      "bookUnitTitle": "Our bodies",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our bodies”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u04-head",
+          "word": "head",
+          "phonetic": "/hˈɛd/",
+          "vietnameseMeaning": "đầu",
+          "image": "🙂",
+          "speechText": "head"
+        },
+        {
+          "id": "gs-g3-u04-hand",
+          "word": "hand",
+          "phonetic": "/hˈand/",
+          "vietnameseMeaning": "bàn tay",
+          "image": "✋",
+          "speechText": "hand"
+        },
+        {
+          "id": "gs-g3-u04-arm",
+          "word": "arm",
+          "phonetic": "/ˈɑːm/",
+          "vietnameseMeaning": "cánh tay",
+          "image": "💪",
+          "speechText": "arm"
+        },
+        {
+          "id": "gs-g3-u04-leg",
+          "word": "leg",
+          "phonetic": "/lˈɛɡ/",
+          "vietnameseMeaning": "chân",
+          "image": "🦵",
+          "speechText": "leg"
+        },
+        {
+          "id": "gs-g3-u04-eye",
+          "word": "eye",
+          "phonetic": "/ˈaɪ/",
+          "vietnameseMeaning": "mắt",
+          "image": "👁️",
+          "speechText": "eye"
+        },
+        {
+          "id": "gs-g3-u04-ear",
+          "word": "ear",
+          "phonetic": "/ˈiə/",
+          "vietnameseMeaning": "tai",
+          "image": "👂",
+          "speechText": "ear"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 4,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-05",
+      "slug": "lop-3-unit-05-my-hobbies",
+      "levelSlug": "lop-3",
+      "title": "Unit 5: My hobbies",
+      "bookUnitTitle": "My hobbies",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My hobbies”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u05-draw",
+          "word": "draw",
+          "phonetic": "/dɹˈɔː/",
+          "vietnameseMeaning": "vẽ",
+          "image": "🎨",
+          "speechText": "draw"
+        },
+        {
+          "id": "gs-g3-u05-sing",
+          "word": "sing",
+          "phonetic": "/sˈɪŋ/",
+          "vietnameseMeaning": "hát",
+          "image": "🎤",
+          "speechText": "sing"
+        },
+        {
+          "id": "gs-g3-u05-dance",
+          "word": "dance",
+          "phonetic": "/dˈans/",
+          "vietnameseMeaning": "nhảy múa",
+          "image": "💃",
+          "speechText": "dance"
+        },
+        {
+          "id": "gs-g3-u05-read",
+          "word": "read",
+          "phonetic": "/ɹˈiːd/",
+          "vietnameseMeaning": "đọc",
+          "image": "📖",
+          "speechText": "read"
+        },
+        {
+          "id": "gs-g3-u05-swim",
+          "word": "swim",
+          "phonetic": "/swˈɪm/",
+          "vietnameseMeaning": "bơi",
+          "image": "🏊",
+          "speechText": "swim"
+        },
+        {
+          "id": "gs-g3-u05-cook",
+          "word": "cook",
+          "phonetic": "/kˈʊk/",
+          "vietnameseMeaning": "nấu ăn",
+          "image": "🍳",
+          "speechText": "cook"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 5,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-06",
+      "slug": "lop-3-unit-06-our-school",
+      "levelSlug": "lop-3",
+      "title": "Unit 6: Our school",
+      "bookUnitTitle": "Our school",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our school”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u06-school",
+          "word": "school",
+          "phonetic": "/skˈuːl/",
+          "vietnameseMeaning": "trường học",
+          "image": "🏫",
+          "speechText": "school"
+        },
+        {
+          "id": "gs-g3-u06-classroom",
+          "word": "classroom",
+          "phonetic": "/klˈasɹuːm/",
+          "vietnameseMeaning": "phòng học",
+          "image": "🧑‍🏫",
+          "speechText": "classroom"
+        },
+        {
+          "id": "gs-g3-u06-library",
+          "word": "library",
+          "phonetic": "/lˈaɪbɹəɹi/",
+          "vietnameseMeaning": "thư viện",
+          "image": "📚",
+          "speechText": "library"
+        },
+        {
+          "id": "gs-g3-u06-playground",
+          "word": "playground",
+          "phonetic": "/plˈeɪɡɹaʊnd/",
+          "vietnameseMeaning": "sân chơi",
+          "image": "🛝",
+          "speechText": "playground"
+        },
+        {
+          "id": "gs-g3-u06-teacher",
+          "word": "teacher",
+          "phonetic": "/tˈiːtʃə/",
+          "vietnameseMeaning": "giáo viên",
+          "image": "👩‍🏫",
+          "speechText": "teacher"
+        },
+        {
+          "id": "gs-g3-u06-student",
+          "word": "student",
+          "phonetic": "/stjˈuːdənt/",
+          "vietnameseMeaning": "học sinh",
+          "image": "🧑‍🎓",
+          "speechText": "student"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 6,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-07",
+      "slug": "lop-3-unit-07-classroom-instructions",
+      "levelSlug": "lop-3",
+      "title": "Unit 7: Classroom instructions",
+      "bookUnitTitle": "Classroom instructions",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Classroom instructions”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u07-stand-up",
+          "word": "stand up",
+          "phonetic": "/stˈand ˈʌp/",
+          "vietnameseMeaning": "đứng lên",
+          "image": "🧍",
+          "speechText": "stand up"
+        },
+        {
+          "id": "gs-g3-u07-sit-down",
+          "word": "sit down",
+          "phonetic": "/sˈɪt dˈaʊn/",
+          "vietnameseMeaning": "ngồi xuống",
+          "image": "🪑",
+          "speechText": "sit down"
+        },
+        {
+          "id": "gs-g3-u07-open",
+          "word": "open",
+          "phonetic": "/ˈəʊpən/",
+          "vietnameseMeaning": "mở",
+          "image": "📖",
+          "speechText": "open"
+        },
+        {
+          "id": "gs-g3-u07-close",
+          "word": "close",
+          "phonetic": "/klˈəʊs/",
+          "vietnameseMeaning": "đóng",
+          "image": "📕",
+          "speechText": "close"
+        },
+        {
+          "id": "gs-g3-u07-listen",
+          "word": "listen",
+          "phonetic": "/lˈɪsən/",
+          "vietnameseMeaning": "lắng nghe",
+          "image": "👂",
+          "speechText": "listen"
+        },
+        {
+          "id": "gs-g3-u07-repeat",
+          "word": "repeat",
+          "phonetic": "/ɹɪpˈiːt/",
+          "vietnameseMeaning": "nhắc lại",
+          "image": "🔁",
+          "speechText": "repeat"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 7,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-08",
+      "slug": "lop-3-unit-08-my-school-things",
+      "levelSlug": "lop-3",
+      "title": "Unit 8: My school things",
+      "bookUnitTitle": "My school things",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My school things”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u08-book",
+          "word": "book",
+          "phonetic": "/bˈʊk/",
+          "vietnameseMeaning": "sách",
+          "image": "📘",
+          "speechText": "book"
+        },
+        {
+          "id": "gs-g3-u08-notebook",
+          "word": "notebook",
+          "phonetic": "/nˈəʊtbʊk/",
+          "vietnameseMeaning": "vở",
+          "image": "📓",
+          "speechText": "notebook"
+        },
+        {
+          "id": "gs-g3-u08-pen",
+          "word": "pen",
+          "phonetic": "/pˈɛn/",
+          "vietnameseMeaning": "bút mực",
+          "image": "🖊️",
+          "speechText": "pen"
+        },
+        {
+          "id": "gs-g3-u08-pencil",
+          "word": "pencil",
+          "phonetic": "/pˈɛnsəl/",
+          "vietnameseMeaning": "bút chì",
+          "image": "✏️",
+          "speechText": "pencil"
+        },
+        {
+          "id": "gs-g3-u08-ruler",
+          "word": "ruler",
+          "phonetic": "/ɹˈuːlə/",
+          "vietnameseMeaning": "thước kẻ",
+          "image": "📏",
+          "speechText": "ruler"
+        },
+        {
+          "id": "gs-g3-u08-school-bag",
+          "word": "school bag",
+          "phonetic": "/skˈuːl bˈaɡ/",
+          "vietnameseMeaning": "cặp sách",
+          "image": "🎒",
+          "speechText": "school bag"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 8,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-09",
+      "slug": "lop-3-unit-09-colours",
+      "levelSlug": "lop-3",
+      "title": "Unit 9: Colours",
+      "bookUnitTitle": "Colours",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Colours”.",
+      "icon": "🦉",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u09-red",
+          "word": "red",
+          "phonetic": "/ɹˈɛd/",
+          "vietnameseMeaning": "màu đỏ",
+          "image": "🔴",
+          "speechText": "red"
+        },
+        {
+          "id": "gs-g3-u09-blue",
+          "word": "blue",
+          "phonetic": "/blˈuː/",
+          "vietnameseMeaning": "màu xanh dương",
+          "image": "🔵",
+          "speechText": "blue"
+        },
+        {
+          "id": "gs-g3-u09-yellow",
+          "word": "yellow",
+          "phonetic": "/jˈɛləʊ/",
+          "vietnameseMeaning": "màu vàng",
+          "image": "🟡",
+          "speechText": "yellow"
+        },
+        {
+          "id": "gs-g3-u09-green",
+          "word": "green",
+          "phonetic": "/ɡɹˈiːn/",
+          "vietnameseMeaning": "màu xanh lá",
+          "image": "🟢",
+          "speechText": "green"
+        },
+        {
+          "id": "gs-g3-u09-black",
+          "word": "black",
+          "phonetic": "/blˈak/",
+          "vietnameseMeaning": "màu đen",
+          "image": "⚫",
+          "speechText": "black"
+        },
+        {
+          "id": "gs-g3-u09-white",
+          "word": "white",
+          "phonetic": "/wˈaɪt/",
+          "vietnameseMeaning": "màu trắng",
+          "image": "⚪",
+          "speechText": "white"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 9,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-10",
+      "slug": "lop-3-unit-10-break-time-activities",
+      "levelSlug": "lop-3",
+      "title": "Unit 10: Break time activities",
+      "bookUnitTitle": "Break time activities",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Break time activities”.",
+      "icon": "💡",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u10-football",
+          "word": "football",
+          "phonetic": "/fˈʊtbɔːl/",
+          "vietnameseMeaning": "bóng đá",
+          "image": "⚽",
+          "speechText": "football"
+        },
+        {
+          "id": "gs-g3-u10-badminton",
+          "word": "badminton",
+          "phonetic": "/bˈadmɪntən/",
+          "vietnameseMeaning": "cầu lông",
+          "image": "🏸",
+          "speechText": "badminton"
+        },
+        {
+          "id": "gs-g3-u10-chess",
+          "word": "chess",
+          "phonetic": "/tʃˈɛs/",
+          "vietnameseMeaning": "cờ vua",
+          "image": "♟️",
+          "speechText": "chess"
+        },
+        {
+          "id": "gs-g3-u10-chat",
+          "word": "chat",
+          "phonetic": "/tʃˈat/",
+          "vietnameseMeaning": "trò chuyện",
+          "image": "💬",
+          "speechText": "chat"
+        },
+        {
+          "id": "gs-g3-u10-read",
+          "word": "read",
+          "phonetic": "/ɹˈiːd/",
+          "vietnameseMeaning": "đọc",
+          "image": "📖",
+          "speechText": "read"
+        },
+        {
+          "id": "gs-g3-u10-play",
+          "word": "play",
+          "phonetic": "/plˈeɪ/",
+          "vietnameseMeaning": "chơi",
+          "image": "🎈",
+          "speechText": "play"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 10,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-11",
+      "slug": "lop-3-unit-11-my-family",
+      "levelSlug": "lop-3",
+      "title": "Unit 11: My family",
+      "bookUnitTitle": "My family",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My family”.",
+      "icon": "🌍",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u11-mother",
+          "word": "mother",
+          "phonetic": "/mˈʌðə/",
+          "vietnameseMeaning": "mẹ",
+          "image": "👩",
+          "speechText": "mother"
+        },
+        {
+          "id": "gs-g3-u11-father",
+          "word": "father",
+          "phonetic": "/fˈɑːðə/",
+          "vietnameseMeaning": "bố",
+          "image": "👨",
+          "speechText": "father"
+        },
+        {
+          "id": "gs-g3-u11-brother",
+          "word": "brother",
+          "phonetic": "/bɹˈʌðə/",
+          "vietnameseMeaning": "anh/em trai",
+          "image": "👦",
+          "speechText": "brother"
+        },
+        {
+          "id": "gs-g3-u11-sister",
+          "word": "sister",
+          "phonetic": "/sˈɪstə/",
+          "vietnameseMeaning": "chị/em gái",
+          "image": "👧",
+          "speechText": "sister"
+        },
+        {
+          "id": "gs-g3-u11-grandmother",
+          "word": "grandmother",
+          "phonetic": "/ɡɹˈandmʌðə/",
+          "vietnameseMeaning": "bà",
+          "image": "👵",
+          "speechText": "grandmother"
+        },
+        {
+          "id": "gs-g3-u11-grandfather",
+          "word": "grandfather",
+          "phonetic": "/ɡɹˈandfɑːðə/",
+          "vietnameseMeaning": "ông",
+          "image": "👴",
+          "speechText": "grandfather"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 11,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-12",
+      "slug": "lop-3-unit-12-jobs",
+      "levelSlug": "lop-3",
+      "title": "Unit 12: Jobs",
+      "bookUnitTitle": "Jobs",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Jobs”.",
+      "icon": "🏆",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u12-teacher",
+          "word": "teacher",
+          "phonetic": "/tˈiːtʃə/",
+          "vietnameseMeaning": "giáo viên",
+          "image": "👩‍🏫",
+          "speechText": "teacher"
+        },
+        {
+          "id": "gs-g3-u12-doctor",
+          "word": "doctor",
+          "phonetic": "/dˈɒktə/",
+          "vietnameseMeaning": "bác sĩ",
+          "image": "👩‍⚕️",
+          "speechText": "doctor"
+        },
+        {
+          "id": "gs-g3-u12-farmer",
+          "word": "farmer",
+          "phonetic": "/fˈɑːmə/",
+          "vietnameseMeaning": "nông dân",
+          "image": "🧑‍🌾",
+          "speechText": "farmer"
+        },
+        {
+          "id": "gs-g3-u12-driver",
+          "word": "driver",
+          "phonetic": "/dɹˈaɪvə/",
+          "vietnameseMeaning": "tài xế",
+          "image": "🧑‍✈️",
+          "speechText": "driver"
+        },
+        {
+          "id": "gs-g3-u12-cook",
+          "word": "cook",
+          "phonetic": "/kˈʊk/",
+          "vietnameseMeaning": "đầu bếp",
+          "image": "👩‍🍳",
+          "speechText": "cook"
+        },
+        {
+          "id": "gs-g3-u12-worker",
+          "word": "worker",
+          "phonetic": "/wˈɜːkə/",
+          "vietnameseMeaning": "công nhân",
+          "image": "👷",
+          "speechText": "worker"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 12,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-13",
+      "slug": "lop-3-unit-13-my-house",
+      "levelSlug": "lop-3",
+      "title": "Unit 13: My house",
+      "bookUnitTitle": "My house",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My house”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u13-living-room",
+          "word": "living room",
+          "phonetic": "/lˈɪvɪŋ ɹˈuːm/",
+          "vietnameseMeaning": "phòng khách",
+          "image": "🛋️",
+          "speechText": "living room"
+        },
+        {
+          "id": "gs-g3-u13-bedroom",
+          "word": "bedroom",
+          "phonetic": "/bˈɛdɹuːm/",
+          "vietnameseMeaning": "phòng ngủ",
+          "image": "🛏️",
+          "speechText": "bedroom"
+        },
+        {
+          "id": "gs-g3-u13-kitchen",
+          "word": "kitchen",
+          "phonetic": "/kˈɪtʃən/",
+          "vietnameseMeaning": "nhà bếp",
+          "image": "🍳",
+          "speechText": "kitchen"
+        },
+        {
+          "id": "gs-g3-u13-bathroom",
+          "word": "bathroom",
+          "phonetic": "/bˈaθɹuːm/",
+          "vietnameseMeaning": "phòng tắm",
+          "image": "🛁",
+          "speechText": "bathroom"
+        },
+        {
+          "id": "gs-g3-u13-garden",
+          "word": "garden",
+          "phonetic": "/ɡˈɑːdən/",
+          "vietnameseMeaning": "khu vườn",
+          "image": "🌳",
+          "speechText": "garden"
+        },
+        {
+          "id": "gs-g3-u13-house",
+          "word": "house",
+          "phonetic": "/hˈaʊs/",
+          "vietnameseMeaning": "ngôi nhà",
+          "image": "🏠",
+          "speechText": "house"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 13,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-14",
+      "slug": "lop-3-unit-14-my-bedroom",
+      "levelSlug": "lop-3",
+      "title": "Unit 14: My bedroom",
+      "bookUnitTitle": "My bedroom",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My bedroom”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u14-bed",
+          "word": "bed",
+          "phonetic": "/bˈɛd/",
+          "vietnameseMeaning": "cái giường",
+          "image": "🛏️",
+          "speechText": "bed"
+        },
+        {
+          "id": "gs-g3-u14-lamp",
+          "word": "lamp",
+          "phonetic": "/lˈamp/",
+          "vietnameseMeaning": "đèn ngủ",
+          "image": "💡",
+          "speechText": "lamp"
+        },
+        {
+          "id": "gs-g3-u14-pillow",
+          "word": "pillow",
+          "phonetic": "/pˈɪləʊ/",
+          "vietnameseMeaning": "cái gối",
+          "image": "🛌",
+          "speechText": "pillow"
+        },
+        {
+          "id": "gs-g3-u14-window",
+          "word": "window",
+          "phonetic": "/wˈɪndəʊ/",
+          "vietnameseMeaning": "cửa sổ",
+          "image": "🪟",
+          "speechText": "window"
+        },
+        {
+          "id": "gs-g3-u14-wardrobe",
+          "word": "wardrobe",
+          "phonetic": "/wˈɔːdɹəʊb/",
+          "vietnameseMeaning": "tủ quần áo",
+          "image": "🚪",
+          "speechText": "wardrobe"
+        },
+        {
+          "id": "gs-g3-u14-sleep",
+          "word": "sleep",
+          "phonetic": "/slˈiːp/",
+          "vietnameseMeaning": "ngủ",
+          "image": "😴",
+          "speechText": "sleep"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 14,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-15",
+      "slug": "lop-3-unit-15-at-the-dining-table",
+      "levelSlug": "lop-3",
+      "title": "Unit 15: At the dining table",
+      "bookUnitTitle": "At the dining table",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the dining table”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u15-rice",
+          "word": "rice",
+          "phonetic": "/ɹˈaɪs/",
+          "vietnameseMeaning": "cơm",
+          "image": "🍚",
+          "speechText": "rice"
+        },
+        {
+          "id": "gs-g3-u15-chicken",
+          "word": "chicken",
+          "phonetic": "/tʃˈɪkɪn/",
+          "vietnameseMeaning": "thịt gà",
+          "image": "🍗",
+          "speechText": "chicken"
+        },
+        {
+          "id": "gs-g3-u15-fish",
+          "word": "fish",
+          "phonetic": "/fˈɪʃ/",
+          "vietnameseMeaning": "cá",
+          "image": "🐟",
+          "speechText": "fish"
+        },
+        {
+          "id": "gs-g3-u15-water",
+          "word": "water",
+          "phonetic": "/wˈɔːtə/",
+          "vietnameseMeaning": "nước",
+          "image": "💧",
+          "speechText": "water"
+        },
+        {
+          "id": "gs-g3-u15-plate",
+          "word": "plate",
+          "phonetic": "/plˈeɪt/",
+          "vietnameseMeaning": "đĩa",
+          "image": "🍽️",
+          "speechText": "plate"
+        },
+        {
+          "id": "gs-g3-u15-bowl",
+          "word": "bowl",
+          "phonetic": "/bˈəʊl/",
+          "vietnameseMeaning": "bát",
+          "image": "🥣",
+          "speechText": "bowl"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 15,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-16",
+      "slug": "lop-3-unit-16-my-pets",
+      "levelSlug": "lop-3",
+      "title": "Unit 16: My pets",
+      "bookUnitTitle": "My pets",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My pets”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u16-cat",
+          "word": "cat",
+          "phonetic": "/kˈat/",
+          "vietnameseMeaning": "mèo",
+          "image": "🐱",
+          "speechText": "cat"
+        },
+        {
+          "id": "gs-g3-u16-dog",
+          "word": "dog",
+          "phonetic": "/dˈɒɡ/",
+          "vietnameseMeaning": "chó",
+          "image": "🐶",
+          "speechText": "dog"
+        },
+        {
+          "id": "gs-g3-u16-rabbit",
+          "word": "rabbit",
+          "phonetic": "/ɹˈabɪt/",
+          "vietnameseMeaning": "thỏ",
+          "image": "🐰",
+          "speechText": "rabbit"
+        },
+        {
+          "id": "gs-g3-u16-bird",
+          "word": "bird",
+          "phonetic": "/bˈɜːd/",
+          "vietnameseMeaning": "chim",
+          "image": "🐦",
+          "speechText": "bird"
+        },
+        {
+          "id": "gs-g3-u16-fish",
+          "word": "fish",
+          "phonetic": "/fˈɪʃ/",
+          "vietnameseMeaning": "cá",
+          "image": "🐟",
+          "speechText": "fish"
+        },
+        {
+          "id": "gs-g3-u16-pet",
+          "word": "pet",
+          "phonetic": "/pˈɛt/",
+          "vietnameseMeaning": "thú cưng",
+          "image": "🐾",
+          "speechText": "pet"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 16,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-17",
+      "slug": "lop-3-unit-17-our-toys",
+      "levelSlug": "lop-3",
+      "title": "Unit 17: Our toys",
+      "bookUnitTitle": "Our toys",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our toys”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u17-doll",
+          "word": "doll",
+          "phonetic": "/dˈɒl/",
+          "vietnameseMeaning": "búp bê",
+          "image": "🪆",
+          "speechText": "doll"
+        },
+        {
+          "id": "gs-g3-u17-robot",
+          "word": "robot",
+          "phonetic": "/ɹˈəʊbɒt/",
+          "vietnameseMeaning": "người máy",
+          "image": "🤖",
+          "speechText": "robot"
+        },
+        {
+          "id": "gs-g3-u17-kite",
+          "word": "kite",
+          "phonetic": "/kˈaɪt/",
+          "vietnameseMeaning": "cái diều",
+          "image": "🪁",
+          "speechText": "kite"
+        },
+        {
+          "id": "gs-g3-u17-car",
+          "word": "car",
+          "phonetic": "/kˈɑː/",
+          "vietnameseMeaning": "ô tô đồ chơi",
+          "image": "🚗",
+          "speechText": "car"
+        },
+        {
+          "id": "gs-g3-u17-puzzle",
+          "word": "puzzle",
+          "phonetic": "/pˈʌzəl/",
+          "vietnameseMeaning": "trò xếp hình",
+          "image": "🧩",
+          "speechText": "puzzle"
+        },
+        {
+          "id": "gs-g3-u17-teddy-bear",
+          "word": "teddy bear",
+          "phonetic": "/tˈɛdi bˈeə/",
+          "vietnameseMeaning": "gấu bông",
+          "image": "🧸",
+          "speechText": "teddy bear"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 17,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-18",
+      "slug": "lop-3-unit-18-playing-and-doing",
+      "levelSlug": "lop-3",
+      "title": "Unit 18: Playing and doing",
+      "bookUnitTitle": "Playing and doing",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Playing and doing”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u18-run",
+          "word": "run",
+          "phonetic": "/ɹˈʌn/",
+          "vietnameseMeaning": "chạy",
+          "image": "🏃",
+          "speechText": "run"
+        },
+        {
+          "id": "gs-g3-u18-jump",
+          "word": "jump",
+          "phonetic": "/dʒˈʌmp/",
+          "vietnameseMeaning": "nhảy",
+          "image": "🤸",
+          "speechText": "jump"
+        },
+        {
+          "id": "gs-g3-u18-skip",
+          "word": "skip",
+          "phonetic": "/skˈɪp/",
+          "vietnameseMeaning": "nhảy dây",
+          "image": "🪢",
+          "speechText": "skip"
+        },
+        {
+          "id": "gs-g3-u18-dance",
+          "word": "dance",
+          "phonetic": "/dˈans/",
+          "vietnameseMeaning": "nhảy múa",
+          "image": "💃",
+          "speechText": "dance"
+        },
+        {
+          "id": "gs-g3-u18-sing",
+          "word": "sing",
+          "phonetic": "/sˈɪŋ/",
+          "vietnameseMeaning": "hát",
+          "image": "🎤",
+          "speechText": "sing"
+        },
+        {
+          "id": "gs-g3-u18-draw",
+          "word": "draw",
+          "phonetic": "/dɹˈɔː/",
+          "vietnameseMeaning": "vẽ",
+          "image": "🎨",
+          "speechText": "draw"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 18,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-19",
+      "slug": "lop-3-unit-19-outdoor-activities",
+      "levelSlug": "lop-3",
+      "title": "Unit 19: Outdoor activities",
+      "bookUnitTitle": "Outdoor activities",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Outdoor activities”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u19-cycle",
+          "word": "cycle",
+          "phonetic": "/sˈaɪkəl/",
+          "vietnameseMeaning": "đạp xe",
+          "image": "🚲",
+          "speechText": "cycle"
+        },
+        {
+          "id": "gs-g3-u19-fly-a-kite",
+          "word": "fly a kite",
+          "phonetic": "/flˈaɪ ɐ kˈaɪt/",
+          "vietnameseMeaning": "thả diều",
+          "image": "🪁",
+          "speechText": "fly a kite"
+        },
+        {
+          "id": "gs-g3-u19-play-football",
+          "word": "play football",
+          "phonetic": "/plˈeɪ fˈʊtbɔːl/",
+          "vietnameseMeaning": "chơi bóng đá",
+          "image": "⚽",
+          "speechText": "play football"
+        },
+        {
+          "id": "gs-g3-u19-run",
+          "word": "run",
+          "phonetic": "/ɹˈʌn/",
+          "vietnameseMeaning": "chạy",
+          "image": "🏃",
+          "speechText": "run"
+        },
+        {
+          "id": "gs-g3-u19-walk",
+          "word": "walk",
+          "phonetic": "/wˈɔːk/",
+          "vietnameseMeaning": "đi bộ",
+          "image": "🚶",
+          "speechText": "walk"
+        },
+        {
+          "id": "gs-g3-u19-swim",
+          "word": "swim",
+          "phonetic": "/swˈɪm/",
+          "vietnameseMeaning": "bơi",
+          "image": "🏊",
+          "speechText": "swim"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 19,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-3-unit-20",
+      "slug": "lop-3-unit-20-at-the-zoo",
+      "levelSlug": "lop-3",
+      "title": "Unit 20: At the zoo",
+      "bookUnitTitle": "At the zoo",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the zoo”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g3-u20-lion",
+          "word": "lion",
+          "phonetic": "/lˈaɪən/",
+          "vietnameseMeaning": "sư tử",
+          "image": "🦁",
+          "speechText": "lion"
+        },
+        {
+          "id": "gs-g3-u20-tiger",
+          "word": "tiger",
+          "phonetic": "/tˈaɪɡə/",
+          "vietnameseMeaning": "hổ",
+          "image": "🐯",
+          "speechText": "tiger"
+        },
+        {
+          "id": "gs-g3-u20-monkey",
+          "word": "monkey",
+          "phonetic": "/mˈʌnki/",
+          "vietnameseMeaning": "khỉ",
+          "image": "🐒",
+          "speechText": "monkey"
+        },
+        {
+          "id": "gs-g3-u20-elephant",
+          "word": "elephant",
+          "phonetic": "/ˈɛlɪfənt/",
+          "vietnameseMeaning": "voi",
+          "image": "🐘",
+          "speechText": "elephant"
+        },
+        {
+          "id": "gs-g3-u20-zebra",
+          "word": "zebra",
+          "phonetic": "/zˈɛbɹə/",
+          "vietnameseMeaning": "ngựa vằn",
+          "image": "🦓",
+          "speechText": "zebra"
+        },
+        {
+          "id": "gs-g3-u20-giraffe",
+          "word": "giraffe",
+          "phonetic": "/dʒɪɹˈaf/",
+          "vietnameseMeaning": "hươu cao cổ",
+          "image": "🦒",
+          "speechText": "giraffe"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu giao tiếp",
+        "pattern": "What is this? – It is ...",
+        "exampleEnglish": "What is this? – It is a pencil.",
+        "exampleVietnamese": "Đây là gì? – Đây là một chiếc bút chì.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 3,
+        "unitNumber": 20,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    }
+  ]
+}

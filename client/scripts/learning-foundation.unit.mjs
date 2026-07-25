@@ -16,32 +16,51 @@ class MemoryStorage {
   removeItem(key) { this.values.delete(key); }
 }
 
-test("catalog seed is valid and covers two available levels", () => {
+test("catalog seed is valid and covers preschool plus grades 1-9", () => {
   assert.deepEqual(validateLearningCatalog(learningLevels, learningUnits), []);
   assert.equal(learningLevels.length, 10);
-  assert.deepEqual(learningLevels.filter((level) => level.available).map((level) => level.slug), ["mam-non", "lop-3"]);
-  for (const slug of ["mam-non", "lop-3"]) {
-    const units = learningUnits.filter((unit) => unit.levelSlug === slug);
-    assert.ok(units.length >= 2);
-    assert.ok(units.every((unit) => unit.vocabulary.length >= 10));
-  }
+  assert.deepEqual(learningLevels.filter((level) => level.available).map((level) => level.slug), ["mam-non", "lop-1", "lop-2", "lop-3", "lop-4", "lop-5", "lop-6", "lop-7", "lop-8", "lop-9"]);
+  assert.deepEqual(Object.fromEntries(learningLevels.map((level) => [level.slug, learningUnits.filter((unit) => unit.levelSlug === level.slug).length])), {
+    "mam-non": 2, "lop-1": 16, "lop-2": 16, "lop-3": 20, "lop-4": 20,
+    "lop-5": 20, "lop-6": 12, "lop-7": 12, "lop-8": 12, "lop-9": 12,
+  });
+  assert.deepEqual(learningUnits.filter((unit) => unit.levelSlug === "mam-non").map((unit) => unit.slug), ["con-vat-dang-yeu", "khu-vuon-sac-mau"]);
+  const globalSuccessUnits = learningUnits.filter((unit) => unit.id.startsWith("global-success-"));
+  assert.equal(globalSuccessUnits.length, 140);
+  assert.equal(globalSuccessUnits.reduce((total, unit) => total + unit.vocabulary.length, 0), 840);
+  assert.equal(learningUnits.reduce((total, unit) => total + unit.vocabulary.length, 0), 860);
+  assert.ok(globalSuccessUnits.every((unit) => unit.vocabulary.length >= 6));
 });
 
 test("content mapping only resolves a Unit inside its published level", () => {
   assert.equal(unitBySlugs("mam-non", "con-vat-dang-yeu")?.id, "preschool-happy-animals");
   assert.equal(unitBySlugs("lop-3", "con-vat-dang-yeu"), undefined);
   assert.equal(unitBySlugs("mam-non", "khong-ton-tai"), undefined);
+  assert.equal(unitBySlugs("lop-3", "lop-3-unit-01-hello")?.id, "global-success-grade-3-unit-01");
+  assert.equal(unitBySlugs("lop-4", "lop-3-unit-01-hello"), undefined);
+});
+
+test("Global Success identifiers are stable and old grade 3 demos are absent", () => {
+  const unit = unitBySlugs("lop-3", "lop-3-unit-01-hello");
+  assert.equal(unit?.id, "global-success-grade-3-unit-01");
+  assert.equal(unit?.vocabulary[0]?.id, "gs-g3-u01-hello");
+  assert.equal(unitBySlugs("lop-3", "ngay-o-truong"), undefined);
+  assert.equal(unitBySlugs("lop-3", "gia-dinh-cua-em"), undefined);
 });
 
 test("catalog validator rejects duplicate and broken references/content", () => {
   const duplicateLevel = { ...learningLevels[0] };
   const brokenUnit = {
-    ...learningUnits[0], id: learningUnits[1].id, slug: learningUnits[1].slug, levelSlug: "lop-99",
-    vocabulary: [{ ...learningUnits[0].vocabulary[0], id: learningUnits[1].vocabulary[0].id, word: "", vietnameseMeaning: "", speechText: undefined, image: "../bad.png" }],
+    ...learningUnits[0], id: learningUnits[1].id, slug: learningUnits[1].slug, levelSlug: "lop-99", title: "", description: "",
+    vocabulary: [
+      { ...learningUnits[0].vocabulary[0], id: learningUnits[1].vocabulary[0].id, word: "Cat", phonetic: "", vietnameseMeaning: "con mèo", speechText: undefined, image: "../bad.png" },
+      { ...learningUnits[0].vocabulary[1], word: "cat", vietnameseMeaning: "CON MÈO" },
+    ],
   };
   const errors = validateLearningCatalog([...learningLevels, duplicateLevel], [...learningUnits, brokenUnit]);
-  for (const marker of ["Level slug trùng", "Unit id trùng", "Unit slug trùng", "level không tồn tại", "thiếu từ hoặc nghĩa", "asset path không hợp lệ"])
+  for (const marker of ["Level slug trùng", "Unit id trùng", "Unit slug trùng", "level không tồn tại", "thiếu title", "thiếu description", "thiếu phonetic", "thiếu audio hoặc speechText", "word trùng trong Unit", "nghĩa tiếng Việt trùng trong Unit", "asset path không hợp lệ"])
     assert.ok(errors.some((error) => error.includes(marker)), marker);
+  assert.ok(errors.filter((error) => error.includes("Vocabulary") || error.includes("từ ")).every((error) => error.includes(`Unit ${brokenUnit.id}`)));
 });
 
 test("progress storage reads, writes and resets only its versioned key", () => {

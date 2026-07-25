@@ -1,0 +1,1211 @@
+{
+  "schemaVersion": 1,
+  "contentId": "global-success-grade-1-starter",
+  "contentVersion": "1.0.0",
+  "levelSlug": "lop-1",
+  "status": "DRAFT_REVIEW",
+  "unitCount": 16,
+  "vocabularyCount": 96,
+  "units": [
+    {
+      "id": "global-success-grade-1-unit-01",
+      "slug": "lop-1-unit-01-in-the-school-playground",
+      "levelSlug": "lop-1",
+      "title": "Unit 1: In the school playground",
+      "bookUnitTitle": "In the school playground",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the school playground”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u01-ball",
+          "word": "ball",
+          "phonetic": "/bˈɔːl/",
+          "vietnameseMeaning": "quả bóng",
+          "image": "⚽",
+          "speechText": "ball"
+        },
+        {
+          "id": "gs-g1-u01-bike",
+          "word": "bike",
+          "phonetic": "/bˈaɪk/",
+          "vietnameseMeaning": "xe đạp",
+          "image": "🚲",
+          "speechText": "bike"
+        },
+        {
+          "id": "gs-g1-u01-book",
+          "word": "book",
+          "phonetic": "/bˈʊk/",
+          "vietnameseMeaning": "quyển sách",
+          "image": "📘",
+          "speechText": "book"
+        },
+        {
+          "id": "gs-g1-u01-friend",
+          "word": "friend",
+          "phonetic": "/fɹˈɛnd/",
+          "vietnameseMeaning": "người bạn",
+          "image": "🧒",
+          "speechText": "friend"
+        },
+        {
+          "id": "gs-g1-u01-play",
+          "word": "play",
+          "phonetic": "/plˈeɪ/",
+          "vietnameseMeaning": "chơi",
+          "image": "🎈",
+          "speechText": "play"
+        },
+        {
+          "id": "gs-g1-u01-school",
+          "word": "school",
+          "phonetic": "/skˈuːl/",
+          "vietnameseMeaning": "trường học",
+          "image": "🏫",
+          "speechText": "school"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 1,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-02",
+      "slug": "lop-1-unit-02-in-the-dining-room",
+      "levelSlug": "lop-1",
+      "title": "Unit 2: In the dining room",
+      "bookUnitTitle": "In the dining room",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the dining room”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u02-table",
+          "word": "table",
+          "phonetic": "/tˈeɪbəl/",
+          "vietnameseMeaning": "cái bàn",
+          "image": "🪑",
+          "speechText": "table"
+        },
+        {
+          "id": "gs-g1-u02-chair",
+          "word": "chair",
+          "phonetic": "/tʃˈeə/",
+          "vietnameseMeaning": "cái ghế",
+          "image": "🪑",
+          "speechText": "chair"
+        },
+        {
+          "id": "gs-g1-u02-plate",
+          "word": "plate",
+          "phonetic": "/plˈeɪt/",
+          "vietnameseMeaning": "cái đĩa",
+          "image": "🍽️",
+          "speechText": "plate"
+        },
+        {
+          "id": "gs-g1-u02-spoon",
+          "word": "spoon",
+          "phonetic": "/spˈuːn/",
+          "vietnameseMeaning": "cái thìa",
+          "image": "🥄",
+          "speechText": "spoon"
+        },
+        {
+          "id": "gs-g1-u02-cup",
+          "word": "cup",
+          "phonetic": "/kˈʌp/",
+          "vietnameseMeaning": "cái cốc",
+          "image": "🥤",
+          "speechText": "cup"
+        },
+        {
+          "id": "gs-g1-u02-meal",
+          "word": "meal",
+          "phonetic": "/mˈiːl/",
+          "vietnameseMeaning": "bữa ăn",
+          "image": "🍲",
+          "speechText": "meal"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 2,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-03",
+      "slug": "lop-1-unit-03-at-the-street-market",
+      "levelSlug": "lop-1",
+      "title": "Unit 3: At the street market",
+      "bookUnitTitle": "At the street market",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the street market”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u03-apple",
+          "word": "apple",
+          "phonetic": "/ˈapəl/",
+          "vietnameseMeaning": "quả táo",
+          "image": "🍎",
+          "speechText": "apple"
+        },
+        {
+          "id": "gs-g1-u03-banana",
+          "word": "banana",
+          "phonetic": "/bɐnˈɑːnə/",
+          "vietnameseMeaning": "quả chuối",
+          "image": "🍌",
+          "speechText": "banana"
+        },
+        {
+          "id": "gs-g1-u03-fish",
+          "word": "fish",
+          "phonetic": "/fˈɪʃ/",
+          "vietnameseMeaning": "con cá",
+          "image": "🐟",
+          "speechText": "fish"
+        },
+        {
+          "id": "gs-g1-u03-bag",
+          "word": "bag",
+          "phonetic": "/bˈaɡ/",
+          "vietnameseMeaning": "cái túi",
+          "image": "🛍️",
+          "speechText": "bag"
+        },
+        {
+          "id": "gs-g1-u03-buy",
+          "word": "buy",
+          "phonetic": "/bˈaɪ/",
+          "vietnameseMeaning": "mua",
+          "image": "💳",
+          "speechText": "buy"
+        },
+        {
+          "id": "gs-g1-u03-seller",
+          "word": "seller",
+          "phonetic": "/sˈɛlə/",
+          "vietnameseMeaning": "người bán hàng",
+          "image": "🧑‍🌾",
+          "speechText": "seller"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 3,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-04",
+      "slug": "lop-1-unit-04-in-the-bedroom",
+      "levelSlug": "lop-1",
+      "title": "Unit 4: In the bedroom",
+      "bookUnitTitle": "In the bedroom",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the bedroom”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u04-bed",
+          "word": "bed",
+          "phonetic": "/bˈɛd/",
+          "vietnameseMeaning": "cái giường",
+          "image": "🛏️",
+          "speechText": "bed"
+        },
+        {
+          "id": "gs-g1-u04-lamp",
+          "word": "lamp",
+          "phonetic": "/lˈamp/",
+          "vietnameseMeaning": "đèn ngủ",
+          "image": "💡",
+          "speechText": "lamp"
+        },
+        {
+          "id": "gs-g1-u04-pillow",
+          "word": "pillow",
+          "phonetic": "/pˈɪləʊ/",
+          "vietnameseMeaning": "cái gối",
+          "image": "🛌",
+          "speechText": "pillow"
+        },
+        {
+          "id": "gs-g1-u04-window",
+          "word": "window",
+          "phonetic": "/wˈɪndəʊ/",
+          "vietnameseMeaning": "cửa sổ",
+          "image": "🪟",
+          "speechText": "window"
+        },
+        {
+          "id": "gs-g1-u04-wardrobe",
+          "word": "wardrobe",
+          "phonetic": "/wˈɔːdɹəʊb/",
+          "vietnameseMeaning": "tủ quần áo",
+          "image": "🚪",
+          "speechText": "wardrobe"
+        },
+        {
+          "id": "gs-g1-u04-sleep",
+          "word": "sleep",
+          "phonetic": "/slˈiːp/",
+          "vietnameseMeaning": "ngủ",
+          "image": "😴",
+          "speechText": "sleep"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 4,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-05",
+      "slug": "lop-1-unit-05-at-the-fish-and-chip-shop",
+      "levelSlug": "lop-1",
+      "title": "Unit 5: At the fish and chip shop",
+      "bookUnitTitle": "At the fish and chip shop",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the fish and chip shop”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u05-fish",
+          "word": "fish",
+          "phonetic": "/fˈɪʃ/",
+          "vietnameseMeaning": "cá",
+          "image": "🐟",
+          "speechText": "fish"
+        },
+        {
+          "id": "gs-g1-u05-chips",
+          "word": "chips",
+          "phonetic": "/tʃˈɪps/",
+          "vietnameseMeaning": "khoai tây chiên",
+          "image": "🍟",
+          "speechText": "chips"
+        },
+        {
+          "id": "gs-g1-u05-shop",
+          "word": "shop",
+          "phonetic": "/ʃˈɒp/",
+          "vietnameseMeaning": "cửa hàng",
+          "image": "🏪",
+          "speechText": "shop"
+        },
+        {
+          "id": "gs-g1-u05-eat",
+          "word": "eat",
+          "phonetic": "/ˈiːt/",
+          "vietnameseMeaning": "ăn",
+          "image": "🍴",
+          "speechText": "eat"
+        },
+        {
+          "id": "gs-g1-u05-hot",
+          "word": "hot",
+          "phonetic": "/hˈɒt/",
+          "vietnameseMeaning": "nóng",
+          "image": "🔥",
+          "speechText": "hot"
+        },
+        {
+          "id": "gs-g1-u05-tasty",
+          "word": "tasty",
+          "phonetic": "/tˈeɪsti/",
+          "vietnameseMeaning": "ngon",
+          "image": "😋",
+          "speechText": "tasty"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 5,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-06",
+      "slug": "lop-1-unit-06-in-the-classroom",
+      "levelSlug": "lop-1",
+      "title": "Unit 6: In the classroom",
+      "bookUnitTitle": "In the classroom",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the classroom”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u06-teacher",
+          "word": "teacher",
+          "phonetic": "/tˈiːtʃə/",
+          "vietnameseMeaning": "giáo viên",
+          "image": "👩‍🏫",
+          "speechText": "teacher"
+        },
+        {
+          "id": "gs-g1-u06-student",
+          "word": "student",
+          "phonetic": "/stjˈuːdənt/",
+          "vietnameseMeaning": "học sinh",
+          "image": "🧑‍🎓",
+          "speechText": "student"
+        },
+        {
+          "id": "gs-g1-u06-desk",
+          "word": "desk",
+          "phonetic": "/dˈɛsk/",
+          "vietnameseMeaning": "bàn học",
+          "image": "🪑",
+          "speechText": "desk"
+        },
+        {
+          "id": "gs-g1-u06-board",
+          "word": "board",
+          "phonetic": "/bˈɔːd/",
+          "vietnameseMeaning": "bảng",
+          "image": "🟩",
+          "speechText": "board"
+        },
+        {
+          "id": "gs-g1-u06-pencil",
+          "word": "pencil",
+          "phonetic": "/pˈɛnsəl/",
+          "vietnameseMeaning": "bút chì",
+          "image": "✏️",
+          "speechText": "pencil"
+        },
+        {
+          "id": "gs-g1-u06-read",
+          "word": "read",
+          "phonetic": "/ɹˈiːd/",
+          "vietnameseMeaning": "đọc",
+          "image": "📖",
+          "speechText": "read"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 6,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-07",
+      "slug": "lop-1-unit-07-in-the-garden",
+      "levelSlug": "lop-1",
+      "title": "Unit 7: In the garden",
+      "bookUnitTitle": "In the garden",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the garden”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u07-flower",
+          "word": "flower",
+          "phonetic": "/flˈaʊə/",
+          "vietnameseMeaning": "bông hoa",
+          "image": "🌸",
+          "speechText": "flower"
+        },
+        {
+          "id": "gs-g1-u07-tree",
+          "word": "tree",
+          "phonetic": "/tɹˈiː/",
+          "vietnameseMeaning": "cây",
+          "image": "🌳",
+          "speechText": "tree"
+        },
+        {
+          "id": "gs-g1-u07-bee",
+          "word": "bee",
+          "phonetic": "/bˈiː/",
+          "vietnameseMeaning": "con ong",
+          "image": "🐝",
+          "speechText": "bee"
+        },
+        {
+          "id": "gs-g1-u07-bird",
+          "word": "bird",
+          "phonetic": "/bˈɜːd/",
+          "vietnameseMeaning": "con chim",
+          "image": "🐦",
+          "speechText": "bird"
+        },
+        {
+          "id": "gs-g1-u07-water",
+          "word": "water",
+          "phonetic": "/wˈɔːtə/",
+          "vietnameseMeaning": "tưới nước; nước",
+          "image": "💧",
+          "speechText": "water"
+        },
+        {
+          "id": "gs-g1-u07-green",
+          "word": "green",
+          "phonetic": "/ɡɹˈiːn/",
+          "vietnameseMeaning": "màu xanh lá",
+          "image": "🟢",
+          "speechText": "green"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 7,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-08",
+      "slug": "lop-1-unit-08-in-the-park",
+      "levelSlug": "lop-1",
+      "title": "Unit 8: In the park",
+      "bookUnitTitle": "In the park",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the park”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u08-bench",
+          "word": "bench",
+          "phonetic": "/bˈɛntʃ/",
+          "vietnameseMeaning": "ghế công viên",
+          "image": "🪑",
+          "speechText": "bench"
+        },
+        {
+          "id": "gs-g1-u08-tree",
+          "word": "tree",
+          "phonetic": "/tɹˈiː/",
+          "vietnameseMeaning": "cây",
+          "image": "🌳",
+          "speechText": "tree"
+        },
+        {
+          "id": "gs-g1-u08-kite",
+          "word": "kite",
+          "phonetic": "/kˈaɪt/",
+          "vietnameseMeaning": "cái diều",
+          "image": "🪁",
+          "speechText": "kite"
+        },
+        {
+          "id": "gs-g1-u08-run",
+          "word": "run",
+          "phonetic": "/ɹˈʌn/",
+          "vietnameseMeaning": "chạy",
+          "image": "🏃",
+          "speechText": "run"
+        },
+        {
+          "id": "gs-g1-u08-walk",
+          "word": "walk",
+          "phonetic": "/wˈɔːk/",
+          "vietnameseMeaning": "đi bộ",
+          "image": "🚶",
+          "speechText": "walk"
+        },
+        {
+          "id": "gs-g1-u08-picnic",
+          "word": "picnic",
+          "phonetic": "/pˈɪknɪk/",
+          "vietnameseMeaning": "buổi dã ngoại",
+          "image": "🧺",
+          "speechText": "picnic"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 8,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-09",
+      "slug": "lop-1-unit-09-in-the-shop",
+      "levelSlug": "lop-1",
+      "title": "Unit 9: In the shop",
+      "bookUnitTitle": "In the shop",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the shop”.",
+      "icon": "🦉",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u09-toy",
+          "word": "toy",
+          "phonetic": "/tˈɔɪ/",
+          "vietnameseMeaning": "đồ chơi",
+          "image": "🧸",
+          "speechText": "toy"
+        },
+        {
+          "id": "gs-g1-u09-shirt",
+          "word": "shirt",
+          "phonetic": "/ʃˈɜːt/",
+          "vietnameseMeaning": "áo sơ mi",
+          "image": "👕",
+          "speechText": "shirt"
+        },
+        {
+          "id": "gs-g1-u09-book",
+          "word": "book",
+          "phonetic": "/bˈʊk/",
+          "vietnameseMeaning": "quyển sách",
+          "image": "📘",
+          "speechText": "book"
+        },
+        {
+          "id": "gs-g1-u09-money",
+          "word": "money",
+          "phonetic": "/mˈʌni/",
+          "vietnameseMeaning": "tiền",
+          "image": "💵",
+          "speechText": "money"
+        },
+        {
+          "id": "gs-g1-u09-buy",
+          "word": "buy",
+          "phonetic": "/bˈaɪ/",
+          "vietnameseMeaning": "mua",
+          "image": "🛒",
+          "speechText": "buy"
+        },
+        {
+          "id": "gs-g1-u09-shopkeeper",
+          "word": "shopkeeper",
+          "phonetic": "/ʃˈɒpkiːpə/",
+          "vietnameseMeaning": "chủ cửa hàng",
+          "image": "🧑‍💼",
+          "speechText": "shopkeeper"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 9,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-10",
+      "slug": "lop-1-unit-10-at-the-zoo",
+      "levelSlug": "lop-1",
+      "title": "Unit 10: At the zoo",
+      "bookUnitTitle": "At the zoo",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the zoo”.",
+      "icon": "💡",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u10-lion",
+          "word": "lion",
+          "phonetic": "/lˈaɪən/",
+          "vietnameseMeaning": "sư tử",
+          "image": "🦁",
+          "speechText": "lion"
+        },
+        {
+          "id": "gs-g1-u10-tiger",
+          "word": "tiger",
+          "phonetic": "/tˈaɪɡə/",
+          "vietnameseMeaning": "hổ",
+          "image": "🐯",
+          "speechText": "tiger"
+        },
+        {
+          "id": "gs-g1-u10-monkey",
+          "word": "monkey",
+          "phonetic": "/mˈʌnki/",
+          "vietnameseMeaning": "khỉ",
+          "image": "🐒",
+          "speechText": "monkey"
+        },
+        {
+          "id": "gs-g1-u10-elephant",
+          "word": "elephant",
+          "phonetic": "/ˈɛlɪfənt/",
+          "vietnameseMeaning": "voi",
+          "image": "🐘",
+          "speechText": "elephant"
+        },
+        {
+          "id": "gs-g1-u10-zebra",
+          "word": "zebra",
+          "phonetic": "/zˈɛbɹə/",
+          "vietnameseMeaning": "ngựa vằn",
+          "image": "🦓",
+          "speechText": "zebra"
+        },
+        {
+          "id": "gs-g1-u10-giraffe",
+          "word": "giraffe",
+          "phonetic": "/dʒɪɹˈaf/",
+          "vietnameseMeaning": "hươu cao cổ",
+          "image": "🦒",
+          "speechText": "giraffe"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 10,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-11",
+      "slug": "lop-1-unit-11-at-the-bus-stop",
+      "levelSlug": "lop-1",
+      "title": "Unit 11: At the bus stop",
+      "bookUnitTitle": "At the bus stop",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the bus stop”.",
+      "icon": "🌍",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u11-bus",
+          "word": "bus",
+          "phonetic": "/bˈʌs/",
+          "vietnameseMeaning": "xe buýt",
+          "image": "🚌",
+          "speechText": "bus"
+        },
+        {
+          "id": "gs-g1-u11-stop",
+          "word": "stop",
+          "phonetic": "/stˈɒp/",
+          "vietnameseMeaning": "điểm dừng",
+          "image": "🚏",
+          "speechText": "stop"
+        },
+        {
+          "id": "gs-g1-u11-wait",
+          "word": "wait",
+          "phonetic": "/wˈeɪt/",
+          "vietnameseMeaning": "chờ",
+          "image": "⏳",
+          "speechText": "wait"
+        },
+        {
+          "id": "gs-g1-u11-ticket",
+          "word": "ticket",
+          "phonetic": "/tˈɪkɪt/",
+          "vietnameseMeaning": "vé",
+          "image": "🎫",
+          "speechText": "ticket"
+        },
+        {
+          "id": "gs-g1-u11-driver",
+          "word": "driver",
+          "phonetic": "/dɹˈaɪvə/",
+          "vietnameseMeaning": "tài xế",
+          "image": "🧑‍✈️",
+          "speechText": "driver"
+        },
+        {
+          "id": "gs-g1-u11-road",
+          "word": "road",
+          "phonetic": "/ɹˈəʊd/",
+          "vietnameseMeaning": "đường",
+          "image": "🛣️",
+          "speechText": "road"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 11,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-12",
+      "slug": "lop-1-unit-12-at-the-lake",
+      "levelSlug": "lop-1",
+      "title": "Unit 12: At the lake",
+      "bookUnitTitle": "At the lake",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the lake”.",
+      "icon": "🏆",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u12-lake",
+          "word": "lake",
+          "phonetic": "/lˈeɪk/",
+          "vietnameseMeaning": "hồ",
+          "image": "🏞️",
+          "speechText": "lake"
+        },
+        {
+          "id": "gs-g1-u12-boat",
+          "word": "boat",
+          "phonetic": "/bˈəʊt/",
+          "vietnameseMeaning": "thuyền",
+          "image": "🛶",
+          "speechText": "boat"
+        },
+        {
+          "id": "gs-g1-u12-duck",
+          "word": "duck",
+          "phonetic": "/dˈʌk/",
+          "vietnameseMeaning": "vịt",
+          "image": "🦆",
+          "speechText": "duck"
+        },
+        {
+          "id": "gs-g1-u12-fish",
+          "word": "fish",
+          "phonetic": "/fˈɪʃ/",
+          "vietnameseMeaning": "cá",
+          "image": "🐟",
+          "speechText": "fish"
+        },
+        {
+          "id": "gs-g1-u12-water",
+          "word": "water",
+          "phonetic": "/wˈɔːtə/",
+          "vietnameseMeaning": "nước",
+          "image": "💧",
+          "speechText": "water"
+        },
+        {
+          "id": "gs-g1-u12-swim",
+          "word": "swim",
+          "phonetic": "/swˈɪm/",
+          "vietnameseMeaning": "bơi",
+          "image": "🏊",
+          "speechText": "swim"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 12,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-13",
+      "slug": "lop-1-unit-13-in-the-school-canteen",
+      "levelSlug": "lop-1",
+      "title": "Unit 13: In the school canteen",
+      "bookUnitTitle": "In the school canteen",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the school canteen”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u13-rice",
+          "word": "rice",
+          "phonetic": "/ɹˈaɪs/",
+          "vietnameseMeaning": "cơm",
+          "image": "🍚",
+          "speechText": "rice"
+        },
+        {
+          "id": "gs-g1-u13-milk",
+          "word": "milk",
+          "phonetic": "/mˈɪlk/",
+          "vietnameseMeaning": "sữa",
+          "image": "🥛",
+          "speechText": "milk"
+        },
+        {
+          "id": "gs-g1-u13-bread",
+          "word": "bread",
+          "phonetic": "/bɹˈɛd/",
+          "vietnameseMeaning": "bánh mì",
+          "image": "🍞",
+          "speechText": "bread"
+        },
+        {
+          "id": "gs-g1-u13-lunch",
+          "word": "lunch",
+          "phonetic": "/lˈʌntʃ/",
+          "vietnameseMeaning": "bữa trưa",
+          "image": "🍱",
+          "speechText": "lunch"
+        },
+        {
+          "id": "gs-g1-u13-hungry",
+          "word": "hungry",
+          "phonetic": "/hˈʌŋɡɹi/",
+          "vietnameseMeaning": "đói",
+          "image": "😋",
+          "speechText": "hungry"
+        },
+        {
+          "id": "gs-g1-u13-eat",
+          "word": "eat",
+          "phonetic": "/ˈiːt/",
+          "vietnameseMeaning": "ăn",
+          "image": "🍴",
+          "speechText": "eat"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 13,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-14",
+      "slug": "lop-1-unit-14-in-the-toy-shop",
+      "levelSlug": "lop-1",
+      "title": "Unit 14: In the toy shop",
+      "bookUnitTitle": "In the toy shop",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the toy shop”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u14-doll",
+          "word": "doll",
+          "phonetic": "/dˈɒl/",
+          "vietnameseMeaning": "búp bê",
+          "image": "🪆",
+          "speechText": "doll"
+        },
+        {
+          "id": "gs-g1-u14-robot",
+          "word": "robot",
+          "phonetic": "/ɹˈəʊbɒt/",
+          "vietnameseMeaning": "người máy",
+          "image": "🤖",
+          "speechText": "robot"
+        },
+        {
+          "id": "gs-g1-u14-car",
+          "word": "car",
+          "phonetic": "/kˈɑː/",
+          "vietnameseMeaning": "ô tô đồ chơi",
+          "image": "🚗",
+          "speechText": "car"
+        },
+        {
+          "id": "gs-g1-u14-ball",
+          "word": "ball",
+          "phonetic": "/bˈɔːl/",
+          "vietnameseMeaning": "quả bóng",
+          "image": "⚽",
+          "speechText": "ball"
+        },
+        {
+          "id": "gs-g1-u14-kite",
+          "word": "kite",
+          "phonetic": "/kˈaɪt/",
+          "vietnameseMeaning": "cái diều",
+          "image": "🪁",
+          "speechText": "kite"
+        },
+        {
+          "id": "gs-g1-u14-teddy-bear",
+          "word": "teddy bear",
+          "phonetic": "/tˈɛdi bˈeə/",
+          "vietnameseMeaning": "gấu bông",
+          "image": "🧸",
+          "speechText": "teddy bear"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 14,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-15",
+      "slug": "lop-1-unit-15-at-the-football-match",
+      "levelSlug": "lop-1",
+      "title": "Unit 15: At the football match",
+      "bookUnitTitle": "At the football match",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the football match”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u15-football",
+          "word": "football",
+          "phonetic": "/fˈʊtbɔːl/",
+          "vietnameseMeaning": "bóng đá",
+          "image": "⚽",
+          "speechText": "football"
+        },
+        {
+          "id": "gs-g1-u15-team",
+          "word": "team",
+          "phonetic": "/tˈiːm/",
+          "vietnameseMeaning": "đội",
+          "image": "👥",
+          "speechText": "team"
+        },
+        {
+          "id": "gs-g1-u15-goal",
+          "word": "goal",
+          "phonetic": "/ɡˈəʊl/",
+          "vietnameseMeaning": "bàn thắng",
+          "image": "🥅",
+          "speechText": "goal"
+        },
+        {
+          "id": "gs-g1-u15-player",
+          "word": "player",
+          "phonetic": "/plˈeɪə/",
+          "vietnameseMeaning": "cầu thủ",
+          "image": "🏃",
+          "speechText": "player"
+        },
+        {
+          "id": "gs-g1-u15-match",
+          "word": "match",
+          "phonetic": "/mˈatʃ/",
+          "vietnameseMeaning": "trận đấu",
+          "image": "🏟️",
+          "speechText": "match"
+        },
+        {
+          "id": "gs-g1-u15-cheer",
+          "word": "cheer",
+          "phonetic": "/tʃˈiə/",
+          "vietnameseMeaning": "cổ vũ",
+          "image": "📣",
+          "speechText": "cheer"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 15,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-1-unit-16",
+      "slug": "lop-1-unit-16-at-home",
+      "levelSlug": "lop-1",
+      "title": "Unit 16: At home",
+      "bookUnitTitle": "At home",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At home”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g1-u16-home",
+          "word": "home",
+          "phonetic": "/hˈəʊm/",
+          "vietnameseMeaning": "nhà",
+          "image": "🏠",
+          "speechText": "home"
+        },
+        {
+          "id": "gs-g1-u16-mother",
+          "word": "mother",
+          "phonetic": "/mˈʌðə/",
+          "vietnameseMeaning": "mẹ",
+          "image": "👩",
+          "speechText": "mother"
+        },
+        {
+          "id": "gs-g1-u16-father",
+          "word": "father",
+          "phonetic": "/fˈɑːðə/",
+          "vietnameseMeaning": "bố",
+          "image": "👨",
+          "speechText": "father"
+        },
+        {
+          "id": "gs-g1-u16-room",
+          "word": "room",
+          "phonetic": "/ɹˈuːm/",
+          "vietnameseMeaning": "căn phòng",
+          "image": "🚪",
+          "speechText": "room"
+        },
+        {
+          "id": "gs-g1-u16-cook",
+          "word": "cook",
+          "phonetic": "/kˈʊk/",
+          "vietnameseMeaning": "nấu ăn",
+          "image": "🍳",
+          "speechText": "cook"
+        },
+        {
+          "id": "gs-g1-u16-clean",
+          "word": "clean",
+          "phonetic": "/klˈiːn/",
+          "vietnameseMeaning": "dọn dẹp",
+          "image": "🧹",
+          "speechText": "clean"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu nhận biết",
+        "pattern": "This is a/an ...",
+        "exampleEnglish": "This is a book.",
+        "exampleVietnamese": "Đây là một quyển sách.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 1,
+        "unitNumber": 16,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    }
+  ]
+}

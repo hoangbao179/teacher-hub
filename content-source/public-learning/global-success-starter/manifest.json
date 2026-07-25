@@ -1,0 +1,69 @@
+{
+  "packageId": "global-success-grades-1-9-starter",
+  "packageVersion": "1.0.0",
+  "generatedAt": "2026-07-25",
+  "status": "DRAFT_REVIEW",
+  "scope": "Grades 1-9, all book units, 6 independently curated core words per unit, one lightweight language-focus preview.",
+  "grades": [
+    {
+      "grade": 1,
+      "levelSlug": "lop-1",
+      "unitCount": 16,
+      "file": "grades/lop-1.json"
+    },
+    {
+      "grade": 2,
+      "levelSlug": "lop-2",
+      "unitCount": 16,
+      "file": "grades/lop-2.json"
+    },
+    {
+      "grade": 3,
+      "levelSlug": "lop-3",
+      "unitCount": 20,
+      "file": "grades/lop-3.json"
+    },
+    {
+      "grade": 4,
+      "levelSlug": "lop-4",
+      "unitCount": 20,
+      "file": "grades/lop-4.json"
+    },
+    {
+      "grade": 5,
+      "levelSlug": "lop-5",
+      "unitCount": 20,
+      "file": "grades/lop-5.json"
+    },
+    {
+      "grade": 6,
+      "levelSlug": "lop-6",
+      "unitCount": 12,
+      "file": "grades/lop-6.json"
+    },
+    {
+      "grade": 7,
+      "levelSlug": "lop-7",
+      "unitCount": 12,
+      "file": "grades/lop-7.json"
+    },
+    {
+      "grade": 8,
+      "levelSlug": "lop-8",
+      "unitCount": 12,
+      "file": "grades/lop-8.json"
+    },
+    {
+      "grade": 9,
+      "levelSlug": "lop-9",
+      "unitCount": 12,
+      "file": "grades/lop-9.json"
+    }
+  ],
+  "totals": {
+    "grades": 9,
+    "units": 140,
+    "vocabularyItems": 840
+  },
+  "copyrightNotice": "This package does not reproduce textbook pages, official audio, official images, exercises, dialogues, or complete official vocabulary lists. Unit titles were cross-checked from public tables of contents; vocabulary and examples are independently curated starter content."
+}

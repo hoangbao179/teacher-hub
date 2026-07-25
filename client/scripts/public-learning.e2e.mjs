@@ -80,9 +80,10 @@ try {
   const levelGroups = page.locator('[data-testid^="level-group-"]');
   assert(await levelGroups.locator("article").count() === 10, "Hub must show preschool and grades 1–9 exactly");
   assert(await page.getByRole("link", { name: "Mở bài học Mầm non" }).isVisible(), "Preschool content must open");
+  assert(await page.getByRole("link", { name: "Mở bài học Lớp 1" }).isVisible(), "Grade 1 content must open");
   assert(await page.getByRole("link", { name: "Mở bài học Lớp 3" }).isVisible(), "Grade 3 content must open");
-  assert(await page.getByText("Sắp có", { exact: true }).count() === 8, "Eight unpublished levels must show Sắp có");
-  assert(await page.getByRole("link", { name: "Mở bài học Lớp 1" }).count() === 0, "Unpublished level must not navigate");
+  assert(await page.getByRole("link", { name: /^Mở bài học/ }).count() === 10, "All ten published levels must navigate");
+  assert(await page.getByText("Sắp có", { exact: true }).count() === 0, "Published levels must not show Sắp có");
 
   await page.getByRole("link", { name: "Mở bài học Mầm non" }).click();
   await page.waitForURL(`${origin}/hoc/mam-non`);

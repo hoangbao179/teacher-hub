@@ -1,0 +1,911 @@
+{
+  "schemaVersion": 1,
+  "contentId": "global-success-grade-6-starter",
+  "contentVersion": "1.0.0",
+  "levelSlug": "lop-6",
+  "status": "DRAFT_REVIEW",
+  "unitCount": 12,
+  "vocabularyCount": 72,
+  "units": [
+    {
+      "id": "global-success-grade-6-unit-01",
+      "slug": "lop-6-unit-01-my-new-school",
+      "levelSlug": "lop-6",
+      "title": "Unit 1: My New School",
+      "bookUnitTitle": "My New School",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My New School”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u01-boarding-school",
+          "word": "boarding school",
+          "phonetic": "/bˈɔːdɪŋ skˈuːl/",
+          "vietnameseMeaning": "trường nội trú",
+          "image": "🏫",
+          "speechText": "boarding school"
+        },
+        {
+          "id": "gs-g6-u01-classmate",
+          "word": "classmate",
+          "phonetic": "/klˈasmeɪt/",
+          "vietnameseMeaning": "bạn cùng lớp",
+          "image": "🧑‍🤝‍🧑",
+          "speechText": "classmate"
+        },
+        {
+          "id": "gs-g6-u01-calculator",
+          "word": "calculator",
+          "phonetic": "/kˈalkjʊlˌeɪtə/",
+          "vietnameseMeaning": "máy tính cầm tay",
+          "image": "🧮",
+          "speechText": "calculator"
+        },
+        {
+          "id": "gs-g6-u01-compass",
+          "word": "compass",
+          "phonetic": "/kˈʌmpəs/",
+          "vietnameseMeaning": "com-pa",
+          "image": "📐",
+          "speechText": "compass"
+        },
+        {
+          "id": "gs-g6-u01-uniform",
+          "word": "uniform",
+          "phonetic": "/jˈuːnɪfˌɔːm/",
+          "vietnameseMeaning": "đồng phục",
+          "image": "👔",
+          "speechText": "uniform"
+        },
+        {
+          "id": "gs-g6-u01-subject",
+          "word": "subject",
+          "phonetic": "/sˈʌbdʒɛkt/",
+          "vietnameseMeaning": "môn học",
+          "image": "📚",
+          "speechText": "subject"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 1,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-02",
+      "slug": "lop-6-unit-02-my-house",
+      "levelSlug": "lop-6",
+      "title": "Unit 2: My House",
+      "bookUnitTitle": "My House",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My House”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u02-apartment",
+          "word": "apartment",
+          "phonetic": "/ɐpˈɑːtmənt/",
+          "vietnameseMeaning": "căn hộ",
+          "image": "🏢",
+          "speechText": "apartment"
+        },
+        {
+          "id": "gs-g6-u02-furniture",
+          "word": "furniture",
+          "phonetic": "/fˈɜːnɪtʃə/",
+          "vietnameseMeaning": "đồ nội thất",
+          "image": "🛋️",
+          "speechText": "furniture"
+        },
+        {
+          "id": "gs-g6-u02-living-room",
+          "word": "living room",
+          "phonetic": "/lˈɪvɪŋ ɹˈuːm/",
+          "vietnameseMeaning": "phòng khách",
+          "image": "🛋️",
+          "speechText": "living room"
+        },
+        {
+          "id": "gs-g6-u02-bedroom",
+          "word": "bedroom",
+          "phonetic": "/bˈɛdɹuːm/",
+          "vietnameseMeaning": "phòng ngủ",
+          "image": "🛏️",
+          "speechText": "bedroom"
+        },
+        {
+          "id": "gs-g6-u02-kitchen",
+          "word": "kitchen",
+          "phonetic": "/kˈɪtʃən/",
+          "vietnameseMeaning": "nhà bếp",
+          "image": "🍳",
+          "speechText": "kitchen"
+        },
+        {
+          "id": "gs-g6-u02-between",
+          "word": "between",
+          "phonetic": "/bɪtwˈiːn/",
+          "vietnameseMeaning": "ở giữa",
+          "image": "↔️",
+          "speechText": "between"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 2,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-03",
+      "slug": "lop-6-unit-03-my-friends",
+      "levelSlug": "lop-6",
+      "title": "Unit 3: My Friends",
+      "bookUnitTitle": "My Friends",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My Friends”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u03-creative",
+          "word": "creative",
+          "phonetic": "/kɹiːˈeɪtɪv/",
+          "vietnameseMeaning": "sáng tạo",
+          "image": "🎨",
+          "speechText": "creative"
+        },
+        {
+          "id": "gs-g6-u03-confident",
+          "word": "confident",
+          "phonetic": "/kˈɒnfɪdənt/",
+          "vietnameseMeaning": "tự tin",
+          "image": "💪",
+          "speechText": "confident"
+        },
+        {
+          "id": "gs-g6-u03-friendly",
+          "word": "friendly",
+          "phonetic": "/fɹˈɛndli/",
+          "vietnameseMeaning": "thân thiện",
+          "image": "😊",
+          "speechText": "friendly"
+        },
+        {
+          "id": "gs-g6-u03-helpful",
+          "word": "helpful",
+          "phonetic": "/hˈɛlpfəl/",
+          "vietnameseMeaning": "hay giúp đỡ",
+          "image": "🤝",
+          "speechText": "helpful"
+        },
+        {
+          "id": "gs-g6-u03-careful",
+          "word": "careful",
+          "phonetic": "/kˈeəfəl/",
+          "vietnameseMeaning": "cẩn thận",
+          "image": "🔎",
+          "speechText": "careful"
+        },
+        {
+          "id": "gs-g6-u03-personality",
+          "word": "personality",
+          "phonetic": "/pˌɜːsənˈalɪti/",
+          "vietnameseMeaning": "tính cách",
+          "image": "🙂",
+          "speechText": "personality"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 3,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-04",
+      "slug": "lop-6-unit-04-my-neighbourhood",
+      "levelSlug": "lop-6",
+      "title": "Unit 4: My Neighbourhood",
+      "bookUnitTitle": "My Neighbourhood",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My Neighbourhood”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u04-neighbourhood",
+          "word": "neighbourhood",
+          "phonetic": "/nˈeɪbəhˌʊd/",
+          "vietnameseMeaning": "khu phố",
+          "image": "🏘️",
+          "speechText": "neighbourhood"
+        },
+        {
+          "id": "gs-g6-u04-square",
+          "word": "square",
+          "phonetic": "/skwˈeə/",
+          "vietnameseMeaning": "quảng trường",
+          "image": "🏛️",
+          "speechText": "square"
+        },
+        {
+          "id": "gs-g6-u04-cathedral",
+          "word": "cathedral",
+          "phonetic": "/kɐθˈiːdɹəl/",
+          "vietnameseMeaning": "nhà thờ lớn",
+          "image": "⛪",
+          "speechText": "cathedral"
+        },
+        {
+          "id": "gs-g6-u04-market",
+          "word": "market",
+          "phonetic": "/mˈɑːkɪt/",
+          "vietnameseMeaning": "chợ",
+          "image": "🛒",
+          "speechText": "market"
+        },
+        {
+          "id": "gs-g6-u04-crowded",
+          "word": "crowded",
+          "phonetic": "/kɹˈaʊdɪd/",
+          "vietnameseMeaning": "đông đúc",
+          "image": "👥",
+          "speechText": "crowded"
+        },
+        {
+          "id": "gs-g6-u04-convenient",
+          "word": "convenient",
+          "phonetic": "/kənvˈiːnɪənt/",
+          "vietnameseMeaning": "thuận tiện",
+          "image": "✅",
+          "speechText": "convenient"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 4,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-05",
+      "slug": "lop-6-unit-05-natural-wonders-of-the-world",
+      "levelSlug": "lop-6",
+      "title": "Unit 5: Natural Wonders of the World",
+      "bookUnitTitle": "Natural Wonders of the World",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Natural Wonders of the World”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u05-mountain",
+          "word": "mountain",
+          "phonetic": "/mˈaʊntɪn/",
+          "vietnameseMeaning": "núi",
+          "image": "⛰️",
+          "speechText": "mountain"
+        },
+        {
+          "id": "gs-g6-u05-waterfall",
+          "word": "waterfall",
+          "phonetic": "/wˈɔːtəfˌɔːl/",
+          "vietnameseMeaning": "thác nước",
+          "image": "💦",
+          "speechText": "waterfall"
+        },
+        {
+          "id": "gs-g6-u05-cave",
+          "word": "cave",
+          "phonetic": "/kˈeɪv/",
+          "vietnameseMeaning": "hang động",
+          "image": "🪨",
+          "speechText": "cave"
+        },
+        {
+          "id": "gs-g6-u05-island",
+          "word": "island",
+          "phonetic": "/ˈaɪlənd/",
+          "vietnameseMeaning": "hòn đảo",
+          "image": "🏝️",
+          "speechText": "island"
+        },
+        {
+          "id": "gs-g6-u05-desert",
+          "word": "desert",
+          "phonetic": "/dˈɛsət/",
+          "vietnameseMeaning": "sa mạc",
+          "image": "🏜️",
+          "speechText": "desert"
+        },
+        {
+          "id": "gs-g6-u05-wonder",
+          "word": "wonder",
+          "phonetic": "/wˈʌndə/",
+          "vietnameseMeaning": "kỳ quan",
+          "image": "✨",
+          "speechText": "wonder"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 5,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-06",
+      "slug": "lop-6-unit-06-our-tet-holiday",
+      "levelSlug": "lop-6",
+      "title": "Unit 6: Our Tet Holiday",
+      "bookUnitTitle": "Our Tet Holiday",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our Tet Holiday”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u06-tet",
+          "word": "Tet",
+          "phonetic": "/tˈɛt/",
+          "vietnameseMeaning": "Tết",
+          "image": "🧧",
+          "speechText": "Tet"
+        },
+        {
+          "id": "gs-g6-u06-lucky-money",
+          "word": "lucky money",
+          "phonetic": "/lˈʌki mˈʌni/",
+          "vietnameseMeaning": "tiền lì xì",
+          "image": "🧧",
+          "speechText": "lucky money"
+        },
+        {
+          "id": "gs-g6-u06-fireworks",
+          "word": "fireworks",
+          "phonetic": "/fˈaɪəwɜːks/",
+          "vietnameseMeaning": "pháo hoa",
+          "image": "🎆",
+          "speechText": "fireworks"
+        },
+        {
+          "id": "gs-g6-u06-peach-blossom",
+          "word": "peach blossom",
+          "phonetic": "/pˈiːtʃ blˈɒsəm/",
+          "vietnameseMeaning": "hoa đào",
+          "image": "🌸",
+          "speechText": "peach blossom"
+        },
+        {
+          "id": "gs-g6-u06-visit-relatives",
+          "word": "visit relatives",
+          "phonetic": "/vˈɪzɪt ɹˈɛlətˌɪvz/",
+          "vietnameseMeaning": "thăm họ hàng",
+          "image": "👨‍👩‍👧‍👦",
+          "speechText": "visit relatives"
+        },
+        {
+          "id": "gs-g6-u06-decorate",
+          "word": "decorate",
+          "phonetic": "/dˈɛkəɹˌeɪt/",
+          "vietnameseMeaning": "trang trí",
+          "image": "🎊",
+          "speechText": "decorate"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 6,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-07",
+      "slug": "lop-6-unit-07-television",
+      "levelSlug": "lop-6",
+      "title": "Unit 7: Television",
+      "bookUnitTitle": "Television",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Television”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u07-programme",
+          "word": "programme",
+          "phonetic": "/pɹˈəʊɡɹam/",
+          "vietnameseMeaning": "chương trình",
+          "image": "📺",
+          "speechText": "programme"
+        },
+        {
+          "id": "gs-g6-u07-cartoon",
+          "word": "cartoon",
+          "phonetic": "/kɑːtˈuːn/",
+          "vietnameseMeaning": "phim hoạt hình",
+          "image": "🧸",
+          "speechText": "cartoon"
+        },
+        {
+          "id": "gs-g6-u07-news",
+          "word": "news",
+          "phonetic": "/njˈuːz/",
+          "vietnameseMeaning": "bản tin",
+          "image": "📰",
+          "speechText": "news"
+        },
+        {
+          "id": "gs-g6-u07-viewer",
+          "word": "viewer",
+          "phonetic": "/vjˈuːə/",
+          "vietnameseMeaning": "người xem",
+          "image": "👀",
+          "speechText": "viewer"
+        },
+        {
+          "id": "gs-g6-u07-channel",
+          "word": "channel",
+          "phonetic": "/tʃˈanəl/",
+          "vietnameseMeaning": "kênh",
+          "image": "📡",
+          "speechText": "channel"
+        },
+        {
+          "id": "gs-g6-u07-remote-control",
+          "word": "remote control",
+          "phonetic": "/ɹɪmˈəʊt kəntɹˈəʊl/",
+          "vietnameseMeaning": "điều khiển từ xa",
+          "image": "🎛️",
+          "speechText": "remote control"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 7,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-08",
+      "slug": "lop-6-unit-08-sports-and-games",
+      "levelSlug": "lop-6",
+      "title": "Unit 8: Sports and Games",
+      "bookUnitTitle": "Sports and Games",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Sports and Games”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u08-competition",
+          "word": "competition",
+          "phonetic": "/kˌɒmpətˈɪʃən/",
+          "vietnameseMeaning": "cuộc thi",
+          "image": "🏆",
+          "speechText": "competition"
+        },
+        {
+          "id": "gs-g6-u08-athlete",
+          "word": "athlete",
+          "phonetic": "/ˈaθliːt/",
+          "vietnameseMeaning": "vận động viên",
+          "image": "🏃",
+          "speechText": "athlete"
+        },
+        {
+          "id": "gs-g6-u08-equipment",
+          "word": "equipment",
+          "phonetic": "/ɪkwˈɪpmənt/",
+          "vietnameseMeaning": "dụng cụ",
+          "image": "🏸",
+          "speechText": "equipment"
+        },
+        {
+          "id": "gs-g6-u08-score",
+          "word": "score",
+          "phonetic": "/skˈɔː/",
+          "vietnameseMeaning": "tỉ số",
+          "image": "🔢",
+          "speechText": "score"
+        },
+        {
+          "id": "gs-g6-u08-champion",
+          "word": "champion",
+          "phonetic": "/tʃˈampiən/",
+          "vietnameseMeaning": "nhà vô địch",
+          "image": "🥇",
+          "speechText": "champion"
+        },
+        {
+          "id": "gs-g6-u08-stadium",
+          "word": "stadium",
+          "phonetic": "/stˈeɪdiəm/",
+          "vietnameseMeaning": "sân vận động",
+          "image": "🏟️",
+          "speechText": "stadium"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 8,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-09",
+      "slug": "lop-6-unit-09-cities-of-the-world",
+      "levelSlug": "lop-6",
+      "title": "Unit 9: Cities of the World",
+      "bookUnitTitle": "Cities of the World",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Cities of the World”.",
+      "icon": "🦉",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u09-capital",
+          "word": "capital",
+          "phonetic": "/kˈapɪtəl/",
+          "vietnameseMeaning": "thủ đô",
+          "image": "🏛️",
+          "speechText": "capital"
+        },
+        {
+          "id": "gs-g6-u09-landmark",
+          "word": "landmark",
+          "phonetic": "/lˈandmɑːk/",
+          "vietnameseMeaning": "địa danh",
+          "image": "📍",
+          "speechText": "landmark"
+        },
+        {
+          "id": "gs-g6-u09-continent",
+          "word": "continent",
+          "phonetic": "/kˈɒntɪnənt/",
+          "vietnameseMeaning": "châu lục",
+          "image": "🌍",
+          "speechText": "continent"
+        },
+        {
+          "id": "gs-g6-u09-population",
+          "word": "population",
+          "phonetic": "/pˌɒpjʊlˈeɪʃən/",
+          "vietnameseMeaning": "dân số",
+          "image": "👥",
+          "speechText": "population"
+        },
+        {
+          "id": "gs-g6-u09-famous",
+          "word": "famous",
+          "phonetic": "/fˈeɪməs/",
+          "vietnameseMeaning": "nổi tiếng",
+          "image": "⭐",
+          "speechText": "famous"
+        },
+        {
+          "id": "gs-g6-u09-visit",
+          "word": "visit",
+          "phonetic": "/vˈɪzɪt/",
+          "vietnameseMeaning": "thăm",
+          "image": "🧳",
+          "speechText": "visit"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 9,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-10",
+      "slug": "lop-6-unit-10-our-houses-in-the-future",
+      "levelSlug": "lop-6",
+      "title": "Unit 10: Our Houses in the Future",
+      "bookUnitTitle": "Our Houses in the Future",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our Houses in the Future”.",
+      "icon": "💡",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u10-smart-home",
+          "word": "smart home",
+          "phonetic": "/smˈɑːt hˈəʊm/",
+          "vietnameseMeaning": "nhà thông minh",
+          "image": "🏠",
+          "speechText": "smart home"
+        },
+        {
+          "id": "gs-g6-u10-solar-energy",
+          "word": "solar energy",
+          "phonetic": "/sˈəʊləɹ ˈɛnədʒi/",
+          "vietnameseMeaning": "năng lượng mặt trời",
+          "image": "☀️",
+          "speechText": "solar energy"
+        },
+        {
+          "id": "gs-g6-u10-appliance",
+          "word": "appliance",
+          "phonetic": "/ɐplˈaɪəns/",
+          "vietnameseMeaning": "thiết bị gia dụng",
+          "image": "🔌",
+          "speechText": "appliance"
+        },
+        {
+          "id": "gs-g6-u10-automatic",
+          "word": "automatic",
+          "phonetic": "/ˌɔːtəmˈatɪk/",
+          "vietnameseMeaning": "tự động",
+          "image": "⚙️",
+          "speechText": "automatic"
+        },
+        {
+          "id": "gs-g6-u10-future",
+          "word": "future",
+          "phonetic": "/fjˈuːtʃə/",
+          "vietnameseMeaning": "tương lai",
+          "image": "🚀",
+          "speechText": "future"
+        },
+        {
+          "id": "gs-g6-u10-comfortable",
+          "word": "comfortable",
+          "phonetic": "/kˈʌmftəbəl/",
+          "vietnameseMeaning": "tiện nghi",
+          "image": "🛋️",
+          "speechText": "comfortable"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 10,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-11",
+      "slug": "lop-6-unit-11-our-greener-world",
+      "levelSlug": "lop-6",
+      "title": "Unit 11: Our Greener World",
+      "bookUnitTitle": "Our Greener World",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our Greener World”.",
+      "icon": "🌍",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u11-recycle",
+          "word": "recycle",
+          "phonetic": "/ɹɪsˈaɪkəl/",
+          "vietnameseMeaning": "tái chế",
+          "image": "♻️",
+          "speechText": "recycle"
+        },
+        {
+          "id": "gs-g6-u11-reduce",
+          "word": "reduce",
+          "phonetic": "/ɹɪdjˈuːs/",
+          "vietnameseMeaning": "giảm",
+          "image": "➖",
+          "speechText": "reduce"
+        },
+        {
+          "id": "gs-g6-u11-reuse",
+          "word": "reuse",
+          "phonetic": "/ɹiːjˈuːz/",
+          "vietnameseMeaning": "tái sử dụng",
+          "image": "🔁",
+          "speechText": "reuse"
+        },
+        {
+          "id": "gs-g6-u11-rubbish",
+          "word": "rubbish",
+          "phonetic": "/ɹˈʌbɪʃ/",
+          "vietnameseMeaning": "rác",
+          "image": "🗑️",
+          "speechText": "rubbish"
+        },
+        {
+          "id": "gs-g6-u11-environment",
+          "word": "environment",
+          "phonetic": "/ɛnvˈaɪɹənmənt/",
+          "vietnameseMeaning": "môi trường",
+          "image": "🌍",
+          "speechText": "environment"
+        },
+        {
+          "id": "gs-g6-u11-save",
+          "word": "save",
+          "phonetic": "/sˈeɪv/",
+          "vietnameseMeaning": "tiết kiệm; bảo vệ",
+          "image": "💚",
+          "speechText": "save"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 11,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-6-unit-12",
+      "slug": "lop-6-unit-12-robots",
+      "levelSlug": "lop-6",
+      "title": "Unit 12: Robots",
+      "bookUnitTitle": "Robots",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Robots”.",
+      "icon": "🏆",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g6-u12-robot",
+          "word": "robot",
+          "phonetic": "/ɹˈəʊbɒt/",
+          "vietnameseMeaning": "người máy",
+          "image": "🤖",
+          "speechText": "robot"
+        },
+        {
+          "id": "gs-g6-u12-machine",
+          "word": "machine",
+          "phonetic": "/məʃˈiːn/",
+          "vietnameseMeaning": "máy móc",
+          "image": "⚙️",
+          "speechText": "machine"
+        },
+        {
+          "id": "gs-g6-u12-control",
+          "word": "control",
+          "phonetic": "/kəntɹˈəʊl/",
+          "vietnameseMeaning": "điều khiển",
+          "image": "🎛️",
+          "speechText": "control"
+        },
+        {
+          "id": "gs-g6-u12-repair",
+          "word": "repair",
+          "phonetic": "/ɹɪpˈeə/",
+          "vietnameseMeaning": "sửa chữa",
+          "image": "🛠️",
+          "speechText": "repair"
+        },
+        {
+          "id": "gs-g6-u12-space",
+          "word": "space",
+          "phonetic": "/spˈeɪs/",
+          "vietnameseMeaning": "không gian",
+          "image": "🚀",
+          "speechText": "space"
+        },
+        {
+          "id": "gs-g6-u12-helpful",
+          "word": "helpful",
+          "phonetic": "/hˈɛlpfəl/",
+          "vietnameseMeaning": "hữu ích",
+          "image": "🤝",
+          "speechText": "helpful"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple / descriptive structures",
+        "exampleEnglish": "My school has a large library.",
+        "exampleVietnamese": "Trường của tôi có một thư viện lớn.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 6,
+        "unitNumber": 12,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    }
+  ]
+}

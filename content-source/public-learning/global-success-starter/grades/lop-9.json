@@ -1,0 +1,911 @@
+{
+  "schemaVersion": 1,
+  "contentId": "global-success-grade-9-starter",
+  "contentVersion": "1.0.0",
+  "levelSlug": "lop-9",
+  "status": "DRAFT_REVIEW",
+  "unitCount": 12,
+  "vocabularyCount": 72,
+  "units": [
+    {
+      "id": "global-success-grade-9-unit-01",
+      "slug": "lop-9-unit-01-local-community",
+      "levelSlug": "lop-9",
+      "title": "Unit 1: Local Community",
+      "bookUnitTitle": "Local Community",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Local Community”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u01-craft-village",
+          "word": "craft village",
+          "phonetic": "/kɹˈaft vˈɪlɪdʒ/",
+          "vietnameseMeaning": "làng nghề",
+          "image": "🏘️",
+          "speechText": "craft village"
+        },
+        {
+          "id": "gs-g9-u01-artisan",
+          "word": "artisan",
+          "phonetic": "/ˈɑːtɪsən/",
+          "vietnameseMeaning": "nghệ nhân",
+          "image": "🧑‍🎨",
+          "speechText": "artisan"
+        },
+        {
+          "id": "gs-g9-u01-community-centre",
+          "word": "community centre",
+          "phonetic": "/kəmjˈuːnɪti sˈɛntə/",
+          "vietnameseMeaning": "nhà văn hóa cộng đồng",
+          "image": "🏢",
+          "speechText": "community centre"
+        },
+        {
+          "id": "gs-g9-u01-preserve",
+          "word": "preserve",
+          "phonetic": "/pɹɪzˈɜːv/",
+          "vietnameseMeaning": "gìn giữ",
+          "image": "🛡️",
+          "speechText": "preserve"
+        },
+        {
+          "id": "gs-g9-u01-local-product",
+          "word": "local product",
+          "phonetic": "/lˈəʊkəl pɹˈɒdʌkt/",
+          "vietnameseMeaning": "sản phẩm địa phương",
+          "image": "🧺",
+          "speechText": "local product"
+        },
+        {
+          "id": "gs-g9-u01-neighbour",
+          "word": "neighbour",
+          "phonetic": "/nˈeɪbə/",
+          "vietnameseMeaning": "hàng xóm",
+          "image": "🏠",
+          "speechText": "neighbour"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 1,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-02",
+      "slug": "lop-9-unit-02-city-life",
+      "levelSlug": "lop-9",
+      "title": "Unit 2: City Life",
+      "bookUnitTitle": "City Life",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “City Life”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u02-skyscraper",
+          "word": "skyscraper",
+          "phonetic": "/skˈaɪskɹeɪpə/",
+          "vietnameseMeaning": "nhà chọc trời",
+          "image": "🏙️",
+          "speechText": "skyscraper"
+        },
+        {
+          "id": "gs-g9-u02-metro",
+          "word": "metro",
+          "phonetic": "/mˈɛtɹəʊ/",
+          "vietnameseMeaning": "tàu điện ngầm",
+          "image": "🚇",
+          "speechText": "metro"
+        },
+        {
+          "id": "gs-g9-u02-overcrowded",
+          "word": "overcrowded",
+          "phonetic": "/ˌəʊvəkɹˈaʊdɪd/",
+          "vietnameseMeaning": "quá đông đúc",
+          "image": "👥",
+          "speechText": "overcrowded"
+        },
+        {
+          "id": "gs-g9-u02-convenient",
+          "word": "convenient",
+          "phonetic": "/kənvˈiːnɪənt/",
+          "vietnameseMeaning": "thuận tiện",
+          "image": "✅",
+          "speechText": "convenient"
+        },
+        {
+          "id": "gs-g9-u02-traffic-congestion",
+          "word": "traffic congestion",
+          "phonetic": "/tɹˈafɪk kəndʒˈɛstʃən/",
+          "vietnameseMeaning": "ùn tắc giao thông",
+          "image": "🚗",
+          "speechText": "traffic congestion"
+        },
+        {
+          "id": "gs-g9-u02-urban",
+          "word": "urban",
+          "phonetic": "/ˈɜːbən/",
+          "vietnameseMeaning": "thuộc đô thị",
+          "image": "🌆",
+          "speechText": "urban"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 2,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-03",
+      "slug": "lop-9-unit-03-healthy-living-for-teens",
+      "levelSlug": "lop-9",
+      "title": "Unit 3: Healthy Living for Teens",
+      "bookUnitTitle": "Healthy Living for Teens",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Healthy Living for Teens”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u03-anxiety",
+          "word": "anxiety",
+          "phonetic": "/aŋzˈaɪəti/",
+          "vietnameseMeaning": "lo âu",
+          "image": "😟",
+          "speechText": "anxiety"
+        },
+        {
+          "id": "gs-g9-u03-nutrition",
+          "word": "nutrition",
+          "phonetic": "/njuːtɹˈɪʃən/",
+          "vietnameseMeaning": "dinh dưỡng",
+          "image": "🥗",
+          "speechText": "nutrition"
+        },
+        {
+          "id": "gs-g9-u03-sleep-schedule",
+          "word": "sleep schedule",
+          "phonetic": "/slˈiːp ʃˈɛdjuːl/",
+          "vietnameseMeaning": "lịch ngủ",
+          "image": "😴",
+          "speechText": "sleep schedule"
+        },
+        {
+          "id": "gs-g9-u03-screen-time",
+          "word": "screen time",
+          "phonetic": "/skɹˈiːn tˈaɪm/",
+          "vietnameseMeaning": "thời gian dùng màn hình",
+          "image": "📱",
+          "speechText": "screen time"
+        },
+        {
+          "id": "gs-g9-u03-mental-health",
+          "word": "mental health",
+          "phonetic": "/mˈɛntəl hˈɛlθ/",
+          "vietnameseMeaning": "sức khỏe tinh thần",
+          "image": "🧠",
+          "speechText": "mental health"
+        },
+        {
+          "id": "gs-g9-u03-counsellor",
+          "word": "counsellor",
+          "phonetic": "/kˈaʊnsələ/",
+          "vietnameseMeaning": "chuyên viên tư vấn",
+          "image": "🧑‍⚕️",
+          "speechText": "counsellor"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 3,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-04",
+      "slug": "lop-9-unit-04-remembering-the-past",
+      "levelSlug": "lop-9",
+      "title": "Unit 4: Remembering the Past",
+      "bookUnitTitle": "Remembering the Past",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Remembering the Past”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u04-memory",
+          "word": "memory",
+          "phonetic": "/mˈɛməɹi/",
+          "vietnameseMeaning": "ký ức",
+          "image": "🧠",
+          "speechText": "memory"
+        },
+        {
+          "id": "gs-g9-u04-generation",
+          "word": "generation",
+          "phonetic": "/dʒˌɛnəɹˈeɪʃən/",
+          "vietnameseMeaning": "thế hệ",
+          "image": "👨‍👩‍👧‍👦",
+          "speechText": "generation"
+        },
+        {
+          "id": "gs-g9-u04-traditional-game",
+          "word": "traditional game",
+          "phonetic": "/tɹɐdˈɪʃənəl ɡˈeɪm/",
+          "vietnameseMeaning": "trò chơi dân gian",
+          "image": "🪁",
+          "speechText": "traditional game"
+        },
+        {
+          "id": "gs-g9-u04-childhood",
+          "word": "childhood",
+          "phonetic": "/tʃˈaɪldhʊd/",
+          "vietnameseMeaning": "tuổi thơ",
+          "image": "🧒",
+          "speechText": "childhood"
+        },
+        {
+          "id": "gs-g9-u04-historical",
+          "word": "historical",
+          "phonetic": "/hɪstˈɒɹɪkəl/",
+          "vietnameseMeaning": "thuộc lịch sử",
+          "image": "🏛️",
+          "speechText": "historical"
+        },
+        {
+          "id": "gs-g9-u04-remember",
+          "word": "remember",
+          "phonetic": "/ɹɪmˈɛmbə/",
+          "vietnameseMeaning": "nhớ lại",
+          "image": "💭",
+          "speechText": "remember"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 4,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-05",
+      "slug": "lop-9-unit-05-our-experiences",
+      "levelSlug": "lop-9",
+      "title": "Unit 5: Our Experiences",
+      "bookUnitTitle": "Our Experiences",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our Experiences”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u05-experience",
+          "word": "experience",
+          "phonetic": "/ɛkspˈiəɹɪəns/",
+          "vietnameseMeaning": "trải nghiệm",
+          "image": "🧭",
+          "speechText": "experience"
+        },
+        {
+          "id": "gs-g9-u05-achievement",
+          "word": "achievement",
+          "phonetic": "/ɐtʃˈiːvmənt/",
+          "vietnameseMeaning": "thành tựu",
+          "image": "🏆",
+          "speechText": "achievement"
+        },
+        {
+          "id": "gs-g9-u05-challenge",
+          "word": "challenge",
+          "phonetic": "/tʃˈalɪndʒ/",
+          "vietnameseMeaning": "thử thách",
+          "image": "⛰️",
+          "speechText": "challenge"
+        },
+        {
+          "id": "gs-g9-u05-memorable",
+          "word": "memorable",
+          "phonetic": "/mˈɛməɹəbəl/",
+          "vietnameseMeaning": "đáng nhớ",
+          "image": "⭐",
+          "speechText": "memorable"
+        },
+        {
+          "id": "gs-g9-u05-volunteer-trip",
+          "word": "volunteer trip",
+          "phonetic": "/vˌɒləntˈiə tɹˈɪp/",
+          "vietnameseMeaning": "chuyến đi tình nguyện",
+          "image": "🤝",
+          "speechText": "volunteer trip"
+        },
+        {
+          "id": "gs-g9-u05-learn-a-lesson",
+          "word": "learn a lesson",
+          "phonetic": "/lˈɜːn ɐ lˈɛsən/",
+          "vietnameseMeaning": "rút ra bài học",
+          "image": "📚",
+          "speechText": "learn a lesson"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 5,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-06",
+      "slug": "lop-9-unit-06-vietnamese-lifestyle-then-and-now",
+      "levelSlug": "lop-9",
+      "title": "Unit 6: Vietnamese Lifestyle: Then and Now",
+      "bookUnitTitle": "Vietnamese Lifestyle: Then and Now",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Vietnamese Lifestyle: Then and Now”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u06-lifestyle",
+          "word": "lifestyle",
+          "phonetic": "/lˈaɪfstaɪl/",
+          "vietnameseMeaning": "lối sống",
+          "image": "🌿",
+          "speechText": "lifestyle"
+        },
+        {
+          "id": "gs-g9-u06-household-appliance",
+          "word": "household appliance",
+          "phonetic": "/hˈaʊshəʊld ɐplˈaɪəns/",
+          "vietnameseMeaning": "thiết bị gia dụng",
+          "image": "🔌",
+          "speechText": "household appliance"
+        },
+        {
+          "id": "gs-g9-u06-extended-family",
+          "word": "extended family",
+          "phonetic": "/ɛkstˈɛndɪd fˈamɪli/",
+          "vietnameseMeaning": "gia đình nhiều thế hệ",
+          "image": "👨‍👩‍👧‍👦",
+          "speechText": "extended family"
+        },
+        {
+          "id": "gs-g9-u06-modern",
+          "word": "modern",
+          "phonetic": "/mˈɒdən/",
+          "vietnameseMeaning": "hiện đại",
+          "image": "🏙️",
+          "speechText": "modern"
+        },
+        {
+          "id": "gs-g9-u06-traditional",
+          "word": "traditional",
+          "phonetic": "/tɹɐdˈɪʃənəl/",
+          "vietnameseMeaning": "truyền thống",
+          "image": "🏮",
+          "speechText": "traditional"
+        },
+        {
+          "id": "gs-g9-u06-change",
+          "word": "change",
+          "phonetic": "/tʃˈeɪndʒ/",
+          "vietnameseMeaning": "sự thay đổi",
+          "image": "🔄",
+          "speechText": "change"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 6,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-07",
+      "slug": "lop-9-unit-07-natural-wonders-of-the-world",
+      "levelSlug": "lop-9",
+      "title": "Unit 7: Natural Wonders of the World",
+      "bookUnitTitle": "Natural Wonders of the World",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Natural Wonders of the World”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u07-heritage-site",
+          "word": "heritage site",
+          "phonetic": "/hˈɛɹɪtɪdʒ sˈaɪt/",
+          "vietnameseMeaning": "di sản",
+          "image": "🏞️",
+          "speechText": "heritage site"
+        },
+        {
+          "id": "gs-g9-u07-limestone",
+          "word": "limestone",
+          "phonetic": "/lˈaɪmstəʊn/",
+          "vietnameseMeaning": "đá vôi",
+          "image": "🪨",
+          "speechText": "limestone"
+        },
+        {
+          "id": "gs-g9-u07-biodiversity",
+          "word": "biodiversity",
+          "phonetic": "/bˌaɪəʊdaɪvˈɜːsɪti/",
+          "vietnameseMeaning": "đa dạng sinh học",
+          "image": "🌿",
+          "speechText": "biodiversity"
+        },
+        {
+          "id": "gs-g9-u07-spectacular",
+          "word": "spectacular",
+          "phonetic": "/spɛktˈakjʊlə/",
+          "vietnameseMeaning": "ngoạn mục",
+          "image": "✨",
+          "speechText": "spectacular"
+        },
+        {
+          "id": "gs-g9-u07-conservation",
+          "word": "conservation",
+          "phonetic": "/kˌɒnsəvˈeɪʃən/",
+          "vietnameseMeaning": "sự bảo tồn",
+          "image": "🛡️",
+          "speechText": "conservation"
+        },
+        {
+          "id": "gs-g9-u07-landscape",
+          "word": "landscape",
+          "phonetic": "/lˈandskeɪp/",
+          "vietnameseMeaning": "cảnh quan",
+          "image": "🏔️",
+          "speechText": "landscape"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 7,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-08",
+      "slug": "lop-9-unit-08-tourism",
+      "levelSlug": "lop-9",
+      "title": "Unit 8: Tourism",
+      "bookUnitTitle": "Tourism",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Tourism”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u08-tourist",
+          "word": "tourist",
+          "phonetic": "/tˈʊəɹɪst/",
+          "vietnameseMeaning": "du khách",
+          "image": "🧳",
+          "speechText": "tourist"
+        },
+        {
+          "id": "gs-g9-u08-destination",
+          "word": "destination",
+          "phonetic": "/dˌɛstɪnˈeɪʃən/",
+          "vietnameseMeaning": "điểm đến",
+          "image": "📍",
+          "speechText": "destination"
+        },
+        {
+          "id": "gs-g9-u08-accommodation",
+          "word": "accommodation",
+          "phonetic": "/ɐkˌɒmədˈeɪʃən/",
+          "vietnameseMeaning": "chỗ ở",
+          "image": "🏨",
+          "speechText": "accommodation"
+        },
+        {
+          "id": "gs-g9-u08-itinerary",
+          "word": "itinerary",
+          "phonetic": "/aɪtˈɪnəɹəɹi/",
+          "vietnameseMeaning": "lịch trình",
+          "image": "🗺️",
+          "speechText": "itinerary"
+        },
+        {
+          "id": "gs-g9-u08-souvenir",
+          "word": "souvenir",
+          "phonetic": "/sˌuːvənˈiə/",
+          "vietnameseMeaning": "quà lưu niệm",
+          "image": "🎁",
+          "speechText": "souvenir"
+        },
+        {
+          "id": "gs-g9-u08-sustainable-tourism",
+          "word": "sustainable tourism",
+          "phonetic": "/səstˈeɪnəbəl tˈʊəɹɪzəm/",
+          "vietnameseMeaning": "du lịch bền vững",
+          "image": "🌱",
+          "speechText": "sustainable tourism"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 8,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-09",
+      "slug": "lop-9-unit-09-world-englishes",
+      "levelSlug": "lop-9",
+      "title": "Unit 9: World Englishes",
+      "bookUnitTitle": "World Englishes",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “World Englishes”.",
+      "icon": "🦉",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u09-accent",
+          "word": "accent",
+          "phonetic": "/ˈaksənt/",
+          "vietnameseMeaning": "giọng",
+          "image": "🗣️",
+          "speechText": "accent"
+        },
+        {
+          "id": "gs-g9-u09-dialect",
+          "word": "dialect",
+          "phonetic": "/dˈaɪəlɛkt/",
+          "vietnameseMeaning": "phương ngữ",
+          "image": "💬",
+          "speechText": "dialect"
+        },
+        {
+          "id": "gs-g9-u09-bilingual",
+          "word": "bilingual",
+          "phonetic": "/baɪlˈɪŋɡwəl/",
+          "vietnameseMeaning": "song ngữ",
+          "image": "🌐",
+          "speechText": "bilingual"
+        },
+        {
+          "id": "gs-g9-u09-international-language",
+          "word": "international language",
+          "phonetic": "/ˌɪntənˈaʃənəl lˈaŋɡwɪdʒ/",
+          "vietnameseMeaning": "ngôn ngữ quốc tế",
+          "image": "🌍",
+          "speechText": "international language"
+        },
+        {
+          "id": "gs-g9-u09-variety",
+          "word": "variety",
+          "phonetic": "/vəɹˈaɪəti/",
+          "vietnameseMeaning": "biến thể",
+          "image": "🔤",
+          "speechText": "variety"
+        },
+        {
+          "id": "gs-g9-u09-communicate",
+          "word": "communicate",
+          "phonetic": "/kəmjˈuːnɪkˌeɪt/",
+          "vietnameseMeaning": "giao tiếp",
+          "image": "🤝",
+          "speechText": "communicate"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 9,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-10",
+      "slug": "lop-9-unit-10-planet-earth",
+      "levelSlug": "lop-9",
+      "title": "Unit 10: Planet Earth",
+      "bookUnitTitle": "Planet Earth",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Planet Earth”.",
+      "icon": "💡",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u10-atmosphere",
+          "word": "atmosphere",
+          "phonetic": "/ˈatməsfˌiə/",
+          "vietnameseMeaning": "khí quyển",
+          "image": "🌍",
+          "speechText": "atmosphere"
+        },
+        {
+          "id": "gs-g9-u10-continent",
+          "word": "continent",
+          "phonetic": "/kˈɒntɪnənt/",
+          "vietnameseMeaning": "châu lục",
+          "image": "🗺️",
+          "speechText": "continent"
+        },
+        {
+          "id": "gs-g9-u10-ocean",
+          "word": "ocean",
+          "phonetic": "/ˈəʊʃən/",
+          "vietnameseMeaning": "đại dương",
+          "image": "🌊",
+          "speechText": "ocean"
+        },
+        {
+          "id": "gs-g9-u10-climate",
+          "word": "climate",
+          "phonetic": "/klˈaɪmət/",
+          "vietnameseMeaning": "khí hậu",
+          "image": "🌦️",
+          "speechText": "climate"
+        },
+        {
+          "id": "gs-g9-u10-resource",
+          "word": "resource",
+          "phonetic": "/ɹɪzˈɔːs/",
+          "vietnameseMeaning": "tài nguyên",
+          "image": "⛏️",
+          "speechText": "resource"
+        },
+        {
+          "id": "gs-g9-u10-ecosystem",
+          "word": "ecosystem",
+          "phonetic": "/ˈiːkəʊsˌɪstəm/",
+          "vietnameseMeaning": "hệ sinh thái",
+          "image": "🌿",
+          "speechText": "ecosystem"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 10,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-11",
+      "slug": "lop-9-unit-11-electronic-devices",
+      "levelSlug": "lop-9",
+      "title": "Unit 11: Electronic Devices",
+      "bookUnitTitle": "Electronic Devices",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Electronic Devices”.",
+      "icon": "🌍",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u11-smartphone",
+          "word": "smartphone",
+          "phonetic": "/smˈɑːtfəʊn/",
+          "vietnameseMeaning": "điện thoại thông minh",
+          "image": "📱",
+          "speechText": "smartphone"
+        },
+        {
+          "id": "gs-g9-u11-tablet",
+          "word": "tablet",
+          "phonetic": "/tˈablət/",
+          "vietnameseMeaning": "máy tính bảng",
+          "image": "💻",
+          "speechText": "tablet"
+        },
+        {
+          "id": "gs-g9-u11-charger",
+          "word": "charger",
+          "phonetic": "/tʃˈɑːdʒə/",
+          "vietnameseMeaning": "bộ sạc",
+          "image": "🔌",
+          "speechText": "charger"
+        },
+        {
+          "id": "gs-g9-u11-application",
+          "word": "application",
+          "phonetic": "/ˌaplɪkˈeɪʃən/",
+          "vietnameseMeaning": "ứng dụng",
+          "image": "📲",
+          "speechText": "application"
+        },
+        {
+          "id": "gs-g9-u11-screen",
+          "word": "screen",
+          "phonetic": "/skɹˈiːn/",
+          "vietnameseMeaning": "màn hình",
+          "image": "🖥️",
+          "speechText": "screen"
+        },
+        {
+          "id": "gs-g9-u11-privacy",
+          "word": "privacy",
+          "phonetic": "/pɹˈɪvəsi/",
+          "vietnameseMeaning": "quyền riêng tư",
+          "image": "🔒",
+          "speechText": "privacy"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 11,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-9-unit-12",
+      "slug": "lop-9-unit-12-career-choices",
+      "levelSlug": "lop-9",
+      "title": "Unit 12: Career Choices",
+      "bookUnitTitle": "Career Choices",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Career Choices”.",
+      "icon": "🏆",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g9-u12-career",
+          "word": "career",
+          "phonetic": "/kəɹˈiə/",
+          "vietnameseMeaning": "sự nghiệp",
+          "image": "💼",
+          "speechText": "career"
+        },
+        {
+          "id": "gs-g9-u12-qualification",
+          "word": "qualification",
+          "phonetic": "/kwˌɒlɪfɪkˈeɪʃən/",
+          "vietnameseMeaning": "bằng cấp",
+          "image": "🎓",
+          "speechText": "qualification"
+        },
+        {
+          "id": "gs-g9-u12-skill",
+          "word": "skill",
+          "phonetic": "/skˈɪl/",
+          "vietnameseMeaning": "kỹ năng",
+          "image": "🧠",
+          "speechText": "skill"
+        },
+        {
+          "id": "gs-g9-u12-interview",
+          "word": "interview",
+          "phonetic": "/ˈɪntəvjˌuː/",
+          "vietnameseMeaning": "phỏng vấn",
+          "image": "🗣️",
+          "speechText": "interview"
+        },
+        {
+          "id": "gs-g9-u12-employer",
+          "word": "employer",
+          "phonetic": "/ɛmplˈɔɪə/",
+          "vietnameseMeaning": "nhà tuyển dụng",
+          "image": "🏢",
+          "speechText": "employer"
+        },
+        {
+          "id": "gs-g9-u12-choice",
+          "word": "choice",
+          "phonetic": "/tʃˈɔɪs/",
+          "vietnameseMeaning": "lựa chọn",
+          "image": "✅",
+          "speechText": "choice"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Topic-based sentence patterns",
+        "exampleEnglish": "Young people should balance study and rest.",
+        "exampleVietnamese": "Người trẻ nên cân bằng việc học và nghỉ ngơi.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 9,
+        "unitNumber": 12,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    }
+  ]
+}

@@ -1,0 +1,1511 @@
+{
+  "schemaVersion": 1,
+  "contentId": "global-success-grade-4-starter",
+  "contentVersion": "1.0.0",
+  "levelSlug": "lop-4",
+  "status": "DRAFT_REVIEW",
+  "unitCount": 20,
+  "vocabularyCount": 120,
+  "units": [
+    {
+      "id": "global-success-grade-4-unit-01",
+      "slug": "lop-4-unit-01-my-friends",
+      "levelSlug": "lop-4",
+      "title": "Unit 1: My friends",
+      "bookUnitTitle": "My friends",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My friends”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u01-viet-nam",
+          "word": "Viet Nam",
+          "phonetic": "/vˌiːət nˈam/",
+          "vietnameseMeaning": "Việt Nam",
+          "image": "🇻🇳",
+          "speechText": "Viet Nam"
+        },
+        {
+          "id": "gs-g4-u01-britain",
+          "word": "Britain",
+          "phonetic": "/bɹˈɪtən/",
+          "vietnameseMeaning": "nước Anh",
+          "image": "🇬🇧",
+          "speechText": "Britain"
+        },
+        {
+          "id": "gs-g4-u01-america",
+          "word": "America",
+          "phonetic": "/ɐmˈɛɹɪkə/",
+          "vietnameseMeaning": "nước Mỹ",
+          "image": "🇺🇸",
+          "speechText": "America"
+        },
+        {
+          "id": "gs-g4-u01-australia",
+          "word": "Australia",
+          "phonetic": "/ɒstɹˈeɪliə/",
+          "vietnameseMeaning": "nước Úc",
+          "image": "🇦🇺",
+          "speechText": "Australia"
+        },
+        {
+          "id": "gs-g4-u01-japan",
+          "word": "Japan",
+          "phonetic": "/dʒəpˈan/",
+          "vietnameseMeaning": "Nhật Bản",
+          "image": "🇯🇵",
+          "speechText": "Japan"
+        },
+        {
+          "id": "gs-g4-u01-friend",
+          "word": "friend",
+          "phonetic": "/fɹˈɛnd/",
+          "vietnameseMeaning": "người bạn",
+          "image": "🧒",
+          "speechText": "friend"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 1,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-02",
+      "slug": "lop-4-unit-02-time-and-daily-routines",
+      "levelSlug": "lop-4",
+      "title": "Unit 2: Time and daily routines",
+      "bookUnitTitle": "Time and daily routines",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Time and daily routines”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u02-get-up",
+          "word": "get up",
+          "phonetic": "/ɡɛt ˈʌp/",
+          "vietnameseMeaning": "thức dậy",
+          "image": "⏰",
+          "speechText": "get up"
+        },
+        {
+          "id": "gs-g4-u02-have-breakfast",
+          "word": "have breakfast",
+          "phonetic": "/hav bɹˈɛkfəst/",
+          "vietnameseMeaning": "ăn sáng",
+          "image": "🥣",
+          "speechText": "have breakfast"
+        },
+        {
+          "id": "gs-g4-u02-go-to-school",
+          "word": "go to school",
+          "phonetic": "/ɡˌəʊ tə skˈuːl/",
+          "vietnameseMeaning": "đi học",
+          "image": "🎒",
+          "speechText": "go to school"
+        },
+        {
+          "id": "gs-g4-u02-have-lunch",
+          "word": "have lunch",
+          "phonetic": "/hav lˈʌntʃ/",
+          "vietnameseMeaning": "ăn trưa",
+          "image": "🍱",
+          "speechText": "have lunch"
+        },
+        {
+          "id": "gs-g4-u02-do-homework",
+          "word": "do homework",
+          "phonetic": "/dˈuː hˈəʊmwɜːk/",
+          "vietnameseMeaning": "làm bài tập",
+          "image": "📝",
+          "speechText": "do homework"
+        },
+        {
+          "id": "gs-g4-u02-go-to-bed",
+          "word": "go to bed",
+          "phonetic": "/ɡˌəʊ tə bˈɛd/",
+          "vietnameseMeaning": "đi ngủ",
+          "image": "🛏️",
+          "speechText": "go to bed"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 2,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-03",
+      "slug": "lop-4-unit-03-my-week",
+      "levelSlug": "lop-4",
+      "title": "Unit 3: My week",
+      "bookUnitTitle": "My week",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My week”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u03-monday",
+          "word": "Monday",
+          "phonetic": "/mˈʌndeɪ/",
+          "vietnameseMeaning": "thứ Hai",
+          "image": "📅",
+          "speechText": "Monday"
+        },
+        {
+          "id": "gs-g4-u03-tuesday",
+          "word": "Tuesday",
+          "phonetic": "/tjˈuːzdeɪ/",
+          "vietnameseMeaning": "thứ Ba",
+          "image": "📅",
+          "speechText": "Tuesday"
+        },
+        {
+          "id": "gs-g4-u03-wednesday",
+          "word": "Wednesday",
+          "phonetic": "/wˈɛnzdeɪ/",
+          "vietnameseMeaning": "thứ Tư",
+          "image": "📅",
+          "speechText": "Wednesday"
+        },
+        {
+          "id": "gs-g4-u03-thursday",
+          "word": "Thursday",
+          "phonetic": "/θˈɜːzdeɪ/",
+          "vietnameseMeaning": "thứ Năm",
+          "image": "📅",
+          "speechText": "Thursday"
+        },
+        {
+          "id": "gs-g4-u03-friday",
+          "word": "Friday",
+          "phonetic": "/fɹˈaɪdeɪ/",
+          "vietnameseMeaning": "thứ Sáu",
+          "image": "📅",
+          "speechText": "Friday"
+        },
+        {
+          "id": "gs-g4-u03-weekend",
+          "word": "weekend",
+          "phonetic": "/wiːkˈɛnd/",
+          "vietnameseMeaning": "cuối tuần",
+          "image": "🎉",
+          "speechText": "weekend"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 3,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-04",
+      "slug": "lop-4-unit-04-my-birthday-party",
+      "levelSlug": "lop-4",
+      "title": "Unit 4: My birthday party",
+      "bookUnitTitle": "My birthday party",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My birthday party”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u04-birthday",
+          "word": "birthday",
+          "phonetic": "/bˈɜːθdeɪ/",
+          "vietnameseMeaning": "sinh nhật",
+          "image": "🎂",
+          "speechText": "birthday"
+        },
+        {
+          "id": "gs-g4-u04-cake",
+          "word": "cake",
+          "phonetic": "/kˈeɪk/",
+          "vietnameseMeaning": "bánh ngọt",
+          "image": "🍰",
+          "speechText": "cake"
+        },
+        {
+          "id": "gs-g4-u04-candle",
+          "word": "candle",
+          "phonetic": "/kˈandəl/",
+          "vietnameseMeaning": "nến",
+          "image": "🕯️",
+          "speechText": "candle"
+        },
+        {
+          "id": "gs-g4-u04-gift",
+          "word": "gift",
+          "phonetic": "/ɡˈɪft/",
+          "vietnameseMeaning": "món quà",
+          "image": "🎁",
+          "speechText": "gift"
+        },
+        {
+          "id": "gs-g4-u04-party",
+          "word": "party",
+          "phonetic": "/pˈɑːti/",
+          "vietnameseMeaning": "bữa tiệc",
+          "image": "🎉",
+          "speechText": "party"
+        },
+        {
+          "id": "gs-g4-u04-happy",
+          "word": "happy",
+          "phonetic": "/hˈapi/",
+          "vietnameseMeaning": "vui vẻ",
+          "image": "😊",
+          "speechText": "happy"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 4,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-05",
+      "slug": "lop-4-unit-05-things-we-can-do",
+      "levelSlug": "lop-4",
+      "title": "Unit 5: Things we can do",
+      "bookUnitTitle": "Things we can do",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Things we can do”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u05-swim",
+          "word": "swim",
+          "phonetic": "/swˈɪm/",
+          "vietnameseMeaning": "bơi",
+          "image": "🏊",
+          "speechText": "swim"
+        },
+        {
+          "id": "gs-g4-u05-ride-a-bike",
+          "word": "ride a bike",
+          "phonetic": "/ɹˈaɪd ɐ bˈaɪk/",
+          "vietnameseMeaning": "đạp xe",
+          "image": "🚲",
+          "speechText": "ride a bike"
+        },
+        {
+          "id": "gs-g4-u05-play-chess",
+          "word": "play chess",
+          "phonetic": "/plˈeɪ tʃˈɛs/",
+          "vietnameseMeaning": "chơi cờ",
+          "image": "♟️",
+          "speechText": "play chess"
+        },
+        {
+          "id": "gs-g4-u05-sing",
+          "word": "sing",
+          "phonetic": "/sˈɪŋ/",
+          "vietnameseMeaning": "hát",
+          "image": "🎤",
+          "speechText": "sing"
+        },
+        {
+          "id": "gs-g4-u05-dance",
+          "word": "dance",
+          "phonetic": "/dˈans/",
+          "vietnameseMeaning": "nhảy múa",
+          "image": "💃",
+          "speechText": "dance"
+        },
+        {
+          "id": "gs-g4-u05-draw",
+          "word": "draw",
+          "phonetic": "/dɹˈɔː/",
+          "vietnameseMeaning": "vẽ",
+          "image": "🎨",
+          "speechText": "draw"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 5,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-06",
+      "slug": "lop-4-unit-06-our-school-facilities",
+      "levelSlug": "lop-4",
+      "title": "Unit 6: Our school facilities",
+      "bookUnitTitle": "Our school facilities",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our school facilities”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u06-library",
+          "word": "library",
+          "phonetic": "/lˈaɪbɹəɹi/",
+          "vietnameseMeaning": "thư viện",
+          "image": "📚",
+          "speechText": "library"
+        },
+        {
+          "id": "gs-g4-u06-computer-room",
+          "word": "computer room",
+          "phonetic": "/kəmpjˈuːtə ɹˈuːm/",
+          "vietnameseMeaning": "phòng máy tính",
+          "image": "💻",
+          "speechText": "computer room"
+        },
+        {
+          "id": "gs-g4-u06-music-room",
+          "word": "music room",
+          "phonetic": "/mjˈuːzɪk ɹˈuːm/",
+          "vietnameseMeaning": "phòng âm nhạc",
+          "image": "🎵",
+          "speechText": "music room"
+        },
+        {
+          "id": "gs-g4-u06-gym",
+          "word": "gym",
+          "phonetic": "/dʒˈɪm/",
+          "vietnameseMeaning": "phòng thể chất",
+          "image": "🏋️",
+          "speechText": "gym"
+        },
+        {
+          "id": "gs-g4-u06-playground",
+          "word": "playground",
+          "phonetic": "/plˈeɪɡɹaʊnd/",
+          "vietnameseMeaning": "sân chơi",
+          "image": "🛝",
+          "speechText": "playground"
+        },
+        {
+          "id": "gs-g4-u06-garden",
+          "word": "garden",
+          "phonetic": "/ɡˈɑːdən/",
+          "vietnameseMeaning": "khu vườn",
+          "image": "🌳",
+          "speechText": "garden"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 6,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-07",
+      "slug": "lop-4-unit-07-our-timetables",
+      "levelSlug": "lop-4",
+      "title": "Unit 7: Our timetables",
+      "bookUnitTitle": "Our timetables",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our timetables”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u07-timetable",
+          "word": "timetable",
+          "phonetic": "/tˈaɪmteɪbəl/",
+          "vietnameseMeaning": "thời khóa biểu",
+          "image": "🗓️",
+          "speechText": "timetable"
+        },
+        {
+          "id": "gs-g4-u07-lesson",
+          "word": "lesson",
+          "phonetic": "/lˈɛsən/",
+          "vietnameseMeaning": "tiết học",
+          "image": "📝",
+          "speechText": "lesson"
+        },
+        {
+          "id": "gs-g4-u07-morning",
+          "word": "morning",
+          "phonetic": "/mˈɔːnɪŋ/",
+          "vietnameseMeaning": "buổi sáng",
+          "image": "🌅",
+          "speechText": "morning"
+        },
+        {
+          "id": "gs-g4-u07-afternoon",
+          "word": "afternoon",
+          "phonetic": "/ˌaftənˈuːn/",
+          "vietnameseMeaning": "buổi chiều",
+          "image": "🌇",
+          "speechText": "afternoon"
+        },
+        {
+          "id": "gs-g4-u07-start",
+          "word": "start",
+          "phonetic": "/stˈɑːt/",
+          "vietnameseMeaning": "bắt đầu",
+          "image": "▶️",
+          "speechText": "start"
+        },
+        {
+          "id": "gs-g4-u07-finish",
+          "word": "finish",
+          "phonetic": "/fˈɪnɪʃ/",
+          "vietnameseMeaning": "kết thúc",
+          "image": "🏁",
+          "speechText": "finish"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 7,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-08",
+      "slug": "lop-4-unit-08-my-favourite-subjects",
+      "levelSlug": "lop-4",
+      "title": "Unit 8: My favourite subjects",
+      "bookUnitTitle": "My favourite subjects",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My favourite subjects”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u08-english",
+          "word": "English",
+          "phonetic": "/ˈɪŋɡlɪʃ/",
+          "vietnameseMeaning": "môn Tiếng Anh",
+          "image": "🔤",
+          "speechText": "English"
+        },
+        {
+          "id": "gs-g4-u08-maths",
+          "word": "Maths",
+          "phonetic": "/mˈaθs/",
+          "vietnameseMeaning": "môn Toán",
+          "image": "➗",
+          "speechText": "Maths"
+        },
+        {
+          "id": "gs-g4-u08-science",
+          "word": "Science",
+          "phonetic": "/sˈaɪəns/",
+          "vietnameseMeaning": "môn Khoa học",
+          "image": "🔬",
+          "speechText": "Science"
+        },
+        {
+          "id": "gs-g4-u08-music",
+          "word": "Music",
+          "phonetic": "/mjˈuːzɪk/",
+          "vietnameseMeaning": "môn Âm nhạc",
+          "image": "🎵",
+          "speechText": "Music"
+        },
+        {
+          "id": "gs-g4-u08-art",
+          "word": "Art",
+          "phonetic": "/ˈɑːt/",
+          "vietnameseMeaning": "môn Mỹ thuật",
+          "image": "🎨",
+          "speechText": "Art"
+        },
+        {
+          "id": "gs-g4-u08-pe",
+          "word": "PE",
+          "phonetic": "/pˈiː/",
+          "vietnameseMeaning": "môn Thể dục",
+          "image": "🏃",
+          "speechText": "PE"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 8,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-09",
+      "slug": "lop-4-unit-09-our-sports-day",
+      "levelSlug": "lop-4",
+      "title": "Unit 9: Our sports day",
+      "bookUnitTitle": "Our sports day",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our sports day”.",
+      "icon": "🦉",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u09-race",
+          "word": "race",
+          "phonetic": "/ɹˈeɪs/",
+          "vietnameseMeaning": "cuộc đua",
+          "image": "🏁",
+          "speechText": "race"
+        },
+        {
+          "id": "gs-g4-u09-football",
+          "word": "football",
+          "phonetic": "/fˈʊtbɔːl/",
+          "vietnameseMeaning": "bóng đá",
+          "image": "⚽",
+          "speechText": "football"
+        },
+        {
+          "id": "gs-g4-u09-badminton",
+          "word": "badminton",
+          "phonetic": "/bˈadmɪntən/",
+          "vietnameseMeaning": "cầu lông",
+          "image": "🏸",
+          "speechText": "badminton"
+        },
+        {
+          "id": "gs-g4-u09-team",
+          "word": "team",
+          "phonetic": "/tˈiːm/",
+          "vietnameseMeaning": "đội",
+          "image": "👥",
+          "speechText": "team"
+        },
+        {
+          "id": "gs-g4-u09-win",
+          "word": "win",
+          "phonetic": "/wˈɪn/",
+          "vietnameseMeaning": "chiến thắng",
+          "image": "🏆",
+          "speechText": "win"
+        },
+        {
+          "id": "gs-g4-u09-cheer",
+          "word": "cheer",
+          "phonetic": "/tʃˈiə/",
+          "vietnameseMeaning": "cổ vũ",
+          "image": "📣",
+          "speechText": "cheer"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 9,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-10",
+      "slug": "lop-4-unit-10-our-summer-holiday",
+      "levelSlug": "lop-4",
+      "title": "Unit 10: Our summer holiday",
+      "bookUnitTitle": "Our summer holiday",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our summer holiday”.",
+      "icon": "💡",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u10-beach",
+          "word": "beach",
+          "phonetic": "/bˈiːtʃ/",
+          "vietnameseMeaning": "bãi biển",
+          "image": "🏖️",
+          "speechText": "beach"
+        },
+        {
+          "id": "gs-g4-u10-hotel",
+          "word": "hotel",
+          "phonetic": "/həʊtˈɛl/",
+          "vietnameseMeaning": "khách sạn",
+          "image": "🏨",
+          "speechText": "hotel"
+        },
+        {
+          "id": "gs-g4-u10-travel",
+          "word": "travel",
+          "phonetic": "/tɹˈavəl/",
+          "vietnameseMeaning": "du lịch",
+          "image": "🧳",
+          "speechText": "travel"
+        },
+        {
+          "id": "gs-g4-u10-swim",
+          "word": "swim",
+          "phonetic": "/swˈɪm/",
+          "vietnameseMeaning": "bơi",
+          "image": "🏊",
+          "speechText": "swim"
+        },
+        {
+          "id": "gs-g4-u10-visit",
+          "word": "visit",
+          "phonetic": "/vˈɪzɪt/",
+          "vietnameseMeaning": "thăm",
+          "image": "📍",
+          "speechText": "visit"
+        },
+        {
+          "id": "gs-g4-u10-holiday",
+          "word": "holiday",
+          "phonetic": "/hˈɒlɪdˌeɪ/",
+          "vietnameseMeaning": "kỳ nghỉ",
+          "image": "🌴",
+          "speechText": "holiday"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 10,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-11",
+      "slug": "lop-4-unit-11-my-home",
+      "levelSlug": "lop-4",
+      "title": "Unit 11: My home",
+      "bookUnitTitle": "My home",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My home”.",
+      "icon": "🌍",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u11-living-room",
+          "word": "living room",
+          "phonetic": "/lˈɪvɪŋ ɹˈuːm/",
+          "vietnameseMeaning": "phòng khách",
+          "image": "🛋️",
+          "speechText": "living room"
+        },
+        {
+          "id": "gs-g4-u11-bedroom",
+          "word": "bedroom",
+          "phonetic": "/bˈɛdɹuːm/",
+          "vietnameseMeaning": "phòng ngủ",
+          "image": "🛏️",
+          "speechText": "bedroom"
+        },
+        {
+          "id": "gs-g4-u11-kitchen",
+          "word": "kitchen",
+          "phonetic": "/kˈɪtʃən/",
+          "vietnameseMeaning": "nhà bếp",
+          "image": "🍳",
+          "speechText": "kitchen"
+        },
+        {
+          "id": "gs-g4-u11-bathroom",
+          "word": "bathroom",
+          "phonetic": "/bˈaθɹuːm/",
+          "vietnameseMeaning": "phòng tắm",
+          "image": "🛁",
+          "speechText": "bathroom"
+        },
+        {
+          "id": "gs-g4-u11-garden",
+          "word": "garden",
+          "phonetic": "/ɡˈɑːdən/",
+          "vietnameseMeaning": "khu vườn",
+          "image": "🌳",
+          "speechText": "garden"
+        },
+        {
+          "id": "gs-g4-u11-house",
+          "word": "house",
+          "phonetic": "/hˈaʊs/",
+          "vietnameseMeaning": "ngôi nhà",
+          "image": "🏠",
+          "speechText": "house"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 11,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-12",
+      "slug": "lop-4-unit-12-jobs",
+      "levelSlug": "lop-4",
+      "title": "Unit 12: Jobs",
+      "bookUnitTitle": "Jobs",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Jobs”.",
+      "icon": "🏆",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u12-teacher",
+          "word": "teacher",
+          "phonetic": "/tˈiːtʃə/",
+          "vietnameseMeaning": "giáo viên",
+          "image": "👩‍🏫",
+          "speechText": "teacher"
+        },
+        {
+          "id": "gs-g4-u12-doctor",
+          "word": "doctor",
+          "phonetic": "/dˈɒktə/",
+          "vietnameseMeaning": "bác sĩ",
+          "image": "👩‍⚕️",
+          "speechText": "doctor"
+        },
+        {
+          "id": "gs-g4-u12-farmer",
+          "word": "farmer",
+          "phonetic": "/fˈɑːmə/",
+          "vietnameseMeaning": "nông dân",
+          "image": "🧑‍🌾",
+          "speechText": "farmer"
+        },
+        {
+          "id": "gs-g4-u12-driver",
+          "word": "driver",
+          "phonetic": "/dɹˈaɪvə/",
+          "vietnameseMeaning": "tài xế",
+          "image": "🧑‍✈️",
+          "speechText": "driver"
+        },
+        {
+          "id": "gs-g4-u12-cook",
+          "word": "cook",
+          "phonetic": "/kˈʊk/",
+          "vietnameseMeaning": "đầu bếp",
+          "image": "👩‍🍳",
+          "speechText": "cook"
+        },
+        {
+          "id": "gs-g4-u12-worker",
+          "word": "worker",
+          "phonetic": "/wˈɜːkə/",
+          "vietnameseMeaning": "công nhân",
+          "image": "👷",
+          "speechText": "worker"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 12,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-13",
+      "slug": "lop-4-unit-13-appearance",
+      "levelSlug": "lop-4",
+      "title": "Unit 13: Appearance",
+      "bookUnitTitle": "Appearance",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Appearance”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u13-tall",
+          "word": "tall",
+          "phonetic": "/tˈɔːl/",
+          "vietnameseMeaning": "cao",
+          "image": "📏",
+          "speechText": "tall"
+        },
+        {
+          "id": "gs-g4-u13-short",
+          "word": "short",
+          "phonetic": "/ʃˈɔːt/",
+          "vietnameseMeaning": "thấp",
+          "image": "↕️",
+          "speechText": "short"
+        },
+        {
+          "id": "gs-g4-u13-slim",
+          "word": "slim",
+          "phonetic": "/slˈɪm/",
+          "vietnameseMeaning": "thon gọn",
+          "image": "🧍",
+          "speechText": "slim"
+        },
+        {
+          "id": "gs-g4-u13-strong",
+          "word": "strong",
+          "phonetic": "/stɹˈɒŋ/",
+          "vietnameseMeaning": "khỏe mạnh",
+          "image": "💪",
+          "speechText": "strong"
+        },
+        {
+          "id": "gs-g4-u13-hair",
+          "word": "hair",
+          "phonetic": "/hˈeə/",
+          "vietnameseMeaning": "tóc",
+          "image": "💇",
+          "speechText": "hair"
+        },
+        {
+          "id": "gs-g4-u13-face",
+          "word": "face",
+          "phonetic": "/fˈeɪs/",
+          "vietnameseMeaning": "khuôn mặt",
+          "image": "🙂",
+          "speechText": "face"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 13,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-14",
+      "slug": "lop-4-unit-14-daily-activities",
+      "levelSlug": "lop-4",
+      "title": "Unit 14: Daily activities",
+      "bookUnitTitle": "Daily activities",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Daily activities”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u14-wake-up",
+          "word": "wake up",
+          "phonetic": "/wˈeɪk ˈʌp/",
+          "vietnameseMeaning": "thức dậy",
+          "image": "⏰",
+          "speechText": "wake up"
+        },
+        {
+          "id": "gs-g4-u14-brush-teeth",
+          "word": "brush teeth",
+          "phonetic": "/bɹˈʌʃ tˈiːθ/",
+          "vietnameseMeaning": "đánh răng",
+          "image": "🪥",
+          "speechText": "brush teeth"
+        },
+        {
+          "id": "gs-g4-u14-study",
+          "word": "study",
+          "phonetic": "/stˈʌdi/",
+          "vietnameseMeaning": "học",
+          "image": "📚",
+          "speechText": "study"
+        },
+        {
+          "id": "gs-g4-u14-play",
+          "word": "play",
+          "phonetic": "/plˈeɪ/",
+          "vietnameseMeaning": "chơi",
+          "image": "🎈",
+          "speechText": "play"
+        },
+        {
+          "id": "gs-g4-u14-help",
+          "word": "help",
+          "phonetic": "/hˈɛlp/",
+          "vietnameseMeaning": "giúp đỡ",
+          "image": "🤝",
+          "speechText": "help"
+        },
+        {
+          "id": "gs-g4-u14-sleep",
+          "word": "sleep",
+          "phonetic": "/slˈiːp/",
+          "vietnameseMeaning": "ngủ",
+          "image": "😴",
+          "speechText": "sleep"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 14,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-15",
+      "slug": "lop-4-unit-15-my-family-s-weekends",
+      "levelSlug": "lop-4",
+      "title": "Unit 15: My family's weekends",
+      "bookUnitTitle": "My family's weekends",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My family's weekends”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u15-visit-grandparents",
+          "word": "visit grandparents",
+          "phonetic": "/vˈɪzɪt ɡɹˈandpeəɹənts/",
+          "vietnameseMeaning": "thăm ông bà",
+          "image": "👵",
+          "speechText": "visit grandparents"
+        },
+        {
+          "id": "gs-g4-u15-go-shopping",
+          "word": "go shopping",
+          "phonetic": "/ɡˌəʊ ʃˈɒpɪŋ/",
+          "vietnameseMeaning": "đi mua sắm",
+          "image": "🛍️",
+          "speechText": "go shopping"
+        },
+        {
+          "id": "gs-g4-u15-watch-tv",
+          "word": "watch TV",
+          "phonetic": "/wˈɒtʃ tˌiːvˈiː/",
+          "vietnameseMeaning": "xem TV",
+          "image": "📺",
+          "speechText": "watch TV"
+        },
+        {
+          "id": "gs-g4-u15-cook-together",
+          "word": "cook together",
+          "phonetic": "/kˈʊk təɡˈɛðə/",
+          "vietnameseMeaning": "cùng nấu ăn",
+          "image": "🍳",
+          "speechText": "cook together"
+        },
+        {
+          "id": "gs-g4-u15-play-games",
+          "word": "play games",
+          "phonetic": "/plˈeɪ ɡˈeɪmz/",
+          "vietnameseMeaning": "chơi trò chơi",
+          "image": "🎲",
+          "speechText": "play games"
+        },
+        {
+          "id": "gs-g4-u15-relax",
+          "word": "relax",
+          "phonetic": "/ɹɪlˈaks/",
+          "vietnameseMeaning": "thư giãn",
+          "image": "🧘",
+          "speechText": "relax"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 15,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-16",
+      "slug": "lop-4-unit-16-weather",
+      "levelSlug": "lop-4",
+      "title": "Unit 16: Weather",
+      "bookUnitTitle": "Weather",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Weather”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u16-sunny",
+          "word": "sunny",
+          "phonetic": "/sˈʌni/",
+          "vietnameseMeaning": "có nắng",
+          "image": "☀️",
+          "speechText": "sunny"
+        },
+        {
+          "id": "gs-g4-u16-rainy",
+          "word": "rainy",
+          "phonetic": "/ɹˈeɪni/",
+          "vietnameseMeaning": "có mưa",
+          "image": "🌧️",
+          "speechText": "rainy"
+        },
+        {
+          "id": "gs-g4-u16-windy",
+          "word": "windy",
+          "phonetic": "/wˈɪndi/",
+          "vietnameseMeaning": "có gió",
+          "image": "🌬️",
+          "speechText": "windy"
+        },
+        {
+          "id": "gs-g4-u16-cloudy",
+          "word": "cloudy",
+          "phonetic": "/klˈaʊdi/",
+          "vietnameseMeaning": "nhiều mây",
+          "image": "☁️",
+          "speechText": "cloudy"
+        },
+        {
+          "id": "gs-g4-u16-hot",
+          "word": "hot",
+          "phonetic": "/hˈɒt/",
+          "vietnameseMeaning": "nóng",
+          "image": "🔥",
+          "speechText": "hot"
+        },
+        {
+          "id": "gs-g4-u16-cold",
+          "word": "cold",
+          "phonetic": "/kˈəʊld/",
+          "vietnameseMeaning": "lạnh",
+          "image": "❄️",
+          "speechText": "cold"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 16,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-17",
+      "slug": "lop-4-unit-17-in-the-city",
+      "levelSlug": "lop-4",
+      "title": "Unit 17: In the city",
+      "bookUnitTitle": "In the city",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In the city”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u17-hospital",
+          "word": "hospital",
+          "phonetic": "/hˈɒspɪtəl/",
+          "vietnameseMeaning": "bệnh viện",
+          "image": "🏥",
+          "speechText": "hospital"
+        },
+        {
+          "id": "gs-g4-u17-cinema",
+          "word": "cinema",
+          "phonetic": "/sˈɪnəmə/",
+          "vietnameseMeaning": "rạp chiếu phim",
+          "image": "🎬",
+          "speechText": "cinema"
+        },
+        {
+          "id": "gs-g4-u17-museum",
+          "word": "museum",
+          "phonetic": "/mjuːzˈiəm/",
+          "vietnameseMeaning": "bảo tàng",
+          "image": "🏛️",
+          "speechText": "museum"
+        },
+        {
+          "id": "gs-g4-u17-park",
+          "word": "park",
+          "phonetic": "/pˈɑːk/",
+          "vietnameseMeaning": "công viên",
+          "image": "🌳",
+          "speechText": "park"
+        },
+        {
+          "id": "gs-g4-u17-market",
+          "word": "market",
+          "phonetic": "/mˈɑːkɪt/",
+          "vietnameseMeaning": "chợ",
+          "image": "🛒",
+          "speechText": "market"
+        },
+        {
+          "id": "gs-g4-u17-station",
+          "word": "station",
+          "phonetic": "/stˈeɪʃən/",
+          "vietnameseMeaning": "nhà ga",
+          "image": "🚉",
+          "speechText": "station"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 17,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-18",
+      "slug": "lop-4-unit-18-at-the-shopping-centre",
+      "levelSlug": "lop-4",
+      "title": "Unit 18: At the shopping centre",
+      "bookUnitTitle": "At the shopping centre",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At the shopping centre”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u18-shop",
+          "word": "shop",
+          "phonetic": "/ʃˈɒp/",
+          "vietnameseMeaning": "cửa hàng",
+          "image": "🏪",
+          "speechText": "shop"
+        },
+        {
+          "id": "gs-g4-u18-lift",
+          "word": "lift",
+          "phonetic": "/lˈɪft/",
+          "vietnameseMeaning": "thang máy",
+          "image": "🛗",
+          "speechText": "lift"
+        },
+        {
+          "id": "gs-g4-u18-floor",
+          "word": "floor",
+          "phonetic": "/flˈɔː/",
+          "vietnameseMeaning": "tầng",
+          "image": "🏢",
+          "speechText": "floor"
+        },
+        {
+          "id": "gs-g4-u18-buy",
+          "word": "buy",
+          "phonetic": "/bˈaɪ/",
+          "vietnameseMeaning": "mua",
+          "image": "🛒",
+          "speechText": "buy"
+        },
+        {
+          "id": "gs-g4-u18-price",
+          "word": "price",
+          "phonetic": "/pɹˈaɪs/",
+          "vietnameseMeaning": "giá tiền",
+          "image": "🏷️",
+          "speechText": "price"
+        },
+        {
+          "id": "gs-g4-u18-customer",
+          "word": "customer",
+          "phonetic": "/kˈʌstəmə/",
+          "vietnameseMeaning": "khách hàng",
+          "image": "🧑",
+          "speechText": "customer"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 18,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-19",
+      "slug": "lop-4-unit-19-the-animal-world",
+      "levelSlug": "lop-4",
+      "title": "Unit 19: The animal world",
+      "bookUnitTitle": "The animal world",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “The animal world”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u19-elephant",
+          "word": "elephant",
+          "phonetic": "/ˈɛlɪfənt/",
+          "vietnameseMeaning": "voi",
+          "image": "🐘",
+          "speechText": "elephant"
+        },
+        {
+          "id": "gs-g4-u19-tiger",
+          "word": "tiger",
+          "phonetic": "/tˈaɪɡə/",
+          "vietnameseMeaning": "hổ",
+          "image": "🐯",
+          "speechText": "tiger"
+        },
+        {
+          "id": "gs-g4-u19-monkey",
+          "word": "monkey",
+          "phonetic": "/mˈʌnki/",
+          "vietnameseMeaning": "khỉ",
+          "image": "🐒",
+          "speechText": "monkey"
+        },
+        {
+          "id": "gs-g4-u19-crocodile",
+          "word": "crocodile",
+          "phonetic": "/kɹˈɒkədˌaɪl/",
+          "vietnameseMeaning": "cá sấu",
+          "image": "🐊",
+          "speechText": "crocodile"
+        },
+        {
+          "id": "gs-g4-u19-kangaroo",
+          "word": "kangaroo",
+          "phonetic": "/kˈaŋɡɐɹˌuː/",
+          "vietnameseMeaning": "chuột túi",
+          "image": "🦘",
+          "speechText": "kangaroo"
+        },
+        {
+          "id": "gs-g4-u19-wild",
+          "word": "wild",
+          "phonetic": "/wˈaɪld/",
+          "vietnameseMeaning": "hoang dã",
+          "image": "🌿",
+          "speechText": "wild"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 19,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-4-unit-20",
+      "slug": "lop-4-unit-20-at-summer-camp",
+      "levelSlug": "lop-4",
+      "title": "Unit 20: At summer camp",
+      "bookUnitTitle": "At summer camp",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “At summer camp”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g4-u20-camp",
+          "word": "camp",
+          "phonetic": "/kˈamp/",
+          "vietnameseMeaning": "trại hè",
+          "image": "🏕️",
+          "speechText": "camp"
+        },
+        {
+          "id": "gs-g4-u20-tent",
+          "word": "tent",
+          "phonetic": "/tˈɛnt/",
+          "vietnameseMeaning": "lều",
+          "image": "⛺",
+          "speechText": "tent"
+        },
+        {
+          "id": "gs-g4-u20-team",
+          "word": "team",
+          "phonetic": "/tˈiːm/",
+          "vietnameseMeaning": "đội",
+          "image": "👥",
+          "speechText": "team"
+        },
+        {
+          "id": "gs-g4-u20-game",
+          "word": "game",
+          "phonetic": "/ɡˈeɪm/",
+          "vietnameseMeaning": "trò chơi",
+          "image": "🎲",
+          "speechText": "game"
+        },
+        {
+          "id": "gs-g4-u20-sing",
+          "word": "sing",
+          "phonetic": "/sˈɪŋ/",
+          "vietnameseMeaning": "hát",
+          "image": "🎤",
+          "speechText": "sing"
+        },
+        {
+          "id": "gs-g4-u20-campfire",
+          "word": "campfire",
+          "phonetic": "/kˈampfaɪə/",
+          "vietnameseMeaning": "lửa trại",
+          "image": "🔥",
+          "speechText": "campfire"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu hỏi đáp",
+        "pattern": "What do you ...? – I ...",
+        "exampleEnglish": "What do you do on Sunday? – I play football.",
+        "exampleVietnamese": "Bạn làm gì vào Chủ nhật? – Tôi chơi bóng đá.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 4,
+        "unitNumber": 20,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    }
+  ]
+}

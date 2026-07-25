@@ -1,0 +1,911 @@
+{
+  "schemaVersion": 1,
+  "contentId": "global-success-grade-7-starter",
+  "contentVersion": "1.0.0",
+  "levelSlug": "lop-7",
+  "status": "DRAFT_REVIEW",
+  "unitCount": 12,
+  "vocabularyCount": 72,
+  "units": [
+    {
+      "id": "global-success-grade-7-unit-01",
+      "slug": "lop-7-unit-01-hobbies",
+      "levelSlug": "lop-7",
+      "title": "Unit 1: Hobbies",
+      "bookUnitTitle": "Hobbies",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Hobbies”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u01-gardening",
+          "word": "gardening",
+          "phonetic": "/ɡˈɑːdənɪŋ/",
+          "vietnameseMeaning": "làm vườn",
+          "image": "🌱",
+          "speechText": "gardening"
+        },
+        {
+          "id": "gs-g7-u01-horse-riding",
+          "word": "horse riding",
+          "phonetic": "/hˈɔːs ɹˈaɪdɪŋ/",
+          "vietnameseMeaning": "cưỡi ngựa",
+          "image": "🐎",
+          "speechText": "horse riding"
+        },
+        {
+          "id": "gs-g7-u01-collect-stamps",
+          "word": "collect stamps",
+          "phonetic": "/kəlˈɛkt stˈamps/",
+          "vietnameseMeaning": "sưu tầm tem",
+          "image": "📮",
+          "speechText": "collect stamps"
+        },
+        {
+          "id": "gs-g7-u01-build-models",
+          "word": "build models",
+          "phonetic": "/bˈɪld mˈɒdəlz/",
+          "vietnameseMeaning": "làm mô hình",
+          "image": "🧩",
+          "speechText": "build models"
+        },
+        {
+          "id": "gs-g7-u01-photography",
+          "word": "photography",
+          "phonetic": "/fətˈɒɡɹəfi/",
+          "vietnameseMeaning": "nhiếp ảnh",
+          "image": "📷",
+          "speechText": "photography"
+        },
+        {
+          "id": "gs-g7-u01-hobby",
+          "word": "hobby",
+          "phonetic": "/hˈɒbi/",
+          "vietnameseMeaning": "sở thích",
+          "image": "⭐",
+          "speechText": "hobby"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 1,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-02",
+      "slug": "lop-7-unit-02-healthy-living",
+      "levelSlug": "lop-7",
+      "title": "Unit 2: Healthy Living",
+      "bookUnitTitle": "Healthy Living",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Healthy Living”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u02-sunburn",
+          "word": "sunburn",
+          "phonetic": "/sˈʌnbɜːn/",
+          "vietnameseMeaning": "cháy nắng",
+          "image": "☀️",
+          "speechText": "sunburn"
+        },
+        {
+          "id": "gs-g7-u02-obesity",
+          "word": "obesity",
+          "phonetic": "/əʊbˈiːsəti/",
+          "vietnameseMeaning": "béo phì",
+          "image": "⚖️",
+          "speechText": "obesity"
+        },
+        {
+          "id": "gs-g7-u02-diet",
+          "word": "diet",
+          "phonetic": "/dˈaɪət/",
+          "vietnameseMeaning": "chế độ ăn",
+          "image": "🥗",
+          "speechText": "diet"
+        },
+        {
+          "id": "gs-g7-u02-exercise",
+          "word": "exercise",
+          "phonetic": "/ˈɛksəsˌaɪz/",
+          "vietnameseMeaning": "tập thể dục",
+          "image": "🏃",
+          "speechText": "exercise"
+        },
+        {
+          "id": "gs-g7-u02-balanced",
+          "word": "balanced",
+          "phonetic": "/bˈalənst/",
+          "vietnameseMeaning": "cân bằng",
+          "image": "⚖️",
+          "speechText": "balanced"
+        },
+        {
+          "id": "gs-g7-u02-habit",
+          "word": "habit",
+          "phonetic": "/hˈabɪt/",
+          "vietnameseMeaning": "thói quen",
+          "image": "🔁",
+          "speechText": "habit"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 2,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-03",
+      "slug": "lop-7-unit-03-community-service",
+      "levelSlug": "lop-7",
+      "title": "Unit 3: Community Service",
+      "bookUnitTitle": "Community Service",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Community Service”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u03-volunteer",
+          "word": "volunteer",
+          "phonetic": "/vˌɒləntˈiə/",
+          "vietnameseMeaning": "tình nguyện viên",
+          "image": "🙋",
+          "speechText": "volunteer"
+        },
+        {
+          "id": "gs-g7-u03-donate",
+          "word": "donate",
+          "phonetic": "/dəʊnˈeɪt/",
+          "vietnameseMeaning": "quyên góp",
+          "image": "🎁",
+          "speechText": "donate"
+        },
+        {
+          "id": "gs-g7-u03-homeless",
+          "word": "homeless",
+          "phonetic": "/hˈəʊmləs/",
+          "vietnameseMeaning": "vô gia cư",
+          "image": "🏠",
+          "speechText": "homeless"
+        },
+        {
+          "id": "gs-g7-u03-elderly",
+          "word": "elderly",
+          "phonetic": "/ˈɛldəli/",
+          "vietnameseMeaning": "người cao tuổi",
+          "image": "👵",
+          "speechText": "elderly"
+        },
+        {
+          "id": "gs-g7-u03-community",
+          "word": "community",
+          "phonetic": "/kəmjˈuːnɪti/",
+          "vietnameseMeaning": "cộng đồng",
+          "image": "🏘️",
+          "speechText": "community"
+        },
+        {
+          "id": "gs-g7-u03-support",
+          "word": "support",
+          "phonetic": "/səpˈɔːt/",
+          "vietnameseMeaning": "hỗ trợ",
+          "image": "🤝",
+          "speechText": "support"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 3,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-04",
+      "slug": "lop-7-unit-04-music-and-arts",
+      "levelSlug": "lop-7",
+      "title": "Unit 4: Music and Arts",
+      "bookUnitTitle": "Music and Arts",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Music and Arts”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u04-composer",
+          "word": "composer",
+          "phonetic": "/kəmpˈəʊzə/",
+          "vietnameseMeaning": "nhà soạn nhạc",
+          "image": "🎼",
+          "speechText": "composer"
+        },
+        {
+          "id": "gs-g7-u04-musician",
+          "word": "musician",
+          "phonetic": "/mjuːzˈɪʃən/",
+          "vietnameseMeaning": "nhạc công",
+          "image": "🎸",
+          "speechText": "musician"
+        },
+        {
+          "id": "gs-g7-u04-painting",
+          "word": "painting",
+          "phonetic": "/pˈeɪntɪŋ/",
+          "vietnameseMeaning": "tranh vẽ",
+          "image": "🖼️",
+          "speechText": "painting"
+        },
+        {
+          "id": "gs-g7-u04-exhibition",
+          "word": "exhibition",
+          "phonetic": "/ɛksɪbˈɪʃən/",
+          "vietnameseMeaning": "triển lãm",
+          "image": "🏛️",
+          "speechText": "exhibition"
+        },
+        {
+          "id": "gs-g7-u04-performance",
+          "word": "performance",
+          "phonetic": "/pəfˈɔːməns/",
+          "vietnameseMeaning": "buổi biểu diễn",
+          "image": "🎭",
+          "speechText": "performance"
+        },
+        {
+          "id": "gs-g7-u04-instrument",
+          "word": "instrument",
+          "phonetic": "/ˈɪnstɹəmənt/",
+          "vietnameseMeaning": "nhạc cụ",
+          "image": "🎻",
+          "speechText": "instrument"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 4,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-05",
+      "slug": "lop-7-unit-05-food-and-drink",
+      "levelSlug": "lop-7",
+      "title": "Unit 5: Food and Drink",
+      "bookUnitTitle": "Food and Drink",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Food and Drink”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u05-ingredient",
+          "word": "ingredient",
+          "phonetic": "/ɪnɡɹˈiːdiənt/",
+          "vietnameseMeaning": "nguyên liệu",
+          "image": "🥕",
+          "speechText": "ingredient"
+        },
+        {
+          "id": "gs-g7-u05-recipe",
+          "word": "recipe",
+          "phonetic": "/ɹˈɛsɪpˌiː/",
+          "vietnameseMeaning": "công thức nấu ăn",
+          "image": "📋",
+          "speechText": "recipe"
+        },
+        {
+          "id": "gs-g7-u05-delicious",
+          "word": "delicious",
+          "phonetic": "/dɪlˈɪʃəs/",
+          "vietnameseMeaning": "ngon",
+          "image": "😋",
+          "speechText": "delicious"
+        },
+        {
+          "id": "gs-g7-u05-bitter",
+          "word": "bitter",
+          "phonetic": "/bˈɪtə/",
+          "vietnameseMeaning": "đắng",
+          "image": "☕",
+          "speechText": "bitter"
+        },
+        {
+          "id": "gs-g7-u05-sweet",
+          "word": "sweet",
+          "phonetic": "/swˈiːt/",
+          "vietnameseMeaning": "ngọt",
+          "image": "🍬",
+          "speechText": "sweet"
+        },
+        {
+          "id": "gs-g7-u05-dish",
+          "word": "dish",
+          "phonetic": "/dˈɪʃ/",
+          "vietnameseMeaning": "món ăn",
+          "image": "🍲",
+          "speechText": "dish"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 5,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-06",
+      "slug": "lop-7-unit-06-a-visit-to-a-school",
+      "levelSlug": "lop-7",
+      "title": "Unit 6: A Visit to a School",
+      "bookUnitTitle": "A Visit to a School",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “A Visit to a School”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u06-secondary-school",
+          "word": "secondary school",
+          "phonetic": "/sˈɛkəndəɹi skˈuːl/",
+          "vietnameseMeaning": "trường THCS",
+          "image": "🏫",
+          "speechText": "secondary school"
+        },
+        {
+          "id": "gs-g7-u06-laboratory",
+          "word": "laboratory",
+          "phonetic": "/lɐbˈɒɹətɹi/",
+          "vietnameseMeaning": "phòng thí nghiệm",
+          "image": "🧪",
+          "speechText": "laboratory"
+        },
+        {
+          "id": "gs-g7-u06-facility",
+          "word": "facility",
+          "phonetic": "/fəsˈɪlɪti/",
+          "vietnameseMeaning": "cơ sở vật chất",
+          "image": "🏢",
+          "speechText": "facility"
+        },
+        {
+          "id": "gs-g7-u06-uniform",
+          "word": "uniform",
+          "phonetic": "/jˈuːnɪfˌɔːm/",
+          "vietnameseMeaning": "đồng phục",
+          "image": "👔",
+          "speechText": "uniform"
+        },
+        {
+          "id": "gs-g7-u06-exchange-student",
+          "word": "exchange student",
+          "phonetic": "/ɛkstʃˈeɪndʒ stjˈuːdənt/",
+          "vietnameseMeaning": "học sinh trao đổi",
+          "image": "🌍",
+          "speechText": "exchange student"
+        },
+        {
+          "id": "gs-g7-u06-visit",
+          "word": "visit",
+          "phonetic": "/vˈɪzɪt/",
+          "vietnameseMeaning": "chuyến thăm",
+          "image": "🚌",
+          "speechText": "visit"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 6,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-07",
+      "slug": "lop-7-unit-07-traffic",
+      "levelSlug": "lop-7",
+      "title": "Unit 7: Traffic",
+      "bookUnitTitle": "Traffic",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Traffic”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u07-vehicle",
+          "word": "vehicle",
+          "phonetic": "/vˈiəkəl/",
+          "vietnameseMeaning": "phương tiện",
+          "image": "🚗",
+          "speechText": "vehicle"
+        },
+        {
+          "id": "gs-g7-u07-helmet",
+          "word": "helmet",
+          "phonetic": "/hˈɛlmɪt/",
+          "vietnameseMeaning": "mũ bảo hiểm",
+          "image": "⛑️",
+          "speechText": "helmet"
+        },
+        {
+          "id": "gs-g7-u07-pavement",
+          "word": "pavement",
+          "phonetic": "/pˈeɪvmənt/",
+          "vietnameseMeaning": "vỉa hè",
+          "image": "🚶",
+          "speechText": "pavement"
+        },
+        {
+          "id": "gs-g7-u07-traffic-jam",
+          "word": "traffic jam",
+          "phonetic": "/tɹˈafɪk dʒˈam/",
+          "vietnameseMeaning": "tắc đường",
+          "image": "🚗",
+          "speechText": "traffic jam"
+        },
+        {
+          "id": "gs-g7-u07-crossing",
+          "word": "crossing",
+          "phonetic": "/kɹˈɒsɪŋ/",
+          "vietnameseMeaning": "vạch qua đường",
+          "image": "🚸",
+          "speechText": "crossing"
+        },
+        {
+          "id": "gs-g7-u07-safe",
+          "word": "safe",
+          "phonetic": "/sˈeɪf/",
+          "vietnameseMeaning": "an toàn",
+          "image": "✅",
+          "speechText": "safe"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 7,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-08",
+      "slug": "lop-7-unit-08-films",
+      "levelSlug": "lop-7",
+      "title": "Unit 8: Films",
+      "bookUnitTitle": "Films",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Films”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u08-director",
+          "word": "director",
+          "phonetic": "/daɪɹˈɛktə/",
+          "vietnameseMeaning": "đạo diễn",
+          "image": "🎬",
+          "speechText": "director"
+        },
+        {
+          "id": "gs-g7-u08-actor",
+          "word": "actor",
+          "phonetic": "/ˈaktə/",
+          "vietnameseMeaning": "diễn viên nam",
+          "image": "🎭",
+          "speechText": "actor"
+        },
+        {
+          "id": "gs-g7-u08-actress",
+          "word": "actress",
+          "phonetic": "/ˈaktɹəs/",
+          "vietnameseMeaning": "diễn viên nữ",
+          "image": "🎭",
+          "speechText": "actress"
+        },
+        {
+          "id": "gs-g7-u08-review",
+          "word": "review",
+          "phonetic": "/ɹɪvjˈuː/",
+          "vietnameseMeaning": "bài đánh giá",
+          "image": "⭐",
+          "speechText": "review"
+        },
+        {
+          "id": "gs-g7-u08-comedy",
+          "word": "comedy",
+          "phonetic": "/kˈɒmədi/",
+          "vietnameseMeaning": "phim hài",
+          "image": "😂",
+          "speechText": "comedy"
+        },
+        {
+          "id": "gs-g7-u08-documentary",
+          "word": "documentary",
+          "phonetic": "/dˌɒkjuːmˈɛntəɹi/",
+          "vietnameseMeaning": "phim tài liệu",
+          "image": "📽️",
+          "speechText": "documentary"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 8,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-09",
+      "slug": "lop-7-unit-09-festivals-around-the-world",
+      "levelSlug": "lop-7",
+      "title": "Unit 9: Festivals around the World",
+      "bookUnitTitle": "Festivals around the World",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Festivals around the World”.",
+      "icon": "🦉",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u09-festival",
+          "word": "festival",
+          "phonetic": "/fˈɛstɪvəl/",
+          "vietnameseMeaning": "lễ hội",
+          "image": "🎉",
+          "speechText": "festival"
+        },
+        {
+          "id": "gs-g7-u09-costume",
+          "word": "costume",
+          "phonetic": "/kˈɒstjuːm/",
+          "vietnameseMeaning": "trang phục",
+          "image": "👘",
+          "speechText": "costume"
+        },
+        {
+          "id": "gs-g7-u09-parade",
+          "word": "parade",
+          "phonetic": "/pəɹˈeɪd/",
+          "vietnameseMeaning": "diễu hành",
+          "image": "🥁",
+          "speechText": "parade"
+        },
+        {
+          "id": "gs-g7-u09-celebration",
+          "word": "celebration",
+          "phonetic": "/sˌɛləbɹˈeɪʃən/",
+          "vietnameseMeaning": "lễ kỷ niệm",
+          "image": "🎊",
+          "speechText": "celebration"
+        },
+        {
+          "id": "gs-g7-u09-tradition",
+          "word": "tradition",
+          "phonetic": "/tɹɐdˈɪʃən/",
+          "vietnameseMeaning": "truyền thống",
+          "image": "🏮",
+          "speechText": "tradition"
+        },
+        {
+          "id": "gs-g7-u09-fireworks",
+          "word": "fireworks",
+          "phonetic": "/fˈaɪəwɜːks/",
+          "vietnameseMeaning": "pháo hoa",
+          "image": "🎆",
+          "speechText": "fireworks"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 9,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-10",
+      "slug": "lop-7-unit-10-energy-sources",
+      "levelSlug": "lop-7",
+      "title": "Unit 10: Energy Sources",
+      "bookUnitTitle": "Energy Sources",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Energy Sources”.",
+      "icon": "💡",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u10-solar-energy",
+          "word": "solar energy",
+          "phonetic": "/sˈəʊləɹ ˈɛnədʒi/",
+          "vietnameseMeaning": "năng lượng mặt trời",
+          "image": "☀️",
+          "speechText": "solar energy"
+        },
+        {
+          "id": "gs-g7-u10-wind-energy",
+          "word": "wind energy",
+          "phonetic": "/wˈɪnd ˈɛnədʒi/",
+          "vietnameseMeaning": "năng lượng gió",
+          "image": "🌬️",
+          "speechText": "wind energy"
+        },
+        {
+          "id": "gs-g7-u10-coal",
+          "word": "coal",
+          "phonetic": "/kˈəʊl/",
+          "vietnameseMeaning": "than đá",
+          "image": "🪨",
+          "speechText": "coal"
+        },
+        {
+          "id": "gs-g7-u10-renewable",
+          "word": "renewable",
+          "phonetic": "/ɹɪnjˈuːəbəl/",
+          "vietnameseMeaning": "tái tạo được",
+          "image": "♻️",
+          "speechText": "renewable"
+        },
+        {
+          "id": "gs-g7-u10-electricity",
+          "word": "electricity",
+          "phonetic": "/ɪlɛktɹˈɪsɪti/",
+          "vietnameseMeaning": "điện",
+          "image": "⚡",
+          "speechText": "electricity"
+        },
+        {
+          "id": "gs-g7-u10-source",
+          "word": "source",
+          "phonetic": "/sˈɔːs/",
+          "vietnameseMeaning": "nguồn",
+          "image": "🔋",
+          "speechText": "source"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 10,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-11",
+      "slug": "lop-7-unit-11-travelling-in-the-future",
+      "levelSlug": "lop-7",
+      "title": "Unit 11: Travelling in the Future",
+      "bookUnitTitle": "Travelling in the Future",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Travelling in the Future”.",
+      "icon": "🌍",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u11-flying-car",
+          "word": "flying car",
+          "phonetic": "/flˈaɪɪŋ kˈɑː/",
+          "vietnameseMeaning": "ô tô bay",
+          "image": "🚗",
+          "speechText": "flying car"
+        },
+        {
+          "id": "gs-g7-u11-hyperloop",
+          "word": "hyperloop",
+          "phonetic": "/hˈaɪpəlˌuːp/",
+          "vietnameseMeaning": "tàu siêu tốc ống",
+          "image": "🚄",
+          "speechText": "hyperloop"
+        },
+        {
+          "id": "gs-g7-u11-self-driving",
+          "word": "self-driving",
+          "phonetic": "/sˈɛlfdɹˈaɪvɪŋ/",
+          "vietnameseMeaning": "tự lái",
+          "image": "🤖",
+          "speechText": "self-driving"
+        },
+        {
+          "id": "gs-g7-u11-vehicle",
+          "word": "vehicle",
+          "phonetic": "/vˈiəkəl/",
+          "vietnameseMeaning": "phương tiện",
+          "image": "🚙",
+          "speechText": "vehicle"
+        },
+        {
+          "id": "gs-g7-u11-eco-friendly",
+          "word": "eco-friendly",
+          "phonetic": "/ˈiːkəʊfɹˈɛndli/",
+          "vietnameseMeaning": "thân thiện môi trường",
+          "image": "🌱",
+          "speechText": "eco-friendly"
+        },
+        {
+          "id": "gs-g7-u11-transport",
+          "word": "transport",
+          "phonetic": "/tɹˈanspɔːt/",
+          "vietnameseMeaning": "giao thông",
+          "image": "🛣️",
+          "speechText": "transport"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 11,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-7-unit-12",
+      "slug": "lop-7-unit-12-english-speaking-countries",
+      "levelSlug": "lop-7",
+      "title": "Unit 12: English-speaking Countries",
+      "bookUnitTitle": "English-speaking Countries",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “English-speaking Countries”.",
+      "icon": "🏆",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g7-u12-australia",
+          "word": "Australia",
+          "phonetic": "/ɒstɹˈeɪliə/",
+          "vietnameseMeaning": "nước Úc",
+          "image": "🇦🇺",
+          "speechText": "Australia"
+        },
+        {
+          "id": "gs-g7-u12-canada",
+          "word": "Canada",
+          "phonetic": "/kˈanədə/",
+          "vietnameseMeaning": "Ca-na-đa",
+          "image": "🇨🇦",
+          "speechText": "Canada"
+        },
+        {
+          "id": "gs-g7-u12-scotland",
+          "word": "Scotland",
+          "phonetic": "/skˈɒtlənd/",
+          "vietnameseMeaning": "Scotland",
+          "image": "🏴",
+          "speechText": "Scotland"
+        },
+        {
+          "id": "gs-g7-u12-capital",
+          "word": "capital",
+          "phonetic": "/kˈapɪtəl/",
+          "vietnameseMeaning": "thủ đô",
+          "image": "🏛️",
+          "speechText": "capital"
+        },
+        {
+          "id": "gs-g7-u12-landscape",
+          "word": "landscape",
+          "phonetic": "/lˈandskeɪp/",
+          "vietnameseMeaning": "phong cảnh",
+          "image": "🏞️",
+          "speechText": "landscape"
+        },
+        {
+          "id": "gs-g7-u12-native-speaker",
+          "word": "native speaker",
+          "phonetic": "/nˈeɪtɪv spˈiːkə/",
+          "vietnameseMeaning": "người bản ngữ",
+          "image": "🗣️",
+          "speechText": "native speaker"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Present simple and topic vocabulary",
+        "exampleEnglish": "I often read books in my free time.",
+        "exampleVietnamese": "Tôi thường đọc sách vào thời gian rảnh.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 7,
+        "unitNumber": 12,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    }
+  ]
+}

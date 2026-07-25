@@ -37,7 +37,7 @@ export function LearningLevelPage() {
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0,1fr) 380px" }, alignItems: "center", gap: 3 }}>
               <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
                 <Box aria-hidden="true" sx={{ width: { xs: 68, sm: 82 }, height: { xs: 68, sm: 82 }, display: "grid", placeItems: "center", borderRadius: "22px", bgcolor: "rgba(255,255,255,.8)", fontSize: { xs: 39, sm: 48 }, boxShadow: "0 10px 24px rgba(70,50,120,.1)" }}>{level.mascot}</Box>
-                <Box><Typography variant="overline" sx={{ color: level.accent }}>TIẾNG ANH {level.name.toUpperCase()}</Typography><Typography component="h1" sx={{ fontSize: { xs: 29, sm: 36 }, fontWeight: 800 }}>Chọn bài học</Typography><Typography color="text.secondary" sx={{ mt: 0.5 }}>Mỗi chủ đề gồm 10 từ đơn giản và dễ nhớ.</Typography></Box>
+                <Box><Typography variant="overline" sx={{ color: level.accent }}>TIẾNG ANH {level.name.toUpperCase()}</Typography><Typography component="h1" sx={{ fontSize: { xs: 29, sm: 36 }, fontWeight: 800 }}>Chọn bài học</Typography><Typography color="text.secondary" sx={{ mt: 0.5 }}>Mỗi Unit gồm một nhóm từ vựng cơ bản để con học và luyện tập.</Typography></Box>
               </Stack>
               <Card variant="outlined" sx={{ p: 2, borderRadius: "20px", bgcolor: "rgba(255,255,255,.86)", borderColor: `${level.accent}44` }}>
                 <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline" }}><Typography sx={{ fontWeight: 800 }}>Tiến độ của con</Typography><Typography sx={{ fontSize: 13, color: "text.secondary" }}>{learned}/{total} từ</Typography></Stack>

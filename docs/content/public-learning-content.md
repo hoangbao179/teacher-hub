@@ -1,7 +1,16 @@
 # Biên soạn nội dung góc học tiếng Anh
 
-Nguồn nội dung tĩnh nằm tại
-`client/src/features/learning/content/vocabularyCatalog.ts`.
+Catalog runtime nằm tại `client/src/features/learning/content/`: hai Unit mầm non
+được giữ trong `vocabularyCatalog.ts`, còn 140 Unit lớp 1–9 được import từ
+`globalSuccessStarterUnits.ts`. Dữ liệu nguồn để rà soát nằm tại
+`content-source/public-learning/global-success-starter/`.
+
+Catalog hiện công khai đủ mầm non và lớp 1–9. Bộ Global Success starter gồm 6 từ
+cơ bản cho mỗi Unit; đây là nội dung tự biên soạn theo chủ đề, không phải danh
+sách từ chính thức hoặc đầy đủ của sách.
+
+> Nội dung luyện tập được biên soạn độc lập, tham khảo chủ đề của bộ sách Global
+> Success. Đây không phải học liệu chính thức của Nhà xuất bản.
 
 ## Thêm level hoặc Unit
 
@@ -35,6 +44,27 @@ Chạy validator và test sau khi sửa catalog:
 node client/scripts/validate-learning-catalog.mjs
 npm -w client run test
 ```
+
+## Tích hợp và duyệt nội dung Global Success
+
+- Runtime catalog được ghép sau hai Unit mầm non; không sinh ID theo index vì ID
+  Unit và vocabulary của gói starter phải ổn định để bảo toàn progress.
+- Chỉ đặt level thành `available: true` sau khi level có ít nhất một Unit
+  `PUBLISHED` hợp lệ và validator PASS.
+- Cô Vy rà soát theo
+  [`global-success-review-checklist.md`](global-success-review-checklist.md), gồm
+  tên Unit, sáu từ cốt lõi, nghĩa, phiên âm và mức độ phù hợp. Khi thay danh sách
+  từ hoặc đáp án của Unit đã public, tăng `contentVersion` của riêng Unit đó.
+- Nguồn đối chiếu tên Unit được lưu trong
+  [`global-success-sources.md`](global-success-sources.md); không đưa raw URL nguồn
+  lên giao diện end-user.
+- `drafts/globalSuccessLanguageFocus.json` chỉ là dữ liệu nháp với template chưa
+  được cô Vy duyệt theo từng Unit. Language focus chưa được import vào runtime và
+  chưa public trên UI.
+
+Catalog dùng emoji và Web Speech, không gọi internet trong build/runtime, không
+chứa audio hoặc hình ảnh chính thức. Không thêm nội dung sách, bài tập, hội thoại,
+audio hay hình minh họa có bản quyền vào gói nguồn.
 
 ## Progress local
 

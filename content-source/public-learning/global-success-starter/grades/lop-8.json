@@ -1,0 +1,911 @@
+{
+  "schemaVersion": 1,
+  "contentId": "global-success-grade-8-starter",
+  "contentVersion": "1.0.0",
+  "levelSlug": "lop-8",
+  "status": "DRAFT_REVIEW",
+  "unitCount": 12,
+  "vocabularyCount": 72,
+  "units": [
+    {
+      "id": "global-success-grade-8-unit-01",
+      "slug": "lop-8-unit-01-leisure-time",
+      "levelSlug": "lop-8",
+      "title": "Unit 1: Leisure Time",
+      "bookUnitTitle": "Leisure Time",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Leisure Time”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u01-hang-out",
+          "word": "hang out",
+          "phonetic": "/hˈaŋ ˈaʊt/",
+          "vietnameseMeaning": "đi chơi",
+          "image": "👥",
+          "speechText": "hang out"
+        },
+        {
+          "id": "gs-g8-u01-surf-the-internet",
+          "word": "surf the internet",
+          "phonetic": "/sˈɜːf ðɪ ˈɪntənˌɛt/",
+          "vietnameseMeaning": "lướt Internet",
+          "image": "🌐",
+          "speechText": "surf the internet"
+        },
+        {
+          "id": "gs-g8-u01-craft-kit",
+          "word": "craft kit",
+          "phonetic": "/kɹˈaft kˈɪt/",
+          "vietnameseMeaning": "bộ đồ thủ công",
+          "image": "🧵",
+          "speechText": "craft kit"
+        },
+        {
+          "id": "gs-g8-u01-board-game",
+          "word": "board game",
+          "phonetic": "/bˈɔːd ɡˈeɪm/",
+          "vietnameseMeaning": "trò chơi bàn cờ",
+          "image": "🎲",
+          "speechText": "board game"
+        },
+        {
+          "id": "gs-g8-u01-relax",
+          "word": "relax",
+          "phonetic": "/ɹɪlˈaks/",
+          "vietnameseMeaning": "thư giãn",
+          "image": "🧘",
+          "speechText": "relax"
+        },
+        {
+          "id": "gs-g8-u01-leisure",
+          "word": "leisure",
+          "phonetic": "/lˈɛʒə/",
+          "vietnameseMeaning": "thời gian rảnh",
+          "image": "⏳",
+          "speechText": "leisure"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 1,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-02",
+      "slug": "lop-8-unit-02-life-in-the-countryside",
+      "levelSlug": "lop-8",
+      "title": "Unit 2: Life in the Countryside",
+      "bookUnitTitle": "Life in the Countryside",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Life in the Countryside”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u02-harvest",
+          "word": "harvest",
+          "phonetic": "/hˈɑːvɪst/",
+          "vietnameseMeaning": "thu hoạch",
+          "image": "🌾",
+          "speechText": "harvest"
+        },
+        {
+          "id": "gs-g8-u02-cattle",
+          "word": "cattle",
+          "phonetic": "/kˈatəl/",
+          "vietnameseMeaning": "gia súc",
+          "image": "🐄",
+          "speechText": "cattle"
+        },
+        {
+          "id": "gs-g8-u02-orchard",
+          "word": "orchard",
+          "phonetic": "/ˈɔːtʃəd/",
+          "vietnameseMeaning": "vườn cây ăn quả",
+          "image": "🍎",
+          "speechText": "orchard"
+        },
+        {
+          "id": "gs-g8-u02-peaceful",
+          "word": "peaceful",
+          "phonetic": "/pˈiːsfəl/",
+          "vietnameseMeaning": "yên bình",
+          "image": "🌿",
+          "speechText": "peaceful"
+        },
+        {
+          "id": "gs-g8-u02-vast",
+          "word": "vast",
+          "phonetic": "/vˈast/",
+          "vietnameseMeaning": "rộng lớn",
+          "image": "🏞️",
+          "speechText": "vast"
+        },
+        {
+          "id": "gs-g8-u02-rural",
+          "word": "rural",
+          "phonetic": "/ɹˈʊəɹəl/",
+          "vietnameseMeaning": "thuộc nông thôn",
+          "image": "🚜",
+          "speechText": "rural"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 2,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-03",
+      "slug": "lop-8-unit-03-teenagers",
+      "levelSlug": "lop-8",
+      "title": "Unit 3: Teenagers",
+      "bookUnitTitle": "Teenagers",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Teenagers”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u03-peer-pressure",
+          "word": "peer pressure",
+          "phonetic": "/pˈiə pɹˈɛʃə/",
+          "vietnameseMeaning": "áp lực bạn bè",
+          "image": "👥",
+          "speechText": "peer pressure"
+        },
+        {
+          "id": "gs-g8-u03-stress",
+          "word": "stress",
+          "phonetic": "/stɹˈɛs/",
+          "vietnameseMeaning": "căng thẳng",
+          "image": "😟",
+          "speechText": "stress"
+        },
+        {
+          "id": "gs-g8-u03-deadline",
+          "word": "deadline",
+          "phonetic": "/dˈɛdlaɪn/",
+          "vietnameseMeaning": "hạn chót",
+          "image": "⏰",
+          "speechText": "deadline"
+        },
+        {
+          "id": "gs-g8-u03-social-media",
+          "word": "social media",
+          "phonetic": "/sˈəʊʃəl mˈiːdiːə/",
+          "vietnameseMeaning": "mạng xã hội",
+          "image": "📱",
+          "speechText": "social media"
+        },
+        {
+          "id": "gs-g8-u03-independent",
+          "word": "independent",
+          "phonetic": "/ˌɪndɪpˈɛndənt/",
+          "vietnameseMeaning": "độc lập",
+          "image": "💪",
+          "speechText": "independent"
+        },
+        {
+          "id": "gs-g8-u03-teenager",
+          "word": "teenager",
+          "phonetic": "/tˈiːneɪdʒə/",
+          "vietnameseMeaning": "thiếu niên",
+          "image": "🧑",
+          "speechText": "teenager"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 3,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-04",
+      "slug": "lop-8-unit-04-ethnic-groups-of-viet-nam",
+      "levelSlug": "lop-8",
+      "title": "Unit 4: Ethnic Groups of Viet Nam",
+      "bookUnitTitle": "Ethnic Groups of Viet Nam",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Ethnic Groups of Viet Nam”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u04-ethnic-group",
+          "word": "ethnic group",
+          "phonetic": "/ˈɛθnɪk ɡɹˈuːp/",
+          "vietnameseMeaning": "dân tộc",
+          "image": "👥",
+          "speechText": "ethnic group"
+        },
+        {
+          "id": "gs-g8-u04-costume",
+          "word": "costume",
+          "phonetic": "/kˈɒstjuːm/",
+          "vietnameseMeaning": "trang phục",
+          "image": "👘",
+          "speechText": "costume"
+        },
+        {
+          "id": "gs-g8-u04-stilt-house",
+          "word": "stilt house",
+          "phonetic": "/stˈɪlt hˈaʊs/",
+          "vietnameseMeaning": "nhà sàn",
+          "image": "🏠",
+          "speechText": "stilt house"
+        },
+        {
+          "id": "gs-g8-u04-minority",
+          "word": "minority",
+          "phonetic": "/maɪnˈɒɹɪti/",
+          "vietnameseMeaning": "thiểu số",
+          "image": "🌾",
+          "speechText": "minority"
+        },
+        {
+          "id": "gs-g8-u04-traditional",
+          "word": "traditional",
+          "phonetic": "/tɹɐdˈɪʃənəl/",
+          "vietnameseMeaning": "truyền thống",
+          "image": "🏮",
+          "speechText": "traditional"
+        },
+        {
+          "id": "gs-g8-u04-community",
+          "word": "community",
+          "phonetic": "/kəmjˈuːnɪti/",
+          "vietnameseMeaning": "cộng đồng",
+          "image": "🤝",
+          "speechText": "community"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 4,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-05",
+      "slug": "lop-8-unit-05-our-customs-and-traditions",
+      "levelSlug": "lop-8",
+      "title": "Unit 5: Our Customs and Traditions",
+      "bookUnitTitle": "Our Customs and Traditions",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our Customs and Traditions”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u05-custom",
+          "word": "custom",
+          "phonetic": "/kˈʌstəm/",
+          "vietnameseMeaning": "phong tục",
+          "image": "🏮",
+          "speechText": "custom"
+        },
+        {
+          "id": "gs-g8-u05-tradition",
+          "word": "tradition",
+          "phonetic": "/tɹɐdˈɪʃən/",
+          "vietnameseMeaning": "truyền thống",
+          "image": "🎎",
+          "speechText": "tradition"
+        },
+        {
+          "id": "gs-g8-u05-ancestor",
+          "word": "ancestor",
+          "phonetic": "/ˈansɛstə/",
+          "vietnameseMeaning": "tổ tiên",
+          "image": "🕯️",
+          "speechText": "ancestor"
+        },
+        {
+          "id": "gs-g8-u05-ceremony",
+          "word": "ceremony",
+          "phonetic": "/sˈɛɹɪməni/",
+          "vietnameseMeaning": "nghi lễ",
+          "image": "🎊",
+          "speechText": "ceremony"
+        },
+        {
+          "id": "gs-g8-u05-respect",
+          "word": "respect",
+          "phonetic": "/ɹɪspˈɛkt/",
+          "vietnameseMeaning": "tôn trọng",
+          "image": "🙏",
+          "speechText": "respect"
+        },
+        {
+          "id": "gs-g8-u05-generation",
+          "word": "generation",
+          "phonetic": "/dʒˌɛnəɹˈeɪʃən/",
+          "vietnameseMeaning": "thế hệ",
+          "image": "👨‍👩‍👧‍👦",
+          "speechText": "generation"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 5,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-06",
+      "slug": "lop-8-unit-06-lifestyles",
+      "levelSlug": "lop-8",
+      "title": "Unit 6: Lifestyles",
+      "bookUnitTitle": "Lifestyles",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Lifestyles”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u06-lifestyle",
+          "word": "lifestyle",
+          "phonetic": "/lˈaɪfstaɪl/",
+          "vietnameseMeaning": "lối sống",
+          "image": "🌿",
+          "speechText": "lifestyle"
+        },
+        {
+          "id": "gs-g8-u06-routine",
+          "word": "routine",
+          "phonetic": "/ɹuːtˈiːn/",
+          "vietnameseMeaning": "thói quen hằng ngày",
+          "image": "🔁",
+          "speechText": "routine"
+        },
+        {
+          "id": "gs-g8-u06-balanced",
+          "word": "balanced",
+          "phonetic": "/bˈalənst/",
+          "vietnameseMeaning": "cân bằng",
+          "image": "⚖️",
+          "speechText": "balanced"
+        },
+        {
+          "id": "gs-g8-u06-digital",
+          "word": "digital",
+          "phonetic": "/dˈɪdʒɪtəl/",
+          "vietnameseMeaning": "kỹ thuật số",
+          "image": "💻",
+          "speechText": "digital"
+        },
+        {
+          "id": "gs-g8-u06-active",
+          "word": "active",
+          "phonetic": "/ˈaktɪv/",
+          "vietnameseMeaning": "năng động",
+          "image": "🏃",
+          "speechText": "active"
+        },
+        {
+          "id": "gs-g8-u06-habit",
+          "word": "habit",
+          "phonetic": "/hˈabɪt/",
+          "vietnameseMeaning": "thói quen",
+          "image": "🧠",
+          "speechText": "habit"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 6,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-07",
+      "slug": "lop-8-unit-07-environmental-protection",
+      "levelSlug": "lop-8",
+      "title": "Unit 7: Environmental Protection",
+      "bookUnitTitle": "Environmental Protection",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Environmental Protection”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u07-pollution",
+          "word": "pollution",
+          "phonetic": "/pəlˈuːʃən/",
+          "vietnameseMeaning": "ô nhiễm",
+          "image": "🏭",
+          "speechText": "pollution"
+        },
+        {
+          "id": "gs-g8-u07-wildlife",
+          "word": "wildlife",
+          "phonetic": "/wˈaɪldlaɪf/",
+          "vietnameseMeaning": "động vật hoang dã",
+          "image": "🦌",
+          "speechText": "wildlife"
+        },
+        {
+          "id": "gs-g8-u07-protect",
+          "word": "protect",
+          "phonetic": "/pɹətˈɛkt/",
+          "vietnameseMeaning": "bảo vệ",
+          "image": "🛡️",
+          "speechText": "protect"
+        },
+        {
+          "id": "gs-g8-u07-conserve",
+          "word": "conserve",
+          "phonetic": "/kənsˈɜːv/",
+          "vietnameseMeaning": "bảo tồn",
+          "image": "🌳",
+          "speechText": "conserve"
+        },
+        {
+          "id": "gs-g8-u07-plastic-waste",
+          "word": "plastic waste",
+          "phonetic": "/plˈastɪk wˈeɪst/",
+          "vietnameseMeaning": "rác thải nhựa",
+          "image": "🧴",
+          "speechText": "plastic waste"
+        },
+        {
+          "id": "gs-g8-u07-ecosystem",
+          "word": "ecosystem",
+          "phonetic": "/ˈiːkəʊsˌɪstəm/",
+          "vietnameseMeaning": "hệ sinh thái",
+          "image": "🌍",
+          "speechText": "ecosystem"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 7,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-08",
+      "slug": "lop-8-unit-08-shopping",
+      "levelSlug": "lop-8",
+      "title": "Unit 8: Shopping",
+      "bookUnitTitle": "Shopping",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Shopping”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u08-bargain",
+          "word": "bargain",
+          "phonetic": "/bˈɑːɡɪn/",
+          "vietnameseMeaning": "mặc cả",
+          "image": "💬",
+          "speechText": "bargain"
+        },
+        {
+          "id": "gs-g8-u08-discount",
+          "word": "discount",
+          "phonetic": "/dˈɪskaʊnt/",
+          "vietnameseMeaning": "giảm giá",
+          "image": "🏷️",
+          "speechText": "discount"
+        },
+        {
+          "id": "gs-g8-u08-customer",
+          "word": "customer",
+          "phonetic": "/kˈʌstəmə/",
+          "vietnameseMeaning": "khách hàng",
+          "image": "🧑",
+          "speechText": "customer"
+        },
+        {
+          "id": "gs-g8-u08-online-shop",
+          "word": "online shop",
+          "phonetic": "/ˈɒnlaɪn ʃˈɒp/",
+          "vietnameseMeaning": "cửa hàng trực tuyến",
+          "image": "🛒",
+          "speechText": "online shop"
+        },
+        {
+          "id": "gs-g8-u08-product",
+          "word": "product",
+          "phonetic": "/pɹˈɒdʌkt/",
+          "vietnameseMeaning": "sản phẩm",
+          "image": "📦",
+          "speechText": "product"
+        },
+        {
+          "id": "gs-g8-u08-receipt",
+          "word": "receipt",
+          "phonetic": "/ɹɪsˈiːt/",
+          "vietnameseMeaning": "hóa đơn",
+          "image": "🧾",
+          "speechText": "receipt"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 8,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-09",
+      "slug": "lop-8-unit-09-natural-disasters",
+      "levelSlug": "lop-8",
+      "title": "Unit 9: Natural Disasters",
+      "bookUnitTitle": "Natural Disasters",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Natural Disasters”.",
+      "icon": "🦉",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u09-earthquake",
+          "word": "earthquake",
+          "phonetic": "/ˈɜːθkweɪk/",
+          "vietnameseMeaning": "động đất",
+          "image": "🌍",
+          "speechText": "earthquake"
+        },
+        {
+          "id": "gs-g8-u09-flood",
+          "word": "flood",
+          "phonetic": "/flˈʌd/",
+          "vietnameseMeaning": "lũ lụt",
+          "image": "🌊",
+          "speechText": "flood"
+        },
+        {
+          "id": "gs-g8-u09-typhoon",
+          "word": "typhoon",
+          "phonetic": "/taɪfˈuːn/",
+          "vietnameseMeaning": "bão",
+          "image": "🌀",
+          "speechText": "typhoon"
+        },
+        {
+          "id": "gs-g8-u09-drought",
+          "word": "drought",
+          "phonetic": "/dɹˈaʊt/",
+          "vietnameseMeaning": "hạn hán",
+          "image": "☀️",
+          "speechText": "drought"
+        },
+        {
+          "id": "gs-g8-u09-rescue",
+          "word": "rescue",
+          "phonetic": "/ɹˈɛskjuː/",
+          "vietnameseMeaning": "cứu hộ",
+          "image": "🚑",
+          "speechText": "rescue"
+        },
+        {
+          "id": "gs-g8-u09-emergency",
+          "word": "emergency",
+          "phonetic": "/ɪmˈɜːdʒənsi/",
+          "vietnameseMeaning": "tình trạng khẩn cấp",
+          "image": "🚨",
+          "speechText": "emergency"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 9,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-10",
+      "slug": "lop-8-unit-10-communication-in-the-future",
+      "levelSlug": "lop-8",
+      "title": "Unit 10: Communication in the Future",
+      "bookUnitTitle": "Communication in the Future",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Communication in the Future”.",
+      "icon": "💡",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u10-hologram",
+          "word": "hologram",
+          "phonetic": "/hˈɒləɡɹˌam/",
+          "vietnameseMeaning": "ảnh ba chiều",
+          "image": "🪄",
+          "speechText": "hologram"
+        },
+        {
+          "id": "gs-g8-u10-video-conference",
+          "word": "video conference",
+          "phonetic": "/vˈɪdɪəʊ kˈɒnfɹəns/",
+          "vietnameseMeaning": "hội nghị trực tuyến",
+          "image": "💻",
+          "speechText": "video conference"
+        },
+        {
+          "id": "gs-g8-u10-message",
+          "word": "message",
+          "phonetic": "/mˈɛsɪdʒ/",
+          "vietnameseMeaning": "tin nhắn",
+          "image": "💬",
+          "speechText": "message"
+        },
+        {
+          "id": "gs-g8-u10-device",
+          "word": "device",
+          "phonetic": "/dɪvˈaɪs/",
+          "vietnameseMeaning": "thiết bị",
+          "image": "📱",
+          "speechText": "device"
+        },
+        {
+          "id": "gs-g8-u10-connect",
+          "word": "connect",
+          "phonetic": "/kənˈɛkt/",
+          "vietnameseMeaning": "kết nối",
+          "image": "🔗",
+          "speechText": "connect"
+        },
+        {
+          "id": "gs-g8-u10-virtual",
+          "word": "virtual",
+          "phonetic": "/vˈɜːtʃuːəl/",
+          "vietnameseMeaning": "ảo",
+          "image": "🥽",
+          "speechText": "virtual"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 10,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-11",
+      "slug": "lop-8-unit-11-science-and-technology",
+      "levelSlug": "lop-8",
+      "title": "Unit 11: Science and Technology",
+      "bookUnitTitle": "Science and Technology",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Science and Technology”.",
+      "icon": "🌍",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u11-invention",
+          "word": "invention",
+          "phonetic": "/ɪnvˈɛnʃən/",
+          "vietnameseMeaning": "phát minh",
+          "image": "💡",
+          "speechText": "invention"
+        },
+        {
+          "id": "gs-g8-u11-scientist",
+          "word": "scientist",
+          "phonetic": "/sˈaɪəntɪst/",
+          "vietnameseMeaning": "nhà khoa học",
+          "image": "🔬",
+          "speechText": "scientist"
+        },
+        {
+          "id": "gs-g8-u11-experiment",
+          "word": "experiment",
+          "phonetic": "/ɛkspˈɛɹɪmənt/",
+          "vietnameseMeaning": "thí nghiệm",
+          "image": "🧪",
+          "speechText": "experiment"
+        },
+        {
+          "id": "gs-g8-u11-technology",
+          "word": "technology",
+          "phonetic": "/tɛknˈɒlədʒi/",
+          "vietnameseMeaning": "công nghệ",
+          "image": "💻",
+          "speechText": "technology"
+        },
+        {
+          "id": "gs-g8-u11-laboratory",
+          "word": "laboratory",
+          "phonetic": "/lɐbˈɒɹətɹi/",
+          "vietnameseMeaning": "phòng thí nghiệm",
+          "image": "🥼",
+          "speechText": "laboratory"
+        },
+        {
+          "id": "gs-g8-u11-discover",
+          "word": "discover",
+          "phonetic": "/dɪskˈʌvə/",
+          "vietnameseMeaning": "khám phá",
+          "image": "🔎",
+          "speechText": "discover"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 11,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-8-unit-12",
+      "slug": "lop-8-unit-12-life-on-other-planets",
+      "levelSlug": "lop-8",
+      "title": "Unit 12: Life on Other Planets",
+      "bookUnitTitle": "Life on Other Planets",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Life on Other Planets”.",
+      "icon": "🏆",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g8-u12-planet",
+          "word": "planet",
+          "phonetic": "/plˈanɪt/",
+          "vietnameseMeaning": "hành tinh",
+          "image": "🪐",
+          "speechText": "planet"
+        },
+        {
+          "id": "gs-g8-u12-galaxy",
+          "word": "galaxy",
+          "phonetic": "/ɡˈalɐksi/",
+          "vietnameseMeaning": "thiên hà",
+          "image": "🌌",
+          "speechText": "galaxy"
+        },
+        {
+          "id": "gs-g8-u12-astronaut",
+          "word": "astronaut",
+          "phonetic": "/ˈastɹənˌɔːt/",
+          "vietnameseMeaning": "phi hành gia",
+          "image": "🧑‍🚀",
+          "speechText": "astronaut"
+        },
+        {
+          "id": "gs-g8-u12-spaceship",
+          "word": "spaceship",
+          "phonetic": "/spˈeɪsʃɪp/",
+          "vietnameseMeaning": "tàu vũ trụ",
+          "image": "🚀",
+          "speechText": "spaceship"
+        },
+        {
+          "id": "gs-g8-u12-gravity",
+          "word": "gravity",
+          "phonetic": "/ɡɹˈavɪti/",
+          "vietnameseMeaning": "trọng lực",
+          "image": "🌍",
+          "speechText": "gravity"
+        },
+        {
+          "id": "gs-g8-u12-alien",
+          "word": "alien",
+          "phonetic": "/ˈeɪliən/",
+          "vietnameseMeaning": "người ngoài hành tinh",
+          "image": "👽",
+          "speechText": "alien"
+        }
+      ],
+      "languageFocus": {
+        "title": "Ngữ pháp nhanh",
+        "pattern": "Comparisons and complex sentences",
+        "exampleEnglish": "Life in the countryside is quieter than city life.",
+        "exampleVietnamese": "Cuộc sống ở nông thôn yên tĩnh hơn cuộc sống thành phố.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 8,
+        "unitNumber": 12,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    }
+  ]
+}

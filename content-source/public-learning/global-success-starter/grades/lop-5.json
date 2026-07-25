@@ -1,0 +1,1511 @@
+{
+  "schemaVersion": 1,
+  "contentId": "global-success-grade-5-starter",
+  "contentVersion": "1.0.0",
+  "levelSlug": "lop-5",
+  "status": "DRAFT_REVIEW",
+  "unitCount": 20,
+  "vocabularyCount": 120,
+  "units": [
+    {
+      "id": "global-success-grade-5-unit-01",
+      "slug": "lop-5-unit-01-all-about-me",
+      "levelSlug": "lop-5",
+      "title": "Unit 1: All about me!",
+      "bookUnitTitle": "All about me!",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “All about me!”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u01-name",
+          "word": "name",
+          "phonetic": "/nˈeɪm/",
+          "vietnameseMeaning": "tên",
+          "image": "🏷️",
+          "speechText": "name"
+        },
+        {
+          "id": "gs-g5-u01-age",
+          "word": "age",
+          "phonetic": "/ˈeɪdʒ/",
+          "vietnameseMeaning": "tuổi",
+          "image": "🎂",
+          "speechText": "age"
+        },
+        {
+          "id": "gs-g5-u01-class",
+          "word": "class",
+          "phonetic": "/klˈas/",
+          "vietnameseMeaning": "lớp",
+          "image": "🏫",
+          "speechText": "class"
+        },
+        {
+          "id": "gs-g5-u01-city",
+          "word": "city",
+          "phonetic": "/sˈɪti/",
+          "vietnameseMeaning": "thành phố",
+          "image": "🏙️",
+          "speechText": "city"
+        },
+        {
+          "id": "gs-g5-u01-hobby",
+          "word": "hobby",
+          "phonetic": "/hˈɒbi/",
+          "vietnameseMeaning": "sở thích",
+          "image": "🎨",
+          "speechText": "hobby"
+        },
+        {
+          "id": "gs-g5-u01-favourite",
+          "word": "favourite",
+          "phonetic": "/fˈeɪvɹɪt/",
+          "vietnameseMeaning": "yêu thích",
+          "image": "⭐",
+          "speechText": "favourite"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 1,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-02",
+      "slug": "lop-5-unit-02-our-homes",
+      "levelSlug": "lop-5",
+      "title": "Unit 2: Our homes",
+      "bookUnitTitle": "Our homes",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our homes”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u02-flat",
+          "word": "flat",
+          "phonetic": "/flˈat/",
+          "vietnameseMeaning": "căn hộ",
+          "image": "🏢",
+          "speechText": "flat"
+        },
+        {
+          "id": "gs-g5-u02-house",
+          "word": "house",
+          "phonetic": "/hˈaʊs/",
+          "vietnameseMeaning": "ngôi nhà",
+          "image": "🏠",
+          "speechText": "house"
+        },
+        {
+          "id": "gs-g5-u02-village",
+          "word": "village",
+          "phonetic": "/vˈɪlɪdʒ/",
+          "vietnameseMeaning": "làng",
+          "image": "🏘️",
+          "speechText": "village"
+        },
+        {
+          "id": "gs-g5-u02-city",
+          "word": "city",
+          "phonetic": "/sˈɪti/",
+          "vietnameseMeaning": "thành phố",
+          "image": "🏙️",
+          "speechText": "city"
+        },
+        {
+          "id": "gs-g5-u02-address",
+          "word": "address",
+          "phonetic": "/ɐdɹˈɛs/",
+          "vietnameseMeaning": "địa chỉ",
+          "image": "📍",
+          "speechText": "address"
+        },
+        {
+          "id": "gs-g5-u02-live",
+          "word": "live",
+          "phonetic": "/lˈaɪv/",
+          "vietnameseMeaning": "sống",
+          "image": "🏡",
+          "speechText": "live"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 2,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-03",
+      "slug": "lop-5-unit-03-my-foreign-friends",
+      "levelSlug": "lop-5",
+      "title": "Unit 3: My foreign friends",
+      "bookUnitTitle": "My foreign friends",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My foreign friends”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u03-country",
+          "word": "country",
+          "phonetic": "/kˈʌntɹi/",
+          "vietnameseMeaning": "đất nước",
+          "image": "🌍",
+          "speechText": "country"
+        },
+        {
+          "id": "gs-g5-u03-nationality",
+          "word": "nationality",
+          "phonetic": "/nˌaʃənˈalɪti/",
+          "vietnameseMeaning": "quốc tịch",
+          "image": "🪪",
+          "speechText": "nationality"
+        },
+        {
+          "id": "gs-g5-u03-language",
+          "word": "language",
+          "phonetic": "/lˈaŋɡwɪdʒ/",
+          "vietnameseMeaning": "ngôn ngữ",
+          "image": "💬",
+          "speechText": "language"
+        },
+        {
+          "id": "gs-g5-u03-friend",
+          "word": "friend",
+          "phonetic": "/fɹˈɛnd/",
+          "vietnameseMeaning": "người bạn",
+          "image": "🧒",
+          "speechText": "friend"
+        },
+        {
+          "id": "gs-g5-u03-foreign",
+          "word": "foreign",
+          "phonetic": "/fˈɒɹən/",
+          "vietnameseMeaning": "nước ngoài",
+          "image": "🌐",
+          "speechText": "foreign"
+        },
+        {
+          "id": "gs-g5-u03-meet",
+          "word": "meet",
+          "phonetic": "/mˈiːt/",
+          "vietnameseMeaning": "gặp gỡ",
+          "image": "🤝",
+          "speechText": "meet"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 3,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-04",
+      "slug": "lop-5-unit-04-our-free-time-activities",
+      "levelSlug": "lop-5",
+      "title": "Unit 4: Our free-time activities",
+      "bookUnitTitle": "Our free-time activities",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our free-time activities”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u04-read-comics",
+          "word": "read comics",
+          "phonetic": "/ɹˈiːd kˈɒmɪks/",
+          "vietnameseMeaning": "đọc truyện tranh",
+          "image": "📚",
+          "speechText": "read comics"
+        },
+        {
+          "id": "gs-g5-u04-play-badminton",
+          "word": "play badminton",
+          "phonetic": "/plˈeɪ bˈadmɪntən/",
+          "vietnameseMeaning": "chơi cầu lông",
+          "image": "🏸",
+          "speechText": "play badminton"
+        },
+        {
+          "id": "gs-g5-u04-watch-cartoons",
+          "word": "watch cartoons",
+          "phonetic": "/wˈɒtʃ kɑːtˈuːnz/",
+          "vietnameseMeaning": "xem hoạt hình",
+          "image": "📺",
+          "speechText": "watch cartoons"
+        },
+        {
+          "id": "gs-g5-u04-listen-to-music",
+          "word": "listen to music",
+          "phonetic": "/lˈɪsən tə mjˈuːzɪk/",
+          "vietnameseMeaning": "nghe nhạc",
+          "image": "🎧",
+          "speechText": "listen to music"
+        },
+        {
+          "id": "gs-g5-u04-draw-pictures",
+          "word": "draw pictures",
+          "phonetic": "/dɹˈɔː pˈɪktʃəz/",
+          "vietnameseMeaning": "vẽ tranh",
+          "image": "🎨",
+          "speechText": "draw pictures"
+        },
+        {
+          "id": "gs-g5-u04-go-cycling",
+          "word": "go cycling",
+          "phonetic": "/ɡˌəʊ sˈaɪklɪŋ/",
+          "vietnameseMeaning": "đạp xe",
+          "image": "🚲",
+          "speechText": "go cycling"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 4,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-05",
+      "slug": "lop-5-unit-05-my-future-job",
+      "levelSlug": "lop-5",
+      "title": "Unit 5: My future job",
+      "bookUnitTitle": "My future job",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “My future job”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u05-pilot",
+          "word": "pilot",
+          "phonetic": "/pˈaɪlət/",
+          "vietnameseMeaning": "phi công",
+          "image": "🧑‍✈️",
+          "speechText": "pilot"
+        },
+        {
+          "id": "gs-g5-u05-doctor",
+          "word": "doctor",
+          "phonetic": "/dˈɒktə/",
+          "vietnameseMeaning": "bác sĩ",
+          "image": "👩‍⚕️",
+          "speechText": "doctor"
+        },
+        {
+          "id": "gs-g5-u05-teacher",
+          "word": "teacher",
+          "phonetic": "/tˈiːtʃə/",
+          "vietnameseMeaning": "giáo viên",
+          "image": "👩‍🏫",
+          "speechText": "teacher"
+        },
+        {
+          "id": "gs-g5-u05-engineer",
+          "word": "engineer",
+          "phonetic": "/ˌɛndʒɪnˈiə/",
+          "vietnameseMeaning": "kỹ sư",
+          "image": "👷",
+          "speechText": "engineer"
+        },
+        {
+          "id": "gs-g5-u05-artist",
+          "word": "artist",
+          "phonetic": "/ˈɑːtɪst/",
+          "vietnameseMeaning": "họa sĩ",
+          "image": "🎨",
+          "speechText": "artist"
+        },
+        {
+          "id": "gs-g5-u05-job",
+          "word": "job",
+          "phonetic": "/dʒˈɒb/",
+          "vietnameseMeaning": "nghề nghiệp",
+          "image": "💼",
+          "speechText": "job"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 5,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-06",
+      "slug": "lop-5-unit-06-our-school-rooms",
+      "levelSlug": "lop-5",
+      "title": "Unit 6: Our school rooms",
+      "bookUnitTitle": "Our school rooms",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our school rooms”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u06-library",
+          "word": "library",
+          "phonetic": "/lˈaɪbɹəɹi/",
+          "vietnameseMeaning": "thư viện",
+          "image": "📚",
+          "speechText": "library"
+        },
+        {
+          "id": "gs-g5-u06-laboratory",
+          "word": "laboratory",
+          "phonetic": "/lɐbˈɒɹətɹi/",
+          "vietnameseMeaning": "phòng thí nghiệm",
+          "image": "🧪",
+          "speechText": "laboratory"
+        },
+        {
+          "id": "gs-g5-u06-computer-room",
+          "word": "computer room",
+          "phonetic": "/kəmpjˈuːtə ɹˈuːm/",
+          "vietnameseMeaning": "phòng máy tính",
+          "image": "💻",
+          "speechText": "computer room"
+        },
+        {
+          "id": "gs-g5-u06-art-room",
+          "word": "art room",
+          "phonetic": "/ˈɑːt ɹˈuːm/",
+          "vietnameseMeaning": "phòng mỹ thuật",
+          "image": "🎨",
+          "speechText": "art room"
+        },
+        {
+          "id": "gs-g5-u06-music-room",
+          "word": "music room",
+          "phonetic": "/mjˈuːzɪk ɹˈuːm/",
+          "vietnameseMeaning": "phòng âm nhạc",
+          "image": "🎵",
+          "speechText": "music room"
+        },
+        {
+          "id": "gs-g5-u06-gym",
+          "word": "gym",
+          "phonetic": "/dʒˈɪm/",
+          "vietnameseMeaning": "nhà thể chất",
+          "image": "🏋️",
+          "speechText": "gym"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 6,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-07",
+      "slug": "lop-5-unit-07-our-favourite-school-activities",
+      "levelSlug": "lop-5",
+      "title": "Unit 7: Our favourite school activities",
+      "bookUnitTitle": "Our favourite school activities",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our favourite school activities”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u07-read-books",
+          "word": "read books",
+          "phonetic": "/ɹˈiːd bˈʊks/",
+          "vietnameseMeaning": "đọc sách",
+          "image": "📖",
+          "speechText": "read books"
+        },
+        {
+          "id": "gs-g5-u07-do-experiments",
+          "word": "do experiments",
+          "phonetic": "/dˈuː ɛkspˈɛɹɪmənts/",
+          "vietnameseMeaning": "làm thí nghiệm",
+          "image": "🧪",
+          "speechText": "do experiments"
+        },
+        {
+          "id": "gs-g5-u07-play-sports",
+          "word": "play sports",
+          "phonetic": "/plˈeɪ spˈɔːts/",
+          "vietnameseMeaning": "chơi thể thao",
+          "image": "⚽",
+          "speechText": "play sports"
+        },
+        {
+          "id": "gs-g5-u07-sing-songs",
+          "word": "sing songs",
+          "phonetic": "/sˈɪŋ sˈɒŋz/",
+          "vietnameseMeaning": "hát",
+          "image": "🎤",
+          "speechText": "sing songs"
+        },
+        {
+          "id": "gs-g5-u07-draw-pictures",
+          "word": "draw pictures",
+          "phonetic": "/dɹˈɔː pˈɪktʃəz/",
+          "vietnameseMeaning": "vẽ tranh",
+          "image": "🎨",
+          "speechText": "draw pictures"
+        },
+        {
+          "id": "gs-g5-u07-work-in-groups",
+          "word": "work in groups",
+          "phonetic": "/wˈɜːk ɪn ɡɹˈuːps/",
+          "vietnameseMeaning": "làm việc nhóm",
+          "image": "👥",
+          "speechText": "work in groups"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 7,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-08",
+      "slug": "lop-5-unit-08-in-our-classroom",
+      "levelSlug": "lop-5",
+      "title": "Unit 8: In our classroom",
+      "bookUnitTitle": "In our classroom",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “In our classroom”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u08-projector",
+          "word": "projector",
+          "phonetic": "/pɹədʒˈɛktə/",
+          "vietnameseMeaning": "máy chiếu",
+          "image": "📽️",
+          "speechText": "projector"
+        },
+        {
+          "id": "gs-g5-u08-computer",
+          "word": "computer",
+          "phonetic": "/kəmpjˈuːtə/",
+          "vietnameseMeaning": "máy tính",
+          "image": "💻",
+          "speechText": "computer"
+        },
+        {
+          "id": "gs-g5-u08-map",
+          "word": "map",
+          "phonetic": "/mˈap/",
+          "vietnameseMeaning": "bản đồ",
+          "image": "🗺️",
+          "speechText": "map"
+        },
+        {
+          "id": "gs-g5-u08-clock",
+          "word": "clock",
+          "phonetic": "/klˈɒk/",
+          "vietnameseMeaning": "đồng hồ",
+          "image": "🕒",
+          "speechText": "clock"
+        },
+        {
+          "id": "gs-g5-u08-cupboard",
+          "word": "cupboard",
+          "phonetic": "/kˈʌbəd/",
+          "vietnameseMeaning": "tủ đựng đồ",
+          "image": "🗄️",
+          "speechText": "cupboard"
+        },
+        {
+          "id": "gs-g5-u08-noticeboard",
+          "word": "noticeboard",
+          "phonetic": "/nˈəʊtɪsbˌɔːd/",
+          "vietnameseMeaning": "bảng thông báo",
+          "image": "📌",
+          "speechText": "noticeboard"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 8,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-09",
+      "slug": "lop-5-unit-09-our-outdoor-activities",
+      "levelSlug": "lop-5",
+      "title": "Unit 9: Our outdoor activities",
+      "bookUnitTitle": "Our outdoor activities",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our outdoor activities”.",
+      "icon": "🦉",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u09-go-camping",
+          "word": "go camping",
+          "phonetic": "/ɡˌəʊ kˈampɪŋ/",
+          "vietnameseMeaning": "đi cắm trại",
+          "image": "🏕️",
+          "speechText": "go camping"
+        },
+        {
+          "id": "gs-g5-u09-climb-a-hill",
+          "word": "climb a hill",
+          "phonetic": "/klˈaɪm ɐ hˈɪl/",
+          "vietnameseMeaning": "leo đồi",
+          "image": "🥾",
+          "speechText": "climb a hill"
+        },
+        {
+          "id": "gs-g5-u09-go-fishing",
+          "word": "go fishing",
+          "phonetic": "/ɡˌəʊ fˈɪʃɪŋ/",
+          "vietnameseMeaning": "đi câu cá",
+          "image": "🎣",
+          "speechText": "go fishing"
+        },
+        {
+          "id": "gs-g5-u09-have-a-picnic",
+          "word": "have a picnic",
+          "phonetic": "/hav ɐ pˈɪknɪk/",
+          "vietnameseMeaning": "đi dã ngoại",
+          "image": "🧺",
+          "speechText": "have a picnic"
+        },
+        {
+          "id": "gs-g5-u09-take-photos",
+          "word": "take photos",
+          "phonetic": "/tˈeɪk fˈəʊtəʊz/",
+          "vietnameseMeaning": "chụp ảnh",
+          "image": "📷",
+          "speechText": "take photos"
+        },
+        {
+          "id": "gs-g5-u09-explore",
+          "word": "explore",
+          "phonetic": "/ɛksplˈɔː/",
+          "vietnameseMeaning": "khám phá",
+          "image": "🧭",
+          "speechText": "explore"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 9,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-10",
+      "slug": "lop-5-unit-10-our-school-trip",
+      "levelSlug": "lop-5",
+      "title": "Unit 10: Our school trip",
+      "bookUnitTitle": "Our school trip",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our school trip”.",
+      "icon": "💡",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u10-trip",
+          "word": "trip",
+          "phonetic": "/tɹˈɪp/",
+          "vietnameseMeaning": "chuyến đi",
+          "image": "🚌",
+          "speechText": "trip"
+        },
+        {
+          "id": "gs-g5-u10-museum",
+          "word": "museum",
+          "phonetic": "/mjuːzˈiəm/",
+          "vietnameseMeaning": "bảo tàng",
+          "image": "🏛️",
+          "speechText": "museum"
+        },
+        {
+          "id": "gs-g5-u10-farm",
+          "word": "farm",
+          "phonetic": "/fˈɑːm/",
+          "vietnameseMeaning": "nông trại",
+          "image": "🚜",
+          "speechText": "farm"
+        },
+        {
+          "id": "gs-g5-u10-guide",
+          "word": "guide",
+          "phonetic": "/ɡˈaɪd/",
+          "vietnameseMeaning": "hướng dẫn viên",
+          "image": "🧑‍🏫",
+          "speechText": "guide"
+        },
+        {
+          "id": "gs-g5-u10-photo",
+          "word": "photo",
+          "phonetic": "/fˈəʊtəʊ/",
+          "vietnameseMeaning": "bức ảnh",
+          "image": "📷",
+          "speechText": "photo"
+        },
+        {
+          "id": "gs-g5-u10-learn",
+          "word": "learn",
+          "phonetic": "/lˈɜːn/",
+          "vietnameseMeaning": "học hỏi",
+          "image": "📚",
+          "speechText": "learn"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 10,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-11",
+      "slug": "lop-5-unit-11-family-time",
+      "levelSlug": "lop-5",
+      "title": "Unit 11: Family time",
+      "bookUnitTitle": "Family time",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Family time”.",
+      "icon": "🌍",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u11-family",
+          "word": "family",
+          "phonetic": "/fˈamɪli/",
+          "vietnameseMeaning": "gia đình",
+          "image": "👨‍👩‍👧‍👦",
+          "speechText": "family"
+        },
+        {
+          "id": "gs-g5-u11-together",
+          "word": "together",
+          "phonetic": "/təɡˈɛðə/",
+          "vietnameseMeaning": "cùng nhau",
+          "image": "🤝",
+          "speechText": "together"
+        },
+        {
+          "id": "gs-g5-u11-cook",
+          "word": "cook",
+          "phonetic": "/kˈʊk/",
+          "vietnameseMeaning": "nấu ăn",
+          "image": "🍳",
+          "speechText": "cook"
+        },
+        {
+          "id": "gs-g5-u11-talk",
+          "word": "talk",
+          "phonetic": "/tˈɔːk/",
+          "vietnameseMeaning": "trò chuyện",
+          "image": "💬",
+          "speechText": "talk"
+        },
+        {
+          "id": "gs-g5-u11-visit",
+          "word": "visit",
+          "phonetic": "/vˈɪzɪt/",
+          "vietnameseMeaning": "thăm",
+          "image": "🚪",
+          "speechText": "visit"
+        },
+        {
+          "id": "gs-g5-u11-weekend",
+          "word": "weekend",
+          "phonetic": "/wiːkˈɛnd/",
+          "vietnameseMeaning": "cuối tuần",
+          "image": "📅",
+          "speechText": "weekend"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 11,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-12",
+      "slug": "lop-5-unit-12-our-tet-holiday",
+      "levelSlug": "lop-5",
+      "title": "Unit 12: Our Tet holiday",
+      "bookUnitTitle": "Our Tet holiday",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our Tet holiday”.",
+      "icon": "🏆",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u12-tet",
+          "word": "Tet",
+          "phonetic": "/tˈɛt/",
+          "vietnameseMeaning": "Tết",
+          "image": "🧧",
+          "speechText": "Tet"
+        },
+        {
+          "id": "gs-g5-u12-lucky-money",
+          "word": "lucky money",
+          "phonetic": "/lˈʌki mˈʌni/",
+          "vietnameseMeaning": "tiền lì xì",
+          "image": "🧧",
+          "speechText": "lucky money"
+        },
+        {
+          "id": "gs-g5-u12-fireworks",
+          "word": "fireworks",
+          "phonetic": "/fˈaɪəwɜːks/",
+          "vietnameseMeaning": "pháo hoa",
+          "image": "🎆",
+          "speechText": "fireworks"
+        },
+        {
+          "id": "gs-g5-u12-peach-blossom",
+          "word": "peach blossom",
+          "phonetic": "/pˈiːtʃ blˈɒsəm/",
+          "vietnameseMeaning": "hoa đào",
+          "image": "🌸",
+          "speechText": "peach blossom"
+        },
+        {
+          "id": "gs-g5-u12-visit-relatives",
+          "word": "visit relatives",
+          "phonetic": "/vˈɪzɪt ɹˈɛlətˌɪvz/",
+          "vietnameseMeaning": "thăm họ hàng",
+          "image": "👨‍👩‍👧‍👦",
+          "speechText": "visit relatives"
+        },
+        {
+          "id": "gs-g5-u12-decorate",
+          "word": "decorate",
+          "phonetic": "/dˈɛkəɹˌeɪt/",
+          "vietnameseMeaning": "trang trí",
+          "image": "🎊",
+          "speechText": "decorate"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 12,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-13",
+      "slug": "lop-5-unit-13-our-special-days",
+      "levelSlug": "lop-5",
+      "title": "Unit 13: Our special days",
+      "bookUnitTitle": "Our special days",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our special days”.",
+      "icon": "📘",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u13-birthday",
+          "word": "birthday",
+          "phonetic": "/bˈɜːθdeɪ/",
+          "vietnameseMeaning": "sinh nhật",
+          "image": "🎂",
+          "speechText": "birthday"
+        },
+        {
+          "id": "gs-g5-u13-teachers-day",
+          "word": "Teachers' Day",
+          "phonetic": "/tˈiːtʃəz dˈeɪ/",
+          "vietnameseMeaning": "Ngày Nhà giáo",
+          "image": "👩‍🏫",
+          "speechText": "Teachers' Day"
+        },
+        {
+          "id": "gs-g5-u13-children-s-day",
+          "word": "Children's Day",
+          "phonetic": "/tʃˈɪldɹənz dˈeɪ/",
+          "vietnameseMeaning": "Ngày Quốc tế Thiếu nhi",
+          "image": "🎈",
+          "speechText": "Children's Day"
+        },
+        {
+          "id": "gs-g5-u13-festival",
+          "word": "festival",
+          "phonetic": "/fˈɛstɪvəl/",
+          "vietnameseMeaning": "lễ hội",
+          "image": "🎉",
+          "speechText": "festival"
+        },
+        {
+          "id": "gs-g5-u13-celebrate",
+          "word": "celebrate",
+          "phonetic": "/sˈɛləbɹˌeɪt/",
+          "vietnameseMeaning": "kỷ niệm",
+          "image": "🥳",
+          "speechText": "celebrate"
+        },
+        {
+          "id": "gs-g5-u13-card",
+          "word": "card",
+          "phonetic": "/kˈɑːd/",
+          "vietnameseMeaning": "thiệp",
+          "image": "💌",
+          "speechText": "card"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 13,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-14",
+      "slug": "lop-5-unit-14-staying-healthy",
+      "levelSlug": "lop-5",
+      "title": "Unit 14: Staying healthy",
+      "bookUnitTitle": "Staying healthy",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Staying healthy”.",
+      "icon": "🌟",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u14-exercise",
+          "word": "exercise",
+          "phonetic": "/ˈɛksəsˌaɪz/",
+          "vietnameseMeaning": "tập thể dục",
+          "image": "🏃",
+          "speechText": "exercise"
+        },
+        {
+          "id": "gs-g5-u14-drink-water",
+          "word": "drink water",
+          "phonetic": "/dɹˈɪŋk wˈɔːtə/",
+          "vietnameseMeaning": "uống nước",
+          "image": "💧",
+          "speechText": "drink water"
+        },
+        {
+          "id": "gs-g5-u14-eat-vegetables",
+          "word": "eat vegetables",
+          "phonetic": "/ˈiːt vˈɛdʒɪtəbəlz/",
+          "vietnameseMeaning": "ăn rau",
+          "image": "🥦",
+          "speechText": "eat vegetables"
+        },
+        {
+          "id": "gs-g5-u14-sleep-early",
+          "word": "sleep early",
+          "phonetic": "/slˈiːp ˈɜːlɪ/",
+          "vietnameseMeaning": "ngủ sớm",
+          "image": "😴",
+          "speechText": "sleep early"
+        },
+        {
+          "id": "gs-g5-u14-wash-hands",
+          "word": "wash hands",
+          "phonetic": "/wˈɒʃ hˈandz/",
+          "vietnameseMeaning": "rửa tay",
+          "image": "🫧",
+          "speechText": "wash hands"
+        },
+        {
+          "id": "gs-g5-u14-healthy",
+          "word": "healthy",
+          "phonetic": "/hˈɛlθi/",
+          "vietnameseMeaning": "khỏe mạnh",
+          "image": "💚",
+          "speechText": "healthy"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 14,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-15",
+      "slug": "lop-5-unit-15-our-health",
+      "levelSlug": "lop-5",
+      "title": "Unit 15: Our health",
+      "bookUnitTitle": "Our health",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our health”.",
+      "icon": "🎯",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u15-headache",
+          "word": "headache",
+          "phonetic": "/hˈɛdeɪk/",
+          "vietnameseMeaning": "đau đầu",
+          "image": "🤕",
+          "speechText": "headache"
+        },
+        {
+          "id": "gs-g5-u15-toothache",
+          "word": "toothache",
+          "phonetic": "/tˈuːθeɪk/",
+          "vietnameseMeaning": "đau răng",
+          "image": "🦷",
+          "speechText": "toothache"
+        },
+        {
+          "id": "gs-g5-u15-fever",
+          "word": "fever",
+          "phonetic": "/fˈiːvə/",
+          "vietnameseMeaning": "sốt",
+          "image": "🌡️",
+          "speechText": "fever"
+        },
+        {
+          "id": "gs-g5-u15-cough",
+          "word": "cough",
+          "phonetic": "/kˈɒf/",
+          "vietnameseMeaning": "ho",
+          "image": "🤧",
+          "speechText": "cough"
+        },
+        {
+          "id": "gs-g5-u15-medicine",
+          "word": "medicine",
+          "phonetic": "/mˈɛdsən/",
+          "vietnameseMeaning": "thuốc",
+          "image": "💊",
+          "speechText": "medicine"
+        },
+        {
+          "id": "gs-g5-u15-doctor",
+          "word": "doctor",
+          "phonetic": "/dˈɒktə/",
+          "vietnameseMeaning": "bác sĩ",
+          "image": "👩‍⚕️",
+          "speechText": "doctor"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 15,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-16",
+      "slug": "lop-5-unit-16-seasons-and-the-weather",
+      "levelSlug": "lop-5",
+      "title": "Unit 16: Seasons and the weather",
+      "bookUnitTitle": "Seasons and the weather",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Seasons and the weather”.",
+      "icon": "🧩",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u16-spring",
+          "word": "spring",
+          "phonetic": "/spɹˈɪŋ/",
+          "vietnameseMeaning": "mùa xuân",
+          "image": "🌸",
+          "speechText": "spring"
+        },
+        {
+          "id": "gs-g5-u16-summer",
+          "word": "summer",
+          "phonetic": "/sˈʌmə/",
+          "vietnameseMeaning": "mùa hè",
+          "image": "☀️",
+          "speechText": "summer"
+        },
+        {
+          "id": "gs-g5-u16-autumn",
+          "word": "autumn",
+          "phonetic": "/ˈɔːtʌm/",
+          "vietnameseMeaning": "mùa thu",
+          "image": "🍂",
+          "speechText": "autumn"
+        },
+        {
+          "id": "gs-g5-u16-winter",
+          "word": "winter",
+          "phonetic": "/wˈɪntə/",
+          "vietnameseMeaning": "mùa đông",
+          "image": "❄️",
+          "speechText": "winter"
+        },
+        {
+          "id": "gs-g5-u16-weather",
+          "word": "weather",
+          "phonetic": "/wˈɛðə/",
+          "vietnameseMeaning": "thời tiết",
+          "image": "🌦️",
+          "speechText": "weather"
+        },
+        {
+          "id": "gs-g5-u16-temperature",
+          "word": "temperature",
+          "phonetic": "/tˈɛmpɹɪtʃə/",
+          "vietnameseMeaning": "nhiệt độ",
+          "image": "🌡️",
+          "speechText": "temperature"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 16,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-17",
+      "slug": "lop-5-unit-17-stories-for-children",
+      "levelSlug": "lop-5",
+      "title": "Unit 17: Stories for children",
+      "bookUnitTitle": "Stories for children",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Stories for children”.",
+      "icon": "🚀",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u17-story",
+          "word": "story",
+          "phonetic": "/stˈɔːɹi/",
+          "vietnameseMeaning": "câu chuyện",
+          "image": "📖",
+          "speechText": "story"
+        },
+        {
+          "id": "gs-g5-u17-character",
+          "word": "character",
+          "phonetic": "/kˈaɹɪktə/",
+          "vietnameseMeaning": "nhân vật",
+          "image": "🧙",
+          "speechText": "character"
+        },
+        {
+          "id": "gs-g5-u17-hero",
+          "word": "hero",
+          "phonetic": "/hˈiəɹəʊ/",
+          "vietnameseMeaning": "anh hùng",
+          "image": "🦸",
+          "speechText": "hero"
+        },
+        {
+          "id": "gs-g5-u17-princess",
+          "word": "princess",
+          "phonetic": "/pɹˈɪnsɛs/",
+          "vietnameseMeaning": "công chúa",
+          "image": "👸",
+          "speechText": "princess"
+        },
+        {
+          "id": "gs-g5-u17-dragon",
+          "word": "dragon",
+          "phonetic": "/dɹˈaɡən/",
+          "vietnameseMeaning": "rồng",
+          "image": "🐉",
+          "speechText": "dragon"
+        },
+        {
+          "id": "gs-g5-u17-ending",
+          "word": "ending",
+          "phonetic": "/ˈɛndɪŋ/",
+          "vietnameseMeaning": "kết thúc",
+          "image": "🏁",
+          "speechText": "ending"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 17,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-18",
+      "slug": "lop-5-unit-18-means-of-transport",
+      "levelSlug": "lop-5",
+      "title": "Unit 18: Means of transport",
+      "bookUnitTitle": "Means of transport",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Means of transport”.",
+      "icon": "🌈",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u18-bus",
+          "word": "bus",
+          "phonetic": "/bˈʌs/",
+          "vietnameseMeaning": "xe buýt",
+          "image": "🚌",
+          "speechText": "bus"
+        },
+        {
+          "id": "gs-g5-u18-train",
+          "word": "train",
+          "phonetic": "/tɹˈeɪn/",
+          "vietnameseMeaning": "tàu hỏa",
+          "image": "🚆",
+          "speechText": "train"
+        },
+        {
+          "id": "gs-g5-u18-plane",
+          "word": "plane",
+          "phonetic": "/plˈeɪn/",
+          "vietnameseMeaning": "máy bay",
+          "image": "✈️",
+          "speechText": "plane"
+        },
+        {
+          "id": "gs-g5-u18-bicycle",
+          "word": "bicycle",
+          "phonetic": "/bˈaɪsɪkəl/",
+          "vietnameseMeaning": "xe đạp",
+          "image": "🚲",
+          "speechText": "bicycle"
+        },
+        {
+          "id": "gs-g5-u18-boat",
+          "word": "boat",
+          "phonetic": "/bˈəʊt/",
+          "vietnameseMeaning": "thuyền",
+          "image": "⛵",
+          "speechText": "boat"
+        },
+        {
+          "id": "gs-g5-u18-motorbike",
+          "word": "motorbike",
+          "phonetic": "/mˈəʊtəbˌaɪk/",
+          "vietnameseMeaning": "xe máy",
+          "image": "🏍️",
+          "speechText": "motorbike"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 18,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-19",
+      "slug": "lop-5-unit-19-places-of-interest",
+      "levelSlug": "lop-5",
+      "title": "Unit 19: Places of interest",
+      "bookUnitTitle": "Places of interest",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Places of interest”.",
+      "icon": "🦊",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u19-temple",
+          "word": "temple",
+          "phonetic": "/tˈɛmpəl/",
+          "vietnameseMeaning": "đền",
+          "image": "🛕",
+          "speechText": "temple"
+        },
+        {
+          "id": "gs-g5-u19-museum",
+          "word": "museum",
+          "phonetic": "/mjuːzˈiəm/",
+          "vietnameseMeaning": "bảo tàng",
+          "image": "🏛️",
+          "speechText": "museum"
+        },
+        {
+          "id": "gs-g5-u19-beach",
+          "word": "beach",
+          "phonetic": "/bˈiːtʃ/",
+          "vietnameseMeaning": "bãi biển",
+          "image": "🏖️",
+          "speechText": "beach"
+        },
+        {
+          "id": "gs-g5-u19-waterfall",
+          "word": "waterfall",
+          "phonetic": "/wˈɔːtəfˌɔːl/",
+          "vietnameseMeaning": "thác nước",
+          "image": "💦",
+          "speechText": "waterfall"
+        },
+        {
+          "id": "gs-g5-u19-island",
+          "word": "island",
+          "phonetic": "/ˈaɪlənd/",
+          "vietnameseMeaning": "hòn đảo",
+          "image": "🏝️",
+          "speechText": "island"
+        },
+        {
+          "id": "gs-g5-u19-landmark",
+          "word": "landmark",
+          "phonetic": "/lˈandmɑːk/",
+          "vietnameseMeaning": "địa danh nổi bật",
+          "image": "📍",
+          "speechText": "landmark"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 19,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    },
+    {
+      "id": "global-success-grade-5-unit-20",
+      "slug": "lop-5-unit-20-our-summer-holidays",
+      "levelSlug": "lop-5",
+      "title": "Unit 20: Our summer holidays",
+      "bookUnitTitle": "Our summer holidays",
+      "description": "Bộ từ vựng cơ bản, tự biên soạn theo chủ đề “Our summer holidays”.",
+      "icon": "🐼",
+      "status": "PUBLISHED",
+      "contentVersion": 1,
+      "vocabulary": [
+        {
+          "id": "gs-g5-u20-holiday",
+          "word": "holiday",
+          "phonetic": "/hˈɒlɪdˌeɪ/",
+          "vietnameseMeaning": "kỳ nghỉ",
+          "image": "🌴",
+          "speechText": "holiday"
+        },
+        {
+          "id": "gs-g5-u20-destination",
+          "word": "destination",
+          "phonetic": "/dˌɛstɪnˈeɪʃən/",
+          "vietnameseMeaning": "điểm đến",
+          "image": "📍",
+          "speechText": "destination"
+        },
+        {
+          "id": "gs-g5-u20-travel",
+          "word": "travel",
+          "phonetic": "/tɹˈavəl/",
+          "vietnameseMeaning": "du lịch",
+          "image": "🧳",
+          "speechText": "travel"
+        },
+        {
+          "id": "gs-g5-u20-camping",
+          "word": "camping",
+          "phonetic": "/kˈampɪŋ/",
+          "vietnameseMeaning": "cắm trại",
+          "image": "🏕️",
+          "speechText": "camping"
+        },
+        {
+          "id": "gs-g5-u20-swimming",
+          "word": "swimming",
+          "phonetic": "/swˈɪmɪŋ/",
+          "vietnameseMeaning": "bơi lội",
+          "image": "🏊",
+          "speechText": "swimming"
+        },
+        {
+          "id": "gs-g5-u20-plan",
+          "word": "plan",
+          "phonetic": "/plˈan/",
+          "vietnameseMeaning": "kế hoạch",
+          "image": "🗓️",
+          "speechText": "plan"
+        }
+      ],
+      "languageFocus": {
+        "title": "Mẫu câu mở rộng",
+        "pattern": "Where/When/What ...?",
+        "exampleEnglish": "Where do you live? – I live in Hue.",
+        "exampleVietnamese": "Bạn sống ở đâu? – Tôi sống ở Huế.",
+        "reviewRequired": true
+      },
+      "alignment": {
+        "bookSeries": "Global Success",
+        "grade": 5,
+        "unitNumber": 20,
+        "type": "CURATED_STARTER",
+        "note": "Tên Unit được đối chiếu từ mục lục công khai; từ vựng và ví dụ là nội dung cơ bản được biên soạn độc lập, không phải danh sách chính thức của sách."
+      }
+    }
+  ]
+}
