@@ -31,14 +31,14 @@ async function renderImage(page, source, width, height, type, quality = 0.86) {
 const browser = await chromium.launch({ headless: true, executablePath: chrome });
 try {
   const page = await browser.newPage();
-  const teacherSource = await toDataUrl(path.join(publicRoot, "images", "covy-image.png"), "image/png");
+  const teacherSource = await toDataUrl(path.join(publicRoot, "images", "covy-image-master-1536x1152.png"), "image/png");
   for (const width of [480, 768, 1200]) {
     const height = Math.round(width * 1086 / 1448);
     const output = await renderImage(page, teacherSource, width, height, "image/webp", 0.84);
-    await fs.writeFile(path.join(publicRoot, "images", `covy-image-${width}.webp`), output);
+    await fs.writeFile(path.join(publicRoot, "images", `covy-image-v2-${width}.webp`), output);
   }
   await fs.writeFile(
-    path.join(publicRoot, "images", "covy-image-1200.jpg"),
+    path.join(publicRoot, "images", "covy-image-v2-1200.jpg"),
     await renderImage(page, teacherSource, 1200, 900, "image/jpeg", 0.86),
   );
 

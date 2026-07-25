@@ -5,14 +5,14 @@ media của Homepage. Asset local nằm trong `client/public`.
 
 ## Ảnh giáo viên
 
-Ảnh gốc là `client/public/images/covy-image.png`. Homepage dùng các bản WebP
+Ảnh nguồn hiện tại là `client/public/images/covy-image-master-1536x1152.png`. Homepage dùng các bản WebP
 responsive:
 
-- `covy-image-480.webp`;
-- `covy-image-768.webp`;
-- `covy-image-1200.webp`.
+- `covy-image-v2-480.webp`;
+- `covy-image-v2-768.webp`;
+- `covy-image-v2-1200.webp`.
 
-Fallback và ảnh social dùng `covy-image-1200.jpg`; file PNG gốc chỉ là nguồn để
+Fallback và ảnh social dùng `covy-image-v2-1200.jpg`; file PNG gốc chỉ là nguồn để
 sinh lại asset.
 
 Sau khi thay ảnh gốc, chạy:
@@ -20,6 +20,10 @@ Sau khi thay ảnh gốc, chạy:
 ```bash
 npm -w client run assets:seo
 ```
+
+Khi thay ảnh trong tương lai, phải tăng version trong filename (ví dụ `v3`) ở
+script sinh asset và các đường dẫn runtime để cache immutable của browser và CDN
+không giữ lại ảnh cũ.
 
 Lệnh này sinh lại WebP, PNG logo và icon từ các SVG nguồn. Luôn kiểm tra lại
 `width`, `height`, focal position và alt text trong `publicHome.ts`. Ảnh đầu

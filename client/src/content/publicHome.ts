@@ -110,10 +110,10 @@ export const publicHomeContent = {
     ],
   },
   media: {
-    ogImage: "/images/covy-image-1200.jpg",
-    teacherPhoto: "/images/covy-image-1200.jpg",
+    ogImage: "/images/covy-image-v2-1200.jpg",
+    teacherPhoto: "/images/covy-image-v2-1200.jpg",
     teacherPhotoSources: [
-      { srcSet: "/images/covy-image-480.webp 480w, /images/covy-image-768.webp 768w, /images/covy-image-1200.webp 1200w", type: "image/webp" },
+      { srcSet: "/images/covy-image-v2-480.webp 480w, /images/covy-image-v2-768.webp 768w, /images/covy-image-v2-1200.webp 1200w", type: "image/webp" },
     ],
     teacherPhotoAlt: "Cô Uyên Vy, giáo viên tiếng Anh tại Huế",
     teacherPhotoFocalPosition: "center 42%",
@@ -212,7 +212,7 @@ export const publicHomeStructuredData = {
       name: "Lớp tiếng Anh cô Vy",
       url: `${siteUrl}/`,
       logo: `${siteUrl}/logo-covy.svg`,
-      image: `${siteUrl}/images/covy-image-1200.jpg`,
+      image: `${siteUrl}/images/covy-image-v2-1200.jpg`,
       description: "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.",
       areaServed: {
         "@type": "City",
@@ -238,7 +238,7 @@ export const publicHomeStructuredData = {
       name: "Uyên Vy",
       alternateName: "Cô Vy",
       url: `${siteUrl}/`,
-      image: `${siteUrl}/images/covy-image-1200.jpg`,
+      image: `${siteUrl}/images/covy-image-v2-1200.jpg`,
       jobTitle: "Giáo viên tiếng Anh",
       worksFor: { "@id": `${siteUrl}/#business` },
       sameAs: ["https://www.facebook.com/uyenvy.le.12"],
