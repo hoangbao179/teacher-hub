@@ -54,5 +54,5 @@ test("Homepage has one bootstrap JSON-LD script and conditional key-mode renderi
 test("optional Maps key is passed only through the frontend build pipeline", () => {
   assert.match(envExample, /# Optional frontend\/build-time value\. Restrict by HTTP referrer and allow only Maps Embed API\.\r?\nVITE_GOOGLE_MAPS_EMBED_API_KEY=/);
   assert.match(webDockerfile, /ARG VITE_GOOGLE_MAPS_EMBED_API_KEY=\r?\nENV VITE_GOOGLE_MAPS_EMBED_API_KEY=\$VITE_GOOGLE_MAPS_EMBED_API_KEY/);
-  assert.match(deployWorkflow, /VITE_GOOGLE_MAPS_EMBED_API_KEY=\$\{\{ secrets\.GOOGLE_MAPS_EMBED_API_KEY \}\}/);
+  assert.match(deployWorkflow, /VITE_GOOGLE_MAPS_EMBED_API_KEY=\$\{\{ secrets\.VITE_GOOGLE_MAPS_EMBED_API_KEY \}\}/);
 });
