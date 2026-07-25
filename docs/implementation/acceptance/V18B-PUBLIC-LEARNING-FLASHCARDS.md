@@ -13,6 +13,9 @@
 - Card có hình, từ, phiên âm, nghĩa, ví dụ tùy chọn, audio và vị trí.
 - Previous/next, swipe, Left/Right, remembered/review và reload hoạt động.
 - Audio ưu tiên asset, fallback Web Speech `en-US`, không autoplay/overlap.
+- Flashcard, Listen và Review dùng chung lựa chọn bình thường 0.88x hoặc chậm
+  0.6x; Web Speech và audio asset đều tôn trọng lựa chọn này.
+- Setting tốc độ lưu tại `covy-learning-settings:v1`, tách biệt với progress.
 - Khi audio không khả dụng có message rõ và trang không crash.
 
 ## Listen và progress

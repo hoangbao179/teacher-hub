@@ -4,6 +4,7 @@ import { learningLevels, learningUnits, unitBySlugs } from "../src/features/lear
 import { validateLearningCatalog } from "../src/features/learning/content/validateCatalog.ts";
 import { LEARNING_PROGRESS_STORAGE_KEY, MAX_RECENT_QUIZ_ATTEMPTS, completeQuiz, markReviewedAsRemembered, markVocabularyItem, readLearningProgress, recordQuizAnswer, rememberLearningLocation, resetLearningProgress, resetUnitProgress, startOrResumeQuiz, unitProgressFor, writeLearningProgress } from "../src/features/learning/storage/learningProgressStorage.ts";
 import { audioStrategy, playPronunciation, stopPronunciation } from "../src/features/learning/audio/pronunciation.ts";
+import { LEARNING_SETTINGS_STORAGE_KEY, getPronunciationRate, readLearningSettings, writeLearningSettings } from "../src/features/learning/storage/learningSettingsStorage.ts";
 import { createListenQuestion, seededRandom } from "../src/features/learning/listen/listenQuestions.ts";
 import { createQuizQuestions, quizItemOrder, scoreQuiz, seededQuizRandom } from "../src/features/learning/quiz/quizQuestions.ts";
 import { learningRouteMetadata } from "../src/features/learning/seo/learningMetadata.ts";
@@ -64,6 +65,22 @@ test("progress storage safely handles corrupt schema and blocked writes", () => 
   assert.equal(resetLearningProgress(blocked), false);
 });
 
+test("pronunciation settings default, persist and fail safely without touching progress", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(LEARNING_PROGRESS_STORAGE_KEY, "keep-progress");
+  assert.deepEqual(readLearningSettings(storage), { schemaVersion: 1, pronunciationRateMode: "NORMAL" });
+  assert.equal(getPronunciationRate(storage), 0.88);
+  assert.equal(writeLearningSettings({ schemaVersion: 1, pronunciationRateMode: "SLOW" }, storage), true);
+  assert.deepEqual(readLearningSettings(storage), { schemaVersion: 1, pronunciationRateMode: "SLOW" });
+  assert.equal(getPronunciationRate(storage), 0.6);
+  assert.equal(storage.getItem(LEARNING_PROGRESS_STORAGE_KEY), "keep-progress");
+  storage.setItem(LEARNING_SETTINGS_STORAGE_KEY, "{broken");
+  assert.deepEqual(readLearningSettings(storage), { schemaVersion: 1, pronunciationRateMode: "NORMAL" });
+  const blocked = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
+  assert.deepEqual(readLearningSettings(blocked), { schemaVersion: 1, pronunciationRateMode: "NORMAL" });
+  assert.equal(writeLearningSettings({ schemaVersion: 1, pronunciationRateMode: "SLOW" }, blocked), false);
+});
+
 test("V18A Unit progress migrates without losing learned items", () => {
   const storage = new MemoryStorage();
   storage.setItem(LEARNING_PROGRESS_STORAGE_KEY, JSON.stringify({ schemaVersion: 1, lastLevelSlug: "mam-non", units: { "con-vat-dang-yeu": { learnedItemIds: ["pa-1", "pa-2"], totalItems: 10, completed: false } } }));
@@ -97,19 +114,36 @@ test("listen distractors are unique, deterministic and exclude duplicate answers
   assert.ok(first.options.includes(first.correctMeaning));
 });
 
-test("audio selects asset, speech fallback and unavailable strategy without overlap", async () => {
+test("audio applies normal and slow rates without overlap and preserves unavailable strategy", async () => {
   const item = learningUnits[0].vocabulary[0];
   const events = [];
-  class FakeUtterance { constructor(text) { this.text = text; } }
-  class FakeAudio { play() {} pause() {} }
-  const speech = { cancel: () => events.push("cancel"), speak: (utterance) => events.push(`speak:${utterance.text}`) };
+  const utterances = [];
+  const audios = [];
+  class FakeUtterance { rate = 1; constructor(text) { this.text = text; } }
+  class FakeAudio {
+    currentTime = 4;
+    playbackRate = 1;
+    preservesPitch = false;
+    constructor(source) { this.source = source; audios.push(this); }
+    play() { events.push(`play:${this.playbackRate}`); }
+    pause() { events.push("pause"); }
+  }
+  const speech = { cancel: () => events.push("cancel"), speak: (utterance) => { utterances.push(utterance); events.push(`speak:${utterance.text}`); } };
   assert.equal(audioStrategy({ ...item, audio: "/audio/cat.mp3" }, { Audio: FakeAudio, speechSynthesis: speech, SpeechSynthesisUtterance: FakeUtterance }), "ASSET");
   assert.equal(audioStrategy(item, { speechSynthesis: speech, SpeechSynthesisUtterance: FakeUtterance }), "SPEECH");
-  assert.equal(await playPronunciation(item, { speechSynthesis: speech, SpeechSynthesisUtterance: FakeUtterance }), true);
-  assert.deepEqual(events, ["cancel", "speak:cat"]);
+  assert.equal(await playPronunciation(item, "NORMAL", { speechSynthesis: speech, SpeechSynthesisUtterance: FakeUtterance }), true);
+  assert.equal(utterances.at(-1).rate, 0.88);
+  assert.equal(await playPronunciation(item, "SLOW", { speechSynthesis: speech, SpeechSynthesisUtterance: FakeUtterance }), true);
+  assert.equal(utterances.at(-1).rate, 0.6);
+  const assetItem = { ...item, audio: "/audio/cat.mp3" };
+  assert.equal(await playPronunciation(assetItem, "SLOW", { Audio: FakeAudio }), true);
+  assert.equal(audios[0].playbackRate, 0.6);
+  assert.equal(audios[0].preservesPitch, true);
+  assert.equal(await playPronunciation(assetItem, "NORMAL", { Audio: FakeAudio }), true);
+  assert.equal(audios[0].currentTime, 0);
+  assert.ok(events.indexOf("pause") < events.lastIndexOf("play:0.88"));
   assert.equal(audioStrategy({ ...item, speechText: undefined }, {}), "UNAVAILABLE");
   stopPronunciation();
-  assert.deepEqual(events, ["cancel", "speak:cat", "cancel"]);
 });
 
 test("quiz generator is deterministic with one unique correct option", () => {

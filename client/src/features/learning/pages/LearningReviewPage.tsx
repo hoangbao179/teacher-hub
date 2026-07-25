@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { audioStrategy, playPronunciation, stopPronunciation } from "../audio/pronunciation";
 import { LearningShell } from "../components/LearningShell";
+import { PronunciationRateControl, usePronunciationRateMode } from "../components/PronunciationRateControl";
 import { VocabularyIllustration } from "../components/VocabularyIllustration";
 import { levelBySlug, unitBySlugs } from "../content/vocabularyCatalog";
 import { markReviewedAsRemembered, readLearningProgress, unitProgressFor } from "../storage/learningProgressStorage";
@@ -17,6 +18,7 @@ export function LearningReviewPage() {
   const [progress, setProgress] = useState<LearningProgress>(() => readLearningProgress());
   const [index, setIndex] = useState(0);
   const [audioMessage, setAudioMessage] = useState("");
+  const [rateMode, setRateMode] = usePronunciationRateMode();
   const reviewItems = useMemo(() => unit ? [...new Set([...unitProgressFor(progress, unit).wrongItemIds, ...unitProgressFor(progress, unit).reviewItemIds])].flatMap((id) => unit.vocabulary.find((item) => item.id === id) ?? []) : [], [progress, unit]);
   useEffect(() => () => stopPronunciation(), []);
   if (!level || !unit) return <LearningNotFoundPage />;
@@ -25,7 +27,7 @@ export function LearningReviewPage() {
   const item = reviewItems[safeIndex];
   const canPlay = audioStrategy(item) !== "UNAVAILABLE";
   const markRemembered = () => { stopPronunciation(); setProgress(markReviewedAsRemembered(unit, item.id)); setIndex((current) => Math.min(current, Math.max(reviewItems.length - 2, 0))); };
-  const play = async () => { setAudioMessage(""); if (!(await playPronunciation(item))) setAudioMessage("Trình duyệt này chưa phát được âm thanh."); };
+  const play = async () => setAudioMessage(await playPronunciation(item, rateMode) ? rateMode === "SLOW" ? `Đang phát chậm từ ${item.word}.` : `Đang phát từ ${item.word}.` : "Trình duyệt này chưa phát được âm thanh.");
   return <LearningShell>
     <Box component="main" sx={{ minHeight: "calc(100dvh - 130px)", background: `linear-gradient(150deg,#f1fbff,${level.accent}14,#fff8ed)` }}>
       <Container maxWidth="md" sx={{ py: { xs: 2.5, sm: 5 } }}>
@@ -34,7 +36,8 @@ export function LearningReviewPage() {
           <Card role="group" aria-label={`Thẻ ôn tập từ ${item.word}`} sx={{ mt: 2, p: { xs: 2.5, sm: 4 }, textAlign: "center", borderRadius: "24px", border: "1px solid #dfd4f4", boxShadow: "0 16px 36px rgba(70,52,120,.1)" }}>
             <VocabularyIllustration image={item.image} word={item.word} sx={{ width: 110, height: 110, mx: "auto", display: "grid", placeItems: "center", fontSize: 74 }} />
             <Typography sx={{ mt: 1, fontSize: { xs: 36, sm: 44 }, fontWeight: 800, color: "#5135a6" }}>{item.word}</Typography><Typography color="text.secondary">{item.phonetic}</Typography><Typography sx={{ mt: 1.5, fontSize: 20, fontWeight: 700 }}>{item.vietnameseMeaning}</Typography>
-            <Tooltip title={canPlay ? "Nghe phát âm" : "Trình duyệt chưa hỗ trợ phát âm"}><span><Button onClick={play} disabled={!canPlay} startIcon={<VolumeUp />} aria-label={`Nghe phát âm từ ${item.word}`} sx={{ mt: 1.5 }}>Nghe từ</Button></span></Tooltip>
+            <Box sx={{ width: "100%", mt: 2, display: "flex", justifyContent: "center" }}><PronunciationRateControl value={rateMode} onChange={(value) => { setAudioMessage(""); setRateMode(value); }} /></Box>
+            <Tooltip title={canPlay ? "Nghe phát âm" : "Trình duyệt chưa hỗ trợ phát âm"}><span><Button onClick={play} disabled={!canPlay} startIcon={<VolumeUp />} aria-label={`Nghe phát âm từ ${item.word}`} sx={{ mt: 1.25 }}>Nghe từ</Button></span></Tooltip>
             <Typography role="status" aria-live="polite" color="text.secondary" sx={{ minHeight: 24 }}>{audioMessage}</Typography>
             <Button onClick={markRemembered} variant="contained" startIcon={<CheckCircleOutlined />} sx={{ mt: 1, minHeight: "50px !important", bgcolor: "#3f936d", borderRadius: 3 }}>Đã nhớ từ này</Button>
           </Card>

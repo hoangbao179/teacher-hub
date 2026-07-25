@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { audioStrategy, playPronunciation, stopPronunciation } from "../audio/pronunciation";
 import { LearningShell } from "../components/LearningShell";
+import { PronunciationRateControl, usePronunciationRateMode } from "../components/PronunciationRateControl";
 import { levelBySlug, unitBySlugs } from "../content/vocabularyCatalog";
 import { createListenQuestion, seededRandom } from "../listen/listenQuestions";
 import { readLearningProgress, recordListenAnswer, unitProgressFor } from "../storage/learningProgressStorage";
@@ -18,6 +19,7 @@ export function LearningListenPage() {
   const [selected, setSelected] = useState<string>();
   const [progress, setProgress] = useState<LearningProgress>(() => readLearningProgress());
   const [audioMessage, setAudioMessage] = useState("");
+  const [rateMode, setRateMode] = usePronunciationRateMode();
   const question = useMemo(() => unit ? createListenQuestion(unit.vocabulary, index, seededRandom(index + unit.id.length)) : undefined, [index, unit]);
 
   useEffect(() => stopPronunciation, [index]);
@@ -27,7 +29,7 @@ export function LearningListenPage() {
   const correct = selected === question.correctMeaning;
   const unitProgress = unitProgressFor(progress, unit);
 
-  const play = async () => setAudioMessage(await playPronunciation(question.item) ? "Đang phát từ. Con nghe kỹ nhé!" : "Thiết bị này hiện không phát được âm thanh.");
+  const play = async () => setAudioMessage(await playPronunciation(question.item, rateMode) ? rateMode === "SLOW" ? "Đang phát chậm từ. Con nghe kỹ nhé!" : "Đang phát từ. Con nghe kỹ nhé!" : "Thiết bị này hiện không phát được âm thanh.");
   const answer = (meaning: string) => {
     if (answered || strategy === "UNAVAILABLE") return;
     setSelected(meaning);
@@ -49,8 +51,9 @@ export function LearningListenPage() {
             <Typography variant="overline" sx={{ color: level.accent }}>NGHE VÀ CHỌN NGHĨA</Typography>
             <Typography component="h1" sx={{ mt: 0.75, fontSize: { xs: 25, sm: 32 }, fontWeight: 800 }}>Con nghe thấy từ nào?</Typography>
             <Box aria-hidden="true" sx={{ mt: 2, width: { xs: 100, sm: 120 }, height: { xs: 100, sm: 120 }, display: "grid", placeItems: "center", borderRadius: "32px", bgcolor: "#f0eaff", color: "#7455d9" }}><Headphones sx={{ fontSize: { xs: 52, sm: 64 } }} /></Box>
+            <Box sx={{ width: "100%", mt: 2, display: "flex", justifyContent: "center" }}><PronunciationRateControl value={rateMode} onChange={(value) => { setAudioMessage(""); setRateMode(value); }} /></Box>
             <Tooltip title={strategy === "UNAVAILABLE" ? "Trình duyệt này không hỗ trợ audio hoặc phát âm" : ""}>
-              <span><Button onClick={play} disabled={strategy === "UNAVAILABLE"} variant="contained" startIcon={audioMessage ? <Replay /> : <Headphones />} aria-label={audioMessage ? "Nghe lại từ" : "Phát từ cần nghe"} sx={{ mt: 2, minHeight: "48px !important", bgcolor: "#7455d9", borderRadius: 3 }}>{audioMessage ? "Nghe lại" : "Phát từ"}</Button></span>
+              <span><Button onClick={play} disabled={strategy === "UNAVAILABLE"} variant="contained" startIcon={audioMessage ? <Replay /> : <Headphones />} aria-label={audioMessage ? "Nghe lại từ" : "Phát từ cần nghe"} sx={{ mt: 1.25, minHeight: "48px !important", bgcolor: "#7455d9", borderRadius: 3 }}>{audioMessage ? "Nghe lại" : "Phát từ"}</Button></span>
             </Tooltip>
             <Typography aria-live="polite" sx={{ minHeight: 23, mt: 0.75, color: "text.secondary", fontSize: 13 }}>{strategy === "UNAVAILABLE" ? "Trình duyệt này chưa phát được từ. Câu này không tính điểm." : audioMessage}</Typography>
           </Stack>

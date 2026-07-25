@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react
 import { Link, useParams } from "react-router-dom";
 import { audioStrategy, playPronunciation, stopPronunciation } from "../audio/pronunciation";
 import { LearningShell } from "../components/LearningShell";
+import { PronunciationRateControl, usePronunciationRateMode } from "../components/PronunciationRateControl";
 import { VocabularyIllustration } from "../components/VocabularyIllustration";
 import { levelBySlug, unitBySlugs } from "../content/vocabularyCatalog";
 import { markVocabularyItem, readLearningProgress, recordViewedItem, unitProgressFor } from "../storage/learningProgressStorage";
@@ -21,6 +22,7 @@ export function LearningFlashcardsPage() {
   });
   const [progress, setProgress] = useState<LearningProgress>(() => readLearningProgress());
   const [audioMessage, setAudioMessage] = useState("");
+  const [rateMode, setRateMode] = usePronunciationRateMode();
   const touchStart = useRef<number | null>(null);
 
   const move = useCallback((delta: number) => {
@@ -56,7 +58,7 @@ export function LearningFlashcardsPage() {
   const review = unitProgress.reviewItemIds.includes(item.id);
   const imageSize = level.group === "EARLY" ? { xs: 112, sm: 142 } : { xs: 92, sm: 118 };
 
-  const play = async () => setAudioMessage(await playPronunciation(item) ? `Đang phát âm từ ${item.word}.` : "Thiết bị này hiện không phát được âm thanh.");
+  const play = async () => setAudioMessage(await playPronunciation(item, rateMode) ? rateMode === "SLOW" ? `Đang phát chậm từ ${item.word}.` : `Đang phát từ ${item.word}.` : "Thiết bị này hiện không phát được âm thanh.");
   const mark = (state: "REMEMBERED" | "REVIEW") => setProgress(markVocabularyItem(unit, item.id, state));
   const onTouchStart = (event: TouchEvent) => { touchStart.current = event.changedTouches[0]?.clientX ?? null; };
   const onTouchEnd = (event: TouchEvent) => {
@@ -93,8 +95,9 @@ export function LearningFlashcardsPage() {
           <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 16 }}>{item.phonetic}</Typography>
           <Typography sx={{ mt: 1.5, color: "#523a9d", fontSize: { xs: 19, sm: 22 }, fontWeight: 800 }}>{item.vietnameseMeaning}</Typography>
           {item.example && <Typography sx={{ mt: 1.25, p: 1.25, borderRadius: 2.5, bgcolor: "#f7f3ff", fontSize: 14.5 }}>Ví dụ: {item.example}</Typography>}
+          <Box sx={{ width: "100%", mt: 2, display: "flex", justifyContent: "center" }}><PronunciationRateControl value={rateMode} onChange={(value) => { setAudioMessage(""); setRateMode(value); }} /></Box>
           <Tooltip title={strategy === "UNAVAILABLE" ? "Trình duyệt này không hỗ trợ phát âm" : ""}>
-            <span><Button onClick={play} disabled={strategy === "UNAVAILABLE"} variant="outlined" startIcon={<Headphones />} aria-label={`Nghe phát âm từ ${item.word}`} sx={{ mt: 2, minHeight: "46px !important", borderRadius: 3 }}>Nghe từ</Button></span>
+            <span><Button onClick={play} disabled={strategy === "UNAVAILABLE"} variant="outlined" startIcon={<Headphones />} aria-label={`Nghe phát âm từ ${item.word}`} sx={{ mt: 1.25, minHeight: "46px !important", borderRadius: 3 }}>Nghe từ</Button></span>
           </Tooltip>
           <Typography aria-live="polite" sx={{ minHeight: 22, mt: 0.75, color: "text.secondary", fontSize: 13 }}>{strategy === "UNAVAILABLE" ? "Âm thanh chưa khả dụng trên trình duyệt này." : audioMessage}</Typography>
         </Card>

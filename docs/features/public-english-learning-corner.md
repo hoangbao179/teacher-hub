@@ -400,6 +400,9 @@ Quy tắc:
 - không lưu token, số điện thoại, dữ liệu phụ huynh hoặc admin;
 - có hành động `Xóa tiến độ trên thiết bị này` trước khi phát hành rộng.
 
+Tùy chọn tốc độ phát âm lưu riêng tại `covy-learning-settings:v1`, không thay đổi
+schema progress. Giá trị mặc định `NORMAL` phát ở 0.88x; `SLOW` phát ở 0.6x.
+
 ## 11. Âm thanh
 
 Ưu tiên:
@@ -408,7 +411,8 @@ Quy tắc:
 2. browser `SpeechSynthesis` với locale tiếng Anh;
 3. ẩn/disable nút nghe với mô tả phù hợp.
 
-Không autoplay và không yêu cầu microphone.
+Cả audio asset và Web Speech phải tôn trọng tốc độ người học đã chọn. Không
+autoplay và không yêu cầu microphone.
 
 ## 12. SEO, privacy và fallback
 

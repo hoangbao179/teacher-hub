@@ -49,6 +49,16 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   await context.addInitScript(() => {
+    window.__learningSpeechRates = [];
+    window.__learningSpeechCancelCount = 0;
+    class MockSpeechSynthesisUtterance {
+      constructor(text) { this.text = text; this.lang = ""; this.rate = 1; }
+    }
+    Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: MockSpeechSynthesisUtterance });
+    Object.defineProperty(window, "speechSynthesis", { configurable: true, value: {
+      cancel() { window.__learningSpeechCancelCount += 1; },
+      speak(utterance) { window.__learningSpeechRates.push(utterance.rate); },
+    } });
     localStorage.setItem("teacher-token", "public-route-must-not-use-admin-token");
     if (!sessionStorage.getItem("learning-corrupt-seeded")) {
       localStorage.setItem("covy-learning-progress:v1", "{broken");
@@ -96,6 +106,20 @@ try {
   await page.getByRole("group", { name: "Flashcard từ cat" }).waitFor();
   assert(await page.getByRole("group", { name: "Flashcard từ cat" }).isVisible(), "First flashcard is missing");
   assert(await page.getByRole("button", { name: "Nghe phát âm từ cat" }).isVisible(), "Accessible audio control is missing");
+  const normalRateButton = page.getByRole("button", { name: "Bình thường" });
+  const slowRateButton = page.getByRole("button", { name: "Chậm 0.6x" });
+  assert(await normalRateButton.getAttribute("aria-pressed") === "true", "Flashcard must default to normal pronunciation");
+  await slowRateButton.click();
+  assert(await slowRateButton.getAttribute("aria-pressed") === "true", "Slow pronunciation selection is not exposed");
+  await page.getByRole("button", { name: "Nghe phát âm từ cat" }).click();
+  assert(await page.evaluate(() => window.__learningSpeechRates.at(-1)) === 0.6, "Flashcard slow speech rate must be 0.6");
+  await page.reload({ waitUntil: "networkidle" });
+  assert(await page.getByRole("button", { name: "Chậm 0.6x" }).getAttribute("aria-pressed") === "true", "Slow pronunciation setting did not survive reload");
+  await page.getByRole("button", { name: "Bình thường" }).focus();
+  await page.keyboard.press("Enter");
+  assert(await page.getByRole("button", { name: "Bình thường" }).getAttribute("aria-pressed") === "true", "Pronunciation rate control is not keyboard operable");
+  await page.getByRole("button", { name: "Nghe phát âm từ cat" }).click();
+  assert(await page.evaluate(() => window.__learningSpeechRates.at(-1)) === 0.88, "Flashcard normal speech rate must be 0.88");
   await page.getByRole("button", { name: "Thẻ tiếp theo" }).click();
   assert(await page.getByRole("group", { name: "Flashcard từ dog" }).isVisible(), "Next flashcard failed");
   await page.keyboard.press("ArrowLeft");
@@ -118,7 +142,13 @@ try {
 
   await page.goto(`${origin}/hoc/mam-non/con-vat-dang-yeu/listen`, { waitUntil: "networkidle" });
   assert(await page.getByRole("heading", { name: "Con nghe thấy từ nào?", level: 1 }).isVisible(), "Listen practice did not open");
+  assert(await page.getByRole("button", { name: "Bình thường" }).getAttribute("aria-pressed") === "true", "Listen must reuse the saved pronunciation setting");
+  const listenTotalBeforeRateChange = await page.evaluate(() => JSON.parse(localStorage.getItem("covy-learning-progress:v1")).units["con-vat-dang-yeu"].listenTotal);
+  await page.getByRole("button", { name: "Chậm 0.6x" }).click();
+  const listenTotalAfterRateChange = await page.evaluate(() => JSON.parse(localStorage.getItem("covy-learning-progress:v1")).units["con-vat-dang-yeu"].listenTotal);
+  assert(listenTotalAfterRateChange === listenTotalBeforeRateChange, "Changing pronunciation rate must not count as a listen answer");
   await page.getByRole("button", { name: "Phát từ cần nghe" }).click();
+  assert(await page.evaluate(() => window.__learningSpeechRates.at(-1)) === 0.6, "Listen must apply the shared slow pronunciation setting");
   await page.getByRole("button", { name: /con mèo/ }).click();
   assert(await page.getByText("Chính xác!", { exact: false }).isVisible(), "Correct listen feedback is missing");
   assert(await page.getByText(/Từ vừa nghe là/).isVisible(), "Listen answer must only reveal the word after answering");
@@ -160,6 +190,9 @@ try {
   const reviewCard = page.getByRole("group", { name: /Thẻ ôn tập từ/ });
   await reviewCard.waitFor();
   assert(await reviewCard.isVisible(), `Review page did not open: ${await page.locator("body").innerText()}`);
+  assert(await page.getByRole("button", { name: "Chậm 0.6x" }).getAttribute("aria-pressed") === "true", "Review must reuse the saved pronunciation setting");
+  await page.getByRole("button", { name: /Nghe phát âm từ/ }).click();
+  assert(await page.evaluate(() => window.__learningSpeechRates.at(-1)) === 0.6, "Review must apply the shared slow pronunciation setting");
   await page.getByRole("button", { name: "Đã nhớ từ này" }).click();
   const reviewProgress = await page.evaluate(() => JSON.parse(localStorage.getItem("covy-learning-progress:v1")).units["con-vat-dang-yeu"]);
   assert(reviewProgress.quizAttempts.length === 1, "Review must preserve quiz history");
@@ -188,7 +221,7 @@ try {
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     const screens = [
-      ["hub", "/hoc"], ["level", "/hoc/lop-3"], ["flashcard", "/hoc/mam-non/con-vat-dang-yeu/flashcards"],
+      ["hub", "/hoc"], ["level", "/hoc/lop-3"], ["flashcard", "/hoc/mam-non/con-vat-dang-yeu/flashcards"], ["listen", "/hoc/mam-non/con-vat-dang-yeu/listen"],
       ["quiz", "/hoc/mam-non/con-vat-dang-yeu/quiz"], ["result", "/hoc/mam-non/con-vat-dang-yeu/result"], ["review", "/hoc/mam-non/con-vat-dang-yeu/review"],
     ];
     for (const [name, route] of screens) {

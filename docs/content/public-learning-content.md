@@ -25,6 +25,8 @@ không có quyền sử dụng.
 - URL ngoài phải là HTTPS đã được duyệt.
 - Ảnh cần gọn, rõ ở mobile; lỗi tải ảnh phải có fallback.
 - Audio ưu tiên asset đã duyệt; nếu thiếu, ứng dụng dùng Web Speech `en-US`.
+- Cả audio asset và Web Speech phát ở 0.88x (bình thường) hoặc 0.6x (chậm)
+  theo lựa chọn đã lưu của người học.
 - Không autoplay, không thêm file dung lượng lớn nếu chưa có phê duyệt.
 
 Chạy validator và test sau khi sửa catalog:
@@ -41,3 +43,6 @@ Mỗi Unit lưu flashcard/listen cùng `quizAttempts` (tối đa 10 lượt gầ
 `bestScore`, `latestScore`, `wrongItemIds`, `completedAt`, `reviewCompletedAt` và
 `activeQuiz` để resume. Reader luôn validate/migrate dữ liệu V18A/V18B; JSON hỏng
 hoặc storage bị chặn không được làm crash trang.
+
+Tốc độ phát âm lưu riêng tại `covy-learning-settings:v1`; không gộp setting này
+vào `covy-learning-progress:v1`.
