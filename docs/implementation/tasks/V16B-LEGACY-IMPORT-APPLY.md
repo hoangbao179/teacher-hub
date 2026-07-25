@@ -1,6 +1,6 @@
 # V16B-LEGACY-IMPORT-APPLY
 
-Trạng thái: **PLANNED**
+Trạng thái: **PASS on 26/07/2026**
 
 ## Goal
 

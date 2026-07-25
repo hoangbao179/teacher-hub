@@ -21,10 +21,10 @@ một chiều cho phụ huynh.
 
 | Khả năng | Trạng thái hiện hành |
 | --- | --- |
-| Legacy Excel | V16A chỉ upload file tạm, parse, preview, đối soát và tính SHA-256; endpoint không apply vào database và xóa file tạm sau request. |
+| Legacy Excel | V16B giữ preview V16A và có Apply multipart: server đọc/parse/reconcile lại, kiểm tra SHA và structured decisions rồi ghi atomic vào MySQL; binary tạm luôn bị xóa. |
 | Attendance | Lưu riêng theo `lesson_session_participants`/enrollment; mỗi participant có tối đa một `lesson_attendances`. Không có attendance chung cho cả lớp. |
 | Lesson | `lesson_sessions` có `content`, `homework`, `note`; `lesson_attendances.student_note` là ghi chú riêng. Chưa có field tên `generalComment`; `note` hiện là ghi chú chung gần nhất về mặt cấu trúc nhưng chưa có semantics chia sẻ phụ huynh được duyệt. |
-| Tuition cycle | `tuition_cycles` hiện gắn `enrollment_id`, đánh số theo enrollment và chỉ nhận attendance `PRESENT` có tính phí. Chuyển lớp hiện kết thúc cycle dở của enrollment cũ và enrollment mới bắt đầu 0/8. |
+| Tuition cycle | `tuition_cycles` vẫn dùng `enrollment_id` làm anchor tương thích, nhưng recalculation V16B khóa và nhóm attendance theo student xuyên enrollment. `PRESENT`/`ABSENT_CHARGED` tăng đếm; chuyển lớp cùng giá tiếp tục cycle dở. |
 | Google | Không có OAuth, Drive API, Sheets API, provider, bảng mapping/outbox hoặc dependency Google. Google Maps public không phải Drive/Sheets integration. |
 | Student Detail | Chưa trả external resource, spreadsheet ID, URL, trạng thái sync hoặc action mở/copy Google Sheet. |
 
@@ -32,14 +32,13 @@ Vì vậy việc giữ cycle dở xuyên enrollment và một Sheet ổn định
 thay đổi domain **PLANNED**, cần migration/API/runtime riêng trong các task sau;
 không được đọc các quy tắc đích dưới đây như mô tả chức năng đã chạy.
 
-V16A hiện chỉ trả các `LegacyReconciliationStatus` phục vụ preview và giữ một số
-lựa chọn trong state của client. Source chưa có row-resolution lifecycle, decision
-được lưu, audit theo dòng hoặc endpoint Apply. Các khái niệm đó đều thuộc V16B
-**PLANNED**.
+V16B trả thêm row-resolution lifecycle, structured decision, audit theo dòng và
+endpoint Apply. Preview vẫn bất biến dữ liệu nghiệp vụ; chỉ Apply đã xác nhận mới
+mở transaction. Google integration vẫn thuộc các checkpoint V16C–V16E **PLANNED**.
 
-## 2. Mô hình đích và ranh giới trách nhiệm — PLANNED
+## 2. Mô hình đích và ranh giới trách nhiệm
 
-- V16B ghi dữ liệu chuẩn hóa vào MySQL trong transaction; không gọi Google.
+- V16B (**IMPLEMENTED**) ghi dữ liệu chuẩn hóa vào MySQL trong transaction; không gọi Google.
 - V16C tạo và quản lý một Google Sheet của từng student.
 - V16D phát sự kiện bằng transactional outbox và đồng bộ lesson sau commit.
 - V16E đồng bộ tuition, chia sẻ Viewer và cung cấp retry/resync/status cho admin.
@@ -159,7 +158,7 @@ Khi import legacy, nhận xét trong file từng student mặc định là nhậ
 Nếu nhiều file của cùng lesson có text giống hệt, preview chỉ gợi ý gộp; người dùng
 phải xác nhận và hệ thống không tự gộp âm thầm.
 
-## 6. Matching và apply legacy — PLANNED V16B
+## 6. Matching và apply legacy — IMPLEMENTED V16B
 
 ### Trạng thái xử lý từng dòng
 
@@ -280,7 +279,7 @@ Khi nhiều file student lần lượt mô tả cùng group lesson:
 | Import lịch sử sau khi có Sheet | Apply DB một lần rồi sync delta/resync từ DB. |
 | Retry lỗi Google | Không apply DB lần hai. |
 
-## 7. Cycle tám buổi theo student — trạng thái đích PLANNED
+## 7. Cycle tám buổi theo student — IMPLEMENTED V16B
 
 Cycle được tính riêng cho từng student, không theo class và trong thiết kế đích
 không bị chia chỉ vì thay enrollment. Đây là delta so với schema hiện hành đang

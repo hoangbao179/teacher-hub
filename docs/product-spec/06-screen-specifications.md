@@ -101,8 +101,7 @@
 ## 19 Import lịch sử học sinh
 
 - Route hiện hành: `/admin/students/{studentId}/legacy-import`.
-- V16A chỉ preview/audit, không ghi database.
-- **PLANNED V16B:** confirm/apply với exact/near lesson review, attendance riêng,
-  idempotency theo student + SHA-256 và không gọi Google.
+- V16A cung cấp preview/audit; V16B đã thêm confirm/apply với exact/near lesson
+  review, attendance riêng, idempotency theo student + SHA-256 và không gọi Google.
 - **PLANNED V16C–V16E:** Sheet được dựng từ canonical DB sau apply, không convert
   workbook gốc và không reset khi student lên lớp.

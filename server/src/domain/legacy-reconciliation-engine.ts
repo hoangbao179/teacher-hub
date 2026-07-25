@@ -10,6 +10,16 @@ function daysBetween(left: string, right: string): number {
   return Math.round((Date.parse(`${left}T00:00:00Z`) - Date.parse(`${right}T00:00:00Z`)) / 86_400_000);
 }
 
+function lessonTimes(value: string | null): { start: string | null; end: string | null } {
+  if (!value) return { start: null, end: null };
+  const match = value.match(/(?:^|\D)([01]?\d|2[0-3])[:h.]([0-5]\d)\s*[-–—]\s*([01]?\d|2[0-3])[:h.]([0-5]\d)(?:\D|$)/i);
+  if (!match) return { start: null, end: null };
+  return {
+    start: `${match[1].padStart(2, "0")}:${match[2]}`,
+    end: `${match[3].padStart(2, "0")}:${match[4]}`,
+  };
+}
+
 export interface LegacyReconciliationResult {
   lessons: LegacyLearningLessonPreview[];
   tuitionRows: LegacyTuitionRowPreview[];
@@ -53,10 +63,15 @@ export class LegacyReconciliationEngine {
           } else reconciliationStatus = "LEARNING_ONLY_NEEDS_REVIEW";
         }
       }
+      const matchedTuition = matchedTuitionSourceRow == null
+        ? null : parsed.tuitionRows.find((item) => item.sourceRow === matchedTuitionSourceRow) ?? null;
+      const times = lessonTimes(matchedTuition?.time ?? null);
       return {
         id: `learning-${row.sourceRow}`,
         originalDate: row.originalDate,
         normalizedDate: row.normalizedDate,
+        scheduledStartTime: times.start,
+        scheduledEndTime: times.end,
         dateResolution: row.dateResolution,
         suggestedDate,
         teacher: row.teacher,

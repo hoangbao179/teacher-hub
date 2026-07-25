@@ -33,7 +33,7 @@ liệu học sinh khác.
 ## Legacy files
 
 Workbook xuất là normalized canonical output và không mô phỏng cấu trúc file cũ.
-V16A hiện đã parse/preview controlled workbook legacy theo student nhưng không ghi
-database. V16B apply vẫn **PLANNED**; workbook gốc chỉ là migration source, binary
+V16B đã parse/preview controlled workbook legacy theo student và chỉ ghi database
+sau khi structured decisions được xác nhận; workbook gốc chỉ là migration source, binary
 không được giữ lâu dài theo mặc định. Google Sheet V16C–V16E sẽ được dựng từ dữ
 liệu canonical trong DB, không convert hoặc chia sẻ nguyên trạng workbook cũ.

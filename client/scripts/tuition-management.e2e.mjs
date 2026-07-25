@@ -241,8 +241,8 @@ try {
   await page.getByRole("button", { name: "Xác nhận chuyển lớp" }).click();
   await page.getByText("Đã chuyển lớp", { exact: false }).waitFor();
   const transferredStudent = await api(`/api/students/${dueStudent.id}`, token);
-  if (transferredStudent.classId !== targetClass.id || transferredStudent.currentProgress !== 0)
-    throw new Error("Transfer UI did not create a new 0/8 enrollment");
+  if (transferredStudent.classId !== targetClass.id || transferredStudent.currentProgress !== 2)
+    throw new Error("Transfer UI did not preserve the same-price student cycle at 2/8");
   await page.getByRole("button", { name: "Ngừng học" }).click();
   const endDialog = page.getByRole("dialog", { name: "Ngừng học" });
   await endDialog.waitFor();

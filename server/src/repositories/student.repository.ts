@@ -78,7 +78,10 @@ function map(row: StudentJoinedRow): StudentDetail {
 const baseQuery = `
   SELECT s.*, e.id enrollment_id, e.class_id, c.name class_name, e.status enrollment_status,
     e.tuition_mode, e.custom_package_price, c.default_package_price, e.joined_at,
-    (SELECT COUNT(*) FROM tuition_cycle_sessions tcs JOIN tuition_cycles tc ON tc.id=tcs.tuition_cycle_id WHERE tc.enrollment_id=e.id AND tc.status='ACCUMULATING') current_progress,
+    (SELECT COUNT(*) FROM tuition_cycle_sessions tcs
+      JOIN tuition_cycles tc ON tc.id=tcs.tuition_cycle_id
+      JOIN class_enrollments cycle_owner ON cycle_owner.id=tc.enrollment_id
+      WHERE cycle_owner.student_id=s.id AND tc.status='ACCUMULATING') current_progress,
     EXISTS(SELECT 1 FROM tuition_cycles due WHERE due.enrollment_id=e.id AND due.status='PAYMENT_DUE') has_payment_due
     ,(SELECT tc.id FROM tuition_cycles tc WHERE tc.enrollment_id=e.id AND tc.status='INCOMPLETE' ORDER BY tc.cycle_number DESC LIMIT 1) incomplete_cycle_id
     ,(SELECT COUNT(*) FROM tuition_cycle_sessions ics WHERE ics.tuition_cycle_id=(SELECT tc2.id FROM tuition_cycles tc2 WHERE tc2.enrollment_id=e.id AND tc2.status='INCOMPLETE' ORDER BY tc2.cycle_number DESC LIMIT 1)) incomplete_item_count

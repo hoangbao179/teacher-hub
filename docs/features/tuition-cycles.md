@@ -80,13 +80,13 @@ allocate vào cycle đang tích lũy nhưng cycle vẫn `ACCUMULATING`; chỉ đ
 mới tự `PAID`. Cycle dưới 8 vẫn `INCOMPLETE` với settlement riêng
 `OPEN/SETTLED/WAIVED`, không phải partial payment thông thường.
 
-## Cycle theo student cho luồng V16 — PLANNED
+## Cycle theo student cho luồng V16B
 
-Baseline runtime ở trên vẫn gắn cycle với `enrollment_id`; chuyển lớp hiện không
-nối cycle cũ. V16B được thiết kế để cycle dở thuộc tiến trình liên tục của student
+Schema vẫn gắn cycle với `enrollment_id` làm anchor tương thích, nhưng recalculation
+V16B gom attendance theo student để cycle dở thuộc tiến trình liên tục của student
 và không reset chỉ vì đổi enrollment/class: 5/8 tiếp tục 6/8 nếu giá không đổi.
 
-Chỉ `PRESENT` và `ABSENT_CHARGED` (nếu trạng thái planned này được duyệt) tăng bộ
+Chỉ `PRESENT` và `ABSENT_CHARGED` tăng bộ
 đếm; `ABSENT`/`FREE` vẫn không tăng. Giá/hình thức học thay đổi giữa cycle bắt buộc
 có quyết định explicit, còn `PAID` và tám item vẫn bất biến. V16E chỉ trình bày dữ
 liệu canonical này lên Sheet, không tính cycle trong Google.

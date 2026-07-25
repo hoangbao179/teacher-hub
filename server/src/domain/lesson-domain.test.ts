@@ -34,9 +34,11 @@ test("overlapping effective ranges are rejected", () => {
   ]));
 });
 
-test("only present non-free attendance is billable", () => {
+test("present and absent-charged are billable while absent and free are not", () => {
   assert.equal(isBillableAttendance("PRESENT", "CLASS_DEFAULT"), true);
   assert.equal(isBillableAttendance("PRESENT", "FREE"), false);
   assert.equal(isBillableAttendance("ABSENT", "CUSTOM"), false);
   assert.equal(isBillableAttendance("FREE", "CUSTOM"), false);
+  assert.equal(isBillableAttendance("ABSENT_CHARGED", "CUSTOM"), true);
+  assert.equal(isBillableAttendance("ABSENT_CHARGED", "FREE"), false);
 });

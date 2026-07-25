@@ -1,6 +1,6 @@
 import { apiDownload } from "./client";
 import { api } from "./client";
-import type { EndEnrollmentRequest, LegacyImportPreview, TransferEnrollmentRequest, TransferEnrollmentResult } from "@teacher/shared";
+import type { EndEnrollmentRequest, LegacyImportApplyResult, LegacyImportPreview, LegacyImportRowDecision, TransferEnrollmentRequest, TransferEnrollmentResult } from "@teacher/shared";
 
 export async function downloadStudentReport(studentId: number): Promise<string> {
   const { blob, filename } = await apiDownload(`/api/students/${studentId}/export.xlsx`);
@@ -30,4 +30,17 @@ export function previewLegacyWorkbook(studentId: number, file: File): Promise<Le
   const body = new FormData();
   body.append("file", file);
   return api<LegacyImportPreview>(`/api/students/${studentId}/legacy-imports/preview`, { method: "POST", body });
+}
+
+export function applyLegacyWorkbook(
+  studentId: number,
+  file: File,
+  previewSha256: string,
+  decisions: LegacyImportRowDecision[],
+): Promise<LegacyImportApplyResult> {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("previewSha256", previewSha256);
+  body.append("decisions", JSON.stringify(decisions));
+  return api<LegacyImportApplyResult>(`/api/students/${studentId}/legacy-imports/apply`, { method: "POST", body });
 }

@@ -215,10 +215,27 @@ export class EnrollmentRepository {
         );
         if (occupied.length) throw new Error("ONE_TO_ONE_LIMIT");
       }
-      await this.tuition.markAccumulatingIncomplete(connection, id);
-      await this.applyClosureActions(connection, id, input.incompleteCycleAction,
-        input.advanceReceiptAction ?? { type: "NONE" }, input.reason, actorUserId, true);
       const oldEndedAt = addDays(input.effectiveDate, -1);
+      const oldPolicy = await this.policies.resolve(connection, id, oldEndedAt, true);
+      let targetPrice: number | null = null;
+      if (input.tuitionMode === "CUSTOM") targetPrice = input.customPackagePrice ?? null;
+      else if (input.tuitionMode === "CLASS_DEFAULT") {
+        const [targetPolicies] = await connection.query<RowDataPacket[]>(
+          `SELECT package_price FROM class_tuition_policies WHERE class_id=? AND effective_from<=?
+           AND (effective_to IS NULL OR effective_to>=?) ORDER BY effective_from DESC LIMIT 1 FOR UPDATE`,
+          [input.targetClassId, input.effectiveDate, input.effectiveDate],
+        );
+        targetPrice = targetPolicies[0] ? Number(targetPolicies[0].package_price) : null;
+      }
+      const receiptActionType = input.advanceReceiptAction?.type ?? "NONE";
+      const continueCycle = oldPolicy.packagePrice != null && oldPolicy.packagePrice === targetPrice &&
+        input.incompleteCycleAction.type === "KEEP_OPEN" &&
+        (receiptActionType === "NONE" || receiptActionType === "TRANSFER_TO_NEW_ENROLLMENT");
+      if (!continueCycle) {
+        await this.tuition.markAccumulatingIncomplete(connection, id);
+        await this.applyClosureActions(connection, id, input.incompleteCycleAction,
+          input.advanceReceiptAction ?? { type: "NONE" }, input.reason, actorUserId, true);
+      }
       await connection.execute(
         "UPDATE enrollment_active_periods SET active_to=? WHERE enrollment_id=? AND active_to IS NULL",
         [oldEndedAt, id],
@@ -242,6 +259,7 @@ export class EnrollmentRepository {
         "INSERT INTO enrollment_active_periods(enrollment_id,active_from,created_by) VALUES (?,?,?)",
         [created.insertId, input.effectiveDate, actorUserId ?? null],
       );
+      if (continueCycle) await this.tuition.recalculateEnrollment(connection, created.insertId);
       if (input.advanceReceiptAction?.type === "TRANSFER_TO_NEW_ENROLLMENT")
         await connection.execute(
           "UPDATE tuition_receipts SET enrollment_id=?,status='TRANSFERRED' WHERE enrollment_id=? AND status IN ('AVAILABLE','ALLOCATED','TRANSFERRED')",
@@ -259,7 +277,7 @@ export class EnrollmentRepository {
         entityType: "ENROLLMENT", entityId: id, previousValues: { classId: old.class_id, status: old.status },
         newValues: { newEnrollmentId: created.insertId, targetClassId: input.targetClassId,
           effectiveDate: input.effectiveDate, incompleteCycleAction: input.incompleteCycleAction,
-          advanceReceiptAction: input.advanceReceiptAction }, reason: input.reason });
+          advanceReceiptAction: input.advanceReceiptAction, continuedStudentCycle: continueCycle }, reason: input.reason });
       await connection.commit();
       return { oldEnrollmentId: id, newEnrollmentId: created.insertId, effectiveDate: input.effectiveDate };
     } catch (error) { await connection.rollback(); throw error; }

@@ -89,7 +89,9 @@ export class ClassRepository {
     const [students] = await pool.query<RowDataPacket[]>(
       `
       SELECT e.id enrollment_id, s.id student_id, s.full_name, s.nickname, e.tuition_mode,
-        (SELECT COUNT(*) FROM tuition_cycle_sessions tcs JOIN tuition_cycles tc2 ON tc2.id=tcs.tuition_cycle_id WHERE tc2.enrollment_id=e.id AND tc2.status='ACCUMULATING') current_progress,
+        (SELECT COUNT(*) FROM tuition_cycle_sessions tcs JOIN tuition_cycles tc2 ON tc2.id=tcs.tuition_cycle_id
+          JOIN class_enrollments cycle_owner ON cycle_owner.id=tc2.enrollment_id
+          WHERE cycle_owner.student_id=e.student_id AND tc2.status='ACCUMULATING') current_progress,
         EXISTS(SELECT 1 FROM tuition_cycles due WHERE due.enrollment_id=e.id AND due.status='PAYMENT_DUE') has_payment_due
       FROM class_enrollments e JOIN students s ON s.id=e.student_id
       WHERE e.class_id=? AND e.status='ACTIVE' ORDER BY s.full_name

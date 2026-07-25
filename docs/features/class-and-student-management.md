@@ -20,17 +20,18 @@ UI M1.1 đã nối create/edit, pause/resume/close class, create enrollment,
 pause/resume/end enrollment và change tuition mode với loading/error/success và
 confirmation cho transition phá hủy lịch sử hoạt động. Các mutation này có audit.
 
-V15 chuyển lớp atomic: enrollment cũ kết thúc ở ngày trước ngày chuyển,
-enrollment/policy/active period mới bắt đầu đúng ngày chuyển ở 0/8. Đợt dở và
+V15 chuyển lớp atomic: enrollment cũ kết thúc ở ngày trước ngày chuyển và
+enrollment/policy/active period mới bắt đầu đúng ngày chuyển. Từ V16B, đợt dở
+tiếp tục theo student khi giá không đổi; khi giá đổi vẫn dùng quyết định explicit. Đợt dở và
 receipt được xử lý theo lựa chọn; lesson, attendance và cycle cũ không bị sửa.
 
-## Trạng thái đích V16B–V16E — PLANNED
+## Trạng thái V16B–V16E
 
 Baseline V15 ở trên vẫn là runtime hiện hành. Thiết kế theo dõi phụ huynh mới tại
 `student-parent-tracking.md` yêu cầu một Sheet ACTIVE theo `student_id`, không theo
 class/enrollment, và giữ URL khi lên lớp/chuyển nhóm/tạm nghỉ/quay lại.
 
-V16B phải thay đổi domain/schema hiện hành để cycle dở có thể tiếp tục theo student
+V16B đã thay đổi recalculation để cycle dở có thể tiếp tục theo student
 qua enrollment: 5/8 trước chuyển lớp tiếp tục 6/8 sau chuyển nếu giá không đổi. Nếu
 giá/hình thức học đổi, giáo viên phải quyết định explicit; hệ thống không reset hoặc
-quyết toán âm thầm. Chưa có hành vi này trong source đang chạy.
+quyết toán âm thầm. Google Sheet vẫn chưa được triển khai.

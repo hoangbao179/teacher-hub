@@ -3,6 +3,8 @@ import type {
   LegacyAcademicPeriodPreview,
   LegacyClassCandidate,
   LegacyImportPreview as LegacyImportPreviewContract,
+  LegacyImportIssueCode,
+  LegacyImportRowPreview,
   StudentDetail,
 } from "@teacher/shared";
 import type { LegacyReconciliationResult } from "./legacy-reconciliation-engine";
@@ -15,6 +17,32 @@ function schoolPeriod(date: string): { start: string; end: string; schoolYear: s
 }
 
 export interface LegacyPreviewFile { name: string; size: number; sha256: string }
+
+function comparableName(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("vi")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function lessonIssues(
+  lesson: LegacyReconciliationResult["lessons"][number],
+  student: StudentDetail,
+): LegacyImportIssueCode[] {
+  const issues: LegacyImportIssueCode[] = [];
+  if (!lesson.normalizedDate) issues.push("INVALID_DATE");
+  if (!lesson.scheduledStartTime || !lesson.scheduledEndTime) issues.push("INVALID_TIME");
+  if (lesson.reconciliationStatus === "DUPLICATE_SUSPECTED") issues.push("DUPLICATE_ROW");
+  if (lesson.reconciliationStatus === "DATE_CORRECTION_SUGGESTED") issues.push("DATE_CORRECTION");
+  if (lesson.reconciliationStatus === "LEARNING_ONLY_NEEDS_REVIEW") issues.push("ATTENDANCE_AMBIGUOUS");
+  if (lesson.studentName && comparableName(lesson.studentName) !== comparableName(student.fullName))
+    issues.push("STUDENT_MISMATCH");
+  return issues;
+}
+
+function lifecycleStatus(issues: LegacyImportIssueCode[]): LegacyImportRowPreview["status"] {
+  if (!issues.length) return "VALID";
+  return issues.some((issue) => issue === "INVALID_DATE" || issue === "INVALID_TIME" || issue === "STUDENT_MISMATCH")
+    ? "BLOCKED" : "NEEDS_REVIEW";
+}
 
 export class LegacyImportPreview {
   build(student: StudentDetail, classes: ClassListItem[], file: LegacyPreviewFile, result: LegacyReconciliationResult): LegacyImportPreviewContract {
@@ -42,10 +70,54 @@ export class LegacyImportPreview {
     const classCandidates: LegacyClassCandidate[] = classes.map((item) => ({
       id: item.id, name: item.name, status: item.status, isCurrent: item.id === student.classId,
     }));
-    const unresolvedIssueCount = result.lessons.filter((item) => item.reconciliationStatus !== "MATCHED" && item.reconciliationStatus !== "LEARNING_ONLY_ABSENT").length
-      + result.tuitionRows.filter((item) => item.reconciliationStatus !== "MATCHED").length
-      + result.paymentEvents.filter((item) => item.requiresReview).length
-      + academicPeriods.filter((item) => item.gradeLevel == null).length;
+    const lessonRows: LegacyImportRowPreview[] = result.lessons.map((lesson) => {
+      const issueCodes = lessonIssues(lesson, student);
+      const supportedActions = [...new Set(issueCodes.flatMap((issue) => {
+        if (issue === "INVALID_DATE" || issue === "INVALID_TIME" || issue === "DATE_CORRECTION") return ["EDIT_ROW" as const, "SKIP" as const];
+        if (issue === "STUDENT_MISMATCH") return ["CONFIRM_STUDENT" as const, "SKIP" as const];
+        if (issue === "ATTENDANCE_AMBIGUOUS") return ["SET_ATTENDANCE" as const, "SKIP" as const];
+        if (issue === "DUPLICATE_ROW") return ["CREATE_LESSON" as const, "SKIP" as const];
+        return ["SKIP" as const];
+      }))];
+      return {
+        id: lesson.id, rowType: "LESSON", sourceSheet: lesson.sourceSheet, sourceRow: lesson.sourceRow,
+        rawValues: { date: lesson.originalDate, studentName: lesson.studentName, attendance: lesson.attendanceStatus,
+          content: lesson.content, homework: lesson.homework, studentNote: lesson.note },
+        normalizedValues: { date: lesson.normalizedDate, startTime: lesson.scheduledStartTime,
+          endTime: lesson.scheduledEndTime, attendance: lesson.attendanceStatus, content: lesson.content,
+          homework: lesson.homework, studentNote: lesson.note },
+        issueCodes, status: lifecycleStatus(issueCodes), supportedActions,
+        ...(lesson.suggestedDate && issueCodes.includes("DATE_CORRECTION") ? { suggestedResolution: {
+          sourceSheet: lesson.sourceSheet, sourceRow: lesson.sourceRow, issueCode: "DATE_CORRECTION" as const,
+          action: "EDIT_ROW" as const, resolvedValue: { date: lesson.suggestedDate },
+        } } : {}),
+      };
+    });
+    const tuitionPreviewRows: LegacyImportRowPreview[] = result.tuitionRows
+      .filter((row) => row.reconciliationStatus !== "MATCHED")
+      .map((row) => ({
+        id: row.id, rowType: "TUITION", sourceSheet: row.sourceSheet, sourceRow: row.sourceRow,
+        rawValues: { date: row.date, time: row.time, paidMarker: row.paidMarker },
+        normalizedValues: { date: row.date, time: row.time, paidMarker: row.paidMarker },
+        issueCodes: ["TUITION_ROW_UNMATCHED"], status: "NEEDS_REVIEW",
+        supportedActions: ["SKIP"],
+      }));
+    const paymentRows: LegacyImportRowPreview[] = result.paymentEvents.filter((event) => event.requiresReview).map((event) => ({
+      id: event.id, rowType: "PAYMENT", sourceSheet: "Học phí", sourceRow: event.sourceRow,
+      rawValues: { date: event.date }, normalizedValues: { date: event.date, paymentResolution: event.recommendedResolution },
+      issueCodes: ["PAYMENT_REVIEW_REQUIRED"], status: "NEEDS_REVIEW",
+      supportedActions: ["CONFIRM_PAYMENT", "SKIP"],
+    }));
+    const periodRows: LegacyImportRowPreview[] = academicPeriods.map((period, index) => ({
+      id: period.id, rowType: "ACADEMIC_PERIOD", sourceSheet: "Giai đoạn học", sourceRow: index + 1,
+      rawValues: { fromDate: period.fromDate, toDate: period.toDate, schoolYear: period.schoolYear },
+      normalizedValues: { fromDate: period.fromDate, toDate: period.toDate, schoolYear: period.schoolYear,
+        gradeLevel: period.gradeLevel },
+      issueCodes: ["ACADEMIC_PERIOD_MAPPING_REQUIRED"], status: "NEEDS_REVIEW",
+      supportedActions: ["MAP_ACADEMIC_PERIOD"],
+    }));
+    const rows = [...lessonRows, ...tuitionPreviewRows, ...paymentRows, ...periodRows];
+    const unresolvedIssueCount = rows.filter((row) => row.status === "NEEDS_REVIEW" || row.status === "BLOCKED").length;
     const hasAdvancePayment = result.paymentEvents.some((event) => event.recommendedResolution === "CURRENT_CYCLE_ADVANCE")
       ? true : result.paymentEvents.some((event) => event.requiresReview) ? null : false;
     return {
@@ -58,6 +130,7 @@ export class LegacyImportPreview {
       tuitionCycles: result.tuitionCycles,
       academicPeriods,
       classCandidates,
+      rows,
       summary: {
         totalLessons: result.lessons.length,
         presentLessons: result.lessons.filter((item) => item.attendanceStatus === "PRESENT").length,
@@ -68,6 +141,13 @@ export class LegacyImportPreview {
         currentCycleProgress: [...result.tuitionCycles].reverse().find((item) => item.state === "CURRENT")?.itemCount ?? 0,
         hasAdvancePayment,
         unresolvedIssueCount,
+        validRowCount: rows.filter((row) => row.status === "VALID").length,
+        needsReviewRowCount: rows.filter((row) => row.status === "NEEDS_REVIEW").length,
+        blockedRowCount: rows.filter((row) => row.status === "BLOCKED").length,
+        resolvedRowCount: 0,
+        skippedRowCount: 0,
+        expectedLessonCount: lessonRows.length,
+        expectedTuitionCycleCount: result.tuitionCycles.length,
       },
       warnings: [
         "Đây chỉ là bản xem trước; hệ thống chưa ghi lesson, lớp, ghi danh hoặc học phí.",

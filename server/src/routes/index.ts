@@ -40,6 +40,11 @@ export function createRouter(): Router {
     uploadLegacyWorkbook,
     asyncHandler(controllers.legacyImports.preview),
   );
+  router.post(
+    "/api/students/:studentId/legacy-imports/apply",
+    uploadLegacyWorkbook,
+    asyncHandler(controllers.legacyImports.apply),
+  );
   router.post("/api/enrollments/:id/pause", asyncHandler(controllers.enrollments.pause));
   router.post("/api/enrollments/:id/resume", asyncHandler(controllers.enrollments.resume));
   router.post("/api/enrollments/:id/end", asyncHandler(controllers.enrollments.end));

@@ -223,6 +223,45 @@ integration("advance receipt waits for 8 lessons and transfer starts a new 0/8 e
   assert.equal(Number(history[0].lesson_count), 3); assert.equal(Number(history[0].cycle_count), 1);
 });
 
+integration("same-price transfer continues a student tuition cycle across enrollments", async () => {
+  await clean(); const { classes, students, enrollments, lessons } = services();
+  const oldClass = await classes.create({ name: "Lớp nối đợt cũ", type: "GROUP", defaultPackagePrice: 1_600_000,
+    defaultDurationMinutes: 60, startDate: "2026-08-01", schedules: [] });
+  const targetClass = await classes.create({ name: "Lớp nối đợt mới", type: "GROUP", defaultPackagePrice: 1_600_000,
+    defaultDurationMinutes: 60, startDate: "2026-08-01", schedules: [] });
+  const student = await students.create({ fullName: "Học sinh nối chu kỳ" });
+  const oldEnrollment = await enrollments.create(oldClass,
+    { studentId: student, joinedAt: "2026-08-01", tuitionMode: "CLASS_DEFAULT" });
+  for (let index = 1; index <= 5; index++) {
+    const lesson = await lessons.create({ classId: oldClass, sessionDate: `2026-08-0${index + 1}`,
+      scheduledStartTime: "18:00", scheduledEndTime: "19:00", lessonType: "REGULAR" });
+    await lessons.complete(lesson.id, { actualStartTime: "18:00", actualEndTime: "19:00",
+      attendances: [{ enrollmentId: oldEnrollment, status: "PRESENT" }] });
+  }
+  const transferred = await enrollments.transfer(oldEnrollment, { targetClassId: targetClass, effectiveDate: "2026-08-10",
+    tuitionMode: "CLASS_DEFAULT", reason: "Cùng giá nên nối đợt", incompleteCycleAction: { type: "KEEP_OPEN" } });
+  const [partial] = await pool.query<RowDataPacket[]>(
+    `SELECT tc.status,COUNT(tcs.id) progress FROM tuition_cycles tc
+     JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
+     JOIN class_enrollments owner ON owner.id=tc.enrollment_id
+     WHERE owner.student_id=? GROUP BY tc.id`, [student]);
+  assert.equal(partial[0].status, "ACCUMULATING"); assert.equal(Number(partial[0].progress), 5);
+  for (let index = 10; index <= 12; index++) {
+    const lesson = await lessons.create({ classId: targetClass, sessionDate: `2026-08-${index}`,
+      scheduledStartTime: "18:00", scheduledEndTime: "19:00", lessonType: "REGULAR" });
+    await lessons.complete(lesson.id, { actualStartTime: "18:00", actualEndTime: "19:00",
+      attendances: [{ enrollmentId: transferred.newEnrollmentId, status: "PRESENT" }] });
+  }
+  const [due] = await pool.query<RowDataPacket[]>(
+    `SELECT tc.status,COUNT(tcs.id) progress,COUNT(DISTINCT a.enrollment_id) enrollment_count
+     FROM tuition_cycles tc JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
+     JOIN lesson_attendances a ON a.id=tcs.attendance_id
+     JOIN class_enrollments owner ON owner.id=tc.enrollment_id
+     WHERE owner.student_id=? GROUP BY tc.id`, [student]);
+  assert.equal(due.length, 1); assert.equal(due[0].status, "PAYMENT_DUE");
+  assert.equal(Number(due[0].progress), 8); assert.equal(Number(due[0].enrollment_count), 2);
+});
+
 integration("advance receipt auto-pays only at 8/8 and incomplete settlement keeps INCOMPLETE", async () => {
   await clean(); const { classes, students, enrollments, lessons, tuition } = services();
   const classId = await classes.create({ name: "Lớp thu trước", type: "GROUP", defaultPackagePrice: 2_000_000,

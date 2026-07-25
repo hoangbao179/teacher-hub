@@ -13,6 +13,8 @@ classes ─ class_tuition_policies
 class_enrollments ─ enrollment_tuition_policies
 lesson_sessions ─ lesson_session_participants ─ lesson_attendances
 class_enrollments ─ tuition_cycles ─ tuition_cycle_sessions ─ lesson_attendances
+students ─ legacy_imports ─ legacy_import_row_audits
+legacy_imports ─ legacy_import_lesson_links ─ lesson_sessions/lesson_attendances
 ```
 
 ## Dữ liệu tiền/thời gian
@@ -41,6 +43,11 @@ class_enrollments ─ tuition_cycles ─ tuition_cycle_sessions ─ lesson_atten
 - `CLASS_DEFAULT` tại một ngày được resolve từ enrollment policy rồi class price
   policy cùng ngày; các cột price mutable chỉ là compatibility projection.
 - Tuition cycle có target cố định 8, snapshot giá dương và item sequence 1..8.
+- V16B dùng `enrollment_id` trên cycle làm anchor tương thích nhưng recalculation khóa
+  toàn bộ enrollment/cycle/attendance của student, giữ `PAID` và nhóm phần mutable
+  xuyên enrollment. `PRESENT` và `ABSENT_CHARGED` billable; `ABSENT`/`FREE` không billable.
+- `legacy_imports` unique `(student_id,sha256)` là idempotency boundary. Row audit unique
+  theo import/sheet/row/issue; lesson link giữ nguồn sheet/row mà không lưu binary workbook.
 - MySQL pool uses `dateStrings: true` so calendar `DATE` values remain exact and
   are never shifted by runtime timezone conversion.
 - M3 rebuild locks enrollment, cycles and completed attendance; it preserves

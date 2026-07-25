@@ -20,7 +20,7 @@
 - V12D: PASS — synchronized documentation and real-app V2 visual references.
 - V12E: PASS — full regression, responsive acceptance and controlled source-package release gate.
 - V16A: PASS — preview/audit legacy Excel theo student; không ghi database.
-- V16B: PLANNED — apply legacy vào MySQL, lesson matching, attendance riêng, cycle và idempotency/audit; không gọi Google.
+- V16B: PASS — apply legacy atomic vào MySQL, lesson matching, attendance riêng, cycle theo student qua enrollment và idempotency/audit; không gọi Google.
 - V16C: PLANNED — OAuth/Drive/Sheets, template và một Google Sheet ACTIVE theo student.
 - V16D: PLANNED — quick attendance, general/private comments, outbox và lesson sync; giữ Sheet khi lên lớp.
 - V16E: PLANNED — tuition sheet, parent Viewer sharing, retry/resync và admin status.

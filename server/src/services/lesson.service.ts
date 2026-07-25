@@ -441,9 +441,9 @@ export class LessonService {
       this.validateAttendanceStatus(input.status);
       const participant = byEnrollment.get(input.enrollmentId)!;
       const policy = await this.policies.resolve(connection, input.enrollmentId, this.dateOnly(lesson.session_date), true);
-      if (policy.mode === "FREE" && input.status === "PRESENT")
+      if (policy.mode === "FREE" && (input.status === "PRESENT" || input.status === "ABSENT_CHARGED"))
         throw new AppError(400, "FREE_ENROLLMENT_BILLABLE", "Học sinh miễn phí toàn phần phải dùng trạng thái Miễn phí hoặc Nghỉ.");
-      const billable = input.status === "PRESENT" && policy.mode !== "FREE";
+      const billable = (input.status === "PRESENT" || input.status === "ABSENT_CHARGED") && policy.mode !== "FREE";
       const attendanceId = await this.lessons.upsertAttendance(
         connection, Number(lesson.id), Number(participant.participant_id), input.enrollmentId,
         input.status, billable, input.studentNote?.trim() || null,
@@ -464,6 +464,7 @@ export class LessonService {
     const presentCount = detail.participants.filter((item) => item.attendance?.status === "PRESENT").length;
     const absentCount = detail.participants.filter((item) => item.attendance?.status === "ABSENT").length;
     const freeCount = detail.participants.filter((item) => item.attendance?.status === "FREE").length;
+    const absentChargedCount = detail.participants.filter((item) => item.attendance?.status === "ABSENT_CHARGED").length;
     return {
       lessonId: detail.id,
       completedAt: detail.completedAt,
@@ -473,7 +474,7 @@ export class LessonService {
       })),
       lesson: detail,
       actualDurationMinutes: detail.actualDurationMinutes ?? 0,
-      presentCount, absentCount, freeCount,
+      presentCount, absentCount, freeCount, absentChargedCount,
       tuitionImpacts: impacts,
       recalculationConflict: null,
     };
@@ -570,7 +571,7 @@ export class LessonService {
   }
 
   private validateAttendanceStatus(status: AttendanceStatus): void {
-    if (!(["PRESENT", "ABSENT", "FREE"] as AttendanceStatus[]).includes(status))
+    if (!(["PRESENT", "ABSENT", "FREE", "ABSENT_CHARGED"] as AttendanceStatus[]).includes(status))
       throw new AppError(400, "VALIDATION_ERROR", "Trạng thái điểm danh không hợp lệ.");
   }
 

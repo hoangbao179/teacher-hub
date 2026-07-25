@@ -52,10 +52,12 @@
 ## Export
 - GET `/api/students/{id}/export.xlsx`
 - POST `/api/students/{id}/legacy-imports/preview` (multipart `.xlsx`, preview/audit only)
+- POST `/api/students/{id}/legacy-imports/apply` (multipart `.xlsx` + preview SHA + structured decisions; atomic/idempotent)
 
 Route export yêu cầu auth, lấy dữ liệu canonical từ server và hỗ trợ
 `fromDate`, `toDate`, `classId`. Đây là output chuẩn hóa; generic legacy import
 không thuộc V1.
 
 Legacy preview chỉ đọc workbook, tính SHA-256, xóa file tạm và không ghi lesson,
-class, enrollment hoặc tuition. Apply dữ liệu được tách sang giai đoạn sau.
+class, enrollment hoặc tuition. Apply đọc và reconcile lại file, từ chối SHA khác hoặc
+dòng chưa resolve rồi mới ghi business data/audit trong một transaction.

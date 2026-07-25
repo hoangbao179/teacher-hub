@@ -1,4 +1,150 @@
 import type { ClassStatus } from "./classes.js";
+import type { AttendanceStatus } from "./lessons.js";
+
+export type LegacyImportRowStatus = "VALID" | "NEEDS_REVIEW" | "BLOCKED" | "RESOLVED" | "SKIPPED";
+
+export type LegacyImportIssueCode =
+  | "INVALID_DATE"
+  | "INVALID_TIME"
+  | "STUDENT_MISMATCH"
+  | "ATTENDANCE_AMBIGUOUS"
+  | "DUPLICATE_ROW"
+  | "DATE_CORRECTION"
+  | "TUITION_ROW_UNMATCHED"
+  | "ACADEMIC_PERIOD_MAPPING_REQUIRED"
+  | "PAYMENT_REVIEW_REQUIRED"
+  | "NEAR_LESSON_MATCH"
+  | "LESSON_CONTENT_CONFLICT";
+
+export type LegacyImportErrorCode =
+  | "LEGACY_FILE_REQUIRED"
+  | "LEGACY_FILE_TOO_LARGE"
+  | "INVALID_XLSX_TYPE"
+  | "INVALID_XLSX_SIGNATURE"
+  | "INVALID_XLSX"
+  | "LEGACY_SHEETS_MISSING"
+  | "LEGACY_PREVIEW_SHA_MISMATCH"
+  | "LEGACY_DECISIONS_INVALID"
+  | "LEGACY_ROWS_UNRESOLVED"
+  | "LEGACY_IMPORT_DUPLICATE"
+  | "LEGACY_PAID_CYCLE_CONFLICT";
+
+export type LegacyImportDecisionAction =
+  | "EDIT_ROW"
+  | "CONFIRM_STUDENT"
+  | "SET_ATTENDANCE"
+  | "MAP_ACADEMIC_PERIOD"
+  | "MATCH_EXISTING_LESSON"
+  | "CREATE_LESSON"
+  | "KEEP_EXISTING_LESSON"
+  | "USE_IMPORTED_LESSON"
+  | "EDIT_LESSON_CONTENT"
+  | "CONFIRM_PAYMENT"
+  | "SKIP";
+
+export type LegacyImportSkipReason =
+  | "UNIDENTIFIABLE_DATA"
+  | "DUPLICATE_ROW"
+  | "WRONG_STUDENT"
+  | "NOT_NEEDED"
+  | "OTHER";
+
+export interface LegacyImportDecisionBase {
+  sourceSheet: string;
+  sourceRow: number;
+  issueCode: LegacyImportIssueCode;
+  action: LegacyImportDecisionAction;
+}
+
+export interface LegacyImportRowResolution extends LegacyImportDecisionBase {
+  action: "EDIT_ROW";
+  resolvedValue: {
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    content?: string;
+    homework?: string;
+    studentNote?: string;
+  };
+}
+
+export interface LegacyImportSkipDecision extends LegacyImportDecisionBase {
+  action: "SKIP";
+  reason: LegacyImportSkipReason;
+  otherReason?: string;
+}
+
+export interface LegacyImportLessonMatchDecision extends LegacyImportDecisionBase {
+  action: "MATCH_EXISTING_LESSON" | "CREATE_LESSON" | "KEEP_EXISTING_LESSON" |
+    "USE_IMPORTED_LESSON" | "EDIT_LESSON_CONTENT";
+  lessonId?: number;
+  resolvedValue?: { content?: string; homework?: string };
+}
+
+export interface LegacyImportAttendanceDecision extends LegacyImportDecisionBase {
+  action: "SET_ATTENDANCE";
+  resolvedValue: AttendanceStatus;
+}
+
+export interface LegacyAcademicPeriodDecision extends LegacyImportDecisionBase {
+  action: "MAP_ACADEMIC_PERIOD";
+  resolvedValue: {
+    periodId: string;
+    gradeLevel: number;
+    classMapping: LegacyClassMapping;
+  };
+}
+
+export interface LegacyImportStudentDecision extends LegacyImportDecisionBase {
+  action: "CONFIRM_STUDENT";
+  resolvedValue: { studentId: number };
+}
+
+export interface LegacyImportPaymentDecision extends LegacyImportDecisionBase {
+  action: "CONFIRM_PAYMENT";
+  resolvedValue: LegacyPaymentResolution;
+}
+
+export type LegacyImportRowDecision =
+  | LegacyImportRowResolution
+  | LegacyImportSkipDecision
+  | LegacyImportLessonMatchDecision
+  | LegacyImportAttendanceDecision
+  | LegacyAcademicPeriodDecision
+  | LegacyImportStudentDecision
+  | LegacyImportPaymentDecision;
+
+export interface LegacyImportApplyRequest {
+  previewSha256: string;
+  decisions: LegacyImportRowDecision[];
+}
+
+export interface LegacyImportRowPreview {
+  id: string;
+  rowType: "LESSON" | "TUITION" | "PAYMENT" | "ACADEMIC_PERIOD";
+  sourceSheet: string;
+  sourceRow: number;
+  rawValues: Record<string, string | number | boolean | null>;
+  normalizedValues: Record<string, string | number | boolean | null>;
+  issueCodes: LegacyImportIssueCode[];
+  status: LegacyImportRowStatus;
+  supportedActions: LegacyImportDecisionAction[];
+  suggestedResolution?: LegacyImportRowDecision;
+}
+
+export interface LegacyImportApplyResult {
+  importId: number;
+  idempotent: boolean;
+  acceptedRowCount: number;
+  resolvedRowCount: number;
+  skippedRowCount: number;
+  importedLessonCount: number;
+  matchedLessonCount: number;
+  importedAttendanceCount: number;
+  importedClassCount: number;
+  importedEnrollmentCount: number;
+  importedTuitionCycleCount: number;
+}
 
 export type LegacyReconciliationStatus =
   | "MATCHED"
@@ -19,6 +165,8 @@ export interface LegacyLearningLessonPreview {
   id: string;
   originalDate: string;
   normalizedDate: string | null;
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
   dateResolution: LegacyDateResolution;
   suggestedDate: string | null;
   teacher: string | null;
@@ -104,6 +252,13 @@ export interface LegacyImportPreviewSummary {
   currentCycleProgress: number;
   hasAdvancePayment: boolean | null;
   unresolvedIssueCount: number;
+  validRowCount: number;
+  needsReviewRowCount: number;
+  blockedRowCount: number;
+  resolvedRowCount: number;
+  skippedRowCount: number;
+  expectedLessonCount: number;
+  expectedTuitionCycleCount: number;
 }
 
 export interface LegacyImportPreview {
@@ -116,6 +271,7 @@ export interface LegacyImportPreview {
   tuitionCycles: LegacyTuitionCyclePreview[];
   academicPeriods: LegacyAcademicPeriodPreview[];
   classCandidates: LegacyClassCandidate[];
+  rows: LegacyImportRowPreview[];
   summary: LegacyImportPreviewSummary;
   warnings: string[];
 }

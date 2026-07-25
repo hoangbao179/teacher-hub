@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V15, V16A, V17, V18A–V18D và
+M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V15, V16A–V16B, V17, V18A–V18D và
 Global Success public learning release are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
@@ -134,8 +134,8 @@ coverage without adding backend state or student identity.
 
 ## Known limitations
 
-- Apply legacy Excel vào dữ liệu nghiệp vụ vẫn được tách sang V16B; V16A đã có
-  parser, preview và audit reconciliation nhưng không ghi database.
+- Google Sheet theo student và đồng bộ hai chiều vẫn thuộc V16C–V16E; V16B chỉ
+  apply workbook lịch sử vào canonical MySQL.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
   be configured by the operator before the first production deployment.
@@ -156,8 +156,10 @@ chuẩn hóa ngày thiếu năm, đối soát lesson/học phí, chia năm học
 
 ## V16B–V16E
 
-- V16B-LEGACY-IMPORT-APPLY: **PLANNED** — apply vào MySQL, matching lesson,
-  attendance riêng, cycle theo student và idempotency/audit; tuyệt đối chưa gọi Google.
+- V16B-LEGACY-IMPORT-APPLY: **PASS on 26/07/2026** — review/apply atomic vào
+  MySQL, matching lesson, attendance riêng, cycle theo student qua enrollment,
+  idempotency/audit và không gọi Google. Evidence nằm trong hai report V16B tại
+  `.agent-reports/`.
 - V16C-STUDENT-GOOGLE-SHEET: **PLANNED** — OAuth/Drive/Sheets, template và tối đa
   một Sheet `ACTIVE` theo student; Student Detail hiện chưa có external resource.
 - V16D-LESSON-GOOGLE-SHEET-SYNC: **PLANNED** — general/student-specific comments,

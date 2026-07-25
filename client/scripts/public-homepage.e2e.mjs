@@ -14,6 +14,7 @@ const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến T
 const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
 const expectedAddress = "101 Kiệt 245 Bùi Thị Xuân, Phường Thủy Xuân, TP. Huế";
 const googleMapsPlaceUrl = "https://www.google.com/maps/place/L%E1%BB%9Bp+ti%E1%BA%BFng+Anh+c%C3%B4+Vy/@16.4485604,107.5651109,693m/data=!3m1!1e3!4m14!1m7!3m6!1s0x3141a6afd96e3cb5:0xe354465f8ab597f0!2zMTAxIEtp4buHdCAyNDUgQsO5aSBUaOG7iyBYdcOibiwgVGjhu6d5IFh1w6JuLCBIdeG6vywgVmnhu4d0IE5hbQ!3b1!8m2!3d16.4484853!4d107.5649369!3m5!1s0x236f2c65f8d9d355:0x4759212f0d82a749!8m2!3d16.4484035!4d107.5651237!16s%2Fg%2F11zh28qgsd?entry=ttu&g_ep=EgoyMDI2MDcyMi4wIKXMDSoASAFQAw%3D%3D";
+const googleMapsDirectionsUrl = "https://www.google.com/maps/dir/?api=1&destination=16.4484035%2C107.5651237";
 const expectedTrustItems = [
   "5 năm đồng hành cùng học sinh",
   "VSTEP 8.5/10 · C1",
@@ -166,16 +167,18 @@ try {
   await locationCard.getByText("Có nhận dạy tại nhà học sinh trong khu vực Huế.", { exact: true }).waitFor();
   await locationCard.getByText("Phụ huynh vui lòng liên hệ trước để trao đổi lịch học và phạm vi di chuyển phù hợp.", { exact: true }).waitFor();
   assert(await locationSection.getByText("Cơ sở 2", { exact: false }).count() === 0, "A second location remains");
-  const placeLink = page.getByTestId("google-maps-place-link");
-  await placeLink.getByText("Xem vị trí và chỉ đường", { exact: true }).waitFor();
-  assert(await placeLink.getAttribute("href") === googleMapsPlaceUrl, `Unexpected Google Maps place link: ${await placeLink.getAttribute("href")}`);
-  assert(await placeLink.getAttribute("target") === "_blank", "Google Maps place link must open in a new tab");
-  const placeRel = await placeLink.getAttribute("rel");
-  assert(placeRel?.includes("noopener") && placeRel?.includes("noreferrer"), "Google Maps place link is missing noopener noreferrer");
-  assert(await page.getByTestId("google-maps-directions-link").count() === 0, "Directions link must not render in no-key mode");
-  assert(await page.getByTestId("homepage-map-panel").count() === 0, "Map panel must not render in no-key mode");
-  assert(await page.locator('iframe[src*="google.com/maps/embed"]').count() === 0, "Maps iframe must not load in default no-key E2E mode");
-  assert(await locationSection.getByText(expectedAddress, { exact: true }).count() === 1, "Location address must not be duplicated in no-key mode");
+  const mapsAction = page.locator('[data-testid="google-maps-place-link"], [data-testid="google-maps-directions-link"]');
+  await mapsAction.waitFor();
+  const embedMode = await mapsAction.getAttribute("data-testid") === "google-maps-directions-link";
+  await mapsAction.getByText(embedMode ? "Chỉ đường" : "Xem vị trí và chỉ đường", { exact: true }).waitFor();
+  const expectedMapsUrl = embedMode ? googleMapsDirectionsUrl : googleMapsPlaceUrl;
+  assert(await mapsAction.getAttribute("href") === expectedMapsUrl, `Unexpected Google Maps action link: ${await mapsAction.getAttribute("href")}`);
+  assert(await mapsAction.getAttribute("target") === "_blank", "Google Maps action must open in a new tab");
+  const mapsRel = await mapsAction.getAttribute("rel");
+  assert(mapsRel?.includes("noopener") && mapsRel?.includes("noreferrer"), "Google Maps action is missing noopener noreferrer");
+  assert(await page.getByTestId("homepage-map-panel").count() === (embedMode ? 1 : 0), "Map panel does not match the configured Maps mode");
+  assert(await page.locator('iframe[src*="google.com/maps/embed"]').count() === (embedMode ? 1 : 0), "Maps iframe does not match the configured Maps mode");
+  assert(await locationSection.getByText(expectedAddress, { exact: true }).count() === 1, "Location address must not be duplicated");
   assert(!/(rating|review|đánh giá|\d\s*sao)/i.test(await locationSection.innerText()), "Location section contains rating or review UI");
   assert(await page.getByText("GIẢI ĐÁP NHANH", { exact: true }).count() === 0, "FAQ eyebrow remains");
   assert(await page.getByText(/Câu hỏi thường gặp/i).count() === 0, "FAQ heading remains");
@@ -398,9 +401,9 @@ try {
     });
     assert(homepageLayout.trustCards.length === 4, `Trust item count changed at ${viewport.width}px`);
     assert(homepageLayout.locationCard && homepageLayout.locationLayout, `Location layout is missing at ${viewport.width}px`);
-    assert(homepageLayout.mapPanel === undefined, `No-key location rendered a map panel at ${viewport.width}px`);
+    assert(Boolean(homepageLayout.mapPanel) === embedMode, `Map panel does not match configured mode at ${viewport.width}px`);
     assert(homepageLayout.addressFits, `Location address is clipped at ${viewport.width}px`);
-    assert(homepageLayout.mapActions.length === 1, `No-key location must have one CTA at ${viewport.width}px`);
+    assert(homepageLayout.mapActions.length === 1, `Location must have one Maps CTA at ${viewport.width}px`);
     assert(homepageLayout.mapActions.every((action) => action.height >= 44), `Maps CTA is shorter than 44px at ${viewport.width}px: ${homepageLayout.mapActions.map((action) => action.height).join(", ")}`);
     assert(homepageLayout.mapActions.every((action) => action.left >= -1 && action.right <= viewport.width + 1), `Maps CTA overflows at ${viewport.width}px`);
     assert(homepageLayout.heroPhoto && homepageLayout.heroDescription, `Hero geometry is missing at ${viewport.width}px`);
@@ -411,9 +414,13 @@ try {
       assert(homepageLayout.locationActions && Math.abs((homepageLayout.mapActions[0].right - homepageLayout.mapActions[0].left) - homepageLayout.locationActions.width) <= 1, `Mobile location CTA must fill its content area at ${viewport.width}px`);
       assert(homepageLayout.videoOverflow > 0, `Mobile video list must remain horizontally scrollable at ${viewport.width}px`);
     } else {
-      assert(homepageLayout.locationLayout.width <= 961, `Desktop no-key location is wider than 960px at ${viewport.width}px: ${homepageLayout.locationLayout.width}px`);
-      if (viewport.width === 1440) assert(homepageLayout.locationLayout.width >= 800, `Desktop no-key location is too narrow at ${viewport.width}px: ${homepageLayout.locationLayout.width}px`);
-      assert(homepageLayout.locationCenterOffset <= 1, `Desktop no-key location card is not centered at ${viewport.width}px`);
+      if (!embedMode) {
+        assert(homepageLayout.locationLayout.width <= 961, `Desktop no-key location is wider than 960px at ${viewport.width}px: ${homepageLayout.locationLayout.width}px`);
+        if (viewport.width === 1440) assert(homepageLayout.locationLayout.width >= 800, `Desktop no-key location is too narrow at ${viewport.width}px: ${homepageLayout.locationLayout.width}px`);
+        assert(homepageLayout.locationCenterOffset <= 1, `Desktop no-key location card is not centered at ${viewport.width}px`);
+      } else {
+        assert(homepageLayout.mapPanel && homepageLayout.mapPanel.width > 0, `Desktop map panel has no width at ${viewport.width}px`);
+      }
       assert(Math.max(...homepageLayout.trustCards.map((card) => card.top)) - Math.min(...homepageLayout.trustCards.map((card) => card.top)) <= 1, `Desktop trust items are not on one row at ${viewport.width}px`);
       assert(homepageLayout.videoOverflow <= 1, `Desktop video list overflows at ${viewport.width}px`);
       assert(Math.abs(homepageLayout.videoCards[0].top - homepageLayout.videoCards[1].top) <= 1, `Desktop videos are not on one row at ${viewport.width}px`);

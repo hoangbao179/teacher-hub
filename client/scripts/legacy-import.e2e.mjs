@@ -52,7 +52,7 @@ async function waitUrl(url, timeout = 30_000) {
   }
   throw new Error(`Timed out waiting for ${url}`);
 }
-async function makeWorkbook() {
+async function makeWorkbook(studentName) {
   const workbook = new ExcelJS.Workbook();
   const learning = workbook.addWorksheet("Quá trình học tập");
   for (let index = 0; index < 10; index += 1) {
@@ -66,14 +66,14 @@ async function makeWorkbook() {
     learning.getCell(start + 1, 3).value = "HOMEWORK";
     ["STT", "FULL NAME", "", "ABSENCE", "BTVN", "BÀI TẠI LỚP", "GHI CHÚ"].forEach((value, column) => learning.getCell(start + 2, column + 1).value = value);
     learning.getCell(start + 3, 1).value = 1;
-    learning.getCell(start + 3, 2).value = "Học sinh Mẫu";
+    learning.getCell(start + 3, 2).value = studentName;
     learning.getCell(start + 3, 5).value = `Bài tập ${index + 1}`;
   }
   const tuition = workbook.addWorksheet("Học phí");
   ["FULL NAME", "DURATION", "DATE", "HOURS", "VIETINBANK", ""].forEach((value, column) => tuition.getCell(1, column + 1).value = value);
   for (let index = 0; index < 10; index += 1) {
     const row = index + 2;
-    tuition.getCell(row, 1).value = "Học sinh Mẫu";
+    tuition.getCell(row, 1).value = studentName;
     tuition.getCell(row, 2).value = "18:00-19:30";
     tuition.getCell(row, 3).value = new Date(`2026-07-${String(index + 1).padStart(2, "0")}T00:00:00Z`);
     tuition.getCell(row, 3).numFmt = "d/m/yyyy";
@@ -84,7 +84,6 @@ async function makeWorkbook() {
 }
 
 try {
-  await makeWorkbook();
   run("node", ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
   run("npm", ["run", "db:migrate"], path.join(root, "server"));
   run("npm", ["run", "db:bootstrap-admin"], path.join(root, "server"));
@@ -105,30 +104,40 @@ try {
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await page.waitForURL(`${origin}/admin`);
   const token = await page.evaluate(() => localStorage.getItem("teacher-token"));
-  const response = await fetch(`http://127.0.0.1:${apiPort}/api/students`, { headers: { Authorization: `Bearer ${token}` } });
-  const students = (await response.json()).data;
-  const student = students[0];
+  const fullName = "Học sinh Import E2E";
+  const response = await fetch(`http://127.0.0.1:${apiPort}/api/students`, {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ fullName, nickname: "E2E" }),
+  });
+  if (response.status !== 201) throw new Error(`Could not create isolated import student: ${response.status}`);
+  const student = { id: (await response.json()).data.id, fullName };
+  await makeWorkbook(student.fullName);
   await page.goto(`${origin}/admin/students/${student.id}`);
   await page.getByRole("link", { name: "Import lịch sử" }).click();
   await page.waitForURL(`**/admin/students/${student.id}/legacy-import`);
   const studentNav = page.getByTestId("mobile-navigation").getByRole("button", { name: "Học sinh" });
   if (!(await studentNav.getAttribute("class"))?.includes("Mui-selected")) throw new Error("Student navigation is not active on legacy import route");
   await page.locator('input[type="file"]').setInputFiles({ name: "Synthetic Grade 9.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: fs.readFileSync(workbookPath) });
-  await page.getByRole("heading", { name: "Kết quả sẽ trở thành gì?" }).waitFor();
-  await page.getByText("8/8 · Đủ buổi").waitFor();
-  await page.getByText("2/8 · Đang tích lũy").waitFor();
+  await page.getByRole("heading", { name: "Tổng hợp kiểm tra" }).waitFor();
   if ((await page.getByLabel("Khối").first().textContent())?.replaceAll("\u200B", "").trim()) throw new Error("Filename grade was applied to an academic period");
-  await page.getByLabel("Cách hiểu sự kiện PAID").click();
+  await page.getByLabel("Khối").click();
+  await page.getByRole("option", { name: "Lớp 9" }).click();
+  await page.getByRole("button", { name: "Xác nhận mapping" }).click();
+  const paymentCard = page.getByText("Sự kiện thanh toán cần xác nhận").locator("xpath=ancestor::*[contains(@class,'MuiCard-root')]");
+  await paymentCard.getByLabel("Cách hiểu PAID").click();
   await page.getByRole("option", { name: "Trả đợt trước" }).click();
-  await page.getByText("Đợt đã thu").locator("..").getByText("1", { exact: true }).waitFor();
+  await paymentCard.getByRole("button", { name: "Áp dụng quyết định" }).click();
   for (const width of [360, 375, 390, 393, 400, 412, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     if (overflow > 1) throw new Error(`Legacy import overflows by ${overflow}px at ${width}px`);
   }
-  await page.getByRole("link", { name: "Quay lại chi tiết học sinh" }).click();
+  await page.getByRole("button", { name: "Xác nhận import" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Import dữ liệu" }).click();
+  await page.getByText(/Import #\d+ đã hoàn tất/).waitFor();
+  await page.getByRole("link", { name: "Về chi tiết học sinh" }).click();
   await page.waitForURL(`**/admin/students/${student.id}`);
-  console.log("Legacy import targeted E2E passed at 360–430 px.");
+  console.log("Legacy preview, row resolution and Apply E2E passed at 360–430 px.");
 } finally {
   if (browser) await browser.close();
   for (const child of children.reverse()) { try { child.kill(); } catch { /* already stopped */ } }

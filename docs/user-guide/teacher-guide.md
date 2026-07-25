@@ -42,10 +42,15 @@ Học sinh**. Nút thao tác cố định nằm phía trên thanh. Desktop dùng
    không tạo học phí. Lịch bận và conflict chỉ cảnh báo, không tự nghỉ/đổi lớp.
 7. **Xuất Excel**: mở chi tiết học sinh và chọn **Xuất báo cáo Excel**. Workbook
    chuẩn hóa chứa lịch sử học/học phí/tổng hợp; không dùng làm generic import.
-8. Tạm dừng/mở lại lớp hoặc ghi danh phải chọn ngày hiệu lực. Khoảng pause không
+8. **Import lịch sử Excel**: mở chi tiết đúng học sinh, chọn **Import lịch sử**, tải
+   file `.xlsx`, map từng năm học/khối/lớp và xử lý mọi dòng Cần xử lý/Blocked. Có thể
+   sửa ngày/giờ, xác nhận điểm danh, ghép/tạo lesson hoặc bỏ qua với lý do. Kiểm tra
+   tổng accepted/resolved/skipped rồi chọn **Xác nhận import**. Nếu file đã đổi sau
+   preview, hệ thống từ chối và yêu cầu preview lại; import lại cùng file không tạo trùng.
+9. Tạm dừng/mở lại lớp hoặc ghi danh phải chọn ngày hiệu lực. Khoảng pause không
    sinh lịch/participant; lịch sử trước pause và dữ liệu nhập muộn vẫn theo ngày
    học thực tế. Đóng lớp/ngừng học không xóa lịch sử.
-9. **Đổi lịch tạm thời** tại chi tiết lớp: chọn lịch gốc, khoảng ngày, thứ/giờ mới,
+10. **Đổi lịch tạm thời** tại chi tiết lớp: chọn lịch gốc, khoảng ngày, thứ/giờ mới,
    xem preview và xác nhận conflict. Hết khoảng chọn, lịch tự quay về pattern gốc.
 
 Tên lớp và học sinh trong buổi cũ là snapshot tại thời điểm tạo; đổi tên hiện tại
@@ -82,4 +87,5 @@ thanh toán một phần hay nhiều giáo viên.
 - **Thu học phí trước** ghi đúng một gói và chỉ tự đã thu khi đủ 8 buổi.
 - Khi ngừng/chuyển lớp, đợt dở có thể chờ, chốt hoặc miễn; khoản thu trước có thể
   hoàn, dùng chốt đợt cũ hoặc chuyển sang enrollment mới.
-- **Chuyển lớp** bắt đầu lớp mới ở 0/8 và giữ nguyên lịch sử lớp cũ.
+- **Chuyển lớp** giữ nguyên lịch sử lớp cũ và tiếp tục tiến độ đang dở khi giá gói
+  không đổi; nếu giá đổi, giáo viên phải chọn cách xử lý đợt cũ.

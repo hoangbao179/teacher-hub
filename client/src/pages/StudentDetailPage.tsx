@@ -96,7 +96,7 @@ export function StudentDetailPage() {
     await transferEnrollment(item.enrollmentId, { targetClassId, effectiveDate: transferDate, tuitionMode,
       customPackagePrice: tuitionMode === "CUSTOM" ? Number(customPrice) : undefined,
       reason: transferReason, note: transferNote || undefined, incompleteCycleAction: incompleteAction(transferReason, transferNote), advanceReceiptAction: { type: transferReceiptAction } });
-    setTransferOpen(false); setTargetClassId(0); await load(); setSuccess("Đã chuyển lớp; lớp mới bắt đầu từ 0/8 và lịch sử lớp cũ được giữ nguyên.");
+    setTransferOpen(false); setTargetClassId(0); await load(); setSuccess("Đã chuyển lớp; tiến độ học phí được tiếp tục khi giá không đổi và lịch sử lớp cũ được giữ nguyên.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể chuyển lớp."); } finally { setBusy(false); } };
   const changeEnrollmentStatus = async () => { const action = statusActionName; if (!item?.enrollmentId || !action) return; setError(""); setSuccess(""); setBusy(true); try {
     await api(`/api/enrollments/${item.enrollmentId}/${action}`, { method: "POST", body: JSON.stringify({ effectiveDate: statusEffectiveDate, reason: statusReason || undefined }) }); await load(); setStatusActionName(null); setSuccess(action === "pause" ? "Đã tạm dừng ghi danh theo ngày hiệu lực." : "Đã mở lại ghi danh theo ngày hiệu lực.");
@@ -178,7 +178,7 @@ export function StudentDetailPage() {
         <TextField select label="Xử lý đợt cũ" value={closureAction} onChange={(e) => setClosureAction(e.target.value as typeof closureAction)}><MenuItem value="KEEP_OPEN">Để xử lý sau</MenuItem><MenuItem value="SETTLE">Chốt học phí</MenuItem><MenuItem value="WAIVE">Miễn phần còn lại</MenuItem></TextField>
         {closureAction === "SETTLE" && <><TextField type="number" label="Số tiền chốt" value={closureAmount} onChange={(e) => setClosureAmount(e.target.value)} /><TextField select label="Phương thức chốt" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}><MenuItem value="CASH">Tiền mặt</MenuItem><MenuItem value="BANK_TRANSFER">Chuyển khoản</MenuItem></TextField></>}
         {item!.advanceReceipt && <TextField select label="Khoản thu trước" value={transferReceiptAction} onChange={(e) => setTransferReceiptAction(e.target.value as typeof transferReceiptAction)}><MenuItem value="TRANSFER_TO_NEW_ENROLLMENT">Chuyển sang lớp mới</MenuItem><MenuItem value="APPLY_TO_OLD_SETTLEMENT">Dùng chốt đợt cũ</MenuItem><MenuItem value="REFUND">Hoàn tiền</MenuItem><MenuItem value="NONE">Giữ nguyên</MenuItem></TextField>}
-        <Alert severity="info">Lớp mới bắt đầu 0/8. Lesson, attendance và chu kỳ lớp cũ không thay đổi.</Alert>
+        <Alert severity="info">Nếu giá gói không đổi, tiến độ đang dở tiếp tục theo học sinh. Nếu giá đổi, lựa chọn chốt/giữ đợt cũ được áp dụng rõ ràng. Lesson và attendance cũ không thay đổi.</Alert>
       </Stack></DialogContent><DialogActions><Button onClick={() => setTransferOpen(false)}>Hủy</Button><Button variant="contained" disabled={busy || !targetClassId || !transferReason.trim()} onClick={() => void transfer()}>Xác nhận chuyển lớp</Button></DialogActions></Dialog>
     </Stack>
   );

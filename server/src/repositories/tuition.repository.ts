@@ -30,7 +30,7 @@ interface RecalculationAttendance extends BillableAttendanceOrder {
   enrollmentId: number;
   studentId: number;
   studentName: string;
-  status: "PRESENT" | "ABSENT" | "FREE";
+  status: "PRESENT" | "ABSENT" | "FREE" | "ABSENT_CHARGED";
   excluded: boolean;
   paidCycleId: number | null;
 }
@@ -99,17 +99,20 @@ export class TuitionRepository {
     enrollmentId: number,
   ): Promise<TuitionRecalculationResult> {
     const [enrollments] = await connection.query<RowDataPacket[]>(
-      `SELECT e.id,e.student_id,e.status,s.full_name student_name
+      `SELECT e.id,e.student_id,e.status,s.full_name student_name,
+        EXISTS(SELECT 1 FROM class_enrollments active WHERE active.student_id=e.student_id AND active.status='ACTIVE') student_active
        FROM class_enrollments e JOIN students s ON s.id=e.student_id
        WHERE e.id=? FOR UPDATE`, [enrollmentId],
     );
     if (!enrollments[0]) throw new AppError(404, "ENROLLMENT_NOT_FOUND", "Không tìm thấy ghi danh.");
+    const studentId = Number(enrollments[0].student_id);
     const [cycles] = await connection.query<RowDataPacket[]>(
-      "SELECT * FROM tuition_cycles WHERE enrollment_id=? ORDER BY cycle_number FOR UPDATE", [enrollmentId],
+      `SELECT tc.* FROM tuition_cycles tc JOIN class_enrollments owner ON owner.id=tc.enrollment_id
+       WHERE owner.student_id=? ORDER BY tc.started_at,tc.id FOR UPDATE`, [studentId],
     );
     const previousProgress = await this.accumulatingProgress(connection, enrollmentId);
     const [rows] = await connection.query<RowDataPacket[]>(
-      `SELECT a.id attendance_id,a.attendance_status,a.excluded_from_tuition,
+      `SELECT a.id attendance_id,a.enrollment_id,a.attendance_status,a.excluded_from_tuition,
         l.id lesson_id,l.session_date,
         TIME_FORMAT(l.actual_start_time,'%H:%i') actual_start,
         TIME_FORMAT(l.scheduled_start_time,'%H:%i') scheduled_start,
@@ -118,11 +121,12 @@ export class TuitionRepository {
        JOIN lesson_sessions l ON l.id=a.lesson_session_id AND l.status='COMPLETED'
        LEFT JOIN tuition_cycle_sessions paid_item ON paid_item.attendance_id=a.id
        LEFT JOIN tuition_cycles paid ON paid.id=paid_item.tuition_cycle_id AND paid.status='PAID'
-       WHERE a.enrollment_id=? FOR UPDATE`, [enrollmentId],
+       JOIN class_enrollments attendance_enrollment ON attendance_enrollment.id=a.enrollment_id
+       WHERE attendance_enrollment.student_id=? FOR UPDATE`, [studentId],
     );
     const all: RecalculationAttendance[] = rows.map((row) => ({
-      enrollmentId,
-      studentId: Number(enrollments[0].student_id),
+      enrollmentId: Number(row.enrollment_id),
+      studentId,
       studentName: String(enrollments[0].student_name),
       attendanceId: Number(row.attendance_id),
       lessonId: Number(row.lesson_id),
@@ -136,8 +140,9 @@ export class TuitionRepository {
     const paidItems: RecalculationAttendance[] = [];
     const mutableBillable: RecalculationAttendance[] = [];
     for (const attendance of all) {
-      const policy = await this.policies.resolve(connection, enrollmentId, attendance.sessionDate, true);
-      const billable = attendance.status === "PRESENT" && policy.mode !== "FREE" && !attendance.excluded;
+      const policy = await this.policies.resolve(connection, attendance.enrollmentId, attendance.sessionDate, true);
+      const billable = (attendance.status === "PRESENT" || attendance.status === "ABSENT_CHARGED") &&
+        policy.mode !== "FREE" && !attendance.excluded;
       if (attendance.paidCycleId != null) {
         if (!billable)
           throw new AppError(409, "PAID_CYCLE_CONFLICT", "Chỉnh sửa sẽ thay đổi attendance thuộc chu kỳ đã thu.");
@@ -154,38 +159,48 @@ export class TuitionRepository {
     await connection.execute(
       `UPDATE tuition_receipts tr JOIN tuition_receipt_allocations tra ON tra.receipt_id=tr.id
        JOIN tuition_cycles tc ON tc.id=tra.tuition_cycle_id
+       JOIN class_enrollments owner ON owner.id=tc.enrollment_id
        SET tr.status=IF(tr.status='TRANSFERRED','TRANSFERRED','AVAILABLE')
-       WHERE tc.enrollment_id=? AND tc.status<>'PAID'`, [enrollmentId],
+       WHERE owner.student_id=? AND tc.status<>'PAID'`, [studentId],
     );
     await connection.execute(
       `DELETE tra FROM tuition_receipt_allocations tra JOIN tuition_cycles tc ON tc.id=tra.tuition_cycle_id
-       WHERE tc.enrollment_id=? AND tc.status<>'PAID'`, [enrollmentId],
+       JOIN class_enrollments owner ON owner.id=tc.enrollment_id
+       WHERE owner.student_id=? AND tc.status<>'PAID'`, [studentId],
     );
     await connection.execute(
       `DELETE tcs FROM tuition_cycle_sessions tcs
        JOIN tuition_cycles tc ON tc.id=tcs.tuition_cycle_id
-       WHERE tc.enrollment_id=? AND tc.status<>'PAID'`, [enrollmentId],
+       JOIN class_enrollments owner ON owner.id=tc.enrollment_id
+       WHERE owner.student_id=? AND tc.status<>'PAID'`, [studentId],
     );
-    await connection.execute("DELETE FROM tuition_cycles WHERE enrollment_id=? AND status<>'PAID'", [enrollmentId]);
-    const maxPaidNumber = cycles.filter((cycle) => cycle.status === "PAID")
-      .reduce((maximum, cycle) => Math.max(maximum, Number(cycle.cycle_number)), 0);
+    await connection.execute(
+      `DELETE tc FROM tuition_cycles tc JOIN class_enrollments owner ON owner.id=tc.enrollment_id
+       WHERE owner.student_id=? AND tc.status<>'PAID'`, [studentId]);
+    const nextCycleNumber = new Map<number, number>();
+    for (const cycle of cycles.filter((item) => item.status === "PAID")) {
+      const owner = Number(cycle.enrollment_id);
+      nextCycleNumber.set(owner, Math.max(nextCycleNumber.get(owner) ?? 1, Number(cycle.cycle_number) + 1));
+    }
     const groups = groupIntoTuitionCycles(mutableBillable);
     const createdCycleIds: number[] = [];
     const paymentDueCycleIds: number[] = [];
-    for (const [groupIndex, group] of groups.entries()) {
+    for (const group of groups) {
       const first = group[0];
-      const firstPolicy = await this.policies.resolve(connection, enrollmentId, first.sessionDate, true);
+      const firstPolicy = await this.policies.resolve(connection, first.enrollmentId, first.sessionDate, true);
       if (firstPolicy.packagePrice == null)
         throw new AppError(409, "TUITION_POLICY_NOT_FOUND", "Chu kỳ tính phí không có giá hiệu lực.");
       const due = group.length === 8;
       const status = due
         ? "PAYMENT_DUE"
-        : enrollments[0].status === "ENDED" ? "INCOMPLETE" : "ACCUMULATING";
+        : !enrollments[0].student_active ? "INCOMPLETE" : "ACCUMULATING";
+      const cycleNumber = nextCycleNumber.get(first.enrollmentId) ?? 1;
+      nextCycleNumber.set(first.enrollmentId, cycleNumber + 1);
       const [created] = await connection.execute<ResultSetHeader>(
         `INSERT INTO tuition_cycles
           (enrollment_id,cycle_number,target_session_count,package_price_snapshot,status,started_at,reached_target_at)
          VALUES (?,?,8,?,?,?,?)`,
-        [enrollmentId, maxPaidNumber + groupIndex + 1, firstPolicy.packagePrice,
+        [first.enrollmentId, cycleNumber, firstPolicy.packagePrice,
           status, first.sessionDate,
           due ? group[group.length - 1].sessionDate : null],
       );
@@ -196,11 +211,11 @@ export class TuitionRepository {
           "INSERT INTO tuition_cycle_sessions(tuition_cycle_id,attendance_id,sequence_number) VALUES (?,?,?)",
           [created.insertId, attendance.attendanceId, sequence + 1],
         );
-      await this.allocateAdvanceReceipt(connection, enrollmentId, created.insertId, firstPolicy.packagePrice, due);
+      await this.allocateAdvanceReceipt(connection, first.enrollmentId, created.insertId, firstPolicy.packagePrice, due);
     }
     return {
       enrollmentId,
-      studentId: Number(enrollments[0].student_id),
+      studentId,
       studentName: String(enrollments[0].student_name),
       previousProgress,
       newProgress: groups.at(-1)?.length ?? 0,
@@ -211,8 +226,10 @@ export class TuitionRepository {
   async accumulatingProgress(connection: PoolConnection, enrollmentId: number): Promise<number> {
     const [rows] = await connection.query<RowDataPacket[]>(
       `SELECT COUNT(tcs.id) progress FROM tuition_cycles tc
+       JOIN class_enrollments owner ON owner.id=tc.enrollment_id
+       JOIN class_enrollments requested ON requested.id=? AND requested.student_id=owner.student_id
        LEFT JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
-       WHERE tc.enrollment_id=? AND tc.status='ACCUMULATING' GROUP BY tc.id
+       WHERE tc.status='ACCUMULATING' GROUP BY tc.id
        ORDER BY tc.cycle_number DESC LIMIT 1 FOR UPDATE`,
       [enrollmentId],
     );

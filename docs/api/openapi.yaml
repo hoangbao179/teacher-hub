@@ -108,6 +108,32 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
         '413': {description: File vượt quá 10 MB}
+  /api/students/{studentId}/legacy-imports/apply:
+    post:
+      summary: Đọc lại workbook, xác minh SHA/decisions rồi apply atomic vào MySQL
+      parameters:
+        - {in: path, name: studentId, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, previewSha256, decisions]
+              properties:
+                file: {type: string, format: binary, description: Chính File object đã preview, tối đa 10 MB}
+                previewSha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+                decisions:
+                  type: string
+                  description: JSON serialized LegacyImportRowDecision[]
+      responses:
+        '201': {description: Apply mới thành công, content: {application/json: {schema: {$ref: '#/components/schemas/LegacyImportApplyEnvelope'}}}}
+        '200': {description: Replay idempotent của student + SHA, content: {application/json: {schema: {$ref: '#/components/schemas/LegacyImportApplyEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {description: File vượt quá 10 MB}
   /api/enrollments/{id}/pause:
     post: {summary: Tạm dừng ghi danh theo ngày hiệu lực, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã tạm dừng}}}
   /api/enrollments/{id}/resume:
@@ -115,7 +141,7 @@ paths:
   /api/enrollments/{id}/end:
     post: {summary: Kết thúc ghi danh và giữ lịch sử, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã kết thúc}}}
   /api/enrollments/{id}/transfer:
-    post: {summary: Chuyển lớp atomic, bắt đầu enrollment mới ở 0/8 và giữ lịch sử cũ, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'201': {description: Đã chuyển lớp}, '409': {$ref: '#/components/responses/Conflict'}}}
+    post: {summary: Chuyển lớp atomic, tiếp tục cycle theo student khi cùng giá và giữ lịch sử cũ, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'201': {description: Đã chuyển lớp}, '409': {$ref: '#/components/responses/Conflict'}}}
   /api/enrollments/{id}/tuition-receipts:
     get: {summary: Danh sách khoản thu trước của ghi danh, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
   /api/enrollments/{id}/tuition-receipts/advance:
@@ -414,7 +440,7 @@ components:
         reason: {type: string, maxLength: 255}
     LessonType: {type: string, enum: [REGULAR, MAKEUP, EXTRA]}
     LessonStatus: {type: string, enum: [DRAFT, COMPLETED, CANCELLED]}
-    AttendanceStatus: {type: string, enum: [PRESENT, ABSENT, FREE]}
+    AttendanceStatus: {type: string, enum: [PRESENT, ABSENT, FREE, ABSENT_CHARGED]}
     ReconciliationState: {type: string, enum: [UNRECORDED, RECORDED, SKIPPED, RESCHEDULED]}
     ProjectionSource: {type: string, enum: [RECURRING, RESCHEDULED]}
     ScheduleConflictWarning:
@@ -938,7 +964,7 @@ components:
       properties:
         data:
           type: object
-          required: [mode, student, file, lessons, tuitionRows, paymentEvents, tuitionCycles, academicPeriods, classCandidates, summary, warnings]
+          required: [mode, student, file, lessons, tuitionRows, paymentEvents, tuitionCycles, academicPeriods, classCandidates, rows, summary, warnings]
           properties:
             mode: {type: string, enum: [PREVIEW_ONLY]}
             student: {type: object}
@@ -955,8 +981,52 @@ components:
             tuitionCycles: {type: array, items: {type: object}}
             academicPeriods: {type: array, items: {type: object}}
             classCandidates: {type: array, items: {type: object}}
+            rows: {type: array, items: {$ref: '#/components/schemas/LegacyImportRow'}}
             summary: {type: object}
             warnings: {type: array, items: {type: string}}
+    LegacyImportRow:
+      type: object
+      required: [id, rowType, sourceSheet, sourceRow, rawValues, normalizedValues, issueCodes, status, supportedActions]
+      properties:
+        id: {type: string}
+        rowType: {type: string, enum: [LESSON, TUITION, PAYMENT, ACADEMIC_PERIOD]}
+        sourceSheet: {type: string}
+        sourceRow: {type: integer, minimum: 1}
+        rawValues: {type: object, additionalProperties: true}
+        normalizedValues: {type: object, additionalProperties: true}
+        issueCodes: {type: array, uniqueItems: true, items: {type: string}}
+        status: {type: string, enum: [VALID, NEEDS_REVIEW, BLOCKED, RESOLVED, SKIPPED]}
+        supportedActions: {type: array, uniqueItems: true, items: {type: string}}
+        suggestedResolution: {$ref: '#/components/schemas/LegacyImportRowDecision'}
+    LegacyImportRowDecision:
+      type: object
+      required: [sourceSheet, sourceRow, issueCode, action]
+      properties:
+        sourceSheet: {type: string}
+        sourceRow: {type: integer, minimum: 1}
+        issueCode: {type: string}
+        action: {type: string, enum: [EDIT_ROW, CONFIRM_STUDENT, SET_ATTENDANCE, MAP_ACADEMIC_PERIOD, MATCH_EXISTING_LESSON, CREATE_LESSON, KEEP_EXISTING_LESSON, USE_IMPORTED_LESSON, EDIT_LESSON_CONTENT, CONFIRM_PAYMENT, SKIP]}
+        resolvedValue: {nullable: true}
+        reason: {type: string, enum: [UNIDENTIFIABLE_DATA, DUPLICATE_ROW, WRONG_STUDENT, NOT_NEEDED, OTHER]}
+    LegacyImportApplyEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [importId, idempotent, acceptedRowCount, resolvedRowCount, skippedRowCount, importedLessonCount, matchedLessonCount, importedAttendanceCount, importedClassCount, importedEnrollmentCount, importedTuitionCycleCount]
+          properties:
+            importId: {type: integer, format: int64}
+            idempotent: {type: boolean}
+            acceptedRowCount: {type: integer}
+            resolvedRowCount: {type: integer}
+            skippedRowCount: {type: integer}
+            importedLessonCount: {type: integer}
+            matchedLessonCount: {type: integer}
+            importedAttendanceCount: {type: integer}
+            importedClassCount: {type: integer}
+            importedEnrollmentCount: {type: integer}
+            importedTuitionCycleCount: {type: integer}
     ErrorEnvelope:
       type: object
       required: [error]

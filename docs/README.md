@@ -16,8 +16,8 @@ CMS V1. Excel migration tạm hoãn; file cũ chỉ nằm trong `reference/legac
 
 Khi thêm/sửa feature quan trọng, cập nhật tài liệu feature và shared contract trong cùng PR.
 
-V16A đã có preview/audit legacy Excel; apply vào database và Google Drive/Sheets
-vẫn lần lượt là V16B–V16E **PLANNED**. Source of truth của thiết kế đó là
+V16B đã có preview/row resolution/apply legacy Excel vào MySQL. Google Drive/Sheets
+vẫn thuộc V16C–V16E **PLANNED**. Source of truth của thiết kế đó là
 `features/student-parent-tracking.md`.
 
 `implementation/status.md` là nguồn trạng thái triển khai duy nhất được commit. `BASE_STATUS.md`
