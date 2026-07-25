@@ -32,6 +32,11 @@ Vì vậy việc giữ cycle dở xuyên enrollment và một Sheet ổn định
 thay đổi domain **PLANNED**, cần migration/API/runtime riêng trong các task sau;
 không được đọc các quy tắc đích dưới đây như mô tả chức năng đã chạy.
 
+V16A hiện chỉ trả các `LegacyReconciliationStatus` phục vụ preview và giữ một số
+lựa chọn trong state của client. Source chưa có row-resolution lifecycle, decision
+được lưu, audit theo dòng hoặc endpoint Apply. Các khái niệm đó đều thuộc V16B
+**PLANNED**.
+
 ## 2. Mô hình đích và ranh giới trách nhiệm — PLANNED
 
 - V16B ghi dữ liệu chuẩn hóa vào MySQL trong transaction; không gọi Google.
@@ -155,6 +160,76 @@ Nếu nhiều file của cùng lesson có text giống hệt, preview chỉ gợ
 phải xác nhận và hệ thống không tự gộp âm thầm.
 
 ## 6. Matching và apply legacy — PLANNED V16B
+
+### Trạng thái xử lý từng dòng
+
+Mỗi dòng nguồn có đúng một trạng thái xử lý tại một thời điểm:
+
+| Trạng thái | Ý nghĩa | Điều kiện trước Apply |
+| --- | --- | --- |
+| `VALID` | Dòng đã hợp lệ từ parser/reconciliation và không cần admin thao tác. | Được đưa vào tập accepted tự động. |
+| `NEEDS_REVIEW` | Có nhiều cách hiểu hợp lệ hoặc cần admin xác nhận nghiệp vụ. | Phải có structured decision để thành `RESOLVED` hoặc `SKIPPED`. |
+| `BLOCKED` | Dữ liệu dòng chưa thể tạo mutation hợp lệ. | Phải được sửa thành dữ liệu hợp lệ rồi thành `RESOLVED`, hoặc được `SKIPPED`. |
+| `RESOLVED` | Admin đã cung cấp structured decision đầy đủ và kết quả đã validate. | Được đưa vào tập accepted. |
+| `SKIPPED` | Admin quyết định không import dòng với lý do rõ ràng. | Không ghi business table; vẫn ghi audit. |
+
+Trong V16B, “accepted rows” là tập `VALID + RESOLVED`; `ACCEPTED` không phải một
+trạng thái thứ sáu. Apply bị disabled khi còn bất kỳ dòng `NEEDS_REVIEW` hoặc
+`BLOCKED`. Không có action “force import raw invalid row” hoặc cách đổi trạng thái
+chỉ để vượt validation.
+
+Một dòng lỗi không bắt buộc hủy cả file nếu lỗi đó là row-level, admin có quyền
+skip và đã nhập lý do hợp lệ. Ngược lại, file-level error không được giải quyết
+bằng skip row. Các lỗi như file quá lớn/sai signature, workbook không đọc được,
+thiếu cấu trúc bắt buộc, file không khớp student đang chọn hoặc metadata toàn file
+không đáng tin cậy phải chặn cả file trước bước row resolution.
+
+### Structured decision và action
+
+Decision phải tham chiếu import ID, source sheet, source row, issue code, action,
+payload đã validate, actor và timestamp. Tùy issue, UI chỉ đưa ra các action phù hợp:
+
+- sửa ngày;
+- map academic period/class;
+- chọn attendance `PRESENT`, `ABSENT`, `FREE` hoặc `ABSENT_CHARGED`;
+- ghép lesson hiện có;
+- tạo lesson mới;
+- giữ nội dung hiện tại;
+- dùng nội dung import;
+- chỉnh thủ công;
+- bỏ qua dòng.
+
+`ABSENT_CHARGED` vẫn chịu quyết định phạm vi MVP tại mục 11; nếu chưa được bật thì
+action đó không xuất hiện và payload tương ứng không được validate. Duplicate và
+near-match luôn cần decision ghép lesson hiện có, tạo lesson mới hoặc bỏ qua; không
+tự merge. Conflict content/homework cần decision giữ nội dung hiện tại, dùng nội
+dung import hoặc chỉnh thủ công; quyết định của file sau không được âm thầm thắng.
+
+Mọi decision, kể cả sửa/map/merge/content/attendance/skip, phải có audit before/
+after hoặc payload có cấu trúc, issue code, `decidedBy` và `decidedAt`. Riêng dòng
+`SKIPPED`, audit bắt buộc giữ source sheet, source row, raw values hoặc sanitized
+snapshot, issue code, skip reason, decided by và decided at. Ưu tiên sanitized
+snapshot đủ tái kiểm tra; raw values chỉ được giữ trong vùng restricted theo chính
+sách dữ liệu riêng tư.
+
+Bulk decision chỉ được phép khi tất cả dòng có cùng issue code và cùng raw
+normalized value. UI phải hiển thị chính xác số dòng chịu ảnh hưởng và yêu cầu admin
+xác nhận rõ trước khi ghi từng decision/audit; không bulk theo label hiển thị gần
+giống hoặc theo giá trị raw chưa normalize.
+
+### Apply transaction
+
+- Apply chỉ nhận snapshot resolution không còn `NEEDS_REVIEW`/`BLOCKED` và phải
+  chống stale decision bằng version/hash phù hợp.
+- Tất cả dòng accepted (`VALID + RESOLVED`) được ghi business tables trong một
+  transaction MySQL. Metadata import và audit của các dòng `SKIPPED`/decision cũng
+  được lưu nhất quán với lần Apply đó.
+- Dòng `SKIPPED` không tạo lesson, participant, attendance, tuition item/cycle hoặc
+  outbox Google; vì vậy không ảnh hưởng bộ đếm học phí và không xuất hiện trên
+  Google Sheet khi các checkpoint sync chạy sau này.
+- Lỗi kỹ thuật ở bất kỳ database mutation hoặc audit write nào rollback toàn bộ;
+  không có partial apply. Sau rollback, retry dùng cùng resolution snapshot và
+  idempotency key, không bỏ qua validation.
 
 ### Nhận diện file và idempotency
 
