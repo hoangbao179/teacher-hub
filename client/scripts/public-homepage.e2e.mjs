@@ -109,8 +109,8 @@ try {
   }));
   await page.goto(origin, { waitUntil: "networkidle" });
 
-  assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1");
   await page.getByRole("heading", { level: 1, name: "Cô Vy dạy tiếng Anh tại Huế", exact: true }).waitFor();
+  assert(await page.locator("h1").count() === 1, "Homepage must contain exactly one H1 after client render");
   for (const heading of [
     "Đồng hành cùng học sinh",
     "Ba nhóm chương trình",
