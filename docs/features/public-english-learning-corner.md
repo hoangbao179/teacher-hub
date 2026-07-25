@@ -1,6 +1,6 @@
 # Góc học tiếng Anh miễn phí cùng cô Vy
 
-> Status: **V18C–V18D COMPLETE — PASS (24/07/2026)**
+> Status: **GLOBAL SUCCESS LỚP 1–9 RELEASED — PASS (25/07/2026)**
 > Technical name: **Public English Learning Corner**  
 > Target: public learning module sau V1  
 > Primary route family: `/hoc/*`  
@@ -348,12 +348,13 @@ Ràng buộc Unit published:
 - media là local asset hoặc HTTPS đã duyệt;
 - không đưa nội dung có bản quyền không được phép vào repository.
 
-Seed V18A đã triển khai:
+Catalog public hiện có:
 
-- 2 level khả dụng: `mam-non` và `lop-3`;
-- mỗi level có 2 Unit published;
-- mỗi Unit có 10 từ tự biên soạn;
-- mỗi từ có minh họa nhẹ và `speechText`; audio/flashcard đầy đủ để dành cho V18B.
+- 10 level khả dụng từ `mam-non` đến `lop-9`;
+- 2 Unit mầm non với 10 từ/Unit và 140 Global Success starter Unit với 6 từ/Unit;
+- từ vựng starter được cô Vy tiếp tục review và tăng `contentVersion` khi sửa;
+- language focus/ngữ pháp vẫn là draft, chưa public;
+- nội dung tự biên soạn theo chủ đề, không phải học liệu chính thức của Nhà xuất bản.
 
 ## 10. Lưu tiến độ cục bộ
 
@@ -485,6 +486,15 @@ Không hiển thị stack trace hoặc internal identifier ra public UI.
 - accessibility;
 - E2E/regression;
 - release verification.
+
+### Global Success lớp 1–9 — Public release
+
+- **IMPLEMENTED — PASS 25/07/2026**;
+- Hub mở đủ 10 level và danh sách 142 Unit published;
+- grid Unit responsive 1/2/3 cột, quiz dùng số câu thực tế;
+- prerender 154 trang public và sitemap production sinh trực tiếp từ catalog;
+- 140 Unit starter có 6 từ cơ bản/Unit; nội dung vẫn cần giáo viên tiếp tục review;
+- language focus/ngữ pháp chưa triển khai.
 
 Không gộp admin CRUD, backend API hoặc login học sinh vào các task trên.
 

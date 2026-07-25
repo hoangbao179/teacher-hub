@@ -1,6 +1,12 @@
-import { levelBySlug, unitBySlugs } from "../content/vocabularyCatalog.ts";
+import { learningLevels, levelBySlug, publishedUnits, unitBySlugs } from "../content/vocabularyCatalog.ts";
 
 const SITE_URL = "https://tienganhcovy.com";
+
+export const stableLearningPathnames = [
+  "/hoc",
+  ...learningLevels.filter((level) => level.available).map((level) => `/hoc/${level.slug}`),
+  ...publishedUnits.map((unit) => `/hoc/${unit.levelSlug}/${unit.slug}`),
+];
 
 export interface LearningRouteMetadata {
   title: string;
@@ -26,6 +32,6 @@ export function learningRouteMetadata(pathname: string): LearningRouteMetadata {
     : level ? `Chọn chủ đề từ vựng ${level.name} và học miễn phí cùng cô Vy.` : "Chọn cấp độ từ mầm non đến lớp 9 và học từ vựng tiếng Anh miễn phí cùng cô Vy.";
   const actionTitle: Record<string, string> = { flashcards: "Flashcard", listen: "Luyện nghe", quiz: "Luyện tập", result: "Kết quả", review: "Ôn từ" };
   const title = unit ? `${actionTitle[action] ? `${actionTitle[action]} · ` : ""}${unit.title} | Góc học tiếng Anh cùng cô Vy` : level ? `${level.name} | Góc học tiếng Anh cùng cô Vy` : "Góc học tiếng Anh miễn phí cùng cô Vy";
-  const noindex = ["quiz", "result", "review"].includes(action);
+  const noindex = Boolean(action);
   return { title, description, robots: noindex ? "noindex,follow" : "index,follow,max-image-preview:large", canonical: `${SITE_URL}${pathname}`, valid: true };
 }

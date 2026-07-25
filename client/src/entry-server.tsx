@@ -6,8 +6,8 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { LearningHubPage } from "./features/learning/pages/LearningHubPage";
 import { LearningLevelPage } from "./features/learning/pages/LearningLevelPage";
 import { LearningUnitPage } from "./features/learning/pages/LearningUnitPage";
-import { learningLevels, publishedUnits } from "./features/learning/content/vocabularyCatalog";
-import { learningRouteMetadata } from "./features/learning/seo/learningMetadata";
+import { learningRouteMetadata, stableLearningPathnames } from "./features/learning/seo/learningMetadata";
+export { generateProductionSitemapXml, productionSitemapPathnames } from "./features/learning/seo/learningSitemap";
 import { theme } from "./theme";
 
 export function renderHomePage() {
@@ -33,9 +33,7 @@ export function renderNotFoundPage() {
 }
 
 export const stableLearningRoutes = [
-  "/hoc",
-  ...learningLevels.filter((level) => level.available).map((level) => `/hoc/${level.slug}`),
-  ...publishedUnits.map((unit) => `/hoc/${unit.levelSlug}/${unit.slug}`),
+  ...stableLearningPathnames,
 ].map((pathname) => ({ pathname, metadata: learningRouteMetadata(pathname) }));
 
 export function renderLearningRoute(pathname: string) {

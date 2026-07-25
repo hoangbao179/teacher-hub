@@ -85,6 +85,9 @@ export function LearningHubPage() {
               ].map(([Icon, title, description, color]) => <Card component="article" key={String(title)} variant="outlined" sx={{ p: 2.5, borderRadius: "22px", bgcolor: String(color), borderColor: "rgba(98,72,160,.16)" }}><Stack direction="row" spacing={2} sx={{ alignItems: "center" }}><Box sx={{ flex: "0 0 52px", height: 52, display: "grid", placeItems: "center", borderRadius: 3, bgcolor: "white", color: "#6541c7" }}><Icon aria-hidden="true" /></Box><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{String(title)}</Typography><Typography color="text.secondary" sx={{ mt: 0.4, fontSize: 13.5 }}>{String(description)}</Typography></Box></Stack></Card>)}
             </Box>
           </Box>
+          <Typography component="p" color="text.secondary" sx={{ mt: 3, mx: "auto", maxWidth: 720, textAlign: "center", fontSize: 12.5, lineHeight: 1.6 }}>
+            Nội dung luyện tập do cô Vy biên soạn, tham khảo chủ đề Global Success và không phải học liệu chính thức.
+          </Typography>
         </Container>
       </Box>
     </LearningShell>

@@ -8,6 +8,7 @@ import { LEARNING_SETTINGS_STORAGE_KEY, getPronunciationRate, readLearningSettin
 import { createListenQuestion, seededRandom } from "../src/features/learning/listen/listenQuestions.ts";
 import { createQuizQuestions, quizItemOrder, scoreQuiz, seededQuizRandom } from "../src/features/learning/quiz/quizQuestions.ts";
 import { learningRouteMetadata } from "../src/features/learning/seo/learningMetadata.ts";
+import { generateProductionSitemapXml, productionSitemapPathnames } from "../src/features/learning/seo/learningSitemap.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -188,6 +189,20 @@ test("quiz generator uses three choices for a tiny Unit and skips a single-choic
   assert.deepEqual(createQuizQuestions(vocabulary.slice(0, 1), [vocabulary[0].id]), []);
 });
 
+test("representative Global Success Units generate six-question quizzes", () => {
+  const representativeUnits = [
+    unitBySlugs("lop-1", "lop-1-unit-01-in-the-school-playground"),
+    unitBySlugs("lop-3", "lop-3-unit-01-hello"),
+    unitBySlugs("lop-6", "lop-6-unit-01-my-new-school"),
+    unitBySlugs("lop-9", "lop-9-unit-12-career-choices"),
+  ];
+  for (const unit of representativeUnits) {
+    assert.ok(unit);
+    assert.equal(unit.vocabulary.length, 6);
+    assert.equal(createQuizQuestions(unit.vocabulary, quizItemOrder(unit.vocabulary)).length, 6);
+  }
+});
+
 test("quiz scoring calculates correct, wrong and rounded percentage", () => {
   assert.deepEqual(scoreQuiz([
     { itemId: "a", selectedValue: "A", correct: true },
@@ -253,6 +268,18 @@ test("learning metadata indexes stable pages and noindexes temporary quiz state"
   assert.equal(unit.valid, true);
   assert.equal(unit.robots, "index,follow,max-image-preview:large");
   assert.equal(unit.canonical, "https://tienganhcovy.com/hoc/mam-non/con-vat-dang-yeu");
-  for (const action of ["quiz", "result", "review"]) assert.equal(learningRouteMetadata(`/hoc/mam-non/con-vat-dang-yeu/${action}`).robots, "noindex,follow");
+  for (const action of ["flashcards", "listen", "quiz", "result", "review"])
+    assert.equal(learningRouteMetadata(`/hoc/mam-non/con-vat-dang-yeu/${action}`).robots, "noindex,follow");
   assert.equal(learningRouteMetadata("/hoc/lop-3/con-vat-dang-yeu/quiz").valid, false);
+});
+
+test("production sitemap is catalog-derived, unique and excludes action or retired routes", () => {
+  assert.equal(productionSitemapPathnames.length, 154);
+  assert.equal(new Set(productionSitemapPathnames).size, productionSitemapPathnames.length);
+  const sitemap = generateProductionSitemapXml();
+  assert.ok(sitemap.includes("https://tienganhcovy.com/hoc/lop-1/lop-1-unit-01-in-the-school-playground"));
+  assert.ok(sitemap.includes("https://tienganhcovy.com/hoc/lop-9/lop-9-unit-12-career-choices"));
+  for (const excluded of ["ngay-o-truong", "gia-dinh-cua-em", "/quiz", "/result", "/review", "/admin"])
+    assert.equal(sitemap.includes(excluded), false, excluded);
+  assert.ok(generateProductionSitemapXml(["/hoc/a&b"]).includes("/hoc/a&amp;b"));
 });

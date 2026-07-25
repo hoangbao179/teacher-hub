@@ -33,7 +33,7 @@ rồi deploy để build Web image mới.
 ## Bootstrap VPS
 
 1. Tạo user deploy không dùng password SSH, thêm public key vào
-   `/home/deploy/.ssh/authorized_keys`, rồi cấp quyền Docker. Giữ đăng nhập root hiện tại
+   `~deploy/.ssh/authorized_keys`, rồi cấp quyền Docker. Giữ đăng nhập root hiện tại
    cho đến khi đã thử key ở một terminal khác.
 2. Cài Docker Engine và Docker Compose plugin từ repository chính thức của Docker.
 3. Tạo 1 GB swap, bật firewall cho SSH, TCP 80/443 và UDP 443. Nếu SSH không dùng port

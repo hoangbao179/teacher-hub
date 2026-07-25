@@ -17,6 +17,10 @@ const viewports = [
   { width: 400, height: 930 }, { width: 430, height: 932 }, { width: 768, height: 1024 }, { width: 1440, height: 900 },
 ];
 const quizUnit = learningUnits.find((unit) => unit.slug === "con-vat-dang-yeu");
+const grade1FirstUnit = learningUnits.find((unit) => unit.slug === "lop-1-unit-01-in-the-school-playground");
+const grade3FirstUnit = learningUnits.find((unit) => unit.slug === "lop-3-unit-01-hello");
+const grade6FirstUnit = learningUnits.find((unit) => unit.slug === "lop-6-unit-01-my-new-school");
+const grade9LastUnit = learningUnits.find((unit) => unit.slug === "lop-9-unit-12-career-choices");
 const quizQuestions = createQuizQuestions(quizUnit.vocabulary, quizItemOrder(quizUnit.vocabulary));
 let child;
 let browser;
@@ -45,6 +49,24 @@ try {
   const prerenderedUnit = await (await fetch(`${origin}/hoc/mam-non/con-vat-dang-yeu/index.html`)).text();
   assert(prerenderedUnit.includes("Con vật đáng yêu"), "Stable Unit route is not prerendered");
   assert(prerenderedUnit.includes('rel="canonical" href="https://tienganhcovy.com/hoc/mam-non/con-vat-dang-yeu"'), "Prerendered Unit canonical is missing");
+  for (const unit of [grade1FirstUnit, grade6FirstUnit, grade9LastUnit]) {
+    const unitPath = `/hoc/${unit.levelSlug}/${unit.slug}`;
+    const html = await (await fetch(`${origin}${unitPath}/index.html`)).text();
+    assert(html.includes(`<title>${unit.title} | Góc học tiếng Anh cùng cô Vy</title>`), `Prerendered title is missing for ${unit.id}`);
+    assert(html.includes(`<meta name="description" content="Học từ vựng chủ đề ${unit.title}`), `Prerendered description is missing for ${unit.id}`);
+    assert(html.includes(`<link rel="canonical" href="https://tienganhcovy.com${unitPath}"`), `Prerendered canonical is missing for ${unit.id}`);
+    assert(html.includes('<meta name="robots" content="index,follow,max-image-preview:large"'), `Prerendered robots are invalid for ${unit.id}`);
+    assert(html.includes('id="root" data-prerendered="true"'), `Prerendered content is missing for ${unit.id}`);
+    assert(html.includes(unit.title), `Unit content is missing for ${unit.id}`);
+  }
+  const sitemap = await (await fetch(`${origin}/sitemap.xml`)).text();
+  const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+  assert(sitemapUrls.length === 154, `Production sitemap must contain 154 URLs, received ${sitemapUrls.length}`);
+  assert(new Set(sitemapUrls).size === sitemapUrls.length, "Production sitemap contains duplicate URLs");
+  assert(sitemapUrls.includes(`https://tienganhcovy.com/hoc/${grade1FirstUnit.levelSlug}/${grade1FirstUnit.slug}`), "Sitemap is missing representative grade 1 Unit");
+  assert(sitemapUrls.includes(`https://tienganhcovy.com/hoc/${grade9LastUnit.levelSlug}/${grade9LastUnit.slug}`), "Sitemap is missing representative grade 9 Unit");
+  for (const excluded of ["ngay-o-truong", "gia-dinh-cua-em", "/quiz", "/result", "/review", "/admin"])
+    assert(!sitemap.includes(excluded), `Sitemap contains excluded route: ${excluded}`);
 
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
@@ -70,6 +92,7 @@ try {
   page.on("request", (request) => { if (new URL(request.url()).pathname.startsWith("/api/")) apiRequests.push(request.url()); });
 
   await page.goto(`${origin}/`, { waitUntil: "networkidle" });
+  assert(await page.getByText("2026 — từ người hâm mộ cô Vy, with love ❤️", { exact: true }).isVisible(), "Homepage footer changed");
   await page.getByTestId("homepage-learning-cta").getByRole("link", { name: "Bắt đầu học" }).click();
   await page.waitForURL(`${origin}/hoc`);
   const hubHeading = page.getByRole("heading", { name: "Góc học tiếng Anh miễn phí cùng cô Vy", level: 1 });
@@ -84,13 +107,46 @@ try {
   assert(await page.getByRole("link", { name: "Mở bài học Lớp 3" }).isVisible(), "Grade 3 content must open");
   assert(await page.getByRole("link", { name: /^Mở bài học/ }).count() === 10, "All ten published levels must navigate");
   assert(await page.getByText("Sắp có", { exact: true }).count() === 0, "Published levels must not show Sắp có");
+  assert(await page.getByText("Nội dung luyện tập do cô Vy biên soạn, tham khảo chủ đề Global Success và không phải học liệu chính thức.", { exact: true }).isVisible(), "Learning disclaimer is missing");
 
+  await page.getByRole("link", { name: "Mở bài học Lớp 1" }).click();
+  await page.waitForURL(`${origin}/hoc/lop-1`);
+  await page.getByTestId("unit-grid").waitFor();
+  assert(await page.getByTestId("unit-grid").locator("article").count() === 16, "Grade 1 must have 16 Unit cards");
+  await page.getByRole("link", { name: `Mở Unit ${grade1FirstUnit.title}` }).click();
+  await page.waitForURL(`${origin}/hoc/lop-1/${grade1FirstUnit.slug}`);
+  await page.getByRole("heading", { name: grade1FirstUnit.title, level: 1 }).waitFor();
+  assert(await page.getByText("Lớp 1 · 6 TỪ", { exact: true }).isVisible(), "Grade 1 Unit must show six words");
+  await page.getByRole("link", { name: "Học bằng Flashcard" }).click();
+  await page.getByRole("group", { name: /Flashcard từ/ }).waitFor();
+  assert(await page.locator('meta[name="robots"]').getAttribute("content") === "noindex,follow", "Flashcard action route must be noindex");
+  await page.goto(`${origin}/hoc/lop-1/${grade1FirstUnit.slug}/quiz`, { waitUntil: "networkidle" });
+  assert(await page.getByText("Câu 1 / 6", { exact: true }).isVisible(), "Grade 1 quiz must contain six questions");
+
+  await page.goto(`${origin}/hoc/lop-3`, { waitUntil: "networkidle" });
+  assert(await page.getByTestId("unit-grid").locator("article").count() === 20, "Grade 3 must have 20 Unit cards");
+  assert(await page.getByText("Một ngày ở trường", { exact: true }).count() === 0, "Retired grade 3 school demo remains");
+  assert(await page.getByText("Gia đình của em", { exact: true }).count() === 0, "Retired grade 3 family demo remains");
+
+  await page.goto(`${origin}/hoc/lop-6/${grade6FirstUnit.slug}/flashcards`, { waitUntil: "networkidle" });
+  assert(await page.getByRole("group", { name: /Flashcard từ/ }).isVisible(), "Grade 6 flashcard did not open");
+  await page.goto(`${origin}/hoc/lop-6/${grade6FirstUnit.slug}/quiz`, { waitUntil: "networkidle" });
+  assert(await page.getByText("Câu 1 / 6", { exact: true }).isVisible(), "Grade 6 quiz must contain six questions");
+
+  await page.goto(`${origin}/hoc/lop-9`, { waitUntil: "networkidle" });
+  assert(await page.getByTestId("unit-grid").locator("article").count() === 12, "Grade 9 must have 12 Unit cards");
+  await page.getByRole("link", { name: `Mở Unit ${grade9LastUnit.title}` }).click();
+  await page.waitForURL(`${origin}/hoc/lop-9/${grade9LastUnit.slug}`);
+  await page.reload({ waitUntil: "networkidle" });
+  assert(await page.getByRole("heading", { name: grade9LastUnit.title, level: 1 }).isVisible(), "Grade 9 last Unit direct refresh failed");
+
+  await page.goto(`${origin}/hoc`, { waitUntil: "networkidle" });
   await page.getByRole("link", { name: "Mở bài học Mầm non" }).click();
   await page.waitForURL(`${origin}/hoc/mam-non`);
   const levelHeading = page.getByRole("heading", { name: "Chọn bài học", level: 1 });
   await levelHeading.waitFor();
   assert(await levelHeading.isVisible(), "Available level page did not open");
-  assert(await page.locator("main article").count() === 2, "Preschool must have two Unit cards");
+  assert(await page.getByTestId("unit-grid").locator("article").count() === 2, "Preschool must have two Unit cards");
   assert(await page.getByRole("link", { name: "Mở Unit Con vật đáng yêu" }).isVisible(), "Published Unit must open");
 
   await page.getByRole("link", { name: "Mở Unit Con vật đáng yêu" }).click();
@@ -143,6 +199,7 @@ try {
 
   await page.goto(`${origin}/hoc/mam-non/con-vat-dang-yeu/listen`, { waitUntil: "networkidle" });
   assert(await page.getByRole("heading", { name: "Con nghe thấy từ nào?", level: 1 }).isVisible(), "Listen practice did not open");
+  assert(await page.locator('meta[name="robots"]').getAttribute("content") === "noindex,follow", "Listen action route must be noindex");
   assert(await page.getByRole("button", { name: "Bình thường" }).getAttribute("aria-pressed") === "true", "Listen must reuse the saved pronunciation setting");
   const listenTotalBeforeRateChange = await page.evaluate(() => JSON.parse(localStorage.getItem("covy-learning-progress:v1")).units["con-vat-dang-yeu"].listenTotal);
   await page.getByRole("button", { name: "Chậm 0.6x" }).click();
@@ -206,6 +263,8 @@ try {
 
   await page.goto(`${origin}/hoc/lop-3/con-vat-dang-yeu`, { waitUntil: "networkidle" });
   assert(await page.getByRole("heading", { name: "Bài học này chưa có trong cặp sách", level: 1 }).isVisible(), "Unit from another level must show public 404");
+  await page.goto(`${origin}/hoc/lop-4/${grade3FirstUnit.slug}`, { waitUntil: "networkidle" });
+  assert(await page.getByRole("heading", { name: "Bài học này chưa có trong cặp sách", level: 1 }).isVisible(), "Grade 3 Unit under grade 4 must show public learning 404");
 
   await page.goto(`${origin}/hoc/mam-non`, { waitUntil: "networkidle" });
   await page.reload({ waitUntil: "networkidle" });
@@ -238,12 +297,39 @@ try {
         assert(cardWidth <= 900, `${name} primary card is wider than 900px at ${viewport.width}px: ${cardWidth}px`);
       }
     }
+    await page.goto(`${origin}/hoc/lop-3`, { waitUntil: "networkidle" });
+    const unitGrid = page.getByTestId("unit-grid");
+    const gridColumns = await unitGrid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length);
+    const expectedColumns = viewport.width >= 1200 ? 3 : viewport.width >= 600 ? 2 : 1;
+    assert(gridColumns === expectedColumns, `Expected ${expectedColumns} Unit columns at ${viewport.width}px, received ${gridColumns}`);
+    const titlesFit = await page.getByTestId("unit-card-title").evaluateAll((elements) => elements.every((element) => element.scrollWidth <= element.clientWidth + 1));
+    assert(titlesFit, `Unit card title overflow at ${viewport.width}px`);
     await page.goto(`${origin}/hoc`, { waitUntil: "networkidle" });
     const targets = await page.getByRole("link").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect()).filter((rect) => rect.width > 0));
     assert(targets.every((rect) => rect.height >= 44), `Learning link touch target below 44px at ${viewport.width}px`);
     await page.goto(`${origin}/hoc/mam-non/con-vat-dang-yeu/flashcards`, { waitUntil: "networkidle" });
     const flashcardWidth = await page.getByRole("group", { name: /Flashcard từ/ }).evaluate((element) => element.getBoundingClientRect().width);
     assert(flashcardWidth <= 820, `Desktop flashcard is wider than 820px at ${viewport.width}px`);
+    const headerTitleWhiteSpace = await page.getByRole("link", { name: "Lớp tiếng Anh cô Vy" }).evaluate((element) => getComputedStyle(element).whiteSpace);
+    assert(headerTitleWhiteSpace === "nowrap", `Learning header wraps at ${viewport.width}px`);
+    if (viewport.width === 360) {
+      const rateButtons = await page.getByRole("button", { name: /Bình thường|Chậm 0.6x/ }).evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().top));
+      assert(Math.abs(rateButtons[0] - rateButtons[1]) <= 1, "Pronunciation controls must stay on one row at 360px");
+    }
+  }
+
+  const requiredScreenshots = [
+    ["hub-400x930", "/hoc", { width: 400, height: 930 }],
+    ["grade-3-list-400x930", "/hoc/lop-3", { width: 400, height: 930 }],
+    ["grade-3-list-1440x900", "/hoc/lop-3", { width: 1440, height: 900 }],
+    ["grade-1-unit-400x930", `/hoc/lop-1/${grade1FirstUnit.slug}`, { width: 400, height: 930 }],
+    ["grade-9-unit-1440x900", `/hoc/lop-9/${grade9LastUnit.slug}`, { width: 1440, height: 900 }],
+    ["flashcard-slow-400x930", "/hoc/mam-non/con-vat-dang-yeu/flashcards", { width: 400, height: 930 }],
+  ];
+  for (const [name, route, viewport] of requiredScreenshots) {
+    await page.setViewportSize(viewport);
+    await page.goto(`${origin}${route}`, { waitUntil: "networkidle" });
+    await page.screenshot({ path: path.join(screenshotDir, `${name}.png`), fullPage: true });
   }
 
   await page.evaluate(() => {

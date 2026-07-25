@@ -1,3 +1,4 @@
+/* global console */
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -5,7 +6,7 @@ import { pathToFileURL } from "node:url";
 const clientRoot = path.resolve(import.meta.dirname, "..");
 const outputPath = path.join(clientRoot, "dist", "index.html");
 const serverEntryPath = path.join(clientRoot, ".prerender", "entry-server.js");
-const { renderHomePage, renderLearningRoute, renderNotFoundPage, stableLearningRoutes } = await import(pathToFileURL(serverEntryPath).href);
+const { generateProductionSitemapXml, renderHomePage, renderLearningRoute, renderNotFoundPage, stableLearningRoutes } = await import(pathToFileURL(serverEntryPath).href);
 
 const document = await fs.readFile(outputPath, "utf8");
 const marker = '<div id="root"></div>';
@@ -38,4 +39,6 @@ const notFoundDocument = document
   .replace(/<title>[\s\S]*?<\/title>/, "<title>Không tìm thấy trang | Lớp tiếng Anh cô Vy</title>")
   .replace(marker, `<div id="root" data-prerendered="true">${renderNotFoundPage()}</div>`);
 await fs.writeFile(path.join(clientRoot, "dist", "404.html"), notFoundDocument, "utf8");
+await fs.writeFile(path.join(clientRoot, "dist", "sitemap.xml"), generateProductionSitemapXml(), "utf8");
+console.log(`Prerendered ${stableLearningRoutes.length + 1} public pages and generated sitemap.xml.`);
 await fs.rm(path.join(clientRoot, ".prerender"), { recursive: true, force: true });

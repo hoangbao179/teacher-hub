@@ -2,7 +2,8 @@
 
 ## Current milestone
 
-M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V17 và V18A–V18D are PASS.
+M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V17, V18A–V18D và
+Global Success public learning release are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
 
@@ -88,6 +89,10 @@ V18B-PUBLIC-LEARNING-FLASHCARDS: PASS on 24/07/2026. Evidence is in
 V18C-V18D-COMPLETE-PUBLIC-LEARNING-EXPERIENCE: PASS on 24/07/2026. Evidence is in
 `.agent-reports/V18C-V18D-COMPLETE-PUBLIC-LEARNING-EXPERIENCE-implementation.md`
 and `.agent-reports/V18C-V18D-COMPLETE-PUBLIC-LEARNING-EXPERIENCE-verification.md`.
+RELEASE-GLOBAL-SUCCESS-PUBLIC-LEARNING: PASS on 25/07/2026. Public catalog now
+serves preschool and grades 1–9 with 142 Units; production prerenders 154 public
+pages and generates its 154-URL sitemap directly from the catalog. Grammar remains
+draft and the independently authored starter content requires ongoing teacher review.
 
 ## Scope boundary
 

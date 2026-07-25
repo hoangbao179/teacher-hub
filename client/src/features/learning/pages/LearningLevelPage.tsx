@@ -51,20 +51,20 @@ export function LearningLevelPage() {
         <Container maxWidth="lg" sx={{ py: { xs: 4, sm: 5, md: 6 } }}>
           <Typography component="h2" sx={{ fontSize: { xs: 22, sm: 26 }, fontWeight: 800 }}>Chủ đề dành cho con</Typography>
           <Typography color="text.secondary" sx={{ mt: 0.75 }}>Chọn một chủ đề để học bằng flashcard hoặc luyện nghe.</Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2,minmax(0,1fr))" }, gap: 2, mt: 3 }}>
+          <Box data-testid="unit-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2,minmax(0,1fr))", lg: "repeat(3,minmax(0,1fr))" }, alignItems: "stretch", gap: 2, mt: 3 }}>
             {units.map((unit, index) => {
               const unitProgress = progress.units[unit.slug];
               const count = unitProgress?.rememberedItemIds.length ?? 0;
               const state = unitProgress?.flashcardCompletedAt ? "Đã học" : (unitProgress?.viewedItemIds.length ?? 0) > 0 ? "Đang học" : "Chưa học";
               const StateIcon = unitProgress?.flashcardCompletedAt ? CheckCircle : (unitProgress?.viewedItemIds.length ?? 0) > 0 ? HourglassTop : AutoStories;
-              return <Card component="article" key={unit.id} variant="outlined" sx={{ borderRadius: "22px", borderColor: `${level.accent}3d`, boxShadow: "0 8px 22px rgba(66,48,106,.06)" }}>
-                <CardActionArea component={Link} to={`/hoc/${level.slug}/${unit.slug}`} aria-label={`Mở Unit ${unit.title}`} sx={{ p: { xs: 2, sm: 2.5 }, height: "100%", borderRadius: "22px" }}><Stack direction="row" spacing={2} sx={{ alignItems: "flex-start" }}>
-                  <Box aria-hidden="true" sx={{ flex: "0 0 64px", height: 64, display: "grid", placeItems: "center", bgcolor: index % 2 ? "#eaf8f3" : "#fff3d8", borderRadius: "18px", fontSize: 32 }}>{unit.icon}</Box>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
+              return <Card component="article" key={unit.id} variant="outlined" sx={{ height: "100%", minWidth: 0, borderRadius: "22px", borderColor: `${level.accent}3d`, boxShadow: "0 8px 22px rgba(66,48,106,.06)" }}>
+                <CardActionArea component={Link} to={`/hoc/${level.slug}/${unit.slug}`} aria-label={`Mở Unit ${unit.title}`} sx={{ p: { xs: 2, sm: 2.25 }, minHeight: 44, height: "100%", display: "flex", alignItems: "stretch", borderRadius: "22px" }}><Stack direction="row" spacing={{ xs: 2, lg: 1.5 }} sx={{ width: "100%", alignItems: "flex-start" }}>
+                  <Box aria-hidden="true" sx={{ flex: "0 0 58px", height: 58, display: "grid", placeItems: "center", bgcolor: index % 2 ? "#eaf8f3" : "#fff3d8", borderRadius: "18px", fontSize: 30 }}>{unit.icon}</Box>
+                  <Box sx={{ flex: 1, minWidth: 0, minHeight: "100%", display: "flex", flexDirection: "column" }}>
                     <Typography variant="overline" color="text.secondary">UNIT {index + 1}</Typography>
-                    <Typography component="h3" sx={{ mt: 0.25, fontSize: 18, fontWeight: 800 }}>{unit.title}</Typography>
-                    <Typography color="text.secondary" sx={{ mt: 0.5, fontSize: 13.5 }}>{unit.description}</Typography>
-                    <Stack direction="row" useFlexGap sx={{ mt: 1.5, flexWrap: "wrap", gap: 0.75, alignItems: "center" }}><Chip icon={<StateIcon />} label={`${state} · ${count}/${unit.vocabulary.length} từ nhớ`} /><ArrowForward aria-hidden="true" sx={{ ml: "auto", color: level.accent }} /></Stack>
+                    <Typography data-testid="unit-card-title" component="h3" sx={{ mt: 0.25, fontSize: 17, lineHeight: 1.35, fontWeight: 800, overflowWrap: "anywhere" }}>{unit.title}</Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5, fontSize: 13, lineHeight: 1.5, overflowWrap: "anywhere" }}>{unit.description}</Typography>
+                    <Stack direction="row" useFlexGap sx={{ mt: "auto", pt: 1.5, flexWrap: "wrap", gap: 0.75, alignItems: "center" }}><Chip icon={<StateIcon />} label={`${state} · ${count}/${unit.vocabulary.length} từ nhớ`} /><ArrowForward aria-hidden="true" sx={{ ml: "auto", color: level.accent }} /></Stack>
                   </Box>
                 </Stack></CardActionArea>
               </Card>;

@@ -1,6 +1,7 @@
 # Checklist giáo viên duyệt nội dung
 
-Duyệt theo từng lớp, không bật cả 9 lớp cùng lúc.
+Catalog starter lớp 1–9 đã public. Cô Vy tiếp tục duyệt theo từng lớp; mọi thay
+đổi từ vựng sau phát hành phải tăng `contentVersion` của đúng Unit.
 
 ## Mỗi Unit
 
@@ -18,4 +19,5 @@ Duyệt theo từng lớp, không bật cả 9 lớp cùng lúc.
 - [ ] Lớp 1–2: ưu tiên từ đơn, hình rõ, mẫu câu rất ngắn.
 - [ ] Lớp 3–5: có thể thêm cụm từ và ví dụ ngắn.
 - [ ] Lớp 6–9: nên bổ sung từ loại, collocation và ví dụ ở giai đoạn sau.
-- [ ] Chỉ bật `available` khi toàn bộ Unit muốn công khai đã được duyệt.
+- [ ] Nếu tạm ẩn hoặc phát hành lại một level, xác nhận toàn bộ Unit muốn công
+  khai đã được duyệt và validator PASS.
