@@ -45,3 +45,10 @@ các viewport 360–430 px.
 
 Footer công khai giữ nguyên:
 `2026 — từ người hâm mộ cô Vy, with love ❤️`. Link quản trị chỉ nằm ở header.
+
+## Planned extension — V19A
+
+Source hiện tại vẫn phản ánh Homepage trước V19A; kế hoạch chưa được triển khai.
+V19A sẽ hợp nhất phần địa điểm thành một cơ sở duy nhất, trình bày nhận dạy tại
+nhà học sinh như một dịch vụ và không thêm review/rating giả. Chi tiết xem
+[Homepage một cơ sở và Google Maps](public-homepage-single-location-google-maps.md).

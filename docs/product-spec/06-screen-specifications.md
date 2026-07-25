@@ -12,6 +12,9 @@
   video, phản hồi phụ huynh, CTA liên hệ và footer.
 - Homepage không có hero chuyển cảnh; video dài YouTube chỉ tải khi bấm.
 - Không hiển thị học phí; không CMS; contact hợp lệ mới xuất hiện và Zalo ưu tiên.
+- **Planned in V19A — not implemented:** Homepage sẽ hiển thị một cơ sở duy nhất,
+  Google Maps và chỉ đường, trust strip, đồng thời giữ hai video hiện tại; không
+  public lịch chi tiết và không hiển thị rating/review giả.
 
 ## 02 Admin Dashboard
 - Route: `/admin`.

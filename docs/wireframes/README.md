@@ -12,3 +12,11 @@ sau khi hoàn thiện hero/filter/thuật ngữ mobile; chỉ ảnh tài liệu 
 
 Business rule không đến từ text/số liệu trong wireframe được tạo. Khi xung đột,
 tuân theo priority trong `AGENTS.md` và `docs/README.md`; ảnh chỉ mô tả visual.
+
+## V19A Homepage
+
+V19A dùng wireframe `20-homepage-single-location-google-maps-desktop.png` và
+`21-homepage-single-location-google-maps-mobile.png` làm visual target cho
+Homepage một cơ sở và Google Maps. Business rules vẫn lấy từ feature, task và
+acceptance. Không dùng icon vẽ trong ảnh làm production asset; production dùng
+`@mui/icons-material`.

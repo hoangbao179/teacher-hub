@@ -7,6 +7,9 @@ Global Success public learning release are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
 
+V19A-PUBLIC-HOMEPAGE-SINGLE-LOCATION-GOOGLE-MAPS: NOT STARTED. Documentation is
+prepared; implementation is pending and there is no evidence in `.agent-reports`.
+
 ## Status
 
 M1.1: PASS. M2A: PASS. M2B: PASS. M2C: PASS. M3: PASS on 20/07/2026. M2A evidence is in
