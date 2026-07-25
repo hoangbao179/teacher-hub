@@ -35,10 +35,14 @@
 - Mỗi học sinh bắt buộc có một trạng thái: Có mặt/Nghỉ/Miễn phí.
 - Mặc định học sinh trả phí là Có mặt; học sinh FREE là Miễn phí.
 - Cho phép nhận xét riêng tùy chọn.
+- **PLANNED V16D:** thêm `Tất cả có mặt`, `Tất cả nghỉ`, chỉnh ngoại lệ và thu gọn
+  nhận xét riêng. `ABSENT_CHARGED` chưa có trong runtime hiện hành.
 
 ## 06 Ghi nhận buổi - nội dung và bài tập
 - Nội dung buổi học, bài tập về nhà, ghi chú chung.
 - Nội dung có thể để trống khi cập nhật nhanh, nhưng UI khuyến khích nhập.
+- **PLANNED V16D:** phân biệt field nhận xét chung của lesson với internal note và
+  nhận xét riêng theo student; action phải ghi đầy đủ `Dùng làm nhận xét chung cho cả lớp`.
 
 ## 07 Ghi nhận buổi - xác nhận
 - Hiển thị summary thời gian, loại buổi, số có mặt/nghỉ/miễn phí, nội dung.
@@ -65,6 +69,10 @@
 - Tabs tổng quan/lịch sử học/học phí.
 - Hiển thị lớp, tiến độ, chế độ giá, phụ huynh, ghi chú.
 - Hành động sửa, đổi học phí, cho ngừng học.
+- Hiện hành có xuất Excel canonical và mở preview legacy V16A; chưa có external
+  Google resource.
+- **PLANNED V16C–V16E:** tạo/mở/copy một Google Sheet ACTIVE theo student, hiển thị
+  sync status/retry/resync và chia sẻ parent Viewer. Chuyển/lên lớp giữ nguyên Sheet.
 
 ## 13 Chế độ học phí học sinh
 - Chọn Theo giá lớp/Giá riêng/Miễn phí.
@@ -89,3 +97,12 @@
 ## 18 Tạo buổi học bù
 - Chọn lớp, ngày, giờ dự kiến/thực tế, chọn học sinh, ghi chú.
 - Không bắt buộc liên kết với buổi nghỉ cũ.
+
+## 19 Import lịch sử học sinh
+
+- Route hiện hành: `/admin/students/{studentId}/legacy-import`.
+- V16A chỉ preview/audit, không ghi database.
+- **PLANNED V16B:** confirm/apply với exact/near lesson review, attendance riêng,
+  idempotency theo student + SHA-256 và không gọi Google.
+- **PLANNED V16C–V16E:** Sheet được dựng từ canonical DB sau apply, không convert
+  workbook gốc và không reset khi student lên lớp.

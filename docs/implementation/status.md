@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V17, V18A–V18D và
+M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V15, V16A, V17, V18A–V18D và
 Global Success public learning release are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
@@ -153,6 +153,20 @@ MySQL/API/Web ports or storing production secrets in the repository.
 Đã triển khai preview workbook lịch sử theo từng học sinh: parser hai sheet,
 chuẩn hóa ngày thiếu năm, đối soát lesson/học phí, chia năm học và mô phỏng gói
 8 buổi. Endpoint chỉ đọc file tạm đã xác thực, không tạo lesson/class/enrollment/tuition.
+
+## V16B–V16E
+
+- V16B-LEGACY-IMPORT-APPLY: **PLANNED** — apply vào MySQL, matching lesson,
+  attendance riêng, cycle theo student và idempotency/audit; tuyệt đối chưa gọi Google.
+- V16C-STUDENT-GOOGLE-SHEET: **PLANNED** — OAuth/Drive/Sheets, template và tối đa
+  một Sheet `ACTIVE` theo student; Student Detail hiện chưa có external resource.
+- V16D-LESSON-GOOGLE-SHEET-SYNC: **PLANNED** — general/student-specific comments,
+  quick attendance, transactional outbox và lesson sync; chưa sync tuition.
+- V16E-TUITION-SHEET-AND-PARENT-SHARING: **PLANNED** — tuition presentation,
+  parent Viewer sharing, retry/resync và admin status.
+
+Source of truth thiết kế là `docs/features/student-parent-tracking.md`. Hiện chưa có
+Google Drive/Sheets integration, provider, credential, mapping hoặc outbox runtime.
 
 ## V15
 
