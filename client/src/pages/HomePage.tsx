@@ -200,7 +200,7 @@ export function HomePage() {
         <Box sx={{ background: "linear-gradient(135deg, #f7f0ff 0%, #edf8ff 54%, #effaf4 100%)" }}>
           <Container maxWidth="lg">
             <Box component="section" id="hero" aria-labelledby="hero-heading" sx={{ ...sectionSx, pt: { xs: 4, md: 6 } }}>
-              <Box sx={{ display: "grid", gridTemplateAreas: { xs: '"copy" "photo" "actions"', md: '"copy photo" "actions photo"' }, gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1.05fr) minmax(360px, .95fr)" }, gridTemplateRows: { md: "auto 1fr" }, columnGap: { md: 5 }, rowGap: { xs: 0, md: 0 }, alignItems: "center" }}>
+              <Box sx={{ display: "grid", gridTemplateAreas: { xs: '"copy" "photo"', md: '"copy photo"' }, gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1.05fr) minmax(360px, .95fr)" }, columnGap: { md: 5 }, rowGap: { xs: 0, md: 0 }, alignItems: "center" }}>
                 <Box sx={{ gridArea: "copy" }}>
                   <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>{content.hero.eyebrow}</Typography>
                   <Typography id="hero-heading" component="h1" variant="h3" sx={{ mt: 1, fontWeight: 800, fontSize: { xs: "2rem", md: "3rem" } }}>{content.hero.heading}</Typography>
@@ -217,9 +217,6 @@ export function HomePage() {
                     fetchPriority="high"
                     sx={{ display: "block", width: "100%", height: { xs: 280, sm: 390, md: 410 }, objectFit: "cover", objectPosition: content.media.teacherPhotoFocalPosition, borderRadius: 3, boxShadow: "0 12px 30px rgba(55,40,90,.14)" }}
                   />
-                </Box>
-                <Box data-testid="homepage-hero-actions" sx={{ gridArea: "actions", alignSelf: "start", mt: { xs: 2.5, md: 3 } }}>
-                  <Button component="a" href="#contact" variant="contained" sx={{ ...actionButtonSx, width: { xs: "100%", md: "auto" }, height: 48, px: 2.5 }}>Trao đổi về lớp học</Button>
                 </Box>
               </Box>
             </Box>

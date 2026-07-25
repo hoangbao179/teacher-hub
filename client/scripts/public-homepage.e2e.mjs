@@ -194,8 +194,7 @@ try {
   assert(await page.getByRole("heading", { level: 2, name: "Video học tiếng Anh tham khảo", exact: true }).count() === 0, "Old video heading remains");
 
   const hero = page.locator("section").filter({ has: page.locator("#hero-heading") }).first();
-  assert(await hero.getByRole("link").count() === 1, "Hero must contain exactly one CTA");
-  assert(await hero.getByRole("link", { name: "Trao đổi về lớp học", exact: true }).getAttribute("href") === "#contact", "Hero contact CTA is incorrect");
+  assert(await hero.getByRole("link").count() === 0, "Hero must not contain a CTA");
   assert(await hero.locator('a[href="/hoc"]').count() === 0, "Hero must not contain a learning CTA");
   assert(await hero.locator('a[href="/kiem-tra-trinh-do"]').count() === 0, "Forbidden placement-test CTA exists");
 
@@ -378,7 +377,6 @@ try {
       const address = [...document.querySelectorAll('[data-testid="homepage-location-card"] address p')].at(-1);
       const mapActions = [...document.querySelectorAll('[data-testid="homepage-location-actions"] a')];
       const locationActions = rect('[data-testid="homepage-location-actions"]');
-      const heroActions = [...document.querySelectorAll('[data-testid="homepage-hero-actions"] a')];
       const heroPhoto = rect('[data-testid="homepage-hero-photo"]');
       const heroDescription = rect('#hero-heading + p');
       const videoList = document.querySelector('[data-testid="learning-video-list"]');
@@ -392,7 +390,6 @@ try {
         addressFits: address ? address.scrollWidth <= address.clientWidth && address.scrollHeight <= address.clientHeight : false,
         mapActions: mapActions.map((action) => ({ height: action.getBoundingClientRect().height, left: action.getBoundingClientRect().left, right: action.getBoundingClientRect().right })),
         locationActions: locationActions && { width: locationActions.width },
-        heroActions: heroActions.map((action) => { const box = action.getBoundingClientRect(); return { top: box.top, left: box.left, right: box.right, width: box.width, height: box.height }; }),
         heroPhoto: heroPhoto && { top: heroPhoto.top, left: heroPhoto.left, right: heroPhoto.right, bottom: heroPhoto.bottom, width: heroPhoto.width },
         heroDescription: heroDescription && { top: heroDescription.top, left: heroDescription.left, right: heroDescription.right, bottom: heroDescription.bottom },
         videoOverflow: videoList ? videoList.scrollWidth - videoList.clientWidth : 0,
@@ -406,19 +403,14 @@ try {
     assert(homepageLayout.mapActions.length === 1, `No-key location must have one CTA at ${viewport.width}px`);
     assert(homepageLayout.mapActions.every((action) => action.height >= 44), `Maps CTA is shorter than 44px at ${viewport.width}px: ${homepageLayout.mapActions.map((action) => action.height).join(", ")}`);
     assert(homepageLayout.mapActions.every((action) => action.left >= -1 && action.right <= viewport.width + 1), `Maps CTA overflows at ${viewport.width}px`);
-    assert(homepageLayout.heroActions.length === 1 && homepageLayout.heroActions[0].height >= 48, `Hero CTA touch target is too small at ${viewport.width}px`);
     assert(homepageLayout.heroPhoto && homepageLayout.heroDescription, `Hero geometry is missing at ${viewport.width}px`);
     if (viewport.width < 768) {
       const trustRows = [...new Set(homepageLayout.trustCards.map((card) => Math.round(card.top)))];
       assert(trustRows.length === 2 && homepageLayout.trustCards.filter((card) => Math.round(card.top) === trustRows[0]).length === 2, `Trust strip must use a 2-column mobile grid at ${viewport.width}px`);
-      assert(homepageLayout.heroActions[0].top >= homepageLayout.heroPhoto.bottom + 19, `Mobile Hero CTA must follow the photo with safe spacing at ${viewport.width}px`);
-      assert(homepageLayout.heroActions[0].width >= homepageLayout.heroPhoto.width - 2, `Mobile Hero CTA must fill the content width at ${viewport.width}px`);
       assert(Math.abs(homepageLayout.locationCard.width - homepageLayout.locationLayout.width) <= 1, `Mobile location card must fill its layout at ${viewport.width}px`);
       assert(homepageLayout.locationActions && Math.abs((homepageLayout.mapActions[0].right - homepageLayout.mapActions[0].left) - homepageLayout.locationActions.width) <= 1, `Mobile location CTA must fill its content area at ${viewport.width}px`);
       assert(homepageLayout.videoOverflow > 0, `Mobile video list must remain horizontally scrollable at ${viewport.width}px`);
     } else {
-      assert(homepageLayout.heroActions[0].top >= homepageLayout.heroDescription.bottom + 19, `Desktop Hero CTA must sit below the description at ${viewport.width}px`);
-      assert(homepageLayout.heroActions[0].right <= homepageLayout.heroPhoto.left, `Desktop Hero CTA must remain in the left column at ${viewport.width}px`);
       assert(homepageLayout.locationLayout.width <= 961, `Desktop no-key location is wider than 960px at ${viewport.width}px: ${homepageLayout.locationLayout.width}px`);
       if (viewport.width === 1440) assert(homepageLayout.locationLayout.width >= 800, `Desktop no-key location is too narrow at ${viewport.width}px: ${homepageLayout.locationLayout.width}px`);
       assert(homepageLayout.locationCenterOffset <= 1, `Desktop no-key location card is not centered at ${viewport.width}px`);
