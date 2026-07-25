@@ -49,6 +49,7 @@ Footer công khai giữ nguyên:
 ## V19A — Một cơ sở và Google Maps
 
 Homepage trình bày một cơ sở duy nhất, coi nhận dạy tại nhà học sinh là dịch vụ
-và hỗ trợ Google Maps Embed tùy chọn với card fallback khi không có API key.
+và hỗ trợ Google Maps Embed tùy chọn. Khi không có API key, section chỉ hiển thị
+một location card với link mở Maps, không dựng fallback panel lặp địa chỉ.
 Structured data dùng cùng địa chỉ/map URL và không có review/rating giả. Chi tiết xem
 [Homepage một cơ sở và Google Maps](public-homepage-single-location-google-maps.md).

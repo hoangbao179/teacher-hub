@@ -8,8 +8,8 @@
 - [x] Dịch vụ hiển thị: `Có nhận dạy tại nhà học sinh trong khu vực Huế.`
 - [x] Ghi chú hiển thị: `Phụ huynh vui lòng liên hệ trước để trao đổi lịch học và phạm vi di chuyển phù hợp.`
 - [x] Nhận dạy tại nhà học sinh không được gọi là `Cơ sở 2`.
-- [x] Có CTA `Xem trên Google Maps`.
-- [x] Có CTA `Chỉ đường`.
+- [x] No-key mode có đúng một CTA `Xem vị trí và chỉ đường` dùng place URL.
+- [x] Key mode có đúng một CTA `Chỉ đường` dùng directions URL và một iframe.
 - [x] Không hiển thị điểm sao hoặc số review.
 - [x] Không có claim `1000+ học sinh` hoặc tỷ lệ tiến bộ không được kiểm chứng.
 
@@ -19,7 +19,7 @@
 - [x] Directions URL dùng Maps URL cross-platform.
 - [x] Google Maps place URL đúng URL canonical trong feature/task.
 - [x] Directions URL là `https://www.google.com/maps/dir/?api=1&destination=16.4484035%2C107.5651237`.
-- [x] Nếu iframe không có key hoặc tải lỗi, card fallback vẫn hiển thị được.
+- [x] Nếu không có key hoặc iframe lỗi, layout trở về một location card và không lặp địa chỉ.
 - [x] Structured data không có `aggregateRating`.
 - [x] Structured data có địa chỉ và map URL đúng.
 - [x] Không gọi Admin API từ Homepage.
@@ -28,14 +28,14 @@
 
 - [x] 360px không horizontal overflow.
 - [x] 390px và 400px địa chỉ đọc đầy đủ.
-- [x] CTA Maps có touch target tối thiểu 44px.
+- [x] CTA Maps có touch target tối thiểu 48px và rộng hết card trên mobile.
 - [x] Desktop location section cân bằng, không bị quá rộng hoặc quá trống.
 - [x] Video section giữ nguyên chức năng mobile/desktop.
 
 ## Regression
 
 - [x] Header vẫn chỉ có `Liên hệ` và `Quản trị` theo source hiện tại.
-- [x] Góc học miễn phí vẫn dẫn `/hoc`.
+- [x] Section `GÓC TỰ HỌC` có CTA `Vào học ngay` dẫn `/hoc`; Hero không lặp CTA này.
 - [x] Không tạo hoặc liên kết route `/kiem-tra-trinh-do` trong V19A.
 - [x] Hai video hiện tại vẫn được giữ nguyên.
 - [x] Testimonial desktop 3 card, mobile carousel.

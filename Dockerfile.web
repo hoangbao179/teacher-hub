@@ -11,6 +11,8 @@ COPY client client
 
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ARG VITE_GOOGLE_MAPS_EMBED_API_KEY=
+ENV VITE_GOOGLE_MAPS_EMBED_API_KEY=$VITE_GOOGLE_MAPS_EMBED_API_KEY
 RUN npm run build:shared && npm -w client run build:production
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine

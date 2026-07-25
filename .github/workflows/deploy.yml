@@ -63,6 +63,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=teacher-hub-web
           build-args: |
             VITE_API_BASE_URL=
+            VITE_GOOGLE_MAPS_EMBED_API_KEY=${{ secrets.GOOGLE_MAPS_EMBED_API_KEY }}
 
   deploy:
     name: Deploy exact revision to production

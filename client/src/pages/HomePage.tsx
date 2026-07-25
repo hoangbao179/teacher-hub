@@ -11,7 +11,6 @@ import {
   HomeWorkOutlined,
   LightbulbOutlined,
   LocationOnOutlined,
-  MapOutlined,
   MenuBook,
   OpenInNewOutlined,
   PlayArrow,
@@ -142,44 +141,31 @@ const trustIcons = {
   "learning-format": GroupOutlined,
 } as const;
 
-function LocationMapPanel() {
-  const [mapFailed, setMapFailed] = useState(false);
+function LocationMapPanel({ apiKey, onError }: { apiKey: string; onError: () => void }) {
   const location = content.locations.primary;
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_EMBED_API_KEY?.trim();
-  const showEmbed = Boolean(apiKey) && !mapFailed;
 
   return (
     <Card data-testid="homepage-map-panel" variant="outlined" sx={{ minHeight: { xs: 280, md: "100%" }, overflow: "hidden", borderRadius: 3, borderColor: "#d7dced", background: "linear-gradient(145deg, #edf7ff 0%, #f5f0ff 58%, #fff9e7 100%)" }}>
-      {showEmbed ? (
-        <Box
-          component="iframe"
-          title="Bản đồ Lớp tiếng Anh cô Vy"
-          src={`https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(apiKey)}&q=${location.latitude}%2C${location.longitude}`}
-          loading="lazy"
-          referrerPolicy="strict-origin-when-cross-origin"
-          onError={() => setMapFailed(true)}
-          sx={{ display: "block", width: "100%", height: "100%", minHeight: { xs: 320, md: 440 }, border: 0 }}
-        />
-      ) : (
-        <CardContent sx={{ minHeight: { xs: 280, md: 440 }, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", p: { xs: 3, sm: 4 } }}>
-          <Box sx={{ width: 68, height: 68, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "rgba(109,61,245,.1)", color: "primary.main" }}>
-            <MapOutlined aria-hidden="true" sx={{ fontSize: 38 }} />
-          </Box>
-          <Typography component="h3" variant="h6" sx={{ mt: 2 }}>{location.name}</Typography>
-          <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 420 }}>{location.address}</Typography>
-          <Button data-testid="google-maps-fallback-link" component="a" href={location.placeUrl} target="_blank" rel="noopener noreferrer" variant="outlined" endIcon={<OpenInNewOutlined />} sx={{ ...actionButtonSx, mt: 2.5 }}>
-            Mở Google Maps
-          </Button>
-        </CardContent>
-      )}
+      <Box
+        component="iframe"
+        title="Bản đồ Lớp tiếng Anh cô Vy"
+        src={`https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(apiKey)}&q=${location.latitude}%2C${location.longitude}`}
+        loading="lazy"
+        referrerPolicy="strict-origin-when-cross-origin"
+        onError={onError}
+        sx={{ display: "block", width: "100%", height: "100%", minHeight: { xs: 320, md: 440 }, border: 0 }}
+      />
     </Card>
   );
 }
 
 export function HomePage() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [mapFailed, setMapFailed] = useState(false);
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+  const mapsEmbedApiKey = import.meta.env.VITE_GOOGLE_MAPS_EMBED_API_KEY?.trim();
+  const showMap = Boolean(mapsEmbedApiKey) && !mapFailed;
 
   useEffect(() => {
     if (isDesktop || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -214,17 +200,13 @@ export function HomePage() {
         <Box sx={{ background: "linear-gradient(135deg, #f7f0ff 0%, #edf8ff 54%, #effaf4 100%)" }}>
           <Container maxWidth="lg">
             <Box component="section" id="hero" aria-labelledby="hero-heading" sx={{ ...sectionSx, pt: { xs: 4, md: 6 } }}>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1.05fr) minmax(360px, .95fr)" }, gap: { xs: 3, md: 5 }, alignItems: "center" }}>
-                <Box>
+              <Box sx={{ display: "grid", gridTemplateAreas: { xs: '"copy" "photo" "actions"', md: '"copy photo" "actions photo"' }, gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1.05fr) minmax(360px, .95fr)" }, gridTemplateRows: { md: "auto 1fr" }, columnGap: { md: 5 }, rowGap: { xs: 0, md: 0 }, alignItems: "center" }}>
+                <Box sx={{ gridArea: "copy" }}>
                   <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>{content.hero.eyebrow}</Typography>
                   <Typography id="hero-heading" component="h1" variant="h3" sx={{ mt: 1, fontWeight: 800, fontSize: { xs: "2rem", md: "3rem" } }}>{content.hero.heading}</Typography>
-                   <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 650, fontSize: { md: "1.08rem" } }}>{content.hero.description}</Typography>
-                   <Box data-testid="homepage-hero-actions" sx={{ display: "flex", flexDirection: "column", gap: 1.25, mt: 3, "@media (min-width:390px)": { flexDirection: "row" } }}>
-                     <Button component="a" href="#contact" variant="contained" sx={{ ...actionButtonSx, height: 48, px: 2 }}>Trao đổi về lớp học</Button>
-                     <Button component={Link} to="/hoc" variant="outlined" endIcon={<ArrowForward />} sx={{ ...actionButtonSx, height: 48, px: 2 }}>Góc học miễn phí</Button>
-                   </Box>
+                  <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 650, fontSize: { md: "1.08rem" } }}>{content.hero.description}</Typography>
                 </Box>
-                <Box component="picture">
+                <Box component="picture" data-testid="homepage-hero-photo" sx={{ gridArea: "photo", mt: { xs: 3, md: 0 } }}>
                   {content.media.teacherPhotoSources.map((source) => <source key={source.type} srcSet={source.srcSet} type={source.type} />)}
                   <Box
                     component="img"
@@ -235,6 +217,9 @@ export function HomePage() {
                     fetchPriority="high"
                     sx={{ display: "block", width: "100%", height: { xs: 280, sm: 390, md: 410 }, objectFit: "cover", objectPosition: content.media.teacherPhotoFocalPosition, borderRadius: 3, boxShadow: "0 12px 30px rgba(55,40,90,.14)" }}
                   />
+                </Box>
+                <Box data-testid="homepage-hero-actions" sx={{ gridArea: "actions", alignSelf: "start", mt: { xs: 2.5, md: 3 } }}>
+                  <Button component="a" href="#contact" variant="contained" sx={{ ...actionButtonSx, width: { xs: "100%", md: "auto" }, height: 48, px: 2.5 }}>Trao đổi về lớp học</Button>
                 </Box>
               </Box>
             </Box>
@@ -286,11 +271,11 @@ export function HomePage() {
             <Box component="section" aria-labelledby="free-learning-heading" data-testid="homepage-learning-cta" sx={{ py: { xs: 4, sm: 5 } }}>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0,1fr) auto" }, gap: 2.5, alignItems: "center", p: { xs: 2.5, sm: 3.5 }, border: "1px solid #d9cdf3", borderRadius: 3, background: "linear-gradient(135deg,#f1ebff 0%,#eaf7ff 55%,#fff3d8 100%)", boxShadow: "0 10px 24px rgba(57,42,94,.07)" }}>
                 <Box>
-                  <Typography variant="overline" color="primary">GÓC HỌC MIỄN PHÍ</Typography>
-                  <Typography id="free-learning-heading" component="h2" variant="h4" sx={{ mt: 0.75 }}>Học tiếng Anh cùng cô Vy</Typography>
-                  <Typography color="text.secondary" sx={{ mt: 0.75 }}>Chọn cấp độ, làm quen từ mới và xây thói quen học vui mỗi ngày.</Typography>
+                  <Typography variant="overline" color="primary">{content.learning.eyebrow}</Typography>
+                  <Typography id="free-learning-heading" component="h2" variant="h4" sx={{ mt: 0.75 }}>{content.learning.heading}</Typography>
+                  <Typography color="text.secondary" sx={{ mt: 0.75 }}>{content.learning.description}</Typography>
                 </Box>
-                <Button component={Link} to="/hoc" variant="contained" endIcon={<ArrowForward />} sx={{ minWidth: { sm: 156 }, borderRadius: 3 }}>Bắt đầu học</Button>
+                <Button component={Link} to={content.learning.path} variant="contained" endIcon={<ArrowForward />} sx={{ minHeight: 48, minWidth: { sm: 156 }, borderRadius: 3 }}>{content.learning.actionLabel}</Button>
               </Box>
             </Box>
           </Container>
@@ -338,7 +323,7 @@ export function HomePage() {
           <Box component="section" id="locations" aria-labelledby="locations-heading" data-testid="homepage-location-section" sx={compactSectionSx}>
             <Typography variant="overline" color="primary">{content.locations.eyebrow}</Typography>
             <Typography id="locations-heading" component="h2" variant="h4" sx={{ mt: 1 }}>{content.locations.heading}</Typography>
-            <Box data-testid="homepage-location-layout" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 2, md: 2.5 }, alignItems: "stretch", mt: 3 }}>
+            <Box data-testid="homepage-location-layout" sx={{ display: "grid", gridTemplateColumns: showMap ? { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" } : "minmax(0, 1fr)", gap: { xs: 2, md: 2.5 }, alignItems: "stretch", width: "100%", maxWidth: showMap ? "none" : 960, mx: "auto", mt: 3 }}>
               <Card data-testid="homepage-location-card" component="article" variant="outlined" sx={{ borderRadius: 3, background: "linear-gradient(145deg, #faf9ff 0%, #f4f0ff 55%, #fffaf0 100%)", borderColor: "#ded5f0" }}>
                 <CardContent sx={{ p: { xs: 2.5, sm: 3.5 }, "&:last-child": { pb: { xs: 2.5, sm: 3.5 } } }}>
                   <Chip label={content.locations.primary.badge} color="primary" size="small" sx={{ fontWeight: 700 }} />
@@ -357,13 +342,12 @@ export function HomePage() {
                     </Box>
                   </Stack>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 2.25 }}>{content.locations.note}</Typography>
-                  <Box data-testid="homepage-location-actions" sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mt: 2.5 }}>
-                    <Button data-testid="google-maps-place-link" component="a" href={content.locations.primary.placeUrl} target="_blank" rel="noopener noreferrer" variant="contained" startIcon={<LocationOnOutlined />} endIcon={<OpenInNewOutlined />} sx={{ ...actionButtonSx, flex: 1, height: 48 }}>Xem trên Google Maps</Button>
-                    <Button data-testid="google-maps-directions-link" component="a" href={content.locations.primary.directionsUrl} target="_blank" rel="noopener noreferrer" variant="outlined" startIcon={<DirectionsOutlined />} sx={{ ...actionButtonSx, flex: 1, height: 48 }}>Chỉ đường</Button>
+                  <Box data-testid="homepage-location-actions" sx={{ display: "flex", mt: 2.5 }}>
+                    <Button data-testid={showMap ? "google-maps-directions-link" : "google-maps-place-link"} component="a" href={showMap ? content.locations.primary.directionsUrl : content.locations.primary.placeUrl} target="_blank" rel="noopener noreferrer" variant="contained" startIcon={showMap ? <DirectionsOutlined /> : <LocationOnOutlined />} endIcon={!showMap ? <OpenInNewOutlined /> : undefined} sx={{ ...actionButtonSx, width: { xs: "100%", md: "auto" }, minWidth: { md: 220 }, height: 48 }}>{showMap ? "Chỉ đường" : "Xem vị trí và chỉ đường"}</Button>
                   </Box>
                 </CardContent>
               </Card>
-              <LocationMapPanel />
+              {showMap && mapsEmbedApiKey ? <LocationMapPanel apiKey={mapsEmbedApiKey} onError={() => setMapFailed(true)} /> : null}
             </Box>
           </Box>
 

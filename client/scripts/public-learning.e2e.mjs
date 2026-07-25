@@ -94,7 +94,7 @@ try {
 
   await page.goto(`${origin}/`, { waitUntil: "networkidle" });
   assert(await page.getByText("2026 — từ người hâm mộ cô Vy, with love ❤️", { exact: true }).isVisible(), "Homepage footer changed");
-  await page.getByTestId("homepage-learning-cta").getByRole("link", { name: "Bắt đầu học" }).click();
+  await page.getByTestId("homepage-learning-cta").getByRole("link", { name: "Vào học ngay" }).click();
   await page.waitForURL(`${origin}/hoc`);
   const hubHeading = page.getByRole("heading", { name: "Góc học tiếng Anh miễn phí cùng cô Vy", level: 1 });
   await hubHeading.waitFor();

@@ -68,16 +68,16 @@ Không hiển thị:
 - số review;
 - logo Google lớn gây hiểu nhầm là được Google chứng nhận.
 
-Nhãn CTA:
+Nhãn CTA phụ thuộc cấu hình build:
 
-- `Xem trên Google Maps`
-- `Chỉ đường`
+- không có Maps Embed key: `Xem vị trí và chỉ đường`, dùng place URL;
+- có Maps Embed key: `Chỉ đường`, dùng directions URL.
 
 ## 5. Visual direction
 
 ### Desktop
 
-Section địa điểm gồm hai vùng:
+Khi có Maps Embed key, section địa điểm gồm hai vùng:
 
 1. Card thông tin:
    - badge `Cơ sở duy nhất`;
@@ -85,17 +85,19 @@ Section địa điểm gồm hai vùng:
    - địa chỉ;
    - thông tin nhận dạy tại nhà học sinh;
    - ghi chú liên hệ trước;
-   - hai CTA Google Maps.
+   - một CTA `Chỉ đường`.
 2. Map panel:
-   - ưu tiên iframe Maps Embed API nếu có cấu hình;
-   - fallback là card pastel có icon bản đồ, địa chỉ và CTA mở Google Maps;
+   - iframe Maps Embed API;
    - không sử dụng ảnh chụp Google Maps không rõ quyền sử dụng.
+
+Khi không có key, chỉ hiển thị card thông tin căn giữa với một CTA
+`Xem vị trí và chỉ đường`; không render fallback map panel lặp địa chỉ.
 
 ### Mobile
 
 - card địa điểm một cột;
 - địa chỉ không bị cắt;
-- hai CTA cùng hàng ở 390–430px, có thể xuống hai hàng tại 360px nếu không đủ chỗ;
+- CTA địa điểm rộng hết card;
 - touch target tối thiểu 44px;
 - map panel nằm dưới thông tin;
 - không horizontal overflow.
@@ -133,6 +135,10 @@ Cập nhật `LocalBusiness`:
 - `hasMap` trỏ tới Google Maps place URL;
 - thêm Google Maps place URL vào `sameAs` nếu phù hợp với schema hiện tại;
 - không thêm `aggregateRating` khi chưa có dữ liệu review thật.
+
+Maps Embed key là frontend build-time value tùy chọn. Docker build nhận
+`VITE_GOOGLE_MAPS_EMBED_API_KEY`; production workflow truyền GitHub secret tương
+ứng nếu có. Key phải giới hạn theo HTTP referrer và chỉ cho phép Maps Embed API.
 
 ## 10. Ngoài phạm vi
 

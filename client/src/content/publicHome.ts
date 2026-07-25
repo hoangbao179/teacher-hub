@@ -79,6 +79,13 @@ export const publicHomeContent = {
     heading: "Cô Vy dạy tiếng Anh tại Huế",
     description: "Đồng hành cùng học sinh từ nền tảng đến luyện thi, theo hình thức 1–1 hoặc lớp nhóm.",
   },
+  learning: {
+    eyebrow: "GÓC TỰ HỌC",
+    heading: "Luyện từ vựng miễn phí cùng cô Vy",
+    description: "Chọn lớp, học theo từng Unit và luyện nghe với tốc độ phù hợp.",
+    actionLabel: "Vào học ngay",
+    path: "/hoc",
+  },
   trustItems: [
     { id: "experience", label: "5 năm đồng hành cùng học sinh", detail: "Kiên nhẫn và sát năng lực" },
     { id: "vstep", label: "VSTEP 8.5/10 · C1", detail: "Năng lực tiếng Anh" },
