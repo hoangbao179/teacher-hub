@@ -68,7 +68,8 @@ try {
   for (const excluded of ["ngay-o-truong", "gia-dinh-cua-em", "/quiz", "/result", "/review", "/admin"])
     assert(!sitemap.includes(excluded), `Sitemap contains excluded route: ${excluded}`);
 
-  browser = await chromium.launch({ headless: true });
+  const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+  browser = await chromium.launch({ headless: true, executablePath: chrome });
   const context = await browser.newContext();
   await context.addInitScript(() => {
     window.__learningSpeechRates = [];
