@@ -11,6 +11,7 @@ const indexHtml = fs.readFileSync(path.join(clientRoot, "index.html"), "utf8");
 const envExample = fs.readFileSync(path.join(clientRoot, ".env.example"), "utf8");
 const webDockerfile = fs.readFileSync(path.join(root, "Dockerfile.web"), "utf8");
 const deployWorkflow = fs.readFileSync(path.join(root, ".github/workflows/deploy.yml"), "utf8");
+const nginxConfig = fs.readFileSync(path.join(root, "deploy/nginx.conf"), "utf8");
 const placeUrl = "https://www.google.com/maps/place/L%E1%BB%9Bp+ti%E1%BA%BFng+Anh+c%C3%B4+Vy/@16.4485604,107.5651109,693m/data=!3m1!1e3!4m14!1m7!3m6!1s0x3141a6afd96e3cb5:0xe354465f8ab597f0!2zMTAxIEtp4buHdCAyNDUgQsO5aSBUaOG7iyBYdcOibiwgVGjhu6d5IFh1w6JuLCBIdeG6vywgVmnhu4d0IE5hbQ!3b1!8m2!3d16.4484853!4d107.5649369!3m5!1s0x236f2c65f8d9d355:0x4759212f0d82a749!8m2!3d16.4484035!4d107.5651237!16s%2Fg%2F11zh28qgsd?entry=ttu&g_ep=EgoyMDI2MDcyMi4wIKXMDSoASAFQAw%3D%3D";
 const directionsUrl = "https://www.google.com/maps/dir/?api=1&destination=16.4484035%2C107.5651237";
 
@@ -55,4 +56,8 @@ test("optional Maps key is passed only through the frontend build pipeline", () 
   assert.match(envExample, /# Optional frontend\/build-time value\. Restrict by HTTP referrer and allow only Maps Embed API\.\r?\nVITE_GOOGLE_MAPS_EMBED_API_KEY=/);
   assert.match(webDockerfile, /ARG VITE_GOOGLE_MAPS_EMBED_API_KEY=\r?\nENV VITE_GOOGLE_MAPS_EMBED_API_KEY=\$VITE_GOOGLE_MAPS_EMBED_API_KEY/);
   assert.match(deployWorkflow, /VITE_GOOGLE_MAPS_EMBED_API_KEY=\$\{\{ secrets\.VITE_GOOGLE_MAPS_EMBED_API_KEY \}\}/);
+});
+
+test("production CSP permits the Google Maps embed iframe", () => {
+  assert.match(nginxConfig, /frame-src https:\/\/www\.youtube-nocookie\.com https:\/\/www\.google\.com;/);
 });
