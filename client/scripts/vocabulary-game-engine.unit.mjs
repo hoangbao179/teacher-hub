@@ -39,6 +39,11 @@ test("game UI includes all V20D mechanics with child-sized controls", () => {
   assert.match(question, /first\.matchKey === second\?\.matchKey/);
   assert.match(question, /reducedMotion \? 120 : 800/);
   assert.match(question, /flashcardRevealed/);
+  assert.match(question, /data-testid="explore-flip-card"/);
+  assert.match(question, /transformStyle: "preserve-3d"/);
+  assert.match(question, /rotateY\(180deg\)/);
+  assert.match(question, /backfaceVisibility: "hidden"/);
+  assert.match(question, /reducedMotion \? "none"/);
   assert.match(question, /MISSING_LETTER/);
   assert.match(question, /data-memory-card/);
   assert.doesNotMatch(question, /void playGameSpeech\(question\.prompt\.speechText\).*useEffect/s);

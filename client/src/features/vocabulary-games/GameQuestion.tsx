@@ -114,24 +114,52 @@ export function GameQuestion({
               Nghe lại
             </Button>
           )}
-          {question.prompt.illustration && <Illustration value={question.prompt.illustration} />}
-          {question.prompt.word && (
-            <Typography variant="h3" sx={{ textAlign: "center", fontWeight: 800 }}>{question.prompt.word}</Typography>
-          )}
-          {question.prompt.meaningVi
-            && (question.mechanic !== "EXPLORE_CARD" || flashcardRevealed) && (
-            <Typography variant="h5" sx={{ textAlign: "center" }}>{question.prompt.meaningVi}</Typography>
-          )}
-          {question.prompt.phonetic
-            && (question.mechanic !== "EXPLORE_CARD" || flashcardRevealed) && (
-            <Typography color="text.secondary" sx={{ textAlign: "center" }}>{question.prompt.phonetic}</Typography>
-          )}
-          {question.prompt.exampleEn
-            && (question.mechanic !== "EXPLORE_CARD" || flashcardRevealed) && (
-            <Typography sx={{ textAlign: "center", fontStyle: "italic" }}>
-              “{question.prompt.exampleEn}”
-            </Typography>
-          )}
+          {question.mechanic === "EXPLORE_CARD" ? (
+            <Box sx={{ perspective: "1200px", minHeight: { xs: 330, sm: 370 } }}>
+              <Box
+                data-testid="explore-flip-card"
+                sx={{
+                  position: "relative",
+                  minHeight: { xs: 330, sm: 370 },
+                  transformStyle: "preserve-3d",
+                  transform: flashcardRevealed ? "rotateY(180deg)" : "rotateY(0deg)",
+                  transition: reducedMotion ? "none" : "transform 520ms cubic-bezier(.2,.75,.25,1)",
+                }}
+              >
+                <Stack
+                  data-testid="explore-card-front"
+                  spacing={2}
+                  sx={{
+                    position: "absolute", inset: 0, alignItems: "center", justifyContent: "center",
+                    backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
+                  }}
+                >
+                  {question.prompt.illustration && <Illustration value={question.prompt.illustration} />}
+                  {question.prompt.word && <Typography variant="h3" sx={{ textAlign: "center", fontWeight: 800 }}>{question.prompt.word}</Typography>}
+                </Stack>
+                <Stack
+                  data-testid="explore-card-back"
+                  spacing={2}
+                  sx={{
+                    position: "absolute", inset: 0, p: 2, alignItems: "center", justifyContent: "center",
+                    backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
+                    transform: "rotateY(180deg)", bgcolor: "rgba(111,68,255,.06)", borderRadius: 4,
+                  }}
+                >
+                  {question.prompt.word && <Typography variant="h4" sx={{ textAlign: "center", fontWeight: 800 }}>{question.prompt.word}</Typography>}
+                  {question.prompt.meaningVi && <Typography variant="h3" color="primary.main" sx={{ textAlign: "center", fontWeight: 800 }}>{question.prompt.meaningVi}</Typography>}
+                  {question.prompt.phonetic && <Typography color="text.secondary" sx={{ textAlign: "center" }}>{question.prompt.phonetic}</Typography>}
+                  {question.prompt.exampleEn && <Typography sx={{ textAlign: "center", fontStyle: "italic" }}>“{question.prompt.exampleEn}”</Typography>}
+                </Stack>
+              </Box>
+            </Box>
+          ) : <>
+            {question.prompt.illustration && <Illustration value={question.prompt.illustration} />}
+            {question.prompt.word && <Typography variant="h3" sx={{ textAlign: "center", fontWeight: 800 }}>{question.prompt.word}</Typography>}
+            {question.prompt.meaningVi && <Typography variant="h5" sx={{ textAlign: "center" }}>{question.prompt.meaningVi}</Typography>}
+            {question.prompt.phonetic && <Typography color="text.secondary" sx={{ textAlign: "center" }}>{question.prompt.phonetic}</Typography>}
+            {question.prompt.exampleEn && <Typography sx={{ textAlign: "center", fontStyle: "italic" }}>“{question.prompt.exampleEn}”</Typography>}
+          </>}
 
           {question.mechanic === "EXPLORE_CARD" ? (
             flashcardRevealed ? <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 1 }}>
