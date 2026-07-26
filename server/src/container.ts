@@ -50,6 +50,9 @@ import { VocabularyMediaStorage } from "./services/vocabulary-media-storage";
 import { VocabularyGameController } from "./controllers/vocabulary-game.controller";
 import { VocabularyGameRepository } from "./repositories/vocabulary-game.repository";
 import { VocabularyGameService } from "./services/vocabulary-game.service";
+import { VocabularyResultsController } from "./controllers/vocabulary-results.controller";
+import { VocabularyResultsRepository } from "./repositories/vocabulary-results.repository";
+import { VocabularyResultsService } from "./services/vocabulary-results.service";
 
 const users = new UserRepository();
 const classes = new ClassRepository();
@@ -63,6 +66,7 @@ const vocabulary = new VocabularyRepository();
 const vocabularyMedia = new VocabularyMediaRepository();
 const assignments = new AssignmentRepository();
 const vocabularyGames = new VocabularyGameRepository();
+const vocabularyResults = new VocabularyResultsRepository();
 
 const authService = new AuthService(users);
 const classService = new ClassService(classes);
@@ -94,6 +98,7 @@ const assignmentService = new AssignmentService(
   ),
 );
 const vocabularyGameService = new VocabularyGameService(vocabularyGames, assignments);
+const vocabularyResultsService = new VocabularyResultsService(vocabularyResults, assignments);
 const studentGoogleSheets = new StudentGoogleSheetRepository();
 function createGoogleSheetProvider() {
   if (!config.googleDrive.enabled) return null;
@@ -139,4 +144,5 @@ export const controllers = {
   vocabularyMedia: new VocabularyMediaController(vocabularyMediaService),
   assignments: new AssignmentController(assignmentService),
   vocabularyGames: new VocabularyGameController(vocabularyGameService),
+  vocabularyResults: new VocabularyResultsController(vocabularyResultsService),
 };

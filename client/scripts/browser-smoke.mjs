@@ -191,7 +191,10 @@ try {
       inputHeights: [...document.querySelectorAll('.MuiOutlinedInput-root')].filter((element) => element.offsetParent !== null).map((element) => element.getBoundingClientRect().height),
       buttonHeights: [...document.querySelectorAll('.MuiButton-root')].filter((element) => element.offsetParent !== null).map((element) => element.getBoundingClientRect().height),
     }))()`);
-    if (desktopDensity.overflow > 1 || desktopDensity.inputHeights.some((height) => height > 39) || desktopDensity.buttonHeights.some((height) => height > 42)) throw new Error(`Invalid desktop density on ${pageAudit.path}: ${JSON.stringify(desktopDensity)}`);
+    if (desktopDensity.overflow > 1
+      || desktopDensity.inputHeights.some((height) => height < 44 || height > 45)
+      || desktopDensity.buttonHeights.some((height) => height < 44 || height > 45))
+      throw new Error(`Invalid accessible desktop density on ${pageAudit.path}: ${JSON.stringify(desktopDensity)}`);
     await cdp.screenshot(pageAudit.name);
   }
   await cdp.eval("location.assign('http://127.0.0.1:5174/admin')");

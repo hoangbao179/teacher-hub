@@ -40,6 +40,7 @@ const VocabularyEditorPage = lazy(() => import("./features/vocabulary/pages/Voca
 const AssignmentListPage = lazy(() => import("./features/assignments/pages/AssignmentListPage").then((module) => ({ default: module.AssignmentListPage })));
 const AssignmentWizardPage = lazy(() => import("./features/assignments/pages/AssignmentWizardPage").then((module) => ({ default: module.AssignmentWizardPage })));
 const AssignmentDetailPage = lazy(() => import("./features/assignments/pages/AssignmentDetailPage").then((module) => ({ default: module.AssignmentDetailPage })));
+const AssignmentResultsPage = lazy(() => import("./features/assignments/pages/AssignmentResultsPage").then((module) => ({ default: module.AssignmentResultsPage })));
 const PlayStartPage = lazy(() => import("./features/vocabulary-games/pages/PlayStartPage").then((module) => ({ default: module.PlayStartPage })));
 const PlayGamePage = lazy(() => import("./features/vocabulary-games/pages/PlayGamePage").then((module) => ({ default: module.PlayGamePage })));
 const PlayResultPage = lazy(() => import("./features/vocabulary-games/pages/PlayResultPage").then((module) => ({ default: module.PlayResultPage })));
@@ -113,6 +114,7 @@ export function App() {
           <Route path="/admin/assignments" element={<AssignmentListPage />} />
           <Route path="/admin/assignments/new" element={<AssignmentWizardPage />} />
           <Route path="/admin/assignments/:id" element={<AssignmentDetailPage />} />
+          <Route path="/admin/assignments/:id/results" element={<AssignmentResultsPage />} />
           <Route path="/admin/assignments/:id/edit" element={<AssignmentWizardPage />} />
           <Route path="/admin/*" element={<NotFoundPage admin />} />
           </Route>

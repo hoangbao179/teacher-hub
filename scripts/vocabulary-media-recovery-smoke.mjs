@@ -46,6 +46,13 @@ try {
     assert.match(compose, /vocabulary-media:\/app\/data\/vocabulary-media/);
     assert.match(compose, /^  vocabulary-media:/m);
   }
+  const backupScript = await fs.readFile(path.join(root, "scripts", "backup-recovery-set.mjs"), "utf8");
+  const verifyScript = await fs.readFile(path.join(root, "scripts", "verify-recovery-set.mjs"), "utf8");
+  assert.match(backupScript, /--single-transaction/);
+  assert.match(backupScript, /\.backup\.lock/);
+  assert.match(backupScript, /vocabulary-media\.tar/);
+  assert.match(backupScript, /sha256/);
+  assert.match(verifyScript, /Checksum mismatch/);
   console.log("Vocabulary media backup/restore smoke PASS");
 } finally {
   await fs.rm(temp, { recursive: true, force: true });

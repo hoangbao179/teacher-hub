@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { constants } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -19,6 +20,13 @@ export class VocabularyMediaStorage {
   async initialize(): Promise<void> {
     await fs.mkdir(path.join(this.root, "game"), { recursive: true });
     await fs.mkdir(path.join(this.root, "thumbnail"), { recursive: true });
+    await fs.access(this.root, constants.R_OK | constants.W_OK);
+  }
+
+  async backupLocked(): Promise<boolean> {
+    return fs.access(path.join(this.root, ".backup.lock"))
+      .then(() => true)
+      .catch(() => false);
   }
 
   async write(game: Buffer, thumbnail: Buffer): Promise<StoredRenditions> {

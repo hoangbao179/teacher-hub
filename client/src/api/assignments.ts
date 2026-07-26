@@ -13,12 +13,19 @@ import type {
   PublishAssignmentResult,
   RegenerateAssignmentAccessRequest,
   UpdateAssignmentDraftRequest,
+  AssignmentRecipientResult,
+  AssignmentRecipientResultDetail,
+  AssignmentResultListQuery,
+  AssignmentResultSummary,
+  AssignmentVocabularyResult,
+  CreateVocabularyReviewDraftRequest,
+  VocabularyReviewDraftResult,
 } from "@teacher/shared";
 import { api, apiEnvelope } from "./client";
 
-function query(values: Record<string, string | number | undefined>) {
+function query(values: object) {
   const params = new URLSearchParams();
-  Object.entries(values).forEach(([key, value]) => {
+  Object.entries(values as Record<string, string | number | undefined>).forEach(([key, value]) => {
     if (value !== undefined && value !== "") params.set(key, String(value));
   });
   const result = params.toString();
@@ -93,3 +100,33 @@ export const revokeAssignmentAccess = (
   method: "POST",
   body: JSON.stringify(values),
 });
+
+export const getAssignmentResultSummary = (id: number) =>
+  api<AssignmentResultSummary>(`/api/vocabulary/assignments/${id}/results/summary`);
+
+export const listAssignmentResultRecipients = (
+  id: number,
+  values: AssignmentResultListQuery,
+) => apiEnvelope<AssignmentRecipientResult[]>(
+  `/api/vocabulary/assignments/${id}/results/recipients${query(values)}`,
+);
+
+export const listAssignmentResultVocabulary = (
+  id: number,
+  values: AssignmentResultListQuery,
+) => apiEnvelope<AssignmentVocabularyResult[]>(
+  `/api/vocabulary/assignments/${id}/results/vocabulary${query(values)}`,
+);
+
+export const getAssignmentRecipientResult = (id: number, recipientId: number) =>
+  api<AssignmentRecipientResultDetail>(
+    `/api/vocabulary/assignments/${id}/results/recipients/${recipientId}`,
+  );
+
+export const createVocabularyReviewDraft = (
+  id: number,
+  values: CreateVocabularyReviewDraftRequest,
+) => api<VocabularyReviewDraftResult>(
+  `/api/vocabulary/assignments/${id}/review-draft`,
+  { method: "POST", body: JSON.stringify(values) },
+);

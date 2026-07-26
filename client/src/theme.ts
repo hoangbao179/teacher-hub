@@ -104,7 +104,7 @@ export const theme = createTheme({
           minHeight: uiTokens.buttonHeight,
           borderRadius: uiTokens.compactRadius,
           paddingInline: 16,
-          "@media (min-width:768px)": { minHeight: 38, paddingInline: 14 },
+          "@media (min-width:768px)": { minHeight: uiTokens.touchTarget, paddingInline: 14 },
         },
         sizeLarge: { "@media (min-width:768px)": { minHeight: 42, paddingInline: 14 } },
       },
@@ -151,7 +151,7 @@ export const theme = createTheme({
           minHeight: uiTokens.touchTarget,
           "&.MuiInputBase-multiline": { padding: "10px 12px" },
           "@media (min-width:768px)": {
-            minHeight: 38,
+            minHeight: uiTokens.touchTarget,
             "&.MuiInputBase-multiline": { minHeight: 0, padding: "8px 12px" },
           },
         },

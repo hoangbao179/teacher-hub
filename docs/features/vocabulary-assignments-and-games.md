@@ -1,6 +1,6 @@
 # Giao bài và trò chơi ôn từ vựng
 
-> Status: **PLANNED — HARDENED FOR V20A–V20E IMPLEMENTATION**
+> Status: **IMPLEMENTED — V20A–V20E**
 > Technical name: **Vocabulary Assignments and Games**
 > Primary teacher route family: `/admin/vocabulary/*`, `/admin/assignments/*`
 > Primary student route family: `/play/*`
@@ -717,6 +717,14 @@ Phân loại mastery đề xuất:
 - `NOT_SEEN`: chưa gặp đủ dữ liệu.
 
 Ngưỡng production phải được cấu hình, không hard-code rải rác trong UI.
+
+Implementation V20E dùng policy version `V20E_1` tại một module backend duy nhất:
+minimum một graded exposure và ngưỡng `MASTERED` 80% first-attempt. `NEEDS_REVIEW`
+được ưu tiên khi có câu còn sai sau hỗ trợ hoặc attempt bỏ dở; `LEARNING` là đã
+đúng sau hỗ trợ nhưng first-attempt chưa đạt ngưỡng. Dashboard tính lại từ snapshot
+question/attempt bất biến khi đọc; policy không được rải ở client. Nếu đổi policy
+trong release sau, phải version policy và ghi migration/decision thay vì sửa ngầm
+lịch sử đã hiển thị.
 
 ## 11. Trải nghiệm học sinh
 

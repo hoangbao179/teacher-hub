@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Teacher Class Hub API
   version: 0.9.0
-  description: API hiện hành gồm Vocabulary Foundation V20A, Media Editor V20B, Assignment Workflow V20C và Student Vocabulary Game Engine V20D; analytics/review V20E vẫn PLANNED.
+  description: API hiện hành gồm trọn bộ Vocabulary V20A–V20E: catalog, media, assignment, game, results và review draft.
 servers:
   - url: /
 security:
@@ -778,6 +778,62 @@ paths:
       parameters: [{$ref: '#/components/parameters/Id'}]
       responses:
         '200': {description: Thành công, content: {application/json: {schema: {$ref: '#/components/schemas/AssignmentRecipientsEnvelope'}}}}
+  /api/vocabulary/assignments/{id}/results/summary:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Tổng hợp authoritative recipient và guest OPEN_LINK riêng
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Tổng quan chỉ tính graded exposure cho mastery, content: {application/json: {schema: {$ref: '#/components/schemas/AssignmentResultSummaryEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/vocabulary/assignments/{id}/results/recipients:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Kết quả phân trang theo recipient; không có token hoặc raw answer
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {$ref: '#/components/parameters/SearchQuery'}
+        - {in: query, name: status, schema: {type: string, enum: [NOT_STARTED, IN_PROGRESS, COMPLETED]}}
+        - {in: query, name: sort, schema: {type: string, enum: [NAME, LAST_ACTIVITY, COMPLETED_AT, LATEST_SCORE, FIRST_TRY, MASTERY]}}
+        - {in: query, name: direction, schema: {type: string, enum: [ASC, DESC]}}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {description: Trang recipient result, content: {application/json: {schema: {$ref: '#/components/schemas/AssignmentRecipientResultsEnvelope'}}}}
+  /api/vocabulary/assignments/{id}/results/vocabulary:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Kết quả phân trang theo từ, authoritative và guest evidence tách riêng
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {$ref: '#/components/parameters/SearchQuery'}
+        - {in: query, name: mastery, schema: {$ref: '#/components/schemas/VocabularyMasteryStatus'}}
+        - {in: query, name: sort, schema: {type: string, enum: [NAME, FIRST_TRY, MASTERY]}}
+        - {in: query, name: direction, schema: {type: string, enum: [ASC, DESC]}}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {description: Trang vocabulary result, content: {application/json: {schema: {$ref: '#/components/schemas/AssignmentVocabularyResultsEnvelope'}}}}
+  /api/vocabulary/assignments/{id}/results/recipients/{recipientId}:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Chi tiết attempt/activity/mastery của recipient, không trả token hoặc raw answer
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {in: path, name: recipientId, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200': {description: Recipient result detail, content: {application/json: {schema: {$ref: '#/components/schemas/AssignmentRecipientResultDetailEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/vocabulary/assignments/{id}/review-draft:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Snapshot từ và recipient đã duyệt vào assignment DRAFT có liên kết nguồn
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateReviewAssignmentRequest'}}}}
+      responses:
+        '201': {description: Draft mới, không tự publish, content: {application/json: {schema: {$ref: '#/components/schemas/ReviewAssignmentDraftEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /api/vocabulary/assignments/{id}/recipients/regenerate-access:
     post:
       tags: [Vocabulary teacher]
@@ -1437,11 +1493,113 @@ components:
             words: {type: array, items: {type: object, additionalProperties: true}}
             openLinkSummary: {type: object, additionalProperties: true, description: Không authoritative cho student}
         meta: {$ref: '#/components/schemas/PageMeta'}
+    VocabularyMasteryStatus:
+      type: string
+      enum: [MASTERED, LEARNING, NEEDS_REVIEW, NOT_SEEN]
+    AssignmentResultSummaryEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [assignmentId, assignmentStatus, audienceType, assigned, notStarted, inProgress, completed, completionPercent, masteredWords, needsReviewWords, totalAttempts, averageScore, passedCount, guest]
+          properties:
+            assignmentId: {type: integer, format: int64}
+            assignmentStatus: {$ref: '#/components/schemas/LearningAssignmentStatus'}
+            audienceType: {$ref: '#/components/schemas/LearningAudienceType'}
+            assigned: {type: integer, minimum: 0}
+            notStarted: {type: integer, minimum: 0}
+            inProgress: {type: integer, minimum: 0}
+            completed: {type: integer, minimum: 0}
+            completionPercent: {type: integer, minimum: 0, maximum: 100}
+            masteredWords: {type: integer, minimum: 0}
+            needsReviewWords: {type: integer, minimum: 0}
+            totalAttempts: {type: integer, minimum: 0}
+            averageScore: {type: integer, minimum: 0, maximum: 100, nullable: true}
+            passedCount: {type: integer, minimum: 0, nullable: true}
+            guest: {type: object, description: Aggregate không authoritative, additionalProperties: true}
+    AssignmentRecipientResult:
+      type: object
+      additionalProperties: false
+      required: [recipientId, studentId, studentName, status, attemptCount, gradedExposures, correctFirstTry, finalCorrect, needsReviewWords]
+      properties:
+        recipientId: {type: integer, format: int64}
+        studentId: {type: integer, format: int64}
+        studentName: {type: string}
+        status: {type: string, enum: [NOT_STARTED, IN_PROGRESS, COMPLETED]}
+        attemptCount: {type: integer, minimum: 0}
+        startedAt: {type: string, format: date-time, nullable: true}
+        completedAt: {type: string, format: date-time, nullable: true}
+        lastActivityAt: {type: string, format: date-time, nullable: true}
+        latestScore: {type: integer, minimum: 0, maximum: 100, nullable: true}
+        bestScore: {type: integer, minimum: 0, maximum: 100, nullable: true}
+        gradedExposures: {type: integer, minimum: 0}
+        correctFirstTry: {type: integer, minimum: 0}
+        finalCorrect: {type: integer, minimum: 0}
+        firstTryPercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
+        finalCorrectPercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
+        needsReviewWords: {type: integer, minimum: 0}
+    AssignmentVocabularyResult:
+      type: object
+      additionalProperties: false
+      required: [assignmentItemId, word, meaningVi, studentsSeen, exposureCount, retryCount, mastery, evidence, guestEvidence]
+      properties:
+        assignmentItemId: {type: integer, format: int64}
+        word: {type: string}
+        meaningVi: {type: string}
+        studentsSeen: {type: integer, minimum: 0}
+        exposureCount: {type: integer, minimum: 0}
+        retryCount: {type: integer, minimum: 0}
+        firstTryErrorPercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
+        finalErrorPercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
+        mastery: {$ref: '#/components/schemas/VocabularyMasteryStatus'}
+        evidence: {type: object, additionalProperties: true}
+        guestEvidence: {type: object, additionalProperties: true}
+    AssignmentRecipientResultsEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/AssignmentRecipientResult'}}
+        meta: {$ref: '#/components/schemas/PageMeta'}
+    AssignmentVocabularyResultsEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/AssignmentVocabularyResult'}}
+        meta: {$ref: '#/components/schemas/PageMeta'}
+    AssignmentRecipientResultDetailEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          allOf:
+            - {$ref: '#/components/schemas/AssignmentRecipientResult'}
+            - {type: object, required: [attempts, activities, words], properties: {
+                attempts: {type: array, items: {type: object, additionalProperties: true}},
+                activities: {type: array, items: {type: object, additionalProperties: true}},
+                words: {type: array, items: {$ref: '#/components/schemas/AssignmentVocabularyResult'}}
+              }}
     CreateReviewAssignmentRequest:
       type: object
+      additionalProperties: false
+      required: [assignmentItemIds, recipientIds]
       properties:
         assignmentItemIds: {type: array, minItems: 1, maxItems: 40, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
+        recipientIds: {type: array, minItems: 1, maxItems: 50, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
         title: {type: string, minLength: 1, maxLength: 160}
+    ReviewAssignmentDraftEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [id, status, sourceAssignmentId, itemCount, recipientCount]
+          properties:
+            id: {type: integer, format: int64}
+            status: {type: string, enum: [DRAFT]}
+            sourceAssignmentId: {type: integer, format: int64}
+            itemCount: {type: integer, minimum: 1, maximum: 40}
+            recipientCount: {type: integer, minimum: 1}
     PageMeta:
       type: object
       required: [total, page, pageSize]

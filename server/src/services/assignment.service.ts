@@ -153,6 +153,14 @@ export class AssignmentService {
         studentId: token.studentId,
         studentName: token.studentName,
       }));
+    console.info(JSON.stringify({
+      level: "info",
+      event: "vocabulary_assignment_published",
+      assignmentId: id,
+      audienceType: published.audienceType,
+      recipientCount: published.recipientCount,
+      itemCount: published.itemCount,
+    }));
     return { assignment: published, shares };
   }
 

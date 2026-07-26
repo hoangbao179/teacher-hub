@@ -126,6 +126,7 @@ try {
   run("node", ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
   run("npm", ["run", "db:migrate"], path.join(root, "server"));
   run("npm", ["run", "db:bootstrap-admin"], path.join(root, "server"));
+  run("npm", ["run", "db:reset:dev"], path.join(root, "server"));
   run("npm", ["run", "db:seed:dev"], path.join(root, "server"));
 
   const node = process.execPath;

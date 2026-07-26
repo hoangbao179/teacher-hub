@@ -42,6 +42,7 @@ function makeService(options: {
   existing?: boolean;
   now?: Date;
   createFailure?: boolean;
+  backupLocked?: boolean;
 } = {}) {
   let providerCalls = 0;
   let savedCache: unknown;
@@ -107,6 +108,7 @@ function makeService(options: {
   };
   const storage = {
     initialize: async () => undefined,
+    backupLocked: async () => options.backupLocked ?? false,
     write: async () => ({
       storagePath: "game/test.webp",
       thumbnailPath: "thumbnail/test.webp",
@@ -143,6 +145,17 @@ test("disabled provider returns a controlled status and error", async () => {
   await assert.rejects(
     service.search({ query: "apple" }),
     (error: unknown) => (error as { code?: string }).code === "IMAGE_PROVIDER_DISABLED",
+  );
+});
+
+test("media import pauses while a consistent recovery set is being created", async () => {
+  const { service } = makeService({ backupLocked: true, cached: true });
+  await assert.rejects(
+    service.importMedia({
+      provider: "PIXABAY", providerAssetId: "42", altText: "quả táo",
+    }, 1),
+    (error: unknown) =>
+      (error as { code?: string }).code === "VOCABULARY_MEDIA_BACKUP_IN_PROGRESS",
   );
 });
 

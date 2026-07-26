@@ -50,13 +50,29 @@ export class VocabularyGameService {
     const guestName = this.guestName(guestNameValue);
     const sessionToken = gameToken();
     const expiresAt = new Date(Date.now() + SESSION_MS);
-    const access = await this.games.createAccess({
-      publicCode: code,
-      accessTokenHash: gameTokenHash(accessToken),
-      sessionTokenHash: gameTokenHash(sessionToken),
-      guestName,
-      expiresAt,
-    });
+    let access;
+    try {
+      access = await this.games.createAccess({
+        publicCode: code,
+        accessTokenHash: gameTokenHash(accessToken),
+        sessionTokenHash: gameTokenHash(sessionToken),
+        guestName,
+        expiresAt,
+      });
+    } catch (error) {
+      console.warn(JSON.stringify({
+        level: "warn",
+        event: "vocabulary_public_access_failed",
+        category: error instanceof AppError ? error.code : "UNEXPECTED",
+      }));
+      throw error;
+    }
+    console.info(JSON.stringify({
+      level: "info",
+      event: "vocabulary_access_session_created",
+      audienceType: access.audienceType,
+      attemptsUsed: access.attemptsUsed,
+    }));
     return {
       sessionToken,
       expiresAt: expiresAt.toISOString(),
@@ -121,7 +137,17 @@ export class VocabularyGameService {
 
   async complete(sessionTokenValue: unknown): Promise<CompleteLearningAttemptResult> {
     const sessionToken = this.token(sessionTokenValue, "Phiên chơi không hợp lệ.");
-    return (await this.games.complete(gameTokenHash(sessionToken))) as unknown as CompleteLearningAttemptResult;
+    const result = (await this.games.complete(
+      gameTokenHash(sessionToken),
+    )) as unknown as CompleteLearningAttemptResult;
+    console.info(JSON.stringify({
+      level: "info",
+      event: "vocabulary_attempt_completed",
+      attemptId: result.attemptId,
+      gradedExposureCount: result.gradedExposureCount,
+      scorePercent: result.scorePercent,
+    }));
+    return result;
   }
 
   private mapAttempt(state: InternalAttemptState, rawToken: string): PublicLearningAttempt {

@@ -26,3 +26,10 @@ archive media volume và manifest/checksum trong lúc khóa mutation media ngắ
 Migration chạy đúng một lần trong one-off API container. Rollback tự động chỉ đưa
 image về SHA trước, không rollback database/media. Chi tiết vận hành ở
 `docs/deployment/production.md` và `docs/deployment/backup-and-restore.md`.
+
+V20E bổ sung `npm run backup:recovery-set -- <new-directory>` để khóa mutation,
+tạo SQL dump + `vocabulary-media.tar` và manifest SHA-256; dùng
+`npm run verify:recovery-set -- <directory>` trước restore. API kiểm tra quyền
+read/write của media root lúc startup và provider có thể tắt mà không làm hỏng
+emoji/public asset. Các result route là protected `/api`; `/play/*` và
+`/api/public/*` giữ nguyên proxy/noindex/no-referrer đã harden.

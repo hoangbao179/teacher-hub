@@ -107,6 +107,26 @@ export function createRouter(): Router {
   router.post("/api/vocabulary/assignments/:id/duplicate", asyncHandler(controllers.assignments.duplicate));
   router.patch("/api/vocabulary/assignments/:id/due-date", asyncHandler(controllers.assignments.dueDate));
   router.get("/api/vocabulary/assignments/:id/recipients", asyncHandler(controllers.assignments.recipients));
+  router.get(
+    "/api/vocabulary/assignments/:id/results/summary",
+    asyncHandler(controllers.vocabularyResults.summary),
+  );
+  router.get(
+    "/api/vocabulary/assignments/:id/results/recipients",
+    asyncHandler(controllers.vocabularyResults.recipients),
+  );
+  router.get(
+    "/api/vocabulary/assignments/:id/results/vocabulary",
+    asyncHandler(controllers.vocabularyResults.vocabulary),
+  );
+  router.get(
+    "/api/vocabulary/assignments/:id/results/recipients/:recipientId",
+    asyncHandler(controllers.vocabularyResults.recipient),
+  );
+  router.post(
+    "/api/vocabulary/assignments/:id/review-draft",
+    asyncHandler(controllers.vocabularyResults.reviewDraft),
+  );
   router.post(
     "/api/vocabulary/assignments/:id/recipients/regenerate-access",
     asyncHandler(controllers.assignments.regenerateAccess),

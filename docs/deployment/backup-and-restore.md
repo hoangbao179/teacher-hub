@@ -40,6 +40,20 @@ Smoke test không cần dữ liệu thật:
 npm run test:media-recovery
 ```
 
+Tạo recovery set thật trên host vận hành (không chạy trong source archive):
+
+```bash
+RELEASE_SHA=<full-sha> \
+VOCABULARY_MEDIA_STORAGE_PATH=/path/to/read-only-volume-mount \
+npm run backup:recovery-set -- ./backups/<utc>-vocabulary
+npm run verify:recovery-set -- ./backups/<utc>-vocabulary
+```
+
+Script từ chối ghi đè thư mục đích, dùng MySQL credential từ environment, không ghi
+credential vào manifest và đánh dấu `INCOMPLETE` nếu một artifact lỗi. `.backup.lock`
+làm endpoint import trả 503 trong cửa sổ backup. Operator vẫn phải chặn deploy/mutation
+ở edge trước khi chạy và chỉ mở lại sau khi verify checksum thành công.
+
 Command tạo volume fixture cô lập, backup, manifest SHA-256, restore, so checksum
 và xác nhận cả hai production Compose đều mount đúng named volume. Đây là smoke
 cho cơ chế file; production drill vẫn phải kết hợp SQL dump, deployment lock và

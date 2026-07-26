@@ -95,7 +95,7 @@ healthcheck, database và JWT. Không đặt text Homepage hoặc đường dẫ
 OAuth secret/refresh token Google chỉ nằm trong file runtime mode `600`, không đưa vào
 image, build args, GitHub Variables hoặc log deploy.
 
-## Vocabulary media V20 (PLANNED)
+## Vocabulary media V20 (IMPLEMENTED)
 
 V20B phải cập nhật Compose bằng đúng mount sau trước khi feature được enable:
 

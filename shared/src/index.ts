@@ -12,5 +12,6 @@ export * from "./contracts/google-sheets.js";
 export * from "./contracts/vocabulary.js";
 export * from "./contracts/assignments.js";
 export * from "./contracts/vocabulary-games.js";
+export * from "./contracts/vocabulary-results.js";
 export * from "./assignment-templates.js";
 export { assignmentActivitiesForTemplate } from "./assignment-templates.js";

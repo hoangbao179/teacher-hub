@@ -61,14 +61,25 @@ export class VocabularyMediaService {
     const now = this.now();
     let cached = await this.repository.findCache(provider.name, cacheKey, now);
     if (!cached) {
-      const payload = await provider.search({
-        query,
-        page,
-        pageSize,
-        mediaType,
-        orientation,
-        safeSearch: true,
-      });
+      let payload;
+      try {
+        payload = await provider.search({
+          query,
+          page,
+          pageSize,
+          mediaType,
+          orientation,
+          safeSearch: true,
+        });
+      } catch (error) {
+        console.warn(JSON.stringify({
+          level: "warn",
+          event: "vocabulary_image_provider_failed",
+          provider: provider.name,
+          category: error instanceof AppError ? error.code : "UNEXPECTED",
+        }));
+        throw error;
+      }
       const expiresAt = new Date(now.getTime() + this.settings.cacheTtlMs);
       await this.repository.saveCache({
         provider: provider.name,
@@ -107,6 +118,12 @@ export class VocabularyMediaService {
 
   async importMedia(input: ImportVocabularyMediaRequest, actorUserId: number) {
     this.ensureEnabled();
+    if (await this.storage.backupLocked())
+      throw new AppError(
+        503,
+        "VOCABULARY_MEDIA_BACKUP_IN_PROGRESS",
+        "Kho ảnh đang được sao lưu. Hãy thử lại sau.",
+      );
     if (!Number.isInteger(actorUserId) || actorUserId < 1)
       throw new AppError(401, "UNAUTHORIZED", "Chưa xác thực.");
     if (!vocabularyImageProviders.includes(input.provider) ||

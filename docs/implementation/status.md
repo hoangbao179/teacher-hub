@@ -20,7 +20,9 @@ V20C-VOCABULARY-ASSIGNMENTS: **PASS on 26/07/2026**. Đã có draft/publish/clos
 snapshot item/activity/recipient, token SHA-256, QR, ba audience và wizard responsive.
 V20D-VOCABULARY-GAMES: **PASS on 26/07/2026**. Đã có public access/session hash-only,
 seeded attempt snapshot, server grading/idempotency/adaptive retry, game UI mobile-first
-và kết quả sao/sticker. V20E analytics/review vẫn **PLANNED**.
+và kết quả sao/sticker. V20E analytics/review đã **IMPLEMENTED — RELEASE GATES
+PENDING**; chưa PASS vì còn cần operator duyệt provider/content và chạy restore drill
+trên VPS mục tiêu.
 
 ## Status
 
@@ -118,6 +120,11 @@ V20C-VOCABULARY-ASSIGNMENTS: PASS on 26/07/2026. Evidence is in
 V20D-VOCABULARY-GAMES: PASS on 26/07/2026. Evidence is in
 `.agent-reports/V20D-VOCABULARY-GAMES-implementation.md`,
 `.agent-reports/V20D-VOCABULARY-GAMES-verification.md` và thư mục screenshot cùng tên.
+V20E-VOCABULARY-RESULTS-RELEASE: IMPLEMENTED on 26/07/2026, RELEASE GATES PENDING.
+Results/mastery/review draft, accessibility/security hardening, recovery-set tooling,
+observability và full regression đã hoàn tất. Chưa có verdict PASS cho đến khi
+operator/giáo viên duyệt Pixabay/seed content và restore drill MySQL + media thành
+công trên VPS mục tiêu.
 
 ## Scope boundary
 
@@ -160,8 +167,9 @@ coverage without adding backend state or student identity.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
   be configured by the operator before the first production deployment.
-- V20A–V20D đã hoàn tất foundation, media editor, assignment workflow và student
-  game runtime. Analytics/review/recovery-set tooling của V20E chưa triển khai.
+- V20A–V20D đã PASS. V20E đã triển khai analytics/review/recovery-set tooling và
+  regression; production enable còn chờ operator duyệt Pixabay/seed content và
+  restore drill MySQL + media trên VPS mục tiêu.
 
 ## V17-PRODUCTION-CICD
 

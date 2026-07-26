@@ -46,7 +46,7 @@ review manifest không tìm thấy dependency trực tiếp không dùng.
 
 Các control image import/search/media bên dưới đã được triển khai ở V20B.
 Token assignment được triển khai ở V20C; public session, answer và game runtime
-được triển khai ở V20D. Aggregate analytics/review vẫn thuộc V20E.
+được triển khai ở V20D; aggregate analytics/review được triển khai ở V20E.
 
 - Public route `/api/public/*` của V20 phải đăng ký trước
   `router.use("/api", requireAuth)`; teacher route vẫn dùng Bearer auth.
@@ -67,3 +67,12 @@ Token assignment được triển khai ở V20C; public session, answer và game
   Binary không vào MySQL hoặc filesystem tạm; backup/restore gồm media volume.
 - `clientAnswerId` unique là idempotency boundary. Answer transaction khóa
   attempt/question, insert một lần và derive first/final correct/retry count.
+- Result endpoints xác thực teacher ownership, dùng query parameter hóa, phân trang
+  tối đa 50 và không trả raw answer/session/access token. OPEN_LINK chỉ có aggregate
+  guest riêng, không map guest name vào roster authoritative.
+- Structured event chỉ ghi ID/count/category: publish, access failure/create,
+  attempt complete, provider failure và review draft. Request logger redact toàn bộ
+  segment session token; body/answer/guest name không được log.
+- Recovery-set tạo `.backup.lock` trong media root; import trả 503 trong cửa sổ
+  backup. Manifest chỉ chứa SHA/release/schema/file checksum, không chứa key hoặc
+  credential.

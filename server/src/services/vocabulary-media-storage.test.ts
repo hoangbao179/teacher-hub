@@ -13,6 +13,9 @@ test("media storage writes inside its root and rejects path traversal", async ()
     assert.equal((await fs.readFile(files.absoluteStoragePath)).toString(), "game");
     assert.throws(() => storage.resolve("../secret.webp"), /Unsafe|traversal/);
     assert.throws(() => storage.resolve("game/../../secret.webp"), /Unsafe|traversal/);
+    assert.equal(await storage.backupLocked(), false);
+    await fs.writeFile(path.join(root, ".backup.lock"), "test");
+    assert.equal(await storage.backupLocked(), true);
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }

@@ -328,6 +328,46 @@ export class AssignmentRepository {
     }
   }
 
+  async createReview(
+    input: CreateAssignmentDraftRequest,
+    sourceAssignmentId: number,
+    teacherUserId: number,
+  ): Promise<number> {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const source = await this.lock(connection, sourceAssignmentId, teacherUserId);
+      if (!source) throw this.notFound();
+      if (source.status === "DRAFT")
+        throw new AppError(409, "ASSIGNMENT_NOT_PUBLISHED", "Bài nguồn chưa có kết quả.");
+      await this.validateReferences(connection, input);
+      const id = await this.insertDraft(connection, input, teacherUserId);
+      await connection.execute(
+        "UPDATE learning_assignments SET review_source_assignment_id=? WHERE id=?",
+        [sourceAssignmentId, id],
+      );
+      await this.audit.record(connection, {
+        actorUserId: teacherUserId,
+        action: "LEARNING_ASSIGNMENT_REVIEW_DRAFT_CREATED",
+        entityType: "LEARNING_ASSIGNMENT",
+        entityId: id,
+        newValues: {
+          sourceAssignmentId,
+          itemCount: input.items.length,
+          recipientCount: input.selectedStudentIds?.length ?? 0,
+          status: "DRAFT",
+        },
+      });
+      await connection.commit();
+      return id;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
   async update(
     id: number,
     input: CreateAssignmentDraftRequest,

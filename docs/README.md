@@ -26,5 +26,5 @@ chỉ là con trỏ tương thích; không duy trì file manifest thủ công.
 
 - `architecture/dependency-policy.md`: Node/npm baseline and dependency-upgrade rules.
 - `features/vocabulary-assignments-and-games.md`: source of truth đã harden cho
-  feature **PLANNED** V20A–V20E về chủ đề, bộ từ, Pixabay/media, giao bài, game và
+  feature **IMPLEMENTED** V20A–V20E về chủ đề, bộ từ, Pixabay/media, giao bài, game và
   kết quả mobile-first.

@@ -3,6 +3,7 @@ import {
   Edit,
   Link as LinkIcon,
   LockReset,
+  Assessment,
   StopCircle,
 } from "@mui/icons-material";
 import {
@@ -225,6 +226,15 @@ export function AssignmentDetailPage() {
       </CardContent></Card>
 
       <StickyActionBar>
+        {assignment.status !== "DRAFT" && (
+          <Button
+            component={Link}
+            to={`/admin/assignments/${id}/results`}
+            startIcon={<Assessment />}
+          >
+            Xem kết quả
+          </Button>
+        )}
         <Button startIcon={<ContentCopy />} disabled={busy} onClick={() => void duplicate()}>Nhân bản</Button>
         {assignment.status === "PUBLISHED" && <Button color="error" startIcon={<StopCircle />} disabled={busy} onClick={() => setCloseOpen(true)}>Đóng bài</Button>}
       </StickyActionBar>
