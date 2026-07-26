@@ -27,6 +27,16 @@
   PASS cho đến khi smoke Google thật hoàn tất.
 - V16E: PLANNED — tuition sheet và parent Viewer sharing.
 - V19A: PASS — Homepage một cơ sở, Google Maps tùy chọn với fallback, trust strip và responsive polish.
+- V20A-VOCABULARY-FOUNDATION: PLANNED — schema/contracts, topic catalog,
+  vocabulary set CRUD và Public Unit snapshot import.
+- V20B-VOCABULARY-MEDIA-EDITOR: PLANNED — Pixabay, cache, hardened media storage
+  và image picker/editor.
+- V20C-VOCABULARY-ASSIGNMENTS: PLANNED — draft/publish snapshot, recipients,
+  teacher wizard và link/QR.
+- V20D-VOCABULARY-GAMES: PLANNED — public access, attempts, deterministic
+  questions, idempotent answers và MVP games.
+- V20E-VOCABULARY-RESULTS-RELEASE: PLANNED — results/review, accessibility,
+  security, performance, deployment, backup và regression.
 
 After V12E, the next separate activity is independent full-system review. Its
 current status is **NOT STARTED**; do not treat RC status as production approval.

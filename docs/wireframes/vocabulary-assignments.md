@@ -26,3 +26,8 @@ docs/features/vocabulary-assignments-and-games.md
 | `26-vocabulary-assignment-results-responsive.*` | Dashboard kết quả mobile và desktop |
 
 Mỗi file có bản SVG để chỉnh sửa và PNG để xem nhanh trong repository/UI review.
+
+Wireframe 24 có invariant bắt buộc: màn `Nghe và chọn hình` chỉ phát prompt âm
+thanh và hiển thị các hình, không hiển thị từ/nghĩa/label tiết lộ đáp án trước khi
+học sinh trả lời. Text đáp án chỉ được dùng trong feedback sau submit nếu
+presentation cho phép.

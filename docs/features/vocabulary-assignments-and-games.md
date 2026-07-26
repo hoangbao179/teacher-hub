@@ -1,6 +1,6 @@
 # Giao bài và trò chơi ôn từ vựng
 
-> Status: **PLANNED — READY FOR IMPLEMENTATION BREAKDOWN**
+> Status: **PLANNED — HARDENED FOR V20A–V20E IMPLEMENTATION**
 > Technical name: **Vocabulary Assignments and Games**
 > Primary teacher route family: `/admin/vocabulary/*`, `/admin/assignments/*`
 > Primary student route family: `/play/*`
@@ -41,6 +41,18 @@ Giáo viên chọn lớp hoặc bỏ qua
 ```
 
 ## 2. Nguyên tắc sản phẩm
+
+### 2.0 Contract và source of truth
+
+- Contract feature chỉ được khai báo trong `shared/src/` và import qua
+  `@teacher/shared`; không tạo DTO riêng ở client/server.
+- API dùng prefix hiện hành `/api`, không tạo thêm namespace version riêng.
+- Assignment luôn có `ageBand` thuộc `PRESCHOOL_G1`, `G2_G3`, `G4_G5` hoặc
+  `G6_G9`.
+- Domain class hiện không lưu grade. Không suy đoán age band từ tên lớp; Unit
+  public chỉ được dùng để preselect và giáo viên vẫn phải xem, xác nhận age band.
+- Public Unit là nguồn snapshot do client đã xác thực gửi lên, không phải file
+  runtime để backend đọc từ thư mục `client`.
 
 ### 2.1 Giáo viên thao tác nhanh
 
@@ -96,10 +108,10 @@ Học sinh không có tài khoản. Hỗ trợ ba cách truy cập:
 
 1. **Link cá nhân**: ưu tiên khi giáo viên gửi qua Zalo.
 2. **QR cá nhân hoặc QR bài**: phù hợp tablet và học tại lớp.
-3. **Mã bài + chọn avatar/tên**: dùng khi nhiều học sinh chia sẻ một thiết bị.
+3. **Mã bài + mã truy cập cá nhân**: dùng khi không mở được link trực tiếp.
 
-Không hiển thị danh sách toàn bộ học sinh nếu link không được phép truy cập lớp.
-Token công khai phải ngẫu nhiên, không chứa `studentId` và có thể thu hồi.
+Public endpoint không bao giờ hiển thị danh sách lớp. Token truy cập phải ngẫu
+nhiên, không chứa `studentId` và có thể thu hồi.
 
 ## 4. Luồng tạo bài dành cho giáo viên
 
@@ -119,6 +131,11 @@ Có nút `Bỏ qua, chọn người nhận sau` khi giáo viên muốn soạn b�
 Khi publish bài cho lớp, hệ thống snapshot danh sách học sinh tại thời điểm giao.
 Việc chuyển lớp sau đó không làm thay đổi lịch sử bài cũ.
 
+`CLASS` chỉ snapshot enrollment `ACTIVE` tại thời điểm publish.
+`SELECTED_STUDENTS` snapshot đúng student đã chọn và còn hợp lệ. `OPEN_LINK`
+không tạo recipient authoritative, guest name là tùy chọn và không bao giờ được
+map ngược vào student.
+
 ### Bước 2 — Chọn nguồn từ vựng
 
 Bốn nguồn:
@@ -129,6 +146,8 @@ Bốn nguồn:
 4. `MANUAL`: nhập/dán danh sách từ.
 
 Mặc định đưa `Chọn theo chủ đề` lên đầu vì đây là luồng nhanh nhất cho trẻ nhỏ.
+Nếu nguồn `PUBLIC_UNIT` có level, client có thể preselect age band tương ứng nhưng
+giáo viên phải xem và xác nhận trước khi lưu/giao.
 
 ### Bước 3 — Duyệt từ và hình
 
@@ -250,6 +269,10 @@ Nếu giáo viên không chọn lớp, hệ thống yêu cầu chọn một nhó
 - Lớp 2–3;
 - Lớp 4–5;
 - Lớp 6–9.
+
+Các nhãn trên map lần lượt tới `PRESCHOOL_G1`, `G2_G3`, `G4_G5` và `G6_G9`.
+Ngay cả khi đã chọn lớp, wizard vẫn yêu cầu age band vì class không có grade
+authoritative.
 
 ### 5.4 Catalog chủ đề khởi đầu
 
@@ -470,6 +493,15 @@ interface ImageSearchProvider {
 
 Yêu cầu:
 
+- Provider MVP đầu tiên là Pixabay; search luôn gửi `safesearch=true`.
+- Kết quả search được cache tối thiểu 24 giờ theo query/filter/page đã chuẩn hóa,
+  đúng yêu cầu API của Pixabay.
+- Image picker luôn hiển thị nguồn Pixabay khi trình bày search result.
+- URL preview chỉ dùng tạm trong picker. Ảnh đã chọn phải được tải về storage của
+  ứng dụng; không lưu URL preview làm URL game và không permanent hotlink.
+- Provider có thể tắt bằng config; khi tắt API search trả lỗi khả dụng có kiểm
+  soát và editor vẫn cho phép `NONE`, `EMOJI` hoặc `PUBLIC_ASSET`.
+- Test dùng fake provider, không gọi Pixabay thật.
 - API key chỉ nằm ở server;
 - rate limit và cache kết quả tìm kiếm;
 - lưu provider, source URL, attribution và license metadata;
@@ -479,7 +511,29 @@ Yêu cầu:
 - tạo thumbnail WebP cho danh sách và ảnh lớn cho game;
 - alt text dựa trên nghĩa đã duyệt, không chỉ dùng tên file.
 
-Provider cụ thể được chọn ở task triển khai sau khi kiểm tra điều khoản API.
+Theo [Pixabay API documentation](https://pixabay.com/api/docs/) được kiểm tra ngày
+26/07/2026, search result phải ghi nguồn, cache 24 giờ, URL chỉ được dùng tạm và
+nội dung dùng lâu dài phải tải về server. Trước khi enable production vẫn phải
+kiểm tra lại API terms/[Content License](https://pixabay.com/service/license-summary/)
+hiện hành và lưu metadata tại thời điểm import.
+
+### 7.4 Import ảnh an toàn
+
+Frontend chỉ gửi `{ provider, providerAssetId }`, tuyệt đối không gửi URL download.
+Backend chỉ import asset còn tồn tại trong search cache chưa hết hạn và thực hiện:
+
+1. deduplicate bằng unique `(provider, provider_asset_id)`;
+2. resolve URL từ cache phía server và chỉ cho host Pixabay/CDN đã cấu hình;
+3. timeout 5 giây, tối đa 2 redirect và kiểm tra lại allowlist sau mỗi redirect;
+4. giới hạn 5 MiB trước/sau download;
+5. sniff MIME từ bytes, không tin `Content-Type` hoặc extension;
+6. chỉ nhận JPEG, PNG hoặc WebP; không nhận SVG/GIF cho media provider;
+7. reject ảnh nhỏ hơn 256×256 hoặc lớn hơn 4096×4096/16 megapixel;
+8. decode rồi tạo thumbnail và game rendition mới trước khi ghi atomically;
+9. lưu source URL, source page, contributor, attribution và license metadata;
+10. alt text lấy từ `meaningVi` đã được giáo viên duyệt.
+
+Không có upload ảnh thủ công trong MVP.
 
 ## 8. Game engine
 
@@ -642,6 +696,18 @@ Quy tắc:
 - lưu riêng kết quả lần đầu và kết quả sau hỗ trợ;
 - UI học sinh chỉ hiển thị lời động viên;
 - dashboard giáo viên vẫn đánh dấu từ cần ôn.
+- flashcard/explore không phải graded exposure và không tham gia mastery;
+- mastery chỉ tính trên graded exposure.
+
+Question generator loại option trùng sau Unicode normalization, trim, collapse
+whitespace và lowercase; không dùng hai item có `meaningVi` chuẩn hóa giống nhau
+trong cùng câu. Số option tối thiểu là 2/3/4/4 tương ứng bốn age band. Nếu không
+đủ distractor phân biệt hoặc ảnh hợp lệ, generator đổi sang mechanic phù hợp hơn
+hoặc bỏ câu có reason code; không dựng câu mơ hồ.
+
+Mỗi attempt có random seed do server tạo và snapshot toàn bộ queue khi bắt đầu.
+Reload dùng lại seed/queue/options snapshot, không shuffle lại. Từ sai quay lại
+sau 2–3 câu và phải đổi mechanic hoặc presentation.
 
 Phân loại mastery đề xuất:
 
@@ -774,259 +840,375 @@ Student:
 | `/play/:publicCode/result/:sessionToken` | Kết quả thân thiện |
 
 Các route `/play/*` phải có `noindex, nofollow`.
+HTML `/play/*` và public result còn phải gửi `noarchive`; dùng
+`Referrer-Policy: no-referrer` để token trong URL không rò sang origin khác.
 
-## 14. Domain model đề xuất
+## 14. Domain model và invariants
 
-### 14.1 Topic catalog
+Tất cả enum/DTO dưới đây là logical contract sẽ được định nghĩa một lần trong
+`@teacher/shared`.
+
+### 14.1 Enum dùng chung
+
+```ts
+type VocabularyAgeBand =
+  | "PRESCHOOL_G1"
+  | "G2_G3"
+  | "G4_G5"
+  | "G6_G9";
+
+type VocabularyMediaKind =
+  | "NONE"
+  | "EMOJI"
+  | "PUBLIC_ASSET"
+  | "STORED_MEDIA";
+```
+
+Assignment bắt buộc có `ageBand`. Topic word có một hoặc nhiều age band đã biên
+soạn; vocabulary set có đúng một age band để suggestion/generator deterministic.
+
+### 14.2 Topic catalog và bộ từ
 
 ```text
 vocabulary_topics
-- id
-- slug
-- title_vi
-- description_vi
-- age_band_from
-- age_band_to
-- icon_key
-- display_order
-- status
-- created_at
-- updated_at
-```
+- id, slug unique, title_vi, description_vi
+- icon_key, display_order, status
+- created_at, updated_at
 
-```text
 vocabulary_topic_words
-- id
-- topic_id
-- word
-- normalized_word
-- meaning_vi
-- phonetic
-- part_of_speech
-- example_en
-- speech_text
+- id, topic_id
+- word, normalized_word, meaning_vi
+- phonetic, part_of_speech, example_en, speech_text
 - tier: CORE | EXTENDED
-- core_priority nullable
-- extension_priority nullable
-- age_band_from
-- age_band_to
-- supports_image_game
-- image_search_terms_json
-- status
-```
+- core_priority nullable, extension_priority nullable
+- age_bands_json
+- supports_image_game, image_search_terms_json, status
 
-### 14.2 Bộ từ của giáo viên
-
-```text
 vocabulary_sets
-- id
-- teacher_user_id
-- title
-- description
+- id, teacher_user_id
+- title, description
 - source_type: TOPIC_CATALOG | PUBLIC_UNIT | COPIED | MANUAL
-- source_reference nullable
+- source_reference_json nullable (metadata only)
 - age_band
 - status: ACTIVE | ARCHIVED
-- created_at
-- updated_at
-```
+- created_at, updated_at
 
-```text
 vocabulary_items
-- id
-- vocabulary_set_id
-- source_topic_word_id nullable
+- id, vocabulary_set_id, source_topic_word_id nullable
 - display_order
-- word
-- normalized_word
-- meaning_vi
-- phonetic
-- part_of_speech
-- example_en
-- speech_text
+- word, normalized_word, meaning_vi
+- phonetic, part_of_speech, example_en, speech_text
 - tier: CORE | EXTENDED | CUSTOM
-- media_id nullable
+- media_kind: NONE | EMOJI | PUBLIC_ASSET | STORED_MEDIA
+- emoji nullable, public_asset_path nullable, media_id nullable
 - supports_image_game
-- created_at
-- updated_at
+- created_at, updated_at
 ```
 
-### 14.3 Media
+`media_kind` và cột tham chiếu phải nhất quán bằng service validation và database
+constraint: `NONE` không có ref; `EMOJI` có một emoji; `PUBLIC_ASSET` có đường dẫn
+same-origin allowlisted; `STORED_MEDIA` có `media_id`.
+
+### 14.3 Import Public Unit và illustration snapshot
+
+Backend không import hoặc đọc `client/src/features/learning/content/*`. Client đã
+xác thực đọc Unit hiện hành rồi gửi `ImportPublicVocabularyUnitRequest` từ
+`@teacher/shared`, gồm `unitId`, `levelSlug`, `contentVersion`, title và toàn bộ
+item snapshot. Server validate toàn bộ payload trước khi ghi một vocabulary set
+và items trong một transaction; một item lỗi làm rollback toàn bộ.
+
+Mapping media hiện tại:
+
+- chuỗi emoji hợp lệ → `EMOJI`, lưu literal;
+- đường dẫn local bắt đầu bằng allowlist `/learning/` → `PUBLIC_ASSET`;
+- không có/không hợp lệ → `NONE` và warning để giáo viên duyệt;
+- URL HTTPS tùy ý từ Unit không được backend download trong luồng này.
+
+`sourceReference` chỉ lưu metadata `{ unitId, levelSlug, contentVersion }`; nội
+dung đã snapshot mới là authoritative. Khi publish assignment:
+
+- `NONE` và `EMOJI` được copy nguyên vào `illustration_snapshot_json`;
+- `PUBLIC_ASSET` được đọc từ asset allowlist của build đang chạy, kiểm tra như
+  media import rồi copy vào storage, sau đó snapshot thành `STORED_MEDIA`;
+- `STORED_MEDIA` snapshot media ID, rendition path, kích thước, alt và attribution.
+
+Vì vậy assignment `PUBLISHED` không phụ thuộc file client của release sau.
+
+### 14.4 Media và search cache
 
 ```text
+vocabulary_image_search_cache
+- id, provider, normalized_query, filter_key, page
+- response_json, fetched_at, expires_at
+- unique(provider, normalized_query, filter_key, page)
+
 vocabulary_media
 - id
-- provider
-- provider_asset_id
-- source_url
-- attribution_text
-- attribution_url
-- license_metadata_json
-- storage_path
-- thumbnail_path
+- provider, provider_asset_id
+- source_url, source_page_url
+- contributor_name, contributor_url
+- attribution_text, attribution_url
+- license_name, license_url, license_metadata_json
+- storage_path, thumbnail_path
+- content_sha256, mime_type, byte_size, width, height
 - alt_text
-- width
-- height
 - created_at
+- unique(provider, provider_asset_id)
 ```
 
-### 14.4 Bài giao và snapshot
+Binary không lưu trong MySQL. Production lưu tại Docker named volume
+`vocabulary-media:/app/data/vocabulary-media`; không dùng filesystem tạm của
+container. Media ID là immutable content identity: không ghi đè bytes/path của
+một row đã tạo.
+
+Same-origin media endpoint:
+
+```http
+GET /api/public/vocabulary-media/{mediaId}
+```
+
+Endpoint public này được đăng ký trước `router.use("/api", requireAuth)`, chỉ trả
+rendition đã duyệt; query `variant=GAME|THUMBNAIL` mặc định `GAME`. Cả media ID và
+variant đều immutable. Response gửi
+`Cache-Control: public, max-age=31536000, immutable` cùng
+`X-Content-Type-Options: nosniff`.
+
+### 14.5 Assignment, activity và recipient snapshot
 
 ```text
 learning_assignments
-- id
-- teacher_user_id
-- vocabulary_set_id nullable
-- title
-- instruction
-- audience_type: CLASS | SELECTED_STUDENTS | OPEN_LINK
+- id, teacher_user_id, vocabulary_set_id nullable
+- title, instruction
+- audience_type nullable khi DRAFT: CLASS | SELECTED_STUDENTS | OPEN_LINK
 - class_id nullable
-- public_code
+- public_code unique, nullable đến khi publish
 - status: DRAFT | PUBLISHED | CLOSED
-- template_code
-- age_band
-- available_from nullable
-- due_at nullable
-- max_attempts nullable
-- pass_score nullable
-- answer_mode
-- shuffle_questions
-- published_at nullable
-- created_at
-- updated_at
-```
+- template_code, age_band
+- available_from nullable, due_at nullable
+- max_attempts nullable, pass_score nullable
+- answer_mode, shuffle_questions
+- published_at nullable, closed_at nullable
+- created_at, updated_at
 
-```text
 learning_assignment_items
-- id
-- assignment_id
-- source_vocabulary_item_id nullable
+- id, assignment_id, source_vocabulary_item_id nullable
 - display_order
-- word
-- normalized_word
-- meaning_vi
-- phonetic
-- part_of_speech
-- example_en
-- speech_text
-- tier
-- media_snapshot_json nullable
-```
+- word, normalized_word, meaning_vi
+- phonetic, part_of_speech, example_en, speech_text, tier
+- illustration_snapshot_json
 
-```text
 learning_assignment_activities
-- id
-- assignment_id
-- display_order
-- mechanic
-- presentation
-- required
-- config_json
+- id, assignment_id, display_order
+- mechanic, presentation, required, config_json
+
+learning_assignment_recipients
+- id, assignment_id, student_id
+- access_token_hash
+- assigned_at, token_revoked_at nullable, completed_at nullable
+- unique(assignment_id, student_id)
 ```
+
+Publish khóa assignment draft và thực hiện trong một transaction: validate;
+snapshot items; snapshot activities; snapshot recipient; chuyển `PUBLISHED`.
+Không gọi Pixabay hoặc filesystem/network download bên trong transaction; media
+phải được import xong trước publish.
+
+Draft được phép chưa chọn audience để hỗ trợ `Bỏ qua, chọn người nhận sau`.
+Publish bắt buộc audience hợp lệ và tạo `publicCode` trong cùng transaction.
+
+State machine duy nhất:
 
 ```text
-learning_assignment_recipients
-- id
-- assignment_id
-- student_id nullable
-- access_token_hash nullable
-- assigned_at
-- completed_at nullable
+DRAFT -> PUBLISHED -> CLOSED
 ```
 
-### 14.5 Phiên chơi và câu trả lời
+- `PUBLISHED` không sửa content, activities hoặc recipients.
+- Chỉ được đổi `dueAt`, close, revoke recipient token hoặc duplicate.
+- Không có transition `PUBLISHED -> DRAFT`; đặc biệt assignment đã có attempt
+  không thể quay lại draft.
+- Duplicate luôn tạo draft mới, token/code mới và không copy attempt.
+- Review assignment luôn tạo draft mới, không tự publish.
+
+Audience:
+
+- `CLASS`: snapshot mọi student có enrollment `ACTIVE` trong class khi publish;
+- `SELECTED_STUDENTS`: snapshot chính xác danh sách giáo viên chọn;
+- `OPEN_LINK`: không tạo recipient, kết quả guest không authoritative cho student;
+- `maxAttempts` chỉ enforce khi có recipient xác định;
+- guest name optional và không map sang student;
+- public endpoint không bao giờ trả class roster.
+
+### 14.6 Token và public session
+
+`publicCode` là mã 8 ký tự dễ nhập, collision-safe nhưng không phải secret của
+recipient. Link cá nhân cần `accessToken` riêng. Access/session token dùng ít nhất
+32 random cryptographic bytes, encode base64url; database chỉ lưu SHA-256 hash.
+Token không chứa `studentId` hoặc dữ liệu định danh.
+
+- Recipient access token sống đến khi revoke hoặc assignment đóng.
+- Session token hết hạn sau 24 giờ kể từ hoạt động gần nhất.
+- `CLOSED` vô hiệu mọi access/session ngay lập tức.
+- Rotate/revoke token chỉ lưu hash mới/trạng thái revoke, không log raw token.
+- Raw token chỉ xuất hiện trong response tạo/rotate/link và không được analytics
+  hoặc application log ghi lại.
+
+Public API dùng limiter riêng: resolve/media tối đa 60 request/phút/IP; access và
+start attempt tối đa 20 request/10 phút theo IP + assignment; answer/complete tối
+đa 120 request/phút theo session + IP. Response 429 có `Retry-After`.
+
+### 14.7 Attempt, question và answer idempotency
 
 ```text
 learning_attempts
-- id
-- assignment_id
-- recipient_id nullable
-- guest_name nullable
+- id, assignment_id, recipient_id nullable, guest_name nullable
 - attempt_number
 - status: IN_PROGRESS | COMPLETED | ABANDONED
-- started_at
-- completed_at nullable
-- correct_first_try_count
-- correct_after_retry_count
-- total_questions
-- score_percent nullable
-- reward_snapshot_json
-```
+- random_seed
+- session_token_hash, session_expires_at
+- started_at, last_activity_at, completed_at nullable
+- correct_first_try_count, correct_after_retry_count
+- total_questions, score_percent nullable, reward_snapshot_json
 
-```text
 learning_attempt_questions
+- id, attempt_id, assignment_item_id, activity_id
+- sequence_number, mechanic, presentation
+- prompt_snapshot_json, options_snapshot_json, correct_answer_snapshot_json
+- first_attempt_correct nullable, final_correct nullable, retry_count
+
+learning_attempt_answers
 - id
-- attempt_id
-- assignment_item_id
-- activity_id
-- sequence_number
-- mechanic
-- presentation
-- prompt_snapshot_json
-- options_snapshot_json
-- correct_answer_snapshot_json
-- first_attempt_correct nullable
-- final_correct nullable
-- retry_count
+- attempt_question_id
+- client_answer_id
+- answer_sequence
+- submitted_answer_json
+- is_correct
+- submitted_at
+- unique(client_answer_id)
+- unique(attempt_question_id, answer_sequence)
 ```
 
-Question queue phải được snapshot khi bắt đầu/tiếp tục phiên để reload không đổi
-đáp án hoặc thứ tự giữa chừng.
+Khi nhận answer, service bắt đầu transaction, khóa attempt/question, kiểm tra
+session/state/sequence, rồi insert bằng `clientAnswerId`. Nếu unique đã tồn tại,
+chỉ trả lại kết quả cũ khi cùng attempt/question/payload; collision với context
+khác trả `409` mà không lộ answer cũ. Replay hợp lệ không tăng retry. Nếu mới,
+chấm trên snapshot, insert answer, derive và update question atomically:
 
-## 15. Logical API proposal
+- `firstAttemptCorrect` = `isCorrect` của `answerSequence = 1`;
+- `finalCorrect` = true nếu bất kỳ answer hợp lệ tới hiện tại đúng, nếu không false;
+- `retryCount` = `max(0, số answer hợp lệ - 1)`.
 
-### 15.1 Topic và vocabulary set
+Commit xong mới trả feedback của câu hiện tại. API không trả
+`correct_answer_snapshot_json` hoặc đáp án câu chưa trả lời.
+
+Question queue, prompt, option và đáp án được tạo bằng seeded PRNG rồi snapshot
+khi attempt bắt đầu. Queue không đổi khi reload; lỗi ghi queue rollback toàn bộ
+attempt creation.
+
+## 15. Logical API
+
+Mọi DTO thuộc `@teacher/shared`. Endpoint public được đăng ký trước middleware
+auth tổng `router.use("/api", requireAuth)`; endpoint teacher nằm sau middleware.
+
+### 15.1 Public, không Bearer auth
 
 ```http
-GET    /api/v1/vocabulary/topics
-GET    /api/v1/vocabulary/topics/{slug}
-POST   /api/v1/vocabulary/topic-suggestions
-GET    /api/v1/vocabulary/sets
-POST   /api/v1/vocabulary/sets
-GET    /api/v1/vocabulary/sets/{id}
-PATCH  /api/v1/vocabulary/sets/{id}
-POST   /api/v1/vocabulary/sets/{id}/duplicate
-POST   /api/v1/vocabulary/sets/import-public-unit
+GET  /api/public/vocabulary-media/{mediaId}
+GET  /api/public/learning-assignments/{publicCode}
+POST /api/public/learning-assignments/{publicCode}/access
+POST /api/public/learning-assignments/{publicCode}/attempts
+GET  /api/public/learning-attempts/{sessionToken}
+POST /api/public/learning-attempts/{sessionToken}/answers
+POST /api/public/learning-attempts/{sessionToken}/complete
 ```
 
-### 15.2 Image search
+### 15.2 Teacher, Bearer auth
 
 ```http
-GET  /api/v1/media/image-search
-POST /api/v1/media/images/import
+GET    /api/vocabulary/topics
+GET    /api/vocabulary/topics/{slug}
+POST   /api/vocabulary/topic-suggestions
+GET    /api/vocabulary/sets
+POST   /api/vocabulary/sets
+POST   /api/vocabulary/sets/import-public-unit
+GET    /api/vocabulary/sets/{id}
+PATCH  /api/vocabulary/sets/{id}
+POST   /api/vocabulary/sets/{id}/duplicate
+
+GET    /api/media/image-search
+POST   /api/media/images/import
+
+GET    /api/learning-assignments
+POST   /api/learning-assignments
+GET    /api/learning-assignments/{id}
+PATCH  /api/learning-assignments/{id}
+POST   /api/learning-assignments/{id}/publish
+POST   /api/learning-assignments/{id}/close
+POST   /api/learning-assignments/{id}/duplicate
+POST   /api/learning-assignments/{id}/recipients/{recipientId}/revoke
+GET    /api/learning-assignments/{id}/results
+POST   /api/learning-assignments/{id}/review-assignment
 ```
 
-Không gọi provider ảnh trực tiếp từ page.
+Không page nào gọi provider ảnh trực tiếp.
 
-### 15.3 Assignment giáo viên
+### 15.3 Status/error contract
 
-```http
-GET    /api/v1/learning-assignments
-POST   /api/v1/learning-assignments
-GET    /api/v1/learning-assignments/{id}
-PATCH  /api/v1/learning-assignments/{id}
-POST   /api/v1/learning-assignments/{id}/publish
-POST   /api/v1/learning-assignments/{id}/close
-POST   /api/v1/learning-assignments/{id}/duplicate
-GET    /api/v1/learning-assignments/{id}/results
-POST   /api/v1/learning-assignments/{id}/review-assignment
-```
+- `400 VALIDATION_ERROR`: JSON/query/path sai shape, length hoặc enum.
+- `404 NOT_FOUND`: ID/code/resource không tồn tại hoặc không được public thấy.
+- `409 STATE_CONFLICT`: state transition, immutable snapshot, attempt limit,
+  token revoke hoặc duplicate/concurrency conflict.
+- `422 CONTENT_NOT_PLAYABLE`: payload đúng shape nhưng nội dung không thể tạo
+  activity an toàn, thiếu distractor/ảnh hoặc public Unit không hợp lệ toàn bộ.
+- `429 RATE_LIMITED`: vượt limiter, kèm `Retry-After`.
 
-### 15.4 Public student API
+Không phân biệt public code “không tồn tại” với “đã đóng” bằng thông báo có thể
+dùng để enumerate; UI vẫn hiển thị trạng thái thân thiện.
 
-```http
-GET  /api/v1/public/learning-assignments/{publicCode}
-POST /api/v1/public/learning-assignments/{publicCode}/access
-POST /api/v1/public/learning-assignments/{publicCode}/attempts
-GET  /api/v1/public/learning-attempts/{sessionToken}
-POST /api/v1/public/learning-attempts/{sessionToken}/answers
-POST /api/v1/public/learning-attempts/{sessionToken}/complete
-```
+## 16. Validation limits
 
-Không trả đáp án đúng của toàn bộ câu hỏi trước khi học sinh trả lời. Public API
-phải rate-limit, kiểm tra assignment state và không làm lộ danh sách lớp.
+### 16.1 Text và collection
 
-## 16. Dashboard kết quả
+| Field | Limit |
+|---|---|
+| Set/assignment/topic title | 1–160 ký tự |
+| Description | 0–2.000 ký tự |
+| Assignment instruction | 0–1.000 ký tự |
+| Word | 1–100 ký tự |
+| Meaning | 1–200 ký tự |
+| Phonetic | 0–100 ký tự |
+| Part of speech | 0–50 ký tự |
+| Example | 0–500 ký tự |
+| Speech text | 1–200 ký tự |
+| Source reference | 0–255 ký tự hoặc object tương đương |
+| Guest name | 0–80 ký tự |
+| Image search query | 2–100 ký tự |
+| Vocabulary set | tối đa 100 từ |
+| Assignment snapshot | 2–40 từ |
+| Activities | 1–8 |
+| `maxAttempts` | null hoặc 1–10 |
+
+Recommended count theo age band, không phải hard minimum/maximum:
+
+| Age band | Recommended |
+|---|---|
+| `PRESCHOOL_G1` | 6–10 từ |
+| `G2_G3` | 8–12 từ |
+| `G4_G5` | 10–16 từ |
+| `G6_G9` | 12–20 từ |
+
+Backend enforce hard limit; UI cảnh báo khi ngoài recommended range nhưng không
+tự cắt mất dữ liệu.
+
+### 16.2 Pagination và media
+
+- list/search mặc định `page=1`, `pageSize=20`, tối đa 50;
+- Pixabay query tối đa 100 ký tự và search luôn `safesearch=true`;
+- cache search tối thiểu 24 giờ;
+- media tối đa 5 MiB, 256×256 đến 4096×4096 và tối đa 16 megapixel;
+- định dạng lưu/serve: JPEG, PNG, WebP; rendition ưu tiên WebP;
+- provider timeout 5 giây, tối đa 2 redirect.
+
+## 17. Dashboard kết quả
 
 ### 16.1 Tổng quan
 
@@ -1068,7 +1250,7 @@ Giao lại các từ cần ôn
 
 Hệ thống tạo assignment draft mới, không tự publish.
 
-## 17. Accessibility và child safety
+## 18. Accessibility và child safety
 
 - Touch target game tối thiểu 56 px; teacher UI tối thiểu 44 px.
 - Contrast theo WCAG AA.
@@ -1082,7 +1264,7 @@ Hệ thống tạo assignment draft mới, không tự publish.
 - Không thu microphone trong MVP.
 - Không hiển thị bảng xếp hạng công khai.
 
-## 18. Performance
+## 19. Performance
 
 - Lazy-load ảnh game và preload chỉ câu kế tiếp.
 - Dùng thumbnail cho danh sách teacher.
@@ -1092,8 +1274,11 @@ Hệ thống tạo assignment draft mới, không tự publish.
   toàn bộ phiên.
 - Có retry idempotent cho answer submission.
 - Bundle game presentation phải route-split/lazy-load.
+- Tạo attempt/answer phải có index theo token hash, assignment/recipient, attempt
+  question và `client_answer_id`; V20E đo query plan bằng dữ liệu đại diện.
+- Search cache và media import không giữ database transaction trong lúc gọi mạng.
 
-## 19. Phạm vi MVP đề xuất
+## 20. Phạm vi MVP
 
 ### Trong MVP
 
@@ -1126,50 +1311,78 @@ Hệ thống tạo assignment draft mới, không tự publish.
 - tự động gửi Zalo;
 - scene tìm đồ vật phức tạp;
 - CMS nhiều giáo viên.
+- upload ảnh thủ công.
 
-## 20. Trình tự triển khai đề xuất
+## 21. Milestone V20
 
-### Phase A — Foundation
+Mỗi checkpoint có task và acceptance riêng:
 
-- migration topic/vocabulary/media;
+- [V20A task](../implementation/tasks/V20A-VOCABULARY-FOUNDATION.md) /
+  [acceptance](../implementation/acceptance/V20A-VOCABULARY-FOUNDATION.md):
+  schema, contracts, topic catalog và vocabulary set CRUD.
+- [V20B task](../implementation/tasks/V20B-VOCABULARY-MEDIA-EDITOR.md) /
+  [acceptance](../implementation/acceptance/V20B-VOCABULARY-MEDIA-EDITOR.md):
+  Pixabay provider/cache, media storage và image picker/editor.
+- [V20C task](../implementation/tasks/V20C-VOCABULARY-ASSIGNMENTS.md) /
+  [acceptance](../implementation/acceptance/V20C-VOCABULARY-ASSIGNMENTS.md):
+  assignment draft/publish snapshot, recipients, wizard và link/QR.
+- [V20D task](../implementation/tasks/V20D-VOCABULARY-GAMES.md) /
+  [acceptance](../implementation/acceptance/V20D-VOCABULARY-GAMES.md):
+  public access, attempt/question/answer, game shell và MVP mechanics.
+- [V20E task](../implementation/tasks/V20E-VOCABULARY-RESULTS-RELEASE.md) /
+  [acceptance](../implementation/acceptance/V20E-VOCABULARY-RESULTS-RELEASE.md):
+  aggregation/review, accessibility, security, performance, deployment,
+  backup/restore và full regression.
+
+### V20A — Foundation
+
+- migration topic/vocabulary;
+- shared contract/validator;
 - seed catalog chủ đề cơ bản;
 - vocabulary set CRUD;
 - topic suggestion API;
-- image provider abstraction;
-- teacher mobile-first vocabulary editor.
+- import Public Unit snapshot.
 
-### Phase B — Assignment domain
+### V20B — Media editor
+
+- Pixabay/fake provider abstraction;
+- 24-hour search cache và safe search;
+- hardened media import, named volume và same-origin media;
+- teacher image picker/editor mobile-first.
+
+### V20C — Assignment domain
 
 - assignment draft/publish/snapshot;
 - recipient snapshot và public token;
 - wizard teacher responsive;
 - link và QR.
 
-### Phase C — Student game MVP
+### V20D — Student game MVP
 
+- public access/session;
 - game shell;
-- question generator;
+- deterministic question queue và idempotent answer persistence;
 - flashcard, select-one, matching, memory, build-word;
 - adaptive retry;
 - autosave attempt.
 
-### Phase D — Results and review
+### V20E — Results and release
 
 - aggregate result;
 - mastery by word;
 - responsive dashboard;
 - create review assignment draft.
-
-### Phase E — Polish and release
-
 - accessibility;
 - low-resource/mobile performance;
 - responsive screenshots ở 360, 390, 430, 768 và 1440 px;
 - security/rate-limit review;
+- production media backup/restore drill;
 - content review toàn bộ seed catalog;
 - full regression.
 
-## 21. Acceptance criteria cấp feature
+Không milestone nào được đánh dấu implemented/PASS chỉ vì tài liệu này hoàn tất.
+
+## 22. Acceptance criteria cấp feature
 
 1. Giáo viên có thể hoàn tất một bài từ chủ đề trên màn hình 360 px mà không có
    horizontal scroll.
@@ -1186,18 +1399,39 @@ Hệ thống tạo assignment draft mới, không tự publish.
 11. Giáo viên xem được kết quả theo học sinh và theo từng từ.
 12. CTA giao lại từ sai tạo draft mới, không tự publish.
 13. Desktop dùng layout tận dụng chiều rộng nhưng không thay đổi business flow.
-14. `/play/*` có `noindex, nofollow` và không làm lộ danh sách lớp.
+14. `/play/*` và public result có `noindex, nofollow, noarchive`,
+    `Referrer-Policy: no-referrer` và không làm lộ danh sách lớp.
 15. Feature không thay đổi business rule học phí, lịch học hoặc lesson recording.
+16. API feature chỉ dùng `/api`; public route được đăng ký trước auth middleware.
+17. Assignment bắt buộc có age band đã được giáo viên xác nhận.
+18. Pixabay search dùng safe search/cache 24 giờ, picker ghi nguồn và selected
+    media được download về named volume thay vì hotlink.
+19. Backend không nhận arbitrary image download URL và kiểm tra allowlist,
+    redirect, timeout, bytes, MIME, dimensions và format.
+20. Publish snapshot item/activity/recipient atomically; content/recipient
+    published là immutable.
+21. `CLASS`/`SELECTED_STUDENTS` snapshot recipient; `OPEN_LINK` không tạo
+    authoritative student result và không enforce max attempts cho guest.
+22. Token dùng random cryptographic bytes, chỉ lưu SHA-256 hash, revoke/expiry
+    hoạt động và token không chứa student ID.
+23. `clientAnswerId` replay idempotent; first/final correct và retry count derive
+    đúng trong transaction.
+24. Generator không tạo option/meaning trùng, dùng seed và queue snapshot; từ sai
+    quay lại sau 2–3 câu bằng mechanic/presentation khác.
+25. Flashcard không tham gia scored mastery; mastery chỉ dùng graded exposure.
+26. Import Public Unit gửi full snapshot qua shared contract, validate toàn bộ và
+    không để backend đọc client runtime file.
+27. Binary media không nằm trong MySQL/filesystem tạm; backup/restore gồm
+    `vocabulary-media`.
 
-## 22. Quyết định cần chốt trước khi code
+## 23. Quyết định và input trước production
 
-- provider tìm ảnh và điều khoản lưu/cache cụ thể;
-- storage cho media ở production;
-- source phát âm: browser speech, generated audio hoặc hybrid;
-- giới hạn số từ/bài theo age band;
-- thời gian hết hạn public/access token;
-- có cho guest tự nhập tên trong `OPEN_LINK` hay không;
-- tên milestone implementation.
+Các quyết định kiến trúc bắt buộc trong scope đã được chốt. Source phát âm MVP
+giữ chiến lược hiện tại của `/hoc/*`: audio asset đã duyệt → browser
+`SpeechSynthesis` → unavailable; không tạo audio server-side.
 
-Các quyết định trên không cản trở việc tách task foundation và xây schema/catalog,
-nhưng phải chốt trước khi publish production.
+Input còn cần chủ repository/operator cung cấp trước khi enable production:
+
+- Pixabay API key và xác nhận lại API terms/Content License tại ngày enable;
+- duyệt nội dung seed catalog, nghĩa/alt text và ảnh đã chọn;
+- dung lượng/retention backup thực tế sau khi đo volume media trên VPS.

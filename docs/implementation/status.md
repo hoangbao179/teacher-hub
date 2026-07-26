@@ -11,6 +11,10 @@ V19A-PUBLIC-HOMEPAGE-SINGLE-LOCATION-GOOGLE-MAPS: PASS on 25/07/2026. Homepage
 now presents one canonical location, optional Google Maps Embed with a no-key
 fallback, synchronized JSON-LD and responsive evidence in `.agent-reports`.
 
+V20A–V20E Vocabulary Assignments and Games: **PLANNED**. Feature contract, logical
+OpenAPI và task/acceptance đã được harden; chưa có source, migration, Compose
+volume hoặc runtime endpoint nào được triển khai.
+
 ## Status
 
 M1.1: PASS. M2A: PASS. M2B: PASS. M2C: PASS. M3: PASS on 20/07/2026. M2A evidence is in
@@ -139,6 +143,9 @@ coverage without adding backend state or student identity.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
   be configured by the operator before the first production deployment.
+- V20A–V20E chỉ là kế hoạch. Pixabay key/enable config, vocabulary schema,
+  `vocabulary-media` volume, public assignment API/game/results và recovery-set
+  tooling chưa tồn tại trong application/Compose hiện tại.
 
 ## V17-PRODUCTION-CICD
 

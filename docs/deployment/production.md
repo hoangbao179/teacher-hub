@@ -81,6 +81,9 @@ Các biến trong `/opt/teacher-hub/.env` được giữ tối thiểu:
 - API secret: `JWT_SECRET`.
 - Google runtime (khi bật V16C): `GOOGLE_DRIVE_ENABLED` và OAuth/root-folder values
   theo `docs/deployment/google-drive.md`.
+- Vocabulary V20 khi enable: `VOCABULARY_IMAGE_PROVIDER_ENABLED`,
+  `PIXABAY_API_KEY` và đường dẫn media cố định
+  `/app/data/vocabulary-media`. Key chỉ ở runtime server; không đưa vào Web image.
 
 `IMAGE_TAG` để rỗng ở bootstrap đầu tiên; workflow sẽ ghi full commit SHA trước khi Compose
 chạy. Database name/user, CORS production, timezone, JWT lifetime, password policy,
@@ -91,6 +94,30 @@ Server `.env` chỉ chứa runtime/deployment config và secret như image tag, 
 healthcheck, database và JWT. Không đặt text Homepage hoặc đường dẫn ảnh vào file này.
 OAuth secret/refresh token Google chỉ nằm trong file runtime mode `600`, không đưa vào
 image, build args, GitHub Variables hoặc log deploy.
+
+## Vocabulary media V20 (PLANNED)
+
+V20B phải cập nhật Compose bằng đúng mount sau trước khi feature được enable:
+
+```yaml
+services:
+  api:
+    volumes:
+      - vocabulary-media:/app/data/vocabulary-media
+
+volumes:
+  vocabulary-media:
+```
+
+Đây là named volume production, không thay bằng `/tmp`, thư mục trong image hoặc
+bind mount không được backup. API phải fail startup khi provider bật nhưng
+`PIXABAY_API_KEY` thiếu, hoặc media root không writable. Provider có thể tắt bằng
+config mà vocabulary set dùng emoji/local asset vẫn hoạt động.
+
+Theo dõi riêng dung lượng, inode và tốc độ tăng của `vocabulary-media`. Cảnh báo
+trước khi filesystem đạt 80%, không tự xóa media còn được vocabulary item hoặc
+assignment snapshot tham chiếu. Media ID immutable; deploy/rollback image không
+được ghi đè bytes của media cũ.
 
 Với database mới hoàn toàn, tạo admin một lần sau deploy bằng biến môi trường tạm, không
 lưu password bootstrap trong `.env` hoặc shell history:
@@ -113,15 +140,17 @@ Push vào `main` hoặc chạy `workflow_dispatch` sẽ:
 2. build API/Web trên runner, push tag full commit SHA và tag tiện ích `latest`;
 3. copy ba deployment file vào `/opt/teacher-hub` qua SSH host key đã pin;
 4. khóa deploy bằng `flock`, ghi SHA mới an toàn, khởi động/kiểm tra MySQL;
-5. tạo và kiểm tra backup nén trước migration;
+5. tạo và kiểm tra backup nén trước migration; sau khi V20 enable, recovery set
+   bắt buộc gồm cả MySQL và `vocabulary-media` theo tài liệu backup;
 6. pull đúng SHA, chạy `node dist/db/migrate.js` đúng một lần bằng one-off API container;
 7. restart stack, kiểm tra health container và public `/ready`;
 8. giữ backup pre-migration 14 ngày và prune dangling image sau khi thành công.
 
 Nếu có lỗi sau khi đổi tag, script đưa API/Web về full SHA trước đó và trả exit code khác
-0. Script không tự rollback database. Nếu migration không tương thích ngược, dừng ghi,
-restore backup vào database cô lập, kiểm tra rồi mới chuyển dịch vụ theo quy trình phục
-hồi. Lần deploy đầu không có image cũ nên không thể rollback image tự động.
+0. Script không tự rollback database hoặc media. Nếu migration không tương thích ngược,
+dừng ghi, restore cả recovery set vào database/volume cô lập, kiểm tra rồi mới chuyển
+dịch vụ theo quy trình phục hồi. Lần deploy đầu không có image cũ nên không thể rollback
+image tự động.
 
 ## Kiểm tra vận hành
 

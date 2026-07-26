@@ -36,26 +36,26 @@
 <text x="644.0" y="314" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="800" fill="#168754" text-anchor="middle">MONSTER</text>
 <rect x="536" y="380" width="216" height="72" rx="20" fill="#F0EBFF" stroke="#D8CCFF" stroke-width="1" opacity="1"/>
 <text x="644.0" y="408" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="13" font-weight="700" fill="#686574" text-anchor="middle">🔊  Nghe từ</text>
-<text x="644.0" y="438" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="24" font-weight="800" fill="#6D3DF5" text-anchor="middle">APPLE</text>
+<text x="644.0" y="438" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="13" font-weight="700" fill="#6D3DF5" text-anchor="middle">Chạm vào hình con nghe thấy</text>
 <text x="644.0" y="484" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="700" fill="#211F2B" text-anchor="middle">Cho bạn nhỏ ăn đúng món nhé!</text>
 <rect x="480" y="512" width="150" height="145" rx="12" fill="#FFF0F5" stroke="#CCE3F8" stroke-width="1" opacity="1"/>
 <circle cx="532.5" cy="567.1" r="13.049999999999999" fill="#FFF7D6" stroke="#F2D97C" stroke-width="1"/>
 <line x1="507.0" y1="622.2" x2="547.5" y2="584.5" stroke="#6D3DF5" stroke-width="2"/>
 <line x1="547.5" y1="584.5" x2="573.0" y2="610.6" stroke="#6D3DF5" stroke-width="2"/>
 <line x1="573.0" y1="610.6" x2="603.0" y2="575.8" stroke="#6D3DF5" stroke-width="2"/>
-<text x="555.0" y="647" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="600" fill="#686574" text-anchor="middle">Táo</text>
+<text x="555.0" y="647" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="600" fill="#686574" text-anchor="middle"></text>
 <rect x="658" y="512" width="150" height="145" rx="12" fill="#FFF7D6" stroke="#CCE3F8" stroke-width="1" opacity="1"/>
 <circle cx="710.5" cy="567.1" r="13.049999999999999" fill="#FFF7D6" stroke="#F2D97C" stroke-width="1"/>
 <line x1="685.0" y1="622.2" x2="725.5" y2="584.5" stroke="#6D3DF5" stroke-width="2"/>
 <line x1="725.5" y1="584.5" x2="751.0" y2="610.6" stroke="#6D3DF5" stroke-width="2"/>
 <line x1="751.0" y1="610.6" x2="781.0" y2="575.8" stroke="#6D3DF5" stroke-width="2"/>
-<text x="733.0" y="647" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="600" fill="#686574" text-anchor="middle">Chuối</text>
+<text x="733.0" y="647" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="600" fill="#686574" text-anchor="middle"></text>
 <rect x="480" y="682" width="328" height="145" rx="12" fill="#EDF6FF" stroke="#CCE3F8" stroke-width="1" opacity="1"/>
 <circle cx="594.8" cy="737.1" r="13.049999999999999" fill="#FFF7D6" stroke="#F2D97C" stroke-width="1"/>
 <line x1="539.04" y1="792.2" x2="627.6" y2="754.5" stroke="#6D3DF5" stroke-width="2"/>
 <line x1="627.6" y1="754.5" x2="683.36" y2="780.6" stroke="#6D3DF5" stroke-width="2"/>
 <line x1="683.36" y1="780.6" x2="748.96" y2="745.8" stroke="#6D3DF5" stroke-width="2"/>
-<text x="644.0" y="817" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="600" fill="#686574" text-anchor="middle">Cá</text>
+<text x="644.0" y="817" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="600" fill="#686574" text-anchor="middle"></text>
 <rect x="534" y="884" width="220" height="48" rx="12" fill="#FFFFFF" stroke="#6D3DF5" stroke-width="1" opacity="1"/>
 <text x="644.0" y="913.0" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="700" fill="#6D3DF5" text-anchor="middle">▶  Nghe lại</text>
 <rect x="888" y="110" width="372" height="940" rx="36" fill="#211F2B" stroke="#211F2B" stroke-width="1" opacity="1" filter="url(#shadow)"/>

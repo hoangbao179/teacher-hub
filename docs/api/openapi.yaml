@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: Teacher Class Hub API
-  version: 0.6.0
-  description: API release candidate V1, gồm vận hành lớp, báo cáo và production hardening qua M6D.
+  version: 0.7.0
+  description: API hiện hành và logical contract PLANNED cho Vocabulary Assignments and Games V20A–V20E.
 servers:
   - url: /
 security:
@@ -463,6 +463,308 @@ paths:
       responses:
         '204': {description: Đã xóa}
         '404': {$ref: '#/components/responses/NotFound'}
+  /api/public/vocabulary-media/{mediaId}:
+    get:
+      security: []
+      tags: [Vocabulary public]
+      summary: Đọc rendition immutable của media đã lưu
+      parameters:
+        - {$ref: '#/components/parameters/MediaId'}
+        - {in: query, name: variant, schema: {type: string, enum: [GAME, THUMBNAIL], default: GAME}}
+      responses:
+        '200':
+          description: Binary cùng origin; media ID không bị ghi đè
+          headers:
+            Cache-Control: {schema: {type: string}, example: 'public, max-age=31536000, immutable'}
+            X-Content-Type-Options: {schema: {type: string, enum: [nosniff]}}
+          content:
+            image/jpeg: {schema: {type: string, format: binary}}
+            image/png: {schema: {type: string, format: binary}}
+            image/webp: {schema: {type: string, format: binary}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/public/learning-assignments/{publicCode}:
+    get:
+      security: []
+      tags: [Vocabulary public]
+      summary: Resolve metadata công khai, không trả roster hoặc đáp án
+      parameters: [{$ref: '#/components/parameters/PublicCode'}]
+      responses:
+        '200': {description: Assignment public tối thiểu, content: {application/json: {schema: {$ref: '#/components/schemas/PublicLearningAssignmentEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/public/learning-assignments/{publicCode}/access:
+    post:
+      security: []
+      tags: [Vocabulary public]
+      summary: Resolve recipient access token hoặc OPEN_LINK guest
+      parameters: [{$ref: '#/components/parameters/PublicCode'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PublicAssignmentAccessRequest'}}}}
+      responses:
+        '200': {description: Access hợp lệ, content: {application/json: {schema: {$ref: '#/components/schemas/PublicAssignmentAccessEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/public/learning-assignments/{publicCode}/attempts:
+    post:
+      security: []
+      tags: [Vocabulary public]
+      summary: Tạo attempt và snapshot deterministic question queue
+      parameters: [{$ref: '#/components/parameters/PublicCode'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/StartLearningAttemptRequest'}}}}
+      responses:
+        '201': {description: Attempt mới và raw session token chỉ trả lần này, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAttemptSessionEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/public/learning-attempts/{sessionToken}:
+    get:
+      security: []
+      tags: [Vocabulary public]
+      summary: Resume queue snapshot; không trả đáp án câu chưa chấm
+      parameters: [{$ref: '#/components/parameters/SessionToken'}]
+      responses:
+        '200': {description: Attempt hiện tại, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAttemptSessionEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/public/learning-attempts/{sessionToken}/answers:
+    post:
+      security: []
+      tags: [Vocabulary public]
+      summary: Ghi answer idempotent bằng clientAnswerId
+      parameters: [{$ref: '#/components/parameters/SessionToken'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SubmitLearningAnswerRequest'}}}}
+      responses:
+        '200': {description: Answer mới hoặc replay cùng kết quả, content: {application/json: {schema: {$ref: '#/components/schemas/SubmitLearningAnswerEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/public/learning-attempts/{sessionToken}/complete:
+    post:
+      security: []
+      tags: [Vocabulary public]
+      summary: Hoàn thành attempt idempotent từ answers đã lưu
+      parameters: [{$ref: '#/components/parameters/SessionToken'}]
+      responses:
+        '200': {description: Kết quả thân thiện, content: {application/json: {schema: {$ref: '#/components/schemas/CompleteLearningAttemptEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/vocabulary/topics:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Danh sách topic catalog
+      parameters:
+        - {$ref: '#/components/parameters/AgeBandQuery'}
+        - {$ref: '#/components/parameters/SearchQuery'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {description: Trang topic, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularyTopicListEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+  /api/vocabulary/topics/{slug}:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Topic cùng core/extended words
+      parameters:
+        - {in: path, name: slug, required: true, schema: {type: string, minLength: 1, maxLength: 100}}
+        - {$ref: '#/components/parameters/AgeBandQuery'}
+      responses:
+        '200': {description: Topic detail, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularyTopicEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/vocabulary/topic-suggestions:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Gợi ý deterministic từ catalog, không tự publish
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularyTopicSuggestionRequest'}}}}
+      responses:
+        '200': {description: Suggestion, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularySuggestionEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/vocabulary/sets:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Danh sách bộ từ
+      parameters:
+        - {$ref: '#/components/parameters/AgeBandQuery'}
+        - {$ref: '#/components/parameters/SearchQuery'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {description: Trang vocabulary set, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularySetListEnvelope'}}}}
+    post:
+      tags: [Vocabulary teacher]
+      summary: Tạo bộ từ và items atomic
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateVocabularySetRequest'}}}}
+      responses:
+        '201': {description: Đã tạo, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularySetEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/vocabulary/sets/import-public-unit:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Import full Public Unit snapshot từ authenticated client
+      description: Backend không đọc file runtime của client; sourceReference chỉ là metadata.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ImportPublicVocabularyUnitRequest'}}}}
+      responses:
+        '201': {description: Set snapshot đã tạo atomic, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularySetEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/vocabulary/sets/{id}:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Chi tiết bộ từ
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Thành công, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularySetEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Vocabulary teacher]
+      summary: Cập nhật bộ từ và item atomic
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateVocabularySetRequest'}}}}
+      responses:
+        '200': {description: Đã cập nhật, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularySetEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/vocabulary/sets/{id}/duplicate:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Nhân bản set thành ACTIVE độc lập
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '201': {description: Bản sao, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularySetEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/media/image-search:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Search Pixabay phía server với safe search và cache 24 giờ
+      parameters:
+        - {in: query, name: query, required: true, schema: {type: string, minLength: 2, maxLength: 100}}
+        - {in: query, name: imageType, schema: {type: string, enum: [ALL, PHOTO, ILLUSTRATION, VECTOR], default: ALL}}
+        - {$ref: '#/components/parameters/Page'}
+        - {in: query, name: pageSize, schema: {type: integer, minimum: 3, maximum: 50, default: 20}}
+      responses:
+        '200': {description: Kết quả có attribution/source, content: {application/json: {schema: {$ref: '#/components/schemas/ImageSearchEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {description: Provider bị disable hoặc tạm không khả dụng}
+  /api/media/images/import:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Import asset đã thấy trong search cache; không nhận URL
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ImportProviderImageRequest'}}}}
+      responses:
+        '200': {description: Deduplicate/replay asset có sẵn, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularyMediaEnvelope'}}}}
+        '201': {description: Asset mới đã lưu, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularyMediaEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/learning-assignments:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Danh sách assignment
+      parameters:
+        - {in: query, name: status, schema: {$ref: '#/components/schemas/LearningAssignmentStatus'}}
+        - {$ref: '#/components/parameters/SearchQuery'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {description: Trang assignment, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentListEnvelope'}}}}
+    post:
+      tags: [Vocabulary teacher]
+      summary: Tạo assignment DRAFT
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateLearningAssignmentRequest'}}}}
+      responses:
+        '201': {description: Draft, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/learning-assignments/{id}:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Assignment detail/snapshot
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Thành công, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Vocabulary teacher]
+      summary: Sửa draft; published chỉ cho phép dueAt
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateLearningAssignmentRequest'}}}}
+      responses:
+        '200': {description: Đã cập nhật, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/learning-assignments/{id}/publish:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Snapshot item/activity/recipient trong một transaction
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Published assignment và raw recipient links chỉ trong response, content: {application/json: {schema: {$ref: '#/components/schemas/PublishLearningAssignmentEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/learning-assignments/{id}/close:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Đóng assignment và vô hiệu access/session
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Closed assignment, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/learning-assignments/{id}/duplicate:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Tạo draft mới, không copy attempt/token
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '201': {description: Draft mới, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/learning-assignments/{id}/recipients/{recipientId}/revoke:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Revoke recipient access token
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {in: path, name: recipientId, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '204': {description: Đã revoke}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/learning-assignments/{id}/results:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Aggregate theo recipient và word; OPEN_LINK tách riêng
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {description: Results, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentResultsEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/learning-assignments/{id}/review-assignment:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Tạo review DRAFT, không tự publish
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/CreateReviewAssignmentRequest'}}}}
+      responses:
+        '201': {description: Review draft, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
@@ -470,6 +772,13 @@ components:
     Id: {in: path, name: id, required: true, schema: {type: integer, format: int64}}
     StudentId: {in: path, name: studentId, required: true, schema: {type: integer, format: int64, minimum: 1}}
     OccurrenceKey: {in: path, name: key, required: true, schema: {type: string, maxLength: 160}, example: '12:34:2026-07-20'}
+    MediaId: {in: path, name: mediaId, required: true, schema: {type: integer, format: int64, minimum: 1}}
+    PublicCode: {in: path, name: publicCode, required: true, schema: {type: string, pattern: '^[A-Z2-9]{8}$'}}
+    SessionToken: {in: path, name: sessionToken, required: true, schema: {type: string, minLength: 43, maxLength: 128}, description: Raw token; database chỉ lưu SHA-256 hash}
+    AgeBandQuery: {in: query, name: ageBand, schema: {$ref: '#/components/schemas/VocabularyAgeBand'}}
+    SearchQuery: {in: query, name: search, schema: {type: string, maxLength: 100}}
+    Page: {in: query, name: page, schema: {type: integer, minimum: 1, default: 1}}
+    PageSize: {in: query, name: pageSize, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
   responses:
     ValidationError:
       description: Dữ liệu không hợp lệ
@@ -483,7 +792,441 @@ components:
     NotFound:
       description: Không tìm thấy tài nguyên
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+    UnprocessableContent:
+      description: Shape hợp lệ nhưng nội dung không thể import/publish/play an toàn
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+    RateLimited:
+      description: Quá giới hạn riêng của public/provider API
+      headers:
+        Retry-After: {schema: {type: integer, minimum: 1}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
   schemas:
+    VocabularyAgeBand:
+      type: string
+      enum: [PRESCHOOL_G1, G2_G3, G4_G5, G6_G9]
+    VocabularyMediaKind:
+      type: string
+      enum: [NONE, EMOJI, PUBLIC_ASSET, STORED_MEDIA]
+    VocabularyTier:
+      type: string
+      enum: [CORE, EXTENDED, CUSTOM]
+    VocabularySourceType:
+      type: string
+      enum: [TOPIC_CATALOG, PUBLIC_UNIT, COPIED, MANUAL]
+    VocabularySourceReference:
+      type: object
+      additionalProperties: false
+      description: Metadata provenance; không thay content snapshot.
+      properties:
+        topicSlug: {type: string, minLength: 1, maxLength: 100}
+        unitId: {type: string, minLength: 1, maxLength: 100}
+        levelSlug: {type: string, enum: [mam-non, lop-1, lop-2, lop-3, lop-4, lop-5, lop-6, lop-7, lop-8, lop-9]}
+        contentVersion: {type: integer, minimum: 1}
+        copiedSetId: {type: integer, format: int64, minimum: 1}
+    VocabularyItemInput:
+      type: object
+      required: [displayOrder, word, meaningVi, tier, media]
+      properties:
+        displayOrder: {type: integer, minimum: 1, maximum: 100}
+        word: {type: string, minLength: 1, maxLength: 100}
+        meaningVi: {type: string, minLength: 1, maxLength: 200}
+        phonetic: {type: string, maxLength: 100}
+        partOfSpeech: {type: string, maxLength: 50}
+        exampleEn: {type: string, maxLength: 500}
+        speechText: {type: string, minLength: 1, maxLength: 200}
+        tier: {$ref: '#/components/schemas/VocabularyTier'}
+        supportsImageGame: {type: boolean, default: false}
+        media: {$ref: '#/components/schemas/VocabularyIllustration'}
+    VocabularyIllustration:
+      type: object
+      required: [kind]
+      description: Chỉ field tương ứng kind được phép có giá trị.
+      properties:
+        kind: {$ref: '#/components/schemas/VocabularyMediaKind'}
+        emoji: {type: string, maxLength: 16}
+        publicAssetPath: {type: string, pattern: '^/learning/'}
+        mediaId: {type: integer, format: int64, minimum: 1}
+        altText: {type: string, maxLength: 200}
+    VocabularySet:
+      type: object
+      required: [id, title, description, sourceType, ageBand, status, items]
+      properties:
+        id: {type: integer, format: int64}
+        title: {type: string, minLength: 1, maxLength: 160}
+        description: {type: string, maxLength: 2000}
+        sourceType: {$ref: '#/components/schemas/VocabularySourceType'}
+        sourceReference: {allOf: [{$ref: '#/components/schemas/VocabularySourceReference'}], nullable: true}
+        ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
+        status: {type: string, enum: [ACTIVE, ARCHIVED]}
+        items: {type: array, minItems: 1, maxItems: 100, items: {$ref: '#/components/schemas/VocabularyItemInput'}}
+    CreateVocabularySetRequest:
+      type: object
+      required: [title, sourceType, ageBand, items]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 160}
+        description: {type: string, maxLength: 2000}
+        sourceType: {$ref: '#/components/schemas/VocabularySourceType'}
+        sourceReference: {$ref: '#/components/schemas/VocabularySourceReference'}
+        ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
+        items: {type: array, minItems: 1, maxItems: 100, items: {$ref: '#/components/schemas/VocabularyItemInput'}}
+    UpdateVocabularySetRequest:
+      allOf:
+        - {$ref: '#/components/schemas/CreateVocabularySetRequest'}
+        - type: object
+          properties:
+            status: {type: string, enum: [ACTIVE, ARCHIVED]}
+    ImportPublicVocabularyUnitRequest:
+      type: object
+      required: [unitId, levelSlug, contentVersion, title, ageBand, items]
+      properties:
+        unitId: {type: string, minLength: 1, maxLength: 100}
+        levelSlug: {type: string, enum: [mam-non, lop-1, lop-2, lop-3, lop-4, lop-5, lop-6, lop-7, lop-8, lop-9]}
+        contentVersion: {type: integer, minimum: 1}
+        title: {type: string, minLength: 1, maxLength: 160}
+        description: {type: string, maxLength: 2000}
+        ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
+        items: {type: array, minItems: 1, maxItems: 100, items: {$ref: '#/components/schemas/VocabularyItemInput'}}
+    VocabularySetEnvelope:
+      type: object
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/VocabularySet'}}
+    VocabularySetListEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/VocabularySet'}}
+        meta: {$ref: '#/components/schemas/PageMeta'}
+    VocabularyTopicWord:
+      allOf:
+        - {$ref: '#/components/schemas/VocabularyItemInput'}
+        - type: object
+          required: [id, ageBands]
+          properties:
+            id: {type: integer, format: int64}
+            ageBands: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/components/schemas/VocabularyAgeBand'}}
+            corePriority: {type: integer, minimum: 1, nullable: true}
+            extensionPriority: {type: integer, minimum: 1, nullable: true}
+            imageSearchTerms: {type: array, maxItems: 5, items: {type: string, minLength: 2, maxLength: 100}}
+    VocabularyTopic:
+      type: object
+      required: [slug, titleVi, ageBands, words]
+      properties:
+        slug: {type: string, maxLength: 100}
+        titleVi: {type: string, minLength: 1, maxLength: 160}
+        descriptionVi: {type: string, maxLength: 2000}
+        ageBands: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/components/schemas/VocabularyAgeBand'}}
+        words: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/VocabularyTopicWord'}}
+    VocabularyTopicEnvelope:
+      type: object
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/VocabularyTopic'}}
+    VocabularyTopicListEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/VocabularyTopic'}}
+        meta: {$ref: '#/components/schemas/PageMeta'}
+    VocabularyTopicSuggestionRequest:
+      type: object
+      required: [topicSlug, ageBand, targetCount]
+      properties:
+        topicSlug: {type: string, minLength: 1, maxLength: 100}
+        ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
+        targetCount: {type: integer, minimum: 2, maximum: 40}
+        recentlyLearnedNormalizedWords: {type: array, maxItems: 100, uniqueItems: true, items: {type: string, maxLength: 100}}
+        reviewNormalizedWords: {type: array, maxItems: 40, uniqueItems: true, items: {type: string, maxLength: 100}}
+    VocabularySuggestionEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [ageBand, items, warnings]
+          properties:
+            ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
+            items: {type: array, maxItems: 40, items: {$ref: '#/components/schemas/VocabularyTopicWord'}}
+            warnings: {type: array, items: {type: string}}
+    ImageSearchResult:
+      type: object
+      required: [provider, providerAssetId, previewUrl, sourcePageUrl, contributorName, attributionText]
+      properties:
+        provider: {type: string, enum: [PIXABAY]}
+        providerAssetId: {type: string, minLength: 1, maxLength: 100}
+        previewUrl: {type: string, format: uri, description: Tạm thời, không persist làm game URL}
+        sourcePageUrl: {type: string, format: uri}
+        contributorName: {type: string, maxLength: 160}
+        contributorUrl: {type: string, format: uri}
+        attributionText: {type: string, maxLength: 500}
+        width: {type: integer, minimum: 1}
+        height: {type: integer, minimum: 1}
+    ImageSearchEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/ImageSearchResult'}}
+        meta:
+          allOf:
+            - {$ref: '#/components/schemas/PageMeta'}
+            - type: object
+              required: [provider, safeSearch, cacheExpiresAt]
+              properties:
+                provider: {type: string, enum: [PIXABAY]}
+                safeSearch: {type: boolean, enum: [true]}
+                cacheExpiresAt: {type: string, format: date-time}
+    ImportProviderImageRequest:
+      type: object
+      additionalProperties: false
+      required: [provider, providerAssetId, altText]
+      properties:
+        provider: {type: string, enum: [PIXABAY]}
+        providerAssetId: {type: string, minLength: 1, maxLength: 100}
+        altText: {type: string, minLength: 1, maxLength: 200}
+    VocabularyMedia:
+      type: object
+      required: [id, provider, providerAssetId, url, thumbnailUrl, altText, mimeType, byteSize, width, height, sourcePageUrl, contributorName, attributionText, license]
+      properties:
+        id: {type: integer, format: int64}
+        provider: {type: string, enum: [PIXABAY]}
+        providerAssetId: {type: string}
+        url: {type: string, pattern: '^/api/public/vocabulary-media/'}
+        thumbnailUrl: {type: string, pattern: '^/api/public/vocabulary-media/'}
+        altText: {type: string, maxLength: 200}
+        mimeType: {type: string, enum: [image/jpeg, image/png, image/webp]}
+        byteSize: {type: integer, maximum: 5242880}
+        width: {type: integer, minimum: 256, maximum: 4096}
+        height: {type: integer, minimum: 256, maximum: 4096}
+        sourcePageUrl: {type: string, format: uri}
+        contributorName: {type: string}
+        contributorUrl: {type: string, format: uri}
+        attributionText: {type: string}
+        license: {type: object, additionalProperties: true}
+    VocabularyMediaEnvelope:
+      type: object
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/VocabularyMedia'}}
+    LearningAssignmentStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, CLOSED]
+    LearningAudienceType:
+      type: string
+      enum: [CLASS, SELECTED_STUDENTS, OPEN_LINK]
+    GameMechanic:
+      type: string
+      enum: [EXPLORE_CARD, SELECT_ONE, MATCH_PAIRS, MEMORY_PAIRS, ORDER_TOKENS, BUILD_WORD, SORT_ITEMS, REPEAT_AUDIO]
+    LearningAssignmentActivityInput:
+      type: object
+      required: [displayOrder, mechanic, presentation, required]
+      properties:
+        displayOrder: {type: integer, minimum: 1, maximum: 8}
+        mechanic: {$ref: '#/components/schemas/GameMechanic'}
+        presentation: {type: string, minLength: 1, maxLength: 100}
+        required: {type: boolean}
+        config: {type: object, additionalProperties: true}
+    CreateLearningAssignmentRequest:
+      type: object
+      required: [title, ageBand, templateCode, items, activities]
+      properties:
+        vocabularySetId: {type: integer, format: int64, minimum: 1}
+        title: {type: string, minLength: 1, maxLength: 160}
+        instruction: {type: string, maxLength: 1000}
+        audienceType: {allOf: [{$ref: '#/components/schemas/LearningAudienceType'}], nullable: true, description: Có thể null khi DRAFT; bắt buộc trước publish}
+        classId: {type: integer, format: int64, minimum: 1, description: Chỉ CLASS}
+        selectedStudentIds: {type: array, maxItems: 100, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}, description: Chỉ SELECTED_STUDENTS}
+        ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
+        templateCode: {type: string, minLength: 1, maxLength: 100}
+        availableFrom: {type: string, format: date-time}
+        dueAt: {type: string, format: date-time}
+        maxAttempts: {type: integer, minimum: 1, maximum: 10, nullable: true}
+        passScore: {type: integer, minimum: 0, maximum: 100}
+        answerMode: {type: string, maxLength: 50}
+        shuffleQuestions: {type: boolean, default: true}
+        items: {type: array, minItems: 2, maxItems: 40, items: {$ref: '#/components/schemas/VocabularyItemInput'}}
+        activities: {type: array, minItems: 1, maxItems: 8, items: {$ref: '#/components/schemas/LearningAssignmentActivityInput'}}
+    UpdateLearningAssignmentRequest:
+      type: object
+      description: Với PUBLISHED chỉ `dueAt` được phép; field khác trả 409.
+      properties:
+        title: {type: string, minLength: 1, maxLength: 160}
+        instruction: {type: string, maxLength: 1000}
+        audienceType: {$ref: '#/components/schemas/LearningAudienceType'}
+        classId: {type: integer, format: int64, minimum: 1}
+        selectedStudentIds: {type: array, maxItems: 100, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
+        ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
+        dueAt: {type: string, format: date-time, nullable: true}
+        maxAttempts: {type: integer, minimum: 1, maximum: 10, nullable: true}
+        items: {type: array, minItems: 2, maxItems: 40, items: {$ref: '#/components/schemas/VocabularyItemInput'}}
+        activities: {type: array, minItems: 1, maxItems: 8, items: {$ref: '#/components/schemas/LearningAssignmentActivityInput'}}
+    LearningAssignment:
+      allOf:
+        - {$ref: '#/components/schemas/CreateLearningAssignmentRequest'}
+        - type: object
+          required: [id, status, publishedAt, closedAt]
+          properties:
+            id: {type: integer, format: int64}
+            publicCode: {type: string, pattern: '^[A-Z2-9]{8}$', nullable: true, description: Null khi draft, sinh atomic lúc publish}
+            status: {$ref: '#/components/schemas/LearningAssignmentStatus'}
+            publishedAt: {type: string, format: date-time, nullable: true}
+            closedAt: {type: string, format: date-time, nullable: true}
+    LearningAssignmentEnvelope:
+      type: object
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/LearningAssignment'}}
+    LearningAssignmentListEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/LearningAssignment'}}
+        meta: {$ref: '#/components/schemas/PageMeta'}
+    PublishLearningAssignmentEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [assignment, recipientLinks]
+          properties:
+            assignment: {$ref: '#/components/schemas/LearningAssignment'}
+            recipientLinks:
+              type: array
+              description: Raw access token chỉ có trong response này, không persist/log.
+              items:
+                type: object
+                required: [recipientId, studentId, accessToken]
+                properties:
+                  recipientId: {type: integer, format: int64}
+                  studentId: {type: integer, format: int64}
+                  accessToken: {type: string, minLength: 43, maxLength: 128}
+    PublicLearningAssignmentEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [publicCode, title, instruction, ageBand, audienceType, itemCount, estimatedMinutes, availableFrom, dueAt]
+          properties:
+            publicCode: {type: string}
+            title: {type: string}
+            instruction: {type: string}
+            ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
+            audienceType: {$ref: '#/components/schemas/LearningAudienceType'}
+            itemCount: {type: integer, minimum: 2, maximum: 40}
+            estimatedMinutes: {type: integer, minimum: 1}
+            availableFrom: {type: string, format: date-time, nullable: true}
+            dueAt: {type: string, format: date-time, nullable: true}
+    PublicAssignmentAccessRequest:
+      type: object
+      properties:
+        accessToken: {type: string, minLength: 43, maxLength: 128, description: Bắt buộc cho recipient; không chứa studentId}
+        guestName: {type: string, maxLength: 80, description: Chỉ OPEN_LINK, optional và không map student}
+    PublicAssignmentAccessEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [audienceType, recipientIdentified, canStart, attemptsUsed, maxAttempts]
+          properties:
+            audienceType: {$ref: '#/components/schemas/LearningAudienceType'}
+            recipientIdentified: {type: boolean}
+            canStart: {type: boolean}
+            attemptsUsed: {type: integer, minimum: 0, nullable: true}
+            maxAttempts: {type: integer, minimum: 1, maximum: 10, nullable: true}
+    StartLearningAttemptRequest:
+      allOf:
+        - {$ref: '#/components/schemas/PublicAssignmentAccessRequest'}
+        - type: object
+          properties:
+            clientAttemptId: {type: string, format: uuid}
+    LearningQuestion:
+      type: object
+      required: [questionId, sequenceNumber, mechanic, presentation, prompt, options, answerState]
+      properties:
+        questionId: {type: integer, format: int64}
+        sequenceNumber: {type: integer, minimum: 1}
+        mechanic: {$ref: '#/components/schemas/GameMechanic'}
+        presentation: {type: string}
+        prompt: {type: object, additionalProperties: true}
+        options: {type: array, minItems: 2, items: {type: object, additionalProperties: true}}
+        answerState: {type: string, enum: [UNANSWERED, INCORRECT_RETRY, CORRECT, EXHAUSTED]}
+    LearningAttemptSessionEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [attemptId, sessionToken, expiresAt, status, ageBand, questions]
+          properties:
+            attemptId: {type: integer, format: int64}
+            sessionToken: {type: string, minLength: 43, maxLength: 128, description: Raw value không log/persist}
+            expiresAt: {type: string, format: date-time}
+            status: {type: string, enum: [IN_PROGRESS, COMPLETED, ABANDONED]}
+            ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
+            questions: {type: array, items: {$ref: '#/components/schemas/LearningQuestion'}}
+    SubmitLearningAnswerRequest:
+      type: object
+      additionalProperties: false
+      required: [questionId, clientAnswerId, answerSequence, submittedAnswer]
+      properties:
+        questionId: {type: integer, format: int64, minimum: 1}
+        clientAnswerId: {type: string, format: uuid}
+        answerSequence: {type: integer, minimum: 1, maximum: 20}
+        submittedAnswer: {type: object, additionalProperties: true}
+    SubmitLearningAnswerEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [clientAnswerId, questionId, isCorrect, firstAttemptCorrect, finalCorrect, retryCount, idempotent]
+          properties:
+            clientAnswerId: {type: string, format: uuid}
+            questionId: {type: integer, format: int64}
+            isCorrect: {type: boolean}
+            firstAttemptCorrect: {type: boolean}
+            finalCorrect: {type: boolean}
+            retryCount: {type: integer, minimum: 0}
+            idempotent: {type: boolean}
+            feedback: {type: object, additionalProperties: true}
+    CompleteLearningAttemptEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [attemptId, status, gradedExposureCount, firstTryCorrectCount, finalCorrectCount, rewards]
+          properties:
+            attemptId: {type: integer, format: int64}
+            status: {type: string, enum: [COMPLETED]}
+            gradedExposureCount: {type: integer, minimum: 0}
+            firstTryCorrectCount: {type: integer, minimum: 0}
+            finalCorrectCount: {type: integer, minimum: 0}
+            scorePercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
+            rewards: {type: object, additionalProperties: true}
+    LearningAssignmentResultsEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [summary, recipients, words, openLinkSummary]
+          properties:
+            summary: {type: object, additionalProperties: true}
+            recipients: {type: array, items: {type: object, additionalProperties: true}}
+            words: {type: array, items: {type: object, additionalProperties: true}}
+            openLinkSummary: {type: object, additionalProperties: true, description: Không authoritative cho student}
+        meta: {$ref: '#/components/schemas/PageMeta'}
+    CreateReviewAssignmentRequest:
+      type: object
+      properties:
+        assignmentItemIds: {type: array, minItems: 1, maxItems: 40, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
+        title: {type: string, minLength: 1, maxLength: 160}
+    PageMeta:
+      type: object
+      required: [total, page, pageSize]
+      properties:
+        total: {type: integer, minimum: 0}
+        page: {type: integer, minimum: 1}
+        pageSize: {type: integer, minimum: 1, maximum: 50}
     EffectiveStatusRequest:
       type: object
       required: [effectiveDate]

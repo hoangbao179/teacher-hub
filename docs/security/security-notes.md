@@ -41,3 +41,25 @@ License inventory chủ yếu MIT/Apache/ISC/BSD; MPL và lựa chọn
 MIT-or-GPL là dependency transitively distributed, không có copyleft blocker đã xác
 định cho source ứng dụng. Outdated major Node types/TypeScript được hoãn vì ngoài M6;
 review manifest không tìm thấy dependency trực tiếp không dùng.
+
+## Vocabulary assignments and games V20 (PLANNED)
+
+- Public route `/api/public/*` của V20 phải đăng ký trước
+  `router.use("/api", requireAuth)`; teacher route vẫn dùng Bearer auth.
+- `publicCode` không phải recipient secret. Recipient/session token dùng tối thiểu
+  32 random bytes; DB chỉ giữ SHA-256 hash, token không chứa `studentId`, có revoke
+  và session hết hạn sau 24 giờ inactivity/invalid ngay khi assignment đóng.
+- Không log token, guest name, raw answer, roster hoặc URL `/play/*` có token.
+  `/play/*` và public result gửi `Referrer-Policy: no-referrer` cùng
+  `X-Robots-Tag: noindex, nofollow, noarchive`.
+- Public limiter tách login limiter: resolve/media 60/phút/IP; access/start
+  20/10 phút theo IP+assignment; answer/complete 120/phút theo session+IP.
+- Image import chỉ nhận provider + provider asset ID còn trong cache. Backend
+  resolve URL, enforce host allowlist sau từng redirect, timeout 5 giây, tối đa
+  2 redirect/5 MiB, MIME sniff, JPEG/PNG/WebP, 256–4096 px và 16 MP.
+- Pixabay search luôn `safesearch=true`, cache tối thiểu 24 giờ và hiển thị nguồn.
+  Preview URL chỉ tạm; selected binary tải vào named volume, không hotlink.
+- Media ID/bytes immutable, serve same-origin với `nosniff` và immutable cache.
+  Binary không vào MySQL hoặc filesystem tạm; backup/restore gồm media volume.
+- `clientAnswerId` unique là idempotency boundary. Answer transaction khóa
+  attempt/question, insert một lần và derive first/final correct/retry count.

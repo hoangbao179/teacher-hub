@@ -13,7 +13,15 @@ MySQL/API/Web dùng network backend nội bộ; Web/Caddy dùng network edge. Ch
 host ports. Volume có tên giữ dữ liệu MySQL và trạng thái certificate/config Caddy. Không
 thêm Redis, queue, worker hoặc API replica trong V1.
 
-Mỗi deploy tạo backup trước khi chạy forward-only migration. Migration chạy đúng một lần
-trong one-off API container. Rollback tự động chỉ đưa image về SHA trước, không rollback
-database. Chi tiết vận hành ở `docs/deployment/production.md` và
-`docs/deployment/backup-and-restore.md`.
+Vocabulary V20 đang **PLANNED** bổ sung named volume
+`vocabulary-media:/app/data/vocabulary-media` gắn vào API. Binary ảnh đã chọn
+không lưu trong MySQL hoặc writable layer tạm của container. Media được phục vụ
+same-origin qua `/api/public/vocabulary-media/:mediaId`; volume phải được đưa vào
+capacity monitoring, backup/restore và restore drill trước khi V20E release.
+
+Mỗi deploy tạo backup trước khi chạy forward-only migration. Khi V20 media được
+enable, backup pre-deploy phải tạo một recovery set nhất quán gồm MySQL dump,
+archive media volume và manifest/checksum trong lúc khóa mutation media ngắn.
+Migration chạy đúng một lần trong one-off API container. Rollback tự động chỉ đưa
+image về SHA trước, không rollback database/media. Chi tiết vận hành ở
+`docs/deployment/production.md` và `docs/deployment/backup-and-restore.md`.
