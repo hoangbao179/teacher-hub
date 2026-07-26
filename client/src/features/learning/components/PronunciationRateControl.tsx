@@ -1,5 +1,5 @@
 import { Box, Button, Typography } from "@mui/material";
-import { useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { stopPronunciation, type PronunciationRateMode } from "../audio/pronunciation";
 import { readLearningSettings, writeLearningSettings } from "../storage/learningSettingsStorage";
 
@@ -8,15 +8,17 @@ interface PronunciationRateControlProps {
   onChange: (value: PronunciationRateMode) => void;
 }
 
-export function usePronunciationRateMode(): [PronunciationRateMode, (value: PronunciationRateMode) => void] {
+export function usePronunciationRateMode(): [PronunciationRateMode, (value: PronunciationRateMode) => void, RefObject<PronunciationRateMode>] {
   const [rateMode, setRateMode] = useState<PronunciationRateMode>(() => readLearningSettings().pronunciationRateMode);
+  const activeRateMode = useRef(rateMode);
   const changeRateMode = (value: PronunciationRateMode) => {
-    if (value === rateMode) return;
+    if (value === activeRateMode.current) return;
     stopPronunciation();
+    activeRateMode.current = value;
     writeLearningSettings({ schemaVersion: 1, pronunciationRateMode: value });
     setRateMode(value);
   };
-  return [rateMode, changeRateMode];
+  return [rateMode, changeRateMode, activeRateMode];
 }
 
 export function PronunciationRateControl({ value, onChange }: PronunciationRateControlProps) {

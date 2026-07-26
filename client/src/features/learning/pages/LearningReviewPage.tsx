@@ -18,7 +18,7 @@ export function LearningReviewPage() {
   const [progress, setProgress] = useState<LearningProgress>(() => readLearningProgress());
   const [index, setIndex] = useState(0);
   const [audioMessage, setAudioMessage] = useState("");
-  const [rateMode, setRateMode] = usePronunciationRateMode();
+  const [rateMode, setRateMode, activeRateMode] = usePronunciationRateMode();
   const reviewItems = useMemo(() => unit ? [...new Set([...unitProgressFor(progress, unit).wrongItemIds, ...unitProgressFor(progress, unit).reviewItemIds])].flatMap((id) => unit.vocabulary.find((item) => item.id === id) ?? []) : [], [progress, unit]);
   useEffect(() => () => stopPronunciation(), []);
   if (!level || !unit) return <LearningNotFoundPage />;
@@ -27,7 +27,10 @@ export function LearningReviewPage() {
   const item = reviewItems[safeIndex];
   const canPlay = audioStrategy(item) !== "UNAVAILABLE";
   const markRemembered = () => { stopPronunciation(); setProgress(markReviewedAsRemembered(unit, item.id)); setIndex((current) => Math.min(current, Math.max(reviewItems.length - 2, 0))); };
-  const play = async () => setAudioMessage(await playPronunciation(item, rateMode) ? rateMode === "SLOW" ? `Đang phát chậm từ ${item.word}.` : `Đang phát từ ${item.word}.` : "Trình duyệt này chưa phát được âm thanh.");
+  const play = async () => {
+    const selectedMode = activeRateMode.current;
+    setAudioMessage(await playPronunciation(item, selectedMode) ? selectedMode === "SLOW" ? `Đang phát chậm từ ${item.word}.` : `Đang phát từ ${item.word}.` : "Trình duyệt này chưa phát được âm thanh.");
+  };
   return <LearningShell>
     <Box component="main" sx={{ minHeight: "calc(100dvh - 130px)", background: `linear-gradient(150deg,#f1fbff,${level.accent}14,#fff8ed)` }}>
       <Container maxWidth="md" sx={{ py: { xs: 2.5, sm: 5 } }}>

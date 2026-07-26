@@ -19,7 +19,7 @@ export function LearningListenPage() {
   const [selected, setSelected] = useState<string>();
   const [progress, setProgress] = useState<LearningProgress>(() => readLearningProgress());
   const [audioMessage, setAudioMessage] = useState("");
-  const [rateMode, setRateMode] = usePronunciationRateMode();
+  const [rateMode, setRateMode, activeRateMode] = usePronunciationRateMode();
   const question = useMemo(() => unit ? createListenQuestion(unit.vocabulary, index, seededRandom(index + unit.id.length)) : undefined, [index, unit]);
 
   useEffect(() => stopPronunciation, [index]);
@@ -29,7 +29,10 @@ export function LearningListenPage() {
   const correct = selected === question.correctMeaning;
   const unitProgress = unitProgressFor(progress, unit);
 
-  const play = async () => setAudioMessage(await playPronunciation(question.item, rateMode) ? rateMode === "SLOW" ? "Đang phát chậm từ. Con nghe kỹ nhé!" : "Đang phát từ. Con nghe kỹ nhé!" : "Thiết bị này hiện không phát được âm thanh.");
+  const play = async () => {
+    const selectedMode = activeRateMode.current;
+    setAudioMessage(await playPronunciation(question.item, selectedMode) ? selectedMode === "SLOW" ? "Đang phát chậm từ. Con nghe kỹ nhé!" : "Đang phát từ. Con nghe kỹ nhé!" : "Thiết bị này hiện không phát được âm thanh.");
+  };
   const answer = (meaning: string) => {
     if (answered || strategy === "UNAVAILABLE") return;
     setSelected(meaning);

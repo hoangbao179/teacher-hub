@@ -44,8 +44,10 @@ export function resolvePronunciationRate(rateMode: PronunciationRateMode): numbe
 export async function playPronunciation(item: VocabularyItem, rateMode: PronunciationRateMode, environment: AudioEnvironment = browserEnvironment()): Promise<boolean> {
   stopPronunciation();
   const resolvedRate = resolvePronunciationRate(rateMode);
+  const strategy = audioStrategy(item, environment);
+  if (import.meta.env?.DEV) console.debug("[learning:pronunciation]", { selectedMode: rateMode, resolvedRate, strategy });
   try {
-    if (item.audio && environment.Audio) {
+    if (strategy === "ASSET" && item.audio && environment.Audio) {
       const audio = new environment.Audio(item.audio);
       audio.playbackRate = resolvedRate;
       if ("preservesPitch" in audio) audio.preservesPitch = true;
@@ -53,7 +55,7 @@ export async function playPronunciation(item: VocabularyItem, rateMode: Pronunci
       await audio.play();
       return true;
     }
-    if (item.speechText && environment.speechSynthesis && environment.SpeechSynthesisUtterance) {
+    if (strategy === "SPEECH" && item.speechText && environment.speechSynthesis && environment.SpeechSynthesisUtterance) {
       const utterance = new environment.SpeechSynthesisUtterance(item.speechText);
       utterance.lang = LEARNING_SPEECH_LOCALE;
       utterance.rate = resolvedRate;

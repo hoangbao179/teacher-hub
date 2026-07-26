@@ -14,7 +14,7 @@ const origin = `http://127.0.0.1:${port}`;
 const screenshotDir = fs.mkdtempSync(path.join(os.tmpdir(), "covy-learning-v18cd-"));
 const viewports = [
   { width: 360, height: 800 }, { width: 375, height: 812 }, { width: 390, height: 844 },
-  { width: 400, height: 930 }, { width: 430, height: 932 }, { width: 768, height: 1024 }, { width: 1440, height: 900 },
+  { width: 400, height: 930 }, { width: 412, height: 915 }, { width: 430, height: 932 }, { width: 768, height: 1024 }, { width: 1440, height: 900 },
 ];
 const quizUnit = learningUnits.find((unit) => unit.slug === "con-vat-dang-yeu");
 const grade1FirstUnit = learningUnits.find((unit) => unit.slug === "lop-1-unit-01-in-the-school-playground");
@@ -178,8 +178,14 @@ try {
   assert(await page.getByRole("button", { name: "Bình thường" }).getAttribute("aria-pressed") === "true", "Pronunciation rate control is not keyboard operable");
   await page.getByRole("button", { name: "Nghe phát âm từ cat" }).click();
   assert(await page.evaluate(() => window.__learningSpeechRates.at(-1)) === 0.88, "Flashcard normal speech rate must be 0.88");
+  const cancelCountBeforeModeChange = await page.evaluate(() => window.__learningSpeechCancelCount);
+  await slowRateButton.click();
+  assert(await slowRateButton.getAttribute("aria-pressed") === "true", "Slow pronunciation state must update immediately");
+  assert(await page.evaluate(() => window.__learningSpeechCancelCount) > cancelCountBeforeModeChange, "Changing pronunciation mode while playing must cancel current speech");
   await page.getByRole("button", { name: "Thẻ tiếp theo" }).click();
   assert(await page.getByRole("group", { name: "Flashcard từ dog" }).isVisible(), "Next flashcard failed");
+  assert(await slowRateButton.getAttribute("aria-pressed") === "true", "Slow pronunciation mode must survive changing flashcards");
+  await normalRateButton.click();
   await page.keyboard.press("ArrowLeft");
   assert(await page.getByRole("group", { name: "Flashcard từ cat" }).isVisible(), "ArrowLeft keyboard navigation failed");
   await page.keyboard.press("ArrowRight");
@@ -313,6 +319,18 @@ try {
     assert(flashcardWidth <= 820, `Desktop flashcard is wider than 820px at ${viewport.width}px`);
     const headerTitleWhiteSpace = await page.getByRole("link", { name: "Lớp tiếng Anh cô Vy" }).evaluate((element) => getComputedStyle(element).whiteSpace);
     assert(headerTitleWhiteSpace === "nowrap", `Learning header wraps at ${viewport.width}px`);
+    if (viewport.width <= 430) {
+      const actionButtons = page.getByTestId("flashcard-action-bar").getByRole("button");
+      const actionRects = await actionButtons.evaluateAll((elements) => elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { top: rect.top, right: rect.right, left: rect.left, height: rect.height, whiteSpace: getComputedStyle(element).whiteSpace };
+      }));
+      assert(actionRects.length === 4, `Flashcard action bar must contain four buttons at ${viewport.width}px`);
+      assert(actionRects.every((rect) => Math.abs(rect.top - actionRects[0].top) <= 1), `Flashcard actions must stay on one row at ${viewport.width}px`);
+      assert(actionRects.every((rect) => rect.height >= 48), `Flashcard action touch target below 48px at ${viewport.width}px`);
+      assert(actionRects.every((rect) => rect.left >= 0 && rect.right <= viewport.width + 1), `Flashcard action overflows at ${viewport.width}px`);
+      assert(actionRects[1].whiteSpace === "nowrap" && actionRects[2].whiteSpace === "nowrap", `Flashcard action labels wrap at ${viewport.width}px`);
+    }
     if (viewport.width === 360) {
       const rateButtons = await page.getByRole("button", { name: /Bình thường|Chậm 0.6x/ }).evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().top));
       assert(Math.abs(rateButtons[0] - rateButtons[1]) <= 1, "Pronunciation controls must stay on one row at 360px");

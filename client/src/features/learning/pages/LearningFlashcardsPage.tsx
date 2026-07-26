@@ -22,7 +22,7 @@ export function LearningFlashcardsPage() {
   });
   const [progress, setProgress] = useState<LearningProgress>(() => readLearningProgress());
   const [audioMessage, setAudioMessage] = useState("");
-  const [rateMode, setRateMode] = usePronunciationRateMode();
+  const [rateMode, setRateMode, activeRateMode] = usePronunciationRateMode();
   const touchStart = useRef<number | null>(null);
 
   const move = useCallback((delta: number) => {
@@ -58,7 +58,10 @@ export function LearningFlashcardsPage() {
   const review = unitProgress.reviewItemIds.includes(item.id);
   const imageSize = level.group === "EARLY" ? { xs: 112, sm: 142 } : { xs: 92, sm: 118 };
 
-  const play = async () => setAudioMessage(await playPronunciation(item, rateMode) ? rateMode === "SLOW" ? `Đang phát chậm từ ${item.word}.` : `Đang phát từ ${item.word}.` : "Thiết bị này hiện không phát được âm thanh.");
+  const play = async () => {
+    const selectedMode = activeRateMode.current;
+    setAudioMessage(await playPronunciation(item, selectedMode) ? selectedMode === "SLOW" ? `Đang phát chậm từ ${item.word}.` : `Đang phát từ ${item.word}.` : "Thiết bị này hiện không phát được âm thanh.");
+  };
   const mark = (state: "REMEMBERED" | "REVIEW") => setProgress(markVocabularyItem(unit, item.id, state));
   const onTouchStart = (event: TouchEvent) => { touchStart.current = event.changedTouches[0]?.clientX ?? null; };
   const onTouchEnd = (event: TouchEvent) => {
@@ -102,12 +105,28 @@ export function LearningFlashcardsPage() {
           <Typography aria-live="polite" sx={{ minHeight: 22, mt: 0.75, color: "text.secondary", fontSize: 13 }}>{strategy === "UNAVAILABLE" ? "Âm thanh chưa khả dụng trên trình duyệt này." : audioMessage}</Typography>
         </Card>
 
-        <Stack direction="row" spacing={1.25} sx={{ maxWidth: 820, mx: "auto", mt: 2, position: { xs: "sticky", sm: "static" }, bottom: 0, zIndex: 2, p: { xs: "10px 0 calc(10px + env(safe-area-inset-bottom, 0px))", sm: 0 }, bgcolor: { xs: "rgba(251,249,255,.96)", sm: "transparent" } }}>
-          <Button onClick={() => move(-1)} disabled={index === 0} variant="outlined" aria-label="Thẻ trước" sx={{ minWidth: 52, minHeight: "48px !important" }}><ArrowBack /></Button>
-          <Button onClick={() => mark("REVIEW")} variant={review ? "contained" : "outlined"} color="warning" startIcon={<Replay />} sx={{ flex: 1, minWidth: 0, minHeight: "48px !important" }}>Cần ôn</Button>
-          <Button onClick={() => mark("REMEMBERED")} variant={remembered ? "contained" : "outlined"} color="success" startIcon={<CheckCircle />} sx={{ flex: 1, minWidth: 0, minHeight: "48px !important" }}>Đã nhớ</Button>
-          <Button onClick={() => move(1)} disabled={index === unit.vocabulary.length - 1} variant="contained" aria-label="Thẻ tiếp theo" sx={{ minWidth: 52, minHeight: "48px !important", bgcolor: "#7455d9" }}><ArrowForward /></Button>
-        </Stack>
+        <Box
+          data-testid="flashcard-action-bar"
+          sx={{
+            maxWidth: 820, mx: "auto", mt: 2, display: "grid",
+            gridTemplateColumns: "56px minmax(0, 1fr) minmax(0, 1fr) 56px",
+            gap: { xs: 1, sm: 1.25 },
+            position: { xs: "sticky", sm: "static" }, bottom: 0, zIndex: 2,
+            p: { xs: "10px 0 calc(10px + env(safe-area-inset-bottom, 0px))", sm: 0 },
+            bgcolor: { xs: "rgba(251,249,255,.96)", sm: "transparent" },
+            "& .MuiButton-root": { minWidth: 0, minHeight: "48px !important" },
+            "& .MuiButton-startIcon": { flexShrink: 0 },
+            "@media (max-width:390px)": {
+              "& .flashcard-state-action": { px: 0.5, fontSize: 12.5 },
+              "& .flashcard-state-action .MuiButton-startIcon": { ml: 0, mr: 0.5 },
+            },
+          }}
+        >
+          <Button onClick={() => move(-1)} disabled={index === 0} variant="outlined" aria-label="Thẻ trước"><ArrowBack /></Button>
+          <Button className="flashcard-state-action" onClick={() => mark("REVIEW")} variant={review ? "contained" : "outlined"} color="warning" startIcon={<Replay />} sx={{ whiteSpace: "nowrap" }}>Cần ôn</Button>
+          <Button className="flashcard-state-action" onClick={() => mark("REMEMBERED")} variant={remembered ? "contained" : "outlined"} color="success" startIcon={<CheckCircle />} sx={{ whiteSpace: "nowrap" }}>Đã nhớ</Button>
+          <Button onClick={() => move(1)} disabled={index === unit.vocabulary.length - 1} variant="contained" aria-label="Thẻ tiếp theo" sx={{ bgcolor: "#7455d9" }}><ArrowForward /></Button>
+        </Box>
         <Typography color="text.secondary" sx={{ display: { xs: "none", md: "block" }, mt: 1.5, textAlign: "center", fontSize: 13 }}>Dùng phím ← → để chuyển thẻ</Typography>
       </Container>
     </Box>
