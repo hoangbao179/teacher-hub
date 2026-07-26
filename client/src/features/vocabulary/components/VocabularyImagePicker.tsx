@@ -4,12 +4,18 @@ import {
   InputAdornment, MenuItem, Skeleton, Stack, TextField, Typography, useMediaQuery, useTheme,
 } from "@mui/material";
 import type { VocabularyMediaSearchItem, VocabularyStoredMedia } from "@teacher/shared";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ApiError } from "../../../api/client";
 import { getVocabularyMediaStatus, importVocabularyMedia } from "../../../api/vocabularyMedia";
 import {
   buildVocabularyImageStrategy,
   type VocabularyImageFilter,
 } from "../vocabularyImageStrategy";
+import {
+  appendUniqueVocabularyImages,
+  VOCABULARY_IMAGE_LIMIT,
+  VOCABULARY_IMAGE_PAGE_SIZE,
+} from "../vocabularyImagePagination";
 import { searchVocabularyImageSuggestions } from "../vocabularyImageSearch";
 
 export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [], onClose, onSelect, onSelectLocal }: {
@@ -27,10 +33,23 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
   const [query, setQuery] = useState(strategy.query);
   const [mediaType, setMediaType] = useState<VocabularyImageFilter>("ILLUSTRATION");
   const [items, setItems] = useState<VocabularyMediaSearchItem[]>([]);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState("");
   const [error, setError] = useState("");
   const [disabled, setDisabled] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const searchGeneration = useRef(0);
+
+  const resetResults = () => {
+    searchGeneration.current += 1;
+    setItems([]);
+    setPage(0);
+    setTotal(0);
+    setError("");
+  };
 
   useEffect(() => {
     if (!open || strategy.publicAsset) return;
@@ -39,22 +58,52 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
       .catch((value: Error) => setError(value.message));
   }, [open, strategy]);
 
-  const search = useCallback(async () => {
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const update = () => setCooldownSeconds(Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1_000)));
+    const timer = globalThis.setInterval(update, 1_000);
+    return () => globalThis.clearInterval(timer);
+  }, [cooldownUntil]);
+
+  const search = useCallback(async (targetPage = 1) => {
+    const generation = searchGeneration.current;
     setLoading(true);
     setError("");
     try {
-      const result = await searchVocabularyImageSuggestions({ strategy, query, mediaType, pageSize: 20 });
-      setItems(result.items);
+      const result = await searchVocabularyImageSuggestions({
+        strategy, query, mediaType, page: targetPage, pageSize: VOCABULARY_IMAGE_PAGE_SIZE,
+      });
+      if (generation !== searchGeneration.current) return;
+      setItems((current) => targetPage === 1
+        ? result.items.slice(0, VOCABULARY_IMAGE_LIMIT)
+        : appendUniqueVocabularyImages(current, result.items));
+      setPage(targetPage);
+      setTotal(result.total);
       setDisabled(false);
     } catch (value) {
+      if (generation !== searchGeneration.current) return;
       const message = value instanceof Error ? value.message : "Không thể tìm ảnh.";
       setError(message);
       setDisabled(message.includes("đang tắt"));
-      setItems([]);
+      if (value instanceof ApiError && value.status === 429) {
+        const seconds = Math.max(1, value.retryAfterSeconds ?? 60);
+        setCooldownSeconds(seconds);
+        setCooldownUntil(Date.now() + seconds * 1_000);
+      }
     } finally {
-      setLoading(false);
+      if (generation === searchGeneration.current) setLoading(false);
     }
   }, [mediaType, query, strategy]);
+
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    resetResults();
+  };
+
+  const changeMediaType = (value: VocabularyImageFilter) => {
+    setMediaType(value);
+    resetResults();
+  };
 
   const choose = async (item: VocabularyMediaSearchItem) => {
     setImporting(item.providerAssetId);
@@ -91,26 +140,28 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
               <Box component="img" src={strategy.publicAsset} alt={`${word} — ${meaningVi}`} sx={{ width: 180, maxWidth: "100%", aspectRatio: "1", objectFit: "contain" }} />
             </Button>
           </> : <>
-            <Box component="form" onSubmit={(event) => { event.preventDefault(); void search(); }} sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "minmax(0, 1fr) 160px auto" }, gap: 1, minWidth: 0 }}>
-              <TextField autoFocus label="Từ khóa tìm ảnh" value={query} onChange={(event) => setQuery(event.target.value)} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> }, htmlInput: { maxLength: 100 } }} />
-              <TextField select label="Loại ảnh" value={mediaType} onChange={(event) => setMediaType(event.target.value as VocabularyImageFilter)}>
+            <Box component="form" onSubmit={(event) => { event.preventDefault(); void search(1); }} sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "minmax(0, 1fr) 160px auto" }, gap: 1, minWidth: 0 }}>
+              <TextField autoFocus label="Từ khóa tìm ảnh" value={query} onChange={(event) => changeQuery(event.target.value)} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search /></InputAdornment> }, htmlInput: { maxLength: 100 } }} />
+              <TextField select label="Loại ảnh" value={mediaType} onChange={(event) => changeMediaType(event.target.value as VocabularyImageFilter)}>
                 <MenuItem value="ILLUSTRATION">Minh họa</MenuItem>
                 <MenuItem value="PHOTO">Ảnh thật</MenuItem>
               </TextField>
-              <Button type="submit" variant="contained" disabled={loading || disabled || query.trim().length < 2} startIcon={loading ? <CircularProgress size={18} /> : <ImageSearch />}>Tìm</Button>
+              <Button type="submit" variant="contained" disabled={loading || disabled || cooldownSeconds > 0 || query.trim().length < 2} startIcon={loading && page === 0 ? <CircularProgress size={18} /> : <ImageSearch />}>Tìm</Button>
             </Box>
+            {cooldownSeconds > 0 && <Alert severity="warning" aria-live="polite">Nguồn ảnh đang giới hạn tần suất. Có thể thử lại lúc {new Date(cooldownUntil).toLocaleTimeString("vi-VN")} ({cooldownSeconds} giây).</Alert>}
             {disabled && <Alert severity="info">Tìm ảnh đang tắt. Bạn vẫn có thể giữ emoji hoặc ảnh của Unit công khai.</Alert>}
-            {error && <Alert severity="error" action={!disabled ? <Button color="inherit" onClick={() => void search()}>Thử lại</Button> : undefined}>{error}</Alert>}
-            {loading && <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>{Array.from({ length: 6 }, (_, index) => <Skeleton key={index} variant="rounded" height={150} />)}</Box>}
+            {error && <Alert severity="error" action={!disabled && cooldownSeconds === 0 ? <Button color="inherit" onClick={() => void search(Math.min(page + 1, 3))}>Thử lại</Button> : undefined}>{error}</Alert>}
+            {loading && items.length === 0 && <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>{Array.from({ length: 8 }, (_, index) => <Skeleton key={index} variant="rounded" height={150} />)}</Box>}
             {!loading && !disabled && !error && items.length === 0 && <Box sx={{ textAlign: "center", py: 5 }}><ImageSearch color="disabled" sx={{ fontSize: 48 }} /><Typography color="text.secondary">Kiểm tra từ khóa rồi bấm Tìm để xem ảnh an toàn cho trẻ em.</Typography></Box>}
-            {!loading && items.length > 0 && <>
-              <Typography variant="caption" color="text.secondary">Nguồn Pixabay · Ảnh chỉ được lưu sau khi cô chọn.</Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(4, minmax(0, 1fr))" }, gap: 1, minWidth: 0 }}>
-                {items.map((item) => <Button key={item.providerAssetId} onClick={() => void choose(item)} disabled={Boolean(importing)} aria-label={`Chọn ảnh của ${item.contributorName}`} sx={{ p: 0, minWidth: 0, display: "block", overflow: "hidden", border: 1, borderColor: "divider", borderRadius: 2, textTransform: "none", color: "text.primary" }}>
+            {items.length > 0 && <>
+              <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", gap: 1 }}><Typography variant="caption" color="text.secondary">Nguồn Pixabay · Ảnh chỉ được lưu sau khi cô chọn.</Typography><Typography variant="caption" sx={{ fontWeight: 700 }}>{items.length}/{VOCABULARY_IMAGE_LIMIT} ảnh</Typography></Stack>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(4, minmax(0, 1fr))", md: "repeat(5, minmax(0, 1fr))" }, gap: 1, minWidth: 0 }}>
+                {items.map((item) => <Button key={item.providerAssetId} onClick={() => void choose(item)} disabled={Boolean(importing)} aria-pressed={importing === item.providerAssetId} aria-label={`Chọn ảnh của ${item.contributorName}`} sx={{ p: 0, minWidth: 0, display: "block", overflow: "hidden", border: importing === item.providerAssetId ? 3 : 1, borderColor: importing === item.providerAssetId ? "primary.main" : "divider", borderRadius: 2, textTransform: "none", color: "text.primary" }}>
                   <Box component="img" src={item.thumbnailUrl} alt={`${word} — ${meaningVi}`} sx={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
                   <Stack direction="row" sx={{ p: 0.75, gap: 0.5, alignItems: "center", minWidth: 0 }}>{importing === item.providerAssetId && <CircularProgress size={14} />}<Typography variant="caption" noWrap>{item.contributorName}</Typography>{importing === item.providerAssetId && <CheckCircle fontSize="small" color="primary" />}</Stack>
                 </Button>)}
               </Box>
+              {page < 3 && items.length < Math.min(total, VOCABULARY_IMAGE_LIMIT) && <Button variant="outlined" disabled={loading || cooldownSeconds > 0} onClick={() => void search(page + 1)} startIcon={loading ? <CircularProgress size={18} /> : undefined}>Xem thêm 8 ảnh</Button>}
             </>}
           </>}
         </Stack>

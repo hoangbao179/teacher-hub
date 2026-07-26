@@ -48,6 +48,7 @@ function makeService(options: {
   providerError?: Error;
 } = {}) {
   let providerCalls = 0;
+  let providerInput: unknown;
   let savedCache: unknown;
   let removed = false;
   const cached = options.cached
@@ -92,6 +93,7 @@ function makeService(options: {
     allowedDownloadHosts: ["cdn.pixabay.com"] as const,
     search: async (input: { safeSearch: true }) => {
       providerCalls += 1;
+      providerInput = input;
       assert.equal(input.safeSearch, true);
       if (options.providerError) throw options.providerError;
       return { total: 1, items: [asset] };
@@ -133,6 +135,7 @@ function makeService(options: {
   return {
     service,
     providerCalls: () => providerCalls,
+    providerInput: () => providerInput,
     savedCache: () => savedCache,
     removed: () => removed,
   };
@@ -175,6 +178,24 @@ test("search uses cache, or persists a 24-hour safe result on miss", async () =>
   assert.equal(miss.providerCalls(), 1);
   assert.ok(miss.savedCache());
   assert.equal(missResult.cacheExpiresAt, "2026-07-27T00:00:00.000Z");
+});
+
+test("search forwards page and defaults to eight results per page", async () => {
+  const value = makeService();
+  const result = await value.service.search({ query: "Apple", page: 2, pageSize: 8 });
+  assert.equal(result.page, 2);
+  assert.equal(result.pageSize, 8);
+  assert.deepEqual(value.providerInput(), {
+    query: "apple",
+    page: 2,
+    pageSize: 8,
+    mediaType: "ALL",
+    orientation: "ALL",
+    safeSearch: true,
+  });
+
+  const defaults = makeService();
+  assert.equal((await defaults.service.search({ query: "Pear" })).pageSize, 8);
 });
 
 test("provider rate limits remain distinct and preserve retry timing", async () => {

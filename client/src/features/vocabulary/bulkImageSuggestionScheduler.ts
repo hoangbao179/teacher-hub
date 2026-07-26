@@ -46,7 +46,6 @@ export function startSingleWorkerBatch<T>(options: BatchOptions<T>): BatchRun {
 
   const execute = async () => {
     let cursor = 0;
-    let resumed = false;
     try {
       if (options.beforeRun && !await options.beforeRun(controller.signal, runId)) return;
       while (!controller.signal.aborted && cursor < options.items.length) {
@@ -57,16 +56,7 @@ export function startSingleWorkerBatch<T>(options: BatchOptions<T>): BatchRun {
         } catch (error) {
           if (controller.signal.aborted) return;
           const seconds = options.rateLimitSeconds(error);
-          if (seconds !== undefined && !resumed) {
-            resumed = true;
-            for (let remaining = Math.max(1, seconds); remaining > 0; remaining -= 1) {
-              options.onCooldown(remaining, runId);
-              await sleep(1_000, controller.signal);
-              if (controller.signal.aborted) return;
-            }
-            options.onCooldown(0, runId);
-            continue;
-          }
+          if (seconds !== undefined) options.onCooldown(Math.max(1, seconds), runId);
           options.onError(error, item, runId);
           if (seconds !== undefined || options.stopOnError?.(error)) return;
           cursor += 1;

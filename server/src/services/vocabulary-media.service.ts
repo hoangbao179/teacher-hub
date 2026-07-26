@@ -43,7 +43,7 @@ export class VocabularyMediaService {
     if (query.length < 2 || query.length > 100)
       throw new AppError(400, "VALIDATION_ERROR", "Từ khóa ảnh phải dài từ 2 đến 100 ký tự.");
     const page = this.integer(raw.page, 1, 1, 1000, "Trang");
-    const pageSize = this.integer(raw.pageSize, 20, 3, 50, "Số ảnh mỗi trang");
+    const pageSize = this.integer(raw.pageSize, 8, 3, 50, "Số ảnh mỗi trang");
     const mediaType = (raw.mediaType ?? "ALL") as VocabularyImageMediaType;
     const orientation = (raw.orientation ?? "ALL") as VocabularyImageOrientation;
     if (!vocabularyImageMediaTypes.includes(mediaType) ||

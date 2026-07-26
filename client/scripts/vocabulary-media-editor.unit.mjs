@@ -4,6 +4,11 @@ import path from "node:path";
 import test from "node:test";
 import { startSingleWorkerBatch } from "../src/features/vocabulary/bulkImageSuggestionScheduler.ts";
 import { buildVocabularyImageStrategy } from "../src/features/vocabulary/vocabularyImageStrategy.ts";
+import {
+  appendUniqueVocabularyImages,
+  VOCABULARY_IMAGE_LIMIT,
+  VOCABULARY_IMAGE_PAGE_SIZE,
+} from "../src/features/vocabulary/vocabularyImagePagination.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const picker = fs.readFileSync(path.join(
@@ -39,7 +44,10 @@ test("bulk suggestions use generation batches, abort signals and one worker", ()
   assert.match(schedulerSource, /AbortController/);
   assert.match(schedulerSource, /runId/);
   assert.match(bulk, /delayMs: 800/);
-  assert.match(bulk, /slice\(0, 6\)/);
+  assert.match(bulk, /VOCABULARY_IMAGE_PAGE_SIZE/);
+  assert.match(searchStrategy, /page: input\.page/);
+  assert.match(bulk, /Xem thêm 8 ảnh/);
+  assert.match(picker, /Xem thêm 8 ảnh/);
   assert.match(bulk, /Tìm lại/);
   assert.match(bulk, /ILLUSTRATION/);
   assert.match(bulk, /PHOTO/);
@@ -80,28 +88,41 @@ test("StrictMode cleanup prevents duplicate initial batch requests", async () =>
   assert.deepEqual(calls, Array.from({ length: 10 }, (_, index) => index));
 });
 
-test("provider 429 pauses once, resumes pending items and preserves completed results", async () => {
+test("provider 429 starts cooldown without retrying and preserves completed results", async () => {
   const calls = [];
   const completed = new Set();
   const cooldown = [];
-  let limited = false;
+  const errors = [];
   const run = startSingleWorkerBatch({
     items: ["cat", "dog", "bird"],
     runItem: async (item) => {
       calls.push(item);
-      if (item === "dog" && !limited) { limited = true; throw { rateLimited: true }; }
+      if (item === "dog") throw { rateLimited: true };
       completed.add(item);
     },
     rateLimitSeconds: (error) => error?.rateLimited ? 2 : undefined,
     onCooldown: (seconds) => cooldown.push(seconds),
-    onError: (error) => { throw error; },
+    onError: (error) => { errors.push(error); },
     delayMs: 0,
     sleep: async () => undefined,
   });
   await run.done;
-  assert.deepEqual(calls, ["cat", "dog", "dog", "bird"]);
-  assert.deepEqual([...completed], ["cat", "dog", "bird"]);
-  assert.deepEqual(cooldown, [2, 1, 0]);
+  assert.deepEqual(calls, ["cat", "dog"]);
+  assert.deepEqual([...completed], ["cat"]);
+  assert.deepEqual(cooldown, [2]);
+  assert.equal(errors.length, 1);
+});
+
+test("image pages use eight results and deduplicate up to 24 provider assets", () => {
+  const image = (providerAssetId) => ({ providerAssetId });
+  const first = Array.from({ length: 8 }, (_, index) => image(String(index + 1)));
+  const second = [image("8"), ...Array.from({ length: 8 }, (_, index) => image(String(index + 9)))];
+  const third = Array.from({ length: 10 }, (_, index) => image(String(index + 17)));
+  assert.equal(VOCABULARY_IMAGE_PAGE_SIZE, 8);
+  assert.equal(VOCABULARY_IMAGE_LIMIT, 24);
+  const combined = appendUniqueVocabularyImages(appendUniqueVocabularyImages(first, second), third);
+  assert.equal(combined.length, 24);
+  assert.equal(new Set(combined.map((item) => item.providerAssetId)).size, 24);
 });
 
 test("client imports only provider, asset id and approved alt text", () => {
