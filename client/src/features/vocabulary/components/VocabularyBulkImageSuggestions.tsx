@@ -26,6 +26,7 @@ interface SuggestionState {
   page: number;
   total: number;
   selectedAssetId?: string;
+  confirmedAssetId?: string;
 }
 
 export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect, onSelectLocal }: {
@@ -112,13 +113,16 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
   }, [mediaType, open, remoteCandidates, startBatch]);
 
   const completed = Object.values(states).filter((value) => !value.loading).length;
-  const select = async (index: number, result: VocabularyMediaSearchItem) => {
+  const select = async (index: number) => {
+    const state = states[index];
+    const result = state?.items.find((item) => item.providerAssetId === state.selectedAssetId);
+    if (!result) return;
     const item = items[index];
     setImporting(`${index}-${result.providerAssetId}`);
     try {
       const media = await importVocabularyMedia({ provider: result.provider, providerAssetId: result.providerAssetId, altText: `${item.word} — ${item.meaningVi}`.slice(0, 200) });
       onSelect(index, media);
-      setStates((current) => ({ ...current, [index]: { ...current[index], selectedAssetId: result.providerAssetId } }));
+      setStates((current) => ({ ...current, [index]: { ...current[index], confirmedAssetId: result.providerAssetId } }));
     } catch (value) {
       setStates((current) => ({ ...current, [index]: { ...current[index], error: value instanceof Error ? value.message : "Không thể lưu ảnh." } }));
     } finally { setImporting(""); }
@@ -132,20 +136,20 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
     setQueries((current) => ({ ...current, [index]: value }));
     setStates((current) => ({
       ...current,
-      [index]: { ...current[index], loading: false, loadingMore: false, error: undefined, items: [], page: 0, total: 0 },
+      [index]: { ...current[index], loading: false, loadingMore: false, error: undefined, items: [], page: 0, total: 0, selectedAssetId: undefined, confirmedAssetId: undefined },
     }));
   };
   const changeMediaType = (value: VocabularyImageFilter) => {
     setStates((current) => Object.fromEntries(Object.entries(current).map(([index, state]) => [index, {
       ...state, loading: !candidates.find((candidate) => candidate.index === Number(index))?.strategy.publicAsset,
-      loadingMore: false, error: undefined, items: [], page: 0, total: 0,
+      loadingMore: false, error: undefined, items: [], page: 0, total: 0, selectedAssetId: undefined, confirmedAssetId: undefined,
     }])));
     setMediaType(value);
   };
   const searchAgain = (candidate: Candidate) => {
     setStates((current) => ({
       ...current,
-      [candidate.index]: { ...current[candidate.index], loading: true, loadingMore: false, error: undefined, items: [], page: 0, total: 0 },
+      [candidate.index]: { ...current[candidate.index], loading: true, loadingMore: false, error: undefined, items: [], page: 0, total: 0, selectedAssetId: undefined, confirmedAssetId: undefined },
     }));
     void startBatch([candidate], queries).done;
   };
@@ -209,8 +213,9 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
               <Stack direction="row" sx={{ justifyContent: "flex-end" }}><Typography variant="caption" sx={{ fontWeight: 700 }}>{state.items.length}/{VOCABULARY_IMAGE_LIMIT} ảnh</Typography></Stack>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(3, minmax(0, 1fr))", md: "repeat(6, minmax(0, 1fr))" }, gap: 1, minWidth: 0 }}>{state.items.map((result) => {
                 const selected = state.selectedAssetId === result.providerAssetId || importing === `${index}-${result.providerAssetId}`;
-                return <Button key={result.providerAssetId} onClick={() => void select(index, result)} disabled={Boolean(importing)} aria-pressed={selected} aria-label={`Chọn ảnh cho ${item.word}`} sx={{ p: 0, minWidth: 0, overflow: "hidden", border: selected ? 3 : 1, borderColor: selected ? "primary.main" : "divider", borderRadius: 1.5 }}><Box component="img" src={result.thumbnailUrl} alt={`${item.word} — ${item.meaningVi}`} sx={{ display: "block", width: "100%", aspectRatio: "1", objectFit: "cover" }} /></Button>;
+                return <Button key={result.providerAssetId} onClick={() => setStates((current) => ({ ...current, [index]: { ...current[index], selectedAssetId: result.providerAssetId, error: undefined } }))} disabled={Boolean(importing)} aria-pressed={selected} aria-label={`Đánh dấu ảnh cho ${item.word}`} sx={{ p: 0, minWidth: 0, overflow: "hidden", border: selected ? 3 : 1, borderColor: selected ? "primary.main" : "divider", borderRadius: 1.5 }}><Box component="img" src={result.thumbnailUrl} alt={`${item.word} — ${item.meaningVi}`} sx={{ display: "block", width: "100%", aspectRatio: "1", objectFit: "cover" }} /></Button>;
               })}</Box>
+              <Button variant="contained" disabled={!state.selectedAssetId || state.selectedAssetId === state.confirmedAssetId || Boolean(importing)} onClick={() => void select(index)} startIcon={importing.startsWith(`${index}-`) ? <CircularProgress size={18} /> : undefined}>{state.selectedAssetId === state.confirmedAssetId ? "Đã chọn ảnh" : "Chọn ảnh"}</Button>
               {state.page < 3 && state.items.length < Math.min(state.total, VOCABULARY_IMAGE_LIMIT) && <Button variant="outlined" disabled={Boolean(importing) || state.loadingMore || cooldownSeconds > 0} onClick={() => void loadMore(candidate)} startIcon={state.loadingMore ? <CircularProgress size={18} /> : undefined}>Xem thêm 8 ảnh</Button>}
             </Stack>}
           </Box>;

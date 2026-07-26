@@ -48,6 +48,10 @@ test("bulk suggestions use generation batches, abort signals and one worker", ()
   assert.match(searchStrategy, /page: input\.page/);
   assert.match(bulk, /Xem thêm 8 ảnh/);
   assert.match(picker, /Xem thêm 8 ảnh/);
+  assert.match(bulk, /"Chọn ảnh"/);
+  assert.match(picker, />Chọn ảnh</);
+  assert.doesNotMatch(bulk, /onClick=\{\(\) => void select\(index, result\)\}/);
+  assert.doesNotMatch(picker, /onClick=\{\(\) => void choose\(item\)\}/);
   assert.match(bulk, /Tìm lại/);
   assert.match(bulk, /ILLUSTRATION/);
   assert.match(bulk, /PHOTO/);

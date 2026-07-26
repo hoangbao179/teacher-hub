@@ -33,6 +33,7 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
   const [query, setQuery] = useState(strategy.query);
   const [mediaType, setMediaType] = useState<VocabularyImageFilter>("ILLUSTRATION");
   const [items, setItems] = useState<VocabularyMediaSearchItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<VocabularyMediaSearchItem | null>(null);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -46,6 +47,7 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
   const resetResults = () => {
     searchGeneration.current += 1;
     setItems([]);
+    setSelectedItem(null);
     setPage(0);
     setTotal(0);
     setError("");
@@ -105,13 +107,14 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
     resetResults();
   };
 
-  const choose = async (item: VocabularyMediaSearchItem) => {
-    setImporting(item.providerAssetId);
+  const choose = async () => {
+    if (!selectedItem) return;
+    setImporting(selectedItem.providerAssetId);
     setError("");
     try {
       const media = await importVocabularyMedia({
-        provider: item.provider,
-        providerAssetId: item.providerAssetId,
+        provider: selectedItem.provider,
+        providerAssetId: selectedItem.providerAssetId,
         altText: `${word} — ${meaningVi}`.slice(0, 200),
       });
       onSelect(media);
@@ -156,17 +159,20 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
             {items.length > 0 && <>
               <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", gap: 1 }}><Typography variant="caption" color="text.secondary">Nguồn Pixabay · Ảnh chỉ được lưu sau khi cô chọn.</Typography><Typography variant="caption" sx={{ fontWeight: 700 }}>{items.length}/{VOCABULARY_IMAGE_LIMIT} ảnh</Typography></Stack>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(4, minmax(0, 1fr))", md: "repeat(5, minmax(0, 1fr))" }, gap: 1, minWidth: 0 }}>
-                {items.map((item) => <Button key={item.providerAssetId} onClick={() => void choose(item)} disabled={Boolean(importing)} aria-pressed={importing === item.providerAssetId} aria-label={`Chọn ảnh của ${item.contributorName}`} sx={{ p: 0, minWidth: 0, display: "block", overflow: "hidden", border: importing === item.providerAssetId ? 3 : 1, borderColor: importing === item.providerAssetId ? "primary.main" : "divider", borderRadius: 2, textTransform: "none", color: "text.primary" }}>
+                {items.map((item) => {
+                  const selected = selectedItem?.providerAssetId === item.providerAssetId;
+                  return <Button key={item.providerAssetId} onClick={() => setSelectedItem(item)} disabled={Boolean(importing)} aria-pressed={selected} aria-label={`Đánh dấu ảnh của ${item.contributorName}`} sx={{ p: 0, minWidth: 0, display: "block", overflow: "hidden", border: selected ? 3 : 1, borderColor: selected ? "primary.main" : "divider", borderRadius: 2, textTransform: "none", color: "text.primary" }}>
                   <Box component="img" src={item.thumbnailUrl} alt={`${word} — ${meaningVi}`} sx={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
-                  <Stack direction="row" sx={{ p: 0.75, gap: 0.5, alignItems: "center", minWidth: 0 }}>{importing === item.providerAssetId && <CircularProgress size={14} />}<Typography variant="caption" noWrap>{item.contributorName}</Typography>{importing === item.providerAssetId && <CheckCircle fontSize="small" color="primary" />}</Stack>
-                </Button>)}
+                  <Stack direction="row" sx={{ p: 0.75, gap: 0.5, alignItems: "center", minWidth: 0 }}>{importing === item.providerAssetId && <CircularProgress size={14} />}<Typography variant="caption" noWrap>{item.contributorName}</Typography>{selected && <CheckCircle fontSize="small" color="primary" />}</Stack>
+                </Button>;
+                })}
               </Box>
               {page < 3 && items.length < Math.min(total, VOCABULARY_IMAGE_LIMIT) && <Button variant="outlined" disabled={loading || cooldownSeconds > 0} onClick={() => void search(page + 1)} startIcon={loading ? <CircularProgress size={18} /> : undefined}>Xem thêm 8 ảnh</Button>}
             </>}
           </>}
         </Stack>
       </DialogContent>
-      <DialogActions><Button onClick={onClose}>Đóng</Button></DialogActions>
+      <DialogActions><Button onClick={onClose}>Đóng</Button>{!strategy.publicAsset && <Button variant="contained" disabled={!selectedItem || Boolean(importing)} onClick={() => void choose()} startIcon={importing ? <CircularProgress size={18} /> : <CheckCircle />}>Chọn ảnh</Button>}</DialogActions>
     </Dialog>
   );
 }
