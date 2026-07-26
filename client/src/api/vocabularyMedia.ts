@@ -12,8 +12,8 @@ export interface VocabularyMediaProviderStatus {
   provider: "PIXABAY";
 }
 
-export const getVocabularyMediaStatus = () =>
-  api<VocabularyMediaProviderStatus>("/api/vocabulary/media/status");
+export const getVocabularyMediaStatus = (signal?: AbortSignal) =>
+  api<VocabularyMediaProviderStatus>("/api/vocabulary/media/status", { signal });
 
 export function searchVocabularyMedia(values: {
   query: string;
@@ -21,13 +21,14 @@ export function searchVocabularyMedia(values: {
   pageSize?: number;
   mediaType?: VocabularyImageMediaType;
   orientation?: VocabularyImageOrientation;
-}) {
+}, signal?: AbortSignal) {
   const params = new URLSearchParams();
   Object.entries(values).forEach(([key, value]) => {
     if (value !== undefined) params.set(key, String(value));
   });
   return api<VocabularyMediaSearchResponse>(
     `/api/vocabulary/media/search?${params.toString()}`,
+    { signal },
   );
 }
 

@@ -1,6 +1,6 @@
 import type { VocabularyImageMediaType } from "@teacher/shared";
 
-export type VocabularyImageCategory = "LOCAL" | "NOUN" | "ACTION" | "EMOTION";
+export type VocabularyImageCategory = "LOCAL" | "NOUN" | "ANIMAL" | "ACTION" | "EMOTION";
 export type VocabularyImageFilter = Extract<VocabularyImageMediaType, "ILLUSTRATION" | "PHOTO">;
 
 export interface VocabularyImageStrategy {
@@ -30,6 +30,14 @@ const emotions = new Set([
   "happy", "sad", "angry", "scared", "tired", "hungry", "thirsty", "excited", "bored",
   "surprised", "worried", "shy", "proud", "calm",
 ]);
+const animals = new Set([
+  "cat", "dog", "fish", "bird", "rabbit", "hamster", "turtle", "parrot", "horse", "cow",
+  "pig", "sheep", "goat", "chicken", "duck", "elephant", "tiger", "lion", "monkey", "bear",
+  "giraffe", "zebra", "crocodile", "snake", "frog", "mouse", "bat",
+]);
+const topicNoise = new Set([
+  "pets", "pet", "animals", "animal", "actions", "feelings", "colors", "color", "numbers", "number",
+]);
 
 const normalize = (value: string) => value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("en");
 
@@ -37,7 +45,8 @@ function curatedSubject(word: string, searchTerms: string[]): string {
   const genericLegacyTerms = new Set([
     `${word} color`, `${word} number`, `${word} actions`, `${word} feelings`,
   ]);
-  return searchTerms.map(normalize).find((term) => term && !genericLegacyTerms.has(term)) ?? word;
+  return searchTerms.map(normalize).find((term) =>
+    term && !genericLegacyTerms.has(term) && !term.split(" ").some((part) => topicNoise.has(part))) ?? word;
 }
 
 export function buildVocabularyImageStrategy(
@@ -53,7 +62,8 @@ export function buildVocabularyImageStrategy(
     return { category: "LOCAL", query: word, publicAsset: `/learning/numbers/${numberIndex + 1}.svg` };
   }
   const subject = curatedSubject(word, searchTerms);
+  if (animals.has(word)) return { category: "ANIMAL", query: `${word} cartoon isolated` };
   if (actions.has(word)) return { category: "ACTION", query: `child ${subject} cartoon illustration` };
   if (emotions.has(word)) return { category: "EMOTION", query: `${subject} child face emotion cartoon illustration` };
-  return { category: "NOUN", query: `${subject} isolated cartoon illustration white background` };
+  return { category: "NOUN", query: `${subject} cartoon isolated` };
 }

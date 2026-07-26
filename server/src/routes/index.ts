@@ -7,9 +7,10 @@ import { uploadLegacyWorkbook } from "../middleware/legacy-import-upload";
 import { fixedWindowRateLimit } from "../middleware/fixed-window-rate-limit";
 
 const vocabularySearchRateLimit = fixedWindowRateLimit({
-  limit: 30,
+  limit: 60,
   windowMs: 60_000,
   code: "VOCABULARY_SEARCH_RATE_LIMITED",
+  key: (req) => String(req.auth?.id ?? req.ip ?? req.socket.remoteAddress ?? "unknown"),
 });
 const vocabularyImportRateLimit = fixedWindowRateLimit({
   limit: 12,

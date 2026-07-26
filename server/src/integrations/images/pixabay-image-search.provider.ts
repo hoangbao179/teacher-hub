@@ -27,6 +27,12 @@ const mediaType = (value: VocabularyImageMediaType) => value.toLowerCase();
 const orientation = (value: VocabularyImageOrientation) => value.toLowerCase();
 const queryNoise = new Set([
   "isolated", "cartoon", "illustration", "white", "background", "child", "face", "emotion",
+  "pets", "pet", "animals", "animal",
+]);
+const animalWords = new Set([
+  "cat", "dog", "fish", "bird", "rabbit", "hamster", "turtle", "parrot", "horse", "cow",
+  "pig", "sheep", "goat", "chicken", "duck", "elephant", "tiger", "lion", "monkey", "bear",
+  "giraffe", "zebra", "crocodile", "snake", "frog", "mouse", "bat",
 ]);
 
 function normalize(value: string): string {
@@ -54,7 +60,7 @@ function rankAndDeduplicate(
 ): ProviderSearchResult["items"] {
   const seenIds = new Set<string>();
   const seenUrls = new Set<string>();
-  return [...items]
+  const ranked = [...items]
     .sort((left, right) => relevanceScore(input, right) - relevanceScore(input, left))
     .filter((item) => {
       const url = normalize(item.downloadUrl || item.previewUrl);
@@ -62,8 +68,31 @@ function rankAndDeduplicate(
       seenIds.add(item.providerAssetId);
       seenUrls.add(url);
       return true;
-    })
-    .slice(0, input.pageSize);
+    });
+  const exactWord = normalize(input.query).split(" ").find((word) => word && !queryNoise.has(word)) ?? "";
+  const exactMatches = ranked.filter((item) => item.tags.some(
+    (tag) => tag.split(/[^a-z0-9]+/u).includes(exactWord),
+  ));
+  return (exactMatches.length >= 2 ? exactMatches : ranked).slice(0, input.pageSize);
+}
+
+function numberHeader(response: Response, name: string): number | undefined {
+  const value = Number(response.headers.get(name));
+  return Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+function retryAfterSeconds(response: Response, now = Date.now()): number {
+  const retryAfter = response.headers.get("Retry-After");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.max(1, Math.ceil(seconds));
+    const date = Date.parse(retryAfter);
+    if (Number.isFinite(date)) return Math.max(1, Math.ceil((date - now) / 1000));
+  }
+  const reset = numberHeader(response, "X-RateLimit-Reset");
+  if (reset !== undefined)
+    return Math.max(1, Math.ceil(reset > 1_000_000_000 ? reset - now / 1000 : reset));
+  return 60;
 }
 
 export class PixabayImageSearchProvider implements ImageSearchProvider {
@@ -85,6 +114,8 @@ export class PixabayImageSearchProvider implements ImageSearchProvider {
     url.searchParams.set("orientation", orientation(input.orientation));
     url.searchParams.set("safesearch", "true");
     url.searchParams.set("lang", "en");
+    const focusWord = normalize(input.query).split(" ").find((word) => word && !queryNoise.has(word));
+    if (focusWord && animalWords.has(focusWord)) url.searchParams.set("category", "animals");
 
     let response: Response;
     try {
@@ -99,9 +130,22 @@ export class PixabayImageSearchProvider implements ImageSearchProvider {
         "Nguồn ảnh đang tạm gián đoạn. Vui lòng thử lại.",
       );
     }
+    const rateLimit = {
+      remaining: numberHeader(response, "X-RateLimit-Remaining"),
+      reset: numberHeader(response, "X-RateLimit-Reset"),
+      retryAfterSeconds: response.status === 429 ? retryAfterSeconds(response) : undefined,
+    };
+    if (response.status === 429)
+      throw new AppError(
+        429,
+        "IMAGE_PROVIDER_RATE_LIMITED",
+        "Nguồn ảnh đang giới hạn tần suất. Vui lòng thử lại sau.",
+        { remaining: rateLimit.remaining, reset: rateLimit.reset },
+        rateLimit.retryAfterSeconds,
+      );
     if (!response.ok)
       throw new AppError(
-        response.status === 429 ? 429 : 503,
+        503,
         "IMAGE_PROVIDER_UNAVAILABLE",
         "Nguồn ảnh đang tạm gián đoạn. Vui lòng thử lại.",
       );
@@ -127,6 +171,7 @@ export class PixabayImageSearchProvider implements ImageSearchProvider {
     return {
       total: Number(payload.totalHits ?? 0),
       items: rankAndDeduplicate(input, items),
+      rateLimit,
     };
   }
 }

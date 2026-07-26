@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { AppError } from "../errors/app-error";
 import type { ProviderImageAsset } from "../integrations/images/image-search.provider";
 import type { VocabularyMediaSettings } from "../config/vocabulary-media-settings";
 import {
@@ -44,6 +45,7 @@ function makeService(options: {
   now?: Date;
   createFailure?: boolean;
   backupLocked?: boolean;
+  providerError?: Error;
 } = {}) {
   let providerCalls = 0;
   let savedCache: unknown;
@@ -91,6 +93,7 @@ function makeService(options: {
     search: async (input: { safeSearch: true }) => {
       providerCalls += 1;
       assert.equal(input.safeSearch, true);
+      if (options.providerError) throw options.providerError;
       return { total: 1, items: [asset] };
     },
   };
@@ -172,6 +175,15 @@ test("search uses cache, or persists a 24-hour safe result on miss", async () =>
   assert.equal(miss.providerCalls(), 1);
   assert.ok(miss.savedCache());
   assert.equal(missResult.cacheExpiresAt, "2026-07-27T00:00:00.000Z");
+});
+
+test("provider rate limits remain distinct and preserve retry timing", async () => {
+  const value = makeService({ providerError: new AppError(
+    429, "IMAGE_PROVIDER_RATE_LIMITED", "limited", { remaining: 0 }, 9,
+  ) });
+  await assert.rejects(value.service.search({ query: "bird cartoon isolated" }),
+    (error: unknown) => error instanceof AppError &&
+      error.code === "IMAGE_PROVIDER_RATE_LIMITED" && error.retryAfterSeconds === 9);
 });
 
 test("import rejects assets absent from valid cache and deduplicates existing media", async () => {

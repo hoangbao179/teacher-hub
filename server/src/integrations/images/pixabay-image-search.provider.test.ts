@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { AppError } from "../../errors/app-error";
 import { PixabayImageSearchProvider } from "./pixabay-image-search.provider";
 
 test("Pixabay search always enables safe search and hides its download URL", async () => {
@@ -37,6 +38,30 @@ test("Pixabay search always enables safe search and hides its download URL", asy
   assert.equal(result.items[0].downloadUrl, "https://cdn.pixabay.com/photo/large.jpg");
   assert.deepEqual(result.items[0].tags, ["apple"]);
   assert.equal(JSON.stringify(result.items).includes("secret"), false);
+});
+
+test("Pixabay 429 preserves quota headers and requests the animals category", async () => {
+  let requested: URL | undefined;
+  const fetcher: typeof fetch = async (input) => {
+    requested = new URL(String(input));
+    return new Response(null, { status: 429, headers: {
+      "X-RateLimit-Remaining": "0",
+      "X-RateLimit-Reset": "12",
+      "Retry-After": "7",
+    } });
+  };
+  await assert.rejects(
+    new PixabayImageSearchProvider("secret", fetcher).search({
+      query: "bird cartoon isolated", page: 1, pageSize: 6,
+      mediaType: "ILLUSTRATION", orientation: "ALL", safeSearch: true,
+    }),
+    (error: unknown) => error instanceof AppError &&
+      error.code === "IMAGE_PROVIDER_RATE_LIMITED" &&
+      error.statusCode === 429 && error.retryAfterSeconds === 7 &&
+      (error.details as { remaining?: number; reset?: number }).remaining === 0 &&
+      (error.details as { remaining?: number; reset?: number }).reset === 12,
+  );
+  assert.equal(requested?.searchParams.get("category"), "animals");
 });
 
 test("Pixabay results are ranked by word, media type and square shape then deduplicated", async () => {

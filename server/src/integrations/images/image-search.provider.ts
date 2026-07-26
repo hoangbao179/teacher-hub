@@ -33,6 +33,11 @@ export interface ProviderImageAsset {
 export interface ProviderSearchResult {
   total: number;
   items: ProviderImageAsset[];
+  rateLimit?: {
+    remaining?: number;
+    reset?: number;
+    retryAfterSeconds?: number;
+  };
 }
 
 export interface ImageSearchProvider {

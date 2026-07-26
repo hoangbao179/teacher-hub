@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { startSingleWorkerBatch } from "../src/features/vocabulary/bulkImageSuggestionScheduler.ts";
 import { buildVocabularyImageStrategy } from "../src/features/vocabulary/vocabularyImageStrategy.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -18,6 +19,10 @@ const searchStrategy = fs.readFileSync(path.join(
   root,
   "src/features/vocabulary/vocabularyImageSearch.ts",
 ), "utf8");
+const schedulerSource = fs.readFileSync(path.join(
+  root,
+  "src/features/vocabulary/bulkImageSuggestionScheduler.ts",
+), "utf8");
 
 test("picker has keyboard search, provider-disabled, retry and responsive states", () => {
   assert.match(picker, /component="form"/);
@@ -28,16 +33,19 @@ test("picker has keyboard search, provider-disabled, retry and responsive states
   assert.match(picker, /repeat\(2, minmax\(0, 1fr\)\)/);
 });
 
-test("bulk suggestions check provider status, are cancellable and capped at concurrency two", () => {
+test("bulk suggestions use generation batches, abort signals and one worker", () => {
   assert.match(bulk, /getVocabularyMediaStatus/);
-  assert.match(bulk, /Math\.min\(2, remoteCandidates\.length\)/);
+  assert.match(bulk, /startSingleWorkerBatch/);
+  assert.match(schedulerSource, /AbortController/);
+  assert.match(schedulerSource, /runId/);
+  assert.match(bulk, /delayMs: 800/);
   assert.match(bulk, /slice\(0, 6\)/);
   assert.match(bulk, /Tìm lại/);
   assert.match(bulk, /ILLUSTRATION/);
   assert.match(bulk, /PHOTO/);
   assert.match(bulk, /overflowX: "hidden"/);
   assert.match(bulk, /Bỏ qua/);
-  assert.match(bulk, /cancelled\.current = true/);
+  assert.doesNotMatch(bulk, /cancelled\.current/);
   assert.doesNotMatch(bulk, /onSelect\(index, result\)/);
 });
 
@@ -48,12 +56,52 @@ test("image strategy keeps local colors and numbers off Pixabay and builds focus
   assert.deepEqual(buildVocabularyImageStrategy("seven", ["seven number"]), {
     category: "LOCAL", query: "seven", publicAsset: "/learning/numbers/7.svg",
   });
-  assert.equal(buildVocabularyImageStrategy("apple").query, "apple isolated cartoon illustration white background");
+  assert.equal(buildVocabularyImageStrategy("apple").query, "apple cartoon isolated");
   assert.equal(buildVocabularyImageStrategy("run", ["run actions"]).query, "child run cartoon illustration");
-  assert.equal(buildVocabularyImageStrategy("bat", ["bat animal"]).query, "bat animal isolated cartoon illustration white background");
-  assert.match(searchStrategy, /category !== "NOUN"/);
-  assert.match(searchStrategy, /primary\.items\.length >= 3/);
-  assert.match(searchStrategy, /mediaType: "PHOTO"/);
+  assert.deepEqual(buildVocabularyImageStrategy("bird", ["bird pets"]), { category: "ANIMAL", query: "bird cartoon isolated" });
+  assert.doesNotMatch(searchStrategy, /mediaType: "PHOTO"/);
+});
+
+test("StrictMode cleanup prevents duplicate initial batch requests", async () => {
+  const calls = [];
+  const options = {
+    items: Array.from({ length: 10 }, (_, index) => index),
+    runItem: async (item) => { calls.push(item); },
+    rateLimitSeconds: () => undefined,
+    onCooldown: () => undefined,
+    onError: (error) => { throw error; },
+    delayMs: 0,
+    sleep: async () => undefined,
+  };
+  const strictModeFirstRun = startSingleWorkerBatch(options);
+  strictModeFirstRun.cancel();
+  const activeRun = startSingleWorkerBatch(options);
+  await activeRun.done;
+  assert.deepEqual(calls, Array.from({ length: 10 }, (_, index) => index));
+});
+
+test("provider 429 pauses once, resumes pending items and preserves completed results", async () => {
+  const calls = [];
+  const completed = new Set();
+  const cooldown = [];
+  let limited = false;
+  const run = startSingleWorkerBatch({
+    items: ["cat", "dog", "bird"],
+    runItem: async (item) => {
+      calls.push(item);
+      if (item === "dog" && !limited) { limited = true; throw { rateLimited: true }; }
+      completed.add(item);
+    },
+    rateLimitSeconds: (error) => error?.rateLimited ? 2 : undefined,
+    onCooldown: (seconds) => cooldown.push(seconds),
+    onError: (error) => { throw error; },
+    delayMs: 0,
+    sleep: async () => undefined,
+  });
+  await run.done;
+  assert.deepEqual(calls, ["cat", "dog", "dog", "bird"]);
+  assert.deepEqual([...completed], ["cat", "dog", "bird"]);
+  assert.deepEqual(cooldown, [2, 1, 0]);
 });
 
 test("client imports only provider, asset id and approved alt text", () => {

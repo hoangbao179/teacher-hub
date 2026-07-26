@@ -4,6 +4,7 @@ export class AppError extends Error {
     public readonly code: string,
     message: string,
     public readonly details?: unknown,
+    public readonly retryAfterSeconds?: number,
   ) {
     super(message);
   }

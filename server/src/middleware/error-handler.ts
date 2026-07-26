@@ -3,6 +3,8 @@ import { AppError } from "../errors/app-error";
 
 export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   if (error instanceof AppError) {
+    if (error.retryAfterSeconds)
+      res.setHeader("Retry-After", String(error.retryAfterSeconds));
     res.status(error.statusCode).json({
       error: {
         code: error.code,
