@@ -11,9 +11,10 @@ V19A-PUBLIC-HOMEPAGE-SINGLE-LOCATION-GOOGLE-MAPS: PASS on 25/07/2026. Homepage
 now presents one canonical location, optional Google Maps Embed with a no-key
 fallback, synchronized JSON-LD and responsive evidence in `.agent-reports`.
 
-V20A–V20E Vocabulary Assignments and Games: **PLANNED**. Feature contract, logical
-OpenAPI và task/acceptance đã được harden; chưa có source, migration, Compose
-volume hoặc runtime endpoint nào được triển khai.
+V20A-VOCABULARY-FOUNDATION: **PASS on 26/07/2026**. Shared contract, migration
+`0016`, 20-topic catalog, protected set/topic API và responsive admin UI đã được
+triển khai. V20B–V20E vẫn **PLANNED**; chưa có provider/download, media volume,
+assignment, public token hoặc game runtime.
 
 ## Status
 
@@ -101,6 +102,10 @@ RELEASE-GLOBAL-SUCCESS-PUBLIC-LEARNING: PASS on 25/07/2026. Public catalog now
 serves preschool and grades 1–9 with 142 Units; production prerenders 154 public
 pages and generates its 154-URL sitemap directly from the catalog. Grammar remains
 draft and the independently authored starter content requires ongoing teacher review.
+V20A-VOCABULARY-FOUNDATION: PASS on 26/07/2026. Evidence is in
+`.agent-reports/V20A-VOCABULARY-FOUNDATION-implementation.md`,
+`.agent-reports/V20A-VOCABULARY-FOUNDATION-verification.md` and the responsive
+screenshots folder with the same milestone name.
 
 ## Scope boundary
 
@@ -143,9 +148,9 @@ coverage without adding backend state or student identity.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
   be configured by the operator before the first production deployment.
-- V20A–V20E chỉ là kế hoạch. Pixabay key/enable config, vocabulary schema,
-  `vocabulary-media` volume, public assignment API/game/results và recovery-set
-  tooling chưa tồn tại trong application/Compose hiện tại.
+- V20A đã hoàn tất foundation/topic catalog. V20B–V20E vẫn là kế hoạch:
+  Pixabay key/enable config, provider download, `vocabulary-media` volume,
+  assignment/public token/game/results và recovery-set tooling chưa tồn tại.
 
 ## V17-PRODUCTION-CICD
 

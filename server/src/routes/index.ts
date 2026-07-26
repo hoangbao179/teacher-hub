@@ -15,6 +15,25 @@ export function createRouter(): Router {
 
   router.use("/api", requireAuth);
   router.get("/api/dashboard", asyncHandler(controllers.dashboard.get));
+  router.get("/api/vocabulary/topics", asyncHandler(controllers.vocabulary.listTopics));
+  router.get("/api/vocabulary/topics/:slug", asyncHandler(controllers.vocabulary.topicDetail));
+  router.post("/api/vocabulary/topic-suggestions", asyncHandler(controllers.vocabulary.suggest));
+  router.get("/api/vocabulary/sets", asyncHandler(controllers.vocabulary.listSets));
+  router.post("/api/vocabulary/sets", asyncHandler(controllers.vocabulary.createSet));
+  router.post(
+    "/api/vocabulary/sets/import-public-unit",
+    asyncHandler(controllers.vocabulary.importPublicUnit),
+  );
+  router.get("/api/vocabulary/sets/:id", asyncHandler(controllers.vocabulary.setDetail));
+  router.patch("/api/vocabulary/sets/:id", asyncHandler(controllers.vocabulary.updateSet));
+  router.post(
+    "/api/vocabulary/sets/:id/duplicate",
+    asyncHandler(controllers.vocabulary.duplicateSet),
+  );
+  router.post(
+    "/api/vocabulary/sets/:id/archive",
+    asyncHandler(controllers.vocabulary.archiveSet),
+  );
   router.get("/api/classes", asyncHandler(controllers.classes.list));
   router.post("/api/classes", asyncHandler(controllers.classes.create));
   router.get("/api/classes/:id", asyncHandler(controllers.classes.detail));

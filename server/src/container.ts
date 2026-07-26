@@ -35,6 +35,9 @@ import { config } from "./config/config";
 import { FakeGoogleSheetProvider } from "./integrations/google/fake-google-sheet.provider";
 import { GoogleSheetSyncRepository } from "./repositories/google-sheet-sync.repository";
 import { GoogleSheetSyncWorker } from "./workers/google-sheet-sync.worker";
+import { VocabularyController } from "./controllers/vocabulary.controller";
+import { VocabularyRepository } from "./repositories/vocabulary.repository";
+import { VocabularyService } from "./services/vocabulary.service";
 
 const users = new UserRepository();
 const classes = new ClassRepository();
@@ -44,6 +47,7 @@ const tuition = new TuitionRepository();
 const schedules = new ScheduleRepository();
 const enrollments = new EnrollmentRepository();
 const studentReports = new StudentReportRepository();
+const vocabulary = new VocabularyRepository();
 
 const authService = new AuthService(users);
 const classService = new ClassService(classes);
@@ -56,6 +60,7 @@ const dashboardService = new DashboardService(tuition, schedules);
 const enrollmentService = new EnrollmentService(enrollments);
 const studentReportService = new StudentReportService(studentReports);
 const legacyImportService = new LegacyImportService(studentService, classService);
+const vocabularyService = new VocabularyService(vocabulary);
 const studentGoogleSheets = new StudentGoogleSheetRepository();
 function createGoogleSheetProvider() {
   if (!config.googleDrive.enabled) return null;
@@ -97,4 +102,5 @@ export const controllers = {
   studentReports: new StudentReportController(studentReportService),
   legacyImports: new LegacyImportController(legacyImportService),
   studentGoogleSheets: new StudentGoogleSheetController(studentGoogleSheetService),
+  vocabulary: new VocabularyController(vocabularyService),
 };

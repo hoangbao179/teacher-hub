@@ -47,11 +47,17 @@ const sourceRoutes = new Set([...routeSource.matchAll(routePattern)].map((match)
 const openapi = read("docs/api/openapi.yaml");
 const documented = new Set();
 let currentPath = null;
+let currentPathPlanned = false;
 for (const line of openapi.split(/\r?\n/)) {
   const pathMatch = line.match(/^  (\/[^:]+):\s*$/);
-  if (pathMatch) { currentPath = pathMatch[1]; continue; }
+  if (pathMatch) { currentPath = pathMatch[1]; currentPathPlanned = false; continue; }
+  if (currentPath && /^    x-implementation-status:\s*PLANNED\s*$/.test(line)) {
+    currentPathPlanned = true;
+    continue;
+  }
   const methodMatch = line.match(/^    (get|post|put|patch|delete):/);
-  if (currentPath && methodMatch) documented.add(`${methodMatch[1].toUpperCase()} ${currentPath}`);
+  if (currentPath && methodMatch && !currentPathPlanned)
+    documented.add(`${methodMatch[1].toUpperCase()} ${currentPath}`);
 }
 for (const route of sourceRoutes) if (!documented.has(route)) failures.push(`OpenAPI missing source route: ${route}`);
 for (const route of documented) if (!sourceRoutes.has(route)) failures.push(`OpenAPI route does not exist in source: ${route}`);

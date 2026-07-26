@@ -6,6 +6,7 @@ import {
   Payments,
   Logout,
   School,
+  Translate,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -34,6 +35,10 @@ const nav = [
   ["/admin/tuition", <Payments key="tuition" />, "Học phí"],
   ["/admin/students", <Person key="students" data-testid="student-navigation-icon" />, "Học sinh"],
 ] as const;
+const desktopNav = [
+  ...nav,
+  ["/admin/vocabulary", <Translate key="vocabulary" />, "Kho từ vựng"],
+] as const;
 export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,7 +50,10 @@ export function AdminLayout() {
     );
   const current = directIndex >= 0 ? directIndex
     : /^\/admin\/(reconciliation|busy-slots|lessons)/.test(location.pathname) ? 1
-      : 0;
+      : location.pathname.startsWith("/admin/vocabulary") ? -1 : 0;
+  const desktopCurrent = desktopNav.findIndex(([path]) =>
+    path === "/admin" ? location.pathname === "/admin" : location.pathname.startsWith(path),
+  );
   return (
     <Box sx={{ minHeight: "100dvh", minWidth: 0, overflowX: "clip", pb: { xs: `calc(${uiTokens.navigationHeight}px + env(safe-area-inset-bottom) + 16px)`, md: 0 } }}>
       <AppBar
@@ -83,14 +91,14 @@ export function AdminLayout() {
         }}
       >
         <List component="nav" aria-label="Điều hướng quản trị trên máy tính">
-          {nav.map(([path, icon, label], index) => <ListItemButton
+          {desktopNav.map(([path, icon, label], index) => <ListItemButton
             key={path}
-            selected={current === index}
+            selected={desktopCurrent === index}
             onClick={() => navigate(path)}
             sx={{ borderRadius: 1.25, mb: 0.5 }}
           >
-            <ListItemIcon sx={{ minWidth: 38, color: current === index ? "primary.main" : "text.secondary" }}>{icon}</ListItemIcon>
-            <ListItemText primary={label} slotProps={{ primary: { variant: "body2", sx: { fontWeight: current === index ? 600 : 500 } } }} />
+            <ListItemIcon sx={{ minWidth: 38, color: desktopCurrent === index ? "primary.main" : "text.secondary" }}>{icon}</ListItemIcon>
+            <ListItemText primary={label} slotProps={{ primary: { variant: "body2", sx: { fontWeight: desktopCurrent === index ? 600 : 500 } } }} />
           </ListItemButton>)}
         </List>
       </Drawer>

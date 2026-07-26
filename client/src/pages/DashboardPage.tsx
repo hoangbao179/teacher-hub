@@ -1,4 +1,4 @@
-import { Add, CalendarMonth, CheckCircle, Payments } from "@mui/icons-material";
+import { Add, CalendarMonth, CheckCircle, Payments, Translate } from "@mui/icons-material";
 import { Alert, Box, Button, Card, CardContent, Grid, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -68,6 +68,7 @@ export function DashboardPage() {
       <Button startIcon={<Add />} variant="contained" component={Link} to="/admin/lessons/new" sx={{ gridColumn: { xs: "1 / -1", md: "auto" } }}>Ghi nhận buổi học</Button>
       <Button variant="outlined" component={Link} to="/admin/lessons/new?type=MAKEUP">Buổi học bù</Button>
       <Button variant="outlined" component={Link} to="/admin/busy-slots/new?type=EXTERNAL_CLASS">Thêm lịch dạy ngoài</Button>
+      <Button startIcon={<Translate />} variant="outlined" component={Link} to="/admin/vocabulary">Kho từ vựng</Button>
     </Box>
 
     <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography component="h2" variant="h6">Lịch hôm nay</Typography><Button size="small" component={Link} to="/admin/calendar">Xem lịch tuần</Button></Stack>
