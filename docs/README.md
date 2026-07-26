@@ -25,3 +25,4 @@ Auto-sync/sharing vẫn thuộc V16D–V16E **PLANNED**. Source of truth là
 chỉ là con trỏ tương thích; không duy trì file manifest thủ công.
 
 - `architecture/dependency-policy.md`: Node/npm baseline and dependency-upgrade rules.
+- `features/vocabulary-assignments-and-games.md`: feature planned cho chủ đề, bộ từ, tìm ảnh, giao bài và game ôn từ mobile-first.

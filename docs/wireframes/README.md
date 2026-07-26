@@ -20,3 +20,17 @@ V19A dùng wireframe `20-homepage-single-location-google-maps-desktop.png` và
 Homepage một cơ sở và Google Maps. Business rules vẫn lấy từ feature, task và
 acceptance. Không dùng icon vẽ trong ảnh làm production asset; production dùng
 `@mui/icons-material`.
+
+## Vocabulary assignments and games
+
+Feature planned dùng bộ wireframe 22–26:
+
+- `22-vocabulary-assignment-teacher-mobile.png`;
+- `23-vocabulary-assignment-teacher-desktop.png`;
+- `24-vocabulary-games-student-mobile.png`;
+- `25-vocabulary-games-student-desktop.png`;
+- `26-vocabulary-assignment-results-responsive.png`.
+
+Ghi chú workflow và responsive nằm tại
+[`vocabulary-assignments.md`](vocabulary-assignments.md). Business rule nằm tại
+[`../features/vocabulary-assignments-and-games.md`](../features/vocabulary-assignments-and-games.md).

@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1220" viewBox="0 0 1600 1220">
+<title>Vocabulary assignment results responsive wireframe</title>
+<defs><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#241D3E" flood-opacity="0.12"/></filter></defs>
+<rect width="1600" height="1220" fill="#F7F7FB"/>
+<text x="38" y="48" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="30" font-weight="800" fill="#211F2B" text-anchor="start">Kết quả bài từ vựng — mobile và desktop</text>
+<text x="38" y="78" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="15" font-weight="400" fill="#686574" text-anchor="start">Tập trung vào từ đã nhớ/chưa nhớ, không chỉ điểm số.</text>
+<rect x="45" y="120" width="372" height="1010" rx="36" fill="#211F2B" stroke="#211F2B" stroke-width="1" opacity="1" filter="url(#shadow)"/>
+<rect x="52" y="127" width="358" height="996" rx="30" fill="#FFFFFF" stroke="none" stroke-width="1" opacity="1"/>
+<rect x="174" y="136" width="114" height="22" rx="11" fill="#211F2B" stroke="none" stroke-width="1" opacity="1"/>
+<text x="71" y="186" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="29" font-weight="600" fill="#211F2B" text-anchor="start">‹</text>
+<text x="231" y="183" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="17" font-weight="700" fill="#211F2B" text-anchor="middle">Kết quả bài tập</text>
+<line x1="52" y1="198" x2="410" y2="198" stroke="#DEDCE7" stroke-width="1"/>
+<text x="67" y="220" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="21" font-weight="800" fill="#211F2B" text-anchor="start">Màu sắc quanh em</text>
+<text x="67" y="246" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Lớp Mầm non A · 10 từ</text>
+<rect x="67" y="272" width="100" height="76" rx="14" fill="#EDF6FF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="117" y="304" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="20" font-weight="800" fill="#211F2B" text-anchor="middle">8/10</text>
+<text x="117" y="329" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="700" fill="#686574" text-anchor="middle">Đã làm</text>
+<rect x="175" y="272" width="100" height="76" rx="14" fill="#ECF8F1" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="225" y="304" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="20" font-weight="800" fill="#211F2B" text-anchor="middle">6</text>
+<text x="225" y="329" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="700" fill="#686574" text-anchor="middle">Đã nhớ</text>
+<rect x="283" y="272" width="100" height="76" rx="14" fill="#FFF7D6" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="333" y="304" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="20" font-weight="800" fill="#211F2B" text-anchor="middle">2</text>
+<text x="333" y="329" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="700" fill="#686574" text-anchor="middle">Cần ôn</text>
+<text x="67" y="378" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="16" font-weight="800" fill="#211F2B" text-anchor="start">Theo học sinh</text>
+<rect x="67" y="396" width="328" height="74" rx="14" fill="#FFFFFF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<circle cx="99" cy="433" r="20" fill="#ECF8F1" stroke="#DEDCE7" stroke-width="1"/>
+<text x="99" y="438" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="13" font-weight="800" fill="#6D3DF5" text-anchor="middle">B</text>
+<text x="129" y="424" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="800" fill="#211F2B" text-anchor="start">Bảo</text>
+<text x="129" y="447" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="600" fill="#686574" text-anchor="start">Đã hoàn thành</text>
+<text x="379" y="437" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="700" fill="#C73535" text-anchor="end">2 từ cần ôn</text>
+<rect x="67" y="482" width="328" height="74" rx="14" fill="#FFFFFF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<circle cx="99" cy="519" r="20" fill="#EDF6FF" stroke="#DEDCE7" stroke-width="1"/>
+<text x="99" y="524" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="13" font-weight="800" fill="#6D3DF5" text-anchor="middle">A</text>
+<text x="129" y="510" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="800" fill="#211F2B" text-anchor="start">An</text>
+<text x="129" y="533" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="600" fill="#686574" text-anchor="start">Đang làm</text>
+<text x="379" y="523" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="700" fill="#686574" text-anchor="end">4/10 từ</text>
+<rect x="67" y="568" width="328" height="74" rx="14" fill="#FFFFFF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<circle cx="99" cy="605" r="20" fill="#F7F7FB" stroke="#DEDCE7" stroke-width="1"/>
+<text x="99" y="610" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="13" font-weight="800" fill="#6D3DF5" text-anchor="middle">M</text>
+<text x="129" y="596" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="800" fill="#211F2B" text-anchor="start">Minh</text>
+<text x="129" y="619" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="600" fill="#686574" text-anchor="start">Chưa bắt đầu</text>
+<text x="379" y="609" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="700" fill="#686574" text-anchor="end">—</text>
+<text x="67" y="672" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="16" font-weight="800" fill="#211F2B" text-anchor="start">Từ cần ôn</text>
+<rect x="67" y="690" width="328" height="66" rx="14" fill="#FFF7D6" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="81" y="716" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="800" fill="#211F2B" text-anchor="start">purple</text>
+<text x="81" y="738" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="500" fill="#686574" text-anchor="start">40% đúng lần đầu</text>
+<text x="381" y="728" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="800" fill="#C73535" text-anchor="end">Cần ôn</text>
+<rect x="67" y="768" width="328" height="66" rx="14" fill="#EDF6FF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="81" y="794" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="800" fill="#211F2B" text-anchor="start">brown</text>
+<text x="81" y="816" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="500" fill="#686574" text-anchor="start">65% đúng lần đầu</text>
+<text x="381" y="806" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="800" fill="#6D3DF5" text-anchor="end">Đang học</text>
+<rect x="67" y="872" width="328" height="50" rx="12" fill="#6D3DF5" stroke="#6D3DF5" stroke-width="1" opacity="1"/>
+<text x="231.0" y="902.0" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">Giao lại các từ cần ôn</text>
+<rect x="67" y="936" width="328" height="46" rx="12" fill="#FFFFFF" stroke="#6D3DF5" stroke-width="1" opacity="1"/>
+<text x="231.0" y="964.0" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="700" fill="#6D3DF5" text-anchor="middle">Sao chép link bài</text>
+<rect x="52" y="1050" width="358" height="66" rx="0" fill="#FFFFFF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<circle cx="88.0" cy="1071" r="9" fill="#F7F7FB" stroke="#D8CCFF" stroke-width="1"/>
+<text x="88.0" y="1099" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="9" font-weight="600" fill="#686574" text-anchor="middle">Hôm nay</text>
+<circle cx="159.5" cy="1071" r="9" fill="#F7F7FB" stroke="#D8CCFF" stroke-width="1"/>
+<text x="159.5" y="1099" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="9" font-weight="600" fill="#686574" text-anchor="middle">Lịch</text>
+<circle cx="231.0" cy="1071" r="9" fill="#F7F7FB" stroke="#D8CCFF" stroke-width="1"/>
+<text x="231.0" y="1099" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="9" font-weight="600" fill="#686574" text-anchor="middle">Lớp học</text>
+<circle cx="302.5" cy="1071" r="9" fill="#F7F7FB" stroke="#D8CCFF" stroke-width="1"/>
+<text x="302.5" y="1099" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="9" font-weight="600" fill="#686574" text-anchor="middle">Học phí</text>
+<circle cx="374.0" cy="1071" r="9" fill="#F7F7FB" stroke="#D8CCFF" stroke-width="1"/>
+<text x="374.0" y="1099" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="9" font-weight="600" fill="#686574" text-anchor="middle">Học sinh</text>
+<rect x="470" y="120" width="1090" height="1010" rx="18" fill="#FFFFFF" stroke="#DEDCE7" stroke-width="1" opacity="1" filter="url(#shadow)"/>
+<rect x="470" y="120" width="210" height="1010" rx="18" fill="#F2F0FA" stroke="none" stroke-width="1" opacity="1"/>
+<text x="500" y="162" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="17" font-weight="800" fill="#6D3DF5" text-anchor="start">Lớp học cô Vy</text>
+<text x="508" y="210" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Hôm nay</text>
+<text x="508" y="256" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Lịch</text>
+<text x="508" y="302" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Lớp học</text>
+<text x="508" y="348" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Học phí</text>
+<text x="508" y="394" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Học sinh</text>
+<rect x="488" y="414" width="174" height="38" rx="10" fill="#F0EBFF" stroke="#D8CCFF" stroke-width="1" opacity="1"/>
+<text x="508" y="440" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="700" fill="#6D3DF5" text-anchor="start">Bài tập từ vựng</text>
+<text x="710" y="168" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="24" font-weight="800" fill="#211F2B" text-anchor="start">Màu sắc quanh em</text>
+<text x="710" y="196" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Lớp Mầm non A · đã giao 26/07/2026</text>
+<rect x="1370" y="148" width="160" height="42" rx="12" fill="#6D3DF5" stroke="#6D3DF5" stroke-width="1" opacity="1"/>
+<text x="1450.0" y="174.0" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">Giao lại từ sai</text>
+<rect x="710" y="230" width="176" height="92" rx="14" fill="#F0EBFF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="728" y="270" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="25" font-weight="800" fill="#211F2B" text-anchor="start">10</text>
+<text x="728" y="298" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="700" fill="#686574" text-anchor="start">Được giao</text>
+<rect x="900" y="230" width="176" height="92" rx="14" fill="#ECF8F1" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="918" y="270" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="25" font-weight="800" fill="#211F2B" text-anchor="start">8</text>
+<text x="918" y="298" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="700" fill="#686574" text-anchor="start">Hoàn thành</text>
+<rect x="1090" y="230" width="176" height="92" rx="14" fill="#EDF6FF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="1108" y="270" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="25" font-weight="800" fill="#211F2B" text-anchor="start">6</text>
+<text x="1108" y="298" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="700" fill="#686574" text-anchor="start">Đã nhớ</text>
+<rect x="1280" y="230" width="176" height="92" rx="14" fill="#FFF7D6" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="1298" y="270" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="25" font-weight="800" fill="#211F2B" text-anchor="start">2</text>
+<text x="1298" y="298" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="700" fill="#686574" text-anchor="start">Cần ôn</text>
+<text x="710" y="364" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="17" font-weight="800" fill="#211F2B" text-anchor="start">Từ vựng cần chú ý</text>
+<rect x="710" y="386" width="800" height="64" rx="12" fill="#FFFFFF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<rect x="722" y="398" width="42" height="42" rx="10" fill="#FFF7D6" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="780" y="414" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="800" fill="#211F2B" text-anchor="start">purple</text>
+<text x="780" y="435" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="500" fill="#686574" text-anchor="start">4/10 đúng lần đầu · 6/10 sau hỗ trợ</text>
+<rect x="1360" y="406" width="110" height="26" rx="13" fill="#FFF7D6" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="1415" y="424" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="800" fill="#C73535" text-anchor="middle">Cần ôn</text>
+<rect x="710" y="462" width="800" height="64" rx="12" fill="#FFFFFF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<rect x="722" y="474" width="42" height="42" rx="10" fill="#EDF6FF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="780" y="490" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="800" fill="#211F2B" text-anchor="start">brown</text>
+<text x="780" y="511" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="500" fill="#686574" text-anchor="start">6/10 đúng lần đầu · 9/10 sau hỗ trợ</text>
+<rect x="1360" y="482" width="110" height="26" rx="13" fill="#EDF6FF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="1415" y="500" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="800" fill="#168754" text-anchor="middle">Đang học</text>
+<rect x="710" y="538" width="800" height="64" rx="12" fill="#FFFFFF" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<rect x="722" y="550" width="42" height="42" rx="10" fill="#ECF8F1" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="780" y="566" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="800" fill="#211F2B" text-anchor="start">orange</text>
+<text x="780" y="587" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="500" fill="#686574" text-anchor="start">9/10 đúng lần đầu · 10/10 sau hỗ trợ</text>
+<rect x="1360" y="558" width="110" height="26" rx="13" fill="#ECF8F1" stroke="#DEDCE7" stroke-width="1" opacity="1"/>
+<text x="1415" y="576" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="10" font-weight="800" fill="#168754" text-anchor="middle">Đã nhớ</text>
+<text x="710" y="648" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="17" font-weight="800" fill="#211F2B" text-anchor="start">Theo học sinh</text>
+<text x="710" y="680" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="700" fill="#686574" text-anchor="start">Học sinh</text>
+<text x="920" y="680" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="700" fill="#686574" text-anchor="start">Trạng thái</text>
+<text x="1120" y="680" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="700" fill="#686574" text-anchor="start">Lượt</text>
+<text x="1210" y="680" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="700" fill="#686574" text-anchor="start">Đúng lần đầu</text>
+<text x="1380" y="680" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="700" fill="#686574" text-anchor="start">Từ cần ôn</text>
+<line x1="710" y1="690" x2="1510" y2="690" stroke="#DEDCE7" stroke-width="1"/>
+<text x="710" y="718" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="700" fill="#211F2B" text-anchor="start">Bảo</text>
+<text x="920" y="718" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Hoàn thành</text>
+<text x="1120" y="718" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">2</text>
+<text x="1210" y="718" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">80%</text>
+<text x="1380" y="718" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">purple</text>
+<line x1="710" y1="736" x2="1510" y2="736" stroke="#DEDCE7" stroke-width="1"/>
+<text x="710" y="772" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="700" fill="#211F2B" text-anchor="start">An</text>
+<text x="920" y="772" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Đang làm</text>
+<text x="1120" y="772" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">1</text>
+<text x="1210" y="772" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">—</text>
+<text x="1380" y="772" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">—</text>
+<line x1="710" y1="790" x2="1510" y2="790" stroke="#DEDCE7" stroke-width="1"/>
+<text x="710" y="826" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="700" fill="#211F2B" text-anchor="start">Minh</text>
+<text x="920" y="826" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Chưa bắt đầu</text>
+<text x="1120" y="826" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">0</text>
+<text x="1210" y="826" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">—</text>
+<text x="1380" y="826" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">—</text>
+<line x1="710" y1="844" x2="1510" y2="844" stroke="#DEDCE7" stroke-width="1"/>
+<text x="710" y="880" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="700" fill="#211F2B" text-anchor="start">Vy</text>
+<text x="920" y="880" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Hoàn thành</text>
+<text x="1120" y="880" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">1</text>
+<text x="1210" y="880" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">60%</text>
+<text x="1380" y="880" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">brown, purple</text>
+<line x1="710" y1="898" x2="1510" y2="898" stroke="#DEDCE7" stroke-width="1"/>
+<rect x="710" y="970" width="800" height="86" rx="14" fill="#F0EBFF" stroke="#D8CCFF" stroke-width="1" opacity="1"/>
+<text x="728" y="1002" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="13" font-weight="800" fill="#6D3DF5" text-anchor="start">Đề xuất tiếp theo</text>
+<text x="728" y="1028" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="12" font-weight="500" fill="#686574" text-anchor="start">Tạo bài ôn gồm 2 từ: purple, brown · template Bé mới học</text>
+<rect x="1310" y="990" width="180" height="44" rx="12" fill="#6D3DF5" stroke="#6D3DF5" stroke-width="1" opacity="1"/>
+<text x="1400.0" y="1017.0" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">Tạo bản nháp</text>
+</svg>
