@@ -36,6 +36,7 @@ export interface LessonRow extends RowDataPacket {
   status: LessonSummary["status"];
   content: string | null;
   homework: string | null;
+  general_comment: string | null;
   note: string | null;
   completed_at: Date | string | null;
   cancelled_at: Date | string | null;
@@ -167,6 +168,7 @@ export class LessonRepository {
         ...mapSummary(lesson),
         content: lesson.content == null ? null : String(lesson.content),
         homework: lesson.homework == null ? null : String(lesson.homework),
+        generalComment: lesson.general_comment == null ? null : String(lesson.general_comment),
         note: lesson.note == null ? null : String(lesson.note),
         makeupSource: lesson.makeup_source_occurrence_key
           ? await this.makeupSourceSummary(connection, String(lesson.makeup_source_occurrence_key), Number(lesson.class_id))
@@ -301,11 +303,12 @@ export class LessonRepository {
     lessonId: number,
     content: string | null,
     homework: string | null,
+    generalComment: string | null,
     note: string | null,
   ): Promise<void> {
     await connection.execute(
-      "UPDATE lesson_sessions SET content=?,homework=?,note=? WHERE id=?",
-      [content, homework, note, lessonId],
+      "UPDATE lesson_sessions SET content=?,homework=?,general_comment=?,note=? WHERE id=?",
+      [content, homework, generalComment, note, lessonId],
     );
   }
 
@@ -340,12 +343,13 @@ export class LessonRepository {
     duration: number,
     content: string | null,
     homework: string | null,
+    generalComment: string | null,
     note: string | null,
   ): Promise<void> {
     await connection.execute(
       `UPDATE lesson_sessions SET actual_start_time=?,actual_end_time=?,actual_duration_minutes=?,
-        content=?,homework=?,note=?,status='COMPLETED',completed_at=NOW() WHERE id=? AND status='DRAFT'`,
-      [actualStart, actualEnd, duration, content, homework, note, lessonId],
+        content=?,homework=?,general_comment=?,note=?,status='COMPLETED',completed_at=NOW() WHERE id=? AND status='DRAFT'`,
+      [actualStart, actualEnd, duration, content, homework, generalComment, note, lessonId],
     );
   }
 

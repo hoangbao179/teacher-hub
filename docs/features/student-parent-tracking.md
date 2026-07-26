@@ -23,25 +23,26 @@ một chiều cho phụ huynh.
 | --- | --- |
 | Legacy Excel | V16B giữ preview V16A và có Apply multipart: server đọc/parse/reconcile lại, kiểm tra SHA và structured decisions rồi ghi atomic vào MySQL; binary tạm luôn bị xóa. |
 | Attendance | Lưu riêng theo `lesson_session_participants`/enrollment; mỗi participant có tối đa một `lesson_attendances`. Không có attendance chung cho cả lớp. |
-| Lesson | `lesson_sessions` có `content`, `homework`, `note`; `lesson_attendances.student_note` là ghi chú riêng. Chưa có field tên `generalComment`; `note` hiện là ghi chú chung gần nhất về mặt cấu trúc nhưng chưa có semantics chia sẻ phụ huynh được duyệt. |
+| Lesson | `lesson_sessions` có `content`, `homework`, `general_comment` dành cho phụ huynh và `note` nội bộ; `lesson_attendances.student_note` là ghi chú riêng. |
 | Tuition cycle | `tuition_cycles` vẫn dùng `enrollment_id` làm anchor tương thích, nhưng recalculation V16B khóa và nhóm attendance theo student xuyên enrollment. `PRESENT`/`ABSENT_CHARGED` tăng đếm; chuyển lớp cùng giá tiếp tục cycle dở. |
-| Google | V16C có OAuth server-side, provider Drive/Sheets, mapping `student_google_sheets`, template và regenerate thủ công. Chưa có outbox/auto-sync hoặc permissions API. |
-| Student Detail | Có card tạo, retry, mở/copy, regenerate và archive Google Sheet; hiển thị rõ Restricted và chưa auto-sync. |
+| Google | V16C tạo Sheet; V16D có transactional outbox và worker cập nhật lesson một chiều. Không dùng permissions API. |
+| Student Detail | Card hiển thị pending/retry/dead, lần sync thành công và cho phép resync qua outbox. |
 
 Vì vậy việc giữ cycle dở xuyên enrollment và một Sheet ổn định theo student là
 thay đổi domain **PLANNED**, cần migration/API/runtime riêng trong các task sau;
 không được đọc các quy tắc đích dưới đây như mô tả chức năng đã chạy.
 
 V16B trả thêm row-resolution lifecycle, structured decision, audit theo dòng và
-endpoint Apply. V16C dựng Sheet từ canonical DB sau Apply hoặc cho student chưa có
-lịch sử. Auto-sync và sharing tự động vẫn thuộc V16D–V16E **PLANNED**.
+endpoint Apply. V16C dựng Sheet từ canonical DB. V16D đồng bộ lesson sau commit;
+tuition sync và sharing tự động vẫn thuộc V16E **PLANNED**.
 
 ## 2. Mô hình đích và ranh giới trách nhiệm
 
 - V16B (**IMPLEMENTED**) ghi dữ liệu chuẩn hóa vào MySQL trong transaction; không gọi Google.
 - V16C (**IMPLEMENTED**) tạo và quản lý một Google Sheet của từng student.
-- V16D phát sự kiện bằng transactional outbox và đồng bộ lesson sau commit.
-- V16E đồng bộ tuition, chia sẻ Viewer và cung cấp retry/resync/status cho admin.
+- V16D (**IMPLEMENTED; manual Google smoke pending**) phát sự kiện bằng transactional
+  outbox, đồng bộ lesson sau commit và cung cấp retry/resync/status cho admin.
+- V16E đồng bộ tuition và chia sẻ Viewer.
 - External API không bao giờ được gọi bên trong transaction MySQL.
 - Retry Google chỉ phát lại dữ liệu đã commit; không apply import hoặc mutation
   nghiệp vụ lần thứ hai.
@@ -118,7 +119,7 @@ Sheet ẩn và protected, lưu `schemaVersion`, `studentId`, `spreadsheetId`, ma
 lesson → row, mapping tuition cycle → row và `lastSyncedAt`. Không lưu access token,
 refresh token, client secret hoặc bất kỳ secret nào.
 
-## 5. Lesson, attendance và nhận xét — PLANNED
+## 5. Lesson, attendance và nhận xét — IMPLEMENTED V16D
 
 Một group lesson chỉ có một lesson chung với nội dung, bài tập và nhận xét chung.
 Mỗi student participant có attendance, billable và nhận xét riêng. Không dùng một
@@ -131,7 +132,7 @@ Trạng thái đích tối thiểu:
 | `PRESENT` | Có | Có | Quy tắc hiện hành. |
 | `ABSENT` | Không | Không | Quy tắc hiện hành. |
 | `FREE` | Có | Không | Quy tắc hiện hành. |
-| `ABSENT_CHARGED` | Không | Có | PLANNED; chưa có trong contract/schema hiện hành và cần quyết định phạm vi MVP. |
+| `ABSENT_CHARGED` | Không | Có | Trạng thái nghiệp vụ hiện hành; không dùng cho enrollment FREE. |
 
 UI đích mặc định mọi học sinh trả phí là có mặt, có `Tất cả có mặt`, `Tất cả nghỉ`,
 cho giáo viên chỉnh ngoại lệ, thu gọn nhận xét riêng và chỉ nhập nội dung/bài tập/
@@ -139,8 +140,7 @@ nhận xét chung một lần.
 
 ### Nhận xét chung
 
-- Lưu tại lesson bằng field có semantics rõ `generalComment` (migration/contract
-  tương ứng thuộc V16D; không mặc định coi mọi `lesson.note` cũ là nội dung cho phụ huynh).
+- Lưu một lần tại `lesson_sessions.general_comment`; `lesson.note` tiếp tục là nội bộ.
 - Chỉ áp dụng cho student `PRESENT` hoặc `FREE` trong lesson đó.
 - Student `ABSENT` vẫn thấy ngày, nội dung và bài tập nhưng mặc định không nhận
   general performance comment.
@@ -153,6 +153,21 @@ nhận xét chung một lần.
   sao chép nội dung hiện tại sang `lesson.generalComment`; không tạo note riêng cho
   mọi student, không ghi đè note riêng khác, và xóa note nguồn nếu nó trùng hoàn
   toàn general comment. Không dùng nhãn mơ hồ “Áp dụng cho tất cả”.
+
+## 5.1. Transactional outbox và worker — IMPLEMENTED V16D
+
+- Mutation của lesson `COMPLETED` upsert khóa logic
+  `(student_id, lesson_id, event_type)` trong cùng transaction MySQL; rollback
+  business data cũng rollback event. Student không có Sheet `ACTIVE` không tạo event.
+- Worker claim batch bằng transaction ngắn và `SKIP LOCKED`, gọi Google sau commit,
+  rồi chỉ đánh dấu thành công nếu revision chưa đổi. Lock stale được reclaim.
+- Retry dùng mốc 1 phút, 5 phút, 900 giây, 1 giờ rồi exponential có giới hạn;
+  lỗi vĩnh viễn chuyển `DEAD` và chỉ lưu message đã rút gọn.
+- Worker đọc snapshot canonical mới nhất, tìm row bằng `Teacher Hub Lesson ID` rồi
+  append/update/remove đúng row. Chỉ cập nhật `Nhật ký học tập`, các ô liên quan
+  trong `Tổng quan` và timestamp `_TeacherHub`; không sửa tab `Học phí`.
+- `POST /api/students/:studentId/google-sheet/resync` chỉ upsert event cho toàn bộ
+  lesson đã hoàn thành, không gọi Google trong request và có audit.
 
 Khi import legacy, nhận xét trong file từng student mặc định là nhận xét riêng.
 Nếu nhiều file của cùng lesson có text giống hệt, preview chỉ gợi ý gộp; người dùng

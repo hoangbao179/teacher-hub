@@ -49,13 +49,16 @@ V15 dùng mapping như entitlement ledger `OPEN → RESERVED → FULFILLED/WAIVE
 Hủy draft hoặc bỏ participant release reservation; `PRESENT/FREE` fulfill còn
 `ABSENT` trở lại `OPEN`. Correction cập nhật ledger trong cùng transaction.
 
-## Nhận xét và Google sync — PLANNED V16D
+## Nhận xét và Google sync — IMPLEMENTED V16D
 
-Runtime hiện có `content`, `homework`, lesson `note` và attendance `student_note`;
-chưa có `generalComment` có semantics chia sẻ phụ huynh hoặc Google sync.
-
-V16D sẽ lưu nhận xét chung một lần tại lesson và nhận xét riêng theo lesson +
-student. `ABSENT` vẫn thấy ngày/content/homework nhưng không mặc định nhận general
+Runtime lưu `content`, `homework`, `general_comment` một lần tại lesson,
+`note` nội bộ và `student_note` riêng theo participant. `ABSENT` vẫn thấy
+ngày/content/homework nhưng không mặc định nhận general
 performance comment. Action chuyển note riêng thành chung phải mang nhãn
 `Dùng làm nhận xét chung cho cả lớp`, không ghi đè note riêng khác và không tự áp
-dụng cho mọi student. Chi tiết privacy/outbox nằm trong `student-parent-tracking.md`.
+dụng cho mọi student.
+
+Khi lesson đã hoàn thành được tạo hoặc sửa, service ghi outbox trong cùng transaction
+sau tuition recalculation. Worker nền đồng bộ snapshot mới nhất sau commit; Google
+lỗi không rollback lesson, attendance hoặc tuition. Chi tiết privacy/retry/resync
+nằm trong `student-parent-tracking.md`.

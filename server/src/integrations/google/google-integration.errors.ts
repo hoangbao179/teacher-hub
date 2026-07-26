@@ -15,6 +15,8 @@ export function classifyGoogleError(error: unknown): GoogleIntegrationError {
   const message = String(candidate.message ?? "");
   if (/invalid_grant/i.test(message)) return new GoogleIntegrationError("AUTH_REQUIRED", "Kết nối Google đã hết hiệu lực. Hãy cấp quyền lại.", false);
   if (status === 401) return new GoogleIntegrationError("AUTH_REQUIRED", "Google yêu cầu cấp quyền lại.", false);
+  if (status === 403 && /rateLimitExceeded|userRateLimitExceeded|quota.*(?:temporary|temporarily)/i.test(message))
+    return new GoogleIntegrationError("RATE_LIMITED", "Google đang giới hạn tần suất. Vui lòng thử lại sau.", true);
   if (status === 403) return new GoogleIntegrationError("PERMISSION_DENIED", "Tài khoản Google không có quyền với thư mục đã cấu hình.", false);
   if (status === 404) return new GoogleIntegrationError("ROOT_FOLDER_MISSING", "Không tìm thấy thư mục Google Drive đã cấu hình.", false);
   if (status === 429) return new GoogleIntegrationError("RATE_LIMITED", "Google đang giới hạn tần suất. Vui lòng thử lại sau.", true);

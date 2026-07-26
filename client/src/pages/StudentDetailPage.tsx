@@ -23,7 +23,7 @@ import type { ClassListItem, IncompleteCycleAction, PaymentMethod, StudentDetail
 import { ContentCopy, Download, Launch, UploadFile } from "@mui/icons-material";
 import { api } from "../api/client";
 import { archiveStudentGoogleSheet, createStudentGoogleSheet, downloadStudentReport, endEnrollment as endEnrollmentApi,
-  getStudentGoogleSheet, regenerateStudentGoogleSheet, retryStudentGoogleSheet, transferEnrollment } from "../api/students";
+  getStudentGoogleSheet, regenerateStudentGoogleSheet, resyncStudentGoogleSheet, retryStudentGoogleSheet, transferEnrollment } from "../api/students";
 import { createAdvanceReceipt } from "../api/tuition";
 import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, PageHeader, ProgressCount } from "../components/UiKit";
@@ -41,7 +41,7 @@ export function StudentDetailPage() {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleState, setGoogleState] = useState<StudentGoogleSheetState | null>(null);
-  const [googleConfirm, setGoogleConfirm] = useState<"regenerate" | "archive" | null>(null);
+  const [googleConfirm, setGoogleConfirm] = useState<"regenerate" | "resync" | "archive" | null>(null);
   const [success, setSuccess] = useState(() => (location.state as { success?: string } | null)?.success ?? "");
   const [statusActionName, setStatusActionName] = useState<"pause" | "resume" | null>(null);
   const [statusEffectiveDate, setStatusEffectiveDate] = useState(today);
@@ -75,10 +75,10 @@ export function StudentDetailPage() {
     api<ClassListItem[]>("/api/classes").then(setClasses).catch(() => setClasses([]));
   }, [load, loadGoogleSheet]);
   useEffect(() => {
-    if (googleState?.sheet?.status !== "CREATING") return;
+    if (googleState?.sheet?.status !== "CREATING" && !googleState?.pendingCount && !googleState?.retryCount) return;
     const timer = window.setInterval(() => void loadGoogleSheet(), 2000);
     return () => window.clearInterval(timer);
-  }, [googleState?.sheet?.status, loadGoogleSheet]);
+  }, [googleState?.sheet?.status, googleState?.pendingCount, googleState?.retryCount, loadGoogleSheet]);
   const openTransfer = async () => {
     setError("");
     try {
@@ -118,16 +118,18 @@ export function StudentDetailPage() {
   const exportReport = async () => { setError(""); setSuccess(""); setBusy(true); try {
     const filename = await downloadStudentReport(item!.id); setSuccess(`Đã tải báo cáo Excel: ${filename}`);
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể xuất báo cáo Excel."); } finally { setBusy(false); } };
-  const mutateGoogle = async (action: "create" | "retry" | "regenerate" | "archive") => {
+  const mutateGoogle = async (action: "create" | "retry" | "regenerate" | "resync" | "archive") => {
     setError(""); setSuccess(""); setGoogleBusy(true);
     try {
       const result = action === "create" ? await createStudentGoogleSheet(item!.id)
         : action === "retry" ? await retryStudentGoogleSheet(item!.id)
           : action === "regenerate" ? await regenerateStudentGoogleSheet(item!.id)
-            : await archiveStudentGoogleSheet(item!.id);
+            : action === "resync" ? await resyncStudentGoogleSheet(item!.id)
+              : await archiveStudentGoogleSheet(item!.id);
       setGoogleConfirm(null); await loadGoogleSheet();
       setSuccess(action === "archive" ? "Đã lưu trữ liên kết. File Google không bị xóa."
-        : result.sheet.status === "CREATING" ? "Đang tạo sổ theo dõi; trạng thái sẽ tự cập nhật."
+        : action === "resync" ? `Đã xếp hàng đồng bộ lại ${"enqueuedLessonCount" in result ? result.enqueuedLessonCount : 0} buổi học.`
+        : "sheet" in result && result.sheet.status === "CREATING" ? "Đang tạo sổ theo dõi; trạng thái sẽ tự cập nhật."
           : action === "regenerate" ? "Đã tạo lại nội dung từ dữ liệu Teacher Hub."
             : "Đã liên kết Google Sheet cho học sinh.");
     } catch (e) { await loadGoogleSheet(); setError(e instanceof Error ? e.message : "Không thể xử lý Google Sheet."); }
@@ -204,7 +206,17 @@ export function StudentDetailPage() {
                 <Chip color="success" label="Đã liên kết" sx={{ alignSelf: "flex-start" }} />
               </Stack>
               <Typography color="text.secondary">Lần tạo: {displayDateTime(googleState.sheet.lastGeneratedAt)}</Typography>
-              <Typography color="text.secondary">Lần đồng bộ tự động: Chưa bật trong V16C</Typography>
+              {!googleState.syncEnabled && <Alert severity="warning">Đồng bộ tự động đang tắt trên máy chủ.</Alert>}
+              {googleState.deadCount > 0 ? <Alert severity="error">
+                Đồng bộ lỗi vĩnh viễn cho {googleState.deadCount} mục. {googleState.lastSyncError ?? ""}
+              </Alert> : googleState.retryCount > 0 ? <Alert severity="warning">
+                Có {googleState.retryCount} mục đang chờ thử lại. {googleState.lastSyncError ?? ""}
+              </Alert> : googleState.pendingCount > 0 ? <Alert severity="info">
+                Đang chờ đồng bộ {googleState.pendingCount} mục…
+              </Alert> : googleState.lastSuccessfulSyncAt
+                ? <Chip color="success" label="Đồng bộ đã cập nhật" sx={{ alignSelf: "flex-start" }} />
+                : <Chip label="Chưa có dữ liệu đồng bộ" sx={{ alignSelf: "flex-start" }} />}
+              <Typography color="text.secondary">Lần đồng bộ thành công: {displayDateTime(googleState.lastSuccessfulSyncAt)}</Typography>
               <Typography>Quyền chia sẻ: {googleState.sheet.sharingStatus === "RESTRICTED" ? "Giới hạn" : "Đã chia sẻ thủ công"}</Typography>
               <Alert severity="info">Sheet mặc định ở chế độ giới hạn. Hãy cấp quyền Viewer cho phụ huynh trực tiếp trong Google Sheets.</Alert>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap", minWidth: 0 }}>
@@ -212,6 +224,8 @@ export function StudentDetailPage() {
                   startIcon={<Launch />} variant="contained" disabled={!googleState.sheet.webViewUrl}>Mở Google Sheet</Button>
                 <Button startIcon={<ContentCopy />} variant="outlined" disabled={!googleState.sheet.webViewUrl} onClick={() => void copyGoogleLink()}>Sao chép liên kết</Button>
                 <Button variant="outlined" disabled={googleBusy} onClick={() => setGoogleConfirm("regenerate")}>Tạo lại nội dung</Button>
+                <Button variant="outlined" disabled={googleBusy || !googleState.syncEnabled}
+                  onClick={() => setGoogleConfirm("resync")}>Đồng bộ lại</Button>
                 <Button color="warning" variant="outlined" disabled={googleBusy} onClick={() => setGoogleConfirm("archive")}>Lưu trữ</Button>
               </Stack>
             </>}
@@ -257,10 +271,13 @@ export function StudentDetailPage() {
         <Alert severity="info">Nếu giá gói không đổi, tiến độ đang dở tiếp tục theo học sinh. Nếu giá đổi, lựa chọn chốt/giữ đợt cũ được áp dụng rõ ràng. Lesson và attendance cũ không thay đổi.</Alert>
       </Stack></DialogContent><DialogActions><Button onClick={() => setTransferOpen(false)}>Hủy</Button><Button variant="contained" disabled={busy || !targetClassId || !transferReason.trim()} onClick={() => void transfer()}>Xác nhận chuyển lớp</Button></DialogActions></Dialog>
       <Dialog open={Boolean(googleConfirm)} onClose={() => !googleBusy && setGoogleConfirm(null)} fullWidth maxWidth="xs">
-        <DialogTitle>{googleConfirm === "archive" ? "Lưu trữ Google Sheet" : "Tạo lại nội dung Sheet"}</DialogTitle>
+        <DialogTitle>{googleConfirm === "archive" ? "Lưu trữ Google Sheet"
+          : googleConfirm === "resync" ? "Đồng bộ lại lịch sử" : "Tạo lại nội dung Sheet"}</DialogTitle>
         <DialogContent><Alert severity={googleConfirm === "archive" ? "warning" : "info"} sx={{ mt: 1 }}>
           {googleConfirm === "archive"
             ? "Liên kết sẽ được lưu trữ trong Teacher Hub. File Google không bị xóa và có thể tạo một sổ mới sau đó."
+            : googleConfirm === "resync"
+              ? "Toàn bộ buổi học đã hoàn thành của học sinh sẽ được xếp hàng đồng bộ lại. Thao tác chạy nền và không thay đổi dữ liệu học phí."
             : "Toàn bộ vùng do Teacher Hub quản lý sẽ được dựng lại từ database. URL Google Sheet vẫn giữ nguyên."}
         </Alert></DialogContent>
         <DialogActions><Button onClick={() => setGoogleConfirm(null)} disabled={googleBusy}>Hủy</Button>

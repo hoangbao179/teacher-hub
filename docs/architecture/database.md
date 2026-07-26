@@ -76,3 +76,15 @@ mọi nội dung Sheet được query lại từ canonical lesson/attendance/tui
 
 External Google call nằm ngoài transaction. Transaction ngắn chỉ claim `CREATING`,
 finalize `ACTIVE`, ghi lỗi an toàn hoặc archive/audit.
+
+## V16D lesson Google Sheet outbox
+
+`lesson_sessions.general_comment` là nhận xét chung được phép trình bày cho phụ
+huynh; `note` vẫn là ghi chú nội bộ. `google_sheet_sync_outbox` giữ metadata tối
+thiểu `student_id`, `lesson_id`, `event_type`, `revision` và trạng thái xử lý,
+không giữ token, URL hay bản sao nội dung lesson.
+
+Unique `(student_id, lesson_id, event_type)` gộp các lần sửa vào một logical event.
+Event có FK không cascade tới student/lesson để tránh mất dấu ngoài ý muốn. Các
+index `(status,next_attempt_at)`, `locked_at`, `student_id`, `lesson_id` phục vụ
+claim, stale-lock recovery và màn trạng thái.

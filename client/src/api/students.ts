@@ -1,6 +1,6 @@
 import { apiDownload } from "./client";
 import { api } from "./client";
-import type { CreateStudentGoogleSheetRequest, EndEnrollmentRequest, LegacyImportApplyResult, LegacyImportPreview, LegacyImportRowDecision, StudentGoogleSheetMutationResult, StudentGoogleSheetState, TransferEnrollmentRequest, TransferEnrollmentResult } from "@teacher/shared";
+import type { CreateStudentGoogleSheetRequest, EndEnrollmentRequest, LegacyImportApplyResult, LegacyImportPreview, LegacyImportRowDecision, StudentGoogleSheetMutationResult, StudentGoogleSheetResyncResult, StudentGoogleSheetState, TransferEnrollmentRequest, TransferEnrollmentResult } from "@teacher/shared";
 
 export async function downloadStudentReport(studentId: number): Promise<string> {
   const { blob, filename } = await apiDownload(`/api/students/${studentId}/export.xlsx`);
@@ -59,6 +59,12 @@ export function retryStudentGoogleSheet(studentId: number): Promise<StudentGoogl
 
 export function regenerateStudentGoogleSheet(studentId: number): Promise<StudentGoogleSheetMutationResult> {
   return api<StudentGoogleSheetMutationResult>(`/api/students/${studentId}/google-sheet/regenerate`, { method: "POST", body: "{}" });
+}
+
+export function resyncStudentGoogleSheet(studentId: number): Promise<StudentGoogleSheetResyncResult> {
+  return api<StudentGoogleSheetResyncResult>(`/api/students/${studentId}/google-sheet/resync`, {
+    method: "POST", body: "{}",
+  });
 }
 
 export function archiveStudentGoogleSheet(studentId: number): Promise<StudentGoogleSheetMutationResult> {

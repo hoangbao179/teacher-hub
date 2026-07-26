@@ -1,6 +1,6 @@
 # V16D-LESSON-GOOGLE-SHEET-SYNC
 
-Trạng thái: **PLANNED**
+Trạng thái: **IMPLEMENTED — VERIFICATION PENDING**
 
 ## Goal
 
@@ -55,3 +55,14 @@ npm -w client run lint
 npm run test:e2e
 npm run check:full
 ```
+
+## Implementation 26/07/2026
+
+- Migration `0014` thêm `general_comment` và outbox có logical-key/revision/lock/retry.
+- Lesson mutation ghi event trong transaction; worker đọc canonical snapshot sau
+  commit và chỉ cập nhật lesson row, `Tổng quan`, `_TeacherHub`.
+- Student Detail có status/resync; lesson wizard có bulk attendance, Undo, nhận xét
+  riêng thu gọn và action chuyển thành nhận xét chung.
+- Không sync tab `Học phí`, không tự share và không đọc ngược Google.
+- Chưa đổi trạng thái thành PASS: phải hoàn tất toàn bộ automated gate và manual
+  Google smoke theo acceptance.

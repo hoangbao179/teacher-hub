@@ -161,6 +161,25 @@ paths:
       summary: Dựng lại snapshot từ database trong cùng spreadsheetId
       parameters: [{$ref: '#/components/parameters/StudentId'}]
       responses: {'200': {description: Regenerate hoàn tất, content: {application/json: {schema: {$ref: '#/components/schemas/StudentGoogleSheetMutationEnvelope'}}}}, '409': {$ref: '#/components/responses/Conflict'}, '503': {description: Google failure an toàn}}
+  /api/students/{studentId}/google-sheet/resync:
+    post:
+      summary: Xếp hàng đồng bộ lại toàn bộ lesson đã hoàn thành; không gọi Google trong request
+      parameters: [{$ref: '#/components/parameters/StudentId'}]
+      responses:
+        '200':
+          description: Đã tạo hoặc làm mới các outbox event
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [enqueuedLessonCount]
+                    properties:
+                      enqueuedLessonCount: {type: integer, minimum: 0}
+        '409': {$ref: '#/components/responses/Conflict'}
   /api/students/{studentId}/google-sheet/archive:
     post:
       summary: Archive mapping có audit, không xóa hoặc Trash file Google
@@ -816,12 +835,15 @@ components:
     UpdateAttendancesRequest:
       type: object
       required: [attendances]
-      properties: {attendances: {type: array, items: {$ref: '#/components/schemas/AttendanceInput'}}}
+      properties:
+        attendances: {type: array, items: {$ref: '#/components/schemas/AttendanceInput'}}
+        generalComment: {type: string, maxLength: 1000}
     UpdateContentRequest:
       type: object
       properties:
         content: {type: string, maxLength: 2000}
         homework: {type: string, maxLength: 2000}
+        generalComment: {type: string, maxLength: 1000, description: Nhận xét chung được phép hiển thị trong sổ phụ huynh}
         note: {type: string, maxLength: 1000}
     CompleteLessonRequest:
       allOf:
@@ -867,6 +889,7 @@ components:
         cancelReason: {type: string, nullable: true}
         content: {type: string, nullable: true}
         homework: {type: string, nullable: true}
+        generalComment: {type: string, nullable: true}
         note: {type: string, nullable: true}
         makeupSource: {type: object, nullable: true}
         participants: {type: array, items: {$ref: '#/components/schemas/LessonParticipant'}}
@@ -1087,11 +1110,17 @@ components:
       properties:
         data:
           type: object
-          required: [enabled, sheet]
+          required: [enabled, syncEnabled, sheet, pendingCount, retryCount, deadCount, lastSuccessfulSyncAt, lastSyncError]
           properties:
             enabled: {type: boolean}
+            syncEnabled: {type: boolean}
             ownerLabel: {type: string, nullable: true}
             sheet: {allOf: [{$ref: '#/components/schemas/StudentGoogleSheet'}], nullable: true}
+            pendingCount: {type: integer, minimum: 0}
+            retryCount: {type: integer, minimum: 0}
+            deadCount: {type: integer, minimum: 0}
+            lastSuccessfulSyncAt: {type: string, format: date-time, nullable: true}
+            lastSyncError: {type: string, nullable: true}
     StudentGoogleSheetMutationEnvelope:
       type: object
       required: [data]

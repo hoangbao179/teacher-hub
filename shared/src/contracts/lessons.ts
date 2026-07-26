@@ -55,11 +55,13 @@ export interface CompleteLessonAttendanceInput {
 
 export interface UpdateLessonAttendancesRequest {
   attendances: CompleteLessonAttendanceInput[];
+  generalComment?: string;
 }
 
 export interface UpdateLessonContentRequest {
   content?: string;
   homework?: string;
+  generalComment?: string;
   note?: string;
 }
 
@@ -68,6 +70,7 @@ export interface CompleteLessonRequest {
   actualEndTime: string;
   content?: string;
   homework?: string;
+  generalComment?: string;
   note?: string;
   attendances: CompleteLessonAttendanceInput[];
 }
@@ -107,6 +110,7 @@ export interface LessonParticipantDetail {
 export interface LessonDetail extends LessonSummary {
   content: string | null;
   homework: string | null;
+  generalComment: string | null;
   note: string | null;
   makeupSource: {
     occurrenceKey: string;

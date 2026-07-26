@@ -1,8 +1,8 @@
 # Google Drive và Google Sheets
 
 V16C dùng OAuth server-side để tạo một Google Sheet Restricted theo từng học sinh.
-Teacher Hub database là source of truth; Sheet chỉ là snapshot trình bày và chưa tự
-đồng bộ sau mỗi lesson.
+V16D đồng bộ lesson một chiều qua transactional outbox; Teacher Hub database vẫn
+là source of truth.
 
 ## Google Cloud
 
@@ -30,6 +30,11 @@ GOOGLE_DRIVE_REFRESH_TOKEN=
 GOOGLE_DRIVE_ROOT_FOLDER_ID=
 GOOGLE_DRIVE_OWNER_LABEL=Cô Vy
 GOOGLE_SHEETS_TEMPLATE_VERSION=v1
+GOOGLE_SHEET_SYNC_ENABLED=true
+GOOGLE_SHEET_SYNC_INTERVAL_MS=30000
+GOOGLE_SHEET_SYNC_BATCH_SIZE=20
+GOOGLE_SHEET_SYNC_MAX_ATTEMPTS=8
+GOOGLE_SHEET_SYNC_LOCK_TIMEOUT_MS=600000
 ```
 
 `false` cho phép server chạy không cần credential. `true` mà thiếu một credential bắt
@@ -54,3 +59,7 @@ appProperties rồi đưa file thử vào Trash. Không chạy trong CI và khô
 - 429/network: dùng action Thử tạo lại; retry tìm file theo appProperties trước khi tạo.
 - Archive trong Teacher Hub không xóa file Google. Việc Trash file thật là thao tác riêng.
 - Phụ huynh được cấp Viewer thủ công trực tiếp trong Google Sheets; V16C không tự share.
+- Worker chỉ chạy khi cả Drive và sync đều bật. Tắt sync không xóa event; khi bật
+  lại worker tiếp tục pending/retry, hoặc admin chọn **Đồng bộ lại**.
+- V16D không cập nhật tab `Học phí`; dùng regenerate thủ công nếu cần dựng lại
+  snapshot V16C trong lúc chờ V16E.

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { resolveAuthSettings, type AppEnvironment } from "./auth-settings";
 import { resolveGoogleDriveSettings } from "./google-drive-settings";
+import { resolveGoogleSheetSyncSettings } from "./google-sheet-sync-settings";
 
 const nodeEnv = process.env.NODE_ENV ?? "development";
 if (!["development", "test", "production"].includes(nodeEnv)) throw new Error("NODE_ENV must be development, test or production");
@@ -46,4 +47,5 @@ export const config = {
   jwt: { secret: jwtSecret, expiresIn: "7d" },
   auth: authSettings,
   googleDrive: resolveGoogleDriveSettings(process.env),
+  googleSheetSync: resolveGoogleSheetSyncSettings(process.env),
 };

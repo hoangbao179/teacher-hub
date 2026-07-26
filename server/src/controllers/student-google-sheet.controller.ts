@@ -17,4 +17,6 @@ export class StudentGoogleSheetController {
     res.json({ data: await this.service.regenerate(Number(req.params.studentId), req.auth!.id) });
   archive = async (req: Request, res: Response) =>
     res.json({ data: await this.service.archive(Number(req.params.studentId), req.auth!.id) });
+  resync = async (req: Request, res: Response) =>
+    res.json({ data: await this.service.resync(Number(req.params.studentId), req.auth!.id) });
 }

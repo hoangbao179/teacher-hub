@@ -1,9 +1,11 @@
-import type { CreateStudentGoogleSheetRequest, StudentGoogleSheetMutationResult, StudentGoogleSheetState } from "@teacher/shared";
+import type { CreateStudentGoogleSheetRequest, StudentGoogleSheetMutationResult, StudentGoogleSheetResyncResult, StudentGoogleSheetState } from "@teacher/shared";
 import type { GoogleDriveSettings } from "../config/google-drive-settings";
+import type { GoogleSheetSyncSettings } from "../config/google-sheet-sync-settings";
 import { AppError } from "../errors/app-error";
 import { GoogleIntegrationError, classifyGoogleError } from "../integrations/google/google-integration.errors";
 import type { GoogleSheetProvider, ManagedSpreadsheet } from "../integrations/google/google-integration.types";
 import { StudentGoogleSheetRepository } from "../repositories/student-google-sheet.repository";
+import { GoogleSheetSyncRepository } from "../repositories/google-sheet-sync.repository";
 import { StudentService } from "./student.service";
 
 function providerError(error: unknown): AppError {
@@ -18,12 +20,22 @@ function safeName(name: string): string {
 
 export class StudentGoogleSheetService {
   constructor(private readonly repository: StudentGoogleSheetRepository, private readonly students: StudentService,
-    private readonly settings: GoogleDriveSettings, private readonly provider: GoogleSheetProvider | null) {}
+    private readonly settings: GoogleDriveSettings, private readonly provider: GoogleSheetProvider | null,
+    private readonly sync: GoogleSheetSyncRepository = new GoogleSheetSyncRepository(),
+    private readonly syncSettings: GoogleSheetSyncSettings = {
+      enabled: false, intervalMs: 30_000, batchSize: 20, maxAttempts: 8, lockTimeoutMs: 600_000,
+    }) {}
 
   async state(studentId: number): Promise<StudentGoogleSheetState> {
     await this.students.detail(studentId);
-    return { enabled: this.settings.enabled, ownerLabel: this.settings.enabled ? this.settings.ownerLabel : null,
-      sheet: await this.repository.get(studentId) };
+    const [sheet, summary] = await Promise.all([this.repository.get(studentId), this.sync.summary(studentId)]);
+    return {
+      enabled: this.settings.enabled,
+      syncEnabled: this.settings.enabled && this.syncSettings.enabled,
+      ownerLabel: this.settings.enabled ? this.settings.ownerLabel : null,
+      sheet,
+      ...summary,
+    };
   }
 
   async create(studentId: number, input: CreateStudentGoogleSheetRequest, actorUserId: number): Promise<StudentGoogleSheetMutationResult> {
@@ -92,6 +104,11 @@ export class StudentGoogleSheetService {
   async archive(studentId: number, actorUserId: number): Promise<StudentGoogleSheetMutationResult> {
     await this.students.detail(studentId);
     return { sheet: await this.repository.archive(studentId, actorUserId), reused: true };
+  }
+
+  async resync(studentId: number, actorUserId: number): Promise<StudentGoogleSheetResyncResult> {
+    await this.students.detail(studentId);
+    return { enqueuedLessonCount: await this.sync.resyncStudent(studentId, actorUserId) };
   }
 
   private requireProvider(): GoogleSheetProvider {

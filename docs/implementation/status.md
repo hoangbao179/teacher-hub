@@ -163,13 +163,16 @@ chuẩn hóa ngày thiếu năm, đối soát lesson/học phí, chia năm học
 - V16C-STUDENT-GOOGLE-SHEET: **IMPLEMENTED — MANUAL GOOGLE SMOKE PENDING** — OAuth,
   provider/template, mapping, fake-provider tests và Student Detail đã có; chưa thể
   verdict PASS khi môi trường chưa có credential Google test.
-- V16D-LESSON-GOOGLE-SHEET-SYNC: **PLANNED** — general/student-specific comments,
-  quick attendance, transactional outbox và lesson sync; chưa sync tuition.
-- V16E-TUITION-SHEET-AND-PARENT-SHARING: **PLANNED** — tuition presentation,
-  parent Viewer sharing, retry/resync và admin status.
+- V16D-LESSON-GOOGLE-SHEET-SYNC: **IMPLEMENTED — VERIFICATION PENDING** —
+  general/student-specific comments, quick attendance, transactional outbox,
+  worker lesson sync và admin resync/status; chưa sync tuition và chưa có verdict
+  PASS trước smoke Google thật.
+- V16E-TUITION-SHEET-AND-PARENT-SHARING: **PLANNED** — tuition presentation và
+  parent Viewer sharing.
 
-Source of truth thiết kế là `docs/features/student-parent-tracking.md`. V16C chưa có
-credential production và V16D/V16E chưa có outbox, auto-sync hoặc automatic sharing.
+Source of truth thiết kế là `docs/features/student-parent-tracking.md`. Credential
+Google test/production chưa được xác minh; V16E chưa có tuition auto-sync hoặc
+automatic sharing.
 
 ## V15
 

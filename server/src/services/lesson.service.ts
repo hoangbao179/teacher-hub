@@ -17,6 +17,7 @@ import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
 import { AuditRepository } from "../repositories/audit.repository";
 import { LessonRepository, type LessonRow, type ParticipantRow } from "../repositories/lesson.repository";
+import { GoogleSheetSyncRepository } from "../repositories/google-sheet-sync.repository";
 import { TuitionPolicyRepository } from "../repositories/tuition-policy.repository";
 import { TuitionRepository } from "../repositories/tuition.repository";
 import { durationMinutes } from "../utils/date";
@@ -31,6 +32,7 @@ export class LessonService {
     private readonly tuition: TuitionRepository,
     private readonly policies = new TuitionPolicyRepository(),
     private readonly audit = new AuditRepository(),
+    private readonly googleSheetSync = new GoogleSheetSyncRepository(),
   ) {}
 
   async create(input: CreateLessonRequest, actorUserId?: number): Promise<LessonDetail> {
@@ -152,6 +154,7 @@ export class LessonService {
           actualStart, actualEnd, this.actualDuration(actualStart, actualEnd), input.note === undefined ? lesson.note : input.note?.trim() || null);
         const enrollmentIds = (await this.lessons.participantRowsForUpdate(connection, id)).map((row) => Number(row.enrollment_id));
         for (const enrollmentId of enrollmentIds) await this.recalculateWithAudit(connection, enrollmentId, id, actorUserId);
+        await this.enqueueParticipantSync(connection, id, await this.lessons.participantRowsForUpdate(connection, id));
         await this.audit.record(connection, { actorUserId, action: "LESSON_UPDATED", entityType: "LESSON",
           entityId: id, previousValues: lesson, newValues: input });
         await connection.commit();
@@ -266,6 +269,16 @@ export class LessonService {
           await this.lessons.applyMakeupAttendance(connection, id, input.attendances!, actorUserId);
         for (const enrollmentId of new Set([...previousIds, ...snapshotted]))
           await this.recalculateWithAudit(connection, enrollmentId, id, actorUserId);
+        const currentStudentIds = new Set(participants.map((row) => Number(row.student_id)));
+        await this.googleSheetSync.enqueueMany(connection, currentStudentIds, id, "LESSON_UPSERT");
+        await this.googleSheetSync.enqueueMany(
+          connection,
+          previousParticipants
+            .map((row) => Number(row.student_id))
+            .filter((studentId) => !currentStudentIds.has(studentId)),
+          id,
+          "LESSON_REMOVE",
+        );
       }
       await this.audit.record(connection, {
         actorUserId, action: "LESSON_PARTICIPANTS_UPDATED", entityType: "LESSON",
@@ -281,6 +294,7 @@ export class LessonService {
 
   async updateAttendances(id: number, input: UpdateLessonAttendancesRequest, actorUserId?: number): Promise<LessonDetail> {
     this.validateId(id);
+    this.validateTextLengths({ generalComment: input.generalComment });
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -293,9 +307,26 @@ export class LessonService {
       if (lesson.status === "COMPLETED" && await this.tuition.attendanceTouchesPaidCycle(connection, id, affectedIds))
         throw new AppError(409, "PAID_CYCLE_CONFLICT", "Attendance thuộc chu kỳ đã thu và không thể sửa.");
       await this.saveAttendances(connection, lesson, participants, input.attendances, false);
+      if (input.generalComment !== undefined)
+        await this.lessons.updateContent(
+          connection,
+          id,
+          lesson.content,
+          lesson.homework,
+          input.generalComment.trim() || null,
+          lesson.note,
+        );
       if (lesson.status === "COMPLETED")
         for (const enrollmentId of new Set(affectedIds))
           await this.recalculateWithAudit(connection, enrollmentId, id, actorUserId);
+      if (lesson.status === "COMPLETED") {
+        const affected = new Set(affectedIds);
+        await this.enqueueParticipantSync(
+          connection,
+          id,
+          participants.filter((row) => affected.has(Number(row.enrollment_id))),
+        );
+      }
       if (lesson.status === "COMPLETED" && lesson.makeup_source_occurrence_key)
         await this.lessons.applyMakeupAttendance(connection, id, input.attendances, actorUserId);
       await this.audit.record(connection, {
@@ -321,7 +352,12 @@ export class LessonService {
       if (!["DRAFT", "COMPLETED"].includes(lesson.status))
         throw new AppError(409, "LESSON_NOT_DRAFT", "Buổi đã hủy không thể sửa nội dung.");
       await this.lessons.updateContent(connection, id,
-        input.content?.trim() || null, input.homework?.trim() || null, input.note?.trim() || null);
+        input.content?.trim() || null,
+        input.homework?.trim() || null,
+        input.generalComment === undefined ? lesson.general_comment : input.generalComment?.trim() || null,
+        input.note?.trim() || null);
+      if (lesson.status === "COMPLETED")
+        await this.enqueueParticipantSync(connection, id, await this.lessons.participantRowsForUpdate(connection, id));
       await this.audit.record(connection, {
         actorUserId, action: "LESSON_UPDATED", entityType: "LESSON", entityId: id, newValues: input,
       });
@@ -356,6 +392,7 @@ export class LessonService {
           connection, lessonId, input.actualStartTime, input.actualEndTime, duration,
           input.content?.trim() || lesson.content || null,
           input.homework?.trim() || lesson.homework || null,
+          input.generalComment?.trim() || lesson.general_comment || null,
           input.note?.trim() || lesson.note || null,
         );
         if (lesson.makeup_source_occurrence_key)
@@ -373,6 +410,12 @@ export class LessonService {
           actorUserId, action: "TUITION_ALLOCATION_RECALCULATED", entityType: "LESSON", entityId: lessonId,
           newValues: { mode: "M3_CHRONOLOGICAL", enrollmentIds: impacts.map((item) => item.enrollmentId) },
         });
+        await this.googleSheetSync.enqueueMany(
+          connection,
+          saved.map((item) => item.studentId),
+          lessonId,
+          "LESSON_UPSERT",
+        );
         await connection.commit();
       }
     } catch (error) {
@@ -575,8 +618,22 @@ export class LessonService {
       throw new AppError(400, "VALIDATION_ERROR", "Trạng thái điểm danh không hợp lệ.");
   }
 
-  private validateTextLengths(input: { content?: string; homework?: string; note?: string }): void {
-    if ((input.content?.length ?? 0) > 2000 || (input.homework?.length ?? 0) > 2000 || (input.note?.length ?? 0) > 1000)
+  private async enqueueParticipantSync(
+    connection: PoolConnection,
+    lessonId: number,
+    participants: ParticipantRow[],
+  ): Promise<void> {
+    await this.googleSheetSync.enqueueMany(
+      connection,
+      participants.map((row) => Number(row.student_id)),
+      lessonId,
+      "LESSON_UPSERT",
+    );
+  }
+
+  private validateTextLengths(input: { content?: string; homework?: string; generalComment?: string; note?: string }): void {
+    if ((input.content?.length ?? 0) > 2000 || (input.homework?.length ?? 0) > 2000 ||
+        (input.generalComment?.length ?? 0) > 1000 || (input.note?.length ?? 0) > 1000)
       throw new AppError(400, "VALIDATION_ERROR", "Nội dung, bài tập hoặc ghi chú vượt giới hạn.");
   }
 

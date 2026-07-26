@@ -44,6 +44,7 @@ export function createRouter(): Router {
   router.post("/api/students/:studentId/google-sheet", asyncHandler(controllers.studentGoogleSheets.create));
   router.post("/api/students/:studentId/google-sheet/retry", asyncHandler(controllers.studentGoogleSheets.retry));
   router.post("/api/students/:studentId/google-sheet/regenerate", asyncHandler(controllers.studentGoogleSheets.regenerate));
+  router.post("/api/students/:studentId/google-sheet/resync", asyncHandler(controllers.studentGoogleSheets.resync));
   router.post("/api/students/:studentId/google-sheet/archive", asyncHandler(controllers.studentGoogleSheets.archive));
   router.post(
     "/api/students/:studentId/legacy-imports/apply",

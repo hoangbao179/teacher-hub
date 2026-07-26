@@ -18,8 +18,14 @@ export interface StudentGoogleSheetInfo {
 
 export interface StudentGoogleSheetState {
   enabled: boolean;
+  syncEnabled: boolean;
   ownerLabel: string | null;
   sheet: StudentGoogleSheetInfo | null;
+  pendingCount: number;
+  retryCount: number;
+  deadCount: number;
+  lastSuccessfulSyncAt: string | null;
+  lastSyncError: string | null;
 }
 
 export interface CreateStudentGoogleSheetRequest {
@@ -30,4 +36,8 @@ export interface CreateStudentGoogleSheetRequest {
 export interface StudentGoogleSheetMutationResult {
   sheet: StudentGoogleSheetInfo;
   reused: boolean;
+}
+
+export interface StudentGoogleSheetResyncResult {
+  enqueuedLessonCount: number;
 }

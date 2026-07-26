@@ -128,8 +128,19 @@ try {
     await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
   }
   await page.getByText("Học sinh Mẫu Một").waitFor();
+  await page.getByRole("button", { name: "Tất cả có mặt" }).click();
+  await page.getByText(/Tất cả có mặt: \d+ học sinh\. Chưa lưu\./).waitFor();
+  const firstCard = page.locator(".MuiCard-root").filter({ hasText: "Học sinh Mẫu Một" });
+  await firstCard.getByRole("button", { name: "Thêm nhận xét riêng" }).click();
+  await page.getByLabel("Nhận xét riêng (tùy chọn)").first().fill("Nhận xét chung từ học sinh mẫu");
+  await firstCard.getByRole("button", { name: "Dùng làm nhận xét chung cho cả lớp" }).click();
+  const commonDialog = page.getByRole("dialog", { name: "Dùng nhận xét riêng làm nhận xét chung?" });
+  await commonDialog.getByText(/Nhận xét riêng của các học sinh khác vẫn được giữ nguyên/).waitFor();
+  await commonDialog.getByRole("button", { name: "Xác nhận" }).click();
   const secondCard = page.locator(".MuiCard-root").filter({ hasText: "Học sinh Mẫu Hai" });
-  await secondCard.getByRole("button", { name: "Nghỉ" }).click();
+  await secondCard.getByRole("button", { name: "Nghỉ", exact: true }).click();
+  await secondCard.getByRole("button", { name: "Thêm nhận xét riêng" }).click();
+  await page.getByLabel("Nhận xét riêng (tùy chọn)").last().fill("Nghỉ có phép");
   const freeCard = page.locator(".MuiCard-root").filter({ hasText: "Học sinh Mẫu Ba" });
   if ((await freeCard.getByRole("button", { name: "Miễn phí" }).getAttribute("aria-pressed")) !== "true")
     throw new Error("Global FREE attendance did not default to FREE");
@@ -151,6 +162,8 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByLabel("Nội dung buổi học").fill("Nội dung Playwright M2C");
   await page.getByLabel("Bài tập về nhà").fill("Bài tập Playwright M2C");
+  if (await page.getByLabel("Nhận xét chung").inputValue() !== "Nhận xét chung từ học sinh mẫu")
+    throw new Error("Student note was not moved to the general comment");
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
   await page.getByText("Xác nhận buổi học").waitFor();
   await noHorizontalScroll(page);
@@ -174,6 +187,7 @@ try {
     await continueDespiteConflict.click();
     await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
   }
+  await page.getByRole("button", { name: "Thêm nhận xét riêng" }).first().click();
   await page.getByLabel("Nhận xét riêng (tùy chọn)").first().waitFor();
   if (await page.getByText("Học sinh Mẫu Ba", { exact: true }).count()) throw new Error("Non-selected makeup student appeared in attendance");
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
@@ -186,7 +200,7 @@ try {
   if (makeupDetail.participants.length !== 2) throw new Error("Makeup snapshot did not persist exactly two participants");
   await noHorizontalScroll(page);
   await page.goto(`http://127.0.0.1:5175/admin/lessons/new?classId=${group.id}`);
-  await page.getByLabel("Ghi chú").fill("unsaved");
+  await page.getByLabel("Ghi chú nội bộ").fill("unsaved");
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.getByText("Lớp học", { exact: true }).last().click();
   if (!page.url().includes("/admin/lessons/new")) throw new Error("Unsaved-change warning did not block navigation");

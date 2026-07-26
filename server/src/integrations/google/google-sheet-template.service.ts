@@ -6,6 +6,13 @@ const tuitionLabels = { ACCUMULATING: "Đang tích lũy", PAYMENT_DUE: "Cần th
 const paymentLabels = { CASH: "Tiền mặt", BANK_TRANSFER: "Chuyển khoản", "": "" } as const;
 const names = ["Tổng quan", "Nhật ký học tập", "Học phí", "_TeacherHub"] as const;
 
+export function googleLearningRowValues(row: StudentGoogleSheetSnapshot["learning"][number]): Array<string | number | boolean> {
+  return [row.lessonId, row.academicYear, row.grade, safeGoogleCell(row.className), row.date, row.time,
+    attendanceLabels[row.attendance], row.billable ? "Có" : "Không", row.cycleSequence ?? "", safeGoogleCell(row.content),
+    safeGoogleCell(row.homework), safeGoogleCell(row.attendance === "ABSENT" ? "" : row.generalComment),
+    safeGoogleCell(row.studentComment), row.updatedAt];
+}
+
 export function safeGoogleCell(value: unknown): string | number | boolean {
   if (value == null) return "";
   if (typeof value === "number" || typeof value === "boolean") return value;
@@ -57,10 +64,7 @@ export class GoogleSheetTemplateService {
     ];
     const learning = [["Teacher Hub Lesson ID", "Năm học", "Khối", "Lớp", "Ngày học", "Giờ học", "Điểm danh",
       "Có tính phí", "Buổi số trong chu kỳ", "Nội dung học", "Bài tập", "Nhận xét chung", "Nhận xét riêng", "Cập nhật lúc"],
-      ...snapshot.learning.map((row) => [row.lessonId, row.academicYear, row.grade, safeGoogleCell(row.className), row.date, row.time,
-        attendanceLabels[row.attendance], row.billable ? "Có" : "Không", row.cycleSequence ?? "", safeGoogleCell(row.content),
-        safeGoogleCell(row.homework), safeGoogleCell(row.attendance === "ABSENT" ? "" : row.generalComment),
-        safeGoogleCell(row.studentComment), row.updatedAt])];
+      ...snapshot.learning.map(googleLearningRowValues)];
     const tuition = [["Teacher Hub Tuition Cycle ID", "Chu kỳ", "Năm học", "Lớp", "Từ ngày", "Đến ngày", "Số buổi tính phí",
       "Số buổi nghỉ", "Tổng lịch học", "Mức học phí", "Trạng thái", "Ngày thu", "Hình thức thanh toán"],
       ...snapshot.tuition.map((row) => [row.cycleId, `Chu kỳ ${row.cycleNumber} · ${row.billableCount}/8`, row.academicYear,

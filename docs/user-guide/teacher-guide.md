@@ -28,8 +28,10 @@ Học sinh**. Nút thao tác cố định nằm phía trên thanh. Desktop dùng
 2. **Học sinh → Thêm học sinh**, mở lớp và ghi danh; dùng search theo tên/tên gọi/lớp,
    sort A–Z/Z–A hoặc lọc trạng thái; chọn Theo giá lớp, Giá riêng
    hoặc Miễn phí theo ngày hiệu lực.
-3. **Ghi nhận buổi học**: chọn lớp/ngày/giờ, điểm danh, nội dung và xác nhận. Chỉ
-   Có mặt có tính phí mới cộng đợt học phí; Nghỉ/Miễn phí không cộng; số giờ không quy đổi buổi.
+3. **Ghi nhận buổi học**: chọn lớp/ngày/giờ; dùng **Tất cả có mặt**,
+   **Tất cả nghỉ** hoặc **Xóa lựa chọn**, rồi chỉnh ngoại lệ. Trạng thái gợi ý chưa
+   được lưu cho đến khi xác nhận. Nhận xét chung xuất hiện cho phụ huynh; nhận xét
+   riêng chỉ thuộc đúng học sinh. **Ghi chú nội bộ** không đưa sang Sheet.
 4. **Buổi học bù**: từ occurrence đã Nghỉ, chọn **Tạo buổi học bù** rồi chọn toàn
    lớp hoặc subset. Học sinh đã được bù cho cùng nguồn sẽ bị khóa. Buổi bù generic
    không có nguồn vẫn dùng được. Khi nhập muộn, dùng ngày học thật; hệ thống phân
@@ -50,7 +52,9 @@ Học sinh**. Nút thao tác cố định nằm phía trên thanh. Desktop dùng
 9. **Sổ theo dõi phụ huynh**: tại chi tiết học sinh, chọn **Tạo sổ theo dõi**.
    Khi **Đã liên kết**, có thể mở/copy link hoặc tạo lại snapshot từ database.
    Sheet mặc định Restricted; cô Vy cấp Viewer thủ công trong Google Sheets.
-   **Lưu trữ** không xóa file Google và auto-sync lesson chưa bật trong V16C.
+   **Lưu trữ** không xóa file Google. Card hiển thị trạng thái đồng bộ lesson; khi
+   cần, chọn **Đồng bộ lại** để xếp hàng toàn bộ lịch sử đã hoàn thành. Sheet vẫn
+   Restricted và tab Học phí chưa được auto-sync trong V16D.
 10. Tạm dừng/mở lại lớp hoặc ghi danh phải chọn ngày hiệu lực. Khoảng pause không
    sinh lịch/participant; lịch sử trước pause và dữ liệu nhập muộn vẫn theo ngày
    học thực tế. Đóng lớp/ngừng học không xóa lịch sử.

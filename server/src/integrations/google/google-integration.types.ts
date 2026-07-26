@@ -57,6 +57,17 @@ export interface GoogleSheetProvider {
   render(resource: ManagedSpreadsheet, snapshot: StudentGoogleSheetSnapshot, metadata: {
     templateVersion: string; recordId: number; generatedAt: string; syncedAt?: string | null;
   }): Promise<void>;
+  syncLesson(
+    resource: ManagedSpreadsheet,
+    row: GoogleLearningRow | null,
+    overview: StudentGoogleSheetSnapshot["overview"] & {
+      currentClass: string;
+      currentGrade: string;
+      currentAcademicYear: string;
+    },
+    lessonId: number,
+    syncedAt: string,
+  ): Promise<void>;
   trash(spreadsheetId: string): Promise<void>;
   assertReady(rootFolderId: string): Promise<void>;
 }

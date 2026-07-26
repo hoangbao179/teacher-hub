@@ -22,8 +22,10 @@
 - V16A: PASS — preview/audit legacy Excel theo student; không ghi database.
 - V16B: PASS — apply legacy atomic vào MySQL, lesson matching, attendance riêng, cycle theo student qua enrollment và idempotency/audit; không gọi Google.
 - V16C: IMPLEMENTED, MANUAL SMOKE PENDING — OAuth/Drive/Sheets, template và một Google Sheet ACTIVE theo student; chưa có credential test để xác minh Google thật.
-- V16D: PLANNED — quick attendance, general/private comments, outbox và lesson sync; giữ Sheet khi lên lớp.
-- V16E: PLANNED — tuition sheet, parent Viewer sharing, retry/resync và admin status.
+- V16D: IMPLEMENTED, VERIFICATION PENDING — quick attendance, general/private
+  comments, transactional outbox, lesson sync và admin resync/status; chưa được
+  PASS cho đến khi smoke Google thật hoàn tất.
+- V16E: PLANNED — tuition sheet và parent Viewer sharing.
 - V19A: PASS — Homepage một cơ sở, Google Maps tùy chọn với fallback, trust strip và responsive polish.
 
 After V12E, the next separate activity is independent full-system review. Its

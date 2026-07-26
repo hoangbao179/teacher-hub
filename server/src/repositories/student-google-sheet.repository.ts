@@ -141,7 +141,7 @@ export class StudentGoogleSheetRepository {
     const [lessons] = await pool.query<RowDataPacket[]>(
       `SELECT l.id lesson_id,l.session_date,TIME_FORMAT(COALESCE(l.actual_start_time,l.scheduled_start_time),'%H:%i') start_time,
         TIME_FORMAT(COALESCE(l.actual_end_time,l.scheduled_end_time),'%H:%i') end_time,COALESCE(l.class_name_snapshot,c.name) class_name,
-        a.attendance_status,a.counts_for_tuition,l.content,l.homework,a.student_note,l.updated_at,tcs.sequence_number
+        a.attendance_status,a.counts_for_tuition,l.content,l.homework,l.general_comment,a.student_note,l.updated_at,tcs.sequence_number
        FROM lesson_attendances a JOIN class_enrollments e ON e.id=a.enrollment_id AND e.student_id=?
        JOIN lesson_sessions l ON l.id=a.lesson_session_id AND l.status='COMPLETED' JOIN classes c ON c.id=l.class_id
        LEFT JOIN tuition_cycle_sessions tcs ON tcs.attendance_id=a.id
@@ -161,7 +161,9 @@ export class StudentGoogleSheetRepository {
       grade: gradeFromClassName(String(row.class_name)), className: String(row.class_name), date: String(row.session_date).slice(0, 10),
       time: `${row.start_time}–${row.end_time}`, attendance: row.attendance_status, billable: Boolean(row.counts_for_tuition),
       cycleSequence: row.sequence_number == null ? null : Number(row.sequence_number), content: String(row.content ?? ""),
-      homework: String(row.homework ?? ""), generalComment: "", studentComment: String(row.student_note ?? ""), updatedAt: dateTime(row.updated_at)! }));
+      homework: String(row.homework ?? ""),
+      generalComment: row.attendance_status === "ABSENT" ? "" : String(row.general_comment ?? ""),
+      studentComment: String(row.student_note ?? ""), updatedAt: dateTime(row.updated_at)! }));
     const tuition = cycles.map((cycle, index) => {
       const fromDate = String(cycle.started_at ?? "").slice(0, 10); const toDate = String(cycle.to_date ?? fromDate).slice(0, 10);
       const inRange = learning.filter((row) => row.date >= fromDate && row.date <= toDate);
@@ -179,7 +181,10 @@ export class StudentGoogleSheetRepository {
     return { student: { id: Number(students[0].id), fullName: String(students[0].full_name), currentClass,
       currentGrade: gradeFromClassName(currentClass), currentAcademicYear: academicYear(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" })) },
       overview: { currentProgress: currentCycle?.billableCount ?? 0, attendanceRate: learning.length ? Math.round(present * 100 / learning.length) : 0,
-        latestLesson: latest?.date ?? "—", tuitionStatus, latestComment: latest?.attendance === "ABSENT" ? "" : latest?.studentComment ?? "",
+        latestLesson: latest?.date ?? "—", tuitionStatus,
+        latestComment: latest?.attendance === "ABSENT"
+          ? latest?.studentComment ?? ""
+          : latest?.studentComment || latest?.generalComment || "",
         latestHomework: latest?.homework ?? "", teacher: "Cô Vy" }, learning, tuition };
   }
 }

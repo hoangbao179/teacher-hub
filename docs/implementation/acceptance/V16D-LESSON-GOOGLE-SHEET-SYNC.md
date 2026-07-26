@@ -1,6 +1,7 @@
 # V16D-LESSON-GOOGLE-SHEET-SYNC Acceptance
 
-Trạng thái: **PLANNED**. Không đánh dấu PASS trước khi có implementation/evidence.
+Trạng thái: **IMPLEMENTED — VERIFICATION PENDING**. Không đánh dấu PASS trước khi
+có đủ automated evidence và manual Google smoke.
 
 ## Functional acceptance
 
@@ -50,3 +51,13 @@ Trạng thái: **PLANNED**. Không đánh dấu PASS trước khi có implementa
 
 - [ ] Với lớp test có ít nhất hai student, complete lesson rồi xác minh mỗi Sheet chỉ có dữ liệu đúng student.
 - [ ] Mô phỏng lỗi quyền, retry và promotion; xác minh URL giữ nguyên và tuition sheet chưa đổi.
+
+## Evidence đang có
+
+- Unit: formula escaping, parent-safe `ABSENT`, backoff và config bounds.
+- Native MySQL: migration chạy; outbox rollback, logical revision race và fake
+  worker canonical row đã có test.
+- UI/E2E: quick attendance/general comment và Google Sheet card được mở rộng trong
+  các targeted script.
+- Các checkbox vẫn để trống và không có verdict PASS cho đến khi chạy xong gate
+  cuối cùng cùng smoke Google thật.

@@ -5,6 +5,8 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
   readonly resources = new Map<number, ManagedSpreadsheet>();
   readonly rendered: Array<{ resource: ManagedSpreadsheet; snapshot: StudentGoogleSheetSnapshot }> = [];
   readonly trashed: string[] = [];
+  readonly synced: Array<{ resource: ManagedSpreadsheet; lessonId: number; row: StudentGoogleSheetSnapshot["learning"][number] | null }> = [];
+  readonly learningRows = new Map<string, StudentGoogleSheetSnapshot["learning"][number]>();
   createCount = 0;
   lastCreateInput: CreateManagedSpreadsheetInput | null = null;
   failure: "NETWORK" | "AUTH" | null = null;
@@ -36,6 +38,22 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
     this.template.build(snapshot, resource.spreadsheetId,
       { "Tổng quan": 1, "Nhật ký học tập": 2, "Học phí": 3, _TeacherHub: 4 }, metadata);
     this.rendered.push({ resource, snapshot });
+    for (const row of snapshot.learning) this.learningRows.set(`${resource.spreadsheetId}:${row.lessonId}`, row);
+  }
+  async syncLesson(
+    resource: ManagedSpreadsheet,
+    row: StudentGoogleSheetSnapshot["learning"][number] | null,
+    _overview: StudentGoogleSheetSnapshot["overview"] & {
+      currentClass: string; currentGrade: string; currentAcademicYear: string;
+    },
+    lessonId: number,
+  ): Promise<void> {
+    if (this.failure === "NETWORK") throw new Error("network timeout");
+    if (this.failure === "AUTH") throw Object.assign(new Error("permission denied"), { code: 403 });
+    if (this.delayMs) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
+    const key = `${resource.spreadsheetId}:${lessonId}`;
+    if (row) this.learningRows.set(key, row); else this.learningRows.delete(key);
+    this.synced.push({ resource, lessonId, row });
   }
   async trash(spreadsheetId: string): Promise<void> { this.trashed.push(spreadsheetId); }
 }

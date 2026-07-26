@@ -33,6 +33,8 @@ import { StudentGoogleSheetRepository } from "./repositories/student-google-shee
 import { GoogleApiSheetProvider } from "./integrations/google/google-sheet.provider";
 import { config } from "./config/config";
 import { FakeGoogleSheetProvider } from "./integrations/google/fake-google-sheet.provider";
+import { GoogleSheetSyncRepository } from "./repositories/google-sheet-sync.repository";
+import { GoogleSheetSyncWorker } from "./workers/google-sheet-sync.worker";
 
 const users = new UserRepository();
 const classes = new ClassRepository();
@@ -46,7 +48,8 @@ const studentReports = new StudentReportRepository();
 const authService = new AuthService(users);
 const classService = new ClassService(classes);
 const studentService = new StudentService(students);
-const lessonService = new LessonService(lessons, tuition);
+const googleSheetSync = new GoogleSheetSyncRepository();
+const lessonService = new LessonService(lessons, tuition, undefined, undefined, googleSheetSync);
 const tuitionService = new TuitionService(tuition);
 const scheduleService = new ScheduleService(schedules, lessonService);
 const dashboardService = new DashboardService(tuition, schedules);
@@ -65,7 +68,21 @@ function createGoogleSheetProvider() {
   return new GoogleApiSheetProvider(config.googleDrive);
 }
 const googleSheetProvider = createGoogleSheetProvider();
-const studentGoogleSheetService = new StudentGoogleSheetService(studentGoogleSheets, studentService, config.googleDrive, googleSheetProvider);
+const studentGoogleSheetService = new StudentGoogleSheetService(
+  studentGoogleSheets,
+  studentService,
+  config.googleDrive,
+  googleSheetProvider,
+  googleSheetSync,
+  config.googleSheetSync,
+);
+export const googleSheetSyncWorker = new GoogleSheetSyncWorker(
+  googleSheetSync,
+  studentGoogleSheets,
+  googleSheetProvider,
+  config.googleSheetSync,
+  config.googleDrive.enabled,
+);
 
 export const controllers = {
   health: new HealthController(),

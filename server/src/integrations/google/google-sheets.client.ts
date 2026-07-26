@@ -52,4 +52,53 @@ export class GoogleSheetsClient {
     } });
     await this.sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
   }
+
+  async syncLearningRow(
+    spreadsheetId: string,
+    lessonId: number,
+    row: Array<string | number | boolean> | null,
+    overview: Array<{ range: string; value: string | number | boolean }>,
+    syncedAt: string,
+  ): Promise<void> {
+    const range = "'Nhật ký học tập'!A:N";
+    const response = await this.sheets.spreadsheets.values.get({ spreadsheetId, range });
+    const values = response.data.values ?? [];
+    const rowIndex = values.findIndex((candidate, index) => index > 0 && String(candidate[0] ?? "") === String(lessonId));
+    if (row) {
+      if (rowIndex >= 1) {
+        await this.sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `'Nhật ký học tập'!A${rowIndex + 1}:N${rowIndex + 1}`,
+          valueInputOption: "RAW",
+          requestBody: { values: [row] },
+        });
+      } else {
+        await this.sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range,
+          valueInputOption: "RAW",
+          insertDataOption: "INSERT_ROWS",
+          requestBody: { values: [row] },
+        });
+      }
+    } else if (rowIndex >= 1) {
+      const ids = await this.metadata(spreadsheetId);
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: { requests: [{ deleteDimension: { range: {
+          sheetId: ids["Nhật ký học tập"], dimension: "ROWS", startIndex: rowIndex, endIndex: rowIndex + 1,
+        } } }] },
+      });
+    }
+    await this.sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: "RAW",
+        data: [
+          ...overview.map((item) => ({ range: `'Tổng quan'!${item.range}`, values: [[item.value]] })),
+          { range: "'_TeacherHub'!B7", values: [[syncedAt]] },
+        ],
+      },
+    });
+  }
 }

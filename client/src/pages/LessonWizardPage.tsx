@@ -13,6 +13,7 @@ import {
   DialogTitle,
   FormControlLabel,
   MenuItem,
+  Snackbar,
   Stack,
   Step,
   StepLabel,
@@ -90,7 +91,12 @@ export function LessonWizardPage() {
   const [attendances, setAttendances] = useState<AttendanceDraft>({});
   const [content, setContent] = useState("");
   const [homework, setHomework] = useState("");
+  const [generalComment, setGeneralComment] = useState("");
   const [note, setNote] = useState("");
+  const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
+  const [bulkUndo, setBulkUndo] = useState<AttendanceDraft | null>(null);
+  const [bulkMessage, setBulkMessage] = useState("");
+  const [copyNoteEnrollmentId, setCopyNoteEnrollmentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(Boolean(lessonId));
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -118,7 +124,8 @@ export function LessonWizardPage() {
       setActualEnd(detail.actualEndTime ?? detail.scheduledEndTime);
       setLessonType(detail.lessonType); setSelectedIds(detail.participants.map((item) => item.enrollmentId));
       setAttendances(attendanceFrom(detail)); setContent(detail.content ?? "");
-      setHomework(detail.homework ?? ""); setNote(detail.note ?? "");
+      setHomework(detail.homework ?? ""); setGeneralComment(detail.generalComment ?? ""); setNote(detail.note ?? "");
+      setExpandedNotes(new Set(detail.participants.filter((item) => item.attendance?.studentNote).map((item) => item.enrollmentId)));
       if (detail.status === "COMPLETED" || detail.content || detail.homework) setStep(3);
       else if (detail.participants.length && detail.participants.every((item) => item.attendance)) setStep(2);
       else if (detail.participants.length) setStep(1);
@@ -155,7 +162,7 @@ export function LessonWizardPage() {
     const outsideClick = (event: MouseEvent) => {
       if (!dirty) return;
       const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-wizard-action]")) return;
+      if (target?.closest("[data-testid='lesson-wizard'],[role='dialog'],.MuiSnackbar-root")) return;
       if (target?.closest("button,a") && !window.confirm("Bạn có thay đổi chưa lưu. Rời trang và bỏ thay đổi?")) {
         event.preventDefault(); event.stopPropagation();
       }
@@ -183,7 +190,32 @@ export function LessonWizardPage() {
     PRESENT: Object.values(attendances).filter((item) => item.status === "PRESENT").length,
     ABSENT: Object.values(attendances).filter((item) => item.status === "ABSENT").length,
     FREE: Object.values(attendances).filter((item) => item.status === "FREE").length,
+    ABSENT_CHARGED: Object.values(attendances).filter((item) => item.status === "ABSENT_CHARGED").length,
   }), [attendances]);
+
+  const applyBulkAttendance = (status: AttendanceStatus | null, label: string) => {
+    setBulkUndo(attendances);
+    setAttendances(Object.fromEntries(participants.map((participant) => {
+      const current = attendances[participant.enrollmentId] ?? { status: participant.tuitionMode === "FREE" ? "FREE" : "PRESENT", studentNote: "" };
+      const nextStatus = status === "PRESENT" && participant.tuitionMode === "FREE" ? "FREE" : status;
+      return [participant.enrollmentId, nextStatus ? { ...current, status: nextStatus } : { ...current, status: undefined }];
+    })) as AttendanceDraft);
+    setBulkMessage(`${label}: ${participants.length} học sinh. Chưa lưu.`);
+    markDirty();
+  };
+
+  const confirmCopyStudentNote = () => {
+    if (copyNoteEnrollmentId == null) return;
+    const source = attendances[copyNoteEnrollmentId];
+    if (!source?.studentNote.trim()) return;
+    setGeneralComment(source.studentNote.trim());
+    setAttendances((current) => ({
+      ...current,
+      [copyNoteEnrollmentId]: { ...current[copyNoteEnrollmentId], studentNote: "" },
+    }));
+    setCopyNoteEnrollmentId(null);
+    markDirty();
+  };
 
   const handleError = (value: unknown) => {
     const message = value instanceof Error ? value.message : "Không thể lưu dữ liệu.";
@@ -250,7 +282,7 @@ export function LessonWizardPage() {
     }
     setBusy(true); setError(""); setConflict("");
     try {
-      const saved = await lessonApi.attendances(lesson.id, { attendances: participants.map((item) => ({
+      const saved = await lessonApi.attendances(lesson.id, { generalComment, attendances: participants.map((item) => ({
         enrollmentId: item.enrollmentId,
         status: attendances[item.enrollmentId].status,
         studentNote: attendances[item.enrollmentId].studentNote || undefined,
@@ -264,7 +296,7 @@ export function LessonWizardPage() {
     if (!lesson) return;
     setBusy(true); setError(""); setConflict("");
     try {
-      const saved = await lessonApi.content(lesson.id, { content, homework, note });
+      const saved = await lessonApi.content(lesson.id, { content, homework, generalComment, note });
       setLesson(saved); setDirty(false); setStep(3);
     } catch (value) { handleError(value); }
     finally { setBusy(false); }
@@ -275,7 +307,7 @@ export function LessonWizardPage() {
     setBusy(true); setError(""); setConflict("");
     try {
       const result = await lessonApi.complete(lesson.id, {
-        actualStartTime: actualStart, actualEndTime: actualEnd, content, homework, note,
+        actualStartTime: actualStart, actualEndTime: actualEnd, content, homework, generalComment, note,
         attendances: participants.map((item) => ({
           enrollmentId: item.enrollmentId,
           status: attendances[item.enrollmentId].status,
@@ -352,11 +384,19 @@ export function LessonWizardPage() {
             setSelectedIds((current) => event.target.checked ? [...current, student.enrollmentId] : current.filter((value) => value !== student.enrollmentId)); markDirty();
           }} />} label={`${student.fullName}${unavailable ? " · Đã được xếp học bù" : ""}`} />; })}
         </CardContent></Card>}
-        <TextField multiline minRows={2} label="Ghi chú" value={note} onChange={(event) => { setNote(event.target.value.slice(0, 1000)); markDirty(); }} helperText={`${note.length}/1000`} />
+        <TextField multiline minRows={2} label="Ghi chú nội bộ" value={note} onChange={(event) => { setNote(event.target.value.slice(0, 1000)); markDirty(); }} helperText={`${note.length}/1000 · Không hiển thị cho phụ huynh`} />
       </Stack>}
 
       {step === 1 && <Stack spacing={1.5}>
         {!participants.length && <Alert severity="warning">Không có participant trong snapshot. Quay lại để kiểm tra ngày học hoặc danh sách chọn.</Alert>}
+        {!!participants.length && <>
+          <Alert severity="info">Trạng thái ban đầu được gợi ý theo chế độ học phí và chưa được lưu.</Alert>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button variant="outlined" onClick={() => applyBulkAttendance("PRESENT", "Tất cả có mặt")}>Tất cả có mặt</Button>
+            <Button variant="outlined" onClick={() => applyBulkAttendance("ABSENT", "Tất cả nghỉ")}>Tất cả nghỉ</Button>
+            <Button variant="text" onClick={() => applyBulkAttendance(null, "Đã xóa lựa chọn")}>Xóa lựa chọn</Button>
+          </Stack>
+        </>}
         {participants.map((participant) => <Card key={participant.participantId} variant="outlined"><CardContent>
           <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
             <Typography variant="subtitle1">{participant.studentName}</Typography>
@@ -365,21 +405,29 @@ export function LessonWizardPage() {
           <ToggleButtonGroup exclusive fullWidth size="small" value={attendances[participant.enrollmentId]?.status ?? null} onChange={(_event, value: AttendanceStatus | null) => {
             if (!value) return;
             setAttendances((current) => ({ ...current, [participant.enrollmentId]: { ...(current[participant.enrollmentId] ?? { studentNote: "" }), status: value } })); markDirty();
-          }} sx={{ mt: 1, "& .MuiToggleButton-root": { minHeight: 44, px: 0.5 } }}>
+          }} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5,
+            "& .MuiToggleButton-root": { minHeight: 44, px: 0.5, flex: "1 1 calc(50% - 4px)", border: 1, borderColor: "divider", borderRadius: "8px !important" } }}>
             <ToggleButton value="PRESENT" color="success" disabled={participant.tuitionMode === "FREE"}>Có mặt</ToggleButton>
             <ToggleButton value="ABSENT" color="error">Nghỉ</ToggleButton>
             <ToggleButton value="FREE" color="warning">Miễn phí</ToggleButton>
+            <ToggleButton value="ABSENT_CHARGED" color="warning" disabled={participant.tuitionMode === "FREE"}>Nghỉ có tính phí</ToggleButton>
           </ToggleButtonGroup>
-          <TextField fullWidth size="small" label="Nhận xét riêng (tùy chọn)" sx={{ mt: 1 }} value={attendances[participant.enrollmentId]?.studentNote ?? ""} onChange={(event) => {
-            setAttendances((current) => ({ ...current, [participant.enrollmentId]: { status: current[participant.enrollmentId]?.status ?? "PRESENT", studentNote: event.target.value.slice(0, 1000) } })); markDirty();
-          }} />
+          {!expandedNotes.has(participant.enrollmentId) ? <Button size="small" sx={{ mt: 1 }}
+            onClick={() => setExpandedNotes((current) => new Set(current).add(participant.enrollmentId))}>Thêm nhận xét riêng</Button> : <Stack spacing={1} sx={{ mt: 1 }}>
+            <TextField fullWidth size="small" multiline minRows={2} label="Nhận xét riêng (tùy chọn)" value={attendances[participant.enrollmentId]?.studentNote ?? ""} onChange={(event) => {
+              setAttendances((current) => ({ ...current, [participant.enrollmentId]: { status: current[participant.enrollmentId]?.status ?? "PRESENT", studentNote: event.target.value.slice(0, 1000) } })); markDirty();
+            }} />
+            <Button size="small" disabled={!attendances[participant.enrollmentId]?.studentNote.trim()}
+              onClick={() => setCopyNoteEnrollmentId(participant.enrollmentId)}>Dùng làm nhận xét chung cho cả lớp</Button>
+          </Stack>}
         </CardContent></Card>)}
       </Stack>}
 
       {step === 2 && <Stack spacing={2}>
         <TextField multiline minRows={3} label="Nội dung buổi học" value={content} onChange={(event) => { setContent(event.target.value.slice(0, 2000)); markDirty(); }} helperText={`${content.length}/2000`} />
         <TextField multiline minRows={2} label="Bài tập về nhà" value={homework} onChange={(event) => { setHomework(event.target.value.slice(0, 2000)); markDirty(); }} helperText={`${homework.length}/2000`} />
-        <TextField multiline minRows={2} label="Ghi chú chung" value={note} onChange={(event) => { setNote(event.target.value.slice(0, 1000)); markDirty(); }} helperText={`${note.length}/1000`} />
+        <TextField multiline minRows={2} label="Nhận xét chung" value={generalComment} onChange={(event) => { setGeneralComment(event.target.value.slice(0, 1000)); markDirty(); }} helperText={`${generalComment.length}/1000 · Hiển thị trong sổ phụ huynh`} />
+        <TextField multiline minRows={2} label="Ghi chú nội bộ" value={note} onChange={(event) => { setNote(event.target.value.slice(0, 1000)); markDirty(); }} helperText={`${note.length}/1000 · Không hiển thị cho phụ huynh`} />
       </Stack>}
 
       {step === 3 && <Card variant="outlined"><CardContent><Stack spacing={1}>
@@ -394,6 +442,7 @@ export function LessonWizardPage() {
         <Summary label="Có mặt / Nghỉ / Miễn phí" value={`${counts.PRESENT} / ${counts.ABSENT} / ${counts.FREE}`} />
         <Summary label="Nội dung" value={content || "Chưa nhập"} />
         <Summary label="Bài tập" value={homework || "Chưa nhập"} />
+        <Summary label="Nhận xét chung" value={generalComment || "Chưa nhập"} />
       </Stack></CardContent></Card>}
 
       <Box data-testid="sticky-action-bar" data-wizard-action sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1, mt: 2, borderTop: 1, borderColor: "divider" }}>
@@ -406,6 +455,19 @@ export function LessonWizardPage() {
         </Stack>
       </Box>
       <Dialog open={cancelOpen} onClose={() => !busy && setCancelOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Hủy bản nháp?</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}><Alert severity="info">Nếu bản nháp gắn lịch dự kiến, occurrence sẽ chuyển thành Nghỉ và có thể tạo buổi học bù.</Alert><TextField required label="Lý do hủy" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} /></Stack></DialogContent><DialogActions><Button onClick={() => setCancelOpen(false)}>Quay lại</Button><Button color="error" variant="contained" disabled={busy || !cancelReason.trim()} onClick={() => void cancelDraft()}>{busy ? "Đang hủy…" : "Hủy bản nháp"}</Button></DialogActions></Dialog>
+      <Dialog open={copyNoteEnrollmentId != null} onClose={() => setCopyNoteEnrollmentId(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Dùng nhận xét riêng làm nhận xét chung?</DialogTitle>
+        <DialogContent><Alert severity="warning" sx={{ mt: 1 }}>
+          Nội dung này sẽ được dùng làm nhận xét chung. Nhận xét riêng của các học sinh khác vẫn được giữ nguyên. Nhận xét nguồn sẽ được xóa để tránh hiển thị trùng; trạng thái điểm danh không thay đổi và dữ liệu vẫn chưa được lưu.
+        </Alert></DialogContent>
+        <DialogActions><Button onClick={() => setCopyNoteEnrollmentId(null)}>Hủy</Button>
+          <Button variant="contained" onClick={confirmCopyStudentNote}>Xác nhận</Button></DialogActions>
+      </Dialog>
+      <Snackbar open={Boolean(bulkMessage)} autoHideDuration={5000} onClose={() => setBulkMessage("")}
+        message={bulkMessage} action={<Button color="inherit" onClick={() => {
+          if (bulkUndo) setAttendances(bulkUndo);
+          setBulkUndo(null); setBulkMessage("");
+        }}>Hoàn tác</Button>} />
     </Stack>
   );
 }

@@ -14,7 +14,8 @@ const testEnv = { ...process.env, NODE_ENV: "test", DB_HOST: process.env.DB_HOST
   PORT: String(apiPort), CORS_ORIGIN: origin, GOOGLE_DRIVE_ENABLED: "true", GOOGLE_DRIVE_CLIENT_ID: "fake-client",
   GOOGLE_DRIVE_CLIENT_SECRET: "fake-secret", GOOGLE_DRIVE_REFRESH_TOKEN: "fake-refresh", GOOGLE_DRIVE_ROOT_FOLDER_ID: "fake-root",
   GOOGLE_DRIVE_OWNER_LABEL: "Cô Vy test", GOOGLE_SHEETS_TEMPLATE_VERSION: "v1", GOOGLE_DRIVE_FAKE: "1",
-  GOOGLE_DRIVE_FAKE_FAIL_ONCE: "1", GOOGLE_DRIVE_FAKE_DELAY_MS: "400" };
+  GOOGLE_DRIVE_FAKE_FAIL_ONCE: "1", GOOGLE_DRIVE_FAKE_DELAY_MS: "400",
+  GOOGLE_SHEET_SYNC_ENABLED: "true" };
 const children = []; let browser;
 function run(command, args, cwd = root) {
   const windows = ["npm", "npx"].includes(command) && process.platform === "win32";
@@ -30,6 +31,15 @@ function start(args, cwd, env) {
 async function waitUrl(url) { const end = Date.now() + 30_000; while (Date.now() < end) {
   try { if ((await fetch(url)).ok) return; } catch { /* retry */ } await new Promise((resolve) => setTimeout(resolve, 200));
 } throw new Error(`Timed out waiting for ${url}`); }
+async function apiMutation(pathname, token, method, body) {
+  const response = await fetch(`http://127.0.0.1:${apiPort}${pathname}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+  if (!response.ok) throw new Error(`${method} ${pathname} failed with ${response.status}`);
+  return response.status === 204 ? undefined : (await response.json()).data;
+}
 async function noOverflow(page, width) { await page.setViewportSize({ width, height: 844 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (overflow > 1) throw new Error(`Google Sheet card overflows ${overflow}px at ${width}px`); }
@@ -63,8 +73,31 @@ try {
   await card.getByRole("button", { name: "Tạo lại nội dung" }).click(); const dialog = page.getByRole("dialog", { name: "Tạo lại nội dung Sheet" });
   await dialog.getByRole("button", { name: "Xác nhận" }).click(); await page.getByText("Đã tạo lại nội dung từ dữ liệu Teacher Hub.").waitFor();
   if (await open.getAttribute("href") !== firstUrl) throw new Error("Regenerate changed the spreadsheet URL");
+  const suffix = Date.now();
+  const group = await apiMutation("/api/classes", token, "POST", {
+    name: `Google sync E2E ${suffix}`, type: "GROUP", defaultPackagePrice: 2_000_000,
+    defaultDurationMinutes: 90, startDate: "2026-07-01", schedules: [],
+  });
+  const enrollment = await apiMutation(`/api/classes/${group.id}/enrollments`, token, "POST", {
+    studentId, joinedAt: "2026-07-01", tuitionMode: "CLASS_DEFAULT",
+  });
+  const lesson = await apiMutation("/api/lessons", token, "POST", {
+    classId: group.id, sessionDate: "2026-07-26", scheduledStartTime: "18:00",
+    scheduledEndTime: "19:30", lessonType: "REGULAR",
+  });
+  await apiMutation(`/api/lessons/${lesson.id}/complete`, token, "POST", {
+    actualStartTime: "18:00", actualEndTime: "19:30", content: "Nội dung sync E2E",
+    homework: "Bài tập sync E2E", generalComment: "Tiến bộ tốt",
+    attendances: [{ enrollmentId: enrollment.id, status: "PRESENT", studentNote: "Riêng đúng học sinh" }],
+  });
+  await page.reload();
+  await card.getByText("Đang chờ đồng bộ 1 mục…").waitFor();
+  await card.getByRole("button", { name: "Đồng bộ lại" }).click();
+  const resyncDialog = page.getByRole("dialog", { name: "Đồng bộ lại lịch sử" });
+  await resyncDialog.getByRole("button", { name: "Xác nhận" }).click();
+  await page.getByText("Đã xếp hàng đồng bộ lại 1 buổi học.").waitFor();
   for (const width of [360, 375, 390, 393, 400, 412, 430]) await noOverflow(page, width);
-  console.log("Student Google Sheet create/error/retry/open/copy/regenerate E2E passed at 360–430 px.");
+  console.log("Student Google Sheet create/retry/resync-pending E2E passed at 360–430 px.");
 } finally {
   if (browser) await browser.close(); for (const child of children.reverse()) { try { child.kill(); } catch { /* stopped */ } }
   await new Promise((resolve) => setTimeout(resolve, 500));
