@@ -294,6 +294,10 @@ export function VocabularyEditorPage() {
     changeIllustration(index, { kind: "STORED_MEDIA", mediaId: media.id });
   };
 
+  const applyPublicAsset = (index: number, publicAsset: string) => {
+    changeIllustration(index, { kind: "PUBLIC_ASSET", value: publicAsset });
+  };
+
   if (loading) return <Stack sx={{ alignItems: "center", py: 8 }}><CircularProgress /></Stack>;
   return (
     <Stack spacing={2.25} data-testid={setId ? "vocabulary-detail-page" : "vocabulary-new-page"}>
@@ -407,18 +411,21 @@ export function VocabularyEditorPage() {
 
       {!archived && <StickyActionBar><Button fullWidth={false} variant="contained" startIcon={<Save />} disabled={saving || currentItems.length === 0 || !title.trim()} onClick={() => void save()}>{saving ? "Đang lưu…" : "Lưu bộ từ"}</Button></StickyActionBar>}
       {imagePickerIndex != null && currentItems[imagePickerIndex] && <VocabularyImagePicker
+        key={imagePickerIndex}
         open
         word={currentItems[imagePickerIndex].word}
         meaningVi={currentItems[imagePickerIndex].meaningVi}
         searchTerms={currentItems[imagePickerIndex].imageSearchTerms}
         onClose={() => setImagePickerIndex(null)}
         onSelect={(media) => applyStoredMedia(imagePickerIndex, media)}
+        onSelectLocal={(publicAsset) => applyPublicAsset(imagePickerIndex, publicAsset)}
       />}
       {bulkImagesOpen && <VocabularyBulkImageSuggestions
         open={bulkImagesOpen}
         items={currentItems}
         onClose={() => setBulkImagesOpen(false)}
         onSelect={applyStoredMedia}
+        onSelectLocal={applyPublicAsset}
       />}
       <ConfirmationDialog open={archiveOpen} title="Lưu trữ bộ từ?" confirmLabel="Lưu trữ" destructive busy={saving} onCancel={() => setArchiveOpen(false)} onConfirm={() => void archive()}>
         Bộ từ sẽ không thể chỉnh sửa, nhưng toàn bộ dữ liệu và lịch sử vẫn được giữ. Bạn vẫn có thể nhân bản để dùng lại.

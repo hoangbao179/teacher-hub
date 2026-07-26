@@ -99,6 +99,7 @@ export class PublicAssetMaterializer {
           width,
           height,
           mediaType: "ILLUSTRATION",
+          tags: [],
           contributorName: "Lớp học cô Vy",
           contributorUrl: publicPath,
           attributionText: "Nội dung nội bộ Lớp học cô Vy",

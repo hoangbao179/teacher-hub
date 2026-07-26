@@ -29,6 +29,7 @@ const asset: ProviderImageAsset = {
   width: 800,
   height: 600,
   mediaType: "PHOTO",
+  tags: ["apple"],
   contributorName: "Teacher",
   contributorUrl: "https://pixabay.com/users/teacher-7/",
   attributionText: "Pixabay attribution",

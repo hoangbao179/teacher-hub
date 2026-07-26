@@ -63,6 +63,7 @@ integration("V20B migration and search-cache-import-serve persist one audited me
         width: 600,
         height: 400,
         mediaType: "PHOTO",
+        tags: ["apple"],
         contributorName: "V20B",
         contributorUrl: "https://images.test/contributor",
         attributionText: "V20B test image",

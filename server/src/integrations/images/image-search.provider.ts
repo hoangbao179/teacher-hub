@@ -22,6 +22,7 @@ export interface ProviderImageAsset {
   width: number;
   height: number;
   mediaType: Exclude<VocabularyImageMediaType, "ALL">;
+  tags: string[];
   contributorName: string;
   contributorUrl: string;
   attributionText: string;
