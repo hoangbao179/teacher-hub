@@ -41,14 +41,14 @@ test("a skipped row is excluded with a typed reason", () => {
   assert.equal(resolved[0].decisions[0].action, "SKIP");
 });
 
-test("attendance resolution maps ABSENT_CHARGED without a separate billable flag", () => {
+test("attendance resolution rejects unsupported attendance states", () => {
   const attendanceRow = row({ issueCodes: ["ATTENDANCE_AMBIGUOUS"], status: "NEEDS_REVIEW",
     supportedActions: ["SET_ATTENDANCE", "SKIP"], normalizedValues: { date: "2025-06-01", attendance: "ABSENT" } });
-  const resolved = resolveLegacyImportDecisions(preview([attendanceRow]), [{ sourceSheet: attendanceRow.sourceSheet,
+  const unsupported = [{ sourceSheet: attendanceRow.sourceSheet,
     sourceRow: attendanceRow.sourceRow, issueCode: "ATTENDANCE_AMBIGUOUS", action: "SET_ATTENDANCE",
-    resolvedValue: "ABSENT_CHARGED" }]);
-  assert.equal(resolved[0].normalizedValues.attendance, "ABSENT_CHARGED");
-  assert.equal(resolved[0].status, "RESOLVED");
+    resolvedValue: "UNSUPPORTED" }] as unknown as LegacyImportRowDecision[];
+  assert.throws(() => resolveLegacyImportDecisions(preview([attendanceRow]), unsupported),
+    (error: unknown) => (error as { code?: string }).code === "LEGACY_DECISIONS_INVALID");
 });
 
 test("duplicate decisions for one issue are rejected", () => {

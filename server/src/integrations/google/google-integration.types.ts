@@ -5,7 +5,7 @@ export interface GoogleLearningRow {
   className: string;
   date: string;
   time: string;
-  attendance: "PRESENT" | "ABSENT" | "FREE" | "ABSENT_CHARGED";
+  attendance: "PRESENT" | "ABSENT" | "FREE";
   billable: boolean;
   cycleSequence: number | null;
   content: string;

@@ -16,7 +16,8 @@ là source of truth.
    server sau khi hoàn tất.
 7. Lưu refresh token/root folder ID được in một lần vào secret runtime. Không lưu access token.
 
-Scope là `drive.file` và `spreadsheets`. Root folder do script tạo có tên
+Scope duy nhất là `drive.file`; không cấp `spreadsheets` hoặc scope `drive` rộng.
+Root folder do script tạo có tên
 `Lớp học cô Vy - Sổ theo dõi phụ huynh`; ứng dụng không gọi permissions API và
 không bật anyone-with-link.
 
@@ -59,6 +60,10 @@ appProperties rồi đưa file thử vào Trash. Không chạy trong CI và khô
 - 429/network: dùng action Thử tạo lại; retry tìm file theo appProperties trước khi tạo.
 - Archive trong Teacher Hub không xóa file Google. Việc Trash file thật là thao tác riêng.
 - Phụ huynh được cấp Viewer thủ công trực tiếp trong Google Sheets; V16C không tự share.
+- Nếu trạng thái tạo kéo dài quá 10 phút, Student Detail hiển thị `Thử tạo lại`.
+  Retry tìm file bằng `appProperties` trước khi tạo mới để recovery không tạo duplicate.
+- Regenerate giữ nguyên spreadsheet ID/URL và không xóa formatting/protection do
+  người dùng tự tạo ngoài rule Teacher Hub quản lý.
 - Worker chỉ chạy khi cả Drive và sync đều bật. Tắt sync không xóa event; khi bật
   lại worker tiếp tục pending/retry, hoặc admin chọn **Đồng bộ lại**.
 - V16D không cập nhật tab `Học phí`; dùng regenerate thủ công nếu cần dựng lại

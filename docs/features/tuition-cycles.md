@@ -86,7 +86,6 @@ Schema vẫn gắn cycle với `enrollment_id` làm anchor tương thích, nhưn
 V16B gom attendance theo student để cycle dở thuộc tiến trình liên tục của student
 và không reset chỉ vì đổi enrollment/class: 5/8 tiếp tục 6/8 nếu giá không đổi.
 
-Chỉ `PRESENT` và `ABSENT_CHARGED` tăng bộ
-đếm; `ABSENT`/`FREE` vẫn không tăng. Giá/hình thức học thay đổi giữa cycle bắt buộc
+Chỉ `PRESENT` tăng bộ đếm; `ABSENT`/`FREE` vẫn không tăng. Giá/hình thức học thay đổi giữa cycle bắt buộc
 có quyết định explicit, còn `PAID` và tám item vẫn bất biến. V16E chỉ trình bày dữ
 liệu canonical này lên Sheet, không tính cycle trong Google.

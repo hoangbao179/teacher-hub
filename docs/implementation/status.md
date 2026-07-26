@@ -167,6 +167,9 @@ chuẩn hóa ngày thiếu năm, đối soát lesson/học phí, chia năm học
   general/student-specific comments, quick attendance, transactional outbox,
   worker lesson sync và admin resync/status; chưa sync tuition và chưa có verdict
   PASS trước smoke Google thật.
+- HARDEN-V16C-V16D-BEFORE-GOOGLE-OAUTH: **PASS on 26/07/2026** —
+  thu hẹp OAuth, attendance rule chính thức, snapshot/cycle window, stale-create
+  recovery, Google error classification và regenerate safety; không gọi Google thật.
 - V16E-TUITION-SHEET-AND-PARENT-SHARING: **PLANNED** — tuition presentation và
   parent Viewer sharing.
 

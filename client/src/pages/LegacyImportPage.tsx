@@ -294,7 +294,7 @@ export function LegacyImportPage() {
               {row.issueCodes.includes("ATTENDANCE_AMBIGUOUS") && <FormControl><InputLabel id={`${row.id}-attendance`}>Điểm danh</InputLabel><Select labelId={`${row.id}-attendance`} label="Điểm danh" value={draft.attendance}
                 onChange={(event) => setDraft(row, { attendance: event.target.value as AttendanceStatus })}>
                 <MenuItem value="PRESENT">Có mặt · tính phí</MenuItem><MenuItem value="ABSENT">Nghỉ · không tính phí</MenuItem>
-                <MenuItem value="FREE">Miễn phí</MenuItem><MenuItem value="ABSENT_CHARGED">Nghỉ có tính phí</MenuItem>
+                <MenuItem value="FREE">Miễn phí</MenuItem>
               </Select></FormControl>}
               {(row.issueCodes.includes("DUPLICATE_ROW") || row.issueCodes.includes("NEAR_LESSON_MATCH") || row.issueCodes.includes("LESSON_CONTENT_CONFLICT")) &&
                 <FormControl><InputLabel id={`${row.id}-lesson-action`}>Xử lý lesson</InputLabel><Select labelId={`${row.id}-lesson-action`} label="Xử lý lesson" value={draft.lessonAction}

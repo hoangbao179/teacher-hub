@@ -24,7 +24,7 @@ một chiều cho phụ huynh.
 | Legacy Excel | V16B giữ preview V16A và có Apply multipart: server đọc/parse/reconcile lại, kiểm tra SHA và structured decisions rồi ghi atomic vào MySQL; binary tạm luôn bị xóa. |
 | Attendance | Lưu riêng theo `lesson_session_participants`/enrollment; mỗi participant có tối đa một `lesson_attendances`. Không có attendance chung cho cả lớp. |
 | Lesson | `lesson_sessions` có `content`, `homework`, `general_comment` dành cho phụ huynh và `note` nội bộ; `lesson_attendances.student_note` là ghi chú riêng. |
-| Tuition cycle | `tuition_cycles` vẫn dùng `enrollment_id` làm anchor tương thích, nhưng recalculation V16B khóa và nhóm attendance theo student xuyên enrollment. `PRESENT`/`ABSENT_CHARGED` tăng đếm; chuyển lớp cùng giá tiếp tục cycle dở. |
+| Tuition cycle | `tuition_cycles` vẫn dùng `enrollment_id` làm anchor tương thích, nhưng recalculation V16B khóa và nhóm attendance theo student xuyên enrollment. Chỉ `PRESENT` tăng đếm; chuyển lớp cùng giá tiếp tục cycle dở. |
 | Google | V16C tạo Sheet; V16D có transactional outbox và worker cập nhật lesson một chiều. Không dùng permissions API. |
 | Student Detail | Card hiển thị pending/retry/dead, lần sync thành công và cho phép resync qua outbox. |
 
@@ -46,6 +46,8 @@ tuition sync và sharing tự động vẫn thuộc V16E **PLANNED**.
 - External API không bao giờ được gọi bên trong transaction MySQL.
 - Retry Google chỉ phát lại dữ liệu đã commit; không apply import hoặc mutation
   nghiệp vụ lần thứ hai.
+- `CREATING` dưới 10 phút được xem là đang chạy. Sau 10 phút, admin có thể retry;
+  retry luôn tìm resource theo `appProperties` trước khi tạo nên không sinh file trùng.
 - Không đồng bộ hai chiều. Thay đổi thủ công trên Sheet không ghi về Teacher Hub
   và có thể bị lần resync sau ghi đè trong vùng do hệ thống quản lý.
 
@@ -132,7 +134,6 @@ Trạng thái đích tối thiểu:
 | `PRESENT` | Có | Có | Quy tắc hiện hành. |
 | `ABSENT` | Không | Không | Quy tắc hiện hành. |
 | `FREE` | Có | Không | Quy tắc hiện hành. |
-| `ABSENT_CHARGED` | Không | Có | Trạng thái nghiệp vụ hiện hành; không dùng cho enrollment FREE. |
 
 UI đích mặc định mọi học sinh trả phí là có mặt, có `Tất cả có mặt`, `Tất cả nghỉ`,
 cho giáo viên chỉnh ngoại lệ, thu gọn nhận xét riêng và chỉ nhập nội dung/bài tập/
@@ -205,7 +206,7 @@ payload đã validate, actor và timestamp. Tùy issue, UI chỉ đưa ra các a
 
 - sửa ngày;
 - map academic period/class;
-- chọn attendance `PRESENT`, `ABSENT`, `FREE` hoặc `ABSENT_CHARGED`;
+- chọn attendance `PRESENT`, `ABSENT` hoặc `FREE`;
 - ghép lesson hiện có;
 - tạo lesson mới;
 - giữ nội dung hiện tại;
@@ -213,8 +214,7 @@ payload đã validate, actor và timestamp. Tùy issue, UI chỉ đưa ra các a
 - chỉnh thủ công;
 - bỏ qua dòng.
 
-`ABSENT_CHARGED` vẫn chịu quyết định phạm vi MVP tại mục 11; nếu chưa được bật thì
-action đó không xuất hiện và payload tương ứng không được validate. Duplicate và
+Payload attendance ngoài ba trạng thái trên không được validate. Duplicate và
 near-match luôn cần decision ghép lesson hiện có, tạo lesson mới hoặc bỏ qua; không
 tự merge. Conflict content/homework cần decision giữ nội dung hiện tại, dùng nội
 dung import hoặc chỉnh thủ công; quyết định của file sau không được âm thầm thắng.
@@ -282,7 +282,6 @@ Khi nhiều file student lần lượt mô tả cùng group lesson:
 | `PRESENT` | Billable và tăng sequence. |
 | `ABSENT` | Có lịch sử, không billable. |
 | `FREE` | Có lịch sử, không billable. |
-| `ABSENT_CHARGED` | Chỉ apply nếu trạng thái được hỗ trợ và user xác nhận rõ. |
 | Đủ 8 billable | Cycle đạt `PAYMENT_DUE` hoặc trạng thái payment đã xác nhận. |
 | Cycle dở | Giữ đúng tiến độ theo student. |
 | Đã thu | Chỉ tạo `PAID` khi evidence/resolution đã được review; giữ bất biến sau apply. |
@@ -300,7 +299,7 @@ Cycle được tính riêng cho từng student, không theo class và trong thi�
 không bị chia chỉ vì thay enrollment. Đây là delta so với schema hiện hành đang
 gắn cycle với enrollment.
 
-- `PRESENT` và `ABSENT_CHARGED` tăng bộ đếm.
+- Chỉ `PRESENT` tăng bộ đếm.
 - `ABSENT` và `FREE` không tăng.
 - Không chia cứ tám dòng Excel; chỉ nhóm tám attendance billable theo thứ tự ngày
   học chuẩn, tôn trọng ranh giới `PAID` bất biến.
@@ -341,8 +340,12 @@ gắn cycle với enrollment.
   Google sau commit, dùng event ID/idempotency key và upsert theo hidden mapping.
 - Google timeout/429/5xx giữ DB thành công, đánh dấu retryable và retry có backoff.
   Lỗi auth/quyền đánh dấu cần admin can thiệp; không retry vô hạn.
+- Lỗi 404 được phân biệt theo resource: folder gốc là `ROOT_FOLDER_MISSING`, file
+  học sinh là `SPREADSHEET_MISSING`; UI không báo nhầm file mất thành folder mất.
 - Resync luôn đọc canonical DB và tái tạo vùng hệ thống quản lý; không đọc Sheet
   làm nguồn nghiệp vụ.
+- Regenerate chỉ xóa/cập nhật conditional formatting và protection do Teacher Hub
+  quản lý trong vùng template; rule/protection người dùng tự tạo được giữ nguyên.
 - Admin thấy trạng thái sync, thời điểm cuối, lỗi đã diễn giải và action retry/
   resync; không thấy token, raw provider payload hay stack trace.
 
@@ -352,7 +355,6 @@ gắn cycle với enrollment.
 | --- | --- |
 | Giá thay đổi giữa cycle dở được quyết toán thế nào | Giữ snapshot cũ nếu giáo viên chọn tiếp tục; nếu chọn chốt, yêu cầu amount/method/reason rõ và mở cycle mới từ attendance sau ngày hiệu lực. Không tự chọn. |
 | Có lưu binary workbook trong restricted archive không | Không lưu mặc định; chỉ thêm archive có retention/access audit khi có yêu cầu vận hành rõ. |
-| `ABSENT_CHARGED` có trong MVP hay chỉ import | Chỉ hỗ trợ trong import có xác nhận ở V16B; mở UI thường sau khi business rule riêng được duyệt. |
 | Parent không có Google account dùng sharing mode nào | Giữ `Restricted`; yêu cầu một Google account hoặc quy trình chia sẻ thủ công đã xác minh. Không bật “anyone with link” mặc định. |
 
 Các quy tắc một Sheet theo student, URL ổn định, DB source of truth, sync một chiều,

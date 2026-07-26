@@ -49,3 +49,9 @@ tài khoản Google thật để trống vì môi trường chưa có credential
 
 - [ ] Với student test, kết nối account cô Vy, tạo Sheet, mở/copy link và kiểm tra owner/restricted/template/protection.
 - [ ] Archive hoặc xóa resource test theo quy trình được duyệt; không dùng dữ liệu học sinh thật.
+
+## Hardening evidence 26/07/2026
+
+- [x] OAuth config test xác minh chỉ có `drive.file`.
+- [x] Recovery process chết trước/sau create, trước finalize và concurrent retry.
+- [x] Stale `CREATING` hiển thị retry; regenerate giữ user formatting/protection.

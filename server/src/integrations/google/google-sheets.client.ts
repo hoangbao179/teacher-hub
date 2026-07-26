@@ -2,6 +2,41 @@ import { google, type sheets_v4 } from "googleapis";
 
 type GoogleOAuthClient = InstanceType<typeof google.auth.OAuth2>;
 
+function isTeacherHubConditionalRule(rule: sheets_v4.Schema$ConditionalFormatRule): boolean {
+  const condition = rule.booleanRule?.condition;
+  const value = condition?.values?.[0]?.userEnteredValue;
+  const ranges = rule.ranges ?? [];
+  if (ranges.length !== 1) return false;
+  const range = ranges[0];
+  if (range.startRowIndex !== 1) return false;
+  if (condition?.type === "CUSTOM_FORMULA" && value === "=ISEVEN(ROW())")
+    return range.startColumnIndex === 0 && (range.endColumnIndex === 13 || range.endColumnIndex === 14);
+  if (condition?.type === "TEXT_EQ" && value === "Nghỉ")
+    return range.startColumnIndex === 6 && range.endColumnIndex === 7;
+  if (condition?.type === "TEXT_EQ" && value === "Cần thu")
+    return range.startColumnIndex === 10 && range.endColumnIndex === 11;
+  return false;
+}
+
+export function teacherHubFormattingCleanup(
+  sheets: sheets_v4.Schema$Sheet[],
+): sheets_v4.Schema$Request[] {
+  const cleanup: sheets_v4.Schema$Request[] = [];
+  for (const sheet of sheets) {
+    const sheetId = sheet.properties?.sheetId;
+    if (sheetId == null) continue;
+    for (let index = (sheet.conditionalFormats?.length ?? 0) - 1; index >= 0; index -= 1) {
+      if (isTeacherHubConditionalRule(sheet.conditionalFormats![index]))
+        cleanup.push({ deleteConditionalFormatRule: { sheetId, index } });
+    }
+    for (const protection of sheet.protectedRanges ?? []) {
+      if (protection.protectedRangeId != null && protection.description === "Teacher Hub metadata")
+        cleanup.push({ deleteProtectedRange: { protectedRangeId: protection.protectedRangeId } });
+    }
+  }
+  return cleanup;
+}
+
 export class GoogleSheetsClient {
   private readonly sheets: sheets_v4.Sheets;
   constructor(auth: GoogleOAuthClient) { this.sheets = google.sheets({ version: "v4", auth }); }
@@ -35,16 +70,8 @@ export class GoogleSheetsClient {
 
   async clearAndWrite(spreadsheetId: string, values: sheets_v4.Schema$ValueRange[], requests: sheets_v4.Schema$Request[]): Promise<void> {
     const current = await this.sheets.spreadsheets.get({ spreadsheetId,
-      fields: "sheets(properties(sheetId),conditionalFormats,protectedRanges(protectedRangeId))" });
-    const cleanup: sheets_v4.Schema$Request[] = [];
-    for (const sheet of current.data.sheets ?? []) {
-      const sheetId = sheet.properties?.sheetId;
-      if (sheetId == null) continue;
-      for (let index = (sheet.conditionalFormats?.length ?? 0) - 1; index >= 0; index -= 1)
-        cleanup.push({ deleteConditionalFormatRule: { sheetId, index } });
-      for (const protection of sheet.protectedRanges ?? []) if (protection.protectedRangeId != null)
-        cleanup.push({ deleteProtectedRange: { protectedRangeId: protection.protectedRangeId } });
-    }
+      fields: "sheets(properties(sheetId),conditionalFormats(ranges,booleanRule(condition(type,values(userEnteredValue)))),protectedRanges(protectedRangeId,description))" });
+    const cleanup = teacherHubFormattingCleanup(current.data.sheets ?? []);
     if (cleanup.length) await this.sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: cleanup } });
     await this.sheets.spreadsheets.values.batchClear({ spreadsheetId, requestBody: { ranges: values.map((item) => item.range!) } });
     await this.sheets.spreadsheets.values.batchUpdate({ spreadsheetId, requestBody: {

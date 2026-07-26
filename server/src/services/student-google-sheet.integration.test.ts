@@ -42,6 +42,106 @@ async function fixture(repository = new StudentGoogleSheetRepository()) {
   return { actorId: actor.insertId, studentId: student.insertId, provider, service };
 }
 
+async function seedSnapshotCycles(
+  studentId: number,
+  statuses: Array<"PRESENT" | "ABSENT" | "FREE">,
+  options: { firstCycleStatus?: "ACCUMULATING" | "PAYMENT_DUE" | "PAID"; secondCycleAt?: number; transferAt?: number } = {},
+) {
+  const [firstClass] = await pool.execute<ResultSetHeader>(
+    "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp 5A','ONE_TO_ONE',2000000,90,'2026-06-01')",
+  );
+  const [firstEnrollment] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO class_enrollments(class_id,student_id,joined_at,ended_at,status)
+     VALUES (?,?,'2026-06-01',?,?)`,
+    [firstClass.insertId, studentId, options.transferAt == null ? null : "2026-07-03",
+      options.transferAt == null ? "ACTIVE" : "ENDED"],
+  );
+  let secondEnrollmentId: number | null = null;
+  let secondClassId: number | null = null;
+  if (options.transferAt != null) {
+    const [secondClass] = await pool.execute<ResultSetHeader>(
+      "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp 6A','ONE_TO_ONE',2000000,90,'2026-06-01')",
+    );
+    const [secondEnrollment] = await pool.execute<ResultSetHeader>(
+      "INSERT INTO class_enrollments(class_id,student_id,joined_at,status) VALUES (?,?,'2026-07-04','ACTIVE')",
+      [secondClass.insertId, studentId],
+    );
+    secondEnrollmentId = secondEnrollment.insertId;
+    secondClassId = secondClass.insertId;
+  }
+  const attendanceIds: number[] = [];
+  for (const [index, status] of statuses.entries()) {
+    const transferred = options.transferAt != null && index >= options.transferAt;
+    const classId = transferred ? secondClassId! : firstClass.insertId;
+    const enrollmentId = transferred ? secondEnrollmentId! : firstEnrollment.insertId;
+    const date = `2026-07-${String(index + 1).padStart(2, "0")}`;
+    const [lesson] = await pool.execute<ResultSetHeader>(
+      `INSERT INTO lesson_sessions(class_id,class_name_snapshot,class_type_snapshot,session_date,scheduled_start_time,scheduled_end_time,
+        status,content,homework,completed_at) VALUES (?,?, 'ONE_TO_ONE',?,'18:00','19:30','COMPLETED','Nội dung','Bài tập',NOW())`,
+      [classId, transferred ? "Lớp 6A" : "Lớp 5A", date],
+    );
+    const [participant] = await pool.execute<ResultSetHeader>(
+      "INSERT INTO lesson_session_participants(lesson_session_id,enrollment_id,student_name_snapshot) VALUES (?,?,?)",
+      [lesson.insertId, enrollmentId, "Học sinh Google Test"],
+    );
+    const [attendance] = await pool.execute<ResultSetHeader>(
+      `INSERT INTO lesson_attendances(lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition)
+       VALUES (?,?,?,?,?)`,
+      [lesson.insertId, participant.insertId, enrollmentId, status, status === "PRESENT" ? 1 : 0],
+    );
+    attendanceIds.push(attendance.insertId);
+  }
+  const presentIndexes = statuses.flatMap((status, index) => status === "PRESENT" ? [index] : []);
+  const split = options.secondCycleAt ?? presentIndexes.length;
+  const firstPresentIndexes = presentIndexes.slice(0, split);
+  const firstStatus = options.firstCycleStatus ?? (firstPresentIndexes.length === 8 ? "PAYMENT_DUE" : "ACCUMULATING");
+  const [firstCycle] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO tuition_cycles(enrollment_id,cycle_number,target_session_count,package_price_snapshot,status,started_at,reached_target_at,
+      paid_at,paid_amount,payment_method)
+     VALUES (?,1,8,2000000,?,?,?,${firstStatus === "PAID" ? "NOW(),2000000,'CASH'" : "NULL,NULL,NULL"})`,
+    [firstEnrollment.insertId, firstStatus, `2026-07-${String(firstPresentIndexes[0] + 1).padStart(2, "0")}`,
+      firstPresentIndexes.length === 8 ? `2026-07-${String(firstPresentIndexes.at(-1)! + 1).padStart(2, "0")}` : null],
+  );
+  for (const [sequence, index] of firstPresentIndexes.entries())
+    await pool.execute(
+      "INSERT INTO tuition_cycle_sessions(tuition_cycle_id,attendance_id,sequence_number) VALUES (?,?,?)",
+      [firstCycle.insertId, attendanceIds[index], sequence + 1],
+    );
+  if (options.secondCycleAt != null && presentIndexes.length > split) {
+    const secondPresentIndexes = presentIndexes.slice(split);
+    const owner = options.transferAt != null && secondPresentIndexes[0] >= options.transferAt
+      ? secondEnrollmentId! : firstEnrollment.insertId;
+    const cycleNumber = owner === firstEnrollment.insertId ? 2 : 1;
+    const [secondCycle] = await pool.execute<ResultSetHeader>(
+      "INSERT INTO tuition_cycles(enrollment_id,cycle_number,target_session_count,package_price_snapshot,status,started_at) VALUES (?,?,8,2000000,'ACCUMULATING',?)",
+      [owner, cycleNumber, `2026-07-${String(secondPresentIndexes[0] + 1).padStart(2, "0")}`],
+    );
+    for (const [sequence, index] of secondPresentIndexes.entries())
+      await pool.execute(
+        "INSERT INTO tuition_cycle_sessions(tuition_cycle_id,attendance_id,sequence_number) VALUES (?,?,?)",
+        [secondCycle.insertId, attendanceIds[index], sequence + 1],
+      );
+  }
+  return new StudentGoogleSheetRepository().snapshot(studentId);
+}
+
+integration("hardening migration narrows attendance enum and adds generation recovery timestamp", async () => {
+  const [migrations] = await pool.query<RowDataPacket[]>(
+    "SELECT version FROM schema_migrations WHERE version='0015_harden_google_before_oauth.sql'",
+  );
+  assert.equal(migrations.length, 1);
+  const [columns] = await pool.query<RowDataPacket[]>(
+    `SELECT TABLE_NAME,COLUMN_NAME,COLUMN_TYPE
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA=DATABASE()
+       AND ((TABLE_NAME='lesson_attendances' AND COLUMN_NAME='attendance_status')
+         OR (TABLE_NAME='student_google_sheets' AND COLUMN_NAME='generation_started_at'))`,
+  );
+  const attendance = columns.find((row) => row.COLUMN_NAME === "attendance_status");
+  assert.equal(attendance?.COLUMN_TYPE, "enum('PRESENT','ABSENT','FREE')");
+  assert.ok(columns.some((row) => row.COLUMN_NAME === "generation_started_at"));
+});
+
 integration("create is concurrent-safe, linked to import, stable across enrollment and archive allows a new record", async () => {
   const data = await fixture();
   const [legacy] = await pool.execute<ResultSetHeader>(
@@ -81,6 +181,97 @@ integration("timeout-after-create is recovered by appProperties and retry keeps 
   assert.equal(data.provider.rendered.length, 1);
 });
 
+integration("stale CREATING before provider.create is reclaimed after ten minutes", async () => {
+  const repository = new StudentGoogleSheetRepository();
+  const data = await fixture(repository);
+  const claim = await repository.claim({
+    studentId: data.studentId, fileName: "Sổ theo dõi - recovery", rootFolderId: "fake-root", templateVersion: "v1",
+  }, false);
+  assert.equal(claim.owner, true);
+  await pool.execute(
+    "UPDATE student_google_sheets SET generation_started_at=DATE_SUB(NOW(),INTERVAL 11 MINUTE) WHERE id=?",
+    [claim.sheet.id],
+  );
+  const recovered = await data.service.retry(data.studentId, data.actorId);
+  assert.equal(recovered.sheet.status, "ACTIVE");
+  assert.equal(data.provider.createCount, 1);
+});
+
+integration("fresh CREATING is not reclaimed or sent to the provider", async () => {
+  const repository = new StudentGoogleSheetRepository();
+  const data = await fixture(repository);
+  const claim = await repository.claim({
+    studentId: data.studentId, fileName: "Sổ theo dõi - fresh", rootFolderId: "fake-root", templateVersion: "v1",
+  }, false);
+  const retry = await data.service.retry(data.studentId, data.actorId);
+  assert.equal(retry.sheet.id, claim.sheet.id);
+  assert.equal(retry.sheet.status, "CREATING");
+  assert.equal(data.provider.createCount, 0);
+});
+
+integration("stale CREATING after provider.create reuses appProperties resource", async () => {
+  const repository = new StudentGoogleSheetRepository();
+  const data = await fixture(repository);
+  const claim = await repository.claim({
+    studentId: data.studentId, fileName: "Sổ theo dõi - created", rootFolderId: "fake-root", templateVersion: "v1",
+  }, false);
+  await data.provider.create({
+    name: claim.sheet.fileName, rootFolderId: "fake-root",
+    appProperties: { studentGoogleSheetRecordId: String(claim.sheet.id) },
+  });
+  await pool.execute(
+    "UPDATE student_google_sheets SET generation_started_at=DATE_SUB(NOW(),INTERVAL 11 MINUTE) WHERE id=?",
+    [claim.sheet.id],
+  );
+  const recovered = await data.service.retry(data.studentId, data.actorId);
+  assert.equal(recovered.sheet.status, "ACTIVE");
+  assert.equal(data.provider.createCount, 1);
+  assert.equal(data.provider.rendered.length, 1);
+});
+
+integration("stale CREATING before finalize reuses the rendered resource", async () => {
+  const repository = new StudentGoogleSheetRepository();
+  const data = await fixture(repository);
+  const claim = await repository.claim({
+    studentId: data.studentId, fileName: "Sổ theo dõi - rendered", rootFolderId: "fake-root", templateVersion: "v1",
+  }, false);
+  const resource = await data.provider.create({
+    name: claim.sheet.fileName, rootFolderId: "fake-root",
+    appProperties: { studentGoogleSheetRecordId: String(claim.sheet.id) },
+  });
+  await data.provider.render(resource, await repository.snapshot(data.studentId), {
+    templateVersion: "v1", recordId: claim.sheet.id, generatedAt: new Date().toISOString(),
+  });
+  await pool.execute(
+    "UPDATE student_google_sheets SET generation_started_at=DATE_SUB(NOW(),INTERVAL 11 MINUTE) WHERE id=?",
+    [claim.sheet.id],
+  );
+  const recovered = await data.service.retry(data.studentId, data.actorId);
+  assert.equal(recovered.sheet.status, "ACTIVE");
+  assert.equal(data.provider.createCount, 1);
+  assert.equal(data.provider.rendered.length, 2);
+});
+
+integration("concurrent stale retries have one provider owner", async () => {
+  const repository = new StudentGoogleSheetRepository();
+  const data = await fixture(repository);
+  const claim = await repository.claim({
+    studentId: data.studentId, fileName: "Sổ theo dõi - concurrent", rootFolderId: "fake-root", templateVersion: "v1",
+  }, false);
+  await pool.execute(
+    "UPDATE student_google_sheets SET generation_started_at=DATE_SUB(NOW(),INTERVAL 11 MINUTE) WHERE id=?",
+    [claim.sheet.id],
+  );
+  data.provider.delayMs = 30;
+  const [first, second] = await Promise.all([
+    data.service.retry(data.studentId, data.actorId),
+    data.service.retry(data.studentId, data.actorId),
+  ]);
+  assert.equal(data.provider.createCount, 1);
+  assert.ok([first.sheet.status, second.sheet.status].includes("ACTIVE"));
+  assert.equal(first.sheet.id, second.sheet.id);
+});
+
 integration("snapshot isolates group attendance and student note", async () => {
   const data = await fixture();
   const [other] = await pool.execute<ResultSetHeader>("INSERT INTO students(full_name) VALUES ('Học sinh Khác')");
@@ -108,6 +299,55 @@ integration("snapshot isolates group attendance and student note", async () => {
   assert.equal(snapshot.learning[0].studentComment, "Ghi chú đúng học sinh");
   assert.equal(snapshot.learning[0].generalComment, "Nhận xét chung");
   assert.ok(!JSON.stringify(snapshot).includes("bí mật của bạn khác"));
+});
+
+integration("snapshot shows 5/8 and includes two absences in the current cycle window", async () => {
+  const data = await fixture();
+  const snapshot = await seedSnapshotCycles(data.studentId,
+    ["PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "ABSENT", "ABSENT"]);
+  assert.equal(snapshot.overview.currentProgress, 5);
+  assert.equal(snapshot.tuition[0].billableCount, 5);
+  assert.equal(snapshot.tuition[0].absentCount, 2);
+  assert.equal(snapshot.tuition[0].totalLessonCount, 7);
+});
+
+integration("PAYMENT_DUE snapshot shows 8/8 and includes later absences", async () => {
+  const data = await fixture();
+  const snapshot = await seedSnapshotCycles(data.studentId,
+    ["PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "ABSENT", "ABSENT"]);
+  assert.equal(snapshot.overview.currentProgress, 8);
+  assert.equal(snapshot.overview.tuitionStatus, "Cần thu");
+  assert.equal(snapshot.tuition[0].billableCount, 8);
+  assert.equal(snapshot.tuition[0].absentCount, 2);
+  assert.equal(snapshot.tuition[0].totalLessonCount, 10);
+});
+
+integration("cycle windows do not count one attendance twice", async () => {
+  const data = await fixture();
+  const snapshot = await seedSnapshotCycles(data.studentId,
+    ["PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "ABSENT", "ABSENT", "PRESENT"],
+    { secondCycleAt: 8 });
+  assert.deepEqual(snapshot.tuition.map((cycle) => cycle.totalLessonCount), [10, 1]);
+  assert.deepEqual(snapshot.tuition.map((cycle) => cycle.billableCount), [8, 1]);
+});
+
+integration("promotion during a cycle keeps progress and one cycle window", async () => {
+  const data = await fixture();
+  const snapshot = await seedSnapshotCycles(data.studentId,
+    ["PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT"], { transferAt: 3 });
+  assert.equal(snapshot.overview.currentProgress, 5);
+  assert.equal(snapshot.tuition.length, 1);
+  assert.equal(snapshot.tuition[0].billableCount, 5);
+  assert.equal(snapshot.tuition[0].totalLessonCount, 5);
+});
+
+integration("latest PAID cycle remains the displayed 8/8 progress", async () => {
+  const data = await fixture();
+  const snapshot = await seedSnapshotCycles(data.studentId,
+    ["PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT", "PRESENT"],
+    { firstCycleStatus: "PAID" });
+  assert.equal(snapshot.overview.currentProgress, 8);
+  assert.equal(snapshot.overview.tuitionStatus, "Đã thu");
 });
 
 integration("outbox is transactional, revision-safe and worker syncs the canonical student row", async () => {
@@ -193,6 +433,30 @@ integration("outbox is transactional, revision-safe and worker syncs the canonic
   assert.equal(rows[0].status, "SUCCEEDED");
   assert.equal(Number(rows[0].revision), 2);
   assert.equal(active.sheet.id > 0, true);
+});
+
+integration("worker reports a missing spreadsheet without claiming the root folder is missing", async () => {
+  const data = await fixture();
+  const active = await data.service.create(data.studentId, {}, data.actorId);
+  const snapshot = await seedSnapshotCycles(data.studentId, ["PRESENT"]);
+  const lessonId = snapshot.learning[0].lessonId;
+  data.provider.resources.delete(active.sheet.id);
+  const outbox = new GoogleSheetSyncRepository();
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+  await outbox.enqueue(connection, data.studentId, lessonId, "LESSON_UPSERT");
+  await connection.commit();
+  connection.release();
+  const worker = new GoogleSheetSyncWorker(outbox, new StudentGoogleSheetRepository(), data.provider,
+    { enabled: true, intervalMs: 1_000, batchSize: 10, maxAttempts: 8, lockTimeoutMs: 10_000 }, true);
+  assert.equal(await worker.runOnce(), 1);
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT status,last_error_code,last_error_message FROM google_sheet_sync_outbox WHERE student_id=? AND lesson_id=?",
+    [data.studentId, lessonId],
+  );
+  assert.equal(rows[0].status, "DEAD");
+  assert.equal(rows[0].last_error_code, "SPREADSHEET_MISSING");
+  assert.match(String(rows[0].last_error_message), /Google Sheet/);
 });
 
 integration("DB finalize failure trashes provider resource and leaves retryable error record", async () => {

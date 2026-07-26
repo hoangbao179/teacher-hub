@@ -27,3 +27,6 @@ Google OAuth/smoke thật: chưa chạy vì `server/.env` không có `GOOGLE_DRI
 ## Final verdict
 
 FAIL
+
+Automated hardening trước OAuth được theo dõi riêng tại
+`HARDEN-V16C-V16D-BEFORE-GOOGLE-OAUTH`; manual Google smoke vẫn pending.

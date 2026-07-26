@@ -19,7 +19,7 @@ participant/attendance riêng, cycle tám buổi theo student, idempotency và a
 - Xác minh workbook khớp student đang chọn; xử lý nhiều năm học/grade/class.
 - Exact match theo class/date/scheduled time; near duplicate và conflict content/homework cần user decision.
 - Import note từng file thành student-specific note; chỉ gợi ý general comment.
-- Apply `PRESENT`, `ABSENT`, `FREE`; `ABSENT_CHARGED` chỉ khi quyết định MVP được duyệt và user xác nhận.
+- Apply `PRESENT`, `ABSENT`, `FREE`; chỉ `PRESENT` tính học phí.
 - Transaction MySQL nhiều bảng, audit và unique idempotency student + SHA-256.
 - Audit mọi decision; skipped row giữ source sheet/row, raw hoặc sanitized snapshot,
   issue code, skip reason, actor và timestamp nhưng không ghi business table.

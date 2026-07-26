@@ -45,7 +45,7 @@ legacy_imports ─ legacy_import_lesson_links ─ lesson_sessions/lesson_attenda
 - Tuition cycle có target cố định 8, snapshot giá dương và item sequence 1..8.
 - V16B dùng `enrollment_id` trên cycle làm anchor tương thích nhưng recalculation khóa
   toàn bộ enrollment/cycle/attendance của student, giữ `PAID` và nhóm phần mutable
-  xuyên enrollment. `PRESENT` và `ABSENT_CHARGED` billable; `ABSENT`/`FREE` không billable.
+  xuyên enrollment. Chỉ `PRESENT` billable; `ABSENT`/`FREE` không billable.
 - `legacy_imports` unique `(student_id,sha256)` là idempotency boundary. Row audit unique
   theo import/sheet/row/issue; lesson link giữ nguồn sheet/row mà không lưu binary workbook.
 - MySQL pool uses `dateStrings: true` so calendar `DATE` values remain exact and

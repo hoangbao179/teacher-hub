@@ -40,3 +40,6 @@ credential test. Không đánh dấu PASS và không commit.
 ## Commit
 
 Chưa có.
+
+Hardening trước OAuth được theo dõi tại task
+`HARDEN-V16C-V16D-BEFORE-GOOGLE-OAUTH`.

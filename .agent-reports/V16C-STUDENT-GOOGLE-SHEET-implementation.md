@@ -30,3 +30,6 @@ OAuth và smoke thật cần credential Google test; V16D/V16E xử lý auto-syn
 ## Commit
 
 Chưa commit khi manual smoke chưa PASS.
+
+Hardening trước OAuth được theo dõi tại task
+`HARDEN-V16C-V16D-BEFORE-GOOGLE-OAUTH`.

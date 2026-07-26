@@ -57,3 +57,8 @@ npm run check:full
 
 Manual production smoke dùng tài khoản Google của cô Vy và một student test không
 chứa dữ liệu thật trước khi bật cho production.
+
+## Hardening trước OAuth 26/07/2026
+
+OAuth được thu hẹp còn `drive.file`; generation có timestamp/reclaim sau 10 phút,
+reuse appProperties và regenerate chỉ quản lý vùng/rule Teacher Hub.

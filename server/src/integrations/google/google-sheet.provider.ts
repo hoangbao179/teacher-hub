@@ -16,16 +16,20 @@ export class GoogleApiSheetProvider implements GoogleSheetProvider {
     this.sheets = new GoogleSheetsClient(auth);
   }
   async assertReady(rootFolderId: string): Promise<void> {
-    try { await this.drive.assertFolder(rootFolderId); } catch (error) { throw classifyGoogleError(error); }
+    try { await this.drive.assertFolder(rootFolderId); } catch (error) {
+      throw classifyGoogleError(error, "ROOT_FOLDER_MISSING");
+    }
   }
   async findByRecordId(recordId: number): Promise<ManagedSpreadsheet | null> {
-    try { return await this.drive.findByRecordId(recordId); } catch (error) { throw classifyGoogleError(error); }
+    try { return await this.drive.findByRecordId(recordId); } catch (error) {
+      throw classifyGoogleError(error, "SPREADSHEET_MISSING");
+    }
   }
   async create(input: CreateManagedSpreadsheetInput): Promise<ManagedSpreadsheet> {
     try {
       const spreadsheetId = await this.sheets.create(input.name);
       return await this.drive.attachSpreadsheet(spreadsheetId, input);
-    } catch (error) { throw classifyGoogleError(error); }
+    } catch (error) { throw classifyGoogleError(error, "SPREADSHEET_MISSING"); }
   }
   async render(resource: ManagedSpreadsheet, snapshot: StudentGoogleSheetSnapshot, metadata: {
     templateVersion: string; recordId: number; generatedAt: string; syncedAt?: string | null;
@@ -34,7 +38,7 @@ export class GoogleApiSheetProvider implements GoogleSheetProvider {
       const ids = await this.sheets.ensureSheets(resource.spreadsheetId, this.template.sheetNames);
       const plan = this.template.build(snapshot, resource.spreadsheetId, ids, metadata);
       await this.sheets.clearAndWrite(resource.spreadsheetId, plan.values, plan.requests);
-    } catch (error) { throw classifyGoogleError(error); }
+    } catch (error) { throw classifyGoogleError(error, "SPREADSHEET_MISSING"); }
   }
   async syncLesson(
     resource: ManagedSpreadsheet,
@@ -60,6 +64,8 @@ export class GoogleApiSheetProvider implements GoogleSheetProvider {
     } catch (error) { throw classifyGoogleError(error); }
   }
   async trash(spreadsheetId: string): Promise<void> {
-    try { await this.drive.trash(spreadsheetId); } catch (error) { throw classifyGoogleError(error); }
+    try { await this.drive.trash(spreadsheetId); } catch (error) {
+      throw classifyGoogleError(error, "SPREADSHEET_MISSING");
+    }
   }
 }

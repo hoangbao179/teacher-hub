@@ -61,3 +61,9 @@ có đủ automated evidence và manual Google smoke.
   các targeted script.
 - Các checkbox vẫn để trống và không có verdict PASS cho đến khi chạy xong gate
   cuối cùng cùng smoke Google thật.
+
+## Hardening evidence 26/07/2026
+
+- [x] PRESENT/ABSENT/FREE có semantics chính thức và không còn lựa chọn nghỉ có tính phí.
+- [x] Snapshot 5/8, PAYMENT_DUE 8/8, PAID gần nhất và cycle window không đếm trùng.
+- [x] Worker ghi `SPREADSHEET_MISSING` khi file học sinh mất.

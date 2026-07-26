@@ -30,7 +30,7 @@ interface RecalculationAttendance extends BillableAttendanceOrder {
   enrollmentId: number;
   studentId: number;
   studentName: string;
-  status: "PRESENT" | "ABSENT" | "FREE" | "ABSENT_CHARGED";
+  status: "PRESENT" | "ABSENT" | "FREE";
   excluded: boolean;
   paidCycleId: number | null;
 }
@@ -141,7 +141,7 @@ export class TuitionRepository {
     const mutableBillable: RecalculationAttendance[] = [];
     for (const attendance of all) {
       const policy = await this.policies.resolve(connection, attendance.enrollmentId, attendance.sessionDate, true);
-      const billable = (attendance.status === "PRESENT" || attendance.status === "ABSENT_CHARGED") &&
+      const billable = attendance.status === "PRESENT" &&
         policy.mode !== "FREE" && !attendance.excluded;
       if (attendance.paidCycleId != null) {
         if (!billable)

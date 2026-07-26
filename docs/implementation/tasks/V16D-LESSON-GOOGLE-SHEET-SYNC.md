@@ -66,3 +66,9 @@ npm run check:full
 - Không sync tab `Học phí`, không tự share và không đọc ngược Google.
 - Chưa đổi trạng thái thành PASS: phải hoàn tất toàn bộ automated gate và manual
   Google smoke theo acceptance.
+
+## Hardening trước OAuth 26/07/2026
+
+- Chỉ `PRESENT` tính phí; trạng thái nghỉ có tính phí đã bị loại khỏi runtime.
+- Snapshot sửa `PAYMENT_DUE` 8/8 và cycle window chứa ABSENT/FREE đúng ranh giới.
+- Worker phân biệt spreadsheet mất với root folder mất.

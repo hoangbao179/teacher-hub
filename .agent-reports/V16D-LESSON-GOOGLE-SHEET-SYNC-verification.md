@@ -38,3 +38,6 @@ FAIL
 Thiếu manual Google production/test smoke bắt buộc: `server/.env` đang
 `GOOGLE_DRIVE_ENABLED=false`, `GOOGLE_SHEET_SYNC_ENABLED=false` và có 0/4
 credential bắt buộc. Không commit.
+
+Automated hardening trước OAuth được theo dõi riêng tại
+`HARDEN-V16C-V16D-BEFORE-GOOGLE-OAUTH`; manual Google smoke vẫn pending.

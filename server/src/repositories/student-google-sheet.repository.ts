@@ -10,11 +10,18 @@ export interface SheetClaim { sheet: StudentGoogleSheetInfo; owner: boolean; sou
 
 function dateTime(value: unknown): string | null { return value == null ? null : String(value).replace(" ", "T") + (String(value).includes("Z") ? "" : "+07:00"); }
 function mapSheet(row: RowDataPacket): StudentGoogleSheetInfo {
+  const generationStartedAt = dateTime(row.generation_started_at);
+  const canRetryGeneration = row.status === "GENERATION_ERROR" || (
+    row.status === "CREATING" &&
+    generationStartedAt != null &&
+    Date.now() - new Date(generationStartedAt).getTime() >= 10 * 60_000
+  );
   return { id: Number(row.id), studentId: Number(row.student_id), legacyImportId: row.legacy_import_id == null ? null : Number(row.legacy_import_id),
     fileName: String(row.file_name), webViewUrl: row.web_view_url == null ? null : String(row.web_view_url),
     templateVersion: String(row.template_version), status: row.status, sharingStatus: row.sharing_status,
     lastGeneratedAt: dateTime(row.last_generated_at), lastSyncedAt: dateTime(row.last_synced_at),
-    lastSyncError: row.last_sync_error == null ? null : String(row.last_sync_error), createdAt: dateTime(row.created_at)! };
+    lastSyncError: row.last_sync_error == null ? null : String(row.last_sync_error),
+    generationStartedAt, canRetryGeneration, createdAt: dateTime(row.created_at)! };
 }
 
 export function academicYear(date: string): string {
@@ -53,20 +60,42 @@ export class StudentGoogleSheetRepository {
       const [existingRows] = await connection.query<RowDataPacket[]>(
         `SELECT * FROM student_google_sheets WHERE student_id=? AND status IN ('ACTIVE','CREATING')
          ORDER BY id DESC LIMIT 1 FOR UPDATE`, [input.studentId]);
-      if (existingRows[0]) { await connection.commit(); return { sheet: mapSheet(existingRows[0]), owner: false, sourceImportSha256: existingRows[0].source_import_sha256 ?? null }; }
+      if (existingRows[0]) {
+        const existing = existingRows[0];
+        const staleCreating = existing.status === "CREATING" && retry &&
+          existing.generation_started_at != null &&
+          new Date(existing.generation_started_at).getTime() <= Date.now() - 10 * 60_000;
+        if (!staleCreating) {
+          await connection.commit();
+          return { sheet: mapSheet(existing), owner: false, sourceImportSha256: existing.source_import_sha256 ?? null };
+        }
+        await connection.execute(
+          `UPDATE student_google_sheets
+           SET generation_started_at=NOW(),last_sync_error=NULL,
+             legacy_import_id=COALESCE(?,legacy_import_id),
+             source_import_sha256=COALESCE(?,source_import_sha256)
+           WHERE id=?`,
+          [input.legacyImportId ?? null, sha, existing.id],
+        );
+        const [reclaimed] = await connection.query<RowDataPacket[]>(
+          "SELECT * FROM student_google_sheets WHERE id=?", [existing.id],
+        );
+        await connection.commit();
+        return { sheet: mapSheet(reclaimed[0]), owner: true, sourceImportSha256: reclaimed[0].source_import_sha256 ?? null };
+      }
       const [failedRows] = retry ? await connection.query<RowDataPacket[]>(
         "SELECT * FROM student_google_sheets WHERE student_id=? AND status='GENERATION_ERROR' ORDER BY id DESC LIMIT 1 FOR UPDATE", [input.studentId]) : [[]];
       let id: number;
       if (retry && failedRows[0]) {
         id = Number(failedRows[0].id);
         await connection.execute(
-          `UPDATE student_google_sheets SET status='CREATING',last_sync_error=NULL,legacy_import_id=COALESCE(?,legacy_import_id),
+          `UPDATE student_google_sheets SET status='CREATING',generation_started_at=NOW(),last_sync_error=NULL,legacy_import_id=COALESCE(?,legacy_import_id),
            source_import_sha256=COALESCE(?,source_import_sha256) WHERE id=?`, [input.legacyImportId ?? null, sha, id]);
       } else {
         const [created] = await connection.execute<ResultSetHeader>(
           `INSERT INTO student_google_sheets
-            (student_id,legacy_import_id,file_name,root_folder_id,template_version,status,source_import_sha256)
-           VALUES (?,?,?,?,?,'CREATING',?)`, [input.studentId, input.legacyImportId ?? null, input.fileName,
+            (student_id,legacy_import_id,file_name,root_folder_id,template_version,status,source_import_sha256,generation_started_at)
+           VALUES (?,?,?,?,?,'CREATING',?,NOW())`, [input.studentId, input.legacyImportId ?? null, input.fileName,
             input.rootFolderId, input.templateVersion, sha]);
         id = created.insertId;
       }
@@ -141,7 +170,8 @@ export class StudentGoogleSheetRepository {
     const [lessons] = await pool.query<RowDataPacket[]>(
       `SELECT l.id lesson_id,l.session_date,TIME_FORMAT(COALESCE(l.actual_start_time,l.scheduled_start_time),'%H:%i') start_time,
         TIME_FORMAT(COALESCE(l.actual_end_time,l.scheduled_end_time),'%H:%i') end_time,COALESCE(l.class_name_snapshot,c.name) class_name,
-        a.attendance_status,a.counts_for_tuition,l.content,l.homework,l.general_comment,a.student_note,l.updated_at,tcs.sequence_number
+        a.attendance_status,a.counts_for_tuition,l.content,l.homework,l.general_comment,a.student_note,l.updated_at,
+        tcs.tuition_cycle_id,tcs.sequence_number
        FROM lesson_attendances a JOIN class_enrollments e ON e.id=a.enrollment_id AND e.student_id=?
        JOIN lesson_sessions l ON l.id=a.lesson_session_id AND l.status='COMPLETED' JOIN classes c ON c.id=l.class_id
        LEFT JOIN tuition_cycle_sessions tcs ON tcs.attendance_id=a.id
@@ -160,13 +190,19 @@ export class StudentGoogleSheetRepository {
     const learning = lessons.map((row) => ({ lessonId: Number(row.lesson_id), academicYear: academicYear(String(row.session_date).slice(0, 10)),
       grade: gradeFromClassName(String(row.class_name)), className: String(row.class_name), date: String(row.session_date).slice(0, 10),
       time: `${row.start_time}–${row.end_time}`, attendance: row.attendance_status, billable: Boolean(row.counts_for_tuition),
+      cycleId: row.tuition_cycle_id == null ? null : Number(row.tuition_cycle_id),
       cycleSequence: row.sequence_number == null ? null : Number(row.sequence_number), content: String(row.content ?? ""),
       homework: String(row.homework ?? ""),
       generalComment: row.attendance_status === "ABSENT" ? "" : String(row.general_comment ?? ""),
       studentComment: String(row.student_note ?? ""), updatedAt: dateTime(row.updated_at)! }));
+    const cycleStartIndexes = cycles.map((cycle) =>
+      learning.findIndex((row) => row.cycleId === Number(cycle.id)));
     const tuition = cycles.map((cycle, index) => {
-      const fromDate = String(cycle.started_at ?? "").slice(0, 10); const toDate = String(cycle.to_date ?? fromDate).slice(0, 10);
-      const inRange = learning.filter((row) => row.date >= fromDate && row.date <= toDate);
+      const startIndex = cycleStartIndexes[index];
+      const nextStartIndex = cycleStartIndexes.slice(index + 1).find((value) => value >= 0) ?? learning.length;
+      const inRange = startIndex >= 0 ? learning.slice(startIndex, nextStartIndex) : [];
+      const fromDate = inRange[0]?.date ?? String(cycle.started_at ?? "").slice(0, 10);
+      const toDate = inRange.at(-1)?.date ?? String(cycle.to_date ?? fromDate).slice(0, 10);
       return { cycleId: Number(cycle.id), cycleNumber: index + 1, academicYear: fromDate ? academicYear(fromDate) : "—",
         className: String(cycle.class_names), fromDate, toDate, billableCount: Number(cycle.billable_count),
         absentCount: inRange.filter((row) => row.attendance === "ABSENT").length, totalLessonCount: inRange.length,
@@ -176,7 +212,7 @@ export class StudentGoogleSheetRepository {
     const currentClass = String(students[0].class_name ?? "—");
     const present = learning.filter((row) => row.attendance === "PRESENT" || row.attendance === "FREE").length;
     const latest = learning.at(-1);
-    const currentCycle = [...tuition].reverse().find((row) => row.status === "ACCUMULATING" || row.status === "INCOMPLETE");
+    const currentCycle = tuition.at(-1);
     const tuitionStatus = tuition.some((row) => row.status === "PAYMENT_DUE") ? "Cần thu" : tuition.at(-1)?.status === "PAID" ? "Đã thu" : "Đang tích lũy";
     return { student: { id: Number(students[0].id), fullName: String(students[0].full_name), currentClass,
       currentGrade: gradeFromClassName(currentClass), currentAcademicYear: academicYear(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" })) },

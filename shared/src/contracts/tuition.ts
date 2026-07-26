@@ -65,7 +65,7 @@ export interface TuitionCycleDetail extends TuitionCycleListItem {
     actualEndTime: string | null;
     actualDurationMinutes: number | null;
     lessonType: "REGULAR" | "MAKEUP" | "EXTRA";
-    attendanceStatus: "PRESENT" | "ABSENT_CHARGED";
+    attendanceStatus: "PRESENT" | "ABSENT";
   }>;
 }
 

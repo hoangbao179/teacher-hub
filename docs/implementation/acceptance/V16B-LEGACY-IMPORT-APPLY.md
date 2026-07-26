@@ -17,7 +17,7 @@ môi trường restricted; không lưu workbook hoặc log chứa dữ liệu ri
 - [x] Exact match dùng class/date/scheduled start/end; near duplicate bắt buộc user quyết định.
 - [x] Duplicate/near-match có decision ghép lesson hiện có, tạo lesson mới hoặc bỏ qua; không tự merge.
 - [x] Có action sửa ngày, map period/class, chọn attendance, giữ/dùng content, chỉnh thủ công và bỏ qua dòng theo đúng issue.
-- [x] `PRESENT`, `ABSENT`, `FREE` và `ABSENT_CHARGED` (nếu được bật) có billable semantics đúng.
+- [x] `PRESENT`, `ABSENT`, `FREE` có billable semantics đúng; chỉ `PRESENT` tính phí.
 - [x] Cycle đủ 8, cycle dở, paid rõ và payment chưa rõ được xử lý đúng feature spec; không nhóm cứ tám dòng Excel.
 - [x] Conflict content/homework không bị ghi đè; comment file student là note riêng và comment giống nhau chỉ được gợi ý gộp.
 - [x] Bulk decision chỉ chạy cho cùng issue code + raw normalized value, hiển thị affected row count và cần confirmation.

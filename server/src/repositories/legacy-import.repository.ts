@@ -55,7 +55,7 @@ function minutesBetween(start: string, end: string): number {
 }
 
 function isBillable(status: string): boolean {
-  return status === "PRESENT" || status === "ABSENT_CHARGED";
+  return status === "PRESENT";
 }
 
 function serialized(value: unknown): string {

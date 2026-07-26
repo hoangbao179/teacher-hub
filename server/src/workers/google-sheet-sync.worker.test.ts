@@ -27,3 +27,9 @@ test("Google rate-limit and permission failures have different retry behavior", 
   assert.equal(denied.failureCode, "PERMISSION_DENIED");
   assert.equal(denied.retryable, false);
 });
+
+test("Google 404 is classified by the resource being accessed", () => {
+  const missing = Object.assign(new Error("not found"), { code: 404 });
+  assert.equal(classifyGoogleError(missing).failureCode, "SPREADSHEET_MISSING");
+  assert.equal(classifyGoogleError(missing, "ROOT_FOLDER_MISSING").failureCode, "ROOT_FOLDER_MISSING");
+});

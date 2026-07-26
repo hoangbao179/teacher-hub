@@ -75,10 +75,10 @@ export function StudentDetailPage() {
     api<ClassListItem[]>("/api/classes").then(setClasses).catch(() => setClasses([]));
   }, [load, loadGoogleSheet]);
   useEffect(() => {
-    if (googleState?.sheet?.status !== "CREATING" && !googleState?.pendingCount && !googleState?.retryCount) return;
+    if (googleState?.sheet?.status !== "CREATING" || googleState.sheet.canRetryGeneration) return;
     const timer = window.setInterval(() => void loadGoogleSheet(), 2000);
     return () => window.clearInterval(timer);
-  }, [googleState?.sheet?.status, googleState?.pendingCount, googleState?.retryCount, loadGoogleSheet]);
+  }, [googleState?.sheet?.status, googleState?.sheet?.canRetryGeneration, loadGoogleSheet]);
   const openTransfer = async () => {
     setError("");
     try {
@@ -192,11 +192,12 @@ export function StudentDetailPage() {
               <Button variant="contained" disabled={googleBusy || !googleState.enabled} onClick={() => void mutateGoogle("create")}>
                 {googleBusy ? "Đang tạo…" : "Tạo sổ theo dõi"}
               </Button>
-            </> : googleState.sheet.status === "CREATING" ? <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            </> : googleState.sheet.status === "CREATING" && !googleState.sheet.canRetryGeneration ? <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
               <CircularProgress size={20} /><Typography>Đang tạo Google Sheet…</Typography>
-            </Stack> : googleState.sheet.status === "GENERATION_ERROR" ? <>
+            </Stack> : googleState.sheet.status === "GENERATION_ERROR" || googleState.sheet.canRetryGeneration ? <>
               <Chip color="error" label="Tạo chưa thành công" sx={{ alignSelf: "flex-start" }} />
-              <Alert severity="error">{googleState.sheet.lastSyncError ?? "Không thể tạo Google Sheet."}</Alert>
+              <Alert severity="error">{googleState.sheet.lastSyncError ??
+                (googleState.sheet.status === "CREATING" ? "Tiến trình tạo đã quá thời gian chờ. Có thể thử tạo lại an toàn." : "Không thể tạo Google Sheet.")}</Alert>
               <Button variant="contained" disabled={googleBusy || !googleState.enabled} onClick={() => void mutateGoogle("retry")}>
                 {googleBusy ? "Đang thử lại…" : "Thử tạo lại"}
               </Button>

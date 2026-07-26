@@ -1,6 +1,6 @@
 export type LessonType = "REGULAR" | "MAKEUP" | "EXTRA";
 export type LessonStatus = "DRAFT" | "COMPLETED" | "CANCELLED";
-export type AttendanceStatus = "PRESENT" | "ABSENT" | "FREE" | "ABSENT_CHARGED";
+export type AttendanceStatus = "PRESENT" | "ABSENT" | "FREE";
 export type LessonDomainErrorCode =
   | "LESSON_NOT_FOUND"
   | "LESSON_NOT_DRAFT"
@@ -147,7 +147,6 @@ export interface CompleteLessonResult {
   presentCount: number;
   absentCount: number;
   freeCount: number;
-  absentChargedCount: number;
   tuitionImpacts: TuitionProgressImpact[];
   recalculationConflict: { code: "PAID_CYCLE_CONFLICT"; message: string } | null;
 }

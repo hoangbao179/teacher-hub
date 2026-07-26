@@ -35,8 +35,8 @@
 - Mỗi học sinh bắt buộc có một trạng thái: Có mặt/Nghỉ/Miễn phí.
 - Mặc định học sinh trả phí là Có mặt; học sinh FREE là Miễn phí.
 - Cho phép nhận xét riêng tùy chọn.
-- **PLANNED V16D:** thêm `Tất cả có mặt`, `Tất cả nghỉ`, chỉnh ngoại lệ và thu gọn
-  nhận xét riêng. `ABSENT_CHARGED` chưa có trong runtime hiện hành.
+- Có `Tất cả có mặt`, `Tất cả nghỉ`, chỉnh ngoại lệ và thu gọn nhận xét riêng.
+  Chỉ có ba trạng thái `PRESENT`, `ABSENT`, `FREE`.
 
 ## 06 Ghi nhận buổi - nội dung và bài tập
 - Nội dung buổi học, bài tập về nhà, ghi chú chung.

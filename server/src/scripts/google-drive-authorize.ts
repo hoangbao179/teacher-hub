@@ -10,7 +10,7 @@ const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET?.trim();
 if (!clientId || !clientSecret) throw new Error("Cần GOOGLE_DRIVE_CLIENT_ID và GOOGLE_DRIVE_CLIENT_SECRET trong server/.env.");
 const oauth = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 const state = randomBytes(32).toString("hex");
-const scopes = ["https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/spreadsheets"];
+const scopes = ["https://www.googleapis.com/auth/drive.file"];
 const authUrl = oauth.generateAuthUrl({ access_type: "offline", prompt: "consent", scope: scopes, state });
 
 function validState(candidate: string): boolean {

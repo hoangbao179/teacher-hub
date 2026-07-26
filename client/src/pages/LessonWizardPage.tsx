@@ -190,7 +190,6 @@ export function LessonWizardPage() {
     PRESENT: Object.values(attendances).filter((item) => item.status === "PRESENT").length,
     ABSENT: Object.values(attendances).filter((item) => item.status === "ABSENT").length,
     FREE: Object.values(attendances).filter((item) => item.status === "FREE").length,
-    ABSENT_CHARGED: Object.values(attendances).filter((item) => item.status === "ABSENT_CHARGED").length,
   }), [attendances]);
 
   const applyBulkAttendance = (status: AttendanceStatus | null, label: string) => {
@@ -410,7 +409,6 @@ export function LessonWizardPage() {
             <ToggleButton value="PRESENT" color="success" disabled={participant.tuitionMode === "FREE"}>Có mặt</ToggleButton>
             <ToggleButton value="ABSENT" color="error">Nghỉ</ToggleButton>
             <ToggleButton value="FREE" color="warning">Miễn phí</ToggleButton>
-            <ToggleButton value="ABSENT_CHARGED" color="warning" disabled={participant.tuitionMode === "FREE"}>Nghỉ có tính phí</ToggleButton>
           </ToggleButtonGroup>
           {!expandedNotes.has(participant.enrollmentId) ? <Button size="small" sx={{ mt: 1 }}
             onClick={() => setExpandedNotes((current) => new Set(current).add(participant.enrollmentId))}>Thêm nhận xét riêng</Button> : <Stack spacing={1} sx={{ mt: 1 }}>

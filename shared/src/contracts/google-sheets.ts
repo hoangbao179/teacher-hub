@@ -13,6 +13,8 @@ export interface StudentGoogleSheetInfo {
   lastGeneratedAt: string | null;
   lastSyncedAt: string | null;
   lastSyncError: string | null;
+  generationStartedAt: string | null;
+  canRetryGeneration: boolean;
   createdAt: string;
 }
 

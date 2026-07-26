@@ -43,7 +43,7 @@ export function isBillableAttendance(
   status: AttendanceStatus,
   mode: TuitionMode,
 ): boolean {
-  return (status === "PRESENT" || status === "ABSENT_CHARGED") && mode !== "FREE";
+  return status === "PRESENT" && mode !== "FREE";
 }
 
 export function attendanceCoverageIssue(

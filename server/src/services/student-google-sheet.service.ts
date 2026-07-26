@@ -53,7 +53,7 @@ export class StudentGoogleSheetService {
     const claim = await this.repository.claim({ studentId, legacyImportId: input.legacyImportId,
       fileName: safeName(student.fullName), rootFolderId: this.settings.rootFolderId, templateVersion: this.settings.templateVersion }, retry);
     if (claim.sheet.status === "ACTIVE") return { sheet: claim.sheet, reused: true };
-    if (!claim.owner && !retry) return { sheet: claim.sheet, reused: true };
+    if (!claim.owner) return { sheet: claim.sheet, reused: true };
     let resource: ManagedSpreadsheet | null = null;
     try {
       await provider.assertReady(this.settings.rootFolderId);
@@ -90,7 +90,7 @@ export class StudentGoogleSheetService {
     if (!sheet || sheet.status !== "ACTIVE") throw new AppError(409, "GOOGLE_SHEET_NOT_ACTIVE", "Học sinh chưa có Google Sheet đang hoạt động.");
     try {
       const resource = await provider.findByRecordId(sheet.id);
-      if (!resource) throw new GoogleIntegrationError("ROOT_FOLDER_MISSING", "Không tìm thấy Google Sheet đã liên kết.", false);
+      if (!resource) throw new GoogleIntegrationError("SPREADSHEET_MISSING", "Không tìm thấy Google Sheet đã liên kết.", false);
       await provider.render(resource, await this.repository.snapshot(studentId), { templateVersion: sheet.templateVersion,
         recordId: sheet.id, generatedAt: new Date().toISOString(), syncedAt: sheet.lastSyncedAt });
       return { sheet: await this.repository.regenerated(sheet.id, actorUserId), reused: true };

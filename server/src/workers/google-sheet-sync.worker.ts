@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { GoogleSheetSyncSettings } from "../config/google-sheet-sync-settings";
-import { classifyGoogleError } from "../integrations/google/google-integration.errors";
+import { GoogleIntegrationError, classifyGoogleError } from "../integrations/google/google-integration.errors";
 import type { GoogleSheetProvider } from "../integrations/google/google-integration.types";
 import { GoogleSheetSyncRepository, type GoogleSheetSyncEvent } from "../repositories/google-sheet-sync.repository";
 import { StudentGoogleSheetRepository } from "../repositories/student-google-sheet.repository";
@@ -80,9 +80,9 @@ export class GoogleSheetSyncWorker {
     try {
       const sheet = await this.sheets.get(event.studentId);
       if (!sheet || sheet.status !== "ACTIVE")
-        throw Object.assign(new Error("Student Google Sheet is not active"), { code: 404 });
+        throw new GoogleIntegrationError("SPREADSHEET_MISSING", "Học sinh không còn Google Sheet đang hoạt động.", false);
       const resource = await this.provider.findByRecordId(sheet.id);
-      if (!resource) throw Object.assign(new Error("Spreadsheet is missing or inaccessible"), { code: 404 });
+      if (!resource) throw new GoogleIntegrationError("SPREADSHEET_MISSING", "Không tìm thấy Google Sheet đã liên kết.", false);
       const snapshot = await this.sheets.snapshot(event.studentId);
       const row = event.eventType === "LESSON_REMOVE"
         ? null

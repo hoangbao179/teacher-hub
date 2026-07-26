@@ -44,7 +44,7 @@ function validateDecisionPayload(decision: LegacyImportRowDecision, studentId: n
     if (value.startTime && value.endTime && value.endTime <= value.startTime)
       invalid("Giờ kết thúc phải sau giờ bắt đầu.");
   } else if (decision.action === "SET_ATTENDANCE") {
-    if (!(["PRESENT", "ABSENT", "FREE", "ABSENT_CHARGED"] as string[]).includes(decision.resolvedValue))
+    if (!(["PRESENT", "ABSENT", "FREE"] as string[]).includes(decision.resolvedValue))
       invalid("Trạng thái điểm danh đã chọn không hợp lệ.");
   } else if (decision.action === "CONFIRM_STUDENT") {
     if (decision.resolvedValue.studentId !== studentId) invalid("Xác nhận học sinh không khớp hồ sơ đang import.");

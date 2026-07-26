@@ -1,7 +1,7 @@
 import type { sheets_v4 } from "googleapis";
 import type { StudentGoogleSheetSnapshot } from "./google-integration.types";
 
-const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Nghỉ", FREE: "Miễn phí", ABSENT_CHARGED: "Nghỉ có tính phí" } as const;
+const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Nghỉ", FREE: "Miễn phí" } as const;
 const tuitionLabels = { ACCUMULATING: "Đang tích lũy", PAYMENT_DUE: "Cần thu", PAID: "Đã thu", INCOMPLETE: "Chưa hoàn thành" } as const;
 const paymentLabels = { CASH: "Tiền mặt", BANK_TRANSFER: "Chuyển khoản", "": "" } as const;
 const names = ["Tổng quan", "Nhật ký học tập", "Học phí", "_TeacherHub"] as const;

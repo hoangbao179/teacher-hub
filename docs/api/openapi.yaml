@@ -492,7 +492,7 @@ components:
         reason: {type: string, maxLength: 255}
     LessonType: {type: string, enum: [REGULAR, MAKEUP, EXTRA]}
     LessonStatus: {type: string, enum: [DRAFT, COMPLETED, CANCELLED]}
-    AttendanceStatus: {type: string, enum: [PRESENT, ABSENT, FREE, ABSENT_CHARGED]}
+    AttendanceStatus: {type: string, enum: [PRESENT, ABSENT, FREE]}
     ReconciliationState: {type: string, enum: [UNRECORDED, RECORDED, SKIPPED, RESCHEDULED]}
     ProjectionSource: {type: string, enum: [RECURRING, RESCHEDULED]}
     ScheduleConflictWarning:
@@ -1085,7 +1085,7 @@ components:
             importedTuitionCycleCount: {type: integer}
     StudentGoogleSheet:
       type: object
-      required: [id, studentId, fileName, templateVersion, status, sharingStatus, createdAt]
+      required: [id, studentId, fileName, templateVersion, status, sharingStatus, generationStartedAt, canRetryGeneration, createdAt]
       properties:
         id: {type: integer, format: int64}
         studentId: {type: integer, format: int64}
@@ -1098,6 +1098,8 @@ components:
         lastGeneratedAt: {type: string, format: date-time, nullable: true}
         lastSyncedAt: {type: string, format: date-time, nullable: true}
         lastSyncError: {type: string, nullable: true}
+        generationStartedAt: {type: string, format: date-time, nullable: true}
+        canRetryGeneration: {type: boolean}
         createdAt: {type: string, format: date-time}
     CreateStudentGoogleSheetRequest:
       type: object

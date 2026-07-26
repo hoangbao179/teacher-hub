@@ -9,8 +9,7 @@
 4. `LessonService.complete` khóa lesson và participant snapshot trong transaction.
 5. Mỗi participant phải có đúng một attendance; attendance ngoài snapshot bị DB từ chối.
 6. `PRESENT` của policy trả phí có hiệu lực tại ngày học tạo/cộng cycle item.
-7. `ABSENT`, `FREE` và policy miễn phí không cộng; `ABSENT_CHARGED` chỉ dùng trong
-   import lịch sử đã xác nhận và có tính phí.
+7. Chỉ `PRESENT` cộng buổi học phí; `ABSENT`, `FREE` và policy miễn phí không cộng.
 8. Item thứ 8 chuyển cycle sang `PAYMENT_DUE`.
 
 ## Canonical API and lesson types

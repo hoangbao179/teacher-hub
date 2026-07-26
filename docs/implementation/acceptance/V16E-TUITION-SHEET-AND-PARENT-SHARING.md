@@ -5,7 +5,7 @@ Trạng thái: **PLANNED**. Không checkbox nào là PASS khi chưa có evidence
 ## Functional acceptance
 
 - [ ] `Học phí` và `Tổng quan` hiển thị cycle tám billable sessions từ canonical DB.
-- [ ] ABSENT/FREE có trong lịch sử/tổng lịch nhưng không có billable sequence; ABSENT_CHARGED chỉ xuất hiện nếu đã được duyệt.
+- [ ] ABSENT/FREE có trong lịch sử/tổng lịch nhưng không có billable sequence.
 - [ ] Cycle dở xuyên promotion/transfer giữ tiến độ và cùng Sheet.
 - [ ] Giá/status/ngày thu/phương thức dùng dữ liệu snapshot/persisted, không suy từ config hiện tại.
 - [ ] Parent được share đúng Sheet làm Viewer; Sheet vẫn Restricted.
