@@ -305,7 +305,7 @@ export class AssignmentRepository {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
-      await this.validateReferences(connection, input);
+      await this.validateReferences(connection, input, teacherUserId);
       const id = await this.insertDraft(connection, input, teacherUserId);
       await this.audit.record(connection, {
         actorUserId: teacherUserId,
@@ -342,7 +342,7 @@ export class AssignmentRepository {
       if (!source) throw this.notFound();
       if (source.status === "DRAFT")
         throw new AppError(409, "ASSIGNMENT_NOT_PUBLISHED", "Bài nguồn chưa có kết quả.");
-      await this.validateReferences(connection, input);
+      await this.validateReferences(connection, input, teacherUserId);
       const id = await this.insertDraft(connection, input, teacherUserId);
       await connection.execute(
         "UPDATE learning_assignments SET review_source_assignment_id=? WHERE id=?",
@@ -389,7 +389,17 @@ export class AssignmentRepository {
           "ASSIGNMENT_VERSION_CONFLICT",
           "Bài đã được cập nhật ở nơi khác. Hãy tải lại trước khi lưu.",
         );
-      await this.validateReferences(connection, input);
+      await this.validateReferences(connection, input, teacherUserId);
+      const [history] = await connection.execute<RowDataPacket[]>(
+        "SELECT id FROM learning_attempts WHERE assignment_id=? LIMIT 1",
+        [id],
+      );
+      if (history.length)
+        throw new AppError(
+          409,
+          "ASSIGNMENT_NOT_EDITABLE",
+          "Bài nháp đã có lượt làm hoặc câu hỏi nên không thể thay đổi nội dung.",
+        );
       const [result] = await connection.execute<ResultSetHeader>(
         `UPDATE learning_assignments SET
           vocabulary_set_id=?,title=?,instruction=?,audience_type=?,class_id=?,
@@ -684,11 +694,12 @@ export class AssignmentRepository {
   private async validateReferences(
     connection: PoolConnection,
     input: CreateAssignmentDraftRequest,
+    teacherUserId: number,
   ): Promise<void> {
     if (input.vocabularySetId != null) {
       const [sets] = await connection.execute<RowDataPacket[]>(
-        "SELECT id FROM vocabulary_sets WHERE id=? LIMIT 1",
-        [input.vocabularySetId],
+        "SELECT id FROM vocabulary_sets WHERE id=? AND teacher_user_id=? LIMIT 1",
+        [input.vocabularySetId, teacherUserId],
       );
       if (!sets.length)
         throw new AppError(

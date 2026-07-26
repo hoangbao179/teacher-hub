@@ -12,6 +12,7 @@ import {
 } from "@mui/icons-material";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -28,6 +29,7 @@ import {
   Step,
   StepLabel,
   Stepper,
+  Skeleton,
   TextField,
   Typography,
 } from "@mui/material";
@@ -46,7 +48,7 @@ import type {
   VocabularyTopicListItem,
   VocabularyTopicSuggestionItem,
 } from "@teacher/shared";
-import { assignmentActivitiesForTemplate } from "@teacher/shared";
+import { assignmentActivitiesForTemplate, hasPlayableImage } from "@teacher/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -71,10 +73,11 @@ import {
   PageHeader,
   StickyActionBar,
 } from "../../../components/UiKit";
-import { publishedUnits } from "../../learning/content/vocabularyCatalog";
+import { learningLevels, publishedUnits } from "../../learning/content/vocabularyCatalog";
 import {
   ageBandLabel,
   ageBandOptions,
+  levelSlugsByAgeBand,
   publicUnitSnapshot,
   suggestionItems,
   vocabularyTopicIcon,
@@ -182,7 +185,7 @@ export function AssignmentWizardPage() {
   const [studentsError, setStudentsError] = useState("");
   const [loading, setLoading] = useState(Boolean(editingId));
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [assignmentSaveError, setAssignmentSaveError] = useState("");
   const [saved, setSaved] = useState(false);
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -204,14 +207,14 @@ export function AssignmentWizardPage() {
         }
         setForm(toInput(detail));
         setVersion(detail.version);
-      }).catch((reason: Error) => setError(reason.message)).finally(() => setLoading(false));
+      }).catch((reason: Error) => setAssignmentSaveError(reason.message)).finally(() => setLoading(false));
     }
   }, [editingId, navigate]);
 
   const templateResult = useMemo(() => assignmentActivitiesForTemplate(form.templateCode, {
     ageBand: form.ageBand,
     itemCount: form.items.length,
-    imageItemCount: form.items.filter((item) => item.supportsImageGame).length,
+    imageItemCount: form.items.filter(hasPlayableImage).length,
     exampleItemCount: form.items.filter((item) => Boolean(item.exampleEn)).length,
   }), [form.ageBand, form.items, form.templateCode]);
 
@@ -222,7 +225,7 @@ export function AssignmentWizardPage() {
 
   const chooseSet = async (setId: number) => {
     setSaving(true);
-    setError("");
+    setAssignmentSaveError("");
     try {
       const selected: VocabularySetDetail = await getVocabularySet(setId);
       const mapped: AssignmentVocabularyItemInput[] = selected.items.map((item, index) => ({
@@ -242,7 +245,7 @@ export function AssignmentWizardPage() {
       const result = assignmentActivitiesForTemplate(form.templateCode, {
         ageBand: selected.ageBand,
         itemCount: mapped.length,
-        imageItemCount: mapped.filter((item) => item.supportsImageGame).length,
+        imageItemCount: mapped.filter(hasPlayableImage).length,
         exampleItemCount: mapped.filter((item) => Boolean(item.exampleEn)).length,
       });
       setForm((current) => ({
@@ -255,7 +258,7 @@ export function AssignmentWizardPage() {
       }));
       setSaved(false);
     } catch (reason) {
-      setError((reason as Error).message);
+      setAssignmentSaveError((reason as Error).message);
     } finally {
       setSaving(false);
     }
@@ -263,7 +266,7 @@ export function AssignmentWizardPage() {
 
   const save = async () => {
     setSaving(true);
-    setError("");
+    setAssignmentSaveError("");
     try {
       const normalized = {
         ...form,
@@ -281,7 +284,7 @@ export function AssignmentWizardPage() {
       if (!editingId) window.history.replaceState(null, "", `/admin/assignments/${detail.id}/edit`);
       return detail;
     } catch (reason) {
-      setError((reason as Error).message);
+      setAssignmentSaveError((reason as Error).message);
       return undefined;
     } finally {
       setSaving(false);
@@ -296,7 +299,7 @@ export function AssignmentWizardPage() {
         const preview = await previewAssignment(detail.id);
         setPreviewWarnings(preview.warnings);
       } catch (reason) {
-        setError((reason as Error).message);
+        setAssignmentSaveError((reason as Error).message);
         return;
       }
     }
@@ -317,7 +320,7 @@ export function AssignmentWizardPage() {
         },
       });
     } catch (reason) {
-      setError((reason as Error).message);
+      setAssignmentSaveError((reason as Error).message);
     } finally {
       setSaving(false);
       setPublishOpen(false);
@@ -340,7 +343,7 @@ export function AssignmentWizardPage() {
         {steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
       </Stepper>
       <LinearProgress variant="determinate" value={((step + 1) / steps.length) * 100} sx={{ display: { md: "none" } }} />
-      {error && <Alert severity="error">{error}</Alert>}
+      {assignmentSaveError && <Alert severity="error">{assignmentSaveError}</Alert>}
       {saved && <Alert severity="success" icon={<CloudDone />}>Đã lưu bản nháp.</Alert>}
 
       {step === 0 && <AudienceStep
@@ -442,6 +445,8 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
   const [topicsLoading, setTopicsLoading] = useState(false);
   const [setsError, setSetsError] = useState("");
   const [topicsError, setTopicsError] = useState("");
+  const [suggestionError, setSuggestionError] = useState("");
+  const [unitError, setUnitError] = useState("");
   const [search, setSearch] = useState("");
   const [ageFilter, setAgeFilter] = useState<LearningAgeBand | "">("");
   const [ageBand, setAgeBand] = useState<LearningAgeBand>(form.ageBand);
@@ -469,18 +474,22 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
     setTopicsLoading(true);
     setTopicsError("");
     try {
-      const result = await listVocabularyTopics({ pageSize: 50 });
+      const result = await listVocabularyTopics({ pageSize: 50, ageBand });
       setTopics(result.data);
     } catch (reason) {
       setTopicsError(reason instanceof Error ? reason.message : "Không tải được chủ đề.");
     } finally {
       setTopicsLoading(false);
     }
-  }, []);
+  }, [ageBand]);
 
   useEffect(() => {
     void Promise.resolve().then(loadSets);
   }, [loadSets]);
+
+  useEffect(() => {
+    if (tab === "TOPICS") void Promise.resolve().then(loadTopics);
+  }, [loadTopics, tab]);
 
   useEffect(() => {
     if (!initialSetId || form.vocabularySetId === initialSetId) return;
@@ -493,31 +502,46 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
     void Promise.resolve().then(() => {
       if (!active) return undefined;
       setSuggestionsLoading(true);
-      setTopicsError("");
+      setSuggestionError("");
       return suggestVocabularyTopic({ topicSlug, ageBand, targetCount: 10 });
     }).then((result) => {
       if (active && result) setSuggestions(result.items);
     }).catch((reason: Error) => {
-      if (active) setTopicsError(reason.message);
+      if (active) setSuggestionError(reason.message);
     }).finally(() => {
       if (active) setSuggestionsLoading(false);
     });
     return () => { active = false; };
   }, [ageBand, topicSlug]);
 
+  const compatibleUnits = useMemo(() => {
+    const compatibleSlugs = levelSlugsByAgeBand[ageBand] as readonly string[];
+    return publishedUnits.filter((unit) => compatibleSlugs.includes(unit.levelSlug));
+  }, [ageBand]);
+  const selectedUnit = compatibleUnits.find((unit) => unit.id === unitId) ?? null;
+  const changeAgeBand = (value: LearningAgeBand) => {
+    setAgeBand(value);
+    const unit = publishedUnits.find((item) => item.id === unitId);
+    if (unit && !(levelSlugsByAgeBand[value] as readonly string[]).includes(unit.levelSlug))
+      setUnitId("");
+  };
+
   const filteredSets = sets.filter((item) =>
     (!search || `${item.title} ${item.description ?? ""}`
       .toLocaleLowerCase("vi").includes(search.toLocaleLowerCase("vi")))
     && (!ageFilter || item.ageBand === ageFilter));
   const selectedSuggestions = suggestions.filter((item) => item.selected);
-  const imageCount = selectedSuggestions.filter((item) => item.supportsImageGame).length;
+  const suggestedPreviewItems = selectedSuggestions.map(() => ({
+    illustration: { kind: "NONE" as const },
+  }));
+  const imageCount = suggestedPreviewItems.filter(hasPlayableImage).length;
 
   const createFromTopic = async () => {
     const topic = topics.find((item) => item.slug === topicSlug);
     if (!topic || !selectedSuggestions.length || creatingRef.current) return;
     creatingRef.current = true;
     setCreating(true);
-    setTopicsError("");
+    setSuggestionError("");
     try {
       const created = await createVocabularySet({
         title: topic.titleVi,
@@ -536,7 +560,7 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
       await chooseSet(created.id);
       setTab("SETS");
     } catch (reason) {
-      setTopicsError(reason instanceof Error ? reason.message : "Không tạo được bộ từ.");
+      setSuggestionError(reason instanceof Error ? reason.message : "Không tạo được bộ từ.");
     } finally {
       creatingRef.current = false;
       setCreating(false);
@@ -548,14 +572,14 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
     if (!unit || creatingRef.current) return;
     creatingRef.current = true;
     setCreating(true);
-    setTopicsError("");
+    setUnitError("");
     try {
-      const created = await importPublicUnitSnapshot(publicUnitSnapshot(unit, ageBand));
+      const created = await importPublicUnitSnapshot(publicUnitSnapshot(unit));
       await loadSets();
       await chooseSet(created.id);
       setTab("SETS");
     } catch (reason) {
-      setTopicsError(reason instanceof Error ? reason.message : "Không import được Unit.");
+      setUnitError(reason instanceof Error ? reason.message : "Không import được Unit.");
     } finally {
       creatingRef.current = false;
       setCreating(false);
@@ -570,8 +594,9 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
       value={tab}
       onChange={(_event, value: VocabularySourceTab) => {
         setTab(value);
-        if (value === "TOPICS" && topics.length === 0 && !topicsLoading)
-          void loadTopics();
+        setTopicsError("");
+        setSuggestionError("");
+        setUnitError("");
       }}
       variant="scrollable"
       allowScrollButtonsMobile
@@ -612,15 +637,20 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
     </Stack>}
 
     {tab === "TOPICS" && <Stack spacing={1.5}>
-      <TextField select label="Khối tuổi" value={ageBand} onChange={(event) => setAgeBand(event.target.value as LearningAgeBand)}>
+      <TextField select label="Khối tuổi" value={ageBand} onChange={(event) => changeAgeBand(event.target.value as LearningAgeBand)}>
         {ageBandOptions.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
       </TextField>
       {topicsLoading && <LinearProgress aria-label="Đang tải chủ đề" />}
       {topicsError && <Alert severity="error" action={<Button color="inherit" onClick={() => void loadTopics()}>Thử lại</Button>}>{topicsError}</Alert>}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", md: "repeat(4,minmax(0,1fr))" }, gap: 1 }}>
-        {topics.map((topic) => <Card key={topic.id} variant={topic.slug === topicSlug ? "elevation" : "outlined"}>
+        {topics.map((topic) => <Card key={topic.id} variant="outlined" sx={topic.slug === topicSlug ? {
+          borderColor: "primary.main",
+          borderWidth: 2,
+          bgcolor: "action.selected",
+        } : undefined}>
           <CardActionArea onClick={() => {
             setSuggestions([]);
+            setSuggestionError("");
             setTopicSlug(topic.slug);
           }} sx={{ minHeight: 96 }}>
             <CardContent sx={{ p: 1.25 }}>
@@ -630,7 +660,14 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
           </CardActionArea>
         </Card>)}
       </Box>
-      {suggestionsLoading && <LinearProgress aria-label="Đang gợi ý từ" />}
+      {suggestionsLoading && <Stack aria-label="Đang gợi ý từ" spacing={0.75}>
+        <Skeleton variant="rounded" height={38} />
+        <Skeleton variant="rounded" height={38} />
+        <Skeleton variant="rounded" height={38} />
+      </Stack>}
+      {suggestionError && <Alert severity="error">{suggestionError}</Alert>}
+      {!suggestionsLoading && !suggestionError && topicSlug && suggestions.length === 0 &&
+        <Alert severity="info">Chủ đề này chưa có từ phù hợp.</Alert>}
       {suggestions.length > 0 && <>
         {(["CORE", "EXTENDED"] as const).map((tier) => <Stack key={tier} data-tier={tier} spacing={0.5}>
           <Typography variant="subtitle2">{tier === "CORE" ? "Từ cơ bản" : "Từ mở rộng"}</Typography>
@@ -651,12 +688,33 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
     </Stack>}
 
     {tab === "UNITS" && <Stack spacing={1.5}>
-      <TextField select label="Khối tuổi" value={ageBand} onChange={(event) => setAgeBand(event.target.value as LearningAgeBand)}>
+      <TextField select label="Khối tuổi" value={ageBand} onChange={(event) => changeAgeBand(event.target.value as LearningAgeBand)}>
         {ageBandOptions.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
       </TextField>
-      <TextField select label="Unit có sẵn" value={unitId} onChange={(event) => setUnitId(event.target.value)}>
-        {publishedUnits.map((unit) => <MenuItem key={unit.id} value={unit.id}>{unit.title}</MenuItem>)}
-      </TextField>
+      {unitError && <Alert severity="error">{unitError}</Alert>}
+      <Autocomplete
+        value={selectedUnit}
+        options={compatibleUnits}
+        onChange={(_event, unit) => {
+          setUnitError("");
+          setUnitId(unit?.id ?? "");
+        }}
+        groupBy={(unit) => learningLevels.find((level) => level.slug === unit.levelSlug)?.name ?? unit.levelSlug}
+        getOptionLabel={(unit) => unit.levelSlug === "mam-non"
+          ? `Mầm non · ${unit.title}`
+          : `Lớp ${unit.levelSlug.slice(4)} · ${unit.title}`}
+        isOptionEqualToValue={(option, value) => option.id === value.id}
+        slotProps={{ listbox: { sx: { maxHeight: 340 } } }}
+        renderOption={(props, unit) => <Box component="li" {...props} key={unit.id}>
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+              {unit.levelSlug === "mam-non" ? "Mầm non" : `Lớp ${unit.levelSlug.slice(4)}`} · {unit.title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">{unit.vocabulary.length} từ</Typography>
+          </Box>
+        </Box>}
+        renderInput={(params) => <TextField {...params} label="Tìm Unit công khai" />}
+      />
       <Alert severity="info">Unit sẽ được gửi lên server dưới dạng snapshot, giữ emoji, ảnh công khai, phát âm, nghĩa và ví dụ.</Alert>
       <Button variant="contained" disabled={creating || !unitId} onClick={() => void importUnit()}>
         {creating ? "Đang import…" : "Import Unit và sử dụng"}
@@ -678,7 +736,9 @@ function WordsStep({ form, patch }: { form: AssignmentDraftInput; patch: Patch }
       {form.items.map((item) => <FormControlLabel
         key={`${item.sourceVocabularyItemId}-${item.displayOrder}`}
         control={<Checkbox checked onChange={() => patch("items", form.items.filter((value) => value !== item).map((value, index) => ({ ...value, displayOrder: index + 1 })))} />}
-        label={<><strong>{item.word}</strong> — {item.meaningVi} {item.supportsImageGame && <Chip size="small" label="Có hình" />}</>}
+        label={<><strong>{item.word}</strong> — {item.meaningVi} {hasPlayableImage(item)
+          ? <Chip size="small" label="Có hình" />
+          : item.supportsImageGame && <Chip size="small" label="Có thể gợi ý ảnh" />}</>}
       />)}
     </Stack>
     {form.items.length === 0 && <Alert severity="warning">Cần ít nhất một từ trước khi giao bài.</Alert>}
@@ -692,7 +752,7 @@ function ActivitiesStep({ form, warnings, patch, editImages }: {
     const generated = assignmentActivitiesForTemplate(code, {
       ageBand: form.ageBand,
       itemCount: form.items.length,
-      imageItemCount: form.items.filter((item) => item.supportsImageGame).length,
+      imageItemCount: form.items.filter(hasPlayableImage).length,
       exampleItemCount: form.items.filter((item) => Boolean(item.exampleEn)).length,
     });
     patch("templateCode", code);
@@ -708,7 +768,7 @@ function ActivitiesStep({ form, warnings, patch, editImages }: {
       {templates.map((value) => <MenuItem key={value} value={value}>{templateLabels[value]}</MenuItem>)}
     </TextField>
     {warnings.map((warning) => <Alert key={warning} severity="warning">{warning}</Alert>)}
-    {form.items.filter((item) => item.supportsImageGame).length < 2 && <Button
+    {form.items.filter(hasPlayableImage).length < 2 && <Button
       variant="outlined"
       onClick={() => void editImages()}
     >Quay về chọn ảnh</Button>}
@@ -716,7 +776,7 @@ function ActivitiesStep({ form, warnings, patch, editImages }: {
       {customActivities.map((activity) => {
         const metadata = gamePresentationLabels[activity.presentation];
         const imageUnavailable = Boolean(metadata.requiresImages)
-          && form.items.filter((item) => item.supportsImageGame).length < 2;
+          && form.items.filter(hasPlayableImage).length < 2;
         return <FormControlLabel
           key={activity.presentation}
           disabled={imageUnavailable}
@@ -759,7 +819,7 @@ function PreviewStep({ form, warnings, editImages }: {
   const imageActivities = form.activities.filter(
     (activity) => gamePresentationLabels[activity.presentation].requiresImages,
   );
-  const imageCount = form.items.filter((item) => item.supportsImageGame).length;
+  const imageCount = form.items.filter(hasPlayableImage).length;
   const estimatedMinutes = Math.max(3, Math.ceil((form.items.length * form.activities.length) / 8));
   return <FormSection title="Xem trước trước khi giao" description="Đây chỉ là bản xem trước, không ghi lượt chơi hay kết quả.">
     <Alert severity="info" icon={<Preview />}>XEM TRƯỚC</Alert>

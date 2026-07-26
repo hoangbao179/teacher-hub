@@ -79,18 +79,31 @@ integration("topic age filter and suggestion keep CORE before EXTENDED", async (
     pageSize: 50,
   });
   assert.ok(page.items.some((topicItem) => topicItem.slug === "daily-routines"));
-  assert.ok(!page.items.some((topicItem) => topicItem.slug === "colors"));
-  const suggestion = await service.suggest({
+  assert.ok(page.items.some((topicItem) => topicItem.slug === "colors"));
+  assert.ok(page.items.every((topicItem) => topicItem.coreWordCount > 0));
+  const colors = await service.suggest({
+    topicSlug: "colors",
+    ageBand: "G4_G5",
+    targetCount: 12,
+  });
+  assert.ok(colors.items.some((word) => word.tier === "CORE"));
+  assert.ok(colors.items.filter((word) => word.tier === "CORE").every((word) => word.selected));
+  assert.ok(colors.items.slice(0, colors.topic.coreWordCount).every((word) => word.tier === "CORE"));
+  const family = await service.suggest({
+    topicSlug: "family",
+    ageBand: "G6_G9",
+    targetCount: 10,
+  });
+  assert.ok(family.items.some((word) => word.tier === "CORE"));
+  const preschoolColors = await service.suggest({
     topicSlug: "colors",
     ageBand: "PRESCHOOL_G1",
     targetCount: 12,
   });
-  assert.deepEqual(
-    suggestion.items.slice(0, 10).map((word) => word.tier),
-    Array(10).fill("CORE"),
+  assert.notDeepEqual(
+    colors.items.filter((word) => word.tier === "EXTENDED").map((word) => word.id),
+    preschoolColors.items.filter((word) => word.tier === "EXTENDED").map((word) => word.id),
   );
-  assert.ok(suggestion.items.slice(10).every((word) => word.tier === "EXTENDED"));
-  assert.equal(suggestion.selectedCount, 12);
 });
 
 integration("set create/update/duplicate/archive/import persist atomically with audit", async () => {

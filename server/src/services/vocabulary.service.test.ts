@@ -66,18 +66,26 @@ test("normalization is stable for spacing, width and case", () => {
   assert.equal(normalizeVocabularyText("  Màu   ĐỎ "), "màu đỏ");
 });
 
-test("suggestion keeps CORE before EXTENDED and selects only target count", async () => {
+test("suggestion keeps CORE before EXTENDED and always selects every CORE word", async () => {
   const repository = {
-    findTopic: async () => topic,
+    findTopic: async () => ({
+      ...topic,
+      coreWordCount: 3,
+      words: [
+        ...topic.words.slice(0, 2),
+        { ...topic.words[1], id: 4, word: "green", normalizedWord: "green", priority: 3 },
+        topic.words[2],
+      ],
+    }),
   } as unknown as VocabularyRepository;
   const result = await new VocabularyService(repository).suggest({
     topicSlug: "colors",
     ageBand: "PRESCHOOL_G1",
     targetCount: 2,
   });
-  assert.deepEqual(result.items.map((item) => item.tier), ["CORE", "CORE", "EXTENDED"]);
-  assert.deepEqual(result.items.map((item) => item.selected), [true, true, false]);
-  assert.equal(result.selectedCount, 2);
+  assert.deepEqual(result.items.map((item) => item.tier), ["CORE", "CORE", "CORE", "EXTENDED"]);
+  assert.deepEqual(result.items.map((item) => item.selected), [true, true, true, false]);
+  assert.equal(result.selectedCount, 3);
 });
 
 test("create normalizes original fields and forwards authenticated actor", async () => {
@@ -185,6 +193,22 @@ test("Public Unit import validates full snapshot and rejects arbitrary URL", asy
   }, 22);
   assert.equal(calls[0][1], 22);
   assert.equal(calls[0][2], "VOCABULARY_PUBLIC_UNIT_IMPORTED");
+  await assert.rejects(
+    () => service.importPublicUnit({
+      unitId: "unit-1",
+      levelSlug: "lop-2",
+      contentVersion: 1,
+      title: "Unit 1",
+      ageBand: "G4_G5",
+      items: [{
+        id: "word-1",
+        word: "cat",
+        meaningVi: "con mèo",
+        illustration: { kind: "NONE" },
+      }],
+    }, 22),
+    (error: unknown) => error instanceof AppError && error.code === "INVALID_AGE_BAND",
+  );
   await assert.rejects(
     () => service.importPublicUnit({
       unitId: "unit-1",

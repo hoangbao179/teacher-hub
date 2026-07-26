@@ -63,7 +63,10 @@ export class VocabularyService {
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).map((word, index) => ({ ...word, selected: index < input.targetCount }));
+    }).map((word, index) => ({
+      ...word,
+      selected: word.tier === "CORE" || index < input.targetCount,
+    }));
     return {
       topic: {
         id: topic.id,
@@ -191,6 +194,19 @@ export class VocabularyService {
     const levelSlug = this.validateText(input.levelSlug, "Mã lớp public", 30);
     if (!/^mam-non$|^lop-[1-9]$/.test(levelSlug))
       throw new AppError(400, "VALIDATION_ERROR", "Mã lớp public không hợp lệ.");
+    const expectedAgeBand = levelSlug === "mam-non" || levelSlug === "lop-1"
+      ? "PRESCHOOL_G1"
+      : levelSlug === "lop-2" || levelSlug === "lop-3"
+        ? "G2_G3"
+        : levelSlug === "lop-4" || levelSlug === "lop-5"
+          ? "G4_G5"
+          : "G6_G9";
+    if (input.ageBand !== expectedAgeBand)
+      throw new AppError(
+        400,
+        "INVALID_AGE_BAND",
+        "Khối tuổi không tương thích với lớp của Public Unit.",
+      );
     if (!Number.isInteger(input.contentVersion) || input.contentVersion < 1)
       throw new AppError(400, "VALIDATION_ERROR", "Phiên bản nội dung không hợp lệ.");
     if (!Array.isArray(input.items) || input.items.length < 1)
@@ -332,8 +348,7 @@ export class VocabularyService {
       illustrationKind: illustration.kind,
       illustrationValue: illustration.value ?? null,
       mediaId: illustration.mediaId ?? null,
-      supportsImageGame: Boolean(item.supportsImageGame) &&
-        illustration.kind !== "NONE",
+      supportsImageGame: Boolean(item.supportsImageGame),
       imageSearchTerms,
     };
   }

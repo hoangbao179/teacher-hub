@@ -2,14 +2,18 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import jwt from "jsonwebtoken";
 import type {
   AssignmentDetail,
   UpdateAssignmentDraftRequest,
 } from "@teacher/shared";
 import { createApp } from "../app";
+import { config } from "../config/config";
 import { pool } from "../db/pool";
 import { AssignmentRepository } from "../repositories/assignment.repository";
+import { VocabularyRepository } from "../repositories/vocabulary.repository";
 import { AssignmentService, verifyAssignmentToken } from "./assignment.service";
+import { VocabularyService } from "./vocabulary.service";
 
 const enabled = process.env.RUN_MYSQL_INTEGRATION === "1";
 const integration = enabled ? test : test.skip;
@@ -28,6 +32,9 @@ async function clean() {
     "learning_assignment_activities",
     "learning_assignment_items",
     "learning_assignments",
+    "vocabulary_items",
+    "vocabulary_sets",
+    "vocabulary_media",
     "class_enrollments",
     "classes",
     "students",
@@ -254,6 +261,127 @@ integration("V20C teacher routes require auth", async () => {
       `http://127.0.0.1:${port}/api/vocabulary/assignments`,
     );
     assert.equal(response.status, 401);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+integration("PATCH assignment saves an owned vocabulary snapshot and protects attempt history", async () => {
+  const data = await fixture();
+  const vocabularies = new VocabularyService(new VocabularyRepository());
+  const setId = await vocabularies.create({
+    title: "Animals source",
+    sourceType: "MANUAL",
+    ageBand: "G4_G5",
+    items,
+  }, data.teacherId);
+  const set = await vocabularies.setDetail(setId, data.teacherId);
+  const assignments = service();
+  const draft = await assignments.create({
+    title: "Draft before choosing a set",
+    ageBand: "G4_G5",
+    templateCode: "CUSTOM",
+    answerFeedbackMode: "IMMEDIATE",
+    shuffleQuestions: true,
+    items: [],
+    activities: [],
+  }, data.teacherId);
+  const patch = {
+    ...updateInput(draft),
+    vocabularySetId: setId,
+    title: set.title,
+    items: set.items.map((value, index) => ({
+      sourceVocabularyItemId: value.id,
+      displayOrder: index + 1,
+      word: value.word,
+      meaningVi: value.meaningVi,
+      phonetic: value.phonetic ?? undefined,
+      partOfSpeech: value.partOfSpeech ?? undefined,
+      exampleEn: value.exampleEn ?? undefined,
+      speechText: value.speechText,
+      tier: value.tier,
+      illustration: value.illustration,
+      supportsImageGame: value.supportsImageGame,
+      imageSearchTerms: value.imageSearchTerms,
+    })),
+    activities,
+  };
+  const token = jwt.sign({
+    id: data.teacherId,
+    username: "v20c",
+    displayName: "V20C",
+    role: "TEACHER",
+  }, config.jwt.secret, { expiresIn: "5m" });
+  const server = createApp().listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  try {
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const response = await fetch(`${base}/api/vocabulary/assignments/${draft.id}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json() as { data: AssignmentDetail };
+    assert.equal(payload.data.vocabularySetId, setId);
+    assert.equal(payload.data.items.length, items.length);
+    assert.equal(payload.data.activities.length, activities.length);
+    assert.deepEqual(payload.data.items.map((value) => value.word), items.map((value) => value.word));
+
+    const [session] = await pool.execute<ResultSetHeader>(
+      `INSERT INTO learning_access_sessions
+        (assignment_id,guest_name,session_token_hash,access_version_snapshot,expires_at,last_activity_at)
+       VALUES (?,NULL,REPEAT('a',64),1,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 HOUR),UTC_TIMESTAMP())`,
+      [draft.id],
+    );
+    const [attempt] = await pool.execute<ResultSetHeader>(
+      `INSERT INTO learning_attempts
+        (assignment_id,access_session_id,random_seed,session_token_hash,session_expires_at,
+         generation_warnings_json,started_at,last_activity_at,total_questions,graded_question_count)
+       VALUES (?,?,REPEAT('b',64),REPEAT('c',64),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 HOUR),
+         JSON_ARRAY(),UTC_TIMESTAMP(),UTC_TIMESTAMP(),0,0)`,
+      [draft.id, session.insertId],
+    );
+    await pool.execute(
+      `INSERT INTO learning_attempt_questions
+        (attempt_id,assignment_item_id,activity_id,question_key,sequence_number,
+         mechanic,presentation,prompt_snapshot_json,options_snapshot_json,
+         correct_answer_snapshot_json)
+       VALUES (?,?,?,'primary-1',1,'SELECT_ONE','LISTEN_PICK_IMAGE',
+         JSON_OBJECT(),JSON_ARRAY(),JSON_OBJECT())`,
+      [attempt.insertId, payload.data.items[0].id, payload.data.activities[0].id],
+    );
+    const blocked = await fetch(`${base}/api/vocabulary/assignments/${draft.id}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...patch, version: payload.data.version }),
+    });
+    assert.equal(blocked.status, 409);
+    assert.equal((await blocked.json() as { error: { code: string } }).error.code, "ASSIGNMENT_NOT_EDITABLE");
+    assert.equal((await assignments.detail(draft.id, data.teacherId)).items.length, items.length);
+
+    const [other] = await pool.execute<ResultSetHeader>(
+      `INSERT INTO users(username,email,password_hash,display_name)
+       VALUES ('v20c-other','v20c-other@example.com','hash','Other')`,
+    );
+    const otherDraft = await assignments.create({
+      title: "Other draft",
+      ageBand: "G4_G5",
+      templateCode: "CUSTOM",
+      answerFeedbackMode: "IMMEDIATE",
+      shuffleQuestions: true,
+      items: [],
+      activities: [],
+    }, other.insertId);
+    await assert.rejects(
+      assignments.update(otherDraft.id, {
+        ...patch,
+        version: otherDraft.version,
+      }, other.insertId),
+      (error: unknown) => (error as { code?: string }).code === "VOCABULARY_SET_NOT_FOUND",
+    );
   } finally {
     server.closeAllConnections();
     await new Promise<void>((resolve, reject) =>

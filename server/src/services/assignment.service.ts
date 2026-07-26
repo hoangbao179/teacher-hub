@@ -6,6 +6,7 @@ import {
   assignmentTemplateCodes,
   gameMechanics,
   gamePresentations,
+  hasPlayableImage,
   learningAgeBands,
   type AssignmentDetail,
   type AssignmentListQuery,
@@ -344,8 +345,7 @@ export class AssignmentService {
     if (!assignment.activities.length) warnings.push("Bài cần ít nhất một hoạt động.");
     if (assignment.dueAt && new Date(assignment.dueAt).getTime() <= Date.now())
       warnings.push("Hạn hoàn thành phải ở tương lai.");
-    const imageCount = assignment.items.filter((item) =>
-      ["EMOJI", "STORED_MEDIA"].includes(item.illustrationSnapshot.kind)).length;
+    const imageCount = assignment.items.filter(hasPlayableImage).length;
     if (assignment.activities.some((activity) =>
       imagePresentations.has(activity.presentation)) && imageCount < 2)
       warnings.push("Hoạt động cần hình nhưng chưa đủ 2 từ có hình.");

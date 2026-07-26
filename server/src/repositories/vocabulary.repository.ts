@@ -193,7 +193,8 @@ export class VocabularyRepository {
       where.push(`EXISTS (
         SELECT 1 FROM vocabulary_topic_words age_word
         WHERE age_word.topic_id=t.id AND age_word.status='ACTIVE'
-          AND JSON_CONTAINS(age_word.age_bands_json,JSON_QUOTE(?))
+          AND (age_word.tier='CORE'
+            OR JSON_CONTAINS(age_word.age_bands_json,JSON_QUOTE(?)))
       )`);
       params.push(query.ageBand);
     }
@@ -203,16 +204,16 @@ export class VocabularyRepository {
       params,
     );
     const offset = (query.page - 1) * query.pageSize;
-    const ageCountClause = query.ageBand
+    const extendedAgeCountClause = query.ageBand
       ? "AND JSON_CONTAINS(w.age_bands_json,JSON_QUOTE(?))"
       : "";
     const listParams = query.ageBand
-      ? [query.ageBand, query.ageBand, ...params, query.pageSize, offset]
+      ? [query.ageBand, ...params, query.pageSize, offset]
       : [...params, query.pageSize, offset];
     const [rows] = await pool.query<TopicRow[]>(
       `SELECT t.id,t.slug,t.title_vi,t.description_vi,t.icon_key,
-        SUM(CASE WHEN w.tier='CORE' ${ageCountClause} THEN 1 ELSE 0 END) core_word_count,
-        SUM(CASE WHEN w.tier='EXTENDED' ${ageCountClause} THEN 1 ELSE 0 END) extended_word_count
+        SUM(CASE WHEN w.tier='CORE' THEN 1 ELSE 0 END) core_word_count,
+        SUM(CASE WHEN w.tier='EXTENDED' ${extendedAgeCountClause} THEN 1 ELSE 0 END) extended_word_count
        FROM vocabulary_topics t
        LEFT JOIN vocabulary_topic_words w ON w.topic_id=t.id AND w.status='ACTIVE'
        WHERE ${filter}
@@ -272,7 +273,7 @@ export class VocabularyRepository {
     if (!topic) return null;
     const params: unknown[] = [topic.id];
     const ageFilter = ageBand
-      ? "AND JSON_CONTAINS(age_bands_json,JSON_QUOTE(?))"
+      ? "AND (tier='CORE' OR JSON_CONTAINS(age_bands_json,JSON_QUOTE(?)))"
       : "";
     if (ageBand) params.push(ageBand);
     const [words] = await pool.query<TopicWordRow[]>(

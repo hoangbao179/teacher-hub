@@ -1,7 +1,9 @@
 import type {
   AssignmentActivityInput,
   AssignmentTemplateCode,
+  AssignmentVocabularyItemInput,
 } from "./contracts/assignments.js";
+import type { VocabularyIllustrationInput } from "./contracts/vocabulary.js";
 import type { LearningAgeBand } from "./contracts/vocabulary.js";
 
 export interface AssignmentTemplateContext {
@@ -14,6 +16,19 @@ export interface AssignmentTemplateContext {
 export interface AssignmentTemplateResult {
   activities: AssignmentActivityInput[];
   warnings: string[];
+}
+
+export function hasPlayableImage(
+  item: Pick<AssignmentVocabularyItemInput, "illustration"> | {
+    illustrationSnapshot: VocabularyIllustrationInput;
+  },
+): boolean {
+  const illustration = "illustration" in item
+    ? item.illustration
+    : item.illustrationSnapshot;
+  return illustration.kind === "EMOJI"
+    || illustration.kind === "PUBLIC_ASSET"
+    || illustration.kind === "STORED_MEDIA";
 }
 
 function activities(

@@ -12,6 +12,7 @@ const apiPort = 4122;
 const webPort = 5202;
 const origin = `http://127.0.0.1:${webPort}`;
 const artifactDir = path.join(root, ".agent-reports", "V20F-VOCABULARY-STABILIZATION");
+const targetedSourceSmoke = process.env.TARGETED_SOURCE_SMOKE === "1";
 const password = "v20c-e2e-password-123";
 const testEnv = {
   ...process.env,
@@ -112,11 +113,28 @@ try {
   });
   const auth = { Authorization: `Bearer ${login.token}` };
   let vocabularySet;
+  if (targetedSourceSmoke) {
+    vocabularySet = await api("/api/vocabulary/sets", {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        title: "Bộ từ smoke đã lưu",
+        sourceType: "MANUAL",
+        ageBand: "G4_G5",
+        items: [
+          { displayOrder: 1, word: "red", meaningVi: "màu đỏ", tier: "CUSTOM", illustration: { kind: "NONE" }, supportsImageGame: true },
+          { displayOrder: 2, word: "blue", meaningVi: "màu xanh", tier: "CUSTOM", illustration: { kind: "NONE" }, supportsImageGame: true },
+        ],
+      }),
+    });
+  }
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
 
-  for (const viewport of [
+  for (const viewport of targetedSourceSmoke ? [
+    { width: 390, height: 844 },
+  ] : [
     { width: 360, height: 800 },
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
@@ -133,6 +151,51 @@ try {
     await page.getByLabel("Người nhận").click();
     await page.getByRole("option", { name: "Liên kết mở" }).click();
     await page.getByRole("button", { name: "Tiếp tục" }).click();
+    if (targetedSourceSmoke) {
+      await page.getByRole("button", { name: /Bộ từ smoke đã lưu/ }).click();
+      await page.getByRole("button", { name: "Lưu nháp" }).click();
+      await page.getByText("Đã lưu bản nháp.").waitFor();
+
+      await page.getByRole("tab", { name: "Chủ đề có sẵn" }).click();
+      await page.getByLabel("Khối tuổi").click();
+      await page.getByRole("option", { name: "Lớp 4–5" }).click();
+      const colors = page.getByRole("button", { name: /Màu sắc/ }).first();
+      await colors.waitFor();
+      await colors.click();
+      const coreChecks = page.locator('[data-tier="CORE"] input[type="checkbox"]');
+      await coreChecks.first().waitFor();
+      assert(await coreChecks.count() > 0, "G4_G5 colors must expose CORE words");
+      assert(await coreChecks.evaluateAll((nodes) => nodes.every((node) => node.checked)), "CORE words must default selected");
+      await page.screenshot({ path: path.join(artifactDir, "source-topic-core-390x844.png"), fullPage: true });
+
+      await page.route("**/api/vocabulary/topic-suggestions", (route) => route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { items: [], selectedCount: 0 } }),
+      }));
+      await page.getByRole("button", { name: /Gia đình/ }).first().click();
+      await page.getByText("Chủ đề này chưa có từ phù hợp.").waitFor();
+      await page.unroute("**/api/vocabulary/topic-suggestions");
+
+      await page.getByRole("tab", { name: "Unit công khai" }).click();
+      const unitSearch = page.getByLabel("Tìm Unit công khai");
+      await unitSearch.fill("Unit 1");
+      const options = page.getByRole("option");
+      await options.first().waitFor();
+      const optionTexts = await options.allTextContents();
+      assert(optionTexts.every((value) => /^Lớp [45] ·/.test(value)), `Unexpected Unit level: ${optionTexts.join(" | ")}`);
+      assert(optionTexts.every((value) => /Unit 1/i.test(value)), "Unit search must filter by text");
+      await page.screenshot({ path: path.join(artifactDir, "source-unit-autocomplete-390x844.png"), fullPage: true });
+      await options.first().click();
+      await page.getByRole("button", { name: "Import Unit và sử dụng" }).click();
+      await page.getByText(/Đã chọn \d+ từ/).waitFor();
+      await page.getByRole("button", { name: "Lưu nháp" }).click();
+      await page.getByText("Đã lưu bản nháp.").waitFor();
+      await audit(page, true);
+      await page.screenshot({ path: path.join(artifactDir, "source-assignment-saved-390x844.png"), fullPage: true });
+      await context.close();
+      continue;
+    }
     if (!vocabularySet) {
       await page.getByText("Cô chưa có bộ từ nào.").waitFor();
       await page.screenshot({ path: path.join(artifactDir, "empty-set-wizard-360x800.png") });
@@ -174,7 +237,7 @@ try {
     await page.screenshot({ path: path.join(artifactDir, `published-${viewport.width}x${viewport.height}.png`) });
     await context.close();
   }
-  console.log(`V20F assignment E2E PASS; screenshots: ${artifactDir}`);
+  console.log(`${targetedSourceSmoke ? "Vocabulary source smoke" : "V20F assignment E2E"} PASS; screenshots: ${artifactDir}`);
 } finally {
   if (browser) await browser.close();
   for (const child of children.reverse()) child.kill();

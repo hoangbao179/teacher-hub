@@ -8,6 +8,22 @@ import type {
 } from "@teacher/shared";
 import type { LearningUnit } from "../learning/types";
 
+export const levelSlugsByAgeBand = {
+  PRESCHOOL_G1: ["mam-non", "lop-1"],
+  G2_G3: ["lop-2", "lop-3"],
+  G4_G5: ["lop-4", "lop-5"],
+  G6_G9: ["lop-6", "lop-7", "lop-8", "lop-9"],
+} as const satisfies Record<LearningAgeBand, readonly LearningUnit["levelSlug"][]>;
+
+export function ageBandForLevelSlug(
+  levelSlug: LearningUnit["levelSlug"],
+): LearningAgeBand {
+  const entry = Object.entries(levelSlugsByAgeBand).find(([, slugs]) =>
+    (slugs as readonly string[]).includes(levelSlug));
+  if (!entry) throw new Error("Mã lớp public không hợp lệ.");
+  return entry[0] as LearningAgeBand;
+}
+
 export const ageBandOptions: readonly {
   value: LearningAgeBand;
   label: string;
@@ -81,15 +97,16 @@ function publicIllustration(image: string): VocabularyIllustrationInput {
 
 export function publicUnitSnapshot(
   unit: LearningUnit,
-  ageBand: LearningAgeBand,
 ): ImportPublicUnitSnapshotRequest {
   return {
     unitId: unit.id,
     levelSlug: unit.levelSlug,
     contentVersion: unit.contentVersion,
-    title: unit.title,
+    title: unit.levelSlug === "mam-non"
+      ? `Mầm non · ${unit.title}`
+      : `Lớp ${unit.levelSlug.slice(4)} · ${unit.title}`,
     description: unit.description,
-    ageBand,
+    ageBand: ageBandForLevelSlug(unit.levelSlug),
     items: unit.vocabulary.map((item) => ({
       id: item.id,
       word: item.word,

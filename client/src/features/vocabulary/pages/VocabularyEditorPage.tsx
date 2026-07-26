@@ -53,6 +53,7 @@ import {
 import { ConfirmationDialog, PageHeader, StickyActionBar } from "../../../components/UiKit";
 import { publishedUnits } from "../../learning/content/vocabularyCatalog";
 import {
+  ageBandForLevelSlug,
   ageBandOptions,
   parseVocabularyPaste,
   publicUnitSnapshot,
@@ -166,7 +167,7 @@ export function VocabularyEditorPage() {
         imageSearchTerms: item.imageSearchTerms,
       }))
       : publicUnitId
-        ? publicUnitSnapshot(publishedUnits.find((unit) => unit.id === publicUnitId)!, ageBand).items.map((item, index) => applyIllustrationOverride({
+        ? publicUnitSnapshot(publishedUnits.find((unit) => unit.id === publicUnitId)!).items.map((item, index) => applyIllustrationOverride({
           displayOrder: index + 1,
           word: item.word,
           meaningVi: item.meaningVi,
@@ -197,9 +198,10 @@ export function VocabularyEditorPage() {
       } else if (mode === "PUBLIC_UNIT") {
         const unit = publishedUnits.find((value) => value.id === publicUnitId);
         if (!unit) throw new Error("Hãy chọn một Unit công khai.");
+        const snapshot = publicUnitSnapshot(unit);
         result = await importPublicUnitSnapshot({
-          ...publicUnitSnapshot(unit, ageBand),
-          title: title.trim() || unit.title,
+          ...snapshot,
+          title: title.trim() || snapshot.title,
           description: description.trim() || unit.description,
         });
       } else {
@@ -355,7 +357,11 @@ export function VocabularyEditorPage() {
             const id = event.target.value;
             const unit = publishedUnits.find((value) => value.id === id);
             setPublicUnitId(id);
-            if (unit && !title) setTitle(unit.title);
+            if (unit) {
+              const snapshot = publicUnitSnapshot(unit);
+              if (!title) setTitle(snapshot.title);
+              setAgeBand(ageBandForLevelSlug(unit.levelSlug));
+            }
             setDirty(true);
           }}>
             {publishedUnits.map((unit) => <MenuItem key={unit.id} value={unit.id}>{unit.title} · {unit.vocabulary.length} từ</MenuItem>)}
