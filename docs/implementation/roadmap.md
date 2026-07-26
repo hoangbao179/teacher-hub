@@ -31,7 +31,7 @@
   vocabulary set CRUD và Public Unit snapshot import.
 - V20B-VOCABULARY-MEDIA-EDITOR: PLANNED — Pixabay, cache, hardened media storage
   và image picker/editor.
-- V20C-VOCABULARY-ASSIGNMENTS: PLANNED — draft/publish snapshot, recipients,
+- V20C-VOCABULARY-ASSIGNMENTS: PASS 26/07/2026 — draft/publish snapshot, recipients,
   teacher wizard và link/QR.
 - V20D-VOCABULARY-GAMES: PLANNED — public access, attempts, deterministic
   questions, idempotent answers và MVP games.

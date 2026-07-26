@@ -3,6 +3,7 @@ import { resolveAuthSettings, type AppEnvironment } from "./auth-settings";
 import { resolveGoogleDriveSettings } from "./google-drive-settings";
 import { resolveGoogleSheetSyncSettings } from "./google-sheet-sync-settings";
 import { resolveVocabularyMediaSettings } from "./vocabulary-media-settings";
+import path from "node:path";
 
 const nodeEnv = process.env.NODE_ENV ?? "development";
 if (!["development", "test", "production"].includes(nodeEnv)) throw new Error("NODE_ENV must be development, test or production");
@@ -29,6 +30,14 @@ for (const origin of corsOrigin.split(",").map((item) => item.trim())) {
   if (!/^https?:$/.test(url.protocol) || (production && url.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(url.hostname)))
     throw new Error("CORS_ORIGIN must contain valid HTTPS origins in production");
 }
+const publicAppOrigin = value(
+  "PUBLIC_APP_ORIGIN",
+  production ? "https://tienganhcovy.com" : "http://localhost:5173",
+);
+const publicAppUrl = new URL(publicAppOrigin);
+if (!/^https?:$/.test(publicAppUrl.protocol) ||
+    (production && publicAppUrl.protocol !== "https:"))
+  throw new Error("PUBLIC_APP_ORIGIN must be HTTPS in production");
 const dbPassword = value("DB_PASSWORD", "teacher_app");
 if (production && !process.env.DB_PASSWORD?.trim()) throw new Error("Missing required environment variable: DB_PASSWORD");
 
@@ -37,6 +46,13 @@ export const config = {
   port: integer("PORT", 4000, 1, 65535),
   timezone,
   corsOrigin,
+  publicAppOrigin: publicAppUrl.origin,
+  publicLearningAssetPath: path.resolve(
+    value(
+      "PUBLIC_LEARNING_ASSET_PATH",
+      production ? "/app/public-learning-assets" : path.join(process.cwd(), "../client/public"),
+    ),
+  ),
   db: {
     host: value("DB_HOST", production ? "mysql" : "127.0.0.1"),
     port: integer("DB_PORT", 3306, 1, 65535),

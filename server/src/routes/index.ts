@@ -51,6 +51,24 @@ export function createRouter(): Router {
     vocabularyImportRateLimit,
     asyncHandler(controllers.vocabularyMedia.import),
   );
+  router.get("/api/vocabulary/assignments", asyncHandler(controllers.assignments.list));
+  router.post("/api/vocabulary/assignments", asyncHandler(controllers.assignments.create));
+  router.get("/api/vocabulary/assignments/:id", asyncHandler(controllers.assignments.detail));
+  router.patch("/api/vocabulary/assignments/:id", asyncHandler(controllers.assignments.update));
+  router.get("/api/vocabulary/assignments/:id/preview", asyncHandler(controllers.assignments.preview));
+  router.post("/api/vocabulary/assignments/:id/publish", asyncHandler(controllers.assignments.publish));
+  router.post("/api/vocabulary/assignments/:id/close", asyncHandler(controllers.assignments.close));
+  router.post("/api/vocabulary/assignments/:id/duplicate", asyncHandler(controllers.assignments.duplicate));
+  router.patch("/api/vocabulary/assignments/:id/due-date", asyncHandler(controllers.assignments.dueDate));
+  router.get("/api/vocabulary/assignments/:id/recipients", asyncHandler(controllers.assignments.recipients));
+  router.post(
+    "/api/vocabulary/assignments/:id/recipients/regenerate-access",
+    asyncHandler(controllers.assignments.regenerateAccess),
+  );
+  router.post(
+    "/api/vocabulary/assignments/:id/recipients/revoke-access",
+    asyncHandler(controllers.assignments.revokeAccess),
+  );
   router.get("/api/vocabulary/sets", asyncHandler(controllers.vocabulary.listSets));
   router.post("/api/vocabulary/sets", asyncHandler(controllers.vocabulary.createSet));
   router.post(

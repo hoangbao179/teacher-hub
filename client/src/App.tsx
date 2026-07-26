@@ -37,6 +37,9 @@ const LearningReviewPage = lazy(() => import("./features/learning/pages/Learning
 const LearningNotFoundPage = lazy(() => import("./features/learning/pages/LearningNotFoundPage").then((module) => ({ default: module.LearningNotFoundPage })));
 const VocabularyListPage = lazy(() => import("./features/vocabulary/pages/VocabularyListPage").then((module) => ({ default: module.VocabularyListPage })));
 const VocabularyEditorPage = lazy(() => import("./features/vocabulary/pages/VocabularyEditorPage").then((module) => ({ default: module.VocabularyEditorPage })));
+const AssignmentListPage = lazy(() => import("./features/assignments/pages/AssignmentListPage").then((module) => ({ default: module.AssignmentListPage })));
+const AssignmentWizardPage = lazy(() => import("./features/assignments/pages/AssignmentWizardPage").then((module) => ({ default: module.AssignmentWizardPage })));
+const AssignmentDetailPage = lazy(() => import("./features/assignments/pages/AssignmentDetailPage").then((module) => ({ default: module.AssignmentDetailPage })));
 function AdminAuthBoundary() {
   return <AuthProvider><Outlet /></AuthProvider>;
 }
@@ -101,6 +104,10 @@ export function App() {
           <Route path="/admin/vocabulary" element={<VocabularyListPage />} />
           <Route path="/admin/vocabulary/new" element={<VocabularyEditorPage />} />
           <Route path="/admin/vocabulary/:id" element={<VocabularyEditorPage />} />
+          <Route path="/admin/assignments" element={<AssignmentListPage />} />
+          <Route path="/admin/assignments/new" element={<AssignmentWizardPage />} />
+          <Route path="/admin/assignments/:id" element={<AssignmentDetailPage />} />
+          <Route path="/admin/assignments/:id/edit" element={<AssignmentWizardPage />} />
           <Route path="/admin/*" element={<NotFoundPage admin />} />
           </Route>
         </Route>

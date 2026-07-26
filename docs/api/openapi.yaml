@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: Teacher Class Hub API
-  version: 0.8.0
-  description: API hiện hành, gồm Vocabulary Foundation V20A và Media Editor V20B; V20C–V20E vẫn PLANNED.
+  version: 0.9.0
+  description: API hiện hành gồm Vocabulary Foundation V20A, Media Editor V20B và Assignment Workflow V20C; game/attempt/result V20D–V20E vẫn PLANNED.
 servers:
   - url: /
 security:
@@ -702,6 +702,103 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/vocabulary/assignments:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Danh sách bài tập từ vựng của giáo viên
+      parameters:
+        - {in: query, name: status, schema: {$ref: '#/components/schemas/LearningAssignmentStatus'}}
+        - {in: query, name: audienceType, schema: {$ref: '#/components/schemas/LearningAudienceType'}}
+        - {in: query, name: ageBand, schema: {$ref: '#/components/schemas/VocabularyAgeBand'}}
+        - {$ref: '#/components/parameters/SearchQuery'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+      responses:
+        '200': {description: Thành công, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentListEnvelope'}}}}
+    post:
+      tags: [Vocabulary teacher]
+      summary: Tạo bài tập DRAFT
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateLearningAssignmentRequest'}}}}
+      responses:
+        '201': {description: Draft đã tạo, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+        '400': {$ref: '#/components/responses/ValidationError'}
+  /api/vocabulary/assignments/{id}:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Chi tiết bài tập và snapshot
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Thành công, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Vocabulary teacher]
+      summary: Cập nhật draft với optimistic version
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpdateLearningAssignmentRequest'}}}}
+      responses:
+        '200': {description: Đã cập nhật, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/vocabulary/assignments/{id}/preview:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Xem trước không tạo attempt hoặc kết quả
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Preview, content: {application/json: {schema: {$ref: '#/components/schemas/AssignmentPreviewEnvelope'}}}}
+  /api/vocabulary/assignments/{id}/publish:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Snapshot người nhận và publish trong transaction
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [version], properties: {version: {type: integer, minimum: 1}}}}}}
+      responses:
+        '200': {description: Raw token chỉ có trong response này, content: {application/json: {schema: {$ref: '#/components/schemas/PublishLearningAssignmentEnvelope'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/vocabulary/assignments/{id}/close:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Đóng bài và thu hồi quyền truy cập
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses: {'204': {description: Đã đóng}}
+  /api/vocabulary/assignments/{id}/duplicate:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Nhân bản thành draft, không copy token
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {content: {application/json: {schema: {type: object, properties: {title: {type: string, maxLength: 160}}}}}}
+      responses:
+        '201': {description: Draft mới, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+  /api/vocabulary/assignments/{id}/due-date:
+    patch:
+      tags: [Vocabulary teacher]
+      summary: Đổi hạn nộp sau publish
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [dueAt], properties: {dueAt: {type: string, format: date-time, nullable: true}}}}}}
+      responses:
+        '200': {description: Đã cập nhật, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAssignmentEnvelope'}}}}
+  /api/vocabulary/assignments/{id}/recipients:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Recipient snapshot, không trả raw token
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Thành công, content: {application/json: {schema: {$ref: '#/components/schemas/AssignmentRecipientsEnvelope'}}}}
+  /api/vocabulary/assignments/{id}/recipients/regenerate-access:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Thu hồi token cũ và sinh liên kết mới
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {content: {application/json: {schema: {type: object, properties: {recipientId: {type: integer, format: int64}}}}}}
+      responses:
+        '200': {description: Raw token mới chỉ trong response, content: {application/json: {schema: {$ref: '#/components/schemas/AssignmentShareEnvelope'}}}}
+  /api/vocabulary/assignments/{id}/recipients/revoke-access:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Thu hồi quyền truy cập recipient hoặc open link
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {content: {application/json: {schema: {type: object, properties: {recipientId: {type: integer, format: int64}}}}}}
+      responses: {'204': {description: Đã thu hồi}}
   /api/learning-assignments:
     x-implementation-status: PLANNED
     get:
@@ -1060,7 +1157,7 @@ components:
       required: [id, provider, providerAssetId, url, thumbnailUrl, altText, mimeType, byteSize, width, height, sourcePageUrl, contributorName, attributionText, licenseLabel]
       properties:
         id: {type: integer, format: int64}
-        provider: {type: string, enum: [PIXABAY]}
+        provider: {type: string, enum: [PIXABAY, LOCAL_ASSET]}
         providerAssetId: {type: string}
         url: {type: string, pattern: '^/api/public/vocabulary-media/'}
         thumbnailUrl: {type: string, pattern: '^/api/public/vocabulary-media/'}
@@ -1069,7 +1166,7 @@ components:
         byteSize: {type: integer, maximum: 5242880}
         width: {type: integer, minimum: 256, maximum: 4096}
         height: {type: integer, minimum: 256, maximum: 4096}
-        sourcePageUrl: {type: string, format: uri}
+        sourcePageUrl: {type: string, description: URL provider hoặc đường dẫn public /learning/... đã materialize}
         contributorName: {type: string}
         contributorUrl: {type: string, format: uri}
         attributionText: {type: string}
@@ -1098,7 +1195,7 @@ components:
         config: {type: object, additionalProperties: true}
     CreateLearningAssignmentRequest:
       type: object
-      required: [title, ageBand, templateCode, items, activities]
+      required: [title, ageBand, templateCode, answerFeedbackMode, shuffleQuestions, items, activities]
       properties:
         vocabularySetId: {type: integer, format: int64, minimum: 1}
         title: {type: string, minLength: 1, maxLength: 160}
@@ -1112,12 +1209,20 @@ components:
         dueAt: {type: string, format: date-time}
         maxAttempts: {type: integer, minimum: 1, maximum: 10, nullable: true}
         passScore: {type: integer, minimum: 0, maximum: 100}
-        answerMode: {type: string, maxLength: 50}
+        answerFeedbackMode: {type: string, enum: [IMMEDIATE, AFTER_COMPLETION]}
         shuffleQuestions: {type: boolean, default: true}
         items: {type: array, minItems: 2, maxItems: 40, items: {$ref: '#/components/schemas/VocabularyItemInput'}}
         activities: {type: array, minItems: 1, maxItems: 8, items: {$ref: '#/components/schemas/LearningAssignmentActivityInput'}}
     UpdateLearningAssignmentRequest:
-      type: object
+      allOf:
+        - {$ref: '#/components/schemas/CreateLearningAssignmentRequest'}
+        - type: object
+          required: [version]
+          properties:
+            version: {type: integer, minimum: 1, description: Optimistic concurrency version}
+      x-v20c-note: Chỉ DRAFT được sửa nội dung; dueAt của PUBLISHED dùng route due-date.
+      x-legacy-schema:
+        type: object
       description: Với PUBLISHED chỉ `dueAt` được phép; field khác trả 409.
       properties:
         title: {type: string, minLength: 1, maxLength: 160}
@@ -1134,9 +1239,10 @@ components:
       allOf:
         - {$ref: '#/components/schemas/CreateLearningAssignmentRequest'}
         - type: object
-          required: [id, status, publishedAt, closedAt]
+          required: [id, version, status, publishedAt, closedAt]
           properties:
             id: {type: integer, format: int64}
+            version: {type: integer, minimum: 1}
             publicCode: {type: string, pattern: '^[A-Z2-9]{8}$', nullable: true, description: Null khi draft, sinh atomic lúc publish}
             status: {$ref: '#/components/schemas/LearningAssignmentStatus'}
             publishedAt: {type: string, format: date-time, nullable: true}
@@ -1157,19 +1263,55 @@ components:
       properties:
         data:
           type: object
-          required: [assignment, recipientLinks]
+          required: [assignment, shares]
           properties:
             assignment: {$ref: '#/components/schemas/LearningAssignment'}
-            recipientLinks:
+            shares:
               type: array
               description: Raw access token chỉ có trong response này, không persist/log.
-              items:
-                type: object
-                required: [recipientId, studentId, accessToken]
-                properties:
-                  recipientId: {type: integer, format: int64}
-                  studentId: {type: integer, format: int64}
-                  accessToken: {type: string, minLength: 43, maxLength: 128}
+              items: {$ref: '#/components/schemas/AssignmentShare'}
+    AssignmentShare:
+      type: object
+      required: [shareUrl, accessToken, qrSvg]
+      properties:
+        recipientId: {type: integer, format: int64}
+        studentId: {type: integer, format: int64}
+        studentName: {type: string}
+        shareUrl: {type: string, format: uri}
+        accessToken: {type: string, minLength: 43, maxLength: 128}
+        qrSvg: {type: string, description: SVG tạo từ chính shareUrl}
+    AssignmentShareEnvelope:
+      type: object
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/AssignmentShare'}}
+    AssignmentRecipientsEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required: [id, studentId, studentName, assignedAt, tokenRevokedAt, completedAt]
+            properties:
+              id: {type: integer, format: int64}
+              studentId: {type: integer, format: int64}
+              studentName: {type: string}
+              assignedAt: {type: string, format: date-time}
+              tokenRevokedAt: {type: string, format: date-time, nullable: true}
+              completedAt: {type: string, format: date-time, nullable: true}
+    AssignmentPreviewEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [banner, assignment, estimatedMinutes, warnings]
+          properties:
+            banner: {type: string, enum: [XEM_TRUOC]}
+            assignment: {$ref: '#/components/schemas/LearningAssignment'}
+            estimatedMinutes: {type: integer, minimum: 1}
+            warnings: {type: array, items: {type: string}}
     PublicLearningAssignmentEnvelope:
       type: object
       required: [data]

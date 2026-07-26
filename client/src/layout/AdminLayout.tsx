@@ -7,6 +7,7 @@ import {
   Logout,
   School,
   Translate,
+  Assignment,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -38,6 +39,7 @@ const nav = [
 const desktopNav = [
   ...nav,
   ["/admin/vocabulary", <Translate key="vocabulary" />, "Kho từ vựng"],
+  ["/admin/assignments", <Assignment key="assignments" />, "Bài tập từ vựng"],
 ] as const;
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -50,7 +52,7 @@ export function AdminLayout() {
     );
   const current = directIndex >= 0 ? directIndex
     : /^\/admin\/(reconciliation|busy-slots|lessons)/.test(location.pathname) ? 1
-      : location.pathname.startsWith("/admin/vocabulary") ? -1 : 0;
+      : /^\/admin\/(vocabulary|assignments)/.test(location.pathname) ? -1 : 0;
   const desktopCurrent = desktopNav.findIndex(([path]) =>
     path === "/admin" ? location.pathname === "/admin" : location.pathname.startsWith(path),
   );

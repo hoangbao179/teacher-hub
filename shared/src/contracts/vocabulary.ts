@@ -48,7 +48,7 @@ export const vocabularyImageOrientations = [
 export type VocabularyImageOrientation =
   (typeof vocabularyImageOrientations)[number];
 
-export const vocabularyImageProviders = ["PIXABAY"] as const;
+export const vocabularyImageProviders = ["PIXABAY", "LOCAL_ASSET"] as const;
 export type VocabularyImageProvider =
   (typeof vocabularyImageProviders)[number];
 

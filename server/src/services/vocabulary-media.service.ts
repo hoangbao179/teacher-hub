@@ -109,7 +109,8 @@ export class VocabularyMediaService {
     this.ensureEnabled();
     if (!Number.isInteger(actorUserId) || actorUserId < 1)
       throw new AppError(401, "UNAUTHORIZED", "Chưa xác thực.");
-    if (!vocabularyImageProviders.includes(input.provider))
+    if (!vocabularyImageProviders.includes(input.provider) ||
+        input.provider !== this.provider?.name)
       throw new AppError(400, "VALIDATION_ERROR", "Nguồn ảnh không hợp lệ.");
     const providerAssetId = String(input.providerAssetId ?? "").trim();
     if (!/^[A-Za-z0-9_-]{1,160}$/.test(providerAssetId))

@@ -42,6 +42,11 @@ import { VocabularyMediaController } from "./controllers/vocabulary-media.contro
 import { VocabularyMediaRepository } from "./repositories/vocabulary-media.repository";
 import { VocabularyMediaService } from "./services/vocabulary-media.service";
 import { PixabayImageSearchProvider } from "./integrations/images/pixabay-image-search.provider";
+import { AssignmentController } from "./controllers/assignment.controller";
+import { AssignmentRepository } from "./repositories/assignment.repository";
+import { AssignmentService } from "./services/assignment.service";
+import { PublicAssetMaterializer } from "./services/public-asset-materializer";
+import { VocabularyMediaStorage } from "./services/vocabulary-media-storage";
 
 const users = new UserRepository();
 const classes = new ClassRepository();
@@ -53,6 +58,7 @@ const enrollments = new EnrollmentRepository();
 const studentReports = new StudentReportRepository();
 const vocabulary = new VocabularyRepository();
 const vocabularyMedia = new VocabularyMediaRepository();
+const assignments = new AssignmentRepository();
 
 const authService = new AuthService(users);
 const classService = new ClassService(classes);
@@ -73,6 +79,15 @@ export const vocabularyMediaService = new VocabularyMediaService(
   vocabularyMedia,
   vocabularyImageProvider,
   config.vocabularyMedia,
+);
+const assignmentService = new AssignmentService(
+  assignments,
+  config.publicAppOrigin,
+  new PublicAssetMaterializer(
+    config.publicLearningAssetPath,
+    vocabularyMedia,
+    new VocabularyMediaStorage(config.vocabularyMedia.storagePath),
+  ),
 );
 const studentGoogleSheets = new StudentGoogleSheetRepository();
 function createGoogleSheetProvider() {
@@ -117,4 +132,5 @@ export const controllers = {
   studentGoogleSheets: new StudentGoogleSheetController(studentGoogleSheetService),
   vocabulary: new VocabularyController(vocabularyService),
   vocabularyMedia: new VocabularyMediaController(vocabularyMediaService),
+  assignments: new AssignmentController(assignmentService),
 };

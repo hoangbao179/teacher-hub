@@ -156,6 +156,15 @@ export class VocabularyMediaRepository {
     return rows[0] ? mapMedia(rows[0]) : null;
   }
 
+  async findMediaBySha(contentSha256: string): Promise<VocabularyStoredMedia | null> {
+    const [rows] = await pool.execute<MediaRow[]>(
+      `SELECT * FROM vocabulary_media
+       WHERE content_sha256=? AND status='ACTIVE' LIMIT 1`,
+      [contentSha256],
+    );
+    return rows[0] ? mapMedia(rows[0]) : null;
+  }
+
   async findMediaRecord(id: number): Promise<{
     media: VocabularyStoredMedia;
     storagePath: string;
@@ -208,7 +217,8 @@ export class VocabularyMediaRepository {
       );
       if (!result.affectedRows) {
         await connection.rollback();
-        const existing = await this.findMedia(input.provider, input.asset.providerAssetId);
+        const existing = await this.findMedia(input.provider, input.asset.providerAssetId) ??
+          await this.findMediaBySha(input.contentSha256);
         if (!existing) throw new Error("Vocabulary media duplicate could not be resolved");
         return { media: existing, created: false };
       }
