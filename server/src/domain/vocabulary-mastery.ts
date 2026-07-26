@@ -10,8 +10,16 @@ export const VOCABULARY_MASTERY_POLICY = Object.freeze({
 });
 
 export function vocabularyMastery(
-  evidence: Omit<VocabularyMasteryEvidence, "firstTryPercent" | "finalCorrectPercent" | "reason">,
+  evidence: Omit<
+    VocabularyMasteryEvidence,
+    "firstTryPercent" | "finalCorrectPercent" | "reason" | "correctAfterRetry" | "reviewCorrect"
+  > & Partial<Pick<VocabularyMasteryEvidence, "correctAfterRetry" | "reviewCorrect">>,
 ): { status: VocabularyMasteryStatus; evidence: VocabularyMasteryEvidence } {
+  const normalized = {
+    ...evidence,
+    correctAfterRetry: evidence.correctAfterRetry ?? 0,
+    reviewCorrect: evidence.reviewCorrect ?? 0,
+  };
   const firstTryPercent = evidence.gradedExposures
     ? Math.round(evidence.correctFirstTry * 100 / evidence.gradedExposures)
     : null;
@@ -38,6 +46,6 @@ export function vocabularyMastery(
   }
   return {
     status,
-    evidence: { ...evidence, firstTryPercent, finalCorrectPercent, reason },
+    evidence: { ...normalized, firstTryPercent, finalCorrectPercent, reason },
   };
 }

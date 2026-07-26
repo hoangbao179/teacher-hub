@@ -3,6 +3,7 @@ import type { StudentGoogleSheetInfo } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
 import type { StudentGoogleSheetSnapshot } from "../integrations/google/google-integration.types";
+import { vocabularyMastery } from "../domain/vocabulary-mastery";
 import { AuditRepository } from "./audit.repository";
 
 interface ClaimInput { studentId: number; legacyImportId?: number; fileName: string; rootFolderId: string; templateVersion: string }
@@ -187,6 +188,38 @@ export class StudentGoogleSheetRepository {
           JOIN classes c3 ON c3.id=l3.class_id WHERE t3.tuition_cycle_id=tc.id),c.name) class_names
        FROM tuition_cycles tc JOIN class_enrollments e ON e.id=tc.enrollment_id AND e.student_id=? JOIN classes c ON c.id=e.class_id
        WHERE tc.status<>'CANCELLED' ORDER BY tc.started_at,tc.id`, [studentId]);
+    const [attemptRows] = await pool.query<RowDataPacket[]>(
+      `SELECT a.id,a.attempt_number,a.graded_question_count,
+        a.correct_first_try_count,a.final_correct_count,a.score_percent,
+        a.completed_at,a.updated_at,assignment.title,assignment.age_band,
+        class.name class_name
+       FROM learning_attempts a
+       JOIN learning_assignment_recipients recipient
+         ON recipient.id=a.recipient_id AND recipient.student_id=?
+       JOIN learning_assignments assignment ON assignment.id=a.assignment_id
+       LEFT JOIN classes class ON class.id=assignment.class_id
+       WHERE a.status='COMPLETED'
+       ORDER BY a.completed_at,a.id`,
+      [studentId],
+    );
+    const [attemptWordRows] = await pool.query<RowDataPacket[]>(
+      `SELECT a.id attempt_id,item.id assignment_item_id,item.word,
+        COUNT(*) exposures,
+        SUM(question_item.first_attempt_correct=1) correct_first,
+        SUM(question_item.final_correct=1) final_correct
+       FROM learning_attempts a
+       JOIN learning_assignment_recipients recipient
+         ON recipient.id=a.recipient_id AND recipient.student_id=?
+       JOIN learning_attempt_questions question
+         ON question.attempt_id=a.id AND question.graded=1
+       JOIN learning_attempt_question_items question_item
+         ON question_item.question_id=question.id
+       JOIN learning_assignment_items item
+         ON item.id=question_item.assignment_item_id
+       WHERE a.status='COMPLETED'
+       GROUP BY a.id,item.id,item.word`,
+      [studentId],
+    );
     const learning = lessons.map((row) => ({ lessonId: Number(row.lesson_id), academicYear: academicYear(String(row.session_date).slice(0, 10)),
       grade: gradeFromClassName(String(row.class_name)), className: String(row.class_name), date: String(row.session_date).slice(0, 10),
       time: `${row.start_time}–${row.end_time}`, attendance: row.attendance_status, billable: Boolean(row.counts_for_tuition),
@@ -210,6 +243,46 @@ export class StudentGoogleSheetRepository {
         paymentMethod: cycle.payment_method ?? "" };
     });
     const currentClass = String(students[0].class_name ?? "—");
+    const ageBandLabels: Record<string, string> = {
+      PRESCHOOL_G1: "Mầm non – Lớp 1",
+      G2_G3: "Lớp 2–3",
+      G4_G5: "Lớp 4–5",
+      G6_G9: "Lớp 6–9",
+    };
+    const vocabularyAttempts = attemptRows.map((attempt) => {
+      const words = attemptWordRows
+        .filter((row) => Number(row.attempt_id) === Number(attempt.id))
+        .map((row) => ({
+          word: String(row.word),
+          mastery: vocabularyMastery({
+            gradedExposures: Number(row.exposures),
+            correctFirstTry: Number(row.correct_first),
+            finalCorrect: Number(row.final_correct),
+            abandonedExposures: 0,
+          }).status,
+        }));
+      const reviewWords = words
+        .filter((word) => word.mastery === "NEEDS_REVIEW")
+        .map((word) => word.word);
+      return {
+        attemptId: Number(attempt.id),
+        completedAt: dateTime(attempt.completed_at)!,
+        assignmentTitle: String(attempt.title),
+        className: String(attempt.class_name ?? currentClass),
+        ageBand: ageBandLabels[String(attempt.age_band)] ?? String(attempt.age_band),
+        attemptNumber: Number(attempt.attempt_number),
+        scoredQuestionCount: Number(attempt.graded_question_count),
+        correctFirstTry: Number(attempt.correct_first_try_count),
+        finalCorrect: Number(attempt.final_correct_count),
+        scorePercent: attempt.score_percent == null ? null : Number(attempt.score_percent),
+        masteredWords: words.filter((word) => word.mastery === "MASTERED").length,
+        learningWords: words.filter((word) => word.mastery === "LEARNING").length,
+        needsReviewWords: reviewWords.length,
+        reviewWordList: reviewWords.join(", "),
+        status: "Đã hoàn thành",
+        updatedAt: dateTime(attempt.updated_at)!,
+      };
+    });
     const present = learning.filter((row) => row.attendance === "PRESENT" || row.attendance === "FREE").length;
     const latest = learning.at(-1);
     const currentCycle = tuition.at(-1);
@@ -221,6 +294,10 @@ export class StudentGoogleSheetRepository {
         latestComment: latest?.attendance === "ABSENT"
           ? latest?.studentComment ?? ""
           : latest?.studentComment || latest?.generalComment || "",
-        latestHomework: latest?.homework ?? "", teacher: "Cô Vy" }, learning, tuition };
+        latestHomework: latest?.homework ?? "", teacher: "Cô Vy" },
+      learning,
+      tuition,
+      vocabularyAttempts,
+    };
   }
 }

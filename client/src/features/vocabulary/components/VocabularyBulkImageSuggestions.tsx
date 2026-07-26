@@ -24,6 +24,7 @@ import type {
 } from "@teacher/shared";
 import { useEffect, useRef, useState } from "react";
 import {
+  getVocabularyMediaStatus,
   importVocabularyMedia,
   searchVocabularyMedia,
 } from "../../../api/vocabularyMedia";
@@ -52,6 +53,8 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect 
     ])),
   );
   const [importing, setImporting] = useState("");
+  const [providerDisabled, setProviderDisabled] = useState(false);
+  const [providerError, setProviderError] = useState("");
   const cancelled = useRef(false);
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect 
         cursor += 1;
         try {
           const result = await searchVocabularyMedia({
-            query: `${candidate.item.word} ${candidate.item.meaningVi}`,
+            query: candidate.item.imageSearchTerms?.[0] || candidate.item.word,
             mediaType: "ALL",
             pageSize: 6,
           });
@@ -76,7 +79,24 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect 
         }
       }
     };
-    void Promise.all(Array.from({ length: Math.min(3, candidates.length) }, () => worker()));
+    void getVocabularyMediaStatus().then((status) => {
+      if (cancelled.current) return;
+      if (!status.enabled) {
+        setProviderDisabled(true);
+        setStates((current) => Object.fromEntries(Object.entries(current).map(
+          ([key, value]) => [key, { ...value, loading: false }],
+        )));
+        return;
+      }
+      setProviderDisabled(false);
+      void Promise.all(Array.from({ length: Math.min(2, candidates.length) }, () => worker()));
+    }).catch((reason: Error) => {
+      if (cancelled.current) return;
+      setProviderError(reason.message);
+      setStates((current) => Object.fromEntries(Object.entries(current).map(
+        ([key, value]) => [key, { ...value, loading: false }],
+      )));
+    });
     return () => { cancelled.current = true; };
   }, [candidates, open]);
 
@@ -105,11 +125,13 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect 
       <DialogContent dividers>
         <Stack spacing={2}>
           <Box>
-            <Typography variant="body2">{completed}/{candidates.length} từ đã tìm xong · tối đa 3 yêu cầu đồng thời</Typography>
+            <Typography variant="body2">{completed}/{candidates.length} từ đã tìm xong · tối đa 2 yêu cầu đồng thời</Typography>
             <LinearProgress variant={candidates.length ? "determinate" : "indeterminate"} value={candidates.length ? completed / candidates.length * 100 : 0} sx={{ mt: 0.75 }} />
           </Box>
+          {providerDisabled && <Alert severity="info">Pixabay đang tắt. Hãy cấu hình provider ở server trước khi gợi ý ảnh hàng loạt.</Alert>}
+          {providerError && <Alert severity="warning">{providerError}</Alert>}
           {candidates.length === 0 && <Alert severity="info">Mọi từ đã có hình. Bỏ hình ở từ cần thay rồi chạy gợi ý lại.</Alert>}
-          {candidates.map(({ item, index }) => {
+          {!providerDisabled && !providerError && candidates.map(({ item, index }) => {
             const state = states[index] ?? { loading: true, items: [] };
             return <Box key={`${item.word}-${index}`} sx={{ border: 1, borderColor: "divider", borderRadius: 2, p: 1.5, opacity: state.skipped ? 0.55 : 1 }}>
               <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1, mb: 1 }}>

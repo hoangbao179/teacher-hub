@@ -36,7 +36,13 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
     if (this.failure === "NETWORK") throw new Error("network timeout");
     if (this.delayMs) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     this.template.build(snapshot, resource.spreadsheetId,
-      { "Tổng quan": 1, "Nhật ký học tập": 2, "Học phí": 3, _TeacherHub: 4 }, metadata);
+      {
+        "Tổng quan": 1,
+        "Nhật ký học tập": 2,
+        "Học phí": 3,
+        "Ôn từ vựng": 4,
+        _TeacherHub: 5,
+      }, metadata);
     this.rendered.push({ resource, snapshot });
     for (const row of snapshot.learning) this.learningRows.set(`${resource.spreadsheetId}:${row.lessonId}`, row);
   }

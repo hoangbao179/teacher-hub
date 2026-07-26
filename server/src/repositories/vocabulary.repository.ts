@@ -36,6 +36,7 @@ export interface PreparedVocabularyItem {
   illustrationValue: string | null;
   mediaId: number | null;
   supportsImageGame: boolean;
+  imageSearchTerms: string[];
 }
 
 export interface PreparedVocabularySet {
@@ -104,6 +105,7 @@ interface ItemRow extends RowDataPacket {
   illustration_value: string | null;
   media_id: number | null;
   supports_image_game: number;
+  image_search_terms_json: unknown;
 }
 
 function jsonValue<T>(value: unknown, fallback: T): T {
@@ -129,7 +131,7 @@ function mapTopicWord(row: TopicWordRow): VocabularyTopicWord {
     priority: Number(row.priority),
     ageBands: jsonValue<LearningAgeBand[]>(row.age_bands_json, []),
     supportsImageGame: Boolean(row.supports_image_game),
-    imageSearchTerms: jsonValue<string[]>(row.image_search_terms_json, []),
+    imageSearchTerms: jsonValue<string[]>(row.image_search_terms_json, [row.word]),
   };
 }
 
@@ -172,6 +174,7 @@ function mapItem(row: ItemRow): VocabularySetItem {
       ...(row.media_id ? { mediaId: Number(row.media_id) } : {}),
     },
     supportsImageGame: Boolean(row.supports_image_game),
+    imageSearchTerms: jsonValue<string[]>(row.image_search_terms_json, [row.word]),
   };
 }
 
@@ -539,6 +542,7 @@ export class VocabularyRepository {
           illustrationValue: row.illustration_value,
           mediaId: row.media_id,
           supportsImageGame: Boolean(row.supports_image_game),
+          imageSearchTerms: jsonValue<string[]>(row.image_search_terms_json, [row.word]),
         })),
       };
       const copyId = await this.insertSet(connection, copy, teacherUserId);
@@ -591,8 +595,9 @@ export class VocabularyRepository {
       `INSERT INTO vocabulary_items
         (vocabulary_set_id,source_topic_word_id,display_order,word,normalized_word,
          meaning_vi,normalized_meaning,phonetic,part_of_speech,example_en,speech_text,
-         tier,illustration_kind,illustration_value,media_id,supports_image_game)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         tier,illustration_kind,illustration_value,media_id,supports_image_game,
+         image_search_terms_json)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         setId,
         item.sourceTopicWordId ?? null,
@@ -610,6 +615,7 @@ export class VocabularyRepository {
         item.illustrationValue,
         item.mediaId,
         item.supportsImageGame ? 1 : 0,
+        JSON.stringify(item.imageSearchTerms),
       ],
     );
   }
@@ -624,7 +630,7 @@ export class VocabularyRepository {
         source_topic_word_id=?,display_order=?,word=?,normalized_word=?,
         meaning_vi=?,normalized_meaning=?,phonetic=?,part_of_speech=?,example_en=?,
         speech_text=?,tier=?,illustration_kind=?,illustration_value=?,media_id=?,
-        supports_image_game=?,updated_at=CURRENT_TIMESTAMP
+        supports_image_game=?,image_search_terms_json=?,updated_at=CURRENT_TIMESTAMP
        WHERE id=? AND vocabulary_set_id=? AND status='ACTIVE'`,
       [
         item.sourceTopicWordId ?? null,
@@ -642,6 +648,7 @@ export class VocabularyRepository {
         item.illustrationValue,
         item.mediaId,
         item.supportsImageGame ? 1 : 0,
+        JSON.stringify(item.imageSearchTerms),
         item.id!,
         setId,
       ],

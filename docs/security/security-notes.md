@@ -42,11 +42,13 @@ MIT-or-GPL là dependency transitively distributed, không có copyleft blocker 
 định cho source ứng dụng. Outdated major Node types/TypeScript được hoãn vì ngoài M6;
 review manifest không tìm thấy dependency trực tiếp không dùng.
 
-## Vocabulary media V20B và assignments/games V20C–V20E
+## Vocabulary media V20B và assignments/games V20C–V20F
 
 Các control image import/search/media bên dưới đã được triển khai ở V20B.
 Token assignment được triển khai ở V20C; public session, answer và game runtime
 được triển khai ở V20D; aggregate analytics/review được triển khai ở V20E.
+V20F giữ analytics ở bảng question-item, không trả correct snapshot/raw answer qua
+teacher result API và không đưa session/access token vào Google Sheet.
 
 - Public route `/api/public/*` của V20 phải đăng ký trước
   `router.use("/api", requireAuth)`; teacher route vẫn dùng Bearer auth.

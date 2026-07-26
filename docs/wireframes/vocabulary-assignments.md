@@ -31,3 +31,7 @@ Wireframe 24 có invariant bắt buộc: màn `Nghe và chọn hình` chỉ phá
 thanh và hiển thị các hình, không hiển thị từ/nghĩa/label tiết lộ đáp án trước khi
 học sinh trả lời. Text đáp án chỉ được dùng trong feedback sau submit nếu
 presentation cho phép.
+
+V20F giữ nguyên hierarchy của wireframe nhưng bổ sung ba nguồn từ trong wizard,
+empty state có hành động, preview chi tiết và trạng thái game/media. Screenshot runtime
+được lưu trong `.agent-reports/V20F-VOCABULARY-STABILIZATION/`, không thay ảnh wireframe.

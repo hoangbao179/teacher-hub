@@ -24,6 +24,11 @@ export class VocabularyGameController {
   attempt = async (req: Request, res: Response) =>
     res.json({ data: await this.service.attempt(String(req.params.sessionToken)) });
 
+  replay = async (req: Request, res: Response) =>
+    res.status(201).json({
+      data: await this.service.replay(String(req.params.sessionToken)),
+    });
+
   answer = async (req: Request, res: Response) =>
     res.json({ data: await this.service.answer(
       String(req.params.sessionToken),

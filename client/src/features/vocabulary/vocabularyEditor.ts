@@ -21,6 +21,18 @@ export const ageBandOptions: readonly {
 export const ageBandLabel = (value: LearningAgeBand) =>
   ageBandOptions.find((option) => option.value === value)?.label ?? value;
 
+export const vocabularyTopicIcons = {
+  palette: "🎨", numbers: "🔢", family: "👨‍👩‍👧", body: "🖐️",
+  school: "🏫", toys: "🧸", pets: "🐶", farm: "🚜", wildlife: "🦁",
+  fruit: "🍎", food: "🍽️", clothes: "👕", home: "🏠", weather: "🌤️",
+  feelings: "😊", routine: "🕒", actions: "🏃", transport: "🚌",
+  nature: "🌿", places: "📍",
+} as const;
+
+export function vocabularyTopicIcon(iconKey: string): string {
+  return vocabularyTopicIcons[iconKey as keyof typeof vocabularyTopicIcons] ?? "📚";
+}
+
 export function parseVocabularyPaste(value: string): VocabularyPastePreview {
   const rows = value.split(/\r?\n/u).map((line, index) => {
     const parts = line.split(/\t|;|,/u).map((part) => part.trim());
@@ -57,6 +69,7 @@ export function suggestionItems(
     tier: item.tier,
     illustration: { kind: "NONE" },
     supportsImageGame: item.supportsImageGame,
+    imageSearchTerms: item.imageSearchTerms,
   }));
 }
 

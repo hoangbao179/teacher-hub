@@ -16,7 +16,8 @@ test.after(async () => { if (enabled) await pool.end(); });
 integration("V20E aggregates authoritative graded results and creates a source-linked draft", async () => {
   await pool.query("SET FOREIGN_KEY_CHECKS=0");
   for (const table of [
-    "learning_attempt_answers", "learning_attempt_questions", "learning_attempts",
+    "learning_attempt_answers", "learning_attempt_question_items",
+    "learning_attempt_questions", "learning_attempts",
     "learning_access_sessions", "learning_assignment_recipients",
     "learning_assignment_audience_students", "learning_assignment_activities",
     "learning_assignment_items", "learning_assignments", "audit_logs", "students", "users",
@@ -88,15 +89,16 @@ integration("V20E aggregates authoritative graded results and creates a source-l
     `INSERT INTO learning_attempt_questions
       (attempt_id,assignment_item_id,activity_id,question_key,sequence_number,
        mechanic,presentation,prompt_snapshot_json,options_snapshot_json,
-       correct_answer_snapshot_json,graded,status,first_attempt_correct,final_correct,
+       correct_answer_snapshot_json,graded,question_kind,score_weight,
+       status,first_attempt_correct,final_correct,
        retry_count,completed_at)
      VALUES
       (?,?,?,'cat-graded',1,'SELECT_ONE','WORD_PICK_MEANING',JSON_OBJECT(),
-       JSON_ARRAY(),JSON_OBJECT(),TRUE,'ANSWERED',TRUE,TRUE,0,UTC_TIMESTAMP()),
+       JSON_ARRAY(),JSON_OBJECT(),TRUE,'PRIMARY',1,'ANSWERED',TRUE,TRUE,0,UTC_TIMESTAMP()),
       (?,?,?,'dog-graded',2,'SELECT_ONE','WORD_PICK_MEANING',JSON_OBJECT(),
-       JSON_ARRAY(),JSON_OBJECT(),TRUE,'ANSWERED',FALSE,FALSE,2,UTC_TIMESTAMP()),
-      (?,?,?,'cat-card',3,'EXPLORE_CARD','FLASHCARD',JSON_OBJECT(),
-       JSON_ARRAY(),JSON_OBJECT(),FALSE,'ANSWERED',TRUE,TRUE,0,UTC_TIMESTAMP())`,
+       JSON_ARRAY(),JSON_OBJECT(),TRUE,'PRIMARY',1,'ANSWERED',FALSE,FALSE,2,UTC_TIMESTAMP()),
+      (?,?,?,'cat-review',3,'SELECT_ONE','WORD_PICK_MEANING',JSON_OBJECT(),
+       JSON_ARRAY(),JSON_OBJECT(),TRUE,'REVIEW',0,'ANSWERED',TRUE,TRUE,0,UTC_TIMESTAMP())`,
     [
       attempt.insertId, itemIds[0], activity.insertId,
       attempt.insertId, itemIds[1], activity.insertId,
@@ -122,7 +124,10 @@ integration("V20E aggregates authoritative graded results and creates a source-l
   assert.equal(summary.guest.attempts, 0);
   assert.equal(recipients.total, 1);
   assert.equal(recipients.items[0].latestScore, 50);
+  assert.equal(recipients.items[0].gradedExposures, 2);
+  assert.equal(recipients.items[0].reviewCorrect, 1);
   assert.equal(words.items.find((word) => word.word === "cat")?.evidence.gradedExposures, 1);
+  assert.equal(words.items.find((word) => word.word === "cat")?.evidence.reviewCorrect, 1);
   assert.equal(words.items.find((word) => word.word === "cat")?.exposureCount, 2);
   assert.equal(words.items.find((word) => word.word === "dog")?.mastery, "NEEDS_REVIEW");
   assert.ok(elapsed < 1_500, `result aggregation exceeded local 1500ms budget: ${elapsed}ms`);

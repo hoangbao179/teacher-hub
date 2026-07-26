@@ -56,6 +56,7 @@ import {
   ageBandOptions,
   parseVocabularyPaste,
   publicUnitSnapshot,
+  vocabularyTopicIcon,
 } from "../vocabularyEditor";
 import { VocabularyImagePicker } from "../components/VocabularyImagePicker";
 import { VocabularyBulkImageSuggestions } from "../components/VocabularyBulkImageSuggestions";
@@ -76,6 +77,7 @@ export function VocabularyEditorPage() {
   const params = useParams();
   const setId = params.id ? Number(params.id) : null;
   const [query] = useSearchParams();
+  const returnTo = query.get("returnTo");
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -161,6 +163,7 @@ export function VocabularyEditorPage() {
         tier: item.tier,
         illustration: { kind: "NONE" as const },
         supportsImageGame: item.supportsImageGame,
+        imageSearchTerms: item.imageSearchTerms,
       }))
       : publicUnitId
         ? publicUnitSnapshot(publishedUnits.find((unit) => unit.id === publicUnitId)!, ageBand).items.map((item, index) => applyIllustrationOverride({
@@ -173,6 +176,7 @@ export function VocabularyEditorPage() {
           tier: "CUSTOM" as const,
           illustration: item.illustration,
           supportsImageGame: item.illustration.kind !== "NONE",
+          imageSearchTerms: [item.word],
         }))
         : [];
 
@@ -210,7 +214,12 @@ export function VocabularyEditorPage() {
         result = await createVocabularySet(payload);
       }
       setDirty(false);
-      navigate(`/admin/vocabulary/${result.id}`, { replace: true });
+      navigate(
+        returnTo
+          ? `${returnTo}${returnTo.includes("?") ? "&" : "?"}vocabularySetId=${result.id}`
+          : `/admin/vocabulary/${result.id}`,
+        { replace: true },
+      );
     } catch (value) {
       setError(value instanceof Error ? value.message : "Không thể lưu bộ từ.");
     } finally {
@@ -323,7 +332,7 @@ export function VocabularyEditorPage() {
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0, 1fr) 180px" }, gap: 1.5 }}>
             <TextField select label="Chủ đề" value={topicSlug} onChange={(event) => { setTopicSlug(event.target.value); setDirty(true); }}>
               {topicSlug && !topics.some((topic) => topic.slug === topicSlug) && <MenuItem value={topicSlug}>{topicSlug}</MenuItem>}
-              {topics.map((topic) => <MenuItem key={topic.slug} value={topic.slug}>{topic.iconKey} {topic.titleVi}</MenuItem>)}
+              {topics.map((topic) => <MenuItem key={topic.slug} value={topic.slug}>{vocabularyTopicIcon(topic.iconKey)} {topic.titleVi}</MenuItem>)}
             </TextField>
             <TextField type="number" label="Số từ mục tiêu" value={targetCount} onChange={(event) => setTargetCount(Math.max(2, Math.min(40, Number(event.target.value))))} slotProps={{ htmlInput: { min: 2, max: 40 } }} />
           </Box>
@@ -395,6 +404,7 @@ export function VocabularyEditorPage() {
         open
         word={currentItems[imagePickerIndex].word}
         meaningVi={currentItems[imagePickerIndex].meaningVi}
+        searchTerms={currentItems[imagePickerIndex].imageSearchTerms}
         onClose={() => setImagePickerIndex(null)}
         onSelect={(media) => applyStoredMedia(imagePickerIndex, media)}
       />}

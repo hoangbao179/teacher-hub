@@ -306,6 +306,10 @@ export class VocabularyService {
       200,
     );
     const illustration = this.validateIllustration(item.illustration, index);
+    const imageSearchTerms = [...new Set(
+      (item.imageSearchTerms?.length ? item.imageSearchTerms : [word])
+        .map((value) => this.validateText(value, `Từ khóa ảnh dòng ${index + 1}`, 100)),
+    )].slice(0, 8);
     return {
       id: item.id,
       sourceTopicWordId: item.sourceTopicWordId,
@@ -330,6 +334,7 @@ export class VocabularyService {
       mediaId: illustration.mediaId ?? null,
       supportsImageGame: Boolean(item.supportsImageGame) &&
         illustration.kind !== "NONE",
+      imageSearchTerms,
     };
   }
 

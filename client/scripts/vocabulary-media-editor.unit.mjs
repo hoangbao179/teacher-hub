@@ -23,8 +23,9 @@ test("picker has keyboard search, provider-disabled, retry and responsive states
   assert.match(picker, /repeat\(2, minmax\(0, 1fr\)\)/);
 });
 
-test("bulk suggestions are review-first, cancellable and capped at concurrency three", () => {
-  assert.match(bulk, /Math\.min\(3, candidates\.length\)/);
+test("bulk suggestions check provider status, are cancellable and capped at concurrency two", () => {
+  assert.match(bulk, /getVocabularyMediaStatus/);
+  assert.match(bulk, /Math\.min\(2, candidates\.length\)/);
   assert.match(bulk, /slice\(0, 3\)/);
   assert.match(bulk, /Bỏ qua/);
   assert.match(bulk, /cancelled\.current = true/);

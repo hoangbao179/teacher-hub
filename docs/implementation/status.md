@@ -24,6 +24,12 @@ và kết quả sao/sticker. V20E analytics/review đã **IMPLEMENTED — RELEAS
 PENDING**; chưa PASS vì còn cần operator duyệt provider/content và chạy restore drill
 trên VPS mục tiêu.
 
+V20F-VOCABULARY-STABILIZATION: **PASS LOCAL on 26/07/2026**. Wizard empty/topic,
+media fallback, queue/scoring, per-item analytics, memory/missing-letter/flashcard,
+age-based result và Google tab `Ôn từ vựng` đã được ổn định; migration `0021`/`0022`
+và full local regression đã đạt. Live Pixabay/Google smoke vẫn phụ thuộc credential;
+restore drill VPS vẫn là release gate của V20E.
+
 ## Status
 
 M1.1: PASS. M2A: PASS. M2B: PASS. M2C: PASS. M3: PASS on 20/07/2026. M2A evidence is in
@@ -125,6 +131,9 @@ Results/mastery/review draft, accessibility/security hardening, recovery-set too
 observability và full regression đã hoàn tất. Chưa có verdict PASS cho đến khi
 operator/giáo viên duyệt Pixabay/seed content và restore drill MySQL + media thành
 công trên VPS mục tiêu.
+V20F-VOCABULARY-STABILIZATION: PASS LOCAL on 26/07/2026. Evidence nằm trong hai
+report V20F và thư mục screenshot cùng tên tại `.agent-reports/`; external credential
+smoke không được giả lập thành production approval.
 
 ## Scope boundary
 
@@ -167,7 +176,7 @@ coverage without adding backend state or student identity.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
   be configured by the operator before the first production deployment.
-- V20A–V20D đã PASS. V20E đã triển khai analytics/review/recovery-set tooling và
+- V20A–V20D và V20F local đã PASS. V20E đã triển khai analytics/review/recovery-set tooling và
   regression; production enable còn chờ operator duyệt Pixabay/seed content và
   restore drill MySQL + media trên VPS mục tiêu.
 

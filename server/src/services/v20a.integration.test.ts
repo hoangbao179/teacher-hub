@@ -156,6 +156,46 @@ integration("set create/update/duplicate/archive/import persist atomically with 
   ]) assert.ok(audits.some((row) => row.action === action), action);
 });
 
+integration("empty set list is valid and teacher ownership stays isolated", async () => {
+  await clean();
+  const ownerId = await actor();
+  const [other] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO users(username,email,password_hash,display_name)
+     VALUES ('v20a-other','v20a-other@example.com','hash','Teacher khác')`,
+  );
+  const service = new VocabularyService(new VocabularyRepository());
+  const empty = await service.listSets(ownerId, { page: 1, pageSize: 50 });
+  assert.deepEqual(empty.items, []);
+  assert.equal(empty.total, 0);
+
+  const setId = await service.create({
+    title: "Bộ từ của cô Vy",
+    sourceType: "MANUAL",
+    ageBand: "G2_G3",
+    items: [item],
+  }, ownerId);
+  const ownSets = await service.listSets(ownerId, { page: 1, pageSize: 50 });
+  const otherSets = await service.listSets(other.insertId, { page: 1, pageSize: 50 });
+  assert.equal(ownSets.items[0]?.id, setId);
+  assert.deepEqual(otherSets.items, []);
+  await assert.rejects(
+    service.setDetail(setId, other.insertId),
+    (error: unknown) => (error as { code?: string }).code === "VOCABULARY_SET_NOT_FOUND",
+  );
+  await assert.rejects(
+    service.update(setId, {
+      title: "Không được sửa",
+      ageBand: "G2_G3",
+      items: [item],
+    }, other.insertId),
+    (error: unknown) => (error as { code?: string }).code === "VOCABULARY_SET_NOT_FOUND",
+  );
+  await assert.rejects(
+    service.duplicate(setId, {}, other.insertId),
+    (error: unknown) => (error as { code?: string }).code === "VOCABULARY_SET_NOT_FOUND",
+  );
+});
+
 integration("invalid item and audit failure leave no partial vocabulary set", async () => {
   await clean();
   const actorId = await actor();

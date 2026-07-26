@@ -16,6 +16,7 @@ const fake: StudentGoogleSheetSnapshot = {
     time: "18:00–19:30", attendance: "PRESENT", billable: true, cycleSequence: 1, content: "Dữ liệu giả", homework: "Dữ liệu giả",
     generalComment: "", studentComment: "Dữ liệu giả", updatedAt: new Date().toISOString() }],
   tuition: [],
+  vocabularyAttempts: [],
 };
 let spreadsheetId = "";
 try {
@@ -27,7 +28,7 @@ try {
   await provider.render(resource, fake, { templateVersion: config.googleDrive.templateVersion, recordId, generatedAt: new Date().toISOString() });
   const recovered = await provider.findByRecordId(recordId);
   if (recovered?.spreadsheetId !== spreadsheetId) throw new Error("Không đọc lại được appProperties của file smoke.");
-  console.log(JSON.stringify({ event: "google_drive_smoke_passed", fourSheetsRendered: true, metadataRecovered: true }));
+  console.log(JSON.stringify({ event: "google_drive_smoke_passed", fiveSheetsRendered: true, metadataRecovered: true }));
 } finally {
   if (spreadsheetId) await provider.trash(spreadsheetId);
 }

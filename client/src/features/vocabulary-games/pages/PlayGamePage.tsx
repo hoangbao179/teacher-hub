@@ -1,4 +1,8 @@
-import type { PublicLearningAttempt, SubmitLearningAnswerRequest } from "@teacher/shared";
+import type {
+  PublicLearningAttempt,
+  SubmitLearningAnswerRequest,
+  SubmitLearningAnswerResult,
+} from "@teacher/shared";
 import { Alert, Button, CircularProgress, Stack } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -15,7 +19,7 @@ export function PlayGamePage() {
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState<PublicLearningAttempt | null>(null);
   const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [feedback, setFeedback] = useState<SubmitLearningAnswerResult["feedback"] | null>(null);
   const [busy, setBusy] = useState(true);
   const pending = useRef<PendingSubmission | null>(null);
 
@@ -56,17 +60,28 @@ export function PlayGamePage() {
     if (!pending.current) return;
     setBusy(true);
     setError("");
+    let delayed = false;
     try {
       const result = await vocabularyGamesApi.answer(sessionToken, pending.current.request);
       pending.current = null;
-      setFeedback(result.feedback.message);
-      setAttempt(result.attempt);
-      if (!result.attempt.currentQuestion)
-        navigate(`/play/session/${encodeURIComponent(sessionToken)}/result`);
+      setFeedback(result.feedback);
+      const applyAttempt = () => {
+        setAttempt(result.attempt);
+        if (!result.attempt.currentQuestion)
+          navigate(`/play/session/${encodeURIComponent(sessionToken)}/result`);
+      };
+      if (result.feedback.tone === "POSITIVE" && !result.shouldRetry) {
+        delayed = true;
+        window.setTimeout(() => {
+          applyAttempt();
+          setBusy(false);
+        }, 550);
+      } else
+        applyAttempt();
     } catch (reason) {
       setError(`${reason instanceof Error ? reason.message : "Chưa gửi được câu trả lời."} Con có thể thử gửi lại.`);
     } finally {
-      setBusy(false);
+      if (!delayed) setBusy(false);
     }
   };
 
@@ -77,7 +92,15 @@ export function PlayGamePage() {
   return (
     <PlayShell progress={percent} progressLabel={attempt?.progress.label}>
       <Stack spacing={2}>
-        {feedback && <Alert severity="success" onClose={() => setFeedback("")}>{feedback}</Alert>}
+        {feedback && <Alert
+          role="status"
+          aria-live="polite"
+          severity={feedback.tone === "POSITIVE"
+            ? "success" : feedback.tone === "TRY_AGAIN" ? "warning" : "info"}
+          onClose={() => setFeedback(null)}
+        >
+          {feedback.message}
+        </Alert>}
         {error && (
           <Alert severity="warning" action={
             <Button color="inherit" onClick={() => void (pending.current ? send() : load())}>

@@ -1,6 +1,6 @@
 # Giao bài và trò chơi ôn từ vựng
 
-> Status: **IMPLEMENTED — V20A–V20E**
+> Status: **IMPLEMENTED — V20A–V20F**
 > Technical name: **Vocabulary Assignments and Games**
 > Primary teacher route family: `/admin/vocabulary/*`, `/admin/assignments/*`
 > Primary student route family: `/play/*`
@@ -1341,6 +1341,9 @@ Mỗi checkpoint có task và acceptance riêng:
   [acceptance](../implementation/acceptance/V20E-VOCABULARY-RESULTS-RELEASE.md):
   aggregation/review, accessibility, security, performance, deployment,
   backup/restore và full regression.
+- [V20F task](../implementation/tasks/V20F-VOCABULARY-STABILIZATION.md) /
+  [acceptance](../implementation/acceptance/V20F-VOCABULARY-STABILIZATION.md):
+  stabilization wizard/media/game analytics, Google vocabulary sync và regression.
 
 ### V20A — Foundation
 
@@ -1387,6 +1390,14 @@ Mỗi checkpoint có task và acceptance riêng:
 - production media backup/restore drill;
 - content review toàn bộ seed catalog;
 - full regression.
+
+### V20F — Stabilization
+
+- wizard hỗ trợ empty set và tạo/chọn set từ topic không reload;
+- `imageSearchTerms` được snapshot xuyên suốt và Pixabay disabled có fallback rõ ràng;
+- PRIMARY/REVIEW/EXPOSURE tách score weight, retry giới hạn và analytics theo từng item;
+- memory, missing letter, flashcard và presentation vui nhộn có hành vi UI thực;
+- template Google v2 thêm tab `Ôn từ vựng` và outbox attempt idempotent.
 
 Không milestone nào được đánh dấu implemented/PASS chỉ vì tài liệu này hoàn tất.
 

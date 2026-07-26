@@ -102,6 +102,80 @@ test("seeded queue is deterministic, snapshot-safe and keeps listening answers h
   }
   assert.ok(first.questions.some((question) => question.status === "CONDITIONAL"));
   assert.ok(first.questions.some((question) => !question.graded && question.mechanic === "EXPLORE_CARD"));
+  assert.ok(first.questions
+    .filter((question) => question.status === "CONDITIONAL")
+    .every((question) => question.questionKind === "REVIEW" && question.scoreWeight === 0));
+});
+
+test("pair questions map every item and expose only opaque match keys", () => {
+  const queue = generateQuestionQueue({
+    ...assignment,
+    activities: [{
+      id: 3,
+      displayOrder: 1,
+      mechanic: "MEMORY_PAIRS",
+      presentation: "MEMORY_WORD_MEANING",
+      required: true,
+    }],
+  }, "pair-seed");
+  const question = queue.questions[0];
+  assert.equal(question.assignmentItemIds.length, 4);
+  assert.equal(new Set(question.assignmentItemIds).size, 4);
+  const left = question.prompt.pairs ?? [];
+  assert.ok(left.every((item) => item.matchKey?.startsWith("match-")));
+  assert.ok(question.options.every((item) => item.matchKey?.startsWith("match-")));
+  assert.ok(left.every((item) => !assignment.items.some(
+    (word) => item.matchKey === String(word.id) || item.matchKey === word.word,
+  )));
+});
+
+test("missing letter snapshots one blank and opaque deterministic options", () => {
+  const spelling = {
+    ...assignment,
+    activities: [{
+      id: 4,
+      displayOrder: 1,
+      mechanic: "BUILD_WORD" as const,
+      presentation: "MISSING_LETTER" as const,
+      required: true,
+    }],
+  };
+  const first = generateQuestionQueue(spelling, "missing-seed");
+  const second = generateQuestionQueue(spelling, "missing-seed");
+  assert.deepEqual(first, second);
+  assert.ok(first.questions.length > 0);
+  for (const question of first.questions) {
+    assert.equal(question.presentation, "MISSING_LETTER");
+    assert.equal(question.prompt.maskedWord?.split("_").length, 2);
+    assert.ok(question.options.length >= 2 && question.options.length <= 4);
+    assert.ok(question.options.every((option) => option.id.startsWith("letter-option-")));
+  }
+});
+
+test("queue caps primary scoring before reviews and keeps no orphan review", () => {
+  const manyActivities = Array.from({ length: 8 }, (_, index) => ({
+    id: 100 + index,
+    displayOrder: index + 1,
+    mechanic: "SELECT_ONE" as const,
+    presentation: index % 2 === 0
+      ? "WORD_PICK_MEANING" as const
+      : "MEANING_PICK_WORD" as const,
+    required: true,
+  }));
+  const queue = generateQuestionQueue({
+    ...assignment,
+    ageBand: "G2_G3",
+    activities: manyActivities,
+  }, "capped-review-seed");
+  const primaries = queue.questions.filter((question) => question.scoreWeight === 1);
+  const primaryKeys = new Set(primaries.map((question) => question.key));
+  const reviews = queue.questions.filter((question) => question.questionKind === "REVIEW");
+  assert.ok(primaries.length <= 16);
+  assert.ok(reviews.length > 0);
+  assert.ok(reviews.every((question) =>
+    question.adaptiveSourceKey && primaryKeys.has(question.adaptiveSourceKey)));
+  for (const item of assignment.items)
+    assert.ok(primaries.some((question) => question.assignmentItemIds.includes(item.id)));
 });
 
 test("server grading canonicalizes object keys and pair order", () => {
@@ -114,4 +188,15 @@ test("server grading canonicalizes object keys and pair order", () => {
     { pairs: [{ leftId: "a", rightId: "1" }, { leftId: "b", rightId: "2" }] },
   ), true);
   assert.equal(isCorrectAnswer({ optionId: "wrong" }, { optionId: "right" }), false);
+});
+
+test("missing-letter grading accepts only its opaque option id", () => {
+  assert.equal(isCorrectAnswer(
+    { optionId: "letter-option-correct" },
+    { optionId: "letter-option-correct", missingIndex: 2 },
+  ), true);
+  assert.equal(isCorrectAnswer(
+    { optionId: "letter-option-wrong" },
+    { optionId: "letter-option-correct", missingIndex: 2 },
+  ), false);
 });

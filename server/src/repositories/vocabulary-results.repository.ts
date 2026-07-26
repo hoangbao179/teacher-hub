@@ -50,15 +50,20 @@ export class VocabularyResultsRepository {
         ) AS UNSIGNED) latest_score,
         MAX(a.score_percent) best_score,
         MAX(a.last_activity_at) last_activity_at,
-        SUM(CASE WHEN q.graded=1 THEN 1 ELSE 0 END) graded_exposures,
-        SUM(CASE WHEN q.graded=1 AND q.first_attempt_correct=1 THEN 1 ELSE 0 END) correct_first,
-        SUM(CASE WHEN q.graded=1 AND q.final_correct=1 THEN 1 ELSE 0 END) final_correct,
+        SUM(CASE WHEN q.score_weight=1 THEN 1 ELSE 0 END) graded_exposures,
+        SUM(CASE WHEN q.score_weight=1 AND qi.first_attempt_correct=1 THEN 1 ELSE 0 END) correct_first,
+        SUM(CASE WHEN q.question_kind='PRIMARY' AND qi.first_attempt_correct=0
+          AND qi.final_correct=1 THEN 1 ELSE 0 END) correct_after_retry,
+        SUM(CASE WHEN q.question_kind='REVIEW'
+          AND qi.final_correct=1 THEN 1 ELSE 0 END) review_correct,
+        SUM(CASE WHEN q.score_weight=1 AND qi.final_correct=1 THEN 1 ELSE 0 END) final_correct,
         MAX(CASE WHEN a.status='COMPLETED' THEN 1 ELSE 0 END) has_completed,
         MAX(CASE WHEN a.status='IN_PROGRESS' THEN 1 ELSE 0 END) has_progress
        FROM learning_assignment_recipients r
        LEFT JOIN learning_attempts a
          ON a.recipient_id=r.id AND a.assignment_id=r.assignment_id
        LEFT JOIN learning_attempt_questions q ON q.attempt_id=a.id
+       LEFT JOIN learning_attempt_question_items qi ON qi.question_id=q.id
        WHERE r.assignment_id=?
        GROUP BY r.id,r.student_id,r.student_name_snapshot`,
       [assignmentId],
@@ -66,14 +71,15 @@ export class VocabularyResultsRepository {
     const [reviewRows] = await pool.query<RowDataPacket[]>(
       `SELECT x.recipient_id,COUNT(*) needs_review
        FROM (
-         SELECT a.recipient_id,q.assignment_item_id,
-           SUM(CASE WHEN q.graded=1 THEN 1 ELSE 0 END) exposures,
-           SUM(CASE WHEN q.graded=1 AND q.final_correct=1 THEN 1 ELSE 0 END) final_correct,
-           SUM(CASE WHEN q.graded=1 AND a.status='ABANDONED' THEN 1 ELSE 0 END) abandoned
+         SELECT a.recipient_id,qi.assignment_item_id,
+           SUM(CASE WHEN q.score_weight=1 THEN 1 ELSE 0 END) exposures,
+           SUM(CASE WHEN q.score_weight=1 AND qi.final_correct=1 THEN 1 ELSE 0 END) final_correct,
+           SUM(CASE WHEN q.score_weight=1 AND a.status='ABANDONED' THEN 1 ELSE 0 END) abandoned
          FROM learning_attempts a
          JOIN learning_attempt_questions q ON q.attempt_id=a.id
+         JOIN learning_attempt_question_items qi ON qi.question_id=q.id
          WHERE a.assignment_id=? AND a.recipient_id IS NOT NULL
-         GROUP BY a.recipient_id,q.assignment_item_id
+         GROUP BY a.recipient_id,qi.assignment_item_id
        ) x
        WHERE x.exposures>0 AND (x.final_correct<x.exposures OR x.abandoned>0)
        GROUP BY x.recipient_id`,
@@ -109,19 +115,24 @@ export class VocabularyResultsRepository {
         CAST(SUBSTRING_INDEX(
           GROUP_CONCAT(a.score_percent ORDER BY a.started_at DESC,a.id DESC),',',1
         ) AS UNSIGNED) latest_score,MAX(a.score_percent) best_score,
-        SUM(CASE WHEN q.graded=1 THEN 1 ELSE 0 END) graded_exposures,
-        SUM(CASE WHEN q.graded=1 AND q.first_attempt_correct=1 THEN 1 ELSE 0 END) correct_first,
-        SUM(CASE WHEN q.graded=1 AND q.final_correct=1 THEN 1 ELSE 0 END) final_correct,
-        ROUND(100*SUM(CASE WHEN q.graded=1 AND q.first_attempt_correct=1 THEN 1 ELSE 0 END)
-          /NULLIF(SUM(q.graded=1),0)) first_try_percent,
-        COUNT(DISTINCT CASE WHEN q.graded=1
-          AND (q.final_correct<>1 OR a.status='ABANDONED')
-          THEN q.assignment_item_id END) needs_review,
+        SUM(CASE WHEN q.score_weight=1 THEN 1 ELSE 0 END) graded_exposures,
+        SUM(CASE WHEN q.score_weight=1 AND qi.first_attempt_correct=1 THEN 1 ELSE 0 END) correct_first,
+        SUM(CASE WHEN q.question_kind='PRIMARY' AND qi.first_attempt_correct=0
+          AND qi.final_correct=1 THEN 1 ELSE 0 END) correct_after_retry,
+        SUM(CASE WHEN q.question_kind='REVIEW'
+          AND qi.final_correct=1 THEN 1 ELSE 0 END) review_correct,
+        SUM(CASE WHEN q.score_weight=1 AND qi.final_correct=1 THEN 1 ELSE 0 END) final_correct,
+        ROUND(100*SUM(CASE WHEN q.score_weight=1 AND qi.first_attempt_correct=1 THEN 1 ELSE 0 END)
+          /NULLIF(SUM(q.score_weight=1),0)) first_try_percent,
+        COUNT(DISTINCT CASE WHEN q.score_weight=1
+          AND (qi.final_correct<>1 OR a.status='ABANDONED')
+          THEN qi.assignment_item_id END) needs_review,
         MAX(a.status='COMPLETED') has_completed,MAX(a.status='IN_PROGRESS') has_progress
        FROM learning_assignment_recipients r
        LEFT JOIN learning_attempts a
          ON a.recipient_id=r.id AND a.assignment_id=r.assignment_id
        LEFT JOIN learning_attempt_questions q ON q.attempt_id=a.id
+       LEFT JOIN learning_attempt_question_items qi ON qi.question_id=q.id
        WHERE ${where.join(" AND ")}
        GROUP BY r.id,r.student_id,r.student_name_snapshot ${having}`;
     const [countRows] = await pool.query<RowDataPacket[]>(
@@ -163,6 +174,8 @@ export class VocabularyResultsRepository {
         latestScore: row.latest_score == null ? null : Number(row.latest_score),
         bestScore: row.best_score == null ? null : Number(row.best_score),
         correctFirstTry: first,
+        correctAfterRetry: Number(row.correct_after_retry ?? 0),
+        reviewCorrect: Number(row.review_correct ?? 0),
         finalCorrect: final,
         gradedExposures: graded,
         firstTryPercent: percent(first, graded),
@@ -176,28 +189,39 @@ export class VocabularyResultsRepository {
   async vocabularyRows(assignmentId: number): Promise<AssignmentVocabularyResult[]> {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT i.id assignment_item_id,i.word,i.meaning_vi,
-        COUNT(DISTINCT CASE WHEN a.recipient_id IS NOT NULL AND q.graded=1
+        COUNT(DISTINCT CASE WHEN a.recipient_id IS NOT NULL AND q.score_weight=1
           THEN a.recipient_id END) students_seen,
         SUM(CASE WHEN a.recipient_id IS NOT NULL THEN 1 ELSE 0 END) all_exposures,
-        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.graded=1 THEN 1 ELSE 0 END) exposures,
-        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.graded=1
-          AND q.first_attempt_correct=1 THEN 1 ELSE 0 END) correct_first,
-        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.graded=1
-          AND q.final_correct=1 THEN 1 ELSE 0 END) final_correct,
-        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.graded=1
+        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.score_weight=1 THEN 1 ELSE 0 END) exposures,
+        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.score_weight=1
+          AND qi.first_attempt_correct=1 THEN 1 ELSE 0 END) correct_first,
+        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.question_kind='PRIMARY'
+          AND qi.first_attempt_correct=0 AND qi.final_correct=1
+          THEN 1 ELSE 0 END) correct_after_retry,
+        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.question_kind='REVIEW'
+          AND qi.final_correct=1 THEN 1 ELSE 0 END) review_correct,
+        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.score_weight=1
+          AND qi.final_correct=1 THEN 1 ELSE 0 END) final_correct,
+        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.score_weight=1
           AND a.status='ABANDONED' THEN 1 ELSE 0 END) abandoned,
-        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.graded=1
-          THEN q.retry_count ELSE 0 END) retries,
-        SUM(CASE WHEN a.recipient_id IS NULL AND q.graded=1 THEN 1 ELSE 0 END) guest_exposures,
-        SUM(CASE WHEN a.recipient_id IS NULL AND q.graded=1
-          AND q.first_attempt_correct=1 THEN 1 ELSE 0 END) guest_first,
-        SUM(CASE WHEN a.recipient_id IS NULL AND q.graded=1
-          AND q.final_correct=1 THEN 1 ELSE 0 END) guest_final,
-        SUM(CASE WHEN a.recipient_id IS NULL AND q.graded=1
+        SUM(CASE WHEN a.recipient_id IS NOT NULL AND q.score_weight=1
+          THEN qi.retry_count ELSE 0 END) retries,
+        SUM(CASE WHEN a.recipient_id IS NULL AND q.score_weight=1 THEN 1 ELSE 0 END) guest_exposures,
+        SUM(CASE WHEN a.recipient_id IS NULL AND q.score_weight=1
+          AND qi.first_attempt_correct=1 THEN 1 ELSE 0 END) guest_first,
+        SUM(CASE WHEN a.recipient_id IS NULL AND q.question_kind='PRIMARY'
+          AND qi.first_attempt_correct=0 AND qi.final_correct=1
+          THEN 1 ELSE 0 END) guest_after_retry,
+        SUM(CASE WHEN a.recipient_id IS NULL AND q.question_kind='REVIEW'
+          AND qi.final_correct=1 THEN 1 ELSE 0 END) guest_review_correct,
+        SUM(CASE WHEN a.recipient_id IS NULL AND q.score_weight=1
+          AND qi.final_correct=1 THEN 1 ELSE 0 END) guest_final,
+        SUM(CASE WHEN a.recipient_id IS NULL AND q.score_weight=1
           AND a.status='ABANDONED' THEN 1 ELSE 0 END) guest_abandoned
        FROM learning_assignment_items i
-       LEFT JOIN learning_attempt_questions q
-         ON q.assignment_item_id=i.id
+       LEFT JOIN learning_attempt_question_items qi
+         ON qi.assignment_item_id=i.id
+       LEFT JOIN learning_attempt_questions q ON q.id=qi.question_id
        LEFT JOIN learning_attempts a
          ON a.id=q.attempt_id AND a.assignment_id=i.assignment_id
        WHERE i.assignment_id=?
@@ -209,6 +233,8 @@ export class VocabularyResultsRepository {
       const classified = vocabularyMastery({
         gradedExposures: Number(row.exposures ?? 0),
         correctFirstTry: Number(row.correct_first ?? 0),
+        correctAfterRetry: Number(row.correct_after_retry ?? 0),
+        reviewCorrect: Number(row.review_correct ?? 0),
         finalCorrect: Number(row.final_correct ?? 0),
         abandonedExposures: Number(row.abandoned ?? 0),
       });
@@ -231,6 +257,8 @@ export class VocabularyResultsRepository {
         guestEvidence: {
           gradedExposures: guestTotal,
           correctFirstTry: guestFirst,
+          correctAfterRetry: Number(row.guest_after_retry ?? 0),
+          reviewCorrect: Number(row.guest_review_correct ?? 0),
           finalCorrect: guestFinal,
           abandonedExposures: Number(row.guest_abandoned ?? 0),
           firstTryPercent: percent(guestFirst, guestTotal),
@@ -244,9 +272,10 @@ export class VocabularyResultsRepository {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT COUNT(DISTINCT a.id) attempts,
         COUNT(DISTINCT CASE WHEN a.status='COMPLETED' THEN a.id END) completed,
-        SUM(CASE WHEN q.graded=1 THEN 1 ELSE 0 END) graded_exposures
+        SUM(CASE WHEN q.score_weight=1 AND qi.question_id IS NOT NULL THEN 1 ELSE 0 END) graded_exposures
        FROM learning_attempts a
        LEFT JOIN learning_attempt_questions q ON q.attempt_id=a.id
+       LEFT JOIN learning_attempt_question_items qi ON qi.question_id=q.id
        WHERE a.assignment_id=? AND a.recipient_id IS NULL`,
       [assignmentId],
     );
@@ -286,17 +315,23 @@ export class VocabularyResultsRepository {
       throw new AppError(404, "ASSIGNMENT_RECIPIENT_NOT_FOUND", "Không tìm thấy người nhận.");
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT i.id assignment_item_id,i.word,i.meaning_vi,
-        COUNT(q.id) all_exposures,
-        SUM(CASE WHEN q.graded=1 THEN 1 ELSE 0 END) exposures,
-        SUM(CASE WHEN q.graded=1 AND q.first_attempt_correct=1 THEN 1 ELSE 0 END) correct_first,
-        SUM(CASE WHEN q.graded=1 AND q.final_correct=1 THEN 1 ELSE 0 END) final_correct,
-        SUM(CASE WHEN q.graded=1 AND a.status='ABANDONED' THEN 1 ELSE 0 END) abandoned,
-        SUM(CASE WHEN q.graded=1 THEN q.retry_count ELSE 0 END) retries
+        COUNT(qi.question_id) all_exposures,
+        SUM(CASE WHEN qi.question_id IS NOT NULL AND q.score_weight=1 THEN 1 ELSE 0 END) exposures,
+        SUM(CASE WHEN qi.question_id IS NOT NULL AND q.score_weight=1 AND qi.first_attempt_correct=1 THEN 1 ELSE 0 END) correct_first,
+        SUM(CASE WHEN qi.question_id IS NOT NULL AND q.question_kind='PRIMARY'
+          AND qi.first_attempt_correct=0 AND qi.final_correct=1 THEN 1 ELSE 0 END) correct_after_retry,
+        SUM(CASE WHEN qi.question_id IS NOT NULL AND q.question_kind='REVIEW'
+          AND qi.final_correct=1 THEN 1 ELSE 0 END) review_correct,
+        SUM(CASE WHEN qi.question_id IS NOT NULL AND q.score_weight=1 AND qi.final_correct=1 THEN 1 ELSE 0 END) final_correct,
+        SUM(CASE WHEN qi.question_id IS NOT NULL AND q.score_weight=1 AND a.status='ABANDONED' THEN 1 ELSE 0 END) abandoned,
+        SUM(CASE WHEN qi.question_id IS NOT NULL AND q.score_weight=1 THEN qi.retry_count ELSE 0 END) retries
        FROM learning_assignment_items i
        LEFT JOIN learning_attempts a
          ON a.assignment_id=i.assignment_id AND a.recipient_id=?
        LEFT JOIN learning_attempt_questions q
-         ON q.assignment_item_id=i.id AND q.attempt_id=a.id
+         ON q.attempt_id=a.id
+       LEFT JOIN learning_attempt_question_items qi
+         ON qi.question_id=q.id AND qi.assignment_item_id=i.id
        WHERE i.assignment_id=?
        GROUP BY i.id,i.word,i.meaning_vi,i.display_order
        ORDER BY i.display_order`,
@@ -306,6 +341,8 @@ export class VocabularyResultsRepository {
       const classified = vocabularyMastery({
         gradedExposures: Number(row.exposures ?? 0),
         correctFirstTry: Number(row.correct_first ?? 0),
+        correctAfterRetry: Number(row.correct_after_retry ?? 0),
+        reviewCorrect: Number(row.review_correct ?? 0),
         finalCorrect: Number(row.final_correct ?? 0),
         abandonedExposures: Number(row.abandoned ?? 0),
       });
@@ -325,6 +362,8 @@ export class VocabularyResultsRepository {
         guestEvidence: {
           gradedExposures: 0,
           correctFirstTry: 0,
+          correctAfterRetry: 0,
+          reviewCorrect: 0,
           finalCorrect: 0,
           abandonedExposures: 0,
           firstTryPercent: null,
@@ -337,11 +376,15 @@ export class VocabularyResultsRepository {
   async recipientAttempts(assignmentId: number, recipientId: number) {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT a.id,a.attempt_number,a.status,a.started_at,a.completed_at,a.score_percent,
-        SUM(CASE WHEN q.graded=1 THEN 1 ELSE 0 END) graded_exposures,
-        SUM(CASE WHEN q.graded=1 AND q.first_attempt_correct=1 THEN 1 ELSE 0 END) correct_first,
-        SUM(CASE WHEN q.graded=1 AND q.final_correct=1 THEN 1 ELSE 0 END) final_correct
+        SUM(q.score_weight=1) graded_exposures,
+        SUM(q.score_weight=1 AND qi.first_attempt_correct=1) correct_first,
+        SUM(q.question_kind='PRIMARY' AND qi.first_attempt_correct=0
+          AND qi.final_correct=1) correct_after_retry,
+        SUM(q.question_kind='REVIEW' AND qi.final_correct=1) review_correct,
+        SUM(q.score_weight=1 AND qi.final_correct=1) final_correct
        FROM learning_attempts a
-       LEFT JOIN learning_attempt_questions q ON q.attempt_id=a.id
+       LEFT JOIN learning_attempt_questions q ON q.attempt_id=a.id AND q.graded=1
+       LEFT JOIN learning_attempt_question_items qi ON qi.question_id=q.id
        WHERE a.assignment_id=? AND a.recipient_id=?
        GROUP BY a.id,a.attempt_number,a.status,a.started_at,a.completed_at,a.score_percent
        ORDER BY a.started_at DESC,a.id DESC LIMIT 50`,
@@ -356,6 +399,8 @@ export class VocabularyResultsRepository {
       scorePercent: row.score_percent == null ? null : Number(row.score_percent),
       gradedExposures: Number(row.graded_exposures ?? 0),
       correctFirstTry: Number(row.correct_first ?? 0),
+      correctAfterRetry: Number(row.correct_after_retry ?? 0),
+      reviewCorrect: Number(row.review_correct ?? 0),
       finalCorrect: Number(row.final_correct ?? 0),
     }));
   }
@@ -363,12 +408,16 @@ export class VocabularyResultsRepository {
   async recipientActivities(assignmentId: number, recipientId: number) {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT q.mechanic,
-        COUNT(*) graded_exposures,
-        SUM(q.first_attempt_correct=1) correct_first,
-        SUM(q.final_correct=1) final_correct,
-        SUM(q.retry_count) retry_count
+        SUM(q.score_weight=1) graded_exposures,
+        SUM(q.score_weight=1 AND qi.first_attempt_correct=1) correct_first,
+        SUM(q.question_kind='PRIMARY' AND qi.first_attempt_correct=0
+          AND qi.final_correct=1) correct_after_retry,
+        SUM(q.question_kind='REVIEW' AND qi.final_correct=1) review_correct,
+        SUM(q.score_weight=1 AND qi.final_correct=1) final_correct,
+        SUM(CASE WHEN q.score_weight=1 THEN qi.retry_count ELSE 0 END) retry_count
        FROM learning_attempts a
        JOIN learning_attempt_questions q ON q.attempt_id=a.id AND q.graded=1
+       JOIN learning_attempt_question_items qi ON qi.question_id=q.id
        WHERE a.assignment_id=? AND a.recipient_id=?
        GROUP BY q.mechanic ORDER BY q.mechanic`,
       [assignmentId, recipientId],
@@ -377,6 +426,8 @@ export class VocabularyResultsRepository {
       mechanic: String(row.mechanic),
       gradedExposures: Number(row.graded_exposures),
       correctFirstTry: Number(row.correct_first ?? 0),
+      correctAfterRetry: Number(row.correct_after_retry ?? 0),
+      reviewCorrect: Number(row.review_correct ?? 0),
       finalCorrect: Number(row.final_correct ?? 0),
       retryCount: Number(row.retry_count ?? 0),
     }));
@@ -388,12 +439,13 @@ export class VocabularyResultsRepository {
   ): Promise<number[]> {
     const placeholders = recipientIds.map(() => "?").join(",");
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT q.assignment_item_id
+      `SELECT qi.assignment_item_id
        FROM learning_attempts a
-       JOIN learning_attempt_questions q ON q.attempt_id=a.id AND q.graded=1
+       JOIN learning_attempt_questions q ON q.attempt_id=a.id AND q.score_weight=1
+       JOIN learning_attempt_question_items qi ON qi.question_id=q.id
        WHERE a.assignment_id=? AND a.recipient_id IN (${placeholders})
-       GROUP BY q.assignment_item_id
-       HAVING SUM(q.final_correct=1)<COUNT(*)
+       GROUP BY qi.assignment_item_id
+       HAVING SUM(qi.final_correct=1)<COUNT(*)
          OR SUM(a.status='ABANDONED')>0`,
       [assignmentId, ...recipientIds],
     );

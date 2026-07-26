@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
+import mysql from "mysql2/promise";
 import { chromium } from "@playwright/test";
 
 const root = path.resolve(import.meta.dirname, "../..");
@@ -10,7 +11,7 @@ dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4122;
 const webPort = 5202;
 const origin = `http://127.0.0.1:${webPort}`;
-const artifactDir = path.join(root, ".agent-reports", "V20C-VOCABULARY-ASSIGNMENTS");
+const artifactDir = path.join(root, ".agent-reports", "V20F-VOCABULARY-STABILIZATION");
 const password = "v20c-e2e-password-123";
 const testEnv = {
   ...process.env,
@@ -83,6 +84,23 @@ try {
   run("node", ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
   run("npm", ["run", "db:migrate"], path.join(root, "server"));
   run("npm", ["run", "db:bootstrap-admin"], path.join(root, "server"));
+  const testDb = await mysql.createConnection({
+    host: testEnv.DB_HOST,
+    port: Number(testEnv.DB_PORT),
+    user: testEnv.DB_USER,
+    password: testEnv.DB_PASSWORD,
+    database: testEnv.DB_NAME,
+  });
+  await testDb.query("SET FOREIGN_KEY_CHECKS=0");
+  for (const table of [
+    "learning_attempt_answers", "learning_attempt_question_items",
+    "learning_attempt_questions", "learning_attempts", "learning_access_sessions",
+    "learning_assignment_recipients", "learning_assignment_audience_students",
+    "learning_assignment_activities", "learning_assignment_items", "learning_assignments",
+    "google_sheet_sync_outbox", "vocabulary_items", "vocabulary_sets",
+  ]) await testDb.query(`TRUNCATE TABLE ${table}`);
+  await testDb.query("SET FOREIGN_KEY_CHECKS=1");
+  await testDb.end();
   const node = process.execPath;
   start(node, [path.join(root, "node_modules/tsx/dist/cli.mjs"), "src/index.ts"], path.join(root, "server"));
   start(node, [path.join(root, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1", "--port", String(webPort)], path.join(root, "client"));
@@ -93,19 +111,7 @@ try {
     body: JSON.stringify({ username: "covy", password }),
   });
   const auth = { Authorization: `Bearer ${login.token}` };
-  const vocabularySet = await api("/api/vocabulary/sets", {
-    method: "POST",
-    headers: auth,
-    body: JSON.stringify({
-      title: "Động vật V20C",
-      sourceType: "MANUAL",
-      ageBand: "G2_G3",
-      items: [
-        { displayOrder: 1, word: "cat", meaningVi: "con mèo", tier: "CORE", illustration: { kind: "EMOJI", value: "🐱" }, supportsImageGame: true },
-        { displayOrder: 2, word: "dog", meaningVi: "con chó", tier: "CORE", illustration: { kind: "EMOJI", value: "🐶" }, supportsImageGame: true },
-      ],
-    }),
-  });
+  let vocabularySet;
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
@@ -127,8 +133,31 @@ try {
     await page.getByLabel("Người nhận").click();
     await page.getByRole("option", { name: "Liên kết mở" }).click();
     await page.getByRole("button", { name: "Tiếp tục" }).click();
-    await page.getByLabel("Bộ từ vựng").click();
-    await page.getByRole("option", { name: new RegExp(`Động vật V20C.*${vocabularySet.itemCount}`) }).first().click();
+    if (!vocabularySet) {
+      await page.getByText("Cô chưa có bộ từ nào.").waitFor();
+      await page.screenshot({ path: path.join(artifactDir, "empty-set-wizard-360x800.png") });
+      await page.evaluate(() => { window.__v20fWizardMarker = "same-page"; });
+      await page.getByRole("tab", { name: "Chủ đề có sẵn" }).click();
+      const colors = page.getByRole("button", { name: /Màu sắc/ }).first();
+      await colors.waitFor();
+      await colors.click();
+      await page.getByRole("button", { name: "Tạo bộ từ và sử dụng" }).waitFor();
+      const coreChecks = page.locator('[data-tier="CORE"] input[type="checkbox"]');
+      const extendedChecks = page.locator('[data-tier="EXTENDED"] input[type="checkbox"]');
+      assert(await coreChecks.count() > 0, "Topic must expose CORE words");
+      assert(await coreChecks.evaluateAll((nodes) => nodes.every((node) => node.checked)), "CORE words must default selected");
+      assert(await extendedChecks.evaluateAll((nodes) => nodes.every((node) => !node.checked)), "EXTENDED words must not exceed target by default");
+      await page.screenshot({ path: path.join(artifactDir, "topic-chooser-360x800.png"), fullPage: true });
+      await page.getByRole("button", { name: "Tạo bộ từ và sử dụng" }).click();
+      await page.getByText(/Đã chọn \d+ từ/).waitFor();
+      assert(await page.evaluate(() => window.__v20fWizardMarker) === "same-page", "Creating a topic set must not reload the wizard");
+      await page.screenshot({ path: path.join(artifactDir, "created-set-selected-360x800.png") });
+      const listed = await api("/api/vocabulary/sets?pageSize=50", { headers: auth });
+      vocabularySet = listed.find((item) => item.title === "Màu sắc");
+      assert(vocabularySet, "Created topic set must be owned and listed for the teacher");
+    } else {
+      await page.getByRole("button", { name: new RegExp(`Màu sắc.*${vocabularySet.itemCount}`) }).first().click();
+    }
     await page.getByRole("button", { name: "Tiếp tục" }).click();
     await page.getByRole("button", { name: "Tiếp tục" }).click();
     await page.getByRole("button", { name: "Tiếp tục" }).click();
@@ -145,7 +174,7 @@ try {
     await page.screenshot({ path: path.join(artifactDir, `published-${viewport.width}x${viewport.height}.png`) });
     await context.close();
   }
-  console.log(`V20C assignment E2E PASS; screenshots: ${artifactDir}`);
+  console.log(`V20F assignment E2E PASS; screenshots: ${artifactDir}`);
 } finally {
   if (browser) await browser.close();
   for (const child of children.reverse()) child.kill();

@@ -30,7 +30,7 @@ GOOGLE_DRIVE_CLIENT_SECRET=
 GOOGLE_DRIVE_REFRESH_TOKEN=
 GOOGLE_DRIVE_ROOT_FOLDER_ID=
 GOOGLE_DRIVE_OWNER_LABEL=Cô Vy
-GOOGLE_SHEETS_TEMPLATE_VERSION=v1
+GOOGLE_SHEETS_TEMPLATE_VERSION=v2
 GOOGLE_SHEET_SYNC_ENABLED=true
 GOOGLE_SHEET_SYNC_INTERVAL_MS=30000
 GOOGLE_SHEET_SYNC_BATCH_SIZE=20
@@ -50,7 +50,7 @@ Chỉ dùng account test hoặc dữ liệu giả:
 GOOGLE_DRIVE_SMOKE=1 npm -w server run google-drive:smoke
 ```
 
-Script xác minh auth/root folder, tạo và format bốn sheet bằng dữ liệu giả, đọc lại
+Script xác minh auth/root folder, tạo và format năm sheet bằng dữ liệu giả, đọc lại
 appProperties rồi đưa file thử vào Trash. Không chạy trong CI và không dùng học sinh thật.
 
 ## Vận hành
@@ -68,3 +68,7 @@ appProperties rồi đưa file thử vào Trash. Không chạy trong CI và khô
   lại worker tiếp tục pending/retry, hoặc admin chọn **Đồng bộ lại**.
 - V16D không cập nhật tab `Học phí`; dùng regenerate thủ công nếu cần dựng lại
   snapshot V16C trong lúc chờ V16E.
+- V20F thêm tab `Ôn từ vựng`. Existing spreadsheet được bổ sung tab thiếu tại chỗ;
+  mỗi identified vocabulary attempt dùng outbox `VOCABULARY_ATTEMPT_UPSERT` idempotent.
+  OPEN_LINK guest không tạo student sync. Worker chỉ cập nhật managed range và giữ
+  vùng dữ liệu/format ngoài phạm vi Teacher Hub.

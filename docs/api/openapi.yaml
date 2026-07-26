@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Teacher Class Hub API
   version: 0.9.0
-  description: API hiện hành gồm trọn bộ Vocabulary V20A–V20E: catalog, media, assignment, game, results và review draft.
+  description: API hiện hành gồm Vocabulary V20A–V20F: catalog, media, assignment, game, per-item results, review draft và Google vocabulary sync.
 servers:
   - url: /
 security:
@@ -555,6 +555,17 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '429': {$ref: '#/components/responses/RateLimited'}
+  /api/public/learning-attempts/{sessionToken}/replay:
+    post:
+      security: []
+      tags: [Vocabulary public]
+      summary: Tạo attempt chơi lại khi assignment và giới hạn lượt vẫn cho phép
+      parameters: [{$ref: '#/components/parameters/SessionToken'}]
+      responses:
+        '200': {description: Attempt mới cùng raw session token mới, content: {application/json: {schema: {$ref: '#/components/schemas/LearningAttemptSessionEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
   /api/vocabulary/topics:
     get:
       tags: [Vocabulary teacher]
@@ -1028,6 +1039,7 @@ components:
         tier: {$ref: '#/components/schemas/VocabularyTier'}
         illustration: {$ref: '#/components/schemas/VocabularyIllustration'}
         supportsImageGame: {type: boolean}
+        imageSearchTerms: {type: array, maxItems: 5, items: {type: string, minLength: 2, maxLength: 100}}
     VocabularyIllustration:
       type: object
       required: [kind]
@@ -1234,6 +1246,9 @@ components:
     GameMechanic:
       type: string
       enum: [EXPLORE_CARD, SELECT_ONE, MATCH_PAIRS, MEMORY_PAIRS, ORDER_TOKENS, BUILD_WORD, SORT_ITEMS, REPEAT_AUDIO]
+    LearningQuestionKind:
+      type: string
+      enum: [PRIMARY, REVIEW, EXPOSURE]
     LearningAssignmentActivityInput:
       type: object
       required: [displayOrder, mechanic, presentation, required]
@@ -1406,7 +1421,7 @@ components:
         sessionToken: {type: string, minLength: 43, maxLength: 200}
     LearningQuestion:
       type: object
-      required: [id, sequenceNumber, mechanic, presentation, prompt, options, graded, answerSequence, status]
+      required: [id, sequenceNumber, mechanic, presentation, prompt, options, graded, questionKind, scoreWeight, answerSequence, status]
       properties:
         id: {type: integer, format: int64}
         sequenceNumber: {type: integer, minimum: 1}
@@ -1415,6 +1430,8 @@ components:
         prompt: {type: object, additionalProperties: true}
         options: {type: array, items: {type: object, additionalProperties: true}}
         graded: {type: boolean}
+        questionKind: {$ref: '#/components/schemas/LearningQuestionKind'}
+        scoreWeight: {type: integer, minimum: 0, maximum: 1, description: Chỉ PRIMARY có weight 1; REVIEW/EXPOSURE không tăng mẫu số điểm}
         answerSequence: {type: integer, minimum: 1, maximum: 3}
         status: {type: string, enum: [PENDING, IN_PROGRESS]}
     LearningAttemptSessionEnvelope:
@@ -1478,7 +1495,6 @@ components:
             finalCorrectCount: {type: integer, minimum: 0}
             scorePercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
             canPlayAgain: {type: boolean}
-            scorePercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
             rewards: {type: object, additionalProperties: true}
     LearningAssignmentResultsEnvelope:
       type: object
@@ -1521,7 +1537,7 @@ components:
     AssignmentRecipientResult:
       type: object
       additionalProperties: false
-      required: [recipientId, studentId, studentName, status, attemptCount, gradedExposures, correctFirstTry, finalCorrect, needsReviewWords]
+      required: [recipientId, studentId, studentName, status, attemptCount, gradedExposures, correctFirstTry, correctAfterRetry, reviewCorrect, finalCorrect, needsReviewWords]
       properties:
         recipientId: {type: integer, format: int64}
         studentId: {type: integer, format: int64}
@@ -1535,6 +1551,8 @@ components:
         bestScore: {type: integer, minimum: 0, maximum: 100, nullable: true}
         gradedExposures: {type: integer, minimum: 0}
         correctFirstTry: {type: integer, minimum: 0}
+        correctAfterRetry: {type: integer, minimum: 0}
+        reviewCorrect: {type: integer, minimum: 0}
         finalCorrect: {type: integer, minimum: 0}
         firstTryPercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
         finalCorrectPercent: {type: integer, minimum: 0, maximum: 100, nullable: true}

@@ -108,7 +108,7 @@ export class StudentGoogleSheetService {
 
   async resync(studentId: number, actorUserId: number): Promise<StudentGoogleSheetResyncResult> {
     await this.students.detail(studentId);
-    return { enqueuedLessonCount: await this.sync.resyncStudent(studentId, actorUserId) };
+    return this.sync.resyncStudent(studentId, actorUserId);
   }
 
   private requireProvider(): GoogleSheetProvider {

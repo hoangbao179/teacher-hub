@@ -12,6 +12,8 @@ export type VocabularyMasteryStatus = (typeof vocabularyMasteryStatuses)[number]
 export interface VocabularyMasteryEvidence {
   gradedExposures: number;
   correctFirstTry: number;
+  correctAfterRetry: number;
+  reviewCorrect: number;
   finalCorrect: number;
   abandonedExposures: number;
   firstTryPercent: number | null;
@@ -51,6 +53,8 @@ export interface AssignmentRecipientResult {
   latestScore: number | null;
   bestScore: number | null;
   correctFirstTry: number;
+  correctAfterRetry: number;
+  reviewCorrect: number;
   finalCorrect: number;
   gradedExposures: number;
   firstTryPercent: number | null;
@@ -83,12 +87,16 @@ export interface AssignmentRecipientResultDetail extends AssignmentRecipientResu
     scorePercent: number | null;
     gradedExposures: number;
     correctFirstTry: number;
+    correctAfterRetry: number;
+    reviewCorrect: number;
     finalCorrect: number;
   }>;
   activities: Array<{
     mechanic: string;
     gradedExposures: number;
     correctFirstTry: number;
+    correctAfterRetry: number;
+    reviewCorrect: number;
     finalCorrect: number;
     retryCount: number;
   }>;

@@ -4,7 +4,13 @@ import type { StudentGoogleSheetSnapshot } from "./google-integration.types";
 const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Nghỉ", FREE: "Miễn phí" } as const;
 const tuitionLabels = { ACCUMULATING: "Đang tích lũy", PAYMENT_DUE: "Cần thu", PAID: "Đã thu", INCOMPLETE: "Chưa hoàn thành" } as const;
 const paymentLabels = { CASH: "Tiền mặt", BANK_TRANSFER: "Chuyển khoản", "": "" } as const;
-const names = ["Tổng quan", "Nhật ký học tập", "Học phí", "_TeacherHub"] as const;
+const names = [
+  "Tổng quan",
+  "Nhật ký học tập",
+  "Học phí",
+  "Ôn từ vựng",
+  "_TeacherHub",
+] as const;
 
 export function googleLearningRowValues(row: StudentGoogleSheetSnapshot["learning"][number]): Array<string | number | boolean> {
   return [row.lessonId, row.academicYear, row.grade, safeGoogleCell(row.className), row.date, row.time,
@@ -70,16 +76,41 @@ export class GoogleSheetTemplateService {
       ...snapshot.tuition.map((row) => [row.cycleId, `Chu kỳ ${row.cycleNumber} · ${row.billableCount}/8`, row.academicYear,
         safeGoogleCell(row.className), row.fromDate, row.toDate, row.billableCount, row.absentCount, row.totalLessonCount,
         row.packagePrice, tuitionLabels[row.status], row.paidAt, paymentLabels[row.paymentMethod]])];
+    const vocabulary = [[
+      "Teacher Hub Attempt ID", "Ngày hoàn thành", "Tên bài", "Lớp",
+      "Nhóm tuổi", "Lần làm", "Số câu tính điểm", "Đúng lần đầu",
+      "Đúng cuối cùng", "Điểm", "Số từ đã nhớ", "Số từ đang học",
+      "Số từ cần ôn", "Danh sách từ cần ôn", "Trạng thái", "Cập nhật lúc",
+    ], ...snapshot.vocabularyAttempts.map((row) => [
+      row.attemptId,
+      row.completedAt,
+      safeGoogleCell(row.assignmentTitle),
+      safeGoogleCell(row.className),
+      safeGoogleCell(row.ageBand),
+      row.attemptNumber,
+      row.scoredQuestionCount,
+      row.correctFirstTry,
+      row.finalCorrect,
+      row.scorePercent ?? "",
+      row.masteredWords,
+      row.learningWords,
+      row.needsReviewWords,
+      safeGoogleCell(row.reviewWordList),
+      safeGoogleCell(row.status),
+      row.updatedAt,
+    ])];
     const technical = [["key", "value"], ["schemaVersion", "1"], ["templateVersion", metadata.templateVersion],
       ["studentId", snapshot.student.id], ["spreadsheetId", spreadsheetId], ["lastGeneratedAt", metadata.generatedAt],
       ["lastSyncedAt", metadata.syncedAt ?? ""]];
     const values: sheets_v4.Schema$ValueRange[] = [
       { range: "'Tổng quan'!A1:B40", values: overview }, { range: "'Nhật ký học tập'!A1:N", values: learning },
       { range: "'Học phí'!A1:M", values: tuition }, { range: "'_TeacherHub'!A1:B100", values: technical },
+      { range: "'Ôn từ vựng'!A1:P", values: vocabulary },
     ];
     const learningId = ids["Nhật ký học tập"];
     const tuitionId = ids["Học phí"];
     const technicalId = ids._TeacherHub;
+    const vocabularyId = ids["Ôn từ vựng"];
     const overviewId = ids["Tổng quan"];
     const requests: sheets_v4.Schema$Request[] = [
       { updateSheetProperties: { properties: { sheetId: overviewId, gridProperties: { hideGridlines: true } }, fields: "gridProperties.hideGridlines" } },
@@ -90,6 +121,7 @@ export class GoogleSheetTemplateService {
         cell: { userEnteredFormat: { backgroundColor: { red: 0.9, green: 0.98, blue: 0.94 }, textFormat: { bold: true }, wrapStrategy: "WRAP" } },
         fields: "userEnteredFormat" } },
       ...tableRequests(learningId, 14, learning.length), ...tableRequests(tuitionId, 13, tuition.length),
+      ...tableRequests(vocabularyId, 16, vocabulary.length),
       { addConditionalFormatRule: { index: 0, rule: { ranges: [{ sheetId: learningId, startRowIndex: 1, endRowIndex: Math.max(learning.length, 2), startColumnIndex: 6, endColumnIndex: 7 }],
         booleanRule: { condition: { type: "TEXT_EQ", values: [{ userEnteredValue: "Nghỉ" }] },
           format: { backgroundColor: { red: 1, green: 0.94, blue: 0.78 } } } } } },
@@ -99,6 +131,8 @@ export class GoogleSheetTemplateService {
       { updateDimensionProperties: { range: { sheetId: learningId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
         properties: { hiddenByUser: true }, fields: "hiddenByUser" } },
       { updateDimensionProperties: { range: { sheetId: tuitionId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
+        properties: { hiddenByUser: true }, fields: "hiddenByUser" } },
+      { updateDimensionProperties: { range: { sheetId: vocabularyId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
         properties: { hiddenByUser: true }, fields: "hiddenByUser" } },
       { updateSheetProperties: { properties: { sheetId: technicalId, hidden: true }, fields: "hidden" } },
       { addProtectedRange: { protectedRange: { range: { sheetId: technicalId }, description: "Teacher Hub metadata",

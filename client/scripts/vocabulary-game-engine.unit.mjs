@@ -36,6 +36,12 @@ test("game UI includes all V20D mechanics with child-sized controls", () => {
   assert.match(question, /OPEN_TREASURE/);
   assert.match(question, /POP_BALLOON/);
   assert.match(question, /minHeight: 56/);
+  assert.match(question, /first\.matchKey === second\?\.matchKey/);
+  assert.match(question, /reducedMotion \? 120 : 800/);
+  assert.match(question, /flashcardRevealed/);
+  assert.match(question, /MISSING_LETTER/);
+  assert.match(question, /data-memory-card/);
+  assert.doesNotMatch(question, /void playGameSpeech\(question\.prompt\.speechText\).*useEffect/s);
 });
 
 test("access URL is replaced and network retries preserve the answer id", () => {

@@ -23,7 +23,7 @@ export function resolveGoogleDriveSettings(env: NodeJS.ProcessEnv): GoogleDriveS
     refreshToken: text(env, "GOOGLE_DRIVE_REFRESH_TOKEN"),
     rootFolderId: text(env, "GOOGLE_DRIVE_ROOT_FOLDER_ID"),
     ownerLabel: text(env, "GOOGLE_DRIVE_OWNER_LABEL") || "Cô Vy",
-    templateVersion: text(env, "GOOGLE_SHEETS_TEMPLATE_VERSION") || "v1",
+    templateVersion: text(env, "GOOGLE_SHEETS_TEMPLATE_VERSION") || "v2",
   };
   if (enabled) {
     for (const [field, value] of Object.entries({

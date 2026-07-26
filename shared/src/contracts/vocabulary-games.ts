@@ -56,6 +56,7 @@ export interface StartLearningAttemptRequest {
 export interface PublicGameOption {
   id: string;
   label?: string;
+  matchKey?: string;
   illustration?: VocabularyIllustrationInput & {
     mediaUrl?: string;
     thumbnailUrl?: string;
@@ -68,11 +69,14 @@ export interface PublicGamePrompt {
   word?: string;
   meaningVi?: string;
   phonetic?: string;
+  exampleEn?: string;
   speechText?: string;
+  maskedWord?: string;
   illustration?: PublicGameOption["illustration"];
   pairs?: Array<{
     id: string;
     label?: string;
+    matchKey?: string;
     illustration?: PublicGameOption["illustration"];
   }>;
 }
@@ -85,6 +89,8 @@ export interface PublicLearningQuestion {
   prompt: PublicGamePrompt;
   options: PublicGameOption[];
   graded: boolean;
+  questionKind: "PRIMARY" | "REVIEW" | "EXPOSURE";
+  scoreWeight: 0 | 1;
   answerSequence: number;
   status: "PENDING" | "IN_PROGRESS";
 }
@@ -138,11 +144,17 @@ export interface CompleteLearningAttemptResult {
   stars: number;
   sticker: string;
   message: string;
+  ageBand: LearningAgeBand;
+  resultMode: "CHILD_REWARD" | "SCORE";
   gradedExposureCount: number;
   firstTryCorrectCount: number;
   finalCorrectCount: number;
   scorePercent: number | null;
   canPlayAgain: boolean;
+  reviewWords: Array<{
+    word: string;
+    meaningVi: string;
+  }>;
 }
 
 export type VocabularyGameErrorCode =

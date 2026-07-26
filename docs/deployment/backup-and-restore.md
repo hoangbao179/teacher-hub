@@ -74,6 +74,10 @@ Restore luôn vào database và named volume cô lập:
 5. mở thử assignment published qua same-origin media endpoint và một attempt;
 6. chỉ cut over sau khi các bất biến cũ và media đều đạt.
 
+Từ V20F, restore verification phải kiểm tra thêm migration `0021`/`0022`, trigger
+fallback của `learning_attempt_question_items` và outbox vocabulary với `lesson_id`
+nullable. Không sửa ngược hai migration đã áp dụng; mọi correction dùng migration mới.
+
 ## Lịch vận hành và kiểm chứng
 
 - Chạy backup hằng ngày; giữ tối thiểu 14 bản ngày và 8 bản tuần, cộng một bản

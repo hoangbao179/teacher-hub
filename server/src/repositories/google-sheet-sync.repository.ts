@@ -3,13 +3,18 @@ import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
 import { AuditRepository } from "./audit.repository";
 
-export type GoogleSheetSyncEventType = "LESSON_UPSERT" | "LESSON_REMOVE";
+export type GoogleSheetSyncEventType =
+  | "LESSON_UPSERT"
+  | "LESSON_REMOVE"
+  | "VOCABULARY_ATTEMPT_UPSERT";
 export type GoogleSheetSyncStatus = "PENDING" | "PROCESSING" | "RETRY" | "SUCCEEDED" | "DEAD";
 
 export interface GoogleSheetSyncEvent {
   id: number;
   studentId: number;
-  lessonId: number;
+  entityType: "LESSON" | "VOCABULARY_ATTEMPT";
+  entityId: number;
+  lessonId: number | null;
   eventType: GoogleSheetSyncEventType;
   revision: number;
   payloadVersion: number;
@@ -48,14 +53,36 @@ export class GoogleSheetSyncRepository {
     );
     const [result] = await connection.execute(
       `INSERT INTO google_sheet_sync_outbox
-        (student_id,lesson_id,event_type,revision,payload_version,status,next_attempt_at)
-       SELECT ?,?, ?,1,1,'PENDING',NOW()
+        (student_id,entity_type,entity_id,lesson_id,event_type,revision,
+         payload_version,status,next_attempt_at)
+       SELECT ?,'LESSON',?,?,?,1,1,'PENDING',NOW()
        FROM student_google_sheets
        WHERE student_id=? AND status='ACTIVE' LIMIT 1
        ON DUPLICATE KEY UPDATE revision=revision+1,status='PENDING',attempt_count=0,
          next_attempt_at=NOW(),locked_at=NULL,locked_by=NULL,last_error_code=NULL,
          last_error_message=NULL,processed_at=NULL`,
-      [studentId, lessonId, eventType, studentId],
+      [studentId, lessonId, lessonId, eventType, studentId],
+    );
+    return "affectedRows" in result && Number(result.affectedRows) > 0;
+  }
+
+  async enqueueVocabularyAttempt(
+    connection: PoolConnection,
+    studentId: number,
+    attemptId: number,
+  ): Promise<boolean> {
+    const [result] = await connection.execute(
+      `INSERT INTO google_sheet_sync_outbox
+        (student_id,entity_type,entity_id,lesson_id,event_type,revision,
+         payload_version,status,next_attempt_at)
+       SELECT ?,'VOCABULARY_ATTEMPT',?,NULL,'VOCABULARY_ATTEMPT_UPSERT',
+         1,2,'PENDING',NOW()
+       FROM student_google_sheets
+       WHERE student_id=? AND status='ACTIVE' LIMIT 1
+       ON DUPLICATE KEY UPDATE revision=revision+1,status='PENDING',
+         attempt_count=0,next_attempt_at=NOW(),locked_at=NULL,locked_by=NULL,
+         last_error_code=NULL,last_error_message=NULL,processed_at=NULL`,
+      [studentId, attemptId, studentId],
     );
     return "affectedRows" in result && Number(result.affectedRows) > 0;
   }
@@ -79,7 +106,8 @@ export class GoogleSheetSyncRepository {
     try {
       await connection.beginTransaction();
       const [rows] = await connection.query<RowDataPacket[]>(
-        `SELECT id,student_id,lesson_id,event_type,revision,payload_version,attempt_count
+        `SELECT id,student_id,entity_type,entity_id,lesson_id,event_type,
+           revision,payload_version,attempt_count
          FROM google_sheet_sync_outbox
          WHERE ((status IN ('PENDING','RETRY') AND next_attempt_at<=NOW())
            OR (status='PROCESSING' AND locked_at<DATE_SUB(NOW(),INTERVAL ${staleSeconds} SECOND)))
@@ -97,7 +125,9 @@ export class GoogleSheetSyncRepository {
       return rows.map((row) => ({
         id: Number(row.id),
         studentId: Number(row.student_id),
-        lessonId: Number(row.lesson_id),
+        entityType: row.entity_type,
+        entityId: Number(row.entity_id),
+        lessonId: row.lesson_id == null ? null : Number(row.lesson_id),
         eventType: row.event_type,
         revision: Number(row.revision),
         payloadVersion: Number(row.payload_version),
@@ -199,7 +229,10 @@ export class GoogleSheetSyncRepository {
     };
   }
 
-  async resyncStudent(studentId: number, actorUserId: number): Promise<number> {
+  async resyncStudent(studentId: number, actorUserId: number): Promise<{
+    enqueuedLessonCount: number;
+    enqueuedVocabularyAttemptCount: number;
+  }> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -221,15 +254,38 @@ export class GoogleSheetSyncRepository {
       let enqueued = 0;
       for (const lesson of lessons)
         if (await this.enqueue(connection, studentId, Number(lesson.id), "LESSON_UPSERT")) enqueued += 1;
+      const [attempts] = await connection.query<RowDataPacket[]>(
+        `SELECT attempt.id
+         FROM learning_attempts attempt
+         JOIN learning_assignment_recipients recipient
+           ON recipient.id=attempt.recipient_id AND recipient.student_id=?
+         WHERE attempt.status='COMPLETED'
+         ORDER BY attempt.id`,
+        [studentId],
+      );
+      let vocabularyAttempts = 0;
+      for (const attempt of attempts)
+        if (await this.enqueueVocabularyAttempt(
+          connection,
+          studentId,
+          Number(attempt.id),
+        )) vocabularyAttempts += 1;
       await this.audit.record(connection, {
         actorUserId,
         action: "STUDENT_GOOGLE_SHEET_RESYNC_ENQUEUED",
         entityType: "STUDENT_GOOGLE_SHEET",
         entityId: Number(sheets[0].id),
-        newValues: { studentId, enqueuedLessonCount: enqueued },
+        newValues: {
+          studentId,
+          enqueuedLessonCount: enqueued,
+          enqueuedVocabularyAttemptCount: vocabularyAttempts,
+        },
       });
       await connection.commit();
-      return enqueued;
+      return {
+        enqueuedLessonCount: enqueued,
+        enqueuedVocabularyAttemptCount: vocabularyAttempts,
+      };
     } catch (error) {
       await connection.rollback();
       throw error;

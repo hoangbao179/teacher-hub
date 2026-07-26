@@ -15,6 +15,7 @@ async function clean() {
   await pool.query("SET FOREIGN_KEY_CHECKS=0");
   for (const table of [
     "learning_attempt_answers",
+    "learning_attempt_question_items",
     "learning_attempt_questions",
     "learning_attempts",
     "learning_access_sessions",
@@ -23,6 +24,7 @@ async function clean() {
     "learning_assignment_activities",
     "learning_assignment_items",
     "learning_assignments",
+    "google_sheet_sync_outbox",
     "audit_logs",
     "users",
   ]) await pool.query(`TRUNCATE TABLE ${table}`);
@@ -73,8 +75,11 @@ async function fixture() {
   await pool.execute(
     `INSERT INTO learning_assignment_activities
       (assignment_id,display_order,mechanic,presentation,required,config_json)
-     VALUES (?,1,'SELECT_ONE','LISTEN_PICK_IMAGE',TRUE,JSON_OBJECT())`,
-    [assignment.insertId],
+     VALUES
+       (?,1,'SELECT_ONE','LISTEN_PICK_IMAGE',TRUE,JSON_OBJECT()),
+       (?,2,'MATCH_PAIRS','MATCH_WORD_MEANING',TRUE,JSON_OBJECT()),
+       (?,3,'MEMORY_PAIRS','MEMORY_WORD_MEANING',TRUE,JSON_OBJECT())`,
+    [assignment.insertId, assignment.insertId, assignment.insertId],
   );
   return { assignmentId: assignment.insertId, accessToken, rawWords: values.map(([word]) => word) };
 }
@@ -173,6 +178,7 @@ integration("V20D public lifecycle snapshots queue, resumes and grades idempoten
     assert.equal(replay.data?.questionId, wrong.data?.questionId);
 
     let current = replay.data!.attempt;
+    const pairQuestionIds: number[] = [];
     while (current.currentQuestion) {
       const question = current.currentQuestion;
       const [answers] = await pool.query<Array<RowDataPacket & { correct_answer_snapshot_json: unknown }>>(
@@ -182,6 +188,31 @@ integration("V20D public lifecycle snapshots queue, resumes and grades idempoten
       const submittedAnswer = typeof answers[0].correct_answer_snapshot_json === "string"
         ? JSON.parse(answers[0].correct_answer_snapshot_json)
         : answers[0].correct_answer_snapshot_json;
+      if (
+        (question.mechanic === "MATCH_PAIRS" || question.mechanic === "MEMORY_PAIRS")
+        && question.answerSequence === 1
+      ) {
+        pairQuestionIds.push(question.id);
+        const incomplete = {
+          pairs: (submittedAnswer as { pairs: unknown[] }).pairs.slice(0, -1),
+        };
+        const firstPairAnswer = await request<SubmitLearningAnswerResult>(
+          base,
+          `/api/public/learning-attempts/${sessionToken}/answers`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              questionId: question.id,
+              clientAnswerId: randomUUID(),
+              answerSequence: 1,
+              submittedAnswer: incomplete,
+            }),
+          },
+        );
+        assert.equal(firstPairAnswer.data?.shouldRetry, true);
+        current = firstPairAnswer.data!.attempt;
+        continue;
+      }
       const response = await request<SubmitLearningAnswerResult>(
         base,
         `/api/public/learning-attempts/${sessionToken}/answers`,
@@ -205,6 +236,32 @@ integration("V20D public lifecycle snapshots queue, resumes and grades idempoten
     );
     assert.equal(completed.data?.status, "COMPLETED");
     assert.ok((completed.data?.stars ?? 0) >= 1);
+    const [pairMappings] = await pool.query<RowDataPacket[]>(
+      `SELECT question.id,COUNT(question_item.assignment_item_id) item_count
+       FROM learning_attempt_questions question
+       JOIN learning_attempt_question_items question_item
+         ON question_item.question_id=question.id
+       WHERE question.mechanic='MATCH_PAIRS'
+       GROUP BY question.id`,
+    );
+    assert.equal(Number(pairMappings[0]?.item_count), 4);
+    assert.equal(pairQuestionIds.length, 2);
+    const [pairItemResults] = await pool.query<RowDataPacket[]>(
+      `SELECT question_id,
+        SUM(first_attempt_correct=1) first_correct,
+        SUM(final_correct=1) final_correct,
+        SUM(retry_count) retries
+       FROM learning_attempt_question_items
+       WHERE question_id IN (?,?)
+       GROUP BY question_id ORDER BY question_id`,
+      pairQuestionIds,
+    );
+    assert.equal(pairItemResults.length, 2);
+    for (const itemResult of pairItemResults) {
+      assert.equal(Number(itemResult.first_correct), 3);
+      assert.equal(Number(itemResult.final_correct), 4);
+      assert.equal(Number(itemResult.retries), 1);
+    }
 
     const guestReplayAccess = await request<{ sessionToken: string }>(
       base,

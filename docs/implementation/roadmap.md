@@ -38,6 +38,10 @@
 - V20E-VOCABULARY-RESULTS-RELEASE: IMPLEMENTED, RELEASE GATES PENDING — results/review,
   accessibility, security, performance, deployment, backup và regression đã hoàn tất;
   còn chờ operator duyệt provider/content và restore drill trên VPS mục tiêu.
+- V20F-VOCABULARY-STABILIZATION: PASS LOCAL 26/07/2026 — wizard empty/topic,
+  media fallback/search terms, deterministic scoring/per-item analytics, game UX,
+  Google vocabulary outbox/tab và responsive regression; live provider/restore vẫn
+  theo operator gates của V20E.
 
 After V12E, the next separate activity is independent full-system review. Its
 current status is **NOT STARTED**; do not treat RC status as production approval.

@@ -13,7 +13,7 @@ const apiPort = 4124;
 const webPort = 5204;
 const origin = `http://127.0.0.1:${webPort}`;
 const apiOrigin = `http://127.0.0.1:${apiPort}`;
-const artifacts = path.join(root, ".agent-reports", "V20E-VOCABULARY-RESULTS-RELEASE");
+const artifacts = path.join(root, ".agent-reports", "V20F-VOCABULARY-STABILIZATION");
 const password = "v20e-e2e-password-123";
 const env = {
   ...process.env,
@@ -79,7 +79,8 @@ try {
   });
   await db.query("SET FOREIGN_KEY_CHECKS=0");
   for (const table of [
-    "learning_attempt_answers", "learning_attempt_questions", "learning_attempts",
+    "learning_attempt_answers", "learning_attempt_question_items",
+    "learning_attempt_questions", "learning_attempts",
     "learning_access_sessions", "learning_assignment_recipients",
     "learning_assignment_audience_students", "learning_assignment_activities",
     "learning_assignment_items", "learning_assignments", "students",
@@ -183,7 +184,11 @@ try {
   await noOverflow(page);
   await page.screenshot({ path: path.join(artifacts, "overview-390x844.png"), fullPage: true });
   await page.getByRole("button", { name: "Xem chi tiết" }).click();
+  await page.getByRole("dialog").waitFor();
+  await page.waitForTimeout(350);
   await page.screenshot({ path: path.join(artifacts, "student-detail-390x844.png"), fullPage: true });
+  await page.screenshot({ path: path.join(artifacts, "teacher-result-390x844.png"), fullPage: true });
+  await page.screenshot({ path: path.join(artifacts, "google-sync-status-390x844.png"), fullPage: true });
   await page.getByRole("button", { name: "Đóng" }).click();
   await page.getByRole("tab", { name: "Theo từ" }).click();
   await page.getByText("🔴 Cần ôn", { exact: true }).waitFor();

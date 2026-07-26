@@ -128,6 +128,7 @@ export interface VocabularySetItemInput {
   tier: VocabularyTier;
   illustration: VocabularyIllustrationInput;
   supportsImageGame: boolean;
+  imageSearchTerms?: string[];
 }
 
 export interface VocabularySetItem extends VocabularySetItemInput {

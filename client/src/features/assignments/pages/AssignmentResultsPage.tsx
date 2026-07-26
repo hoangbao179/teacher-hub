@@ -34,6 +34,7 @@ import type {
   AssignmentResultSummary,
   AssignmentVocabularyResult,
   VocabularyMasteryStatus,
+  StudentGoogleSheetState,
 } from "@teacher/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -45,6 +46,11 @@ import {
   listAssignmentResultVocabulary,
 } from "../../../api/assignments";
 import { PageHeader } from "../../../components/UiKit";
+import {
+  getStudentGoogleSheet,
+  resyncStudentGoogleSheet,
+} from "../../../api/students";
+import { gameMechanicLabels } from "../assignmentUi";
 
 const masteryLabel: Record<VocabularyMasteryStatus, string> = {
   MASTERED: "🟢 Đã nhớ",
@@ -88,6 +94,7 @@ export function AssignmentResultsPage() {
   const [selectedRecipients, setSelectedRecipients] = useState<number[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [googleState, setGoogleState] = useState<StudentGoogleSheetState | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -159,6 +166,33 @@ export function AssignmentResultsPage() {
       setBusy(false);
     }
   };
+
+  const openDetail = async (recipient: AssignmentRecipientResult) => {
+    setError("");
+    try {
+      const [recipientDetail, sheetState] = await Promise.all([
+        getAssignmentRecipientResult(assignmentId, recipient.recipientId),
+        getStudentGoogleSheet(recipient.studentId),
+      ]);
+      setDetail(recipientDetail);
+      setGoogleState(sheetState);
+    } catch (reason) {
+      setError((reason as Error).message);
+    }
+  };
+
+  const googleStatus = !googleState?.enabled
+    ? "Google sync đang tắt"
+    : !googleState.sheet || googleState.sheet.status !== "ACTIVE"
+      ? "Chưa có Google Sheet"
+      : googleState.deadCount > 0
+        ? "Lỗi đồng bộ"
+        : googleState.retryCount > 0
+          ? "Đang thử lại"
+          : googleState.pendingCount > 0
+            ? "Đang chờ"
+            : googleState.lastSuccessfulSyncAt
+              ? "Đã đồng bộ" : "Đang chờ";
 
   if (!summary && !error) return <Typography>Đang tải kết quả…</Typography>;
   return <Stack spacing={2.25} data-testid="assignment-results-page">
@@ -232,8 +266,7 @@ export function AssignmentResultsPage() {
                     <Box><Typography sx={{ fontWeight: 700 }}>{recipient.studentName}</Typography>
                       <Chip size="small" label={statusLabel[recipient.status]} /></Box>
                     <Button
-                      onClick={() => void getAssignmentRecipientResult(
-                        assignmentId, recipient.recipientId).then(setDetail)}
+                      onClick={() => void openDetail(recipient)}
                       startIcon={<Visibility />}
                       sx={{ minHeight: 44 }}
                     >Xem chi tiết</Button>
@@ -295,6 +328,19 @@ export function AssignmentResultsPage() {
     <Dialog open={Boolean(detail)} onClose={() => setDetail(null)} fullWidth maxWidth="sm">
       <DialogTitle>Kết quả của {detail?.studentName}</DialogTitle>
       <DialogContent dividers><Stack spacing={1}>
+        {googleState && <Alert severity={
+          googleStatus === "Đã đồng bộ" ? "success"
+            : googleStatus === "Lỗi đồng bộ" ? "error" : "info"
+        } action={
+          googleState.sheet?.status === "ACTIVE"
+            && (googleState.deadCount > 0 || googleState.retryCount > 0)
+            ? <Button color="inherit" onClick={() => void resyncStudentGoogleSheet(detail!.studentId)
+              .then(() => getStudentGoogleSheet(detail!.studentId))
+              .then(setGoogleState)}>Đồng bộ lại</Button>
+            : undefined
+        }>
+          Google Sheet: {googleStatus}
+        </Alert>}
         {detail?.attempts.map((attempt) => <Card variant="outlined" key={attempt.attemptId}>
           <CardContent>
             <Typography sx={{ fontWeight: 700 }}>
@@ -308,8 +354,8 @@ export function AssignmentResultsPage() {
           </CardContent>
         </Card>)}
         {detail?.activities.map((activity) => <Typography variant="body2" key={activity.mechanic}>
-          {activity.mechanic}: {activity.correctFirstTry}/{activity.gradedExposures} đúng lần đầu,
-          {" "}{activity.retryCount} lần thử lại
+          {gameMechanicLabels[activity.mechanic as keyof typeof gameMechanicLabels] ?? "Hoạt động"}: {activity.correctFirstTry}/{activity.gradedExposures} đúng lần đầu,
+          {" "}{activity.correctAfterRetry} đúng sau thử lại, {activity.reviewCorrect} đúng khi ôn lại
         </Typography>)}
         {detail?.words.map((word) => <Card variant="outlined" key={word.assignmentItemId}>
           <CardContent>

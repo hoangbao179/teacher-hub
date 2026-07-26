@@ -71,6 +71,11 @@ export function createRouter(): Router {
     asyncHandler(controllers.vocabularyGames.attempt),
   );
   router.post(
+    "/api/public/learning-attempts/:sessionToken/replay",
+    publicGameAccessRateLimit,
+    asyncHandler(controllers.vocabularyGames.replay),
+  );
+  router.post(
     "/api/public/learning-attempts/:sessionToken/answers",
     publicGameAnswerRateLimit,
     asyncHandler(controllers.vocabularyGames.answer),

@@ -36,7 +36,7 @@ import {
 import { EmptyState } from "../../../components/EmptyState";
 import { LoadingCards } from "../../../components/LoadingCards";
 import { PageHeader } from "../../../components/UiKit";
-import { ageBandLabel, ageBandOptions } from "../vocabularyEditor";
+import { ageBandLabel, ageBandOptions, vocabularyTopicIcon } from "../vocabularyEditor";
 
 type View = "topics" | "sets";
 
@@ -105,7 +105,7 @@ export function VocabularyListPage() {
             <Card key={topic.id} variant="outlined" sx={{ minWidth: 0 }}>
               <CardActionArea component={Link} to={`/admin/vocabulary/new?topic=${encodeURIComponent(topic.slug)}`} sx={{ height: "100%" }}>
                 <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-                  <Typography aria-hidden sx={{ fontSize: { xs: 28, sm: 34 }, mb: 0.5 }}>{topic.iconKey}</Typography>
+                  <Typography aria-hidden sx={{ fontSize: { xs: 28, sm: 34 }, mb: 0.5 }}>{vocabularyTopicIcon(topic.iconKey)}</Typography>
                   <Typography variant="subtitle1" sx={{ lineHeight: 1.25 }}>{topic.titleVi}</Typography>
                   <Typography variant="caption" color="text.secondary">{topic.coreWordCount} từ cốt lõi · {topic.extendedWordCount} mở rộng</Typography>
                   <Stack direction="row" sx={{ gap: 0.5, mt: 1, flexWrap: "wrap" }}>

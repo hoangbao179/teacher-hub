@@ -10,6 +10,20 @@ export function PlayResultPage() {
   const navigate = useNavigate();
   const [result, setResult] = useState<CompleteLearningAttemptResult | null>(null);
   const [error, setError] = useState("");
+  const [replaying, setReplaying] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+
+  const replay = async () => {
+    setReplaying(true);
+    setError("");
+    try {
+      const attempt = await vocabularyGamesApi.replay(sessionToken);
+      navigate(`/play/session/${encodeURIComponent(attempt.sessionToken)}`, { replace: true });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Chưa thể chơi lại.");
+      setReplaying(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -40,20 +54,47 @@ export function PlayResultPage() {
               </Typography>
               <Typography variant="h5" sx={{ fontWeight: 800 }}>Con đã hoàn thành!</Typography>
               <Typography color="text.secondary">{result.message}</Typography>
-              {result.scorePercent != null && (
+              {result.resultMode === "SCORE" && result.scorePercent != null && (
                 <Typography variant="h4" color="primary.main" sx={{ fontWeight: 800 }}>
                   {result.scorePercent}%
                 </Typography>
               )}
-              <Typography>
+              {result.resultMode === "SCORE" && <Typography>
                 Đúng ngay lần đầu: {result.firstTryCorrectCount}/{result.gradedExposureCount}
-              </Typography>
+              </Typography>}
+              {showReview && <Stack spacing={0.75} aria-live="polite">
+                {result.reviewWords.length
+                  ? result.reviewWords.map((item) => <Typography key={`${item.word}-${item.meaningVi}`}>
+                    <strong>{item.word}</strong> — {item.meaningVi}
+                  </Typography>)
+                  : <Typography>Con chưa có từ khó cần ôn thêm.</Typography>}
+              </Stack>}
+              <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 1, justifyContent: "center" }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowReview((value) => !value)}
+                  sx={{ minHeight: 56 }}
+                >
+                  Ôn từ khó
+                </Button>
+                {result.canPlayAgain && <Button
+                  variant="contained"
+                  disabled={replaying}
+                  onClick={() => void replay()}
+                  sx={{ minHeight: 56 }}
+                >
+                  {replaying ? "Đang chuẩn bị…" : "Chơi lại"}
+                </Button>}
+                {!result.canPlayAgain && <Typography color="text.secondary" sx={{ alignSelf: "center" }}>
+                  Con đã dùng hết lượt chơi của bài này.
+                </Typography>}
+              </Stack>
               <Button
-                variant="contained"
+                variant="text"
                 onClick={() => navigate("/", { replace: true })}
                 sx={{ minHeight: 60, fontSize: 17 }}
               >
-                Về trang chủ
+                Kết thúc
               </Button>
             </Stack>
           )}

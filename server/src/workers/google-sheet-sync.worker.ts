@@ -84,16 +84,26 @@ export class GoogleSheetSyncWorker {
       const resource = await this.provider.findByRecordId(sheet.id);
       if (!resource) throw new GoogleIntegrationError("SPREADSHEET_MISSING", "Không tìm thấy Google Sheet đã liên kết.", false);
       const snapshot = await this.sheets.snapshot(event.studentId);
+      const syncedAt = new Date().toISOString();
+      if (event.eventType === "VOCABULARY_ATTEMPT_UPSERT") {
+        await this.provider.render(resource, snapshot, {
+          templateVersion: sheet.templateVersion,
+          recordId: sheet.id,
+          generatedAt: sheet.lastGeneratedAt ?? syncedAt,
+          syncedAt,
+        });
+        await this.outbox.succeed(event, syncedAt);
+        return;
+      }
       const row = event.eventType === "LESSON_REMOVE"
         ? null
         : snapshot.learning.find((item) => item.lessonId === event.lessonId) ?? null;
-      const syncedAt = new Date().toISOString();
       await this.provider.syncLesson(resource, row, {
         ...snapshot.overview,
         currentClass: snapshot.student.currentClass,
         currentGrade: snapshot.student.currentGrade,
         currentAcademicYear: snapshot.student.currentAcademicYear,
-      }, event.lessonId, syncedAt);
+      }, event.lessonId!, syncedAt);
       await this.outbox.succeed(event, syncedAt);
     } catch (error) {
       const classified = classifyGoogleError(error);

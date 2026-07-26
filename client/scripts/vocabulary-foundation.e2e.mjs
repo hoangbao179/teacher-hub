@@ -11,7 +11,7 @@ const apiPort = 4120;
 const webPort = 5200;
 const origin = `http://127.0.0.1:${webPort}`;
 const artifactDir = path.join(root, ".agent-reports", "V20A-VOCABULARY-FOUNDATION");
-const mediaArtifactDir = path.join(root, ".agent-reports", "V20B-VOCABULARY-MEDIA-EDITOR");
+const mediaArtifactDir = path.join(root, ".agent-reports", "V20F-VOCABULARY-STABILIZATION");
 const password = "vocabulary-e2e-password-123";
 const testEnv = {
   ...process.env,

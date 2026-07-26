@@ -62,6 +62,7 @@ interface ItemRow extends RowDataPacket {
   tier: AssignmentSnapshotItem["tier"];
   illustration_snapshot_json: unknown;
   supports_image_game: number;
+  image_search_terms_json: unknown;
   media_id?: number | null;
   media_alt_text?: string | null;
 }
@@ -132,6 +133,7 @@ function mapItem(row: ItemRow): AssignmentSnapshotItem {
     illustration: illustration as VocabularyIllustrationInput,
     illustrationSnapshot: illustration,
     supportsImageGame: Boolean(row.supports_image_game),
+    imageSearchTerms: json<string[]>(row.image_search_terms_json, [row.word]),
   };
 }
 
@@ -802,8 +804,9 @@ export class AssignmentRepository {
         `INSERT INTO learning_assignment_items
           (assignment_id,source_vocabulary_item_id,stored_media_id,display_order,
            word,normalized_word,meaning_vi,phonetic,part_of_speech,example_en,
-           speech_text,tier,illustration_snapshot_json,supports_image_game)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+           speech_text,tier,illustration_snapshot_json,supports_image_game,
+           image_search_terms_json)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           id,
           item.sourceVocabularyItemId ?? null,
@@ -819,6 +822,7 @@ export class AssignmentRepository {
           item.tier,
           JSON.stringify(snapshot),
           item.supportsImageGame,
+          JSON.stringify(item.imageSearchTerms?.length ? item.imageSearchTerms : [item.word]),
         ],
       );
     }

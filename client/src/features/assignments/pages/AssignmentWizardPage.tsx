@@ -3,6 +3,9 @@ import {
   ArrowForward,
   Check,
   CloudDone,
+  AutoStories,
+  Create,
+  MenuBook,
   Preview,
   Publish,
   Save,
@@ -11,11 +14,16 @@ import {
   Alert,
   Box,
   Button,
+  Card,
+  CardActionArea,
+  CardContent,
   Checkbox,
   Chip,
   FormControlLabel,
   LinearProgress,
   MenuItem,
+  Tab,
+  Tabs,
   Stack,
   Step,
   StepLabel,
@@ -35,10 +43,12 @@ import type {
   StudentListItem,
   VocabularySetDetail,
   VocabularySetListItem,
+  VocabularyTopicListItem,
+  VocabularyTopicSuggestionItem,
 } from "@teacher/shared";
 import { assignmentActivitiesForTemplate } from "@teacher/shared";
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   createAssignment,
   getAssignment,
@@ -47,15 +57,33 @@ import {
   updateAssignment,
 } from "../../../api/assignments";
 import { api } from "../../../api/client";
-import { getVocabularySet, listVocabularySets } from "../../../api/vocabulary";
+import {
+  createVocabularySet,
+  getVocabularySet,
+  importPublicUnitSnapshot,
+  listVocabularySets,
+  listVocabularyTopics,
+  suggestVocabularyTopic,
+} from "../../../api/vocabulary";
 import {
   ConfirmationDialog,
   FormSection,
   PageHeader,
   StickyActionBar,
 } from "../../../components/UiKit";
-import { ageBandOptions } from "../../vocabulary/vocabularyEditor";
-import { audienceLabels, templateLabels } from "../assignmentUi";
+import { publishedUnits } from "../../learning/content/vocabularyCatalog";
+import {
+  ageBandLabel,
+  ageBandOptions,
+  publicUnitSnapshot,
+  suggestionItems,
+  vocabularyTopicIcon,
+} from "../../vocabulary/vocabularyEditor";
+import {
+  audienceLabels,
+  gamePresentationLabels,
+  templateLabels,
+} from "../assignmentUi";
 
 const steps = ["Người nhận", "Bộ từ", "Từ vựng", "Hoạt động", "Thiết lập", "Xem trước"];
 const templates: AssignmentTemplateCode[] = [
@@ -67,9 +95,17 @@ const templates: AssignmentTemplateCode[] = [
 ];
 const customActivities: AssignmentActivityInput[] = [
   { displayOrder: 1, mechanic: "EXPLORE_CARD", presentation: "FLASHCARD", required: true },
-  { displayOrder: 2, mechanic: "SELECT_ONE", presentation: "LISTEN_PICK_WORD", required: true },
-  { displayOrder: 3, mechanic: "MATCH_PAIRS", presentation: "MATCH_WORD_MEANING", required: true },
-  { displayOrder: 4, mechanic: "BUILD_WORD", presentation: "BUILD_SPELLED_WORD", required: true },
+  { displayOrder: 2, mechanic: "SELECT_ONE", presentation: "LISTEN_PICK_IMAGE", required: true },
+  { displayOrder: 3, mechanic: "SELECT_ONE", presentation: "IMAGE_PICK_WORD", required: true },
+  { displayOrder: 4, mechanic: "SELECT_ONE", presentation: "LISTEN_PICK_WORD", required: true },
+  { displayOrder: 5, mechanic: "MATCH_PAIRS", presentation: "MATCH_WORD_MEANING", required: true },
+  { displayOrder: 6, mechanic: "MEMORY_PAIRS", presentation: "MEMORY_WORD_MEANING", required: true },
+  { displayOrder: 7, mechanic: "BUILD_WORD", presentation: "BUILD_SPELLED_WORD", required: true },
+  { displayOrder: 8, mechanic: "BUILD_WORD", presentation: "MISSING_LETTER", required: true },
+  { displayOrder: 9, mechanic: "SELECT_ONE", presentation: "FEED_MONSTER", required: true },
+  { displayOrder: 10, mechanic: "SELECT_ONE", presentation: "POP_BALLOON", required: true },
+  { displayOrder: 11, mechanic: "SELECT_ONE", presentation: "OPEN_TREASURE", required: true },
+  { displayOrder: 12, mechanic: "SELECT_ONE", presentation: "CHOOSE_TRAIN_CARRIAGE", required: true },
 ];
 
 const initial: AssignmentDraftInput = {
@@ -98,7 +134,7 @@ function toInput(detail: AssignmentDetail): AssignmentDraftInput {
     passScore: detail.passScore ?? undefined,
     answerFeedbackMode: detail.answerFeedbackMode,
     shuffleQuestions: detail.shuffleQuestions,
-    items: detail.items.map(({ sourceVocabularyItemId, displayOrder, word, meaningVi, phonetic, partOfSpeech, exampleEn, speechText, tier, illustrationSnapshot, supportsImageGame }) => ({
+    items: detail.items.map(({ sourceVocabularyItemId, displayOrder, word, meaningVi, phonetic, partOfSpeech, exampleEn, speechText, tier, illustrationSnapshot, supportsImageGame, imageSearchTerms }) => ({
       sourceVocabularyItemId,
       displayOrder,
       word,
@@ -110,6 +146,7 @@ function toInput(detail: AssignmentDetail): AssignmentDraftInput {
       tier,
       illustration: illustrationSnapshot,
       supportsImageGame,
+      imageSearchTerms,
     })),
     activities: detail.activities.map(({ displayOrder, mechanic, presentation, required, config }) => ({
       displayOrder, mechanic, presentation, required, config,
@@ -131,6 +168,7 @@ function isoOrUndefined(value: string) {
 export function AssignmentWizardPage() {
   const params = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const editingId = params.id ? Number(params.id) : undefined;
   const [id, setId] = useState<number | undefined>(editingId);
   const [version, setVersion] = useState(1);
@@ -138,7 +176,10 @@ export function AssignmentWizardPage() {
   const [step, setStep] = useState(0);
   const [classes, setClasses] = useState<ClassListItem[]>([]);
   const [students, setStudents] = useState<StudentListItem[]>([]);
-  const [sets, setSets] = useState<VocabularySetListItem[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
+  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [classesError, setClassesError] = useState("");
+  const [studentsError, setStudentsError] = useState("");
   const [loading, setLoading] = useState(Boolean(editingId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -147,15 +188,14 @@ export function AssignmentWizardPage() {
   const [publishOpen, setPublishOpen] = useState(false);
 
   useEffect(() => {
-    void Promise.all([
-      api<ClassListItem[]>("/api/classes"),
-      api<StudentListItem[]>("/api/students"),
-      listVocabularySets({ pageSize: 50 }).then((result) => result.data),
-    ]).then(([classItems, studentItems, vocabularySets]) => {
-      setClasses(classItems.filter((item) => item.status === "ACTIVE"));
-      setStudents(studentItems.filter((item) => item.status === "ACTIVE"));
-      setSets(vocabularySets.filter((item) => item.status === "ACTIVE"));
-    }).catch((reason: Error) => setError(reason.message));
+    void api<ClassListItem[]>("/api/classes")
+      .then((items) => setClasses(items.filter((item) => item.status === "ACTIVE")))
+      .catch((reason: Error) => setClassesError(reason.message))
+      .finally(() => setClassesLoading(false));
+    void api<StudentListItem[]>("/api/students")
+      .then((items) => setStudents(items.filter((item) => item.status === "ACTIVE")))
+      .catch((reason: Error) => setStudentsError(reason.message))
+      .finally(() => setStudentsLoading(false));
     if (editingId) {
       void getAssignment(editingId).then((detail) => {
         if (detail.status !== "DRAFT") {
@@ -197,6 +237,7 @@ export function AssignmentWizardPage() {
         tier: item.tier,
         illustration: item.illustration,
         supportsImageGame: item.supportsImageGame,
+        imageSearchTerms: item.imageSearchTerms,
       }));
       const result = assignmentActivitiesForTemplate(form.templateCode, {
         ageBand: selected.ageBand,
@@ -283,6 +324,14 @@ export function AssignmentWizardPage() {
     }
   };
 
+  const editImages = async () => {
+    const detail = await save();
+    if (!detail || !form.vocabularySetId) return;
+    navigate(
+      `/admin/vocabulary/${form.vocabularySetId}?returnTo=${encodeURIComponent(`/admin/assignments/${detail.id}/edit`)}`,
+    );
+  };
+
   if (loading) return <LinearProgress aria-label="Đang tải bài tập" />;
   return (
     <Stack spacing={2.25} data-testid="assignment-wizard-page">
@@ -294,12 +343,32 @@ export function AssignmentWizardPage() {
       {error && <Alert severity="error">{error}</Alert>}
       {saved && <Alert severity="success" icon={<CloudDone />}>Đã lưu bản nháp.</Alert>}
 
-      {step === 0 && <AudienceStep form={form} classes={classes} students={students} patch={patch} />}
-      {step === 1 && <VocabularySetStep form={form} sets={sets} chooseSet={chooseSet} />}
+      {step === 0 && <AudienceStep
+        form={form}
+        classes={classes}
+        students={students}
+        classesLoading={classesLoading}
+        studentsLoading={studentsLoading}
+        classesError={classesError}
+        studentsError={studentsError}
+        patch={patch}
+      />}
+      {step === 1 && <VocabularySetStep
+        form={form}
+        initialSetId={Number(searchParams.get("vocabularySetId")) || undefined}
+        chooseSet={chooseSet}
+        createManual={async () => {
+          const detail = await save();
+          if (!detail) return;
+          navigate(
+            `/admin/vocabulary/new?returnTo=${encodeURIComponent(`/admin/assignments/${detail.id}/edit`)}`,
+          );
+        }}
+      />}
       {step === 2 && <WordsStep form={form} patch={patch} />}
-      {step === 3 && <ActivitiesStep form={form} warnings={templateResult.warnings} patch={patch} />}
+      {step === 3 && <ActivitiesStep form={form} warnings={templateResult.warnings} patch={patch} editImages={editImages} />}
       {step === 4 && <SettingsStep form={form} patch={patch} />}
-      {step === 5 && <PreviewStep form={form} warnings={previewWarnings} />}
+      {step === 5 && <PreviewStep form={form} warnings={previewWarnings} editImages={editImages} />}
 
       <StickyActionBar>
         {step > 0 && <Button startIcon={<ArrowBack />} disabled={saving} onClick={() => setStep((value) => value - 1)}>Quay lại</Button>}
@@ -324,13 +393,18 @@ export function AssignmentWizardPage() {
 
 type Patch = <K extends keyof AssignmentDraftInput>(key: K, value: AssignmentDraftInput[K]) => void;
 
-function AudienceStep({ form, classes, students, patch }: {
+function AudienceStep({ form, classes, students, classesLoading, studentsLoading, classesError, studentsError, patch }: {
   form: AssignmentDraftInput; classes: ClassListItem[]; students: StudentListItem[]; patch: Patch;
+  classesLoading: boolean; studentsLoading: boolean; classesError: string; studentsError: string;
 }) {
   return <FormSection title="Ai sẽ nhận bài?">
     <TextField select label="Người nhận" value={form.audienceType ?? ""} onChange={(event) => patch("audienceType", event.target.value as AssignmentAudienceType)}>
       {Object.entries(audienceLabels).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
     </TextField>
+    {classesLoading && form.audienceType === "CLASS" && <LinearProgress aria-label="Đang tải lớp" />}
+    {studentsLoading && form.audienceType === "SELECTED_STUDENTS" && <LinearProgress aria-label="Đang tải học sinh" />}
+    {classesError && form.audienceType === "CLASS" && <Alert severity="error">Không tải được lớp: {classesError}</Alert>}
+    {studentsError && form.audienceType === "SELECTED_STUDENTS" && <Alert severity="error">Không tải được học sinh: {studentsError}</Alert>}
     {form.audienceType === "CLASS" && <TextField select label="Lớp" value={form.classId ?? ""} onChange={(event) => patch("classId", Number(event.target.value))}>
       {classes.map((item) => <MenuItem key={item.id} value={item.id}>{item.name} ({item.activeStudentCount})</MenuItem>)}
     </TextField>}
@@ -347,14 +421,251 @@ function AudienceStep({ form, classes, students, patch }: {
   </FormSection>;
 }
 
-function VocabularySetStep({ form, sets, chooseSet }: {
-  form: AssignmentDraftInput; sets: VocabularySetListItem[]; chooseSet: (id: number) => Promise<void>;
+type VocabularySourceTab = "SETS" | "TOPICS" | "UNITS";
+
+function TopicIcon({ iconKey }: { iconKey: string }) {
+  return <Typography aria-hidden sx={{ fontSize: 30 }}>
+    {vocabularyTopicIcon(iconKey)}
+  </Typography>;
+}
+
+function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
+  form: AssignmentDraftInput;
+  initialSetId?: number;
+  chooseSet: (id: number) => Promise<void>;
+  createManual: () => Promise<void>;
 }) {
-  return <FormSection title="Chọn bộ từ" description="Nội dung sẽ được chụp lại khi giao để không bị đổi theo bộ từ gốc.">
-    <TextField select label="Bộ từ vựng" value={form.vocabularySetId ?? ""} onChange={(event) => void chooseSet(Number(event.target.value))}>
-      {sets.map((item) => <MenuItem key={item.id} value={item.id}>{item.title} · {item.itemCount} từ</MenuItem>)}
-    </TextField>
-    {form.vocabularySetId && <Alert severity="success" icon={<Check />}>Đã chọn {form.items.length} từ.</Alert>}
+  const [tab, setTab] = useState<VocabularySourceTab>("SETS");
+  const [sets, setSets] = useState<VocabularySetListItem[]>([]);
+  const [topics, setTopics] = useState<VocabularyTopicListItem[]>([]);
+  const [setsLoading, setSetsLoading] = useState(true);
+  const [topicsLoading, setTopicsLoading] = useState(false);
+  const [setsError, setSetsError] = useState("");
+  const [topicsError, setTopicsError] = useState("");
+  const [search, setSearch] = useState("");
+  const [ageFilter, setAgeFilter] = useState<LearningAgeBand | "">("");
+  const [ageBand, setAgeBand] = useState<LearningAgeBand>(form.ageBand);
+  const [topicSlug, setTopicSlug] = useState("");
+  const [suggestions, setSuggestions] = useState<VocabularyTopicSuggestionItem[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [unitId, setUnitId] = useState("");
+  const [creating, setCreating] = useState(false);
+  const creatingRef = useRef(false);
+
+  const loadSets = useCallback(async () => {
+    setSetsLoading(true);
+    setSetsError("");
+    try {
+      const result = await listVocabularySets({ pageSize: 50 });
+      setSets(result.data.filter((item) => item.status === "ACTIVE"));
+    } catch (reason) {
+      setSetsError(reason instanceof Error ? reason.message : "Không tải được bộ từ.");
+    } finally {
+      setSetsLoading(false);
+    }
+  }, []);
+
+  const loadTopics = useCallback(async () => {
+    setTopicsLoading(true);
+    setTopicsError("");
+    try {
+      const result = await listVocabularyTopics({ pageSize: 50 });
+      setTopics(result.data);
+    } catch (reason) {
+      setTopicsError(reason instanceof Error ? reason.message : "Không tải được chủ đề.");
+    } finally {
+      setTopicsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadSets);
+  }, [loadSets]);
+
+  useEffect(() => {
+    if (!initialSetId || form.vocabularySetId === initialSetId) return;
+    void chooseSet(initialSetId);
+  }, [chooseSet, form.vocabularySetId, initialSetId]);
+
+  useEffect(() => {
+    if (!topicSlug) return;
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (!active) return undefined;
+      setSuggestionsLoading(true);
+      setTopicsError("");
+      return suggestVocabularyTopic({ topicSlug, ageBand, targetCount: 10 });
+    }).then((result) => {
+      if (active && result) setSuggestions(result.items);
+    }).catch((reason: Error) => {
+      if (active) setTopicsError(reason.message);
+    }).finally(() => {
+      if (active) setSuggestionsLoading(false);
+    });
+    return () => { active = false; };
+  }, [ageBand, topicSlug]);
+
+  const filteredSets = sets.filter((item) =>
+    (!search || `${item.title} ${item.description ?? ""}`
+      .toLocaleLowerCase("vi").includes(search.toLocaleLowerCase("vi")))
+    && (!ageFilter || item.ageBand === ageFilter));
+  const selectedSuggestions = suggestions.filter((item) => item.selected);
+  const imageCount = selectedSuggestions.filter((item) => item.supportsImageGame).length;
+
+  const createFromTopic = async () => {
+    const topic = topics.find((item) => item.slug === topicSlug);
+    if (!topic || !selectedSuggestions.length || creatingRef.current) return;
+    creatingRef.current = true;
+    setCreating(true);
+    setTopicsError("");
+    try {
+      const created = await createVocabularySet({
+        title: topic.titleVi,
+        sourceType: "TOPIC_CATALOG",
+        sourceReference: { topicSlug },
+        ageBand,
+        items: suggestionItems({
+          topic,
+          ageBand,
+          targetCount: 10,
+          items: suggestions,
+          selectedCount: selectedSuggestions.length,
+        }),
+      });
+      await loadSets();
+      await chooseSet(created.id);
+      setTab("SETS");
+    } catch (reason) {
+      setTopicsError(reason instanceof Error ? reason.message : "Không tạo được bộ từ.");
+    } finally {
+      creatingRef.current = false;
+      setCreating(false);
+    }
+  };
+
+  const importUnit = async () => {
+    const unit = publishedUnits.find((item) => item.id === unitId);
+    if (!unit || creatingRef.current) return;
+    creatingRef.current = true;
+    setCreating(true);
+    setTopicsError("");
+    try {
+      const created = await importPublicUnitSnapshot(publicUnitSnapshot(unit, ageBand));
+      await loadSets();
+      await chooseSet(created.id);
+      setTab("SETS");
+    } catch (reason) {
+      setTopicsError(reason instanceof Error ? reason.message : "Không import được Unit.");
+    } finally {
+      creatingRef.current = false;
+      setCreating(false);
+    }
+  };
+
+  return <FormSection
+    title="Chọn nguồn từ vựng"
+    description="Bộ từ sẽ được chụp lại khi giao để nội dung bài không bị đổi."
+  >
+    <Tabs
+      value={tab}
+      onChange={(_event, value: VocabularySourceTab) => {
+        setTab(value);
+        if (value === "TOPICS" && topics.length === 0 && !topicsLoading)
+          void loadTopics();
+      }}
+      variant="scrollable"
+      allowScrollButtonsMobile
+    >
+      <Tab value="SETS" label="Bộ từ của tôi" />
+      <Tab value="TOPICS" label="Chủ đề có sẵn" />
+      <Tab value="UNITS" label="Unit công khai" />
+    </Tabs>
+
+    {tab === "SETS" && <Stack spacing={1.5}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 220px" }, gap: 1 }}>
+        <TextField label="Tìm bộ từ" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <TextField select label="Khối tuổi" value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as LearningAgeBand | "")}>
+          <MenuItem value="">Tất cả</MenuItem>
+          {ageBandOptions.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
+        </TextField>
+      </Box>
+      {setsLoading && <LinearProgress aria-label="Đang tải bộ từ" />}
+      {setsError && <Alert severity="error" action={<Button color="inherit" onClick={() => void loadSets()}>Thử lại</Button>}>{setsError}</Alert>}
+      {!setsLoading && !setsError && filteredSets.length === 0 && <Stack spacing={1.25}>
+        <Alert severity="info">Cô chưa có bộ từ nào.</Alert>
+        <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 1, flexWrap: "wrap" }}>
+          <Button variant="contained" startIcon={<AutoStories />} onClick={() => setTab("TOPICS")}>Tạo từ chủ đề</Button>
+          <Button variant="outlined" startIcon={<Create />} onClick={() => void createManual()}>Tạo bộ từ thủ công</Button>
+          <Button variant="outlined" startIcon={<MenuBook />} onClick={() => setTab("UNITS")}>Dùng Unit có sẵn</Button>
+        </Stack>
+      </Stack>}
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2,minmax(0,1fr))" }, gap: 1 }}>
+        {filteredSets.map((item) => <Card key={item.id} variant="outlined">
+          <CardActionArea onClick={() => void chooseSet(item.id)} sx={{ minHeight: 72 }}>
+            <CardContent>
+              <Typography variant="subtitle1">{item.title}</Typography>
+              <Typography variant="body2" color="text.secondary">{item.itemCount} từ · {ageBandLabel(item.ageBand)}</Typography>
+            </CardContent>
+          </CardActionArea>
+        </Card>)}
+      </Box>
+    </Stack>}
+
+    {tab === "TOPICS" && <Stack spacing={1.5}>
+      <TextField select label="Khối tuổi" value={ageBand} onChange={(event) => setAgeBand(event.target.value as LearningAgeBand)}>
+        {ageBandOptions.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
+      </TextField>
+      {topicsLoading && <LinearProgress aria-label="Đang tải chủ đề" />}
+      {topicsError && <Alert severity="error" action={<Button color="inherit" onClick={() => void loadTopics()}>Thử lại</Button>}>{topicsError}</Alert>}
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", md: "repeat(4,minmax(0,1fr))" }, gap: 1 }}>
+        {topics.map((topic) => <Card key={topic.id} variant={topic.slug === topicSlug ? "elevation" : "outlined"}>
+          <CardActionArea onClick={() => {
+            setSuggestions([]);
+            setTopicSlug(topic.slug);
+          }} sx={{ minHeight: 96 }}>
+            <CardContent sx={{ p: 1.25 }}>
+              <TopicIcon iconKey={topic.iconKey} />
+              <Typography variant="subtitle2">{topic.titleVi}</Typography>
+            </CardContent>
+          </CardActionArea>
+        </Card>)}
+      </Box>
+      {suggestionsLoading && <LinearProgress aria-label="Đang gợi ý từ" />}
+      {suggestions.length > 0 && <>
+        {(["CORE", "EXTENDED"] as const).map((tier) => <Stack key={tier} data-tier={tier} spacing={0.5}>
+          <Typography variant="subtitle2">{tier === "CORE" ? "Từ cơ bản" : "Từ mở rộng"}</Typography>
+          {suggestions.filter((item) => item.tier === tier).map((item) => <FormControlLabel
+            key={item.id}
+            control={<Checkbox checked={item.selected} onChange={(event) => setSuggestions((current) =>
+              current.map((value) => value.id === item.id ? { ...value, selected: event.target.checked } : value))} />}
+            label={<><strong>{item.word}</strong> — {item.meaningVi}</>}
+          />)}
+        </Stack>)}
+        <Alert severity="info">
+          Đã chọn {selectedSuggestions.length} từ · {imageCount} từ hỗ trợ game hình ảnh · khoảng {Math.max(3, Math.ceil(selectedSuggestions.length * 0.5))} phút
+        </Alert>
+        <Button variant="contained" disabled={creating || !selectedSuggestions.length} onClick={() => void createFromTopic()}>
+          {creating ? "Đang tạo…" : "Tạo bộ từ và sử dụng"}
+        </Button>
+      </>}
+    </Stack>}
+
+    {tab === "UNITS" && <Stack spacing={1.5}>
+      <TextField select label="Khối tuổi" value={ageBand} onChange={(event) => setAgeBand(event.target.value as LearningAgeBand)}>
+        {ageBandOptions.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
+      </TextField>
+      <TextField select label="Unit có sẵn" value={unitId} onChange={(event) => setUnitId(event.target.value)}>
+        {publishedUnits.map((unit) => <MenuItem key={unit.id} value={unit.id}>{unit.title}</MenuItem>)}
+      </TextField>
+      <Alert severity="info">Unit sẽ được gửi lên server dưới dạng snapshot, giữ emoji, ảnh công khai, phát âm, nghĩa và ví dụ.</Alert>
+      <Button variant="contained" disabled={creating || !unitId} onClick={() => void importUnit()}>
+        {creating ? "Đang import…" : "Import Unit và sử dụng"}
+      </Button>
+    </Stack>}
+
+    {form.vocabularySetId && <Alert severity="success" icon={<Check />}>
+      Đã chọn {form.items.length} từ.
+    </Alert>}
   </FormSection>;
 }
 
@@ -374,7 +685,9 @@ function WordsStep({ form, patch }: { form: AssignmentDraftInput; patch: Patch }
   </FormSection>;
 }
 
-function ActivitiesStep({ form, warnings, patch }: { form: AssignmentDraftInput; warnings: string[]; patch: Patch }) {
+function ActivitiesStep({ form, warnings, patch, editImages }: {
+  form: AssignmentDraftInput; warnings: string[]; patch: Patch; editImages: () => Promise<void>;
+}) {
   const setTemplate = (code: AssignmentTemplateCode) => {
     const generated = assignmentActivitiesForTemplate(code, {
       ageBand: form.ageBand,
@@ -395,11 +708,25 @@ function ActivitiesStep({ form, warnings, patch }: { form: AssignmentDraftInput;
       {templates.map((value) => <MenuItem key={value} value={value}>{templateLabels[value]}</MenuItem>)}
     </TextField>
     {warnings.map((warning) => <Alert key={warning} severity="warning">{warning}</Alert>)}
+    {form.items.filter((item) => item.supportsImageGame).length < 2 && <Button
+      variant="outlined"
+      onClick={() => void editImages()}
+    >Quay về chọn ảnh</Button>}
     {form.templateCode === "CUSTOM" && <Stack>
-      {customActivities.map((activity) => <FormControlLabel key={activity.presentation} control={<Checkbox checked={form.activities.some((value) => value.presentation === activity.presentation)} onChange={() => toggleCustom(activity)} />} label={activity.presentation.replaceAll("_", " ")} />)}
+      {customActivities.map((activity) => {
+        const metadata = gamePresentationLabels[activity.presentation];
+        const imageUnavailable = Boolean(metadata.requiresImages)
+          && form.items.filter((item) => item.supportsImageGame).length < 2;
+        return <FormControlLabel
+          key={activity.presentation}
+          disabled={imageUnavailable}
+          control={<Checkbox checked={form.activities.some((value) => value.presentation === activity.presentation)} onChange={() => toggleCustom(activity)} />}
+          label={`${metadata.label} — ${imageUnavailable ? "Cần ít nhất 2 từ có hình" : metadata.description}`}
+        />;
+      })}
     </Stack>}
     <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
-      {form.activities.map((item, index) => <Chip key={`${item.presentation}-${index}`} label={`${index + 1}. ${item.presentation.replaceAll("_", " ")}`} />)}
+      {form.activities.map((item, index) => <Chip key={`${item.presentation}-${index}`} label={`${index + 1}. ${gamePresentationLabels[item.presentation].label}`} />)}
     </Stack>
   </FormSection>;
 }
@@ -426,7 +753,14 @@ function SettingsStep({ form, patch }: { form: AssignmentDraftInput; patch: Patc
   </Stack>;
 }
 
-function PreviewStep({ form, warnings }: { form: AssignmentDraftInput; warnings: string[] }) {
+function PreviewStep({ form, warnings, editImages }: {
+  form: AssignmentDraftInput; warnings: string[]; editImages: () => Promise<void>;
+}) {
+  const imageActivities = form.activities.filter(
+    (activity) => gamePresentationLabels[activity.presentation].requiresImages,
+  );
+  const imageCount = form.items.filter((item) => item.supportsImageGame).length;
+  const estimatedMinutes = Math.max(3, Math.ceil((form.items.length * form.activities.length) / 8));
   return <FormSection title="Xem trước trước khi giao" description="Đây chỉ là bản xem trước, không ghi lượt chơi hay kết quả.">
     <Alert severity="info" icon={<Preview />}>XEM TRƯỚC</Alert>
     <Typography variant="h5">{form.title}</Typography>
@@ -434,8 +768,19 @@ function PreviewStep({ form, warnings }: { form: AssignmentDraftInput; warnings:
     <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
       <Chip label={`${form.items.length} từ`} />
       <Chip label={`${form.activities.length} hoạt động`} />
+      <Chip label={form.maxAttempts == null ? "Không giới hạn lượt" : `${form.maxAttempts} lượt tối đa`} />
+      <Chip label={`Khoảng ${estimatedMinutes} phút`} />
+      <Chip label={imageActivities.length ? `${imageActivities.length} game cần ảnh` : "Không bắt buộc ảnh"} />
       <Chip label={form.audienceType ? audienceLabels[form.audienceType] : "Chưa chọn người nhận"} />
     </Stack>
+    <Stack spacing={0.75}>
+      {form.activities.map((activity) => <Typography key={`${activity.displayOrder}-${activity.presentation}`} variant="body2">
+        {activity.displayOrder}. {gamePresentationLabels[activity.presentation].label}
+      </Typography>)}
+    </Stack>
+    {imageActivities.length > 0 && imageCount < 2 && <Alert severity="warning" action={
+      <Button color="inherit" onClick={() => void editImages()}>Chọn ảnh</Button>
+    }>Game dùng hình cần ít nhất 2 từ có ảnh; hệ thống sẽ dùng hoạt động chữ/nghĩa thay thế.</Alert>}
     {warnings.map((warning) => <Alert key={warning} severity="warning">{warning}</Alert>)}
   </FormSection>;
 }

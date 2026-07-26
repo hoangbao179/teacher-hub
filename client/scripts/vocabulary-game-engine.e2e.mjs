@@ -13,7 +13,7 @@ const apiPort = 4123;
 const webPort = 5203;
 const origin = `http://127.0.0.1:${webPort}`;
 const apiOrigin = `http://127.0.0.1:${apiPort}`;
-const artifactDir = path.join(root, ".agent-reports", "V20D-VOCABULARY-GAMES");
+const artifactDir = path.join(root, ".agent-reports", "V20F-VOCABULARY-STABILIZATION");
 const password = "v20d-e2e-password-123";
 const testEnv = {
   ...process.env,
@@ -132,8 +132,7 @@ try {
     ["dog", "con chó", "🐶"],
     ["bird", "con chim", "🐦"],
     ["fish", "con cá", "🐟"],
-    ["frog", "con ếch", "🐸"],
-  ].map(([word, meaningVi, value], index) => ({
+  ].slice(0, 4).map(([word, meaningVi, value], index) => ({
     displayOrder: index + 1,
     word,
     meaningVi,
@@ -155,11 +154,14 @@ try {
       shuffleQuestions: true,
       items,
       activities: [
-        { displayOrder: 1, mechanic: "SELECT_ONE", presentation: "LISTEN_PICK_IMAGE", required: true },
-        { displayOrder: 2, mechanic: "SELECT_ONE", presentation: "FEED_MONSTER", required: true },
-        { displayOrder: 3, mechanic: "MATCH_PAIRS", presentation: "MATCH_WORD_MEANING", required: true },
-        { displayOrder: 4, mechanic: "MEMORY_PAIRS", presentation: "MEMORY_WORD_IMAGE", required: true },
-        { displayOrder: 5, mechanic: "BUILD_WORD", presentation: "BUILD_SPELLED_WORD", required: true },
+        { displayOrder: 1, mechanic: "EXPLORE_CARD", presentation: "FLASHCARD", required: true },
+        { displayOrder: 2, mechanic: "MATCH_PAIRS", presentation: "MATCH_WORD_MEANING", required: true },
+        { displayOrder: 3, mechanic: "MEMORY_PAIRS", presentation: "MEMORY_WORD_IMAGE", required: true },
+        { displayOrder: 4, mechanic: "BUILD_WORD", presentation: "MISSING_LETTER", required: true },
+        { displayOrder: 5, mechanic: "SELECT_ONE", presentation: "FEED_MONSTER", required: true },
+        { displayOrder: 6, mechanic: "SELECT_ONE", presentation: "POP_BALLOON", required: true },
+        { displayOrder: 7, mechanic: "SELECT_ONE", presentation: "OPEN_TREASURE", required: true },
+        { displayOrder: 8, mechanic: "SELECT_ONE", presentation: "CHOOSE_TRAIN_CARRIAGE", required: true },
       ],
     }),
   });
@@ -173,7 +175,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(shareUrl, { waitUntil: "networkidle" });
   await noOverflow(page);
@@ -192,19 +194,68 @@ try {
     await page.reload({ waitUntil: "networkidle" });
     await page.locator('[data-testid="game-question"]').waitFor();
     await noOverflow(page);
-    const key = question.mechanic === "SELECT_ONE" ? question.presentation : question.mechanic;
+    const key = ["SELECT_ONE", "EXPLORE_CARD", "BUILD_WORD"].includes(question.mechanic)
+      ? question.presentation : question.mechanic;
     const filenames = {
-      LISTEN_PICK_IMAGE: "listen-pick-image-390x844.png",
-      FEED_MONSTER: "feed-monster-390x844.png",
+      FLASHCARD: "flashcard-before-reveal-390x844.png",
+      FEED_MONSTER: "monster-390x844.png",
+      POP_BALLOON: "balloon-390x844.png",
+      OPEN_TREASURE: "treasure-390x844.png",
+      CHOOSE_TRAIN_CARRIAGE: "train-390x844.png",
       MATCH_PAIRS: "matching-390x844.png",
-      MEMORY_PAIRS: "memory-390x844.png",
-      BUILD_WORD: "letter-building-390x844.png",
+      MEMORY_PAIRS: "memory-before-390x844.png",
+      MISSING_LETTER: "missing-letter-390x844.png",
     };
     if (filenames[key] && !captures.has(key)) {
       await page.screenshot({ path: path.join(artifactDir, filenames[key]) });
       captures.add(key);
     }
     const correct = await correctAnswer(question.id);
+    if (question.mechanic === "EXPLORE_CARD") {
+      await page.getByRole("button", { name: "Lật thẻ xem nghĩa" }).click();
+      await page.screenshot({ path: path.join(artifactDir, "flashcard-after-reveal-390x844.png") });
+      await page.getByRole("button", { name: "Con nhớ rồi" }).click();
+      await page.waitForTimeout(650);
+      continue;
+    }
+    if (question.mechanic === "MEMORY_PAIRS") {
+      const leftCards = question.prompt.pairs;
+      const firstLeft = leftCards[0];
+      const wrongRight = question.options.find((option) => option.matchKey !== firstLeft.matchKey);
+      await page.locator(`[data-memory-card="LEFT:${firstLeft.id}"]`).click();
+      await page.locator(`[data-memory-card="RIGHT:${wrongRight.id}"]`).click();
+      await page.screenshot({ path: path.join(artifactDir, "memory-mismatch-390x844.png") });
+      await page.waitForTimeout(850);
+      assert(await page.getByText(`Đã ghép 0/${leftCards.length} cặp`).isVisible(), "Mismatch must not become a match");
+      for (const [index, leftCard] of leftCards.entries()) {
+        const rightCard = question.options.find((option) => option.matchKey === leftCard.matchKey);
+        await page.locator(`[data-memory-card="LEFT:${leftCard.id}"]`).click();
+        await page.locator(`[data-memory-card="RIGHT:${rightCard.id}"]`).click();
+        if (index === 0)
+          await page.screenshot({ path: path.join(artifactDir, "memory-match-open-390x844.png") });
+        await page.waitForTimeout(850);
+      }
+      await page.screenshot({ path: path.join(artifactDir, "memory-match-390x844.png") });
+      await page.getByRole("button", { name: "Kiểm tra trí nhớ" }).click();
+      await page.waitForTimeout(650);
+      continue;
+    }
+    if (question.mechanic === "MATCH_PAIRS") {
+      const expectedPairs = correct.pairs;
+      const first = expectedPairs[0];
+      const wrongRight = expectedPairs[1].rightId;
+      await page.locator(`[data-pair-left-id="${first.leftId}"]`).focus();
+      await page.keyboard.press("Enter");
+      await page.locator(`[data-pair-right-id="${wrongRight}"]`).focus();
+      await page.keyboard.press("Enter");
+      for (const pair of expectedPairs) {
+        await page.locator(`[data-pair-left-id="${pair.leftId}"]`).click();
+        await page.locator(`[data-pair-right-id="${pair.rightId}"]`).click();
+      }
+      await page.getByRole("button", { name: "Kiểm tra các cặp" }).click();
+      await page.waitForTimeout(650);
+      continue;
+    }
     if (!capturedRetry && question.mechanic === "SELECT_ONE") {
       const wrong = question.options.find((option) => option.id !== correct.optionId);
       await answerCurrent(sessionToken, { optionId: wrong.id });
@@ -214,11 +265,70 @@ try {
       capturedRetry = true;
       continue;
     }
+    if (["FEED_MONSTER", "POP_BALLOON", "OPEN_TREASURE", "CHOOSE_TRAIN_CARRIAGE"].includes(question.presentation)) {
+      await page.locator(`[data-option-id="${correct.optionId}"]`).click();
+      await page.screenshot({ path: path.join(artifactDir, `${question.presentation.toLowerCase()}-selected-390x844.png`) });
+      await page.waitForTimeout(650);
+      continue;
+    }
+    if (question.presentation === "MISSING_LETTER") {
+      await page.locator(`[data-option-id="${correct.optionId}"]`).click();
+      await page.waitForTimeout(650);
+      continue;
+    }
     await answerCurrent(sessionToken, correct);
   }
   await page.goto(`${origin}/play/session/${encodeURIComponent(sessionToken)}/result`, { waitUntil: "networkidle" });
   await page.getByText("Con đã hoàn thành!").waitFor();
-  await page.screenshot({ path: path.join(artifactDir, "final-reward-390x844.png") });
+  await page.getByText("100%", { exact: true }).waitFor();
+  await page.screenshot({ path: path.join(artifactDir, "older-result-390x844.png") });
+
+  const preschoolDraft = await api("/api/vocabulary/assignments", {
+    method: "POST",
+    headers: auth,
+    body: JSON.stringify({
+      title: "Bé vui ôn từ",
+      ageBand: "PRESCHOOL_G1",
+      audienceType: "OPEN_LINK",
+      templateCode: "CUSTOM",
+      answerFeedbackMode: "IMMEDIATE",
+      shuffleQuestions: false,
+      items: items.slice(0, 2),
+      activities: [
+        { displayOrder: 1, mechanic: "SELECT_ONE", presentation: "WORD_PICK_MEANING", required: true },
+      ],
+    }),
+  });
+  const preschoolPublished = await api(`/api/vocabulary/assignments/${preschoolDraft.id}/publish`, {
+    method: "POST",
+    headers: auth,
+    body: JSON.stringify({ version: preschoolDraft.version }),
+  });
+  const preschoolUrl = new URL(preschoolPublished.shares[0].shareUrl);
+  const preschoolAccess = await api(
+    `/api/public/learning-assignments/${preschoolPublished.assignment.publicCode}/access`,
+    { method: "POST", body: JSON.stringify({ accessToken: preschoolUrl.searchParams.get("access") }) },
+  );
+  await api(`/api/public/learning-assignments/${preschoolPublished.assignment.publicCode}/attempts`, {
+    method: "POST",
+    body: JSON.stringify({ sessionToken: preschoolAccess.sessionToken }),
+  });
+  for (let guard = 0; guard < 20; guard += 1) {
+    const preschoolAttempt = await api(`/api/public/learning-attempts/${preschoolAccess.sessionToken}`);
+    if (!preschoolAttempt.currentQuestion) break;
+    await answerCurrent(
+      preschoolAccess.sessionToken,
+      await correctAnswer(preschoolAttempt.currentQuestion.id),
+    );
+  }
+  await api(`/api/public/learning-attempts/${preschoolAccess.sessionToken}/complete`, {
+    method: "POST",
+    body: "{}",
+  });
+  await page.goto(`${origin}/play/session/${encodeURIComponent(preschoolAccess.sessionToken)}/result`, { waitUntil: "networkidle" });
+  await page.getByText("Con đã hoàn thành!").waitFor();
+  assert(await page.locator("h4").count() === 0, "Young result must not lead with a percentage score");
+  await page.screenshot({ path: path.join(artifactDir, "preschool-result-390x844.png") });
 
   const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
   const desktopPage = await desktop.newPage();
@@ -248,7 +358,7 @@ try {
   await reconnectPage.screenshot({ path: path.join(artifactDir, "error-reconnect-360x800.png") });
   await reconnect.close();
   await context.close();
-  console.log(`V20D vocabulary game E2E PASS; screenshots: ${artifactDir}`);
+  console.log(`V20F vocabulary game E2E PASS; screenshots: ${artifactDir}`);
 } finally {
   if (db) await db.end();
   if (browser) await browser.close();

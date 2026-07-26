@@ -79,6 +79,7 @@ export interface AssignmentVocabularyItemInput {
   tier: VocabularyTier;
   illustration: VocabularyIllustrationInput;
   supportsImageGame: boolean;
+  imageSearchTerms?: string[];
 }
 
 export interface AssignmentDraftInput {

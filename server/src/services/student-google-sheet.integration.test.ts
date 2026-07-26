@@ -23,10 +23,18 @@ async function clean(): Promise<void> {
   const connection = await pool.getConnection();
   try {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
-    for (const table of ["google_sheet_sync_outbox", "student_google_sheets", "legacy_import_lesson_links", "legacy_import_row_audits", "legacy_imports",
+    for (const table of [
+      "google_sheet_sync_outbox", "student_google_sheets",
+      "learning_attempt_answers", "learning_attempt_question_items",
+      "learning_attempt_questions", "learning_attempts",
+      "learning_access_sessions", "learning_assignment_recipients",
+      "learning_assignment_audience_students", "learning_assignment_activities",
+      "learning_assignment_items", "learning_assignments",
+      "legacy_import_lesson_links", "legacy_import_row_audits", "legacy_imports",
       "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances",
       "lesson_session_participants", "lesson_sessions", "enrollment_active_periods", "class_active_periods", "enrollment_tuition_policies",
-      "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes", "users"])
+      "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes", "users",
+    ])
       await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
   } finally { connection.release(); }
@@ -433,6 +441,108 @@ integration("outbox is transactional, revision-safe and worker syncs the canonic
   assert.equal(rows[0].status, "SUCCEEDED");
   assert.equal(Number(rows[0].revision), 2);
   assert.equal(active.sheet.id > 0, true);
+});
+
+integration("completed vocabulary attempt is synced once to the derived vocabulary tab", async () => {
+  const data = await fixture();
+  await data.service.create(data.studentId, {}, data.actorId);
+  const [assignment] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO learning_assignments
+      (teacher_user_id,title,audience_type,status,template_code,age_band,
+       max_attempts,answer_feedback_mode,published_at)
+     VALUES (?,'Ôn tập con vật','SELECTED_STUDENTS','PUBLISHED',
+       'WORD_RECOGNITION','G2_G3',2,'IMMEDIATE',UTC_TIMESTAMP())`,
+    [data.actorId],
+  );
+  const [item] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO learning_assignment_items
+      (assignment_id,display_order,word,normalized_word,meaning_vi,speech_text,
+       tier,illustration_snapshot_json,supports_image_game)
+     VALUES (?,1,'cat','cat','con mèo','cat','CORE',
+       JSON_OBJECT('kind','NONE'),FALSE)`,
+    [assignment.insertId],
+  );
+  const [activity] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO learning_assignment_activities
+      (assignment_id,display_order,mechanic,presentation,required,config_json)
+     VALUES (?,1,'SELECT_ONE','WORD_PICK_MEANING',TRUE,JSON_OBJECT())`,
+    [assignment.insertId],
+  );
+  const [recipient] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO learning_assignment_recipients
+      (assignment_id,student_id,student_name_snapshot,access_token_hash,
+       assigned_at,completed_at)
+     VALUES (?,?,'Học sinh Google Test',REPEAT('b',64),
+       UTC_TIMESTAMP(),UTC_TIMESTAMP())`,
+    [assignment.insertId, data.studentId],
+  );
+  const [session] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO learning_access_sessions
+      (assignment_id,recipient_id,session_token_hash,access_version_snapshot,
+       expires_at,last_activity_at)
+     VALUES (?,?,REPEAT('c',64),1,
+       DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY),UTC_TIMESTAMP())`,
+    [assignment.insertId, recipient.insertId],
+  );
+  const [attempt] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO learning_attempts
+      (assignment_id,access_session_id,recipient_id,attempt_number,status,
+       random_seed,session_token_hash,session_expires_at,
+       generation_warnings_json,started_at,last_activity_at,completed_at,
+       correct_first_try_count,final_correct_count,total_questions,
+       graded_question_count,score_percent)
+     VALUES (?,?,?,1,'COMPLETED',REPEAT('d',64),REPEAT('e',64),
+       DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY),JSON_ARRAY(),
+       UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP(),1,1,1,1,100)`,
+    [assignment.insertId, session.insertId, recipient.insertId],
+  );
+  const [question] = await pool.execute<ResultSetHeader>(
+    `INSERT INTO learning_attempt_questions
+      (attempt_id,assignment_item_id,activity_id,question_key,sequence_number,
+       mechanic,presentation,prompt_snapshot_json,options_snapshot_json,
+       correct_answer_snapshot_json,graded,question_kind,score_weight,status,
+       first_attempt_correct,final_correct,completed_at)
+     VALUES (?,?,?,'cat-primary',1,'SELECT_ONE','WORD_PICK_MEANING',
+       JSON_OBJECT(),JSON_ARRAY(),JSON_OBJECT(),TRUE,'PRIMARY',1,'ANSWERED',
+       TRUE,TRUE,UTC_TIMESTAMP())`,
+    [attempt.insertId, item.insertId, activity.insertId],
+  );
+  await pool.execute(
+    `UPDATE learning_attempt_question_items
+     SET first_attempt_correct=TRUE,final_correct=TRUE
+     WHERE question_id=? AND assignment_item_id=?`,
+    [question.insertId, item.insertId],
+  );
+
+  const outbox = new GoogleSheetSyncRepository();
+  for (let index = 0; index < 2; index += 1) {
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    await outbox.enqueueVocabularyAttempt(connection, data.studentId, attempt.insertId);
+    await connection.commit();
+    connection.release();
+  }
+  const worker = new GoogleSheetSyncWorker(
+    outbox,
+    new StudentGoogleSheetRepository(),
+    data.provider,
+    { enabled: true, intervalMs: 1_000, batchSize: 10, maxAttempts: 8, lockTimeoutMs: 10_000 },
+    true,
+  );
+  assert.equal(await worker.runOnce(), 1);
+  assert.equal(data.provider.rendered.at(-1)?.snapshot.vocabularyAttempts.length, 1);
+  assert.equal(
+    data.provider.rendered.at(-1)?.snapshot.vocabularyAttempts[0]?.assignmentTitle,
+    "Ôn tập con vật",
+  );
+  const [events] = await pool.query<RowDataPacket[]>(
+    `SELECT status,revision FROM google_sheet_sync_outbox
+     WHERE entity_type='VOCABULARY_ATTEMPT' AND entity_id=?`,
+    [attempt.insertId],
+  );
+  assert.equal(events.length, 1);
+  assert.equal(events[0].status, "SUCCEEDED");
+  assert.equal(Number(events[0].revision), 2);
 });
 
 integration("worker reports a missing spreadsheet without claiming the root folder is missing", async () => {

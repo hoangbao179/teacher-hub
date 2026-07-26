@@ -42,4 +42,5 @@ export interface StudentGoogleSheetMutationResult {
 
 export interface StudentGoogleSheetResyncResult {
   enqueuedLessonCount: number;
+  enqueuedVocabularyAttemptCount: number;
 }

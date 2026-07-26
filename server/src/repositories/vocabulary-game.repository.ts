@@ -18,6 +18,7 @@ import {
   isCorrectAnswer,
   type GeneratedQueue,
 } from "../services/game-question-generator";
+import { GoogleSheetSyncRepository } from "./google-sheet-sync.repository";
 
 interface AssignmentAccessRow extends RowDataPacket {
   id: number;
@@ -43,6 +44,7 @@ interface AccessSessionRow extends RowDataPacket {
   recipient_id: number | null;
   guest_name: string | null;
   session_token_hash: string;
+  access_version_snapshot: number;
   expires_at: string;
   audience_type: AssignmentAudienceType;
   age_band: LearningAgeBand;
@@ -62,6 +64,8 @@ export interface InternalQuestionRow extends RowDataPacket {
   options_snapshot_json: unknown;
   correct_answer_snapshot_json: unknown;
   graded: number;
+  question_kind: "PRIMARY" | "REVIEW" | "EXPOSURE";
+  score_weight: 0 | 1;
   status: "PENDING" | "IN_PROGRESS" | "ANSWERED" | "SKIPPED" | "CONDITIONAL";
   retry_count: number;
 }
@@ -114,6 +118,10 @@ function expired(): AppError {
 }
 
 export class VocabularyGameRepository {
+  constructor(
+    private readonly googleSheetSync = new GoogleSheetSyncRepository(),
+  ) {}
+
   async summary(publicCode: string): Promise<PublicAssignmentSummary | null> {
     const [rows] = await pool.query<AssignmentAccessRow[]>(
       `SELECT a.*,
@@ -293,7 +301,7 @@ export class VocabularyGameRepository {
           session.expires_at,
           JSON.stringify(queue.warnings),
           initial.length,
-          initial.filter((question) => question.graded).length,
+          initial.reduce((total, question) => total + question.scoreWeight, 0),
         ],
       );
       const attemptId = Number(attemptResult.insertId);
@@ -302,8 +310,9 @@ export class VocabularyGameRepository {
           `INSERT INTO learning_attempt_questions
             (attempt_id,assignment_item_id,activity_id,question_key,adaptive_source_key,
              sequence_number,mechanic,presentation,prompt_snapshot_json,
-             options_snapshot_json,correct_answer_snapshot_json,graded,status)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+             options_snapshot_json,correct_answer_snapshot_json,graded,
+             question_kind,score_weight,status)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
             attemptId,
             question.assignmentItemId,
@@ -317,9 +326,21 @@ export class VocabularyGameRepository {
             JSON.stringify(question.options),
             JSON.stringify(question.correctAnswer),
             question.graded,
+            question.questionKind,
+            question.scoreWeight,
             question.status,
           ],
         );
+        const questionId = Number((await connection.query<RowDataPacket[]>(
+          "SELECT LAST_INSERT_ID() id",
+        ))[0][0]?.id);
+        for (const [itemIndex, assignmentItemId] of question.assignmentItemIds.entries())
+          await connection.execute(
+            `INSERT IGNORE INTO learning_attempt_question_items
+              (question_id,assignment_item_id,display_order)
+             VALUES (?,?,?)`,
+            [questionId, assignmentItemId, itemIndex + 1],
+          );
       }
       await connection.execute(
         `UPDATE learning_attempt_questions SET status='IN_PROGRESS'
@@ -344,6 +365,47 @@ export class VocabularyGameRepository {
       const state = await this.readState(connection, sessionHash, true);
       await connection.commit();
       return state;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  async createReplayAccess(
+    sessionHash: string,
+    nextSessionHash: string,
+    expiresAt: Date,
+  ): Promise<string> {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const session = await this.lockAccessSession(connection, sessionHash);
+      const state = await this.readState(connection, sessionHash, true);
+      if (state.attempt.status !== "COMPLETED")
+        throw new AppError(409, "ATTEMPT_NOT_PLAYABLE", "Lượt chơi hiện tại chưa hoàn thành.");
+      if (
+        state.attempt.recipient_id != null
+        && state.attempt.max_attempts != null
+        && Number(state.attempt.attempt_number) >= Number(state.attempt.max_attempts)
+      ) throw new AppError(409, "ATTEMPT_LIMIT_REACHED", "Con đã dùng hết lượt chơi.");
+      await connection.execute(
+        `INSERT INTO learning_access_sessions
+          (assignment_id,recipient_id,guest_name,session_token_hash,
+           access_version_snapshot,expires_at,last_activity_at)
+         VALUES (?,?,?,?,?,?,UTC_TIMESTAMP())`,
+        [
+          session.assignment_id,
+          session.recipient_id,
+          session.guest_name,
+          nextSessionHash,
+          session.access_version_snapshot,
+          expiresAt,
+        ],
+      );
+      await connection.commit();
+      return session.public_code;
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -403,14 +465,63 @@ export class VocabularyGameRepository {
       if (input.answerSequence !== expectedSequence)
         throw new AppError(409, "ANSWER_SEQUENCE_CONFLICT", "Thứ tự trả lời không hợp lệ.");
 
-      const correct = isCorrectAnswer(
-        input.submittedAnswer,
-        parseJson<Record<string, unknown>>(question.correct_answer_snapshot_json, {}),
+      const correctSnapshot = parseJson<Record<string, unknown>>(
+        question.correct_answer_snapshot_json,
+        {},
       );
+      const correct = isCorrectAnswer(input.submittedAnswer, correctSnapshot);
       const firstAttemptCorrect = correct && expectedSequence === 1;
       const immediateRetry = attempt.answer_feedback_mode === "IMMEDIATE"
-        && Boolean(question.graded) && !correct && expectedSequence < 3;
+        && Boolean(question.graded) && !correct && expectedSequence < 2;
       const finalCorrect = correct;
+      const submittedPairs = Array.isArray(input.submittedAnswer.pairs)
+        ? input.submittedAnswer.pairs as Array<{ leftId?: unknown; rightId?: unknown }>
+        : [];
+      const expectedPairs = Array.isArray(correctSnapshot.pairs)
+        ? correctSnapshot.pairs as Array<{
+          assignmentItemId?: unknown;
+          leftId?: unknown;
+          rightId?: unknown;
+        }>
+        : [];
+      const [questionItems] = await connection.query<RowDataPacket[]>(
+        `SELECT assignment_item_id,first_attempt_correct,retry_count
+         FROM learning_attempt_question_items
+         WHERE question_id=? FOR UPDATE`,
+        [question.id],
+      );
+      for (const itemRow of questionItems) {
+        const assignmentItemId = Number(itemRow.assignment_item_id);
+        const expectedPair = expectedPairs.find(
+          (pair) => Number(pair.assignmentItemId) === assignmentItemId,
+        );
+        const itemCorrect = expectedPair
+          ? submittedPairs.some((pair) =>
+            pair.leftId === expectedPair.leftId
+            && pair.rightId === expectedPair.rightId)
+          : correct;
+        const itemRetryCount = expectedSequence > 1
+          && !Boolean(itemRow.first_attempt_correct)
+          ? Math.max(Number(itemRow.retry_count), expectedSequence - 1)
+          : Number(itemRow.retry_count);
+        await connection.execute(
+          `UPDATE learning_attempt_question_items
+           SET first_attempt_correct=CASE
+               WHEN ?=1 THEN ? ELSE first_attempt_correct END,
+             final_correct=CASE
+               WHEN final_correct=1 OR ?=1 THEN 1 ELSE 0 END,
+             retry_count=?
+           WHERE question_id=? AND assignment_item_id=?`,
+          [
+            expectedSequence,
+            itemCorrect,
+            itemCorrect,
+            itemRetryCount,
+            question.id,
+            assignmentItemId,
+          ],
+        );
+      }
       if (immediateRetry) {
         await connection.execute(
           "UPDATE learning_attempt_questions SET retry_count=? WHERE id=?",
@@ -448,8 +559,7 @@ export class VocabularyGameRepository {
               );
               await connection.execute(
                 `UPDATE learning_attempts
-                 SET total_questions=total_questions+1,
-                   graded_question_count=graded_question_count+1 WHERE id=?`,
+                 SET total_questions=total_questions+1 WHERE id=?`,
                 [attempt.id],
               );
             }
@@ -522,24 +632,40 @@ export class VocabularyGameRepository {
       await this.lockAccessSession(connection, sessionHash);
       const state = await this.readState(connection, sessionHash, true);
       if (state.attempt.status === "COMPLETED") {
+        const previous = parseJson<Record<string, unknown>>(
+          state.attempt.reward_snapshot_json,
+          {},
+        );
+        const normalized = {
+          ...previous,
+          ageBand: previous.ageBand ?? state.attempt.age_band,
+          resultMode: previous.resultMode ?? (
+            ["PRESCHOOL_G1", "G2_G3"].includes(state.attempt.age_band)
+              ? "CHILD_REWARD"
+              : "SCORE"
+          ),
+          reviewWords: Array.isArray(previous.reviewWords)
+            ? previous.reviewWords
+            : [],
+        };
         await connection.commit();
-        return parseJson<Record<string, unknown>>(state.attempt.reward_snapshot_json, {});
+        return normalized;
       }
       if (state.question)
         throw new AppError(409, "ATTEMPT_INCOMPLETE", "Con vẫn còn câu hỏi chưa hoàn thành.");
       const [stats] = await connection.query<Array<RowDataPacket & {
-        graded: number;
+        scored: number;
         first_try: number;
         final_correct: number;
       }>>(
         `SELECT
-           SUM(graded=1 AND status='ANSWERED') graded,
-           SUM(graded=1 AND first_attempt_correct=1) first_try,
-           SUM(graded=1 AND final_correct=1) final_correct
+           SUM(score_weight) scored,
+           SUM(score_weight=1 AND first_attempt_correct=1) first_try,
+           SUM(score_weight=1 AND final_correct=1) final_correct
          FROM learning_attempt_questions WHERE attempt_id=?`,
         [state.attempt.id],
       );
-      const graded = Number(stats[0]?.graded ?? 0);
+      const graded = Number(state.attempt.graded_question_count);
       const firstTry = Number(stats[0]?.first_try ?? 0);
       const finalCorrect = Number(stats[0]?.final_correct ?? 0);
       const score = graded ? Math.round((finalCorrect / graded) * 100) : null;
@@ -552,6 +678,9 @@ export class VocabularyGameRepository {
         message: stars === 3
           ? "Xuất sắc! Con đã chinh phục bài học!"
           : "Con đã hoàn thành rồi. Mỗi lần chơi là một lần tiến bộ!",
+        ageBand: state.attempt.age_band,
+        resultMode: ["PRESCHOOL_G1", "G2_G3"].includes(state.attempt.age_band)
+          ? "CHILD_REWARD" : "SCORE",
         gradedExposureCount: graded,
         firstTryCorrectCount: firstTry,
         finalCorrectCount: finalCorrect,
@@ -559,13 +688,37 @@ export class VocabularyGameRepository {
         canPlayAgain: state.attempt.recipient_id == null
           || state.attempt.max_attempts == null
           || Number(state.attempt.attempt_number) < Number(state.attempt.max_attempts),
+        reviewWords: [] as Array<{ word: string; meaningVi: string }>,
       };
+      const [reviewRows] = await connection.query<RowDataPacket[]>(
+        `SELECT i.word,i.meaning_vi
+         FROM learning_attempt_question_items qi
+         JOIN learning_attempt_questions q ON q.id=qi.question_id
+         JOIN learning_assignment_items i ON i.id=qi.assignment_item_id
+         WHERE q.attempt_id=? AND q.graded=1
+         GROUP BY i.id,i.word,i.meaning_vi
+         HAVING SUM(qi.final_correct=1)<COUNT(*)
+         ORDER BY MIN(i.display_order)`,
+        [state.attempt.id],
+      );
+      reward.reviewWords = reviewRows.map((row) => ({
+        word: String(row.word),
+        meaningVi: String(row.meaning_vi),
+      }));
       await connection.execute(
         `UPDATE learning_attempts
          SET status='COMPLETED',completed_at=UTC_TIMESTAMP(),
-           correct_first_try_count=?,final_correct_count=?,score_percent=?,
+           correct_first_try_count=?,correct_after_retry_count=?,
+           final_correct_count=?,score_percent=?,
            reward_snapshot_json=?,version=version+1 WHERE id=?`,
-        [firstTry, finalCorrect, score, JSON.stringify(reward), state.attempt.id],
+        [
+          firstTry,
+          Math.max(0, finalCorrect - firstTry),
+          finalCorrect,
+          score,
+          JSON.stringify(reward),
+          state.attempt.id,
+        ],
       );
       if (state.attempt.recipient_id) {
         await connection.execute(
@@ -573,6 +726,17 @@ export class VocabularyGameRepository {
            WHERE id=? AND completed_at IS NULL`,
           [state.attempt.recipient_id],
         );
+        const [recipients] = await connection.query<RowDataPacket[]>(
+          `SELECT student_id FROM learning_assignment_recipients
+           WHERE id=? LIMIT 1`,
+          [state.attempt.recipient_id],
+        );
+        if (recipients[0])
+          await this.googleSheetSync.enqueueVocabularyAttempt(
+            connection,
+            Number(recipients[0].student_id),
+            Number(state.attempt.id),
+          );
       }
       await connection.commit();
       return reward;
@@ -672,6 +836,8 @@ export function publicQuestion(row: InternalQuestionRow) {
     prompt: parseJson<PublicGamePrompt>(row.prompt_snapshot_json, { instruction: "" }),
     options: parseJson<PublicGameOption[]>(row.options_snapshot_json, []),
     graded: Boolean(row.graded),
+    questionKind: row.question_kind,
+    scoreWeight: Number(row.score_weight) as 0 | 1,
     answerSequence: Number(row.retry_count) + 1,
     status: row.status as "PENDING" | "IN_PROGRESS",
   };

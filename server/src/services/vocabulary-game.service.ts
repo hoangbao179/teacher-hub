@@ -106,6 +106,27 @@ export class VocabularyGameService {
     );
   }
 
+  async replay(sessionTokenValue: unknown): Promise<PublicLearningAttempt> {
+    const previousToken = this.token(sessionTokenValue, "Phiên chơi không hợp lệ.");
+    const sessionToken = gameToken();
+    const sessionHash = gameTokenHash(sessionToken);
+    const code = await this.games.createReplayAccess(
+      gameTokenHash(previousToken),
+      sessionHash,
+      new Date(Date.now() + SESSION_MS),
+    );
+    const assignment = await this.assignments.publicDetail(code);
+    if (!assignment)
+      throw new AppError(404, "PUBLIC_ASSIGNMENT_UNAVAILABLE", "Bài học hiện không khả dụng.");
+    const seed = randomBytes(32).toString("hex");
+    await this.games.startAttempt(
+      sessionHash,
+      seed,
+      generateQuestionQueue(assignment, seed),
+    );
+    return this.mapAttempt(await this.games.state(sessionHash), sessionToken);
+  }
+
   async answer(
     sessionTokenValue: unknown,
     raw: SubmitLearningAnswerRequest,

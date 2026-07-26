@@ -14,6 +14,7 @@ export interface GeneratedQuestion {
   key: string;
   adaptiveSourceKey?: string;
   assignmentItemId: number;
+  assignmentItemIds: number[];
   activityId: number;
   mechanic: GameMechanic;
   presentation: GamePresentation;
@@ -21,6 +22,8 @@ export interface GeneratedQuestion {
   options: PublicGameOption[];
   correctAnswer: Record<string, unknown>;
   graded: boolean;
+  questionKind: "PRIMARY" | "REVIEW" | "EXPOSURE";
+  scoreWeight: 0 | 1;
   status: Extract<LearningQuestionStatus, "PENDING" | "CONDITIONAL">;
 }
 
@@ -77,7 +80,14 @@ const itemCaps = {
   PRESCHOOL_G1: 6,
   G2_G3: 8,
   G4_G5: 10,
-  G6_G9: 10,
+  G6_G9: 15,
+} as const;
+
+const primaryInteractionCaps = {
+  PRESCHOOL_G1: 12,
+  G2_G3: 16,
+  G4_G5: 20,
+  G6_G9: 24,
 } as const;
 
 function uniqueItems(
@@ -162,8 +172,10 @@ function selectQuestion(
               ? "Cho quái vật ăn đáp án đúng!"
               : presentation === "POP_BALLOON"
                 ? "Chạm bong bóng đúng!"
-                : presentation === "OPEN_TREASURE"
+              : presentation === "OPEN_TREASURE"
                   ? "Mở rương có đáp án đúng!"
+                  : presentation === "CHOOSE_TRAIN_CARRIAGE"
+                    ? "Nối toa có đáp án đúng vào đầu tàu!"
                   : "Chọn nghĩa đúng nhé!",
     ...(presentation.startsWith("LISTEN_") ? { speechText: item.speechText ?? item.word } : {}),
     ...(presentation === "IMAGE_PICK_WORD" ? { illustration: illustration(item) } : {}),
@@ -176,6 +188,7 @@ function selectQuestion(
   return {
     key,
     assignmentItemId: item.id,
+    assignmentItemIds: [item.id],
     activityId: activity.id,
     mechanic: "SELECT_ONE",
     presentation,
@@ -183,6 +196,8 @@ function selectQuestion(
     options,
     correctAnswer: { optionId: correctOptionId },
     graded: true,
+    questionKind: "PRIMARY",
+    scoreWeight: 1,
     status: "PENDING",
   };
 }
@@ -204,10 +219,16 @@ function pairQuestion(
   const pairIds = new Map(chosen.map((item) => [item.id, {
     leftId: opaqueId("left", random),
     rightId: opaqueId("right", random),
+    matchKey: opaqueId("match", random),
   }]));
-  const left = chosen.map((item) => ({ id: pairIds.get(item.id)!.leftId, label: item.word }));
+  const left = chosen.map((item) => ({
+    id: pairIds.get(item.id)!.leftId,
+    label: item.word,
+    matchKey: pairIds.get(item.id)!.matchKey,
+  }));
   const right = shuffle(chosen, random).map((item) => ({
     id: pairIds.get(item.id)!.rightId,
+    matchKey: pairIds.get(item.id)!.matchKey,
     ...(wantsImage
       ? { illustration: illustration(item) }
       : { label: item.meaningVi }),
@@ -215,6 +236,7 @@ function pairQuestion(
   return {
     key,
     assignmentItemId: chosen[0].id,
+    assignmentItemIds: chosen.map((item) => item.id),
     activityId: activity.id,
     mechanic: activity.mechanic,
     presentation: activity.presentation,
@@ -227,11 +249,14 @@ function pairQuestion(
     options: right,
     correctAnswer: {
       pairs: chosen.map((item) => ({
+        assignmentItemId: item.id,
         leftId: pairIds.get(item.id)!.leftId,
         rightId: pairIds.get(item.id)!.rightId,
       })),
     },
     graded: true,
+    questionKind: "PRIMARY",
+    scoreWeight: 1,
     status: "PENDING",
   };
 }
@@ -239,23 +264,64 @@ function pairQuestion(
 function buildWordQuestion(
   item: AssignmentSnapshotItem,
   activity: AssignmentActivity,
+  ageBand: AssignmentDetail["ageBand"],
   random: () => number,
   key: string,
 ): GeneratedQuestion | null {
-  const letters = [...item.word.toLocaleUpperCase("en")].filter((value) => /[A-Z]/.test(value));
+  const characters = [...item.word.toLocaleUpperCase("en")];
+  const letters = characters.filter((value) => /[A-Z]/.test(value));
   if (letters.length < 3 || letters.length > 14) return null;
-  const tokens = letters.map((label) => ({
+  if (activity.presentation === "MISSING_LETTER") {
+    const eligible = characters
+      .map((value, index) => ({ value, index }))
+      .filter(({ value }) => /[A-Z]/.test(value));
+    const missing = eligible[Math.floor(random() * eligible.length)];
+    const distractors = shuffle(
+      [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].filter((value) => value !== missing.value),
+      random,
+    ).slice(0, optionCounts[ageBand] - 1);
+    const choices = shuffle([missing.value, ...distractors], random);
+    let correctOptionId = "";
+    const options = choices.map((label) => {
+      const id = opaqueId("letter-option", random);
+      if (label === missing.value) correctOptionId = id;
+      return { id, label };
+    });
+    return {
+      key,
+      assignmentItemId: item.id,
+      assignmentItemIds: [item.id],
+      activityId: activity.id,
+      mechanic: "BUILD_WORD",
+      presentation: "MISSING_LETTER",
+      prompt: {
+        instruction: "Chọn chữ còn thiếu nhé!",
+        meaningVi: item.meaningVi,
+        speechText: item.speechText ?? item.word,
+        maskedWord: characters
+          .map((value, index) => index === missing.index ? "_" : value)
+          .join(" "),
+        ...(hasImage(item) ? { illustration: illustration(item) } : {}),
+      },
+      options,
+      correctAnswer: { optionId: correctOptionId, missingIndex: missing.index },
+      graded: true,
+      questionKind: "PRIMARY",
+      scoreWeight: 1,
+      status: "PENDING",
+    };
+  }
+  const tokens = characters.map((label) => ({
     id: opaqueId("letter", random),
     label,
   }));
   return {
     key,
     assignmentItemId: item.id,
+    assignmentItemIds: [item.id],
     activityId: activity.id,
     mechanic: "BUILD_WORD",
-    presentation: activity.presentation === "MISSING_LETTER"
-      ? "MISSING_LETTER"
-      : "BUILD_SPELLED_WORD",
+    presentation: "BUILD_SPELLED_WORD",
     prompt: {
       instruction: "Chạm các chữ theo đúng thứ tự.",
       meaningVi: item.meaningVi,
@@ -265,6 +331,8 @@ function buildWordQuestion(
     options: shuffle(tokens, random),
     correctAnswer: { tokenIds: tokens.map((value) => value.id) },
     graded: true,
+    questionKind: "PRIMARY",
+    scoreWeight: 1,
     status: "PENDING",
   };
 }
@@ -277,6 +345,7 @@ function flashcardQuestion(
   return {
     key,
     assignmentItemId: item.id,
+    assignmentItemIds: [item.id],
     activityId: activity.id,
     mechanic: "EXPLORE_CARD",
     presentation: "FLASHCARD",
@@ -285,12 +354,15 @@ function flashcardQuestion(
       word: item.word,
       meaningVi: item.meaningVi,
       phonetic: item.phonetic,
+      exampleEn: item.exampleEn,
       speechText: item.speechText ?? item.word,
       ...(hasImage(item) ? { illustration: illustration(item) } : {}),
     },
     options: [],
     correctAnswer: { exposure: true },
     graded: false,
+    questionKind: "EXPOSURE",
+    scoreWeight: 0,
     status: "PENDING",
   };
 }
@@ -352,6 +424,7 @@ export function generateQuestionQueue(
         const question = buildWordQuestion(
           item,
           activity,
+          assignment.ageBand,
           random,
           `activity-${activity.id}-item-${item.id}`,
         );
@@ -362,9 +435,18 @@ export function generateQuestionQueue(
     warnings.push(`${activity.presentation}: mechanic chưa có dữ liệu chơi an toàn.`);
   }
 
+  const scoreCap = primaryInteractionCaps[assignment.ageBand];
+  let primaryScoreCount = 0;
+  const cappedPrimary = primary.filter((question) => {
+    if (question.questionKind !== "PRIMARY" || question.scoreWeight !== 1)
+      return true;
+    primaryScoreCount += 1;
+    return primaryScoreCount <= scoreCap;
+  });
+
   const result: GeneratedQuestion[] = [];
   const adaptive = new Map<number, GeneratedQuestion[]>();
-  primary.forEach((question, index) => {
+  cappedPrimary.forEach((question, index) => {
     if (!question.graded || question.mechanic !== "SELECT_ONE") return;
     const item = assignment.items.find((value) => value.id === question.assignmentItemId);
     const activity = assignment.activities.find((value) => value.id === question.activityId);
@@ -381,11 +463,13 @@ export function generateQuestionQueue(
     );
     if (!alternative) return;
     alternative.adaptiveSourceKey = question.key;
+    alternative.questionKind = "REVIEW";
+    alternative.scoreWeight = 0;
     alternative.status = "CONDITIONAL";
-    const target = Math.min(primary.length, index + 3);
+    const target = Math.min(cappedPrimary.length, index + 3);
     adaptive.set(target, [...(adaptive.get(target) ?? []), alternative]);
   });
-  primary.forEach((question, index) => {
+  cappedPrimary.forEach((question, index) => {
     result.push(question);
     result.push(...(adaptive.get(index + 1) ?? []));
   });
@@ -417,6 +501,9 @@ export function isCorrectAnswer(
   submitted: Record<string, unknown>,
   correct: Record<string, unknown>,
 ): boolean {
+  if (correct.exposure === true) return submitted.exposure === true;
+  if (typeof correct.optionId === "string")
+    return submitted.optionId === correct.optionId;
   if (Array.isArray(correct.pairs) && Array.isArray(submitted.pairs)) {
     const normalizePairs = (values: unknown[]) => values
       .map((value) => value as { leftId?: unknown; rightId?: unknown })

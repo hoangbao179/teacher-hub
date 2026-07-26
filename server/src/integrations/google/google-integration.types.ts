@@ -31,12 +31,32 @@ export interface GoogleTuitionRow {
   paymentMethod: "CASH" | "BANK_TRANSFER" | "";
 }
 
+export interface GoogleVocabularyAttemptRow {
+  attemptId: number;
+  completedAt: string;
+  assignmentTitle: string;
+  className: string;
+  ageBand: string;
+  attemptNumber: number;
+  scoredQuestionCount: number;
+  correctFirstTry: number;
+  finalCorrect: number;
+  scorePercent: number | null;
+  masteredWords: number;
+  learningWords: number;
+  needsReviewWords: number;
+  reviewWordList: string;
+  status: string;
+  updatedAt: string;
+}
+
 export interface StudentGoogleSheetSnapshot {
   student: { id: number; fullName: string; currentClass: string; currentGrade: string; currentAcademicYear: string };
   overview: { currentProgress: number; attendanceRate: number; latestLesson: string; tuitionStatus: string;
     latestComment: string; latestHomework: string; teacher: string };
   learning: GoogleLearningRow[];
   tuition: GoogleTuitionRow[];
+  vocabularyAttempts: GoogleVocabularyAttemptRow[];
 }
 
 export interface ManagedSpreadsheet {

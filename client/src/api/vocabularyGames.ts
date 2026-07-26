@@ -74,4 +74,9 @@ export const vocabularyGamesApi = {
       `/api/public/learning-attempts/${encodeURIComponent(sessionToken)}/complete`,
       { method: "POST", body: "{}" },
     ),
+  replay: (sessionToken: string) =>
+    publicGameApi<PublicLearningAttempt>(
+      `/api/public/learning-attempts/${encodeURIComponent(sessionToken)}/replay`,
+      { method: "POST", body: "{}" },
+    ),
 };

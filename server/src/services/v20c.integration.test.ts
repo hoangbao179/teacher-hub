@@ -19,6 +19,7 @@ async function clean() {
   await pool.query("SET FOREIGN_KEY_CHECKS=0");
   for (const table of [
     "learning_attempt_answers",
+    "learning_attempt_question_items",
     "learning_attempt_questions",
     "learning_attempts",
     "learning_access_sessions",
