@@ -53,6 +53,10 @@
 - GET `/api/students/{id}/export.xlsx`
 - POST `/api/students/{id}/legacy-imports/preview` (multipart `.xlsx`, preview/audit only)
 - POST `/api/students/{id}/legacy-imports/apply` (multipart `.xlsx` + preview SHA + structured decisions; atomic/idempotent)
+- GET/POST `/api/students/{id}/google-sheet`
+- POST `/api/students/{id}/google-sheet/retry`
+- POST `/api/students/{id}/google-sheet/regenerate`
+- POST `/api/students/{id}/google-sheet/archive`
 
 Route export yêu cầu auth, lấy dữ liệu canonical từ server và hỗ trợ
 `fromDate`, `toDate`, `classId`. Đây là output chuẩn hóa; generic legacy import

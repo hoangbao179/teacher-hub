@@ -71,7 +71,7 @@
 - Hành động sửa, đổi học phí, cho ngừng học.
 - Hiện hành có xuất Excel canonical và mở preview legacy V16A; chưa có external
   Google resource.
-- **PLANNED V16C–V16E:** tạo/mở/copy một Google Sheet ACTIVE theo student, hiển thị
+- **IMPLEMENTED V16C:** tạo/mở/copy/regenerate/archive một Google Sheet ACTIVE theo student, hiển thị
   sync status/retry/resync và chia sẻ parent Viewer. Chuyển/lên lớp giữ nguyên Sheet.
 
 ## 13 Chế độ học phí học sinh
@@ -103,5 +103,5 @@
 - Route hiện hành: `/admin/students/{studentId}/legacy-import`.
 - V16A cung cấp preview/audit; V16B đã thêm confirm/apply với exact/near lesson
   review, attendance riêng, idempotency theo student + SHA-256 và không gọi Google.
-- **PLANNED V16C–V16E:** Sheet được dựng từ canonical DB sau apply, không convert
+- **IMPLEMENTED V16C / PLANNED V16D–V16E:** Sheet được dựng từ canonical DB sau apply, không convert
   workbook gốc và không reset khi student lên lớp.

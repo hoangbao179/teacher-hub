@@ -27,6 +27,12 @@ import { StudentReportService } from "./services/student-report.service";
 import { EnrollmentService } from "./services/enrollment.service";
 import { LegacyImportController } from "./controllers/legacy-import.controller";
 import { LegacyImportService } from "./services/legacy-import.service";
+import { StudentGoogleSheetController } from "./controllers/student-google-sheet.controller";
+import { StudentGoogleSheetService } from "./services/student-google-sheet.service";
+import { StudentGoogleSheetRepository } from "./repositories/student-google-sheet.repository";
+import { GoogleApiSheetProvider } from "./integrations/google/google-sheet.provider";
+import { config } from "./config/config";
+import { FakeGoogleSheetProvider } from "./integrations/google/fake-google-sheet.provider";
 
 const users = new UserRepository();
 const classes = new ClassRepository();
@@ -47,6 +53,19 @@ const dashboardService = new DashboardService(tuition, schedules);
 const enrollmentService = new EnrollmentService(enrollments);
 const studentReportService = new StudentReportService(studentReports);
 const legacyImportService = new LegacyImportService(studentService, classService);
+const studentGoogleSheets = new StudentGoogleSheetRepository();
+function createGoogleSheetProvider() {
+  if (!config.googleDrive.enabled) return null;
+  if (config.nodeEnv === "test" && process.env.GOOGLE_DRIVE_FAKE === "1") {
+    const fake = new FakeGoogleSheetProvider();
+    if (process.env.GOOGLE_DRIVE_FAKE_FAIL_ONCE === "1") { fake.failure = "NETWORK"; fake.failOnce = true; }
+    fake.delayMs = Number(process.env.GOOGLE_DRIVE_FAKE_DELAY_MS ?? 0);
+    return fake;
+  }
+  return new GoogleApiSheetProvider(config.googleDrive);
+}
+const googleSheetProvider = createGoogleSheetProvider();
+const studentGoogleSheetService = new StudentGoogleSheetService(studentGoogleSheets, studentService, config.googleDrive, googleSheetProvider);
 
 export const controllers = {
   health: new HealthController(),
@@ -60,4 +79,5 @@ export const controllers = {
   enrollments: new EnrollmentController(enrollmentService),
   studentReports: new StudentReportController(studentReportService),
   legacyImports: new LegacyImportController(legacyImportService),
+  studentGoogleSheets: new StudentGoogleSheetController(studentGoogleSheetService),
 };

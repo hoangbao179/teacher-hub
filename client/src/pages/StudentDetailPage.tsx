@@ -14,13 +14,16 @@ import {
   Stack,
   TextField,
   Typography,
+  Chip,
+  CircularProgress,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import type { ClassListItem, IncompleteCycleAction, PaymentMethod, StudentDetail, TuitionMode } from "@teacher/shared";
-import { Download, UploadFile } from "@mui/icons-material";
+import type { ClassListItem, IncompleteCycleAction, PaymentMethod, StudentDetail, StudentGoogleSheetState, TuitionMode } from "@teacher/shared";
+import { ContentCopy, Download, Launch, UploadFile } from "@mui/icons-material";
 import { api } from "../api/client";
-import { downloadStudentReport, endEnrollment as endEnrollmentApi, transferEnrollment } from "../api/students";
+import { archiveStudentGoogleSheet, createStudentGoogleSheet, downloadStudentReport, endEnrollment as endEnrollmentApi,
+  getStudentGoogleSheet, regenerateStudentGoogleSheet, retryStudentGoogleSheet, transferEnrollment } from "../api/students";
 import { createAdvanceReceipt } from "../api/tuition";
 import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, PageHeader, ProgressCount } from "../components/UiKit";
@@ -36,6 +39,9 @@ export function StudentDetailPage() {
   const today = todayInHoChiMinh();
   const [effectiveFrom, setEffectiveFrom] = useState(today);
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleState, setGoogleState] = useState<StudentGoogleSheetState | null>(null);
+  const [googleConfirm, setGoogleConfirm] = useState<"regenerate" | "archive" | null>(null);
   const [success, setSuccess] = useState(() => (location.state as { success?: string } | null)?.success ?? "");
   const [statusActionName, setStatusActionName] = useState<"pause" | "resume" | null>(null);
   const [statusEffectiveDate, setStatusEffectiveDate] = useState(today);
@@ -61,10 +67,18 @@ export function StudentDetailPage() {
     setItem(value); setTuitionMode(value.tuitionMode ?? "CLASS_DEFAULT");
     setCustomPrice(value.customPackagePrice?.toString() ?? "");
   }).catch((e: Error) => setError(e.message)), [id]);
+  const loadGoogleSheet = useCallback(() => getStudentGoogleSheet(Number(id)).then(setGoogleState)
+    .catch((e: Error) => setError(e.message)), [id]);
   useEffect(() => {
     load();
+    void loadGoogleSheet();
     api<ClassListItem[]>("/api/classes").then(setClasses).catch(() => setClasses([]));
-  }, [load]);
+  }, [load, loadGoogleSheet]);
+  useEffect(() => {
+    if (googleState?.sheet?.status !== "CREATING") return;
+    const timer = window.setInterval(() => void loadGoogleSheet(), 2000);
+    return () => window.clearInterval(timer);
+  }, [googleState?.sheet?.status, loadGoogleSheet]);
   const openTransfer = async () => {
     setError("");
     try {
@@ -104,6 +118,29 @@ export function StudentDetailPage() {
   const exportReport = async () => { setError(""); setSuccess(""); setBusy(true); try {
     const filename = await downloadStudentReport(item!.id); setSuccess(`Đã tải báo cáo Excel: ${filename}`);
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể xuất báo cáo Excel."); } finally { setBusy(false); } };
+  const mutateGoogle = async (action: "create" | "retry" | "regenerate" | "archive") => {
+    setError(""); setSuccess(""); setGoogleBusy(true);
+    try {
+      const result = action === "create" ? await createStudentGoogleSheet(item!.id)
+        : action === "retry" ? await retryStudentGoogleSheet(item!.id)
+          : action === "regenerate" ? await regenerateStudentGoogleSheet(item!.id)
+            : await archiveStudentGoogleSheet(item!.id);
+      setGoogleConfirm(null); await loadGoogleSheet();
+      setSuccess(action === "archive" ? "Đã lưu trữ liên kết. File Google không bị xóa."
+        : result.sheet.status === "CREATING" ? "Đang tạo sổ theo dõi; trạng thái sẽ tự cập nhật."
+          : action === "regenerate" ? "Đã tạo lại nội dung từ dữ liệu Teacher Hub."
+            : "Đã liên kết Google Sheet cho học sinh.");
+    } catch (e) { await loadGoogleSheet(); setError(e instanceof Error ? e.message : "Không thể xử lý Google Sheet."); }
+    finally { setGoogleBusy(false); }
+  };
+  const copyGoogleLink = async () => {
+    const url = googleState?.sheet?.webViewUrl; if (!url) return;
+    try { await navigator.clipboard.writeText(url); setSuccess("Đã sao chép liên kết Google Sheet."); }
+    catch { setError("Không thể sao chép tự động. Hãy mở Sheet và sao chép liên kết từ trình duyệt."); }
+  };
+  const displayDateTime = (value: string | null) => value ? new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh",
+  }).format(new Date(value)) : "—";
   if (!item && !error) return <LoadingState />;
   if (!item) return <Alert severity="error">{error || "Không tải được học sinh."}</Alert>;
   return (
@@ -141,6 +178,45 @@ export function StudentDetailPage() {
           </CardContent>
         </Card>
       )}
+      <Card data-testid="student-google-sheet-card">
+        <CardContent><Stack spacing={1.5} sx={{ minWidth: 0 }}>
+          <Typography variant="h6">Sổ theo dõi phụ huynh</Typography>
+          {!googleState ? <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}><CircularProgress size={20} /><Typography>Đang tải trạng thái…</Typography></Stack>
+            : !googleState.sheet ? <>
+              <Typography>Chưa tạo Google Sheet</Typography>
+              <Typography color="text.secondary">{googleState.enabled
+                ? `Google Drive đã sẵn sàng${googleState.ownerLabel ? ` · ${googleState.ownerLabel}` : ""}.`
+                : "Google Drive chưa được bật trên máy chủ."}</Typography>
+              <Button variant="contained" disabled={googleBusy || !googleState.enabled} onClick={() => void mutateGoogle("create")}>
+                {googleBusy ? "Đang tạo…" : "Tạo sổ theo dõi"}
+              </Button>
+            </> : googleState.sheet.status === "CREATING" ? <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              <CircularProgress size={20} /><Typography>Đang tạo Google Sheet…</Typography>
+            </Stack> : googleState.sheet.status === "GENERATION_ERROR" ? <>
+              <Chip color="error" label="Tạo chưa thành công" sx={{ alignSelf: "flex-start" }} />
+              <Alert severity="error">{googleState.sheet.lastSyncError ?? "Không thể tạo Google Sheet."}</Alert>
+              <Button variant="contained" disabled={googleBusy || !googleState.enabled} onClick={() => void mutateGoogle("retry")}>
+                {googleBusy ? "Đang thử lại…" : "Thử tạo lại"}
+              </Button>
+            </> : <>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between", minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>{googleState.sheet.fileName}</Typography>
+                <Chip color="success" label="Đã liên kết" sx={{ alignSelf: "flex-start" }} />
+              </Stack>
+              <Typography color="text.secondary">Lần tạo: {displayDateTime(googleState.sheet.lastGeneratedAt)}</Typography>
+              <Typography color="text.secondary">Lần đồng bộ tự động: Chưa bật trong V16C</Typography>
+              <Typography>Quyền chia sẻ: {googleState.sheet.sharingStatus === "RESTRICTED" ? "Giới hạn" : "Đã chia sẻ thủ công"}</Typography>
+              <Alert severity="info">Sheet mặc định ở chế độ giới hạn. Hãy cấp quyền Viewer cho phụ huynh trực tiếp trong Google Sheets.</Alert>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap", minWidth: 0 }}>
+                <Button component="a" href={googleState.sheet.webViewUrl ?? undefined} target="_blank" rel="noopener noreferrer"
+                  startIcon={<Launch />} variant="contained" disabled={!googleState.sheet.webViewUrl}>Mở Google Sheet</Button>
+                <Button startIcon={<ContentCopy />} variant="outlined" disabled={!googleState.sheet.webViewUrl} onClick={() => void copyGoogleLink()}>Sao chép liên kết</Button>
+                <Button variant="outlined" disabled={googleBusy} onClick={() => setGoogleConfirm("regenerate")}>Tạo lại nội dung</Button>
+                <Button color="warning" variant="outlined" disabled={googleBusy} onClick={() => setGoogleConfirm("archive")}>Lưu trữ</Button>
+              </Stack>
+            </>}
+        </Stack></CardContent>
+      </Card>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
         {item!.enrollmentStatus === "ACTIVE" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("pause")}>Tạm dừng ghi danh</Button>}
         {item!.enrollmentStatus === "PAUSED" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("resume")}>Mở lại ghi danh</Button>}
@@ -180,6 +256,18 @@ export function StudentDetailPage() {
         {item!.advanceReceipt && <TextField select label="Khoản thu trước" value={transferReceiptAction} onChange={(e) => setTransferReceiptAction(e.target.value as typeof transferReceiptAction)}><MenuItem value="TRANSFER_TO_NEW_ENROLLMENT">Chuyển sang lớp mới</MenuItem><MenuItem value="APPLY_TO_OLD_SETTLEMENT">Dùng chốt đợt cũ</MenuItem><MenuItem value="REFUND">Hoàn tiền</MenuItem><MenuItem value="NONE">Giữ nguyên</MenuItem></TextField>}
         <Alert severity="info">Nếu giá gói không đổi, tiến độ đang dở tiếp tục theo học sinh. Nếu giá đổi, lựa chọn chốt/giữ đợt cũ được áp dụng rõ ràng. Lesson và attendance cũ không thay đổi.</Alert>
       </Stack></DialogContent><DialogActions><Button onClick={() => setTransferOpen(false)}>Hủy</Button><Button variant="contained" disabled={busy || !targetClassId || !transferReason.trim()} onClick={() => void transfer()}>Xác nhận chuyển lớp</Button></DialogActions></Dialog>
+      <Dialog open={Boolean(googleConfirm)} onClose={() => !googleBusy && setGoogleConfirm(null)} fullWidth maxWidth="xs">
+        <DialogTitle>{googleConfirm === "archive" ? "Lưu trữ Google Sheet" : "Tạo lại nội dung Sheet"}</DialogTitle>
+        <DialogContent><Alert severity={googleConfirm === "archive" ? "warning" : "info"} sx={{ mt: 1 }}>
+          {googleConfirm === "archive"
+            ? "Liên kết sẽ được lưu trữ trong Teacher Hub. File Google không bị xóa và có thể tạo một sổ mới sau đó."
+            : "Toàn bộ vùng do Teacher Hub quản lý sẽ được dựng lại từ database. URL Google Sheet vẫn giữ nguyên."}
+        </Alert></DialogContent>
+        <DialogActions><Button onClick={() => setGoogleConfirm(null)} disabled={googleBusy}>Hủy</Button>
+          <Button color={googleConfirm === "archive" ? "warning" : "primary"} variant="contained" disabled={googleBusy}
+            onClick={() => googleConfirm && void mutateGoogle(googleConfirm)}>{googleBusy ? "Đang xử lý…" : "Xác nhận"}</Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

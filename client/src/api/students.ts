@@ -1,6 +1,6 @@
 import { apiDownload } from "./client";
 import { api } from "./client";
-import type { EndEnrollmentRequest, LegacyImportApplyResult, LegacyImportPreview, LegacyImportRowDecision, TransferEnrollmentRequest, TransferEnrollmentResult } from "@teacher/shared";
+import type { CreateStudentGoogleSheetRequest, EndEnrollmentRequest, LegacyImportApplyResult, LegacyImportPreview, LegacyImportRowDecision, StudentGoogleSheetMutationResult, StudentGoogleSheetState, TransferEnrollmentRequest, TransferEnrollmentResult } from "@teacher/shared";
 
 export async function downloadStudentReport(studentId: number): Promise<string> {
   const { blob, filename } = await apiDownload(`/api/students/${studentId}/export.xlsx`);
@@ -43,4 +43,24 @@ export function applyLegacyWorkbook(
   body.append("previewSha256", previewSha256);
   body.append("decisions", JSON.stringify(decisions));
   return api<LegacyImportApplyResult>(`/api/students/${studentId}/legacy-imports/apply`, { method: "POST", body });
+}
+
+export function getStudentGoogleSheet(studentId: number): Promise<StudentGoogleSheetState> {
+  return api<StudentGoogleSheetState>(`/api/students/${studentId}/google-sheet`);
+}
+
+export function createStudentGoogleSheet(studentId: number, input: CreateStudentGoogleSheetRequest = {}): Promise<StudentGoogleSheetMutationResult> {
+  return api<StudentGoogleSheetMutationResult>(`/api/students/${studentId}/google-sheet`, { method: "POST", body: JSON.stringify(input) });
+}
+
+export function retryStudentGoogleSheet(studentId: number): Promise<StudentGoogleSheetMutationResult> {
+  return api<StudentGoogleSheetMutationResult>(`/api/students/${studentId}/google-sheet/retry`, { method: "POST", body: "{}" });
+}
+
+export function regenerateStudentGoogleSheet(studentId: number): Promise<StudentGoogleSheetMutationResult> {
+  return api<StudentGoogleSheetMutationResult>(`/api/students/${studentId}/google-sheet/regenerate`, { method: "POST", body: "{}" });
+}
+
+export function archiveStudentGoogleSheet(studentId: number): Promise<StudentGoogleSheetMutationResult> {
+  return api<StudentGoogleSheetMutationResult>(`/api/students/${studentId}/google-sheet/archive`, { method: "POST", body: "{}" });
 }

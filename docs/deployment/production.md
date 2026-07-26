@@ -79,6 +79,8 @@ Các biến trong `/opt/teacher-hub/.env` được giữ tối thiểu:
 - Image/runtime: `GHCR_OWNER`, `IMAGE_TAG`.
 - Database secrets: `MYSQL_ROOT_PASSWORD`, `DB_PASSWORD`.
 - API secret: `JWT_SECRET`.
+- Google runtime (khi bật V16C): `GOOGLE_DRIVE_ENABLED` và OAuth/root-folder values
+  theo `docs/deployment/google-drive.md`.
 
 `IMAGE_TAG` để rỗng ở bootstrap đầu tiên; workflow sẽ ghi full commit SHA trước khi Compose
 chạy. Database name/user, CORS production, timezone, JWT lifetime, password policy,
@@ -87,6 +89,8 @@ token, IP hoặc JWT vào GitHub Variables, workflow log hay repository.
 
 Server `.env` chỉ chứa runtime/deployment config và secret như image tag, CORS,
 healthcheck, database và JWT. Không đặt text Homepage hoặc đường dẫn ảnh vào file này.
+OAuth secret/refresh token Google chỉ nằm trong file runtime mode `600`, không đưa vào
+image, build args, GitHub Variables hoặc log deploy.
 
 Với database mới hoàn toàn, tạo admin một lần sau deploy bằng biến môi trường tạm, không
 lưu password bootstrap trong `.env` hoặc shell history:

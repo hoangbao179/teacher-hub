@@ -15,6 +15,8 @@
     "admin:reset-password": "tsx src/auth/reset-admin-password.ts",
     "db:seed:dev": "tsx src/db/seed-dev.ts",
     "db:reset:dev": "tsx src/db/reset-dev.ts",
+    "google-drive:authorize": "tsx src/scripts/google-drive-authorize.ts",
+    "google-drive:smoke": "tsx src/scripts/google-drive-smoke.ts",
     "db:migrate:prod": "node dist/db/migrate.js"
   },
   "dependencies": {
@@ -24,6 +26,7 @@
     "dotenv": "17.4.2",
     "exceljs": "4.4.0",
     "express": "5.2.1",
+    "googleapis": "173.0.0",
     "helmet": "8.3.0",
     "jsonwebtoken": "9.0.3",
     "multer": "2.0.2",

@@ -7,6 +7,9 @@
   instance; multi-instance cần shared store ở post-V1.
 - Request IDs và JSON logs chỉ ghi method/path/status/duration/error class; không ghi
   token, password, request body, lesson notes hay workbook.
+- Google OAuth client secret, refresh/access token không được log, trả cho client hoặc
+  lưu database/Sheet. V16C chỉ ghi failure code/message đã phân loại; credential là
+  runtime secret và Sheet mặc định Restricted.
 - Production rejects missing DB fields, non-HTTPS public CORS, wrong timezone and weak JWT.
 - JWT trong Web Storage (localStorage khi ghi nhớ, sessionStorage nếu không) vẫn chịu rủi
   ro XSS; CSP/Helmet, không chèn HTML tùy ý và one-admin scope giảm bề mặt nhưng không thay
@@ -28,11 +31,12 @@
   này sử dụng. Chấp nhận tạm thời, theo dõi upstream; không có high/critical và không
   dùng `audit fix --force`.
 
-Dependency tree cài sạch. Audit production hiện có 2 moderate (ExcelJS + UUID cùng
-một chuỗi), 0 high/critical. Audit đầy đủ tính thêm 2 high từ dev-only
-`concurrently` → `shell-quote`; các script concurrently là lệnh tĩnh do maintainer
-kiểm soát, không parse input người dùng. NPM chỉ đề xuất `--force` với downgrade
-breaking nên V1.2 ghi nhận và hoãn xử lý dependency riêng, không tự force-fix.
+Dependency tree cài sạch. Sau khi thêm `googleapis@173`, `npm audit --omit=dev` ngày
+26/07/2026 báo 1 moderate, 14 high, 0 critical trong các chuỗi transitive gồm
+ExcelJS và Google (`googleapis-common` đang pin `gaxios@7.1.3` qua rimraf/glob).
+Không ép override dependency exact hoặc chạy `audit fix --force`; theo dõi bản vá
+official và review riêng trước production enable. Các API Google chỉ nhận dữ liệu
+server-generated, không nhận URL/path tùy ý từ client.
 License inventory chủ yếu MIT/Apache/ISC/BSD; MPL và lựa chọn
 MIT-or-GPL là dependency transitively distributed, không có copyleft blocker đã xác
 định cho source ứng dụng. Outdated major Node types/TypeScript được hoãn vì ngoài M6;

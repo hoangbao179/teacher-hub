@@ -134,8 +134,8 @@ coverage without adding backend state or student identity.
 
 ## Known limitations
 
-- Google Sheet theo student và đồng bộ hai chiều vẫn thuộc V16C–V16E; V16B chỉ
-  apply workbook lịch sử vào canonical MySQL.
+- Auto-sync lesson/tuition và sharing tự động vẫn thuộc V16D–V16E. V16C đã
+  implement provider/template/UI nhưng còn chờ OAuth và smoke với account Google test.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
   be configured by the operator before the first production deployment.
@@ -160,15 +160,16 @@ chuẩn hóa ngày thiếu năm, đối soát lesson/học phí, chia năm học
   MySQL, matching lesson, attendance riêng, cycle theo student qua enrollment,
   idempotency/audit và không gọi Google. Evidence nằm trong hai report V16B tại
   `.agent-reports/`.
-- V16C-STUDENT-GOOGLE-SHEET: **PLANNED** — OAuth/Drive/Sheets, template và tối đa
-  một Sheet `ACTIVE` theo student; Student Detail hiện chưa có external resource.
+- V16C-STUDENT-GOOGLE-SHEET: **IMPLEMENTED — MANUAL GOOGLE SMOKE PENDING** — OAuth,
+  provider/template, mapping, fake-provider tests và Student Detail đã có; chưa thể
+  verdict PASS khi môi trường chưa có credential Google test.
 - V16D-LESSON-GOOGLE-SHEET-SYNC: **PLANNED** — general/student-specific comments,
   quick attendance, transactional outbox và lesson sync; chưa sync tuition.
 - V16E-TUITION-SHEET-AND-PARENT-SHARING: **PLANNED** — tuition presentation,
   parent Viewer sharing, retry/resync và admin status.
 
-Source of truth thiết kế là `docs/features/student-parent-tracking.md`. Hiện chưa có
-Google Drive/Sheets integration, provider, credential, mapping hoặc outbox runtime.
+Source of truth thiết kế là `docs/features/student-parent-tracking.md`. V16C chưa có
+credential production và V16D/V16E chưa có outbox, auto-sync hoặc automatic sharing.
 
 ## V15
 

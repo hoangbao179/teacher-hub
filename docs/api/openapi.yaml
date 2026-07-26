@@ -134,6 +134,38 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '413': {description: File vượt quá 10 MB}
+  /api/students/{studentId}/google-sheet:
+    get:
+      summary: Đọc trạng thái Google Sheet theo dõi phụ huynh của học sinh
+      parameters: [{$ref: '#/components/parameters/StudentId'}]
+      responses:
+        '200': {description: Trạng thái integration và resource, content: {application/json: {schema: {$ref: '#/components/schemas/StudentGoogleSheetStateEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      summary: Tạo idempotent Google Sheet Restricted từ dữ liệu canonical trong database
+      parameters: [{$ref: '#/components/parameters/StudentId'}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/CreateStudentGoogleSheetRequest'}}}}
+      responses:
+        '201': {description: Đã tạo và populate, content: {application/json: {schema: {$ref: '#/components/schemas/StudentGoogleSheetMutationEnvelope'}}}}
+        '200': {description: Trả resource ACTIVE đã có, content: {application/json: {schema: {$ref: '#/components/schemas/StudentGoogleSheetMutationEnvelope'}}}}
+        '202': {description: Resource đang được request khác tạo, content: {application/json: {schema: {$ref: '#/components/schemas/StudentGoogleSheetMutationEnvelope'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {description: Google disabled, auth, permission, folder hoặc network failure an toàn}
+  /api/students/{studentId}/google-sheet/retry:
+    post:
+      summary: Retry generation, khôi phục file đã tạo bằng appProperties và không chạy lại import
+      parameters: [{$ref: '#/components/parameters/StudentId'}]
+      responses: {'200': {description: Retry hoàn tất, content: {application/json: {schema: {$ref: '#/components/schemas/StudentGoogleSheetMutationEnvelope'}}}}, '202': {description: Vẫn đang tạo}, '503': {description: Google failure an toàn}}
+  /api/students/{studentId}/google-sheet/regenerate:
+    post:
+      summary: Dựng lại snapshot từ database trong cùng spreadsheetId
+      parameters: [{$ref: '#/components/parameters/StudentId'}]
+      responses: {'200': {description: Regenerate hoàn tất, content: {application/json: {schema: {$ref: '#/components/schemas/StudentGoogleSheetMutationEnvelope'}}}}, '409': {$ref: '#/components/responses/Conflict'}, '503': {description: Google failure an toàn}}
+  /api/students/{studentId}/google-sheet/archive:
+    post:
+      summary: Archive mapping có audit, không xóa hoặc Trash file Google
+      parameters: [{$ref: '#/components/parameters/StudentId'}]
+      responses: {'200': {description: Đã archive, content: {application/json: {schema: {$ref: '#/components/schemas/StudentGoogleSheetMutationEnvelope'}}}}, '404': {$ref: '#/components/responses/NotFound'}}
   /api/enrollments/{id}/pause:
     post: {summary: Tạm dừng ghi danh theo ngày hiệu lực, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã tạm dừng}}}
   /api/enrollments/{id}/resume:
@@ -417,6 +449,7 @@ components:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   parameters:
     Id: {in: path, name: id, required: true, schema: {type: integer, format: int64}}
+    StudentId: {in: path, name: studentId, required: true, schema: {type: integer, format: int64, minimum: 1}}
     OccurrenceKey: {in: path, name: key, required: true, schema: {type: string, maxLength: 160}, example: '12:34:2026-07-20'}
   responses:
     ValidationError:
@@ -1027,6 +1060,48 @@ components:
             importedClassCount: {type: integer}
             importedEnrollmentCount: {type: integer}
             importedTuitionCycleCount: {type: integer}
+    StudentGoogleSheet:
+      type: object
+      required: [id, studentId, fileName, templateVersion, status, sharingStatus, createdAt]
+      properties:
+        id: {type: integer, format: int64}
+        studentId: {type: integer, format: int64}
+        legacyImportId: {type: integer, format: int64, nullable: true}
+        fileName: {type: string}
+        webViewUrl: {type: string, format: uri, nullable: true}
+        templateVersion: {type: string}
+        status: {type: string, enum: [CREATING, ACTIVE, GENERATION_ERROR, ARCHIVED]}
+        sharingStatus: {type: string, enum: [RESTRICTED, MANUALLY_SHARED]}
+        lastGeneratedAt: {type: string, format: date-time, nullable: true}
+        lastSyncedAt: {type: string, format: date-time, nullable: true}
+        lastSyncError: {type: string, nullable: true}
+        createdAt: {type: string, format: date-time}
+    CreateStudentGoogleSheetRequest:
+      type: object
+      properties:
+        legacyImportId: {type: integer, format: int64, minimum: 1}
+        forceRegenerate: {type: boolean, default: false, description: Chưa expose trong UI; true bị từ chối và phải dùng endpoint regenerate}
+    StudentGoogleSheetStateEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [enabled, sheet]
+          properties:
+            enabled: {type: boolean}
+            ownerLabel: {type: string, nullable: true}
+            sheet: {allOf: [{$ref: '#/components/schemas/StudentGoogleSheet'}], nullable: true}
+    StudentGoogleSheetMutationEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [sheet, reused]
+          properties:
+            sheet: {$ref: '#/components/schemas/StudentGoogleSheet'}
+            reused: {type: boolean}
     ErrorEnvelope:
       type: object
       required: [error]

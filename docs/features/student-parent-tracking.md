@@ -25,21 +25,21 @@ một chiều cho phụ huynh.
 | Attendance | Lưu riêng theo `lesson_session_participants`/enrollment; mỗi participant có tối đa một `lesson_attendances`. Không có attendance chung cho cả lớp. |
 | Lesson | `lesson_sessions` có `content`, `homework`, `note`; `lesson_attendances.student_note` là ghi chú riêng. Chưa có field tên `generalComment`; `note` hiện là ghi chú chung gần nhất về mặt cấu trúc nhưng chưa có semantics chia sẻ phụ huynh được duyệt. |
 | Tuition cycle | `tuition_cycles` vẫn dùng `enrollment_id` làm anchor tương thích, nhưng recalculation V16B khóa và nhóm attendance theo student xuyên enrollment. `PRESENT`/`ABSENT_CHARGED` tăng đếm; chuyển lớp cùng giá tiếp tục cycle dở. |
-| Google | Không có OAuth, Drive API, Sheets API, provider, bảng mapping/outbox hoặc dependency Google. Google Maps public không phải Drive/Sheets integration. |
-| Student Detail | Chưa trả external resource, spreadsheet ID, URL, trạng thái sync hoặc action mở/copy Google Sheet. |
+| Google | V16C có OAuth server-side, provider Drive/Sheets, mapping `student_google_sheets`, template và regenerate thủ công. Chưa có outbox/auto-sync hoặc permissions API. |
+| Student Detail | Có card tạo, retry, mở/copy, regenerate và archive Google Sheet; hiển thị rõ Restricted và chưa auto-sync. |
 
 Vì vậy việc giữ cycle dở xuyên enrollment và một Sheet ổn định theo student là
 thay đổi domain **PLANNED**, cần migration/API/runtime riêng trong các task sau;
 không được đọc các quy tắc đích dưới đây như mô tả chức năng đã chạy.
 
 V16B trả thêm row-resolution lifecycle, structured decision, audit theo dòng và
-endpoint Apply. Preview vẫn bất biến dữ liệu nghiệp vụ; chỉ Apply đã xác nhận mới
-mở transaction. Google integration vẫn thuộc các checkpoint V16C–V16E **PLANNED**.
+endpoint Apply. V16C dựng Sheet từ canonical DB sau Apply hoặc cho student chưa có
+lịch sử. Auto-sync và sharing tự động vẫn thuộc V16D–V16E **PLANNED**.
 
 ## 2. Mô hình đích và ranh giới trách nhiệm
 
 - V16B (**IMPLEMENTED**) ghi dữ liệu chuẩn hóa vào MySQL trong transaction; không gọi Google.
-- V16C tạo và quản lý một Google Sheet của từng student.
+- V16C (**IMPLEMENTED**) tạo và quản lý một Google Sheet của từng student.
 - V16D phát sự kiện bằng transactional outbox và đồng bộ lesson sau commit.
 - V16E đồng bộ tuition, chia sẻ Viewer và cung cấp retry/resync/status cho admin.
 - External API không bao giờ được gọi bên trong transaction MySQL.
@@ -48,7 +48,7 @@ mở transaction. Google integration vẫn thuộc các checkpoint V16C–V16E *
 - Không đồng bộ hai chiều. Thay đổi thủ công trên Sheet không ghi về Teacher Hub
   và có thể bị lần resync sau ghi đè trong vùng do hệ thống quản lý.
 
-## 3. Vòng đời Google Sheet — PLANNED
+## 3. Vòng đời Google Sheet — IMPLEMENTED V16C
 
 - Mỗi student có tối đa một Google Sheet `ACTIVE`.
 - Sheet thuộc tài khoản Google của cô Vy và gắn với `student_id`, không gắn với
@@ -64,7 +64,7 @@ mở transaction. Google integration vẫn thuộc các checkpoint V16C–V16E *
   hoặc một migration thủ công được xác nhận rõ. Thay thế phải giữ audit và trạng
   thái file cũ, không tạo hai Sheet `ACTIVE`.
 
-## 4. Template Google Sheet — PLANNED
+## 4. Template Google Sheet — IMPLEMENTED V16C
 
 ### `Tổng quan`
 

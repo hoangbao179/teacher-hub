@@ -1,6 +1,6 @@
 # V16C-STUDENT-GOOGLE-SHEET
 
-Trạng thái: **PLANNED**
+Trạng thái: **IMPLEMENTED — MANUAL GOOGLE SMOKE PENDING**
 
 ## Goal
 

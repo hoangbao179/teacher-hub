@@ -47,10 +47,14 @@ Học sinh**. Nút thao tác cố định nằm phía trên thanh. Desktop dùng
    sửa ngày/giờ, xác nhận điểm danh, ghép/tạo lesson hoặc bỏ qua với lý do. Kiểm tra
    tổng accepted/resolved/skipped rồi chọn **Xác nhận import**. Nếu file đã đổi sau
    preview, hệ thống từ chối và yêu cầu preview lại; import lại cùng file không tạo trùng.
-9. Tạm dừng/mở lại lớp hoặc ghi danh phải chọn ngày hiệu lực. Khoảng pause không
+9. **Sổ theo dõi phụ huynh**: tại chi tiết học sinh, chọn **Tạo sổ theo dõi**.
+   Khi **Đã liên kết**, có thể mở/copy link hoặc tạo lại snapshot từ database.
+   Sheet mặc định Restricted; cô Vy cấp Viewer thủ công trong Google Sheets.
+   **Lưu trữ** không xóa file Google và auto-sync lesson chưa bật trong V16C.
+10. Tạm dừng/mở lại lớp hoặc ghi danh phải chọn ngày hiệu lực. Khoảng pause không
    sinh lịch/participant; lịch sử trước pause và dữ liệu nhập muộn vẫn theo ngày
    học thực tế. Đóng lớp/ngừng học không xóa lịch sử.
-10. **Đổi lịch tạm thời** tại chi tiết lớp: chọn lịch gốc, khoảng ngày, thứ/giờ mới,
+11. **Đổi lịch tạm thời** tại chi tiết lớp: chọn lịch gốc, khoảng ngày, thứ/giờ mới,
    xem preview và xác nhận conflict. Hết khoảng chọn, lịch tự quay về pattern gốc.
 
 Tên lớp và học sinh trong buổi cũ là snapshot tại thời điểm tạo; đổi tên hiện tại

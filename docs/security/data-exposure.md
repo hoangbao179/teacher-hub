@@ -9,3 +9,6 @@
   student khác, macro hoặc external workbook link.
 - Server không lưu workbook; audit chỉ lưu actor, student ID và filters.
 - Formula-like user text được neutralize trước khi ghi cell.
+- Google Sheet phụ huynh V16C chỉ query một student; technical ID nằm trong cột/sheet
+  ẩn được protect. Internal payment note, audit, token và note của student khác không
+  được render. General lesson note hiện chưa có semantics parent-facing nên để trống.

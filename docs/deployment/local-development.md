@@ -30,3 +30,6 @@ Seed chỉ chứa tên/số điện thoại giả, idempotent và bị từ ch�
 `NODE_ENV=production`. `db:reset:dev` là lệnh phá hủy dữ liệu dev và không được
 dùng với database cần giữ. Trước checkpoint dùng `npm run check:fast`; trước
 release dùng `npm run check:full` với MySQL đang chạy.
+
+Google Drive mặc định tắt. Xem `docs/deployment/google-drive.md` để tạo OAuth client,
+authorize local và chạy smoke opt-in; không dùng credential production trong test CI.

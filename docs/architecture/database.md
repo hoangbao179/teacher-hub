@@ -66,3 +66,13 @@ legacy_imports ─ legacy_import_lesson_links ─ lesson_sessions/lesson_attenda
 - `teacher_busy_slots` stores only shared teacher-availability metadata and actor;
   weekly time patterns live in `teacher_busy_slot_schedules` with cascade delete.
   Neither table has an enrollment, attendance or tuition foreign key.
+## V16C Google Sheet theo học sinh
+
+`student_google_sheets` lưu mapping và state generation, không lưu OAuth credential.
+Generated column `active_guard` chỉ có giá trị với `CREATING`/`ACTIVE`; unique key
+`(student_id, active_guard)` cho phép nhiều bản `ARCHIVED` nhưng chặn hai resource
+đang tạo/hoạt động kể cả khi request concurrent. `legacy_import_id` chỉ dùng audit;
+mọi nội dung Sheet được query lại từ canonical lesson/attendance/tuition tables.
+
+External Google call nằm ngoài transaction. Transaction ngắn chỉ claim `CREATING`,
+finalize `ACTIVE`, ghi lỗi an toàn hoặc archive/audit.

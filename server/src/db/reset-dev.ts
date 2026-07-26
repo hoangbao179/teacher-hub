@@ -2,6 +2,7 @@ import "dotenv/config";
 import { pool } from "./pool";
 
 const businessTables = [
+  "student_google_sheets", "legacy_import_lesson_links", "legacy_import_row_audits", "legacy_imports",
   "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions",
   "schedule_exceptions", "recurring_schedules", "teacher_busy_slots", "class_enrollments",
   "enrollment_active_periods", "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies",
