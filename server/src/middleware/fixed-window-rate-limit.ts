@@ -4,11 +4,15 @@ export function fixedWindowRateLimit(options: {
   limit: number;
   windowMs: number;
   code: string;
+  key?: (req: Parameters<RequestHandler>[0]) => string;
 }): RequestHandler {
   const counters = new Map<string, { count: number; resetAt: number }>();
   return (req, res, next) => {
     const now = Date.now();
-    const key = req.ip || req.socket.remoteAddress || "unknown";
+    const key = options.key?.(req)
+      ?? req.ip
+      ?? req.socket.remoteAddress
+      ?? "unknown";
     const current = counters.get(key);
     const entry = !current || current.resetAt <= now
       ? { count: 0, resetAt: now + options.windowMs }

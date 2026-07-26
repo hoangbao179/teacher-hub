@@ -21,6 +21,22 @@ const vocabularyPublicMediaRateLimit = fixedWindowRateLimit({
   windowMs: 60_000,
   code: "VOCABULARY_MEDIA_RATE_LIMITED",
 });
+const publicGameResolveRateLimit = fixedWindowRateLimit({
+  limit: 60,
+  windowMs: 60_000,
+  code: "PUBLIC_GAME_RATE_LIMITED",
+});
+const publicGameAccessRateLimit = fixedWindowRateLimit({
+  limit: 20,
+  windowMs: 10 * 60_000,
+  code: "PUBLIC_GAME_RATE_LIMITED",
+});
+const publicGameAnswerRateLimit = fixedWindowRateLimit({
+  limit: 120,
+  windowMs: 60_000,
+  code: "PUBLIC_GAME_RATE_LIMITED",
+  key: (req) => `${req.ip ?? req.socket.remoteAddress ?? "unknown"}:${req.params.sessionToken ?? ""}`,
+});
 
 export function createRouter(): Router {
   const router = Router();
@@ -33,6 +49,36 @@ export function createRouter(): Router {
     "/api/public/vocabulary-media/:mediaId",
     vocabularyPublicMediaRateLimit,
     asyncHandler(controllers.vocabularyMedia.serve),
+  );
+  router.get(
+    "/api/public/learning-assignments/:publicCode",
+    publicGameResolveRateLimit,
+    asyncHandler(controllers.vocabularyGames.summary),
+  );
+  router.post(
+    "/api/public/learning-assignments/:publicCode/access",
+    publicGameAccessRateLimit,
+    asyncHandler(controllers.vocabularyGames.access),
+  );
+  router.post(
+    "/api/public/learning-assignments/:publicCode/attempts",
+    publicGameAccessRateLimit,
+    asyncHandler(controllers.vocabularyGames.start),
+  );
+  router.get(
+    "/api/public/learning-attempts/:sessionToken",
+    publicGameAnswerRateLimit,
+    asyncHandler(controllers.vocabularyGames.attempt),
+  );
+  router.post(
+    "/api/public/learning-attempts/:sessionToken/answers",
+    publicGameAnswerRateLimit,
+    asyncHandler(controllers.vocabularyGames.answer),
+  );
+  router.post(
+    "/api/public/learning-attempts/:sessionToken/complete",
+    publicGameAnswerRateLimit,
+    asyncHandler(controllers.vocabularyGames.complete),
   );
 
   router.use("/api", requireAuth);

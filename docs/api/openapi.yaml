@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Teacher Class Hub API
   version: 0.9.0
-  description: API hiện hành gồm Vocabulary Foundation V20A, Media Editor V20B và Assignment Workflow V20C; game/attempt/result V20D–V20E vẫn PLANNED.
+  description: API hiện hành gồm Vocabulary Foundation V20A, Media Editor V20B, Assignment Workflow V20C và Student Vocabulary Game Engine V20D; analytics/review V20E vẫn PLANNED.
 servers:
   - url: /
 security:
@@ -484,7 +484,6 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '429': {$ref: '#/components/responses/RateLimited'}
   /api/public/learning-assignments/{publicCode}:
-    x-implementation-status: PLANNED
     get:
       security: []
       tags: [Vocabulary public]
@@ -495,7 +494,6 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '429': {$ref: '#/components/responses/RateLimited'}
   /api/public/learning-assignments/{publicCode}/access:
-    x-implementation-status: PLANNED
     post:
       security: []
       tags: [Vocabulary public]
@@ -503,13 +501,12 @@ paths:
       parameters: [{$ref: '#/components/parameters/PublicCode'}]
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PublicAssignmentAccessRequest'}}}}
       responses:
-        '200': {description: Access hợp lệ, content: {application/json: {schema: {$ref: '#/components/schemas/PublicAssignmentAccessEnvelope'}}}}
+        '201': {description: Access hợp lệ, content: {application/json: {schema: {$ref: '#/components/schemas/PublicAssignmentAccessEnvelope'}}}}
         '400': {$ref: '#/components/responses/ValidationError'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '429': {$ref: '#/components/responses/RateLimited'}
   /api/public/learning-assignments/{publicCode}/attempts:
-    x-implementation-status: PLANNED
     post:
       security: []
       tags: [Vocabulary public]
@@ -524,7 +521,6 @@ paths:
         '422': {$ref: '#/components/responses/UnprocessableContent'}
         '429': {$ref: '#/components/responses/RateLimited'}
   /api/public/learning-attempts/{sessionToken}:
-    x-implementation-status: PLANNED
     get:
       security: []
       tags: [Vocabulary public]
@@ -536,7 +532,6 @@ paths:
         '409': {$ref: '#/components/responses/Conflict'}
         '429': {$ref: '#/components/responses/RateLimited'}
   /api/public/learning-attempts/{sessionToken}/answers:
-    x-implementation-status: PLANNED
     post:
       security: []
       tags: [Vocabulary public]
@@ -550,7 +545,6 @@ paths:
         '409': {$ref: '#/components/responses/Conflict'}
         '429': {$ref: '#/components/responses/RateLimited'}
   /api/public/learning-attempts/{sessionToken}/complete:
-    x-implementation-status: PLANNED
     post:
       security: []
       tags: [Vocabulary public]
@@ -1340,44 +1334,51 @@ components:
       properties:
         data:
           type: object
-          required: [audienceType, recipientIdentified, canStart, attemptsUsed, maxAttempts]
+          required: [sessionToken, expiresAt, audienceType, attemptsUsed, maxAttempts]
           properties:
+            sessionToken: {type: string, minLength: 43, maxLength: 200, description: Raw token chỉ trả cho client; server chỉ lưu SHA-256}
+            expiresAt: {type: string, format: date-time}
             audienceType: {$ref: '#/components/schemas/LearningAudienceType'}
-            recipientIdentified: {type: boolean}
-            canStart: {type: boolean}
+            displayName: {type: string, maxLength: 160}
             attemptsUsed: {type: integer, minimum: 0, nullable: true}
             maxAttempts: {type: integer, minimum: 1, maximum: 10, nullable: true}
     StartLearningAttemptRequest:
-      allOf:
-        - {$ref: '#/components/schemas/PublicAssignmentAccessRequest'}
-        - type: object
-          properties:
-            clientAttemptId: {type: string, format: uuid}
+      type: object
+      additionalProperties: false
+      required: [sessionToken]
+      properties:
+        sessionToken: {type: string, minLength: 43, maxLength: 200}
     LearningQuestion:
       type: object
-      required: [questionId, sequenceNumber, mechanic, presentation, prompt, options, answerState]
+      required: [id, sequenceNumber, mechanic, presentation, prompt, options, graded, answerSequence, status]
       properties:
-        questionId: {type: integer, format: int64}
+        id: {type: integer, format: int64}
         sequenceNumber: {type: integer, minimum: 1}
         mechanic: {$ref: '#/components/schemas/GameMechanic'}
         presentation: {type: string}
         prompt: {type: object, additionalProperties: true}
-        options: {type: array, minItems: 2, items: {type: object, additionalProperties: true}}
-        answerState: {type: string, enum: [UNANSWERED, INCORRECT_RETRY, CORRECT, EXHAUSTED]}
+        options: {type: array, items: {type: object, additionalProperties: true}}
+        graded: {type: boolean}
+        answerSequence: {type: integer, minimum: 1, maximum: 3}
+        status: {type: string, enum: [PENDING, IN_PROGRESS]}
     LearningAttemptSessionEnvelope:
       type: object
       required: [data]
       properties:
         data:
           type: object
-          required: [attemptId, sessionToken, expiresAt, status, ageBand, questions]
+          required: [attemptId, sessionToken, sessionExpiresAt, status, ageBand, answerFeedbackMode, progress, currentQuestion, generationWarnings]
           properties:
             attemptId: {type: integer, format: int64}
             sessionToken: {type: string, minLength: 43, maxLength: 128, description: Raw value không log/persist}
-            expiresAt: {type: string, format: date-time}
+            sessionExpiresAt: {type: string, format: date-time}
             status: {type: string, enum: [IN_PROGRESS, COMPLETED, ABANDONED]}
             ageBand: {$ref: '#/components/schemas/VocabularyAgeBand'}
-            questions: {type: array, items: {$ref: '#/components/schemas/LearningQuestion'}}
+            answerFeedbackMode: {type: string, enum: [IMMEDIATE, AFTER_COMPLETION]}
+            displayName: {type: string}
+            progress: {type: object, additionalProperties: true}
+            currentQuestion: {allOf: [{$ref: '#/components/schemas/LearningQuestion'}], nullable: true}
+            generationWarnings: {type: array, items: {type: string}}
     SubmitLearningAnswerRequest:
       type: object
       additionalProperties: false
@@ -1385,7 +1386,7 @@ components:
       properties:
         questionId: {type: integer, format: int64, minimum: 1}
         clientAnswerId: {type: string, format: uuid}
-        answerSequence: {type: integer, minimum: 1, maximum: 20}
+        answerSequence: {type: integer, minimum: 1, maximum: 3}
         submittedAnswer: {type: object, additionalProperties: true}
     SubmitLearningAnswerEnvelope:
       type: object
@@ -1397,9 +1398,9 @@ components:
           properties:
             clientAnswerId: {type: string, format: uuid}
             questionId: {type: integer, format: int64}
-            isCorrect: {type: boolean}
-            firstAttemptCorrect: {type: boolean}
-            finalCorrect: {type: boolean}
+            isCorrect: {type: boolean, nullable: true, description: null khi AFTER_COMPLETION}
+            firstAttemptCorrect: {type: boolean, nullable: true, description: null khi AFTER_COMPLETION}
+            finalCorrect: {type: boolean, nullable: true, description: null khi AFTER_COMPLETION}
             retryCount: {type: integer, minimum: 0}
             idempotent: {type: boolean}
             feedback: {type: object, additionalProperties: true}
@@ -1409,13 +1410,18 @@ components:
       properties:
         data:
           type: object
-          required: [attemptId, status, gradedExposureCount, firstTryCorrectCount, finalCorrectCount, rewards]
+          required: [attemptId, status, stars, sticker, message, gradedExposureCount, firstTryCorrectCount, finalCorrectCount, scorePercent, canPlayAgain]
           properties:
             attemptId: {type: integer, format: int64}
             status: {type: string, enum: [COMPLETED]}
+            stars: {type: integer, minimum: 1, maximum: 3}
+            sticker: {type: string}
+            message: {type: string}
             gradedExposureCount: {type: integer, minimum: 0}
             firstTryCorrectCount: {type: integer, minimum: 0}
             finalCorrectCount: {type: integer, minimum: 0}
+            scorePercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
+            canPlayAgain: {type: boolean}
             scorePercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
             rewards: {type: object, additionalProperties: true}
     LearningAssignmentResultsEnvelope:

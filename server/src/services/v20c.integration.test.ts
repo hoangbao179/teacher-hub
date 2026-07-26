@@ -18,6 +18,10 @@ test.after(async () => { if (enabled) await pool.end(); });
 async function clean() {
   await pool.query("SET FOREIGN_KEY_CHECKS=0");
   for (const table of [
+    "learning_attempt_answers",
+    "learning_attempt_questions",
+    "learning_attempts",
+    "learning_access_sessions",
     "learning_assignment_recipients",
     "learning_assignment_audience_students",
     "learning_assignment_activities",

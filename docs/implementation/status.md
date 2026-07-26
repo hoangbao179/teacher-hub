@@ -18,7 +18,9 @@ provider/fake, cache 24 giờ, secure WebP import, persistent media volume,
 same-origin delivery và responsive picker/bulk review; **PASS on 26/07/2026**.
 V20C-VOCABULARY-ASSIGNMENTS: **PASS on 26/07/2026**. Đã có draft/publish/close,
 snapshot item/activity/recipient, token SHA-256, QR, ba audience và wizard responsive.
-V20D–V20E vẫn **PLANNED**; chưa có public game runtime, attempt hoặc kết quả.
+V20D-VOCABULARY-GAMES: **PASS on 26/07/2026**. Đã có public access/session hash-only,
+seeded attempt snapshot, server grading/idempotency/adaptive retry, game UI mobile-first
+và kết quả sao/sticker. V20E analytics/review vẫn **PLANNED**.
 
 ## Status
 
@@ -113,6 +115,9 @@ screenshots folder with the same milestone name.
 V20C-VOCABULARY-ASSIGNMENTS: PASS on 26/07/2026. Evidence is in
 `.agent-reports/V20C-VOCABULARY-ASSIGNMENTS-implementation.md` và
 `.agent-reports/V20C-VOCABULARY-ASSIGNMENTS-verification.md`.
+V20D-VOCABULARY-GAMES: PASS on 26/07/2026. Evidence is in
+`.agent-reports/V20D-VOCABULARY-GAMES-implementation.md`,
+`.agent-reports/V20D-VOCABULARY-GAMES-verification.md` và thư mục screenshot cùng tên.
 
 ## Scope boundary
 
@@ -155,8 +160,8 @@ coverage without adding backend state or student identity.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
   be configured by the operator before the first production deployment.
-- V20A–V20C đã hoàn tất foundation, media editor và assignment workflow.
-  Public game runtime/attempt/results V20D–V20E và recovery-set tooling chưa tồn tại.
+- V20A–V20D đã hoàn tất foundation, media editor, assignment workflow và student
+  game runtime. Analytics/review/recovery-set tooling của V20E chưa triển khai.
 
 ## V17-PRODUCTION-CICD
 

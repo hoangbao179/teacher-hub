@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-**PLANNED**
+**PASS — 26/07/2026**
 
 ## Phạm vi
 

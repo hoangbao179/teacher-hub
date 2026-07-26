@@ -40,6 +40,9 @@ const VocabularyEditorPage = lazy(() => import("./features/vocabulary/pages/Voca
 const AssignmentListPage = lazy(() => import("./features/assignments/pages/AssignmentListPage").then((module) => ({ default: module.AssignmentListPage })));
 const AssignmentWizardPage = lazy(() => import("./features/assignments/pages/AssignmentWizardPage").then((module) => ({ default: module.AssignmentWizardPage })));
 const AssignmentDetailPage = lazy(() => import("./features/assignments/pages/AssignmentDetailPage").then((module) => ({ default: module.AssignmentDetailPage })));
+const PlayStartPage = lazy(() => import("./features/vocabulary-games/pages/PlayStartPage").then((module) => ({ default: module.PlayStartPage })));
+const PlayGamePage = lazy(() => import("./features/vocabulary-games/pages/PlayGamePage").then((module) => ({ default: module.PlayGamePage })));
+const PlayResultPage = lazy(() => import("./features/vocabulary-games/pages/PlayResultPage").then((module) => ({ default: module.PlayResultPage })));
 function AdminAuthBoundary() {
   return <AuthProvider><Outlet /></AuthProvider>;
 }
@@ -73,6 +76,9 @@ export function App() {
       <Route path="/hoc/:levelSlug/:unitSlug/result" element={<LearningResultPage />} />
       <Route path="/hoc/:levelSlug/:unitSlug/review" element={<LearningReviewPage />} />
       <Route path="/hoc/*" element={<LearningNotFoundPage />} />
+      <Route path="/play/:publicCode" element={<PlayStartPage />} />
+      <Route path="/play/session/:sessionToken" element={<PlayGamePage />} />
+      <Route path="/play/session/:sessionToken/result" element={<PlayResultPage />} />
       <Route element={<AdminAuthBoundary />}>
         <Route element={<GuestOnly />}>
           <Route path="/admin/login" element={<LoginPage />} />

@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 
+export function safeRequestPath(path: string): string {
+  return path
+    .replace(
+      /^\/api\/public\/learning-attempts\/[^/]+/u,
+      "/api/public/learning-attempts/:sessionToken",
+    );
+}
+
 export function requestContext(req: Request, res: Response, next: NextFunction): void {
   const supplied = req.header("x-request-id");
   req.requestId = supplied && /^[A-Za-z0-9._-]{8,100}$/.test(supplied) ? supplied : randomUUID();
@@ -8,7 +16,9 @@ export function requestContext(req: Request, res: Response, next: NextFunction):
   const started = performance.now();
   res.on("finish", () => console.log(JSON.stringify({
     level: "info", event: "http_request", requestId: req.requestId, method: req.method,
-    path: req.path, status: res.statusCode, durationMs: Math.round(performance.now() - started),
+    path: safeRequestPath(req.path),
+    status: res.statusCode,
+    durationMs: Math.round(performance.now() - started),
   })));
   next();
 }

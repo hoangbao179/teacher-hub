@@ -62,6 +62,8 @@ interface ItemRow extends RowDataPacket {
   tier: AssignmentSnapshotItem["tier"];
   illustration_snapshot_json: unknown;
   supports_image_game: number;
+  media_id?: number | null;
+  media_alt_text?: string | null;
 }
 
 interface ActivityRow extends RowDataPacket {
@@ -100,10 +102,19 @@ function mapList(row: AssignmentRow): AssignmentListItem {
 }
 
 function mapItem(row: ItemRow): AssignmentSnapshotItem {
-  const illustration = json<AssignmentSnapshotItem["illustrationSnapshot"]>(
+  let illustration = json<AssignmentSnapshotItem["illustrationSnapshot"]>(
     row.illustration_snapshot_json,
     { kind: "NONE" },
   );
+  if (illustration.kind === "STORED_MEDIA" && row.media_id) {
+    illustration = {
+      ...illustration,
+      mediaId: Number(row.media_id),
+      mediaUrl: `/api/public/vocabulary-media/${Number(row.media_id)}?variant=GAME`,
+      thumbnailUrl: `/api/public/vocabulary-media/${Number(row.media_id)}?variant=THUMBNAIL`,
+      ...(row.media_alt_text ? { altText: row.media_alt_text } : {}),
+    };
+  }
   return {
     id: Number(row.id),
     ...(row.source_vocabulary_item_id
@@ -199,7 +210,11 @@ export class AssignmentRepository {
     );
     if (!rows[0]) return null;
     const [items] = await pool.query<ItemRow[]>(
-      "SELECT * FROM learning_assignment_items WHERE assignment_id=? ORDER BY display_order",
+      `SELECT i.*,m.id media_id,m.alt_text media_alt_text
+       FROM learning_assignment_items i
+       LEFT JOIN vocabulary_media m
+         ON m.id=i.stored_media_id AND m.status='ACTIVE'
+       WHERE i.assignment_id=? ORDER BY i.display_order`,
       [id],
     );
     const [activities] = await pool.query<ActivityRow[]>(
@@ -220,6 +235,52 @@ export class AssignmentRepository {
         : Number(row.vocabulary_set_id),
       classId: row.class_id == null ? null : Number(row.class_id),
       selectedStudentIds: audience.map((value) => Number(value.student_id)),
+      publicCode: row.public_code,
+      templateCode: row.template_code,
+      availableFrom: dateTime(row.available_from),
+      maxAttempts: row.max_attempts == null ? null : Number(row.max_attempts),
+      passScore: row.pass_score == null ? null : Number(row.pass_score),
+      answerFeedbackMode: row.answer_feedback_mode,
+      shuffleQuestions: Boolean(row.shuffle_questions),
+      publishedAt: dateTime(row.published_at),
+      closedAt: dateTime(row.closed_at),
+      items: items.map(mapItem),
+      activities: activities.map(mapActivity),
+    };
+  }
+
+  async publicDetail(publicCode: string): Promise<AssignmentDetail | null> {
+    const [rows] = await pool.query<AssignmentRow[]>(
+      `SELECT a.*,
+        (SELECT COUNT(*) FROM learning_assignment_recipients r
+          WHERE r.assignment_id=a.id) recipient_count,
+        (SELECT COUNT(*) FROM learning_assignment_items i
+          WHERE i.assignment_id=a.id) item_count
+       FROM learning_assignments a
+       WHERE a.public_code=? AND a.status='PUBLISHED' LIMIT 1`,
+      [publicCode],
+    );
+    if (!rows[0]) return null;
+    const row = rows[0];
+    const [items] = await pool.query<ItemRow[]>(
+      `SELECT i.*,m.id media_id,m.alt_text media_alt_text
+       FROM learning_assignment_items i
+       LEFT JOIN vocabulary_media m
+         ON m.id=i.stored_media_id AND m.status='ACTIVE'
+       WHERE i.assignment_id=? ORDER BY i.display_order`,
+      [row.id],
+    );
+    const [activities] = await pool.query<ActivityRow[]>(
+      "SELECT * FROM learning_assignment_activities WHERE assignment_id=? ORDER BY display_order",
+      [row.id],
+    );
+    return {
+      ...mapList(row),
+      teacherUserId: Number(row.teacher_user_id),
+      instruction: row.instruction,
+      vocabularySetId: row.vocabulary_set_id == null ? null : Number(row.vocabulary_set_id),
+      classId: row.class_id == null ? null : Number(row.class_id),
+      selectedStudentIds: [],
       publicCode: row.public_code,
       templateCode: row.template_code,
       availableFrom: dateTime(row.available_from),
@@ -444,7 +505,8 @@ export class AssignmentRepository {
       if (assignment.audience_type === "OPEN_LINK") {
         await connection.execute(
           `UPDATE learning_assignments SET open_access_token_hash=?,
-            open_access_revoked_at=NULL,version=version+1 WHERE id=?`,
+            open_access_revoked_at=NULL,open_access_version=open_access_version+1,
+            version=version+1 WHERE id=?`,
           [input.tokenHash, input.assignmentId],
         );
       } else {
@@ -459,7 +521,8 @@ export class AssignmentRepository {
         if (!recipients[0]) throw this.notFound();
         await connection.execute(
           `UPDATE learning_assignment_recipients
-           SET access_token_hash=?,token_revoked_at=NULL WHERE id=?`,
+           SET access_token_hash=?,token_revoked_at=NULL,
+             access_version=access_version+1 WHERE id=?`,
           [input.tokenHash, input.recipientId],
         );
         result = {
@@ -500,7 +563,7 @@ export class AssignmentRepository {
       if (assignment.audience_type === "OPEN_LINK") {
         await connection.execute(
           `UPDATE learning_assignments SET open_access_revoked_at=CURRENT_TIMESTAMP,
-            version=version+1 WHERE id=?`,
+            open_access_version=open_access_version+1,version=version+1 WHERE id=?`,
           [assignmentId],
         );
       } else {
@@ -509,7 +572,8 @@ export class AssignmentRepository {
         const [result] = await connection.execute<ResultSetHeader>(
           `UPDATE learning_assignment_recipients r
            JOIN learning_assignments a ON a.id=r.assignment_id
-           SET r.token_revoked_at=CURRENT_TIMESTAMP
+           SET r.token_revoked_at=CURRENT_TIMESTAMP,
+             r.access_version=r.access_version+1
            WHERE r.id=? AND r.assignment_id=? AND a.teacher_user_id=?`,
           [recipientId, assignmentId, teacherUserId],
         );
@@ -560,11 +624,13 @@ export class AssignmentRepository {
       async (connection) => {
         await connection.execute(
           `UPDATE learning_assignments SET status='CLOSED',closed_at=CURRENT_TIMESTAMP,
-            open_access_revoked_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`,
+            open_access_revoked_at=CURRENT_TIMESTAMP,
+            open_access_version=open_access_version+1,version=version+1 WHERE id=?`,
           [id],
         );
         await connection.execute(
-          `UPDATE learning_assignment_recipients SET token_revoked_at=CURRENT_TIMESTAMP
+          `UPDATE learning_assignment_recipients SET token_revoked_at=CURRENT_TIMESTAMP,
+             access_version=access_version+1
            WHERE assignment_id=? AND token_revoked_at IS NULL`,
           [id],
         );
