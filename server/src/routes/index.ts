@@ -4,6 +4,23 @@ import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/async-handler";
 import { loginRateLimit } from "../middleware/login-rate-limit";
 import { uploadLegacyWorkbook } from "../middleware/legacy-import-upload";
+import { fixedWindowRateLimit } from "../middleware/fixed-window-rate-limit";
+
+const vocabularySearchRateLimit = fixedWindowRateLimit({
+  limit: 30,
+  windowMs: 60_000,
+  code: "VOCABULARY_SEARCH_RATE_LIMITED",
+});
+const vocabularyImportRateLimit = fixedWindowRateLimit({
+  limit: 12,
+  windowMs: 60_000,
+  code: "VOCABULARY_IMPORT_RATE_LIMITED",
+});
+const vocabularyPublicMediaRateLimit = fixedWindowRateLimit({
+  limit: 60,
+  windowMs: 60_000,
+  code: "VOCABULARY_MEDIA_RATE_LIMITED",
+});
 
 export function createRouter(): Router {
   const router = Router();
@@ -12,12 +29,28 @@ export function createRouter(): Router {
   router.post("/api/auth/login", loginRateLimit, asyncHandler(controllers.auth.login));
   router.get("/api/auth/me", requireAuth, asyncHandler(controllers.auth.me));
   router.post("/api/auth/logout", requireAuth, asyncHandler(controllers.auth.logout));
+  router.get(
+    "/api/public/vocabulary-media/:mediaId",
+    vocabularyPublicMediaRateLimit,
+    asyncHandler(controllers.vocabularyMedia.serve),
+  );
 
   router.use("/api", requireAuth);
   router.get("/api/dashboard", asyncHandler(controllers.dashboard.get));
   router.get("/api/vocabulary/topics", asyncHandler(controllers.vocabulary.listTopics));
   router.get("/api/vocabulary/topics/:slug", asyncHandler(controllers.vocabulary.topicDetail));
   router.post("/api/vocabulary/topic-suggestions", asyncHandler(controllers.vocabulary.suggest));
+  router.get("/api/vocabulary/media/status", asyncHandler(controllers.vocabularyMedia.status));
+  router.get(
+    "/api/vocabulary/media/search",
+    vocabularySearchRateLimit,
+    asyncHandler(controllers.vocabularyMedia.search),
+  );
+  router.post(
+    "/api/vocabulary/media/import",
+    vocabularyImportRateLimit,
+    asyncHandler(controllers.vocabularyMedia.import),
+  );
   router.get("/api/vocabulary/sets", asyncHandler(controllers.vocabulary.listSets));
   router.post("/api/vocabulary/sets", asyncHandler(controllers.vocabulary.createSet));
   router.post(

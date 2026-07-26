@@ -5,6 +5,10 @@ import { parseRetryAfterSeconds } from "../auth/retryAfter";
 const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 let unauthorizedHandler: (() => void) | null = null;
 
+export function apiUrl(path: string): string {
+  return `${baseUrl}${path}`;
+}
+
 export function setUnauthorizedHandler(handler: (() => void) | null): void {
   unauthorizedHandler = handler;
 }

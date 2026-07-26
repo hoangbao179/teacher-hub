@@ -39,6 +39,11 @@ services:
       GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:-}
       GOOGLE_DRIVE_OWNER_LABEL: ${GOOGLE_DRIVE_OWNER_LABEL:-Cô Vy}
       GOOGLE_SHEETS_TEMPLATE_VERSION: ${GOOGLE_SHEETS_TEMPLATE_VERSION:-v1}
+      PIXABAY_ENABLED: ${PIXABAY_ENABLED:-false}
+      PIXABAY_API_KEY: ${PIXABAY_API_KEY:-}
+      VOCABULARY_MEDIA_STORAGE_PATH: /app/data/vocabulary-media
+    volumes:
+      - vocabulary-media:/app/data/vocabulary-media
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:4000/ready"]
       interval: 30s
@@ -57,3 +62,4 @@ services:
     ports: ["80:8080"]
 volumes:
   mysql-data:
+  vocabulary-media:

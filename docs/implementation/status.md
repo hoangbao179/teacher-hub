@@ -13,8 +13,10 @@ fallback, synchronized JSON-LD and responsive evidence in `.agent-reports`.
 
 V20A-VOCABULARY-FOUNDATION: **PASS on 26/07/2026**. Shared contract, migration
 `0016`, 20-topic catalog, protected set/topic API và responsive admin UI đã được
-triển khai. V20B–V20E vẫn **PLANNED**; chưa có provider/download, media volume,
-assignment, public token hoặc game runtime.
+triển khai. V20B-VOCABULARY-MEDIA-EDITOR đã triển khai migration `0017`, Pixabay
+provider/fake, cache 24 giờ, secure WebP import, persistent media volume,
+same-origin delivery và responsive picker/bulk review; **PASS on 26/07/2026**.
+V20C–V20E vẫn **PLANNED**, chưa có assignment, public token hoặc game runtime.
 
 ## Status
 
@@ -148,8 +150,8 @@ coverage without adding backend state or student identity.
 - Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
 - Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
   be configured by the operator before the first production deployment.
-- V20A đã hoàn tất foundation/topic catalog. V20B–V20E vẫn là kế hoạch:
-  Pixabay key/enable config, provider download, `vocabulary-media` volume,
+- V20A đã hoàn tất foundation/topic catalog. V20B đã triển khai Pixabay
+  key/enable config, provider download, `vocabulary-media` volume,
   assignment/public token/game/results và recovery-set tooling chưa tồn tại.
 
 ## V17-PRODUCTION-CICD

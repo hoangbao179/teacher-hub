@@ -1,10 +1,11 @@
 import { createApp } from "./app";
 import { config } from "./config/config";
 import { pool } from "./db/pool";
-import { googleSheetSyncWorker } from "./container";
+import { googleSheetSyncWorker, vocabularyMediaService } from "./container";
 
 async function start(): Promise<void> {
   await pool.query("SELECT 1");
+  await vocabularyMediaService.initialize();
   const server = createApp().listen(config.port, () =>
     console.log(JSON.stringify({ level: "info", event: "server_started", port: config.port, environment: config.nodeEnv })),
   );

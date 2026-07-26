@@ -53,6 +53,11 @@ services:
       GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:-}
       GOOGLE_DRIVE_OWNER_LABEL: ${GOOGLE_DRIVE_OWNER_LABEL:-Cô Vy}
       GOOGLE_SHEETS_TEMPLATE_VERSION: ${GOOGLE_SHEETS_TEMPLATE_VERSION:-v1}
+      PIXABAY_ENABLED: ${PIXABAY_ENABLED:-false}
+      PIXABAY_API_KEY: ${PIXABAY_API_KEY:-}
+      VOCABULARY_MEDIA_STORAGE_PATH: /app/data/vocabulary-media
+    volumes:
+      - vocabulary-media:/app/data/vocabulary-media
     networks:
       - backend
     healthcheck:
@@ -117,5 +122,6 @@ networks:
 
 volumes:
   mysql-data:
+  vocabulary-media:
   caddy-data:
   caddy-config:

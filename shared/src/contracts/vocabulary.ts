@@ -31,6 +31,27 @@ export type VocabularyIllustrationKind =
 export const vocabularySetStatuses = ["ACTIVE", "ARCHIVED"] as const;
 export type VocabularySetStatus = (typeof vocabularySetStatuses)[number];
 
+export const vocabularyImageMediaTypes = [
+  "ALL",
+  "PHOTO",
+  "ILLUSTRATION",
+  "VECTOR",
+] as const;
+export type VocabularyImageMediaType =
+  (typeof vocabularyImageMediaTypes)[number];
+
+export const vocabularyImageOrientations = [
+  "ALL",
+  "HORIZONTAL",
+  "VERTICAL",
+] as const;
+export type VocabularyImageOrientation =
+  (typeof vocabularyImageOrientations)[number];
+
+export const vocabularyImageProviders = ["PIXABAY"] as const;
+export type VocabularyImageProvider =
+  (typeof vocabularyImageProviders)[number];
+
 export interface VocabularyPageQuery {
   search?: string;
   ageBand?: LearningAgeBand;
@@ -190,6 +211,60 @@ export interface VocabularySetDetail extends VocabularySetListItem {
   items: VocabularySetItem[];
 }
 
+export interface VocabularyMediaSearchQuery {
+  query: string;
+  page?: number;
+  pageSize?: number;
+  mediaType?: VocabularyImageMediaType;
+  orientation?: VocabularyImageOrientation;
+}
+
+export interface VocabularyMediaSearchItem {
+  provider: VocabularyImageProvider;
+  providerAssetId: string;
+  previewUrl: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  mediaType: Exclude<VocabularyImageMediaType, "ALL">;
+  contributorName: string;
+  attributionText: string;
+  sourcePageUrl: string;
+}
+
+export interface VocabularyMediaSearchResponse {
+  provider: VocabularyImageProvider;
+  safeSearch: true;
+  cacheExpiresAt: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  items: VocabularyMediaSearchItem[];
+}
+
+export interface ImportVocabularyMediaRequest {
+  provider: VocabularyImageProvider;
+  providerAssetId: string;
+  altText: string;
+}
+
+export interface VocabularyStoredMedia {
+  id: number;
+  provider: VocabularyImageProvider;
+  providerAssetId: string;
+  url: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  mimeType: "image/webp";
+  byteSize: number;
+  altText: string;
+  contributorName: string;
+  attributionText: string;
+  sourcePageUrl: string;
+  licenseLabel: string;
+}
+
 export type VocabularyTopicPage = PageResult<VocabularyTopicListItem>;
 export type VocabularySetPage = PageResult<VocabularySetListItem>;
 
@@ -200,6 +275,11 @@ export type VocabularyErrorCode =
   | "DUPLICATE_VOCABULARY_ITEM"
   | "VOCABULARY_LIMIT_EXCEEDED"
   | "INVALID_AGE_BAND"
+  | "IMAGE_PROVIDER_DISABLED"
+  | "IMAGE_PROVIDER_UNAVAILABLE"
+  | "IMAGE_CACHE_MISS"
+  | "IMAGE_IMPORT_REJECTED"
+  | "VOCABULARY_MEDIA_NOT_FOUND"
   | "VALIDATION_ERROR";
 
 export interface VocabularyPastePreviewRow {

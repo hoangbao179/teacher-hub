@@ -13,11 +13,12 @@ MySQL/API/Web dùng network backend nội bộ; Web/Caddy dùng network edge. Ch
 host ports. Volume có tên giữ dữ liệu MySQL và trạng thái certificate/config Caddy. Không
 thêm Redis, queue, worker hoặc API replica trong V1.
 
-Vocabulary V20 đang **PLANNED** bổ sung named volume
+Vocabulary Media Editor V20B dùng named volume
 `vocabulary-media:/app/data/vocabulary-media` gắn vào API. Binary ảnh đã chọn
 không lưu trong MySQL hoặc writable layer tạm của container. Media được phục vụ
 same-origin qua `/api/public/vocabulary-media/:mediaId`; volume phải được đưa vào
-capacity monitoring, backup/restore và restore drill trước khi V20E release.
+capacity monitoring, backup/restore và restore drill. Nếu Pixabay tắt hoặc thiếu
+key thì API vẫn khởi động, còn editor tiếp tục dùng emoji/public asset.
 
 Mỗi deploy tạo backup trước khi chạy forward-only migration. Khi V20 media được
 enable, backup pre-deploy phải tạo một recovery set nhất quán gồm MySQL dump,

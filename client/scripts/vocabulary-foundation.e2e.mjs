@@ -11,6 +11,7 @@ const apiPort = 4120;
 const webPort = 5200;
 const origin = `http://127.0.0.1:${webPort}`;
 const artifactDir = path.join(root, ".agent-reports", "V20A-VOCABULARY-FOUNDATION");
+const mediaArtifactDir = path.join(root, ".agent-reports", "V20B-VOCABULARY-MEDIA-EDITOR");
 const password = "vocabulary-e2e-password-123";
 const testEnv = {
   ...process.env,
@@ -89,6 +90,7 @@ async function auditPage(page, mobile) {
 
 try {
   fs.mkdirSync(artifactDir, { recursive: true });
+  fs.mkdirSync(mediaArtifactDir, { recursive: true });
   run("node", ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
   run("npm", ["run", "db:migrate"], path.join(root, "server"));
   run("npm", ["run", "db:bootstrap-admin"], path.join(root, "server"));
@@ -124,7 +126,11 @@ try {
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
 
-  for (const viewport of [{ width: 390, height: 844, suffix: "mobile" }, { width: 1440, height: 900, suffix: "desktop" }]) {
+  for (const viewport of [
+    { width: 360, height: 800, suffix: "mobile" },
+    { width: 390, height: 844, suffix: "mobile" },
+    { width: 1440, height: 900, suffix: "desktop" },
+  ]) {
     const context = await browser.newContext({ viewport, reducedMotion: "reduce" });
     await context.addInitScript((token) => localStorage.setItem("teacher-token", token), login.token);
     const page = await context.newPage();
@@ -174,11 +180,68 @@ try {
     await page.getByText("Các từ trong bộ").waitFor();
     await auditPage(page, viewport.width < 600);
     await page.screenshot({ path: path.join(artifactDir, `set-detail-${viewport.suffix}-${viewport.width}x${viewport.height}.png`), fullPage: false });
+    await page.screenshot({ path: path.join(mediaArtifactDir, `word-editor-${viewport.suffix}-${viewport.width}x${viewport.height}.png`), fullPage: false });
+
+    const mediaAccordion = page.locator(".MuiAccordion-root").last();
+    await mediaAccordion.locator(".MuiAccordionSummary-root").click();
+    const findImageButton = mediaAccordion.locator('button:has([data-testid="ImageSearchIcon"])');
+    await findImageButton.click();
+    await page.locator('[data-testid="vocabulary-image-picker"]').waitFor();
+    await page.getByText(/Tìm ảnh đang tắt/).waitFor();
+    await page.screenshot({ path: path.join(mediaArtifactDir, `provider-disabled-${viewport.suffix}-${viewport.width}x${viewport.height}.png`), fullPage: false });
+    await page.locator('[data-testid="vocabulary-image-picker"] .MuiDialogActions-root button').click();
+    await page.locator('[data-testid="vocabulary-image-picker"]').waitFor({ state: "hidden" });
+
+    const searchResult = {
+      provider: "PIXABAY",
+      safeSearch: true,
+      cacheExpiresAt: "2026-07-27T00:00:00.000Z",
+      page: 1,
+      pageSize: 20,
+      total: 3,
+      items: [1, 2, 3].map((id) => ({
+        provider: "PIXABAY",
+        providerAssetId: `mock-${id}`,
+        previewUrl: `${origin}/images/teacher-english-hero-720.jpg`,
+        thumbnailUrl: `${origin}/images/teacher-english-hero-720.jpg`,
+        width: 640,
+        height: 640,
+        mediaType: id === 1 ? "PHOTO" : "ILLUSTRATION",
+        contributorName: `Pixabay ${id}`,
+        attributionText: `Ảnh của Pixabay ${id}`,
+        sourcePageUrl: `https://pixabay.com/photos/mock-${id}/`,
+      })),
+    };
+    await page.route("**/api/vocabulary/media/status", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: { enabled: true, provider: "PIXABAY" } }),
+    }));
+    await page.route("**/api/vocabulary/media/search?*", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: searchResult }),
+    }));
+    await findImageButton.click();
+    const picker = page.locator('[data-testid="vocabulary-image-picker"]');
+    await picker.locator('input[maxlength="100"]').fill("family gia đình");
+    await picker.locator('button[type="submit"]').click();
+    await picker.getByText("Pixabay 1").waitFor();
+    await auditPage(page, viewport.width < 600);
+    await page.screenshot({ path: path.join(mediaArtifactDir, `image-picker-${viewport.suffix}-${viewport.width}x${viewport.height}.png`), fullPage: false });
+    await picker.locator(".MuiDialogActions-root button").click();
+    await picker.waitFor({ state: "hidden" });
+
+    await page.locator('button:has([data-testid="CollectionsIcon"])').first().click();
+    await page.locator('[data-testid="vocabulary-bulk-image-suggestions"]').waitFor();
+    await page.locator('[data-testid="vocabulary-bulk-image-suggestions"] button[aria-label]').first().waitFor();
+    await auditPage(page, viewport.width < 600);
+    await page.screenshot({ path: path.join(mediaArtifactDir, `bulk-suggestions-${viewport.suffix}-${viewport.width}x${viewport.height}.png`), fullPage: false });
     await context.close();
   }
 
   await api(`/api/vocabulary/sets/${createdId}/archive`, { method: "POST", headers: auth, body: "{}" });
-  console.log(`Vocabulary V20A E2E PASS; screenshots: ${artifactDir}`);
+  console.log(`Vocabulary V20A/V20B E2E PASS; screenshots: ${artifactDir}, ${mediaArtifactDir}`);
 } finally {
   if (browser) await browser.close();
   for (const child of children.reverse()) child.kill();

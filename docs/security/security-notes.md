@@ -42,7 +42,10 @@ MIT-or-GPL là dependency transitively distributed, không có copyleft blocker 
 định cho source ứng dụng. Outdated major Node types/TypeScript được hoãn vì ngoài M6;
 review manifest không tìm thấy dependency trực tiếp không dùng.
 
-## Vocabulary assignments and games V20 (PLANNED)
+## Vocabulary media V20B và assignments/games V20C–V20E
+
+Các control image import/search/media bên dưới đã được triển khai ở V20B.
+Token, assignment và answer control vẫn là contract PLANNED cho V20C–V20E.
 
 - Public route `/api/public/*` của V20 phải đăng ký trước
   `router.use("/api", requireAuth)`; teacher route vẫn dùng Bearer auth.

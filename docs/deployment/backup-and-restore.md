@@ -1,7 +1,7 @@
 # Backup and restore
 
-> Vocabulary media recovery set: **PLANNED cho V20B/V20E; chưa có trong Compose
-> hoặc script production hiện tại.**
+> Từ V20B, recovery set production bắt buộc gồm cả SQL dump và named volume
+> `vocabulary-media`; hai artifact phải dùng chung manifest/checksum.
 
 `npm run db:backup -- ./backups/YYYYMMDD-predeploy.sql` gọi `mysqldump` với
 transaction nhất quán; credentials lấy từ environment và không in ra log.
@@ -22,7 +22,7 @@ chu kỳ PAID và login. `--confirm` chỉ xác nhận ý định; operator vẫ
 
 ## Recovery set có vocabulary media
 
-Khi V20 được enable, một backup hợp lệ không còn chỉ là SQL dump. Operator/script
+Khi V20B được deploy, một backup hợp lệ không còn chỉ là SQL dump. Operator/script
 phải:
 
 1. lấy deployment lock và tạm chặn mutation tạo/import media;
@@ -33,6 +33,17 @@ phải:
    byte size và SHA-256 của từng file;
 5. chỉ mở mutation sau khi cả hai artifact và checksum thành công;
 6. mã hóa/copy recovery set ra ngoài host như một đơn vị.
+
+Smoke test không cần dữ liệu thật:
+
+```bash
+npm run test:media-recovery
+```
+
+Command tạo volume fixture cô lập, backup, manifest SHA-256, restore, so checksum
+và xác nhận cả hai production Compose đều mount đúng named volume. Đây là smoke
+cho cơ chế file; production drill vẫn phải kết hợp SQL dump, deployment lock và
+archive volume read-only như checklist bên dưới.
 
 Import media ghi file hoàn chỉnh bằng temp file trong chính volume rồi atomic
 rename trước transaction tham chiếu DB. Vì vậy recovery set có thể có orphan file

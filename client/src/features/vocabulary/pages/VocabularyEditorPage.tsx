@@ -3,6 +3,9 @@ import {
   ArrowBack,
   ContentCopy,
   DeleteOutlined,
+  Collections,
+  ImageSearch,
+  HideImage,
   Save,
 } from "@mui/icons-material";
 import {
@@ -30,6 +33,8 @@ import type {
   VocabularySetDetail,
   VocabularySetItemInput,
   VocabularySetSourceType,
+  VocabularyIllustrationInput,
+  VocabularyStoredMedia,
   VocabularyTopicListItem,
   VocabularyTopicSuggestionItem,
 } from "@teacher/shared";
@@ -52,6 +57,9 @@ import {
   parseVocabularyPaste,
   publicUnitSnapshot,
 } from "../vocabularyEditor";
+import { VocabularyImagePicker } from "../components/VocabularyImagePicker";
+import { VocabularyBulkImageSuggestions } from "../components/VocabularyBulkImageSuggestions";
+import { vocabularyMediaUrl } from "../../../api/vocabularyMedia";
 
 type SourceMode = "TOPIC_CATALOG" | "MANUAL" | "PUBLIC_UNIT";
 
@@ -87,6 +95,9 @@ export function VocabularyEditorPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [imagePickerIndex, setImagePickerIndex] = useState<number | null>(null);
+  const [bulkImagesOpen, setBulkImagesOpen] = useState(false);
+  const [illustrationOverrides, setIllustrationOverrides] = useState<Record<string, VocabularyIllustrationInput>>({});
 
   useEffect(() => {
     void listVocabularyTopics({ pageSize: 50 }).then((result) => setTopics(result.data)).catch((value: Error) => setError(value.message));
@@ -126,9 +137,19 @@ export function VocabularyEditorPage() {
   }, [ageBand, mode, setId, targetCount, topicSlug]);
 
   const selectedSuggestions = useMemo(() => suggested.filter((item) => item.selected), [suggested]);
+  const illustrationKey = (item: Pick<VocabularySetItemInput, "word" | "meaningVi">) =>
+    `${item.word.normalize("NFKC").trim().toLowerCase()}\u0000${item.meaningVi.normalize("NFKC").trim().toLowerCase()}`;
+  const applyIllustrationOverride = <T extends VocabularySetItemInput>(item: T): T => {
+    const illustration = illustrationOverrides[illustrationKey(item)];
+    return illustration ? {
+      ...item,
+      illustration,
+      supportsImageGame: illustration.kind !== "NONE",
+    } : item;
+  };
   const currentItems = setId || mode === "MANUAL" ? items
     : mode === "TOPIC_CATALOG"
-      ? selectedSuggestions.map((item, index) => ({
+      ? selectedSuggestions.map((item, index) => applyIllustrationOverride({
         sourceTopicWordId: item.id,
         displayOrder: index + 1,
         word: item.word,
@@ -142,7 +163,7 @@ export function VocabularyEditorPage() {
         supportsImageGame: item.supportsImageGame,
       }))
       : publicUnitId
-        ? publicUnitSnapshot(publishedUnits.find((unit) => unit.id === publicUnitId)!, ageBand).items.map((item, index) => ({
+        ? publicUnitSnapshot(publishedUnits.find((unit) => unit.id === publicUnitId)!, ageBand).items.map((item, index) => applyIllustrationOverride({
           displayOrder: index + 1,
           word: item.word,
           meaningVi: item.meaningVi,
@@ -238,6 +259,30 @@ export function VocabularyEditorPage() {
     setNotice(`Đã đọc ${preview.validCount} từ. Hãy kiểm tra trước khi lưu.`);
   };
 
+  const changeIllustration = (
+    index: number,
+    illustration: VocabularyIllustrationInput,
+  ) => {
+    const item = currentItems[index];
+    if (setId || mode === "MANUAL") {
+      setItems((value) => value.map((current, itemIndex) =>
+        itemIndex === index
+          ? { ...current, illustration, supportsImageGame: illustration.kind !== "NONE" }
+          : current));
+    } else {
+      setIllustrationOverrides((value) => ({
+        ...value,
+        [illustrationKey(item)]: illustration,
+      }));
+    }
+    setDirty(true);
+    setNotice("");
+  };
+
+  const applyStoredMedia = (index: number, media: VocabularyStoredMedia) => {
+    changeIllustration(index, { kind: "STORED_MEDIA", mediaId: media.id });
+  };
+
   if (loading) return <Stack sx={{ alignItems: "center", py: 8 }}><CircularProgress /></Stack>;
   return (
     <Stack spacing={2.25} data-testid={setId ? "vocabulary-detail-page" : "vocabulary-new-page"}>
@@ -322,7 +367,10 @@ export function VocabularyEditorPage() {
       <Box>
         <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1 }}>
           <Typography component="h2" variant="h6">{setId ? "Các từ trong bộ" : "4. Kiểm tra từ"} <Chip size="small" label={`${currentItems.length}/100`} /></Typography>
-          {(setId || mode === "MANUAL") && !archived && <Button onClick={() => { setItems((value) => [...value, emptyItem(value.length + 1)]); setDirty(true); }}>Thêm từ</Button>}
+          <Stack direction="row" sx={{ gap: 0.5, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {!archived && currentItems.some((item) => item.illustration.kind === "NONE") && <Button startIcon={<Collections />} onClick={() => setBulkImagesOpen(true)}>Gợi ý ảnh cho tất cả</Button>}
+            {(setId || mode === "MANUAL") && !archived && <Button onClick={() => { setItems((value) => [...value, emptyItem(value.length + 1)]); setDirty(true); }}>Thêm từ</Button>}
+          </Stack>
         </Stack>
         {currentItems.length === 0 && <Alert severity="info">Chưa có từ nào được chọn.</Alert>}
         <Stack spacing={1}>
@@ -332,6 +380,9 @@ export function VocabularyEditorPage() {
               item={item}
               index={index}
               readOnly={archived || (!setId && mode !== "MANUAL")}
+              mediaReadOnly={archived}
+              onFindImage={() => setImagePickerIndex(index)}
+              onRemoveImage={() => changeIllustration(index, { kind: "NONE" })}
               onChange={(next) => { setItems((value) => value.map((current, itemIndex) => itemIndex === index ? next : current)); setDirty(true); }}
               onRemove={() => { setItems((value) => value.filter((_current, itemIndex) => itemIndex !== index).map((current, itemIndex) => ({ ...current, displayOrder: itemIndex + 1 }))); setDirty(true); }}
             />
@@ -340,6 +391,19 @@ export function VocabularyEditorPage() {
       </Box>
 
       {!archived && <StickyActionBar><Button fullWidth={false} variant="contained" startIcon={<Save />} disabled={saving || currentItems.length === 0 || !title.trim()} onClick={() => void save()}>{saving ? "Đang lưu…" : "Lưu bộ từ"}</Button></StickyActionBar>}
+      {imagePickerIndex != null && currentItems[imagePickerIndex] && <VocabularyImagePicker
+        open
+        word={currentItems[imagePickerIndex].word}
+        meaningVi={currentItems[imagePickerIndex].meaningVi}
+        onClose={() => setImagePickerIndex(null)}
+        onSelect={(media) => applyStoredMedia(imagePickerIndex, media)}
+      />}
+      {bulkImagesOpen && <VocabularyBulkImageSuggestions
+        open={bulkImagesOpen}
+        items={currentItems}
+        onClose={() => setBulkImagesOpen(false)}
+        onSelect={applyStoredMedia}
+      />}
       <ConfirmationDialog open={archiveOpen} title="Lưu trữ bộ từ?" confirmLabel="Lưu trữ" destructive busy={saving} onCancel={() => setArchiveOpen(false)} onConfirm={() => void archive()}>
         Bộ từ sẽ không thể chỉnh sửa, nhưng toàn bộ dữ liệu và lịch sử vẫn được giữ. Bạn vẫn có thể nhân bản để dùng lại.
       </ConfirmationDialog>
@@ -347,12 +411,15 @@ export function VocabularyEditorPage() {
   );
 }
 
-function VocabularyItemEditor({ item, index, readOnly, onChange, onRemove }: {
+function VocabularyItemEditor({ item, index, readOnly, mediaReadOnly, onChange, onRemove, onFindImage, onRemoveImage }: {
   item: VocabularySetItemInput;
   index: number;
   readOnly: boolean;
+  mediaReadOnly: boolean;
   onChange: (value: VocabularySetItemInput) => void;
   onRemove: () => void;
+  onFindImage: () => void;
+  onRemoveImage: () => void;
 }) {
   return (
     <Accordion variant="outlined" disableGutters>
@@ -365,6 +432,19 @@ function VocabularyItemEditor({ item, index, readOnly, onChange, onRemove }: {
       <AccordionDetails>
         <Divider sx={{ mb: 1.5 }} />
         <Stack spacing={1.5}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "96px minmax(0, 1fr)", sm: "128px minmax(0, 1fr)" }, gap: 1.5, alignItems: "center" }}>
+            <IllustrationPreview item={item} />
+            <Stack spacing={0.75}>
+              <Typography variant="subtitle2">Hình minh họa</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {item.illustration.kind === "NONE" ? "Chưa có hình" : item.illustration.kind === "STORED_MEDIA" ? "Ảnh đã lưu an toàn" : item.illustration.kind === "EMOJI" ? "Emoji từ Unit công khai" : "Ảnh nội bộ từ Unit công khai"}
+              </Typography>
+              {!mediaReadOnly && <Stack direction="row" sx={{ gap: 0.5, flexWrap: "wrap" }}>
+                <Button size="small" variant="outlined" startIcon={<ImageSearch />} onClick={onFindImage}>{item.illustration.kind === "NONE" ? "Tìm ảnh" : "Đổi ảnh"}</Button>
+                {item.illustration.kind !== "NONE" && <Button size="small" color="error" startIcon={<HideImage />} onClick={onRemoveImage}>Bỏ hình</Button>}
+              </Stack>}
+            </Stack>
+          </Box>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
             <TextField label="Từ tiếng Anh" value={item.word} disabled={readOnly} onChange={(event) => onChange({ ...item, word: event.target.value })} />
             <TextField label="Nghĩa tiếng Việt" value={item.meaningVi} disabled={readOnly} onChange={(event) => onChange({ ...item, meaningVi: event.target.value })} />
@@ -376,4 +456,23 @@ function VocabularyItemEditor({ item, index, readOnly, onChange, onRemove }: {
       </AccordionDetails>
     </Accordion>
   );
+}
+
+function IllustrationPreview({ item }: { item: VocabularySetItemInput }) {
+  const illustration = item.illustration;
+  const common = {
+    width: "100%",
+    aspectRatio: "1",
+    borderRadius: 2,
+    border: 1,
+    borderColor: "divider",
+    bgcolor: "action.hover",
+  } as const;
+  if (illustration.kind === "EMOJI")
+    return <Box role="img" aria-label={`${item.word} — ${item.meaningVi}`} sx={{ ...common, display: "grid", placeItems: "center", fontSize: 44 }}>{illustration.value}</Box>;
+  if (illustration.kind === "PUBLIC_ASSET" && illustration.value)
+    return <Box component="img" src={illustration.value} alt={`${item.word} — ${item.meaningVi}`} sx={{ ...common, objectFit: "cover" }} />;
+  if (illustration.kind === "STORED_MEDIA" && illustration.mediaId)
+    return <Box component="img" src={vocabularyMediaUrl(illustration.mediaId, "THUMBNAIL")} alt={`${item.word} — ${item.meaningVi}`} sx={{ ...common, objectFit: "cover" }} />;
+  return <Box aria-label="Chưa có hình minh họa" sx={{ ...common, display: "grid", placeItems: "center" }}><HideImage color="disabled" /></Box>;
 }

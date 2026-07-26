@@ -38,6 +38,10 @@ import { GoogleSheetSyncWorker } from "./workers/google-sheet-sync.worker";
 import { VocabularyController } from "./controllers/vocabulary.controller";
 import { VocabularyRepository } from "./repositories/vocabulary.repository";
 import { VocabularyService } from "./services/vocabulary.service";
+import { VocabularyMediaController } from "./controllers/vocabulary-media.controller";
+import { VocabularyMediaRepository } from "./repositories/vocabulary-media.repository";
+import { VocabularyMediaService } from "./services/vocabulary-media.service";
+import { PixabayImageSearchProvider } from "./integrations/images/pixabay-image-search.provider";
 
 const users = new UserRepository();
 const classes = new ClassRepository();
@@ -48,6 +52,7 @@ const schedules = new ScheduleRepository();
 const enrollments = new EnrollmentRepository();
 const studentReports = new StudentReportRepository();
 const vocabulary = new VocabularyRepository();
+const vocabularyMedia = new VocabularyMediaRepository();
 
 const authService = new AuthService(users);
 const classService = new ClassService(classes);
@@ -61,6 +66,14 @@ const enrollmentService = new EnrollmentService(enrollments);
 const studentReportService = new StudentReportService(studentReports);
 const legacyImportService = new LegacyImportService(studentService, classService);
 const vocabularyService = new VocabularyService(vocabulary);
+const vocabularyImageProvider = config.vocabularyMedia.enabled
+  ? new PixabayImageSearchProvider(config.vocabularyMedia.apiKey)
+  : null;
+export const vocabularyMediaService = new VocabularyMediaService(
+  vocabularyMedia,
+  vocabularyImageProvider,
+  config.vocabularyMedia,
+);
 const studentGoogleSheets = new StudentGoogleSheetRepository();
 function createGoogleSheetProvider() {
   if (!config.googleDrive.enabled) return null;
@@ -103,4 +116,5 @@ export const controllers = {
   legacyImports: new LegacyImportController(legacyImportService),
   studentGoogleSheets: new StudentGoogleSheetController(studentGoogleSheetService),
   vocabulary: new VocabularyController(vocabularyService),
+  vocabularyMedia: new VocabularyMediaController(vocabularyMediaService),
 };

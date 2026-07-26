@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-**PLANNED**
+**PASS on 26/07/2026**
 
 ## Phạm vi
 
@@ -26,3 +26,7 @@
 Phụ thuộc V20A. Test dùng fake provider; không gọi Pixabay thật trong CI. Chạy
 security/integration/UI targeted checks, backup smoke và full gate theo
 [acceptance V20B](../acceptance/V20B-VOCABULARY-MEDIA-EDITOR.md).
+
+Dependency xử lý ảnh là `sharp` 0.34.5, tương thích Node 24 của repository. Ảnh
+ngoài chỉ được decode sau các gate host/redirect/byte/MIME, rồi chuyển thành hai
+rendition WebP; không giữ filename hay URL binary của provider làm URL runtime.
