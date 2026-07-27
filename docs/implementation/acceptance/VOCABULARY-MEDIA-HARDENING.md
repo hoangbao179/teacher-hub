@@ -10,3 +10,10 @@
 - [x] Reconciliation và metrics đếm đủ game + thumbnail bytes.
 - [x] Public media không còn limiter 60 request/phút/IP và dùng immutable cache.
 - [x] Targeted server/client/browser tests PASS.
+- [x] Một từ bulk phát sinh tối đa hai search request và không cố tìm đủ 12 ảnh.
+- [x] Đổi ILLUSTRATION/PHOTO không giữ state cũ và không tự search.
+- [x] Tìm lại có controller/lock riêng và chỉ gọi candidate được bấm.
+- [x] Internal provider interval chờ tuần tự, không trả 429 giả.
+- [x] Import source 429 không sleep; transient download chỉ retry một lần.
+- [x] Thumbnail sau import trả WebP decode được từ cùng storage root.
+- [x] Admin CSP cho phép `blob:` và `cdn.pixabay.com`, không dùng wildcard.

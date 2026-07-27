@@ -92,20 +92,37 @@ test("secure downloader maps network timeouts to a stable import error", async (
   );
 });
 
-test("secure downloader retries timeout, 429 and 503 at most twice", async () => {
+test("secure downloader fails fast on upstream 429 without sleeping", async () => {
+  let calls = 0;
+  const sleeps: number[] = [];
+  const downloader = new SecureImageDownloader(settings, async () => {
+    calls += 1;
+    return new Response(null, { status: 429, headers: { "Retry-After": "60" } });
+  }, async (milliseconds) => { sleeps.push(milliseconds); });
+  await assert.rejects(downloader.download("https://cdn.pixabay.com/a.png", ["cdn.pixabay.com"]),
+    (error: unknown) => (error as { code?: string; retryAfterSeconds?: number }).code === "IMAGE_IMPORT_SOURCE_RATE_LIMITED" &&
+      (error as { retryAfterSeconds?: number }).retryAfterSeconds === 60);
+  assert.equal(calls, 1);
+  assert.deepEqual(sleeps, []);
+});
+
+test("secure downloader retries timeout and 503 only once with short backoff", async () => {
   const input = await png();
-  for (const failure of ["timeout", "429", "503"] as const) {
+  for (const failure of ["timeout", "503"] as const) {
     let calls = 0;
+    const sleeps: number[] = [];
     const downloader = new SecureImageDownloader(settings, async () => {
       calls += 1;
-      if (calls < 3) {
+      if (calls < 2) {
         if (failure === "timeout") throw new DOMException("timed out", "TimeoutError");
-        return new Response(null, { status: Number(failure), headers: failure === "429" ? { "Retry-After": "0" } : {} });
+        return new Response(null, { status: Number(failure) });
       }
       return new Response(input as unknown as BodyInit, { headers: { "content-type": "image/png" } });
-    }, async () => undefined);
+    }, async (milliseconds) => { sleeps.push(milliseconds); });
     await downloader.download("https://cdn.pixabay.com/a.png", ["cdn.pixabay.com"]);
-    assert.equal(calls, 3);
+    assert.equal(calls, 2);
+    assert.equal(sleeps.length, 1);
+    assert.ok(sleeps[0] <= 500);
   }
 });
 

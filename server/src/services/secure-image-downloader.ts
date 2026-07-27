@@ -14,7 +14,7 @@ export interface ProcessedImage {
 }
 
 const acceptedMime = ["image/jpeg", "image/png", "image/webp"] as const;
-const retryableStatuses = new Set([429, 502, 503, 504]);
+const retryableStatuses = new Set([502, 503, 504]);
 
 function allowedHost(hostname: string, hosts: readonly string[]): boolean {
   const normalized = hostname.toLowerCase();
@@ -91,26 +91,33 @@ export class SecureImageDownloader {
   ) {}
 
   async download(urlValue: string, allowedHosts: readonly string[]): Promise<ProcessedImage> {
+    const deadline = Date.now() + this.settings.timeoutMs + 500;
     let lastError: unknown;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return await this.downloadOnce(urlValue, allowedHosts);
+        return await this.downloadOnce(urlValue, allowedHosts, Math.max(1, deadline - Date.now()));
       } catch (error) {
         lastError = error;
-        const retryable = error instanceof AppError && [
-          "IMAGE_IMPORT_TIMEOUT", "IMAGE_IMPORT_SOURCE_RATE_LIMITED", "IMAGE_IMPORT_SOURCE_UNAVAILABLE",
-        ].includes(error.code);
-        if (!retryable || attempt === 2) throw error;
-        const retryMs = error.retryAfterSeconds
-          ? error.retryAfterSeconds * 1_000
-          : 250 * (2 ** attempt);
+        if (error instanceof AppError && error.code === "IMAGE_IMPORT_SOURCE_RATE_LIMITED") throw error;
+        const upstreamStatus = error instanceof AppError && typeof error.details === "object" &&
+          error.details && "upstreamStatus" in error.details
+          ? Number((error.details as { upstreamStatus?: unknown }).upstreamStatus) : undefined;
+        const retryable = error instanceof AppError && (error.code === "IMAGE_IMPORT_TIMEOUT" ||
+          (error.code === "IMAGE_IMPORT_SOURCE_UNAVAILABLE" && upstreamStatus !== undefined && retryableStatuses.has(upstreamStatus)));
+        if (!retryable || attempt === 1) throw error;
+        const retryMs = Math.min(250, Math.max(0, deadline - Date.now() - 1));
+        if (retryMs <= 0) throw error;
         await this.sleep(retryMs);
       }
     }
     throw lastError;
   }
 
-  private async downloadOnce(urlValue: string, allowedHosts: readonly string[]): Promise<ProcessedImage> {
+  private async downloadOnce(
+    urlValue: string,
+    allowedHosts: readonly string[],
+    timeoutMs: number,
+  ): Promise<ProcessedImage> {
     let current: URL;
     try { current = new URL(urlValue); }
     catch { throw validation("IMAGE_IMPORT_UNSAFE_REDIRECT", "Địa chỉ ảnh không hợp lệ."); }
@@ -121,7 +128,7 @@ export class SecureImageDownloader {
       try {
         response = await this.fetcher(current, {
           redirect: "manual",
-          signal: AbortSignal.timeout(this.settings.timeoutMs),
+          signal: AbortSignal.timeout(Math.min(this.settings.timeoutMs, timeoutMs)),
           headers: { Accept: acceptedMime.join(",") },
         });
       } catch {

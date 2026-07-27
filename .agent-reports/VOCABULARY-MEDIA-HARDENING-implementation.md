@@ -27,6 +27,10 @@ Targeted server/client unit, typecheck, related lint và targeted browser flow.
 
 Coordinator in-memory chỉ dành cho một instance; registry chưa tích hợp Pexels.
 
+Rà soát tiếp theo đã loại request amplification, tách reset/retry candidate, chuyển
+coordinator sang queue chờ tuần tự, làm import 429 fail-fast, chọn source image nhỏ
+nhất đủ 1024 px và xác minh thumbnail thật qua public endpoint.
+
 ## Commit
 
 Xem commit hash trong final response.

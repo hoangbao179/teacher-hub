@@ -16,6 +16,8 @@ interface PixabayHit {
   tags: string;
   previewURL: string;
   webformatURL: string;
+  webformatWidth?: number;
+  webformatHeight?: number;
   largeImageURL: string;
   imageWidth: number;
   imageHeight: number;
@@ -38,6 +40,15 @@ const animalWords = new Set([
 
 function normalize(value: string): string {
   return value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("en");
+}
+
+function preferredDownloadUrl(hit: PixabayHit): string {
+  const originalLongestEdge = Math.max(Number(hit.imageWidth) || 0, Number(hit.imageHeight) || 0);
+  const requiredLongestEdge = Math.min(1024, originalLongestEdge);
+  const webLongestEdge = Math.max(Number(hit.webformatWidth) || 0, Number(hit.webformatHeight) || 0);
+  return hit.webformatURL && webLongestEdge >= requiredLongestEdge
+    ? hit.webformatURL
+    : hit.largeImageURL || hit.webformatURL;
 }
 
 function relevanceScore(input: ProviderSearchInput, item: ProviderSearchResult["items"][number]): number {
@@ -157,7 +168,7 @@ export class PixabayImageSearchProvider implements ImageSearchProvider {
       providerAssetId: String(hit.id),
       previewUrl: hit.webformatURL || hit.previewURL,
       thumbnailUrl: hit.previewURL,
-      downloadUrl: hit.largeImageURL || hit.webformatURL,
+      downloadUrl: preferredDownloadUrl(hit),
       width: Number(hit.imageWidth),
       height: Number(hit.imageHeight),
       mediaType: hit.type === "illustration"
@@ -201,7 +212,7 @@ export class PixabayImageSearchProvider implements ImageSearchProvider {
     return {
       provider: "PIXABAY" as const, providerAssetId: String(hit.id),
       previewUrl: hit.webformatURL || hit.previewURL, thumbnailUrl: hit.previewURL,
-      downloadUrl: hit.largeImageURL || hit.webformatURL, width: Number(hit.imageWidth), height: Number(hit.imageHeight),
+      downloadUrl: preferredDownloadUrl(hit), width: Number(hit.imageWidth), height: Number(hit.imageHeight),
       mediaType: hit.type === "illustration" ? "ILLUSTRATION" as const : hit.type === "vector" ? "VECTOR" as const : "PHOTO" as const,
       tags: hit.tags.split(",").map(normalize).filter(Boolean), contributorName: hit.user || "Pixabay contributor",
       contributorUrl: `https://pixabay.com/users/${encodeURIComponent(hit.user)}-${hit.user_id}/`,

@@ -17,6 +17,7 @@ import {
   VOCABULARY_IMAGE_PAGE_SIZE,
 } from "../vocabularyImagePagination";
 import { searchVocabularyImageSuggestions } from "../vocabularyImageSearch";
+import { vocabularyMediaCooldownSeconds, vocabularyMediaErrorMessage } from "../vocabularyMediaErrors";
 
 export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [], onClose, onSelect, onSelectLocal }: {
   open: boolean;
@@ -45,6 +46,7 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
   const searchGeneration = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
   const uploadLock = useRef(false);
+  const importLock = useRef(false);
   const [uploadDraft, setUploadDraft] = useState<{ file: File; preview: string } | null>(null);
 
   const resetResults = () => {
@@ -93,11 +95,11 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
       setDisabled(false);
     } catch (value) {
       if (generation !== searchGeneration.current) return;
-      const message = value instanceof Error ? value.message : "Không thể tìm ảnh.";
+      const message = vocabularyMediaErrorMessage(value, "Không thể tìm ảnh.");
       setError(message);
       setDisabled(message.includes("đang tắt"));
       if (value instanceof ApiError && value.status === 429) {
-        const seconds = Math.max(1, value.retryAfterSeconds ?? 60);
+        const seconds = vocabularyMediaCooldownSeconds(value)!;
         setCooldownSeconds(seconds);
         setCooldownUntil(Date.now() + seconds * 1_000);
       }
@@ -117,7 +119,8 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
   };
 
   const choose = async () => {
-    if (!selectedItem) return;
+    if (!selectedItem || importLock.current) return;
+    importLock.current = true;
     setImporting(selectedItem.providerAssetId);
     setError("");
     try {
@@ -129,8 +132,14 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
       onSelect(media);
       onClose();
     } catch (value) {
-      setError(value instanceof Error ? value.message : "Không thể lưu ảnh.");
+      const seconds = vocabularyMediaCooldownSeconds(value);
+      if (seconds !== undefined) {
+        setCooldownSeconds(seconds);
+        setCooldownUntil(Date.now() + seconds * 1_000);
+      }
+      setError(vocabularyMediaErrorMessage(value, "Không thể lưu ảnh."));
     } finally {
+      importLock.current = false;
       setImporting("");
     }
   };

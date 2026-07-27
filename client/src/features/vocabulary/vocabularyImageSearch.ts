@@ -1,7 +1,7 @@
 import type { VocabularyMediaSearchResponse } from "@teacher/shared";
 import { searchVocabularyMedia } from "../../api/vocabularyMedia";
-import { appendUniqueVocabularyImages } from "./vocabularyImagePagination";
 import type { VocabularyImageFilter, VocabularyImageStrategy } from "./vocabularyImageStrategy";
+import { executeVocabularyImageSearch } from "./vocabularyImageSearchPolicy";
 
 export async function searchVocabularyImageSuggestions(input: {
   strategy: VocabularyImageStrategy;
@@ -10,22 +10,19 @@ export async function searchVocabularyImageSuggestions(input: {
   page: number;
   pageSize: number;
   signal?: AbortSignal;
+  allowFallback?: boolean;
+  search?: typeof searchVocabularyMedia;
 }): Promise<VocabularyMediaSearchResponse> {
   const customQuery = input.query.trim();
-  const fallbacks = input.page === 1 && customQuery === input.strategy.query
-    ? input.strategy.queries
-    : [customQuery];
-  let combined: VocabularyMediaSearchResponse | undefined;
-  for (const query of fallbacks) {
-    const result = await searchVocabularyMedia({
+  const search = input.search ?? searchVocabularyMedia;
+  const fallback = input.strategy.queries.find((query) => query !== customQuery);
+  return executeVocabularyImageSearch({
+    query: customQuery,
+    fallbackQuery: fallback,
+    allowFallback: input.page === 1 && input.allowFallback !== false &&
+      customQuery === input.strategy.query,
+    search: (query) => search({
       query, mediaType: input.mediaType, page: input.page, pageSize: input.pageSize,
-    }, input.signal);
-    combined = combined ? {
-      ...combined,
-      total: Math.max(combined.total, combined.items.length + result.total),
-      items: appendUniqueVocabularyImages(combined.items, result.items).slice(0, input.pageSize),
-    } : result;
-    if (combined.items.length >= input.pageSize) break;
-  }
-  return combined!;
+    }, input.signal),
+  });
 }

@@ -16,6 +16,8 @@ test("Pixabay search always enables safe search and hides its download URL", asy
         tags: "apple",
         previewURL: "https://cdn.pixabay.com/photo/preview.jpg",
         webformatURL: "https://cdn.pixabay.com/photo/web.jpg",
+        webformatWidth: 1280,
+        webformatHeight: 960,
         largeImageURL: "https://cdn.pixabay.com/photo/large.jpg",
         imageWidth: 800,
         imageHeight: 600,
@@ -35,9 +37,24 @@ test("Pixabay search always enables safe search and hides its download URL", asy
   assert.equal(requested?.searchParams.get("safesearch"), "true");
   assert.equal(requested?.searchParams.get("key"), "secret");
   assert.equal(requested?.searchParams.get("per_page"), "60");
-  assert.equal(result.items[0].downloadUrl, "https://cdn.pixabay.com/photo/large.jpg");
+  assert.equal(result.items[0].downloadUrl, "https://cdn.pixabay.com/photo/web.jpg");
   assert.deepEqual(result.items[0].tags, ["apple"]);
   assert.equal(JSON.stringify(result.items).includes("secret"), false);
+});
+
+test("Pixabay uses large image only when webformat cannot satisfy the 1024 game rendition", async () => {
+  const provider = new PixabayImageSearchProvider("secret", async () => Response.json({
+    totalHits: 1,
+    hits: [{
+      id: 43, pageURL: "https://pixabay.com/photos/example-43/", type: "photo", tags: "plane",
+      previewURL: "https://cdn.pixabay.com/preview.jpg", webformatURL: "https://cdn.pixabay.com/web.jpg",
+      webformatWidth: 640, webformatHeight: 480, largeImageURL: "https://cdn.pixabay.com/large.jpg",
+      imageWidth: 2400, imageHeight: 1800, user: "Teacher", user_id: 7,
+    }],
+  }));
+  const result = await provider.search({ query: "plane", page: 1, pageSize: 8,
+    mediaType: "PHOTO", orientation: "ALL", safeSearch: true });
+  assert.equal(result.items[0].downloadUrl, "https://cdn.pixabay.com/large.jpg");
 });
 
 test("Pixabay 429 preserves quota headers and requests the animals category", async () => {

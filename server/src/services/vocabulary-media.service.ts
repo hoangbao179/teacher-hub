@@ -169,7 +169,11 @@ export class VocabularyMediaService {
       try {
         processed = await this.downloader.download(asset.downloadUrl, importProvider!.allowedDownloadHosts);
       } catch (error) {
-        if (!(error instanceof AppError) || error.code !== "IMAGE_IMPORT_SOURCE_UNAVAILABLE" || !importProvider?.resolveAsset)
+        const upstreamStatus = error instanceof AppError && typeof error.details === "object" &&
+          error.details && "upstreamStatus" in error.details
+          ? Number((error.details as { upstreamStatus?: unknown }).upstreamStatus) : undefined;
+        if (!(error instanceof AppError) || error.code !== "IMAGE_IMPORT_SOURCE_UNAVAILABLE" ||
+            ![401, 403, 404, 410].includes(upstreamStatus ?? 0) || !importProvider?.resolveAsset)
           throw error;
         const refreshed = await this.coordinator.run(importProvider.name, () => importProvider.resolveAsset!(providerAssetId));
         if (!refreshed) throw error;
@@ -280,14 +284,18 @@ export class VocabularyMediaService {
     const record = await this.repository.findMediaRecord(id);
     if (!record)
       throw new AppError(404, "VOCABULARY_MEDIA_NOT_FOUND", "Không tìm thấy ảnh.");
+    const relativePath = variant === "THUMBNAIL" ? record.thumbnailPath : record.storagePath;
     try {
+      if (!await this.storage.exists(relativePath)) throw new Error("Vocabulary media file missing");
       return {
-        path: this.storage.resolve(
-          variant === "THUMBNAIL" ? record.thumbnailPath : record.storagePath,
-        ),
+        path: this.storage.resolve(relativePath),
         media: record.media,
       };
     } catch {
+      console.warn(JSON.stringify({
+        level: "warn", event: "vocabulary_media_file_failed", mediaId: id,
+        relativePath, errorCode: "VOCABULARY_MEDIA_FILE_UNAVAILABLE",
+      }));
       throw new AppError(404, "VOCABULARY_MEDIA_NOT_FOUND", "Không tìm thấy ảnh.");
     }
   }

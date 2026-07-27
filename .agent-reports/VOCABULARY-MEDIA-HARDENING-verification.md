@@ -12,13 +12,14 @@
 
 ## Unit/integration/E2E
 
-- 26 server unit targeted: PASS.
-- 6 client behavior unit targeted: PASS.
+- 31 server unit/endpoint targeted: PASS.
+- 10 client behavior/CSP unit targeted: PASS.
 - `npm -w client run test:e2e:vocabulary-media`: PASS.
 
 ## Kiểm tra UI thủ công
 
-Browser 390x844: batch đầu, 429, PENDING, resume, import và upload đều đạt.
+Browser 390x844: batch đầu, đổi PHOTO không tự search, bắt đầu explicit, import,
+thumbnail editor và upload blob preview đều đạt.
 
 ## Tài liệu
 
