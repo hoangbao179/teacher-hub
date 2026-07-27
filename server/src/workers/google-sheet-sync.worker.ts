@@ -86,12 +86,11 @@ export class GoogleSheetSyncWorker {
       const snapshot = await this.sheets.snapshot(event.studentId);
       const syncedAt = new Date().toISOString();
       if (event.eventType === "VOCABULARY_ATTEMPT_UPSERT") {
-        await this.provider.render(resource, snapshot, {
-          templateVersion: sheet.templateVersion,
-          recordId: sheet.id,
-          generatedAt: sheet.lastGeneratedAt ?? syncedAt,
-          syncedAt,
-        });
+        const row = snapshot.vocabularyAttempts.find((item) => item.attemptId === event.entityId);
+        if (!row) throw new GoogleIntegrationError(
+          "SPREADSHEET_MISSING", "Không tìm thấy lượt ôn từ vựng cần đồng bộ.", false,
+        );
+        await this.provider.syncVocabularyAttempt(resource, row, event.entityId, syncedAt);
         await this.outbox.succeed(event, syncedAt);
         return;
       }

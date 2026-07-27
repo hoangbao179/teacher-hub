@@ -8,6 +8,7 @@ import type {
   PublicGameOption,
   PublicGamePrompt,
 } from "@teacher/shared";
+import { activityCompatibilityMessage, isSupportedActivity } from "@teacher/shared";
 import { createHash } from "node:crypto";
 
 export interface GeneratedQuestion {
@@ -373,13 +374,22 @@ export function generateQuestionQueue(
 ): GeneratedQueue {
   const random = randomFromSeed(seed);
   const warnings: string[] = [];
-  const items = shuffle(assignment.items, random).slice(0, itemCaps[assignment.ageBand]);
+  const canonicalItems = [...assignment.items].sort(
+    (left, right) => left.displayOrder - right.displayOrder || left.id - right.id,
+  );
+  const items = (assignment.shuffleQuestions
+    ? shuffle(canonicalItems, random)
+    : canonicalItems).slice(0, itemCaps[assignment.ageBand]);
   const minimum = optionCounts[assignment.ageBand];
   const primary: GeneratedQuestion[] = [];
 
   for (const activity of [...assignment.activities].sort(
     (left, right) => left.displayOrder - right.displayOrder,
   )) {
+    if (!isSupportedActivity(activity.mechanic, activity.presentation)) {
+      warnings.push(activityCompatibilityMessage(activity));
+      continue;
+    }
     if (activity.mechanic === "EXPLORE_CARD") {
       for (const item of items)
         primary.push(flashcardQuestion(
@@ -440,34 +450,40 @@ export function generateQuestionQueue(
   const cappedPrimary = primary.filter((question) => {
     if (question.questionKind !== "PRIMARY" || question.scoreWeight !== 1)
       return true;
-    primaryScoreCount += 1;
-    return primaryScoreCount <= scoreCap;
+    const weight = question.assignmentItemIds.length;
+    if (primaryScoreCount + weight > scoreCap) return false;
+    primaryScoreCount += weight;
+    return true;
   });
 
   const result: GeneratedQuestion[] = [];
   const adaptive = new Map<number, GeneratedQuestion[]>();
   cappedPrimary.forEach((question, index) => {
-    if (!question.graded || question.mechanic !== "SELECT_ONE") return;
-    const item = assignment.items.find((value) => value.id === question.assignmentItemId);
     const activity = assignment.activities.find((value) => value.id === question.activityId);
-    if (!item || !activity) return;
-    const alternative = selectQuestion(
-      item,
-      { ...activity, presentation: question.presentation === "WORD_PICK_MEANING"
-        ? "MEANING_PICK_WORD" : "WORD_PICK_MEANING" },
-      assignment.items,
-      minimum,
-      random,
-      warnings,
-      `adaptive-${question.key}`,
-    );
-    if (!alternative) return;
-    alternative.adaptiveSourceKey = question.key;
-    alternative.questionKind = "REVIEW";
-    alternative.scoreWeight = 0;
-    alternative.status = "CONDITIONAL";
-    const target = Math.min(cappedPrimary.length, index + 3);
-    adaptive.set(target, [...(adaptive.get(target) ?? []), alternative]);
+    if (!activity) return;
+    for (const assignmentItemId of question.assignmentItemIds) {
+      const item = assignment.items.find((value) => value.id === assignmentItemId);
+      if (!item) continue;
+      const presentation = question.mechanic === "SELECT_ONE"
+        && question.presentation === "WORD_PICK_MEANING"
+        ? "MEANING_PICK_WORD" : "WORD_PICK_MEANING";
+      const alternative = selectQuestion(
+        item,
+        { ...activity, mechanic: "SELECT_ONE", presentation },
+        assignment.items,
+        minimum,
+        random,
+        warnings,
+        `adaptive-${question.key}-item-${item.id}`,
+      );
+      if (!alternative) continue;
+      alternative.adaptiveSourceKey = question.key;
+      alternative.questionKind = "REVIEW";
+      alternative.scoreWeight = 0;
+      alternative.status = "CONDITIONAL";
+      const target = Math.min(cappedPrimary.length, index + 3);
+      adaptive.set(target, [...(adaptive.get(target) ?? []), alternative]);
+    }
   });
   cappedPrimary.forEach((question, index) => {
     result.push(question);

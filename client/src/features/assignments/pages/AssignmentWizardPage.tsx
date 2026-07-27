@@ -48,7 +48,7 @@ import type {
   VocabularyTopicListItem,
   VocabularyTopicSuggestionItem,
 } from "@teacher/shared";
-import { assignmentActivitiesForTemplate, hasPlayableImage } from "@teacher/shared";
+import { assignmentActivitiesForTemplate, hasPlayableImage, MAX_ASSIGNMENT_ACTIVITIES } from "@teacher/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -87,6 +87,8 @@ import {
   gamePresentationLabels,
   templateLabels,
 } from "../assignmentUi";
+import { assignmentSourceAgeBand, autoAssignmentTitle, toggleAssignmentActivity } from "../assignmentWizardRules";
+import { TopicSuggestionRequestSequence } from "../topicSuggestionRequest";
 
 const steps = ["Người nhận", "Bộ từ", "Từ vựng", "Hoạt động", "Thiết lập", "Xem trước"];
 const templates: AssignmentTemplateCode[] = [
@@ -112,7 +114,7 @@ const customActivities: AssignmentActivityInput[] = [
 ];
 
 const initial: AssignmentDraftInput = {
-  title: "",
+  title: "Bài tập từ vựng",
   ageBand: "G2_G3",
   templateCode: "WORD_RECOGNITION",
   answerFeedbackMode: "IMMEDIATE",
@@ -189,6 +191,8 @@ export function AssignmentWizardPage() {
   const [saved, setSaved] = useState(false);
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [titleEdited, setTitleEdited] = useState(Boolean(editingId));
+  const [autoTitleSource, setAutoTitleSource] = useState("");
 
   useEffect(() => {
     void api<ClassListItem[]>("/api/classes")
@@ -223,7 +227,7 @@ export function AssignmentWizardPage() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const chooseSet = async (setId: number) => {
+  const chooseSet = useCallback(async (setId: number) => {
     setSaving(true);
     setAssignmentSaveError("");
     try {
@@ -242,27 +246,41 @@ export function AssignmentWizardPage() {
         supportsImageGame: item.supportsImageGame,
         imageSearchTerms: item.imageSearchTerms,
       }));
-      const result = assignmentActivitiesForTemplate(form.templateCode, {
-        ageBand: selected.ageBand,
-        itemCount: mapped.length,
-        imageItemCount: mapped.filter(hasPlayableImage).length,
-        exampleItemCount: mapped.filter((item) => Boolean(item.exampleEn)).length,
-      });
       setForm((current) => ({
         ...current,
         vocabularySetId: selected.id,
         ageBand: selected.ageBand,
-        title: current.title || selected.title,
+        title: titleEdited ? current.title : selected.title,
         items: mapped,
-        activities: current.templateCode === "CUSTOM" ? current.activities : result.activities,
+        activities: current.templateCode === "CUSTOM" ? current.activities : assignmentActivitiesForTemplate(current.templateCode, {
+          ageBand: selected.ageBand,
+          itemCount: mapped.length,
+          imageItemCount: mapped.filter(hasPlayableImage).length,
+          exampleItemCount: mapped.filter((item) => Boolean(item.exampleEn)).length,
+        }).activities,
       }));
+      setAutoTitleSource(selected.title);
       setSaved(false);
     } catch (reason) {
       setAssignmentSaveError((reason as Error).message);
     } finally {
       setSaving(false);
     }
-  };
+  }, [titleEdited]);
+
+  useEffect(() => {
+    if (titleEdited || !autoTitleSource) return;
+    const className = classes.find((item) => item.id === form.classId)?.name;
+    const generated = autoAssignmentTitle({
+      userEdited: titleEdited,
+      currentTitle: form.title,
+      className,
+      sourceTitle: autoTitleSource,
+    });
+    void Promise.resolve().then(() => {
+      setForm((current) => current.title === generated ? current : { ...current, title: generated });
+    });
+  }, [autoTitleSource, classes, form.classId, form.title, titleEdited]);
 
   const save = async () => {
     setSaving(true);
@@ -270,7 +288,7 @@ export function AssignmentWizardPage() {
     try {
       const normalized = {
         ...form,
-        title: form.title.trim() || "Bài tập chưa đặt tên",
+        title: form.title.trim(),
         selectedStudentIds: form.audienceType === "SELECTED_STUDENTS" ? form.selectedStudentIds : [],
         classId: form.audienceType === "CLASS" ? form.classId : undefined,
       };
@@ -360,6 +378,7 @@ export function AssignmentWizardPage() {
         form={form}
         initialSetId={Number(searchParams.get("vocabularySetId")) || undefined}
         chooseSet={chooseSet}
+        setAssignmentAgeBand={(value) => patch("ageBand", value)}
         createManual={async () => {
           const detail = await save();
           if (!detail) return;
@@ -370,7 +389,7 @@ export function AssignmentWizardPage() {
       />}
       {step === 2 && <WordsStep form={form} patch={patch} />}
       {step === 3 && <ActivitiesStep form={form} warnings={templateResult.warnings} patch={patch} editImages={editImages} />}
-      {step === 4 && <SettingsStep form={form} patch={patch} />}
+      {step === 4 && <SettingsStep form={form} patch={patch} onTitleEdited={() => setTitleEdited(true)} />}
       {step === 5 && <PreviewStep form={form} warnings={previewWarnings} editImages={editImages} />}
 
       <StickyActionBar>
@@ -432,10 +451,11 @@ function TopicIcon({ iconKey }: { iconKey: string }) {
   </Typography>;
 }
 
-function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
+function VocabularySetStep({ form, initialSetId, chooseSet, setAssignmentAgeBand, createManual }: {
   form: AssignmentDraftInput;
   initialSetId?: number;
   chooseSet: (id: number) => Promise<void>;
+  setAssignmentAgeBand: (value: LearningAgeBand) => void;
   createManual: () => Promise<void>;
 }) {
   const [tab, setTab] = useState<VocabularySourceTab>("SETS");
@@ -449,13 +469,14 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
   const [unitError, setUnitError] = useState("");
   const [search, setSearch] = useState("");
   const [ageFilter, setAgeFilter] = useState<LearningAgeBand | "">("");
-  const [ageBand, setAgeBand] = useState<LearningAgeBand>(form.ageBand);
+  const ageBand = assignmentSourceAgeBand(form.ageBand);
   const [topicSlug, setTopicSlug] = useState("");
   const [suggestions, setSuggestions] = useState<VocabularyTopicSuggestionItem[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [unitId, setUnitId] = useState("");
   const [creating, setCreating] = useState(false);
   const creatingRef = useRef(false);
+  const suggestionRequests = useRef(new TopicSuggestionRequestSequence());
 
   const loadSets = useCallback(async () => {
     setSetsLoading(true);
@@ -496,23 +517,28 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
     void chooseSet(initialSetId);
   }, [chooseSet, form.vocabularySetId, initialSetId]);
 
-  useEffect(() => {
-    if (!topicSlug) return;
-    let active = true;
-    void Promise.resolve().then(() => {
-      if (!active) return undefined;
+  const loadSuggestions = useCallback(async (slug: string) => {
+      let currentRequest = false;
       setSuggestionsLoading(true);
       setSuggestionError("");
-      return suggestVocabularyTopic({ topicSlug, ageBand, targetCount: 10 });
-    }).then((result) => {
-      if (active && result) setSuggestions(result.items);
-    }).catch((reason: Error) => {
-      if (active) setSuggestionError(reason.message);
-    }).finally(() => {
-      if (active) setSuggestionsLoading(false);
-    });
-    return () => { active = false; };
-  }, [ageBand, topicSlug]);
+      try {
+        const items = await suggestionRequests.current.run(() =>
+          suggestVocabularyTopic({ topicSlug: slug, ageBand, targetCount: 10 }));
+        if (items) {
+          currentRequest = true;
+          setSuggestions(items);
+        }
+      } catch (reason) {
+        currentRequest = true;
+        setSuggestionError(reason instanceof Error ? reason.message : "Không tải được gợi ý từ.");
+      } finally {
+        if (currentRequest) setSuggestionsLoading(false);
+      }
+  }, [ageBand]);
+
+  useEffect(() => {
+    if (topicSlug) void Promise.resolve().then(() => loadSuggestions(topicSlug));
+  }, [loadSuggestions, topicSlug]);
 
   const compatibleUnits = useMemo(() => {
     const compatibleSlugs = levelSlugsByAgeBand[ageBand] as readonly string[];
@@ -520,7 +546,10 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
   }, [ageBand]);
   const selectedUnit = compatibleUnits.find((unit) => unit.id === unitId) ?? null;
   const changeAgeBand = (value: LearningAgeBand) => {
-    setAgeBand(value);
+    if (value === ageBand) return;
+    setAssignmentAgeBand(value);
+    setTopicSlug("");
+    setSuggestions([]);
     const unit = publishedUnits.find((item) => item.id === unitId);
     if (unit && !(levelSlugsByAgeBand[value] as readonly string[]).includes(unit.levelSlug))
       setUnitId("");
@@ -649,9 +678,9 @@ function VocabularySetStep({ form, initialSetId, chooseSet, createManual }: {
           bgcolor: "action.selected",
         } : undefined}>
           <CardActionArea onClick={() => {
-            setSuggestions([]);
             setSuggestionError("");
-            setTopicSlug(topic.slug);
+            if (topic.slug === topicSlug) void loadSuggestions(topic.slug);
+            else setTopicSlug(topic.slug);
           }} sx={{ minHeight: 96 }}>
             <CardContent sx={{ p: 1.25 }}>
               <TopicIcon iconKey={topic.iconKey} />
@@ -759,15 +788,19 @@ function ActivitiesStep({ form, warnings, patch, editImages }: {
     patch("activities", code === "CUSTOM" ? [] : generated.activities);
   };
   const toggleCustom = (activity: AssignmentActivityInput) => {
-    const exists = form.activities.some((value) => value.presentation === activity.presentation);
-    const next = exists ? form.activities.filter((value) => value.presentation !== activity.presentation) : [...form.activities, activity];
-    patch("activities", next.map((value, index) => ({ ...value, displayOrder: index + 1 })));
+    patch("activities", toggleAssignmentActivity(
+      form.activities, activity, MAX_ASSIGNMENT_ACTIVITIES,
+    ));
   };
   return <FormSection title="Chọn lộ trình hoạt động">
     <TextField select label="Mẫu bài" value={form.templateCode} onChange={(event) => setTemplate(event.target.value as AssignmentTemplateCode)}>
       {templates.map((value) => <MenuItem key={value} value={value}>{templateLabels[value]}</MenuItem>)}
     </TextField>
     {warnings.map((warning) => <Alert key={warning} severity="warning">{warning}</Alert>)}
+    <Typography>Đã chọn {form.activities.length}/{MAX_ASSIGNMENT_ACTIVITIES}</Typography>
+    {form.activities.length > MAX_ASSIGNMENT_ACTIVITIES && (
+      <Alert severity="error">Dữ liệu cũ có quá 8 hoạt động. Hãy bỏ bớt trước khi lưu.</Alert>
+    )}
     {form.items.filter(hasPlayableImage).length < 2 && <Button
       variant="outlined"
       onClick={() => void editImages()}
@@ -779,7 +812,8 @@ function ActivitiesStep({ form, warnings, patch, editImages }: {
           && form.items.filter(hasPlayableImage).length < 2;
         return <FormControlLabel
           key={activity.presentation}
-          disabled={imageUnavailable}
+          disabled={imageUnavailable || (!form.activities.some((value) => value.presentation === activity.presentation)
+            && form.activities.length >= MAX_ASSIGNMENT_ACTIVITIES)}
           control={<Checkbox checked={form.activities.some((value) => value.presentation === activity.presentation)} onChange={() => toggleCustom(activity)} />}
           label={`${metadata.label} — ${imageUnavailable ? "Cần ít nhất 2 từ có hình" : metadata.description}`}
         />;
@@ -791,10 +825,15 @@ function ActivitiesStep({ form, warnings, patch, editImages }: {
   </FormSection>;
 }
 
-function SettingsStep({ form, patch }: { form: AssignmentDraftInput; patch: Patch }) {
+function SettingsStep({ form, patch, onTitleEdited }: {
+  form: AssignmentDraftInput; patch: Patch; onTitleEdited: () => void;
+}) {
   return <Stack spacing={2}>
     <FormSection title="Tên và hướng dẫn">
-      <TextField label="Tên bài tập" value={form.title} onChange={(event) => patch("title", event.target.value)} required />
+      <TextField label="Tên bài tập" placeholder="Tên sẽ tự cập nhật theo lớp và bộ từ" value={form.title} onChange={(event) => {
+        onTitleEdited();
+        patch("title", event.target.value);
+      }} required />
       <TextField label="Lời nhắn cho học sinh" multiline minRows={2} value={form.instruction ?? ""} onChange={(event) => patch("instruction", event.target.value || undefined)} />
     </FormSection>
     <FormSection title="Thời gian và chấm điểm">

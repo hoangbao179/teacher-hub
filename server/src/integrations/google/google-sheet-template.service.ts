@@ -19,6 +19,15 @@ export function googleLearningRowValues(row: StudentGoogleSheetSnapshot["learnin
     safeGoogleCell(row.studentComment), row.updatedAt];
 }
 
+export function googleVocabularyAttemptRowValues(
+  row: StudentGoogleSheetSnapshot["vocabularyAttempts"][number],
+): Array<string | number | boolean> {
+  return [row.attemptId, row.completedAt, safeGoogleCell(row.assignmentTitle), safeGoogleCell(row.className),
+    safeGoogleCell(row.ageBand), row.attemptNumber, row.scoredQuestionCount, row.correctFirstTry,
+    row.finalCorrect, row.scorePercent ?? "", row.masteredWords, row.learningWords,
+    row.needsReviewWords, safeGoogleCell(row.reviewWordList), safeGoogleCell(row.status), row.updatedAt];
+}
+
 export function safeGoogleCell(value: unknown): string | number | boolean {
   if (value == null) return "";
   if (typeof value === "number" || typeof value === "boolean") return value;
@@ -81,24 +90,7 @@ export class GoogleSheetTemplateService {
       "Nhóm tuổi", "Lần làm", "Số câu tính điểm", "Đúng lần đầu",
       "Đúng cuối cùng", "Điểm", "Số từ đã nhớ", "Số từ đang học",
       "Số từ cần ôn", "Danh sách từ cần ôn", "Trạng thái", "Cập nhật lúc",
-    ], ...snapshot.vocabularyAttempts.map((row) => [
-      row.attemptId,
-      row.completedAt,
-      safeGoogleCell(row.assignmentTitle),
-      safeGoogleCell(row.className),
-      safeGoogleCell(row.ageBand),
-      row.attemptNumber,
-      row.scoredQuestionCount,
-      row.correctFirstTry,
-      row.finalCorrect,
-      row.scorePercent ?? "",
-      row.masteredWords,
-      row.learningWords,
-      row.needsReviewWords,
-      safeGoogleCell(row.reviewWordList),
-      safeGoogleCell(row.status),
-      row.updatedAt,
-    ])];
+    ], ...snapshot.vocabularyAttempts.map(googleVocabularyAttemptRowValues)];
     const technical = [["key", "value"], ["schemaVersion", "1"], ["templateVersion", metadata.templateVersion],
       ["studentId", snapshot.student.id], ["spreadsheetId", spreadsheetId], ["lastGeneratedAt", metadata.generatedAt],
       ["lastSyncedAt", metadata.syncedAt ?? ""]];

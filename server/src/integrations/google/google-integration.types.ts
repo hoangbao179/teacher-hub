@@ -88,6 +88,12 @@ export interface GoogleSheetProvider {
     lessonId: number,
     syncedAt: string,
   ): Promise<void>;
+  syncVocabularyAttempt(
+    resource: ManagedSpreadsheet,
+    row: GoogleVocabularyAttemptRow,
+    attemptId: number,
+    syncedAt: string,
+  ): Promise<void>;
   trash(spreadsheetId: string): Promise<void>;
   assertReady(rootFolderId: string): Promise<void>;
 }

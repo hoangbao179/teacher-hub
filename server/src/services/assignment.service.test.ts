@@ -25,6 +25,8 @@ const draftInput: CreateAssignmentDraftRequest = {
       illustration: { kind: "EMOJI", value: "👩" }, supportsImageGame: true },
     { displayOrder: 2, word: "father", meaningVi: "bố", tier: "CORE",
       illustration: { kind: "EMOJI", value: "👨" }, supportsImageGame: true },
+    { displayOrder: 3, word: "sister", meaningVi: "chị gái", tier: "CORE",
+      illustration: { kind: "EMOJI", value: "👧" }, supportsImageGame: true },
   ],
   activities: [{
     displayOrder: 1,
@@ -161,5 +163,51 @@ test("draft validation rejects invalid audience, date and image-dependent publis
   await assert.rejects(
     service.publish(1, 1, 1),
     (error: unknown) => (error as { code?: string }).code === "ACTIVITY_REQUIRES_IMAGES",
+  );
+});
+
+test("backend rejects unsupported combinations and publish dry-run blocks zero questions", async () => {
+  const service = new AssignmentService(
+    { detail: async () => detail({
+      activities: [{
+        id: 90, displayOrder: 1, mechanic: "BUILD_WORD",
+        presentation: "BUILD_SPELLED_WORD", required: true,
+      }],
+      items: detail().items.map((item) => ({ ...item, word: "a" })),
+    }) } as never,
+    "https://tienganhcovy.com",
+    { materializeItems: async (items: unknown) => items } as never,
+  );
+  await assert.rejects(
+    service.create({
+      ...draftInput,
+      activities: [{
+        displayOrder: 1, mechanic: "ORDER_TOKENS",
+        presentation: "FLASHCARD", required: true,
+      }],
+    }, 1),
+    (error: unknown) => (error as Error).message.includes("chưa được hỗ trợ"),
+  );
+  await assert.rejects(
+    service.publish(1, 1, 1),
+    (error: unknown) => (error as Error).message.includes("không tạo được câu hỏi"),
+  );
+});
+
+test("publish rejects one zero-question activity even when flashcards are playable", async () => {
+  const service = new AssignmentService(
+    { detail: async () => detail({
+      activities: [
+        { id: 91, displayOrder: 1, mechanic: "EXPLORE_CARD", presentation: "FLASHCARD", required: true },
+        { id: 92, displayOrder: 2, mechanic: "BUILD_WORD", presentation: "BUILD_SPELLED_WORD", required: true },
+      ],
+      items: detail().items.map((item, index) => ({ ...item, word: String.fromCharCode(97 + index) })),
+    }) } as never,
+    "https://tienganhcovy.com",
+    { materializeItems: async (items: unknown) => items } as never,
+  );
+  await assert.rejects(
+    service.publish(1, 1, 1),
+    (error: unknown) => (error as Error).message.includes("BUILD_SPELLED_WORD"),
   );
 });

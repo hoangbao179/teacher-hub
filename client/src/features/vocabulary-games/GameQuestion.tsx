@@ -1,8 +1,8 @@
 import type { PublicLearningQuestion } from "@teacher/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Button, Card, CardContent, Grid, Stack, Typography, useMediaQuery } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Grid, Stack, Typography, useMediaQuery } from "@mui/material";
 import { VolumeUpRounded } from "@mui/icons-material";
-import { playGameSpeech } from "./gameAudio";
+import { canPlayGameSpeech, playGameSpeech } from "./gameAudio";
 
 type Answer = Record<string, unknown>;
 
@@ -31,6 +31,7 @@ export function GameQuestion({
   const [memoryMessage, setMemoryMessage] = useState("");
   const [flashcardRevealed, setFlashcardRevealed] = useState(false);
   const [playfulChoice, setPlayfulChoice] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState("");
   const memoryTimer = useRef<number | null>(null);
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
@@ -105,15 +106,22 @@ export function GameQuestion({
           <Typography component="h1" variant="h5" sx={{ textAlign: "center", fontWeight: 800 }}>
             {question.prompt.instruction}
           </Typography>
-          {question.prompt.speechText && (
+          {question.prompt.speechText && canPlayGameSpeech() && (
             <Button
-              onClick={() => void playGameSpeech(question.prompt.speechText!)}
+              disabled={disabled}
+              onClick={() => void playGameSpeech(question.prompt.speechText!).then((played) => {
+                setAudioError(played ? "" : "Thiết bị chưa phát được âm thanh.");
+              })}
               startIcon={<VolumeUpRounded />}
               sx={{ minHeight: 56, alignSelf: "center" }}
             >
               Nghe lại
             </Button>
           )}
+          {question.prompt.speechText && !canPlayGameSpeech() && (
+            <Alert severity="info">Thiết bị này chưa hỗ trợ phát âm thanh.</Alert>
+          )}
+          {audioError && <Alert severity="warning">{audioError}</Alert>}
           {question.mechanic === "EXPLORE_CARD" ? (
             <Box sx={{ perspective: "1200px", minHeight: { xs: 330, sm: 370 } }}>
               <Box
@@ -240,6 +248,7 @@ export function GameQuestion({
                     <Button
                       data-pair-left-id={item.id}
                       fullWidth
+                      disabled={disabled}
                       variant={left === item.id ? "contained" : "outlined"}
                       onClick={() => setLeft(item.id)}
                       sx={{ minHeight: 64 }}
@@ -253,6 +262,7 @@ export function GameQuestion({
                     <Button
                       data-pair-right-id={option.id}
                       fullWidth
+                      disabled={disabled}
                       color="secondary"
                       variant={pairs.some((pair) => pair.rightId === option.id) ? "contained" : "outlined"}
                       onClick={() => choosePairTarget(option.id)}
@@ -300,7 +310,7 @@ export function GameQuestion({
                   <Button
                     key={option.id}
                     variant="outlined"
-                    disabled={selected.includes(option.id)}
+                    disabled={disabled || selected.includes(option.id)}
                     onClick={() => setSelected((current) => [...current, option.id])}
                     sx={{ minWidth: 56, minHeight: 56, fontSize: 20 }}
                   >
@@ -309,8 +319,8 @@ export function GameQuestion({
                 ))}
               </Stack>
               <Stack direction="row" sx={{ gap: 1 }}>
-                <Button fullWidth disabled={!selected.length} onClick={() => setSelected((current) => current.slice(0, -1))} sx={{ minHeight: 56 }}>Xóa chữ cuối</Button>
-                <Button fullWidth onClick={() => setSelected([])} sx={{ minHeight: 56 }}>Làm lại</Button>
+                <Button fullWidth disabled={disabled || !selected.length} onClick={() => setSelected((current) => current.slice(0, -1))} sx={{ minHeight: 56 }}>Xóa chữ cuối</Button>
+                <Button fullWidth disabled={disabled} onClick={() => setSelected([])} sx={{ minHeight: 56 }}>Làm lại</Button>
                 <Button
                   fullWidth variant="contained"
                   disabled={disabled || selected.length !== question.options.length}

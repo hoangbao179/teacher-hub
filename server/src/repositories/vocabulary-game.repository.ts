@@ -19,6 +19,7 @@ import {
   type GeneratedQueue,
 } from "../services/game-question-generator";
 import { GoogleSheetSyncRepository } from "./google-sheet-sync.repository";
+import { calculateItemScore, itemAnswerCorrect, shouldScheduleAdaptiveReview } from "../domain/vocabulary-game-rules";
 
 interface AssignmentAccessRow extends RowDataPacket {
   id: number;
@@ -82,6 +83,7 @@ export interface InternalAttemptRow extends RowDataPacket {
   age_band: LearningAgeBand;
   answer_feedback_mode: AnswerFeedbackMode;
   max_attempts: number | null;
+  pass_score: number | null;
   generation_warnings_json: unknown;
   total_questions: number;
   graded_question_count: number;
@@ -301,7 +303,9 @@ export class VocabularyGameRepository {
           session.expires_at,
           JSON.stringify(queue.warnings),
           initial.length,
-          initial.reduce((total, question) => total + question.scoreWeight, 0),
+          initial.reduce((total, question) => total + (
+            question.scoreWeight === 1 ? question.assignmentItemIds.length : 0
+          ), 0),
         ],
       );
       const attemptId = Number(attemptResult.insertId);
@@ -469,6 +473,10 @@ export class VocabularyGameRepository {
         question.correct_answer_snapshot_json,
         {},
       );
+      const selfAssessment = typeof input.submittedAnswer.selfAssessment === "string"
+        ? input.submittedAnswer.selfAssessment : null;
+      if (correctSnapshot.exposure === true && !["REMEMBERED", "REVIEW"].includes(String(selfAssessment)))
+        throw new AppError(400, "VALIDATION_ERROR", "Hãy chọn Đã nhớ hoặc Học lại nhé.");
       const correct = isCorrectAnswer(input.submittedAnswer, correctSnapshot);
       const firstAttemptCorrect = correct && expectedSequence === 1;
       const immediateRetry = attempt.answer_feedback_mode === "IMMEDIATE"
@@ -495,11 +503,7 @@ export class VocabularyGameRepository {
         const expectedPair = expectedPairs.find(
           (pair) => Number(pair.assignmentItemId) === assignmentItemId,
         );
-        const itemCorrect = expectedPair
-          ? submittedPairs.some((pair) =>
-            pair.leftId === expectedPair.leftId
-            && pair.rightId === expectedPair.rightId)
-          : correct;
+        const itemCorrect = itemAnswerCorrect(expectedPair, submittedPairs, correct);
         const itemRetryCount = expectedSequence > 1
           && !Boolean(itemRow.first_attempt_correct)
           ? Math.max(Number(itemRow.retry_count), expectedSequence - 1)
@@ -535,35 +539,54 @@ export class VocabularyGameRepository {
            WHERE id=?`,
           [firstAttemptCorrect, finalCorrect, expectedSequence - 1, question.id],
         );
-        if (question.graded) {
+        {
           const [adaptives] = await connection.query<Array<RowDataPacket & {
             id: number;
+            assignment_item_id: number;
           }>>(
-            `SELECT id FROM learning_attempt_questions
+            `SELECT id,assignment_item_id FROM learning_attempt_questions
              WHERE attempt_id=? AND adaptive_source_key=(
                SELECT question_key FROM learning_attempt_questions WHERE id=?
              ) AND status='CONDITIONAL' FOR UPDATE`,
             [attempt.id, question.id],
           );
-          if (adaptives[0]) {
-            if (correct) {
+          let activated = 0;
+          for (const adaptive of adaptives) {
+            const sourceItem = questionItems.find((item) =>
+              Number(item.assignment_item_id) === Number(adaptive.assignment_item_id));
+            const firstCorrect = expectedSequence === 1
+              ? Boolean(expectedPairs.length
+                ? expectedPairs.find((pair) => Number(pair.assignmentItemId) === Number(adaptive.assignment_item_id))
+                  && submittedPairs.some((pair) => {
+                    const expected = expectedPairs.find((value) => Number(value.assignmentItemId) === Number(adaptive.assignment_item_id));
+                    return pair.leftId === expected?.leftId && pair.rightId === expected?.rightId;
+                  })
+                : correct)
+              : Boolean(sourceItem?.first_attempt_correct);
+            const needsReview = shouldScheduleAdaptiveReview({
+              graded: Boolean(question.graded),
+              firstAttemptCorrect: firstCorrect,
+              selfAssessment: selfAssessment as "REMEMBERED" | "REVIEW" | null,
+            });
+            if (!needsReview) {
               await connection.execute(
                 `UPDATE learning_attempt_questions
                  SET status='SKIPPED',skip_reason='SOURCE_CORRECT' WHERE id=?`,
-                [adaptives[0].id],
+                [adaptive.id],
               );
             } else {
               await connection.execute(
                 "UPDATE learning_attempt_questions SET status='PENDING' WHERE id=?",
-                [adaptives[0].id],
+                [adaptive.id],
               );
-              await connection.execute(
-                `UPDATE learning_attempts
-                 SET total_questions=total_questions+1 WHERE id=?`,
-                [attempt.id],
-              );
+              activated += 1;
             }
           }
+          if (activated)
+            await connection.execute(
+              `UPDATE learning_attempts SET total_questions=total_questions+? WHERE id=?`,
+              [activated, attempt.id],
+            );
         }
         await connection.execute(
           `UPDATE learning_attempt_questions SET status='IN_PROGRESS'
@@ -573,19 +596,25 @@ export class VocabularyGameRepository {
         );
       }
       const revealFeedback = attempt.answer_feedback_mode === "IMMEDIATE";
+      const revealGradedResult = revealFeedback && Boolean(question.graded);
       const response = {
         clientAnswerId: input.clientAnswerId,
         questionId: input.questionId,
-        isCorrect: revealFeedback ? correct : null,
-        firstAttemptCorrect: revealFeedback ? firstAttemptCorrect : null,
-        finalCorrect: revealFeedback ? finalCorrect : null,
+        isCorrect: revealGradedResult ? correct : null,
+        firstAttemptCorrect: revealGradedResult ? firstAttemptCorrect : null,
+        finalCorrect: revealGradedResult ? finalCorrect : null,
         retryCount: immediateRetry ? expectedSequence : expectedSequence - 1,
         idempotent: false,
         shouldRetry: immediateRetry,
         feedback: {
-          tone: revealFeedback && correct
-            ? "POSITIVE" : immediateRetry ? "TRY_AGAIN" : "CONTINUE",
-          message: !revealFeedback
+          tone: selfAssessment === "REMEMBERED"
+            ? "POSITIVE" : revealGradedResult && correct
+              ? "POSITIVE" : immediateRetry ? "TRY_AGAIN" : "CONTINUE",
+          message: selfAssessment === "REVIEW"
+            ? "Cô đã đánh dấu từ này để con học lại sau vài câu nhé."
+            : selfAssessment === "REMEMBERED"
+              ? "Tuyệt lắm, cô đã ghi nhận con tự đánh giá là đã nhớ."
+            : !revealFeedback
             ? "Cô đã ghi nhận câu trả lời của con."
             : correct
             ? "Chính xác! Giỏi lắm!"
@@ -595,9 +624,9 @@ export class VocabularyGameRepository {
       await connection.execute(
         `INSERT INTO learning_attempt_answers
           (attempt_id,attempt_question_id,client_answer_id,answer_sequence,
-           submitted_answer_json,submitted_answer_sha256,is_correct,
+           submitted_answer_json,submitted_answer_sha256,is_correct,self_assessment,
            response_snapshot_json,submitted_at)
-         VALUES (?,?,?,?,?,?,?,?,UTC_TIMESTAMP())`,
+         VALUES (?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())`,
         [
           attempt.id,
           question.id,
@@ -606,6 +635,7 @@ export class VocabularyGameRepository {
           submittedCanonical,
           submittedHash,
           correct,
+          correctSnapshot.exposure === true ? selfAssessment : null,
           JSON.stringify(response),
         ],
       );
@@ -647,6 +677,16 @@ export class VocabularyGameRepository {
           reviewWords: Array.isArray(previous.reviewWords)
             ? previous.reviewWords
             : [],
+          passScore: previous.passScore ?? (
+            state.attempt.pass_score == null ? null : Number(state.attempt.pass_score)
+          ),
+          passed: previous.passed ?? (
+            previous.scorePercent == null || state.attempt.pass_score == null
+              ? null
+              : Number(previous.scorePercent) >= Number(state.attempt.pass_score)
+          ),
+          rememberedCount: Number(previous.rememberedCount ?? 0),
+          reviewRequestedCount: Number(previous.reviewRequestedCount ?? 0),
         };
         await connection.commit();
         return normalized;
@@ -659,16 +699,34 @@ export class VocabularyGameRepository {
         final_correct: number;
       }>>(
         `SELECT
-           SUM(score_weight) scored,
-           SUM(score_weight=1 AND first_attempt_correct=1) first_try,
-           SUM(score_weight=1 AND final_correct=1) final_correct
-         FROM learning_attempt_questions WHERE attempt_id=?`,
+           COUNT(*) scored,
+           SUM(qi.first_attempt_correct=1) first_try,
+           SUM(qi.final_correct=1) final_correct
+         FROM learning_attempt_question_items qi
+         JOIN learning_attempt_questions q ON q.id=qi.question_id
+         WHERE q.attempt_id=? AND q.score_weight=1 AND q.question_kind='PRIMARY'`,
         [state.attempt.id],
       );
-      const graded = Number(state.attempt.graded_question_count);
+      const itemGraded = Number(stats[0]?.scored ?? 0);
+      const graded = itemGraded || Number(state.attempt.graded_question_count);
       const firstTry = Number(stats[0]?.first_try ?? 0);
       const finalCorrect = Number(stats[0]?.final_correct ?? 0);
-      const score = graded ? Math.round((finalCorrect / graded) * 100) : null;
+      const passScore = state.attempt.pass_score == null ? null : Number(state.attempt.pass_score);
+      const scoreResult = calculateItemScore({
+        gradedExposureCount: graded,
+        firstTryCorrectCount: firstTry,
+        finalCorrectCount: finalCorrect,
+        passScore,
+      });
+      const score = scoreResult.scorePercent;
+      const [assessmentRows] = await connection.query<Array<RowDataPacket & {
+        remembered: number; requested_review: number;
+      }>>(
+        `SELECT SUM(self_assessment='REMEMBERED') remembered,
+          SUM(self_assessment='REVIEW') requested_review
+         FROM learning_attempt_answers WHERE attempt_id=?`,
+        [state.attempt.id],
+      );
       const stars = score == null ? 3 : score >= 85 ? 3 : score >= 60 ? 2 : 1;
       const reward = {
         attemptId: Number(state.attempt.id),
@@ -685,6 +743,10 @@ export class VocabularyGameRepository {
         firstTryCorrectCount: firstTry,
         finalCorrectCount: finalCorrect,
         scorePercent: score,
+        passScore,
+        passed: scoreResult.passed,
+        rememberedCount: Number(assessmentRows[0]?.remembered ?? 0),
+        reviewRequestedCount: Number(assessmentRows[0]?.requested_review ?? 0),
         canPlayAgain: state.attempt.recipient_id == null
           || state.attempt.max_attempts == null
           || Number(state.attempt.attempt_number) < Number(state.attempt.max_attempts),
@@ -799,7 +861,7 @@ export class VocabularyGameRepository {
     lock: boolean,
   ): Promise<InternalAttemptState> {
     const [attempts] = await connection.query<InternalAttemptRow[]>(
-      `SELECT t.*,a.age_band,a.answer_feedback_mode,a.max_attempts,
+      `SELECT t.*,a.age_band,a.answer_feedback_mode,a.max_attempts,a.pass_score,
         r.student_name_snapshot
        FROM learning_attempts t
        JOIN learning_assignments a ON a.id=t.assignment_id

@@ -1,4 +1,6 @@
 import {
+  activityCompatibilityMessage,
+  activityHasEligibleItems,
   answerFeedbackModes,
   assignmentActivitiesForTemplate,
   assignmentAudienceTypes,
@@ -7,6 +9,7 @@ import {
   gameMechanics,
   gamePresentations,
   hasPlayableImage,
+  isSupportedActivity,
   learningAgeBands,
   type AssignmentDetail,
   type AssignmentListQuery,
@@ -20,6 +23,7 @@ import QRCode from "qrcode";
 import { AppError } from "../errors/app-error";
 import { AssignmentRepository } from "../repositories/assignment.repository";
 import { PublicAssetMaterializer } from "./public-asset-materializer";
+import { generateQuestionQueue } from "./game-question-generator";
 
 const imagePresentations = new Set([
   "LISTEN_PICK_IMAGE",
@@ -129,7 +133,7 @@ export class AssignmentService {
       );
     const warnings = this.publishWarnings(assignment);
     if (warnings.length)
-      throw new AppError(422, warnings[0].startsWith("Hoạt động cần hình")
+      throw new AppError(422, warnings[0].includes("cần hình")
         ? "ACTIVITY_REQUIRES_IMAGES"
         : "VALIDATION_ERROR", warnings[0], { warnings });
     const publicCode = assignmentPublicCode();
@@ -297,6 +301,8 @@ export class AssignmentService {
           !gameMechanics.includes(activity.mechanic) ||
           !gamePresentations.includes(activity.presentation))
         throw this.validation("Cấu hình hoạt động không hợp lệ.");
+      if (!isSupportedActivity(activity.mechanic, activity.presentation))
+        throw this.validation(activityCompatibilityMessage(activity));
       return { ...activity, config: activity.config ?? {} };
     });
     const selectedStudentIds = [...new Set(raw.selectedStudentIds ?? [])];
@@ -343,12 +349,23 @@ export class AssignmentService {
     if (!assignment.audienceType) warnings.push("Hãy chọn người nhận.");
     if (assignment.items.length < 2) warnings.push("Bài cần ít nhất 2 từ.");
     if (!assignment.activities.length) warnings.push("Bài cần ít nhất một hoạt động.");
+    for (const activity of assignment.activities) {
+      if (!isSupportedActivity(activity.mechanic, activity.presentation))
+        warnings.push(activityCompatibilityMessage(activity));
+      else if (!imagePresentations.has(activity.presentation)
+        && !activityHasEligibleItems(activity, assignment.items.map((item) => ({
+        word: item.word,
+        illustration: item.illustrationSnapshot,
+      }))))
+        warnings.push(`${activity.presentation}: Bộ từ này không tạo được câu hỏi cho hoạt động đã chọn.`);
+    }
     if (assignment.dueAt && new Date(assignment.dueAt).getTime() <= Date.now())
       warnings.push("Hạn hoàn thành phải ở tương lai.");
     const imageCount = assignment.items.filter(hasPlayableImage).length;
-    if (assignment.activities.some((activity) =>
-      imagePresentations.has(activity.presentation)) && imageCount < 2)
-      warnings.push("Hoạt động cần hình nhưng chưa đủ 2 từ có hình.");
+    for (const activity of assignment.activities.filter((value) =>
+      imagePresentations.has(value.presentation)))
+      if (imageCount < 2)
+        warnings.push(`Hoạt động ${activity.presentation} cần hình nhưng chưa đủ 2 từ có hình.`);
     if (assignment.templateCode !== "CUSTOM") {
       const template = assignmentActivitiesForTemplate(assignment.templateCode, {
         ageBand: assignment.ageBand,
@@ -359,7 +376,20 @@ export class AssignmentService {
       if (!assignment.activities.length && template.activities.length)
         warnings.push("Hãy áp dụng lộ trình đã chọn.");
     }
-    return warnings;
+    if (assignment.items.length && assignment.activities.length) {
+      for (const activity of assignment.activities) {
+        const dryRun = generateQuestionQueue(
+          { ...assignment, activities: [activity] },
+          `publish-dry-run:${assignment.id}:${assignment.version}:${activity.id}`,
+        );
+        if (!dryRun.questions.some((question) =>
+          question.status === "PENDING"
+          && question.activityId === activity.id
+          && ["PRIMARY", "EXPOSURE"].includes(question.questionKind)))
+          warnings.push(`${activity.presentation}: Bộ từ này không tạo được câu hỏi cho hoạt động đã chọn.`);
+      }
+    }
+    return [...new Set(warnings)];
   }
 
   private async share(

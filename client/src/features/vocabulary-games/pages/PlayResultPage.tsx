@@ -1,9 +1,13 @@
 import type { CompleteLearningAttemptResult } from "@teacher/shared";
 import { Alert, Button, Card, CardContent, CircularProgress, Stack, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { vocabularyGamesApi } from "../../../api/vocabularyGames";
+import { ApiError } from "../../../api/client";
 import { PlayShell } from "../PlayShell";
+import { clearGameSession } from "../gameSession";
+import { requestCompletion } from "../completionRequest";
+import { SynchronousActionLock } from "../synchronousActionLock";
 
 export function PlayResultPage() {
   const { sessionToken = "" } = useParams();
@@ -12,8 +16,24 @@ export function PlayResultPage() {
   const [error, setError] = useState("");
   const [replaying, setReplaying] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const replayLock = useRef(new SynchronousActionLock());
+  const completionLock = useRef(new SynchronousActionLock());
+
+  const complete = useCallback(() => {
+    if (!completionLock.current.tryLock()) return Promise.resolve();
+    setError("");
+    return requestCompletion(sessionToken, vocabularyGamesApi.complete)
+      .then((value) => { setResult(value); clearGameSession(sessionToken); })
+      .catch((reason: unknown) => {
+        if (reason instanceof ApiError && ["PUBLIC_SESSION_EXPIRED", "PUBLIC_ACCESS_DENIED"]
+          .includes(reason.code)) clearGameSession(sessionToken);
+        setError(reason instanceof Error ? reason.message : "Chưa thể nhận kết quả.");
+      })
+      .finally(() => completionLock.current.release());
+  }, [sessionToken]);
 
   const replay = async () => {
+    if (!replayLock.current.tryLock()) return;
     setReplaying(true);
     setError("");
     try {
@@ -21,19 +41,15 @@ export function PlayResultPage() {
       navigate(`/play/session/${encodeURIComponent(attempt.sessionToken)}`, { replace: true });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Chưa thể chơi lại.");
+    } finally {
       setReplaying(false);
+      replayLock.current.release();
     }
   };
 
   useEffect(() => {
-    let active = true;
-    vocabularyGamesApi.complete(sessionToken)
-      .then((value) => { if (active) setResult(value); })
-      .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : "Chưa thể nhận kết quả.");
-      });
-    return () => { active = false; };
-  }, [sessionToken]);
+    void Promise.resolve().then(complete);
+  }, [complete]);
 
   return (
     <PlayShell progress={100} progressLabel="Hoàn thành">
@@ -43,7 +59,7 @@ export function PlayResultPage() {
           {error && (
             <Stack spacing={2}>
               <Alert severity="warning">{error}</Alert>
-              <Button onClick={() => navigate(-1)} sx={{ minHeight: 56 }}>Quay lại bài học</Button>
+              <Button onClick={() => void complete()} sx={{ minHeight: 56 }}>Thử tải lại kết quả</Button>
             </Stack>
           )}
           {result && (
@@ -62,6 +78,9 @@ export function PlayResultPage() {
               {result.resultMode === "SCORE" && <Typography>
                 Đúng ngay lần đầu: {result.firstTryCorrectCount}/{result.gradedExposureCount}
               </Typography>}
+              {result.passed != null && <Alert severity={result.passed ? "success" : "info"}>
+                {result.passed ? "Con đã đạt yêu cầu" : "Con chưa đạt yêu cầu"} · Mốc đạt {result.passScore}%
+              </Alert>}
               {showReview && <Stack spacing={0.75} aria-live="polite">
                 {result.reviewWords.length
                   ? result.reviewWords.map((item) => <Typography key={`${item.word}-${item.meaningVi}`}>

@@ -6,7 +6,8 @@ import {
   generateQuestionQueue,
   isCorrectAnswer,
 } from "./game-question-generator";
-import { gameToken, gameTokenHash } from "./vocabulary-game.service";
+import { gameToken, gameTokenHash, VocabularyGameService } from "./vocabulary-game.service";
+import { AppError } from "../errors/app-error";
 import { safeRequestPath } from "../middleware/request-context";
 
 const assignment: AssignmentDetail = {
@@ -78,6 +79,36 @@ test("game sessions use at least 32 random bytes and persist a one-way hash", ()
   assert.notEqual(gameTokenHash(token), token);
 });
 
+test("start with the same session returns the existing attempt without creating another", async () => {
+  let started = false;
+  let startCalls = 0;
+  const attemptState = {
+    attempt: {
+      id: 55, status: "IN_PROGRESS", age_band: "G4_G5", answer_feedback_mode: "IMMEDIATE",
+      session_expires_at: new Date(Date.now() + 60_000), student_name_snapshot: null,
+      guest_name: null, total_questions: 1, generation_warnings_json: [],
+    },
+    completedQuestions: 0,
+    question: null,
+  };
+  const games = {
+    sessionAssignmentCode: async () => "ABCDEFGH",
+    state: async () => {
+      if (!started) throw new AppError(404, "ATTEMPT_NOT_FOUND", "not started");
+      return attemptState;
+    },
+    startAttempt: async () => { startCalls += 1; started = true; },
+  };
+  const service = new VocabularyGameService(
+    games as never,
+    { publicDetail: async () => assignment } as never,
+  );
+  const session = "s".repeat(48);
+  await service.start("ABCDEFGH", session);
+  await service.start("ABCDEFGH", session);
+  assert.equal(startCalls, 1);
+});
+
 test("request logging redacts raw public session tokens", () => {
   const token = gameToken();
   assert.equal(
@@ -107,6 +138,39 @@ test("seeded queue is deterministic, snapshot-safe and keeps listening answers h
     .every((question) => question.questionKind === "REVIEW" && question.scoreWeight === 0));
 });
 
+test("shuffleQuestions false preserves display order while true is seed deterministic", () => {
+  const ordered = generateQuestionQueue({
+    ...assignment,
+    shuffleQuestions: false,
+    activities: [{
+      id: 8, displayOrder: 1, mechanic: "EXPLORE_CARD",
+      presentation: "FLASHCARD", required: true,
+    }],
+  }, "ignored-for-order").questions.filter((question) => question.questionKind === "EXPOSURE");
+  assert.deepEqual(ordered.map((question) => question.assignmentItemId), [1, 2, 3, 4]);
+
+  const shuffledA = generateQuestionQueue({ ...assignment, shuffleQuestions: true }, "shuffle-a");
+  const shuffledAReplay = generateQuestionQueue({ ...assignment, shuffleQuestions: true }, "shuffle-a");
+  const shuffledOrders = ["shuffle-b", "shuffle-c", "shuffle-d", "shuffle-e"].map((seed) =>
+    generateQuestionQueue({ ...assignment, shuffleQuestions: true }, seed)
+      .questions.filter((item) => item.questionKind === "PRIMARY")
+      .map((item) => item.assignmentItemId).join(","));
+  assert.deepEqual(shuffledA, shuffledAReplay);
+  assert.ok(shuffledOrders.some((order) => order !== shuffledOrders[0]));
+});
+
+test("unsupported mechanic and presentation produce no playable questions", () => {
+  const queue = generateQuestionQueue({
+    ...assignment,
+    activities: [{
+      id: 20, displayOrder: 1, mechanic: "ORDER_TOKENS",
+      presentation: "FLASHCARD", required: true,
+    }],
+  }, "unsupported");
+  assert.equal(queue.questions.length, 0);
+  assert.ok(queue.warnings.some((warning) => warning.includes("chưa được hỗ trợ")));
+});
+
 test("pair questions map every item and expose only opaque match keys", () => {
   const queue = generateQuestionQueue({
     ...assignment,
@@ -127,6 +191,21 @@ test("pair questions map every item and expose only opaque match keys", () => {
   assert.ok(left.every((item) => !assignment.items.some(
     (word) => item.matchKey === String(word.id) || item.matchKey === word.word,
   )));
+  const reviews = queue.questions.filter((item) => item.questionKind === "REVIEW");
+  assert.deepEqual(new Set(reviews.map((item) => item.assignmentItemId)), new Set([1, 2, 3, 4]));
+  assert.ok(reviews.every((item) => item.scoreWeight === 0 && item.status === "CONDITIONAL"));
+});
+
+test("build word and flashcard create item-level zero-weight adaptive review", () => {
+  for (const activity of [
+    { id: 30, displayOrder: 1, mechanic: "BUILD_WORD" as const, presentation: "BUILD_SPELLED_WORD" as const, required: true },
+    { id: 31, displayOrder: 1, mechanic: "EXPLORE_CARD" as const, presentation: "FLASHCARD" as const, required: true },
+  ]) {
+    const queue = generateQuestionQueue({ ...assignment, activities: [activity] }, `adaptive-${activity.id}`);
+    const reviews = queue.questions.filter((item) => item.questionKind === "REVIEW");
+    assert.ok(reviews.length > 0);
+    assert.ok(reviews.every((item) => item.scoreWeight === 0 && item.assignmentItemIds.length === 1));
+  }
 });
 
 test("missing letter snapshots one blank and opaque deterministic options", () => {
@@ -144,7 +223,7 @@ test("missing letter snapshots one blank and opaque deterministic options", () =
   const second = generateQuestionQueue(spelling, "missing-seed");
   assert.deepEqual(first, second);
   assert.ok(first.questions.length > 0);
-  for (const question of first.questions) {
+  for (const question of first.questions.filter((value) => value.questionKind === "PRIMARY")) {
     assert.equal(question.presentation, "MISSING_LETTER");
     assert.equal(question.prompt.maskedWord?.split("_").length, 2);
     assert.ok(question.options.length >= 2 && question.options.length <= 4);
@@ -176,6 +255,33 @@ test("queue caps primary scoring before reviews and keeps no orphan review", () 
     question.adaptiveSourceKey && primaryKeys.has(question.adaptiveSourceKey)));
   for (const item of assignment.items)
     assert.ok(primaries.some((question) => question.assignmentItemIds.includes(item.id)));
+});
+
+test("a rejected multi-item question does not consume cap needed by a later single item", () => {
+  const constrainedItems = assignment.items.map((item, index) => ({
+    ...item,
+    word: index === 0 ? "cat" : String.fromCharCode(97 + index),
+    normalizedWord: index === 0 ? "cat" : String.fromCharCode(97 + index),
+  }));
+  const activities = [
+    ...[1, 2, 3].map((id) => ({
+      id: 200 + id, displayOrder: id, mechanic: "SELECT_ONE" as const,
+      presentation: "WORD_PICK_MEANING" as const, required: true,
+    })),
+    { id: 204, displayOrder: 4, mechanic: "BUILD_WORD" as const, presentation: "BUILD_SPELLED_WORD" as const, required: true },
+    { id: 205, displayOrder: 5, mechanic: "MATCH_PAIRS" as const, presentation: "MATCH_WORD_MEANING" as const, required: true },
+    { id: 206, displayOrder: 6, mechanic: "BUILD_WORD" as const, presentation: "BUILD_SPELLED_WORD" as const, required: true },
+  ];
+  const queue = generateQuestionQueue({
+    ...assignment,
+    ageBand: "G2_G3",
+    shuffleQuestions: false,
+    items: constrainedItems,
+    activities,
+  }, "partial-cap");
+  const primaries = queue.questions.filter((question) => question.questionKind === "PRIMARY");
+  assert.equal(primaries.some((question) => question.activityId === 205), false);
+  assert.equal(primaries.some((question) => question.activityId === 206), true);
 });
 
 test("server grading canonicalizes object keys and pair order", () => {

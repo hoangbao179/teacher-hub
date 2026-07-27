@@ -1,10 +1,12 @@
 import { Alert, Button, Card, CardContent, CircularProgress, Stack, TextField, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { PublicAssignmentSummary } from "@teacher/shared";
 import { vocabularyGamesApi } from "../../../api/vocabularyGames";
 import { ApiError } from "../../../api/client";
 import { PlayShell } from "../PlayShell";
+import { clearGameSession, loadGameSession, saveGameSession } from "../gameSession";
+import { SynchronousActionLock } from "../synchronousActionLock";
 
 export function PlayStartPage() {
   const { publicCode = "" } = useParams();
@@ -15,6 +17,7 @@ export function PlayStartPage() {
   const [guestName, setGuestName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const startLock = useRef(new SynchronousActionLock());
 
   useEffect(() => {
     let active = true;
@@ -27,10 +30,26 @@ export function PlayStartPage() {
   }, [publicCode]);
 
   const start = async () => {
+    if (!startLock.current.tryLock()) return;
     setBusy(true);
     setError("");
     try {
+      const existing = loadGameSession(publicCode);
+      if (existing) {
+        try {
+          await vocabularyGamesApi.start(publicCode, existing.sessionToken);
+          navigate(`/play/session/${encodeURIComponent(existing.sessionToken)}`, { replace: true });
+          return;
+        } catch (reason) {
+          const apiError = reason as ApiError;
+          if (["PUBLIC_SESSION_EXPIRED", "PUBLIC_ACCESS_DENIED", "ATTEMPT_NOT_FOUND"]
+            .includes(apiError.code))
+            clearGameSession(existing.sessionToken);
+          else throw reason;
+        }
+      }
       const result = await vocabularyGamesApi.access(publicCode, accessToken, guestName.trim() || undefined);
+      saveGameSession({ publicCode, sessionToken: result.sessionToken, expiresAt: result.expiresAt });
       await vocabularyGamesApi.start(publicCode, result.sessionToken);
       navigate(`/play/session/${encodeURIComponent(result.sessionToken)}`, { replace: true });
     } catch (value) {
@@ -38,6 +57,7 @@ export function PlayStartPage() {
       setError(apiError.message);
     } finally {
       setBusy(false);
+      startLock.current.release();
     }
   };
 

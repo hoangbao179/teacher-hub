@@ -128,4 +128,38 @@ export class GoogleSheetsClient {
       },
     });
   }
+
+  async syncVocabularyRow(
+    spreadsheetId: string,
+    attemptId: number,
+    row: Array<string | number | boolean>,
+    syncedAt: string,
+  ): Promise<void> {
+    const range = "'Ôn từ vựng'!A:P";
+    const response = await this.sheets.spreadsheets.values.get({ spreadsheetId, range });
+    const values = response.data.values ?? [];
+    const rowIndex = values.findIndex((candidate, index) =>
+      index > 0 && String(candidate[0] ?? "") === String(attemptId));
+    if (rowIndex >= 1)
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `'Ôn từ vựng'!A${rowIndex + 1}:P${rowIndex + 1}`,
+        valueInputOption: "RAW",
+        requestBody: { values: [row] },
+      });
+    else
+      await this.sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range,
+        valueInputOption: "RAW",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: { values: [row] },
+      });
+    await this.sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: { valueInputOption: "RAW", data: [
+        { range: "'_TeacherHub'!B7", values: [[syncedAt]] },
+      ] },
+    });
+  }
 }

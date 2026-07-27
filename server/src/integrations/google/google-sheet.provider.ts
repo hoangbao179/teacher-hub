@@ -2,7 +2,7 @@ import type { GoogleDriveSettings } from "../../config/google-drive-settings";
 import { classifyGoogleError } from "./google-integration.errors";
 import { createGoogleOAuthClient } from "./google-auth.client";
 import { GoogleDriveClient } from "./google-drive.client";
-import { googleLearningRowValues, GoogleSheetTemplateService, safeGoogleCell } from "./google-sheet-template.service";
+import { googleLearningRowValues, googleVocabularyAttemptRowValues, GoogleSheetTemplateService, safeGoogleCell } from "./google-sheet-template.service";
 import { GoogleSheetsClient } from "./google-sheets.client";
 import type { CreateManagedSpreadsheetInput, GoogleSheetProvider, ManagedSpreadsheet, StudentGoogleSheetSnapshot } from "./google-integration.types";
 
@@ -61,6 +61,21 @@ export class GoogleApiSheetProvider implements GoogleSheetProvider {
         { range: "B15", value: safeGoogleCell(overview.latestComment) },
         { range: "B16", value: safeGoogleCell(overview.latestHomework) },
       ], syncedAt);
+    } catch (error) { throw classifyGoogleError(error); }
+  }
+  async syncVocabularyAttempt(
+    resource: ManagedSpreadsheet,
+    row: StudentGoogleSheetSnapshot["vocabularyAttempts"][number],
+    attemptId: number,
+    syncedAt: string,
+  ): Promise<void> {
+    try {
+      await this.sheets.syncVocabularyRow(
+        resource.spreadsheetId,
+        attemptId,
+        googleVocabularyAttemptRowValues(row),
+        syncedAt,
+      );
     } catch (error) { throw classifyGoogleError(error); }
   }
   async trash(spreadsheetId: string): Promise<void> {

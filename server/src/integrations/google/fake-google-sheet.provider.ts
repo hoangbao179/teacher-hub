@@ -7,6 +7,7 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
   readonly trashed: string[] = [];
   readonly synced: Array<{ resource: ManagedSpreadsheet; lessonId: number; row: StudentGoogleSheetSnapshot["learning"][number] | null }> = [];
   readonly learningRows = new Map<string, StudentGoogleSheetSnapshot["learning"][number]>();
+  readonly vocabularyRows = new Map<string, StudentGoogleSheetSnapshot["vocabularyAttempts"][number]>();
   createCount = 0;
   lastCreateInput: CreateManagedSpreadsheetInput | null = null;
   failure: "NETWORK" | "AUTH" | null = null;
@@ -60,6 +61,16 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
     const key = `${resource.spreadsheetId}:${lessonId}`;
     if (row) this.learningRows.set(key, row); else this.learningRows.delete(key);
     this.synced.push({ resource, lessonId, row });
+  }
+  async syncVocabularyAttempt(
+    resource: ManagedSpreadsheet,
+    row: StudentGoogleSheetSnapshot["vocabularyAttempts"][number],
+    attemptId: number,
+  ): Promise<void> {
+    if (this.failure === "NETWORK") throw new Error("network timeout");
+    if (this.failure === "AUTH") throw Object.assign(new Error("permission denied"), { code: 403 });
+    const key = `${resource.spreadsheetId}:${attemptId}`;
+    this.vocabularyRows.set(key, row);
   }
   async trash(spreadsheetId: string): Promise<void> { this.trashed.push(spreadsheetId); }
 }

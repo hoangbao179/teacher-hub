@@ -1483,7 +1483,7 @@ components:
       properties:
         data:
           type: object
-          required: [attemptId, status, stars, sticker, message, gradedExposureCount, firstTryCorrectCount, finalCorrectCount, scorePercent, canPlayAgain]
+          required: [attemptId, status, stars, sticker, message, gradedExposureCount, firstTryCorrectCount, finalCorrectCount, scorePercent, passScore, passed, rememberedCount, reviewRequestedCount, canPlayAgain]
           properties:
             attemptId: {type: integer, format: int64}
             status: {type: string, enum: [COMPLETED]}
@@ -1494,6 +1494,10 @@ components:
             firstTryCorrectCount: {type: integer, minimum: 0}
             finalCorrectCount: {type: integer, minimum: 0}
             scorePercent: {type: integer, minimum: 0, maximum: 100, nullable: true}
+            passScore: {type: integer, minimum: 0, maximum: 100, nullable: true}
+            passed: {type: boolean, nullable: true}
+            rememberedCount: {type: integer, minimum: 0}
+            reviewRequestedCount: {type: integer, minimum: 0}
             canPlayAgain: {type: boolean}
             rewards: {type: object, additionalProperties: true}
     LearningAssignmentResultsEnvelope:

@@ -30,6 +30,13 @@ age-based result và Google tab `Ôn từ vựng` đã được ổn định; mi
 và full local regression đã đạt. Live Pixabay/Google smoke vẫn phụ thuộc credential;
 restore drill VPS vẫn là release gate của V20E.
 
+VOCABULARY-GAME-HARDENING: **IMPLEMENTED — TARGETED CHECKS PASS on 27/07/2026**. Compatibility matrix,
+per-activity publish dry-run, item-level adaptive/scoring, runtime passScore,
+self-assessment migration `0023`, session recovery, wizard/result/audio fallback và
+incremental vocabulary sheet upsert đã được kiểm tra bằng targeted unit/MySQL integration
+và student hardening E2E. Full repository gate và live Google smoke không chạy theo phạm vi;
+approved audio asset được defer vì assignment snapshot chưa có audio source.
+
 ## Status
 
 M1.1: PASS. M2A: PASS. M2B: PASS. M2C: PASS. M3: PASS on 20/07/2026. M2A evidence is in

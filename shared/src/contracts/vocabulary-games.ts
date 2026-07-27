@@ -150,6 +150,10 @@ export interface CompleteLearningAttemptResult {
   firstTryCorrectCount: number;
   finalCorrectCount: number;
   scorePercent: number | null;
+  passScore: number | null;
+  passed: boolean | null;
+  rememberedCount: number;
+  reviewRequestedCount: number;
   canPlayAgain: boolean;
   reviewWords: Array<{
     word: string;

@@ -89,6 +89,11 @@ export class VocabularyGameService {
     const code = await this.games.sessionAssignmentCode(hash);
     if (code !== this.publicCode(publicCode))
       throw new AppError(404, "PUBLIC_ASSIGNMENT_UNAVAILABLE", "Bài học hiện không khả dụng.");
+    try {
+      return this.mapAttempt(await this.games.state(hash), sessionToken);
+    } catch (error) {
+      if (!(error instanceof AppError) || error.code !== "ATTEMPT_NOT_FOUND") throw error;
+    }
     const assignment = await this.assignments.publicDetail(code);
     if (!assignment)
       throw new AppError(404, "PUBLIC_ASSIGNMENT_UNAVAILABLE", "Bài học hiện không khả dụng.");
