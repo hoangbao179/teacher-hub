@@ -43,5 +43,31 @@ export interface ProviderSearchResult {
 export interface ImageSearchProvider {
   readonly name: VocabularyImageProvider;
   readonly allowedDownloadHosts: readonly string[];
+  readonly supportedMediaTypes?: readonly VocabularyImageMediaType[];
   search(input: ProviderSearchInput): Promise<ProviderSearchResult>;
+  resolveAsset?(providerAssetId: string): Promise<ProviderImageAsset | null>;
+}
+
+export interface ImageProviderRegistry {
+  get(name: VocabularyImageProvider): ImageSearchProvider | null;
+  primary(mediaType: VocabularyImageMediaType): ImageSearchProvider | null;
+  status(): Array<{ provider: VocabularyImageProvider; enabled: boolean }>;
+}
+
+export class StaticImageProviderRegistry implements ImageProviderRegistry {
+  private readonly providers = new Map<VocabularyImageProvider, ImageSearchProvider>();
+  constructor(providers: readonly ImageSearchProvider[]) {
+    providers.forEach((provider) => this.providers.set(provider.name, provider));
+  }
+  get(name: VocabularyImageProvider) { return this.providers.get(name) ?? null; }
+  primary(mediaType: VocabularyImageMediaType) {
+    return [...this.providers.values()].find((provider) =>
+      !provider.supportedMediaTypes || provider.supportedMediaTypes.includes(mediaType) || mediaType === "ALL") ?? null;
+  }
+  status() {
+    return (["PIXABAY"] as VocabularyImageProvider[]).map((provider) => ({
+      provider,
+      enabled: this.providers.has(provider),
+    }));
+  }
 }

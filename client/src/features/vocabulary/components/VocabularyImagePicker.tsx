@@ -1,4 +1,4 @@
-import { CheckCircle, ImageSearch, Search } from "@mui/icons-material";
+import { CheckCircle, ImageSearch, Search, UploadFile } from "@mui/icons-material";
 import {
   Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
   InputAdornment, MenuItem, Skeleton, Stack, TextField, Typography, useMediaQuery, useTheme,
@@ -6,7 +6,7 @@ import {
 import type { VocabularyMediaSearchItem, VocabularyStoredMedia } from "@teacher/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "../../../api/client";
-import { getVocabularyMediaStatus, importVocabularyMedia } from "../../../api/vocabularyMedia";
+import { getVocabularyMediaStatus, importVocabularyMedia, uploadVocabularyMedia } from "../../../api/vocabularyMedia";
 import {
   buildVocabularyImageStrategy,
   type VocabularyImageFilter,
@@ -43,6 +43,9 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const searchGeneration = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
+  const uploadLock = useRef(false);
+  const [uploadDraft, setUploadDraft] = useState<{ file: File; preview: string } | null>(null);
 
   const resetResults = () => {
     searchGeneration.current += 1;
@@ -55,9 +58,12 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
 
   useEffect(() => {
     if (!open || strategy.publicAsset) return;
-    void getVocabularyMediaStatus()
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    void getVocabularyMediaStatus(controller.signal)
       .then((value) => setDisabled(!value.enabled))
       .catch((value: Error) => setError(value.message));
+    return () => controller.abort();
   }, [open, strategy]);
 
   useEffect(() => {
@@ -68,12 +74,15 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
   }, [cooldownUntil]);
 
   const search = useCallback(async (targetPage = 1) => {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     const generation = searchGeneration.current;
     setLoading(true);
     setError("");
     try {
       const result = await searchVocabularyImageSuggestions({
-        strategy, query, mediaType, page: targetPage, pageSize: VOCABULARY_IMAGE_PAGE_SIZE,
+        strategy, query, mediaType, page: targetPage, pageSize: VOCABULARY_IMAGE_PAGE_SIZE, signal: controller.signal,
       });
       if (generation !== searchGeneration.current) return;
       setItems((current) => targetPage === 1
@@ -131,9 +140,24 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
     onSelectLocal(strategy.publicAsset);
     onClose();
   };
+  const close = () => { searchGeneration.current += 1; activeRequest.current?.abort(); onClose(); };
+  const selectUpload = (file?: File) => {
+    if (!file) return;
+    if (uploadDraft) URL.revokeObjectURL(uploadDraft.preview);
+    setUploadDraft({ file, preview: URL.createObjectURL(file) });
+  };
+  const upload = async () => {
+    if (!uploadDraft || uploadLock.current) return;
+    uploadLock.current = true; setImporting("USER_UPLOAD"); setError("");
+    try {
+      const media = await uploadVocabularyMedia(uploadDraft.file, `${word} — ${meaningVi}`.slice(0, 200));
+      onSelect(media); URL.revokeObjectURL(uploadDraft.preview); setUploadDraft(null); close();
+    } catch (value) { setError(value instanceof Error ? value.message : "Không thể tải ảnh lên."); }
+    finally { uploadLock.current = false; setImporting(""); }
+  };
 
   return (
-    <Dialog open={open} onClose={onClose} fullScreen={fullScreen} fullWidth maxWidth="md" data-testid="vocabulary-image-picker">
+    <Dialog open={open} onClose={close} fullScreen={fullScreen} fullWidth maxWidth="md" data-testid="vocabulary-image-picker">
       <DialogTitle>Tìm ảnh cho “{word}”</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={1.5} sx={{ minWidth: 0 }}>
@@ -170,9 +194,11 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
               {page < 3 && items.length < Math.min(total, VOCABULARY_IMAGE_LIMIT) && <Button variant="outlined" disabled={loading || cooldownSeconds > 0} onClick={() => void search(page + 1)} startIcon={loading ? <CircularProgress size={18} /> : undefined}>Xem thêm 8 ảnh</Button>}
             </>}
           </>}
+          <Button component="label" variant="outlined" startIcon={<UploadFile />}>Tải ảnh từ máy<input hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectUpload(event.target.files?.[0])} /></Button>
+          {uploadDraft && <Stack direction="row" sx={{ gap: 1, alignItems: "center" }}><Box component="img" src={uploadDraft.preview} alt="Xem trước ảnh tải lên" sx={{ width: 112, height: 112, objectFit: "cover", borderRadius: 1 }} /><Button variant="contained" disabled={Boolean(importing)} onClick={() => void upload()}>{importing === "USER_UPLOAD" ? "Đang tải…" : "Dùng ảnh này"}</Button></Stack>}
         </Stack>
       </DialogContent>
-      <DialogActions><Button onClick={onClose}>Đóng</Button>{!strategy.publicAsset && <Button variant="contained" disabled={!selectedItem || Boolean(importing)} onClick={() => void choose()} startIcon={importing ? <CircularProgress size={18} /> : <CheckCircle />}>Chọn ảnh</Button>}</DialogActions>
+      <DialogActions><Button onClick={close}>Đóng</Button>{!strategy.publicAsset && <Button variant="contained" disabled={!selectedItem || Boolean(importing)} onClick={() => void choose()} startIcon={importing ? <CircularProgress size={18} /> : <CheckCircle />}>Chọn ảnh</Button>}</DialogActions>
     </Dialog>
   );
 }

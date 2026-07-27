@@ -1,69 +1,46 @@
 import type { VocabularyImageMediaType } from "@teacher/shared";
 
-export type VocabularyImageCategory = "LOCAL" | "NOUN" | "ANIMAL" | "ACTION" | "EMOTION";
+export type VocabularyImageCategory = "LOCAL" | "NOUN" | "TRANSPORT" | "WEATHER" | "ANIMAL" | "FOOD" | "SCHOOL" | "FAMILY" | "ACTION" | "EMOTION";
 export type VocabularyImageFilter = Extract<VocabularyImageMediaType, "ILLUSTRATION" | "PHOTO">;
 
 export interface VocabularyImageStrategy {
   category: VocabularyImageCategory;
   query: string;
+  queries: string[];
   publicAsset?: string;
 }
 
-const colors: Record<string, string> = {
-  red: "red", blue: "blue", yellow: "yellow", green: "green", orange: "orange",
-  purple: "purple", pink: "pink", black: "black", white: "white", brown: "brown",
-  gray: "gray", gold: "gold", silver: "silver",
+const localAssetManifest: Record<string, string> = Object.fromEntries([
+  ...["red", "blue", "yellow", "green", "orange", "purple", "pink", "black", "white", "brown", "gray", "gold", "silver"]
+    .map((word) => [word, `/learning/colors/${word}.svg`]),
+  ...["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"]
+    .map((word, index) => [word, `/learning/numbers/${index + 1}.svg`]),
+]);
+const groups: Array<[VocabularyImageCategory, Set<string>]> = [
+  ["TRANSPORT", new Set(["car", "bus", "bike", "motorbike", "train", "plane", "boat", "taxi", "truck", "ship", "helicopter", "subway", "ambulance", "fire engine"])],
+  ["WEATHER", new Set(["sunny", "rainy", "cloudy", "windy", "stormy", "snowy", "foggy", "weather", "rainbow"])],
+  ["ANIMAL", new Set(["cat", "dog", "fish", "bird", "rabbit", "hamster", "turtle", "parrot", "horse", "cow", "pig", "sheep", "goat", "chicken", "duck", "elephant", "tiger", "lion", "monkey", "bear", "giraffe", "zebra", "crocodile", "snake", "frog", "mouse", "bat"])],
+  ["FOOD", new Set(["apple", "banana", "orange", "mango", "grape", "rice", "bread", "egg", "milk", "water", "juice", "cake", "noodles", "pizza", "salad", "soup"])],
+  ["SCHOOL", new Set(["book", "pen", "pencil", "ruler", "eraser", "bag", "desk", "chair", "board", "teacher", "school", "classroom"])],
+  ["FAMILY", new Set(["mother", "father", "parents", "brother", "sister", "baby", "grandmother", "grandfather", "aunt", "uncle", "cousin", "family"])],
+  ["ACTION", new Set(["run", "walk", "jump", "sit", "stand", "eat", "drink", "read", "write", "sing", "dance", "swim", "clap", "draw", "listen", "speak", "open", "close", "throw", "catch"])],
+  ["EMOTION", new Set(["happy", "sad", "angry", "scared", "tired", "hungry", "thirsty", "excited", "bored", "surprised", "worried", "shy", "proud", "calm"])],
+];
+const noise = new Set(["transport", "weather", "isolated", "object", "animals", "animal", "food", "school", "family", "actions"]);
+const contextLabels: Record<VocabularyImageCategory, string> = {
+  LOCAL: "", NOUN: "", TRANSPORT: "vehicle", WEATHER: "outdoor sky", ANIMAL: "wildlife",
+  FOOD: "meal", SCHOOL: "classroom", FAMILY: "people", ACTION: "person", EMOTION: "facial expression",
 };
-
-const numberWords = [
-  "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
-  "eighteen", "nineteen", "twenty",
-] as const;
-
-const actions = new Set([
-  "run", "walk", "jump", "sit", "stand", "eat", "drink", "read", "write", "sing",
-  "dance", "swim", "clap", "draw", "listen", "speak", "open", "close", "throw", "catch",
-]);
-
-const emotions = new Set([
-  "happy", "sad", "angry", "scared", "tired", "hungry", "thirsty", "excited", "bored",
-  "surprised", "worried", "shy", "proud", "calm",
-]);
-const animals = new Set([
-  "cat", "dog", "fish", "bird", "rabbit", "hamster", "turtle", "parrot", "horse", "cow",
-  "pig", "sheep", "goat", "chicken", "duck", "elephant", "tiger", "lion", "monkey", "bear",
-  "giraffe", "zebra", "crocodile", "snake", "frog", "mouse", "bat",
-]);
-const topicNoise = new Set([
-  "pets", "pet", "animals", "animal", "actions", "feelings", "colors", "color", "numbers", "number",
-]);
-
 const normalize = (value: string) => value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("en");
+const clean = (value: string) => normalize(value).split(" ").filter((part) => !noise.has(part)).join(" ");
 
-function curatedSubject(word: string, searchTerms: string[]): string {
-  const genericLegacyTerms = new Set([
-    `${word} color`, `${word} number`, `${word} actions`, `${word} feelings`,
-  ]);
-  return searchTerms.map(normalize).find((term) =>
-    term && !genericLegacyTerms.has(term) && !term.split(" ").some((part) => topicNoise.has(part))) ?? word;
-}
-
-export function buildVocabularyImageStrategy(
-  rawWord: string,
-  searchTerms: string[] = [],
-): VocabularyImageStrategy {
+export function buildVocabularyImageStrategy(rawWord: string, searchTerms: string[] = []): VocabularyImageStrategy {
   const word = normalize(rawWord);
-  if (colors[word]) {
-    return { category: "LOCAL", query: word, publicAsset: `/learning/colors/${colors[word]}.svg` };
-  }
-  const numberIndex = numberWords.indexOf(word as typeof numberWords[number]);
-  if (numberIndex >= 0) {
-    return { category: "LOCAL", query: word, publicAsset: `/learning/numbers/${numberIndex + 1}.svg` };
-  }
-  const subject = curatedSubject(word, searchTerms);
-  if (animals.has(word)) return { category: "ANIMAL", query: `${word} cartoon isolated` };
-  if (actions.has(word)) return { category: "ACTION", query: `child ${subject} cartoon illustration` };
-  if (emotions.has(word)) return { category: "EMOTION", query: `${subject} child face emotion cartoon illustration` };
-  return { category: "NOUN", query: `${subject} cartoon isolated` };
+  const publicAsset = localAssetManifest[word];
+  if (publicAsset) return { category: "LOCAL", query: word, queries: [word], publicAsset };
+  const category = groups.find(([, words]) => words.has(word))?.[0] ?? "NOUN";
+  const preferred = searchTerms.map(clean).find((term) => term && term !== word);
+  const context = category === "ACTION" ? `person ${word}` : `${word} ${contextLabels[category]}`.trim();
+  const queries = [...new Set([word, preferred, `${word} illustration`, `${word} cartoon`, context].filter((value): value is string => Boolean(value)))];
+  return { category, query: queries[0], queries };
 }

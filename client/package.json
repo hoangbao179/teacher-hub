@@ -16,6 +16,7 @@
     "test:vocabulary-assignments": "node --test scripts/vocabulary-assignment-workflow.unit.mjs",
     "test:vocabulary-games": "node --test scripts/vocabulary-game-engine.unit.mjs",
     "test:e2e:vocabulary": "node scripts/vocabulary-foundation.e2e.mjs",
+    "test:e2e:vocabulary-media": "node scripts/vocabulary-media-flow.e2e.mjs",
     "test:e2e:vocabulary-assignments": "node scripts/vocabulary-assignment-workflow.e2e.mjs",
     "test:e2e:vocabulary-games": "node scripts/vocabulary-game-engine.e2e.mjs",
     "test:e2e:vocabulary-game-hardening": "node scripts/vocabulary-game-hardening.e2e.mjs",

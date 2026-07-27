@@ -37,6 +37,17 @@ export class VocabularyMediaController {
       ),
     });
 
+  upload = async (req: Request, res: Response) =>
+    res.status(201).json({
+      data: await this.service.uploadMedia(req.file, req.body?.altText, req.auth!.id),
+    });
+
+  metrics = async (_req: Request, res: Response) =>
+    res.json({ data: await this.service.metrics() });
+
+  reconcile = async (_req: Request, res: Response) =>
+    res.json({ data: await this.service.reconcile() });
+
   serve = async (req: Request, res: Response) => {
     const file = await this.service.mediaFile(
       Number(req.params.mediaId),
@@ -45,6 +56,7 @@ export class VocabularyMediaController {
     res.setHeader("Content-Type", "image/webp");
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Disposition", "inline");
     res.sendFile(file.path);
   };
 }

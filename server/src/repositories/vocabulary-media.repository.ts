@@ -27,6 +27,7 @@ interface MediaRow extends RowDataPacket {
   byte_size: number;
   width: number;
   height: number;
+  thumbnail_byte_size: number | null;
 }
 
 export interface CachedSearchPayload {
@@ -44,6 +45,7 @@ export interface CreateMediaRecord {
   width: number;
   height: number;
   contentSha256: string;
+  thumbnailByteSize?: number;
 }
 
 function json<T>(value: unknown): T {
@@ -150,7 +152,7 @@ export class VocabularyMediaRepository {
   ): Promise<VocabularyStoredMedia | null> {
     const [rows] = await pool.execute<MediaRow[]>(
       `SELECT * FROM vocabulary_media
-       WHERE provider=? AND provider_asset_id=? AND status='ACTIVE' LIMIT 1`,
+       WHERE provider=? AND provider_asset_id=? AND status IN ('TEMPORARY','ACTIVE') LIMIT 1`,
       [provider, providerAssetId],
     );
     return rows[0] ? mapMedia(rows[0]) : null;
@@ -159,7 +161,7 @@ export class VocabularyMediaRepository {
   async findMediaBySha(contentSha256: string): Promise<VocabularyStoredMedia | null> {
     const [rows] = await pool.execute<MediaRow[]>(
       `SELECT * FROM vocabulary_media
-       WHERE content_sha256=? AND status='ACTIVE' LIMIT 1`,
+       WHERE content_sha256=? AND status IN ('TEMPORARY','ACTIVE') LIMIT 1`,
       [contentSha256],
     );
     return rows[0] ? mapMedia(rows[0]) : null;
@@ -171,7 +173,7 @@ export class VocabularyMediaRepository {
     thumbnailPath: string;
   } | null> {
     const [rows] = await pool.execute<MediaRow[]>(
-      "SELECT * FROM vocabulary_media WHERE id=? AND status='ACTIVE' LIMIT 1",
+      "SELECT * FROM vocabulary_media WHERE id=? AND status IN ('TEMPORARY','ACTIVE') LIMIT 1",
       [id],
     );
     return rows[0] ? {
@@ -192,9 +194,9 @@ export class VocabularyMediaRepository {
         `INSERT IGNORE INTO vocabulary_media
           (provider,provider_asset_id,source_url,source_page_url,contributor_name,
            contributor_url,attribution_text,attribution_url,license_label,
-           storage_path,thumbnail_path,alt_text,mime_type,byte_size,width,height,
-           content_sha256,status)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'ACTIVE')`,
+            storage_path,thumbnail_path,alt_text,mime_type,byte_size,thumbnail_byte_size,width,height,
+            content_sha256,status)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'TEMPORARY')`,
         [
           input.provider,
           input.asset.providerAssetId,
@@ -210,6 +212,7 @@ export class VocabularyMediaRepository {
           input.altText,
           "image/webp",
           input.byteSize,
+          input.thumbnailByteSize ?? 0,
           input.width,
           input.height,
           input.contentSha256,
@@ -244,5 +247,65 @@ export class VocabularyMediaRepository {
     } finally {
       connection.release();
     }
+  }
+
+  async metrics(): Promise<{ mediaCount: number; referencedCount: number; orphanCount: number; totalBytes: number }> {
+    const [rows] = await pool.query<Array<RowDataPacket & {
+      media_count: number; referenced_count: number; orphan_count: number; total_bytes: number;
+    }>>(
+      `SELECT COUNT(*) media_count,
+        SUM(EXISTS(SELECT 1 FROM vocabulary_items vi WHERE vi.media_id=m.id)
+          OR EXISTS(SELECT 1 FROM learning_assignment_items ai WHERE ai.stored_media_id=m.id)) referenced_count,
+        SUM(NOT EXISTS(SELECT 1 FROM vocabulary_items vi WHERE vi.media_id=m.id)
+          AND NOT EXISTS(SELECT 1 FROM learning_assignment_items ai WHERE ai.stored_media_id=m.id)) orphan_count,
+        COALESCE(SUM(byte_size+COALESCE(thumbnail_byte_size,0)),0) total_bytes
+       FROM vocabulary_media m WHERE status IN ('TEMPORARY','ACTIVE')`,
+    );
+    const row = rows[0];
+    return {
+      mediaCount: Number(row?.media_count ?? 0),
+      referencedCount: Number(row?.referenced_count ?? 0),
+      orphanCount: Number(row?.orphan_count ?? 0),
+      totalBytes: Number(row?.total_bytes ?? 0),
+    };
+  }
+
+  async temporaryOrphans(before: Date): Promise<Array<{ id: number; storagePath: string; thumbnailPath: string }>> {
+    const [rows] = await pool.query<Array<MediaRow>>(
+      `SELECT * FROM vocabulary_media m
+       WHERE m.status IN ('TEMPORARY','ACTIVE') AND m.created_at<?
+         AND NOT EXISTS(SELECT 1 FROM vocabulary_items vi WHERE vi.media_id=m.id)
+         AND NOT EXISTS(SELECT 1 FROM learning_assignment_items ai WHERE ai.stored_media_id=m.id)
+       LIMIT 200`, [before],
+    );
+    return rows.map((row) => ({ id: Number(row.id), storagePath: row.storage_path, thumbnailPath: row.thumbnail_path }));
+  }
+
+  async deleteUnreferenced(id: number): Promise<boolean> {
+    const [result] = await pool.execute<ResultSetHeader>(
+      `DELETE FROM vocabulary_media WHERE id=?
+       AND NOT EXISTS(SELECT 1 FROM vocabulary_items vi WHERE vi.media_id=vocabulary_media.id)
+       AND NOT EXISTS(SELECT 1 FROM learning_assignment_items ai WHERE ai.stored_media_id=vocabulary_media.id)`, [id],
+    );
+    return result.affectedRows === 1;
+  }
+
+  async activePaths(): Promise<Array<{ id: number; storagePath: string; thumbnailPath: string }>> {
+    const [rows] = await pool.query<MediaRow[]>(
+      "SELECT * FROM vocabulary_media WHERE status IN ('TEMPORARY','ACTIVE')",
+    );
+    return rows.map((row) => ({ id: Number(row.id), storagePath: row.storage_path, thumbnailPath: row.thumbnail_path }));
+  }
+
+  async markMissingFiles(ids: number[]): Promise<void> {
+    if (!ids.length) return;
+    await pool.execute(
+      `UPDATE vocabulary_media SET status='FAILED' WHERE id IN (${ids.map(() => "?").join(",")})`, ids,
+    );
+  }
+
+  async updateThumbnailSizes(values: Array<{ id: number; byteSize: number }>): Promise<void> {
+    for (const value of values)
+      await pool.execute("UPDATE vocabulary_media SET thumbnail_byte_size=? WHERE id=?", [value.byteSize, value.id]);
   }
 }

@@ -681,6 +681,15 @@ paths:
                     properties:
                       enabled: {type: boolean}
                       provider: {type: string, enum: [PIXABAY]}
+                      cooldownUntil: {type: string, format: date-time}
+                      providers:
+                        type: array
+                        items:
+                          type: object
+                          required: [provider, enabled]
+                          properties:
+                            provider: {type: string, enum: [PIXABAY]}
+                            enabled: {type: boolean}
   /api/vocabulary/media/search:
     get:
       tags: [Vocabulary teacher]
@@ -707,6 +716,52 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '422': {$ref: '#/components/responses/UnprocessableContent'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '502': {description: Nguồn ảnh tạm thời không khả dụng}
+        '504': {description: Tải ảnh từ nguồn quá thời gian}
+  /api/vocabulary/media/upload:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Tải một ảnh JPEG/PNG/WebP tối đa 5 MiB, kiểm tra và chuyển thành hai WebP
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image, altText]
+              properties:
+                image: {type: string, format: binary}
+                altText: {type: string, minLength: 1, maxLength: 200}
+      responses:
+        '201': {description: Media tạm hoặc bản deduplicate, content: {application/json: {schema: {$ref: '#/components/schemas/VocabularyMediaEnvelope'}}}}
+        '422': {$ref: '#/components/responses/UnprocessableContent'}
+  /api/vocabulary/media/metrics:
+    get:
+      tags: [Vocabulary teacher]
+      summary: Dung lượng và số lượng media, tham chiếu và orphan
+      responses:
+        '200':
+          description: Metrics media
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [mediaCount, referencedCount, orphanCount, totalBytes]
+                    properties:
+                      mediaCount: {type: integer, minimum: 0}
+                      referencedCount: {type: integer, minimum: 0}
+                      orphanCount: {type: integer, minimum: 0}
+                      totalBytes: {type: integer, minimum: 0}
+  /api/vocabulary/media/reconcile:
+    post:
+      tags: [Vocabulary teacher]
+      summary: Đối soát row thiếu file và file không có row
+      responses:
+        '200': {description: Danh sách media thiếu file và file chưa được theo dõi}
   /api/vocabulary/assignments:
     get:
       tags: [Vocabulary teacher]
@@ -1219,7 +1274,7 @@ components:
       required: [id, provider, providerAssetId, url, thumbnailUrl, altText, mimeType, byteSize, width, height, sourcePageUrl, contributorName, attributionText, licenseLabel]
       properties:
         id: {type: integer, format: int64}
-        provider: {type: string, enum: [PIXABAY, LOCAL_ASSET]}
+        provider: {type: string, enum: [PIXABAY, LOCAL_ASSET, USER_UPLOAD]}
         providerAssetId: {type: string}
         url: {type: string, pattern: '^/api/public/vocabulary-media/'}
         thumbnailUrl: {type: string, pattern: '^/api/public/vocabulary-media/'}

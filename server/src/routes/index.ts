@@ -5,6 +5,7 @@ import { asyncHandler } from "../utils/async-handler";
 import { loginRateLimit } from "../middleware/login-rate-limit";
 import { uploadLegacyWorkbook } from "../middleware/legacy-import-upload";
 import { fixedWindowRateLimit } from "../middleware/fixed-window-rate-limit";
+import { uploadVocabularyImage } from "../middleware/vocabulary-image-upload";
 
 const vocabularySearchRateLimit = fixedWindowRateLimit({
   limit: 60,
@@ -16,11 +17,6 @@ const vocabularyImportRateLimit = fixedWindowRateLimit({
   limit: 12,
   windowMs: 60_000,
   code: "VOCABULARY_IMPORT_RATE_LIMITED",
-});
-const vocabularyPublicMediaRateLimit = fixedWindowRateLimit({
-  limit: 60,
-  windowMs: 60_000,
-  code: "VOCABULARY_MEDIA_RATE_LIMITED",
 });
 const publicGameResolveRateLimit = fixedWindowRateLimit({
   limit: 60,
@@ -48,7 +44,6 @@ export function createRouter(): Router {
   router.post("/api/auth/logout", requireAuth, asyncHandler(controllers.auth.logout));
   router.get(
     "/api/public/vocabulary-media/:mediaId",
-    vocabularyPublicMediaRateLimit,
     asyncHandler(controllers.vocabularyMedia.serve),
   );
   router.get(
@@ -103,6 +98,14 @@ export function createRouter(): Router {
     vocabularyImportRateLimit,
     asyncHandler(controllers.vocabularyMedia.import),
   );
+  router.post(
+    "/api/vocabulary/media/upload",
+    vocabularyImportRateLimit,
+    uploadVocabularyImage,
+    asyncHandler(controllers.vocabularyMedia.upload),
+  );
+  router.get("/api/vocabulary/media/metrics", asyncHandler(controllers.vocabularyMedia.metrics));
+  router.post("/api/vocabulary/media/reconcile", asyncHandler(controllers.vocabularyMedia.reconcile));
   router.get("/api/vocabulary/assignments", asyncHandler(controllers.assignments.list));
   router.post("/api/vocabulary/assignments", asyncHandler(controllers.assignments.create));
   router.get("/api/vocabulary/assignments/:id", asyncHandler(controllers.assignments.detail));

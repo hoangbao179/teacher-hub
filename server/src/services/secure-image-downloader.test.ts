@@ -47,11 +47,11 @@ test("secure downloader rejects non-allowlisted hosts and redirect escapes", asy
     }));
   await assert.rejects(
     downloader.download("https://example.com/a.png", ["cdn.pixabay.com"]),
-    (error: unknown) => (error as { code?: string }).code === "IMAGE_IMPORT_REJECTED",
+    (error: unknown) => (error as { code?: string }).code === "IMAGE_IMPORT_UNSAFE_REDIRECT",
   );
   await assert.rejects(
     downloader.download("https://cdn.pixabay.com/a.png", ["cdn.pixabay.com"]),
-    (error: unknown) => (error as { code?: string }).code === "IMAGE_IMPORT_REJECTED",
+    (error: unknown) => (error as { code?: string }).code === "IMAGE_IMPORT_UNSAFE_REDIRECT",
   );
 });
 
@@ -64,14 +64,14 @@ test("secure downloader rejects oversized, MIME-mismatched and invalid dimension
   await assert.rejects(oversized.download(
     "https://cdn.pixabay.com/a.png",
     ["cdn.pixabay.com"],
-  ));
+  ), (error: unknown) => (error as { code?: string }).code === "IMAGE_IMPORT_TOO_LARGE");
 
   const mismatch = new SecureImageDownloader(settings, async () =>
     new Response(valid as unknown as BodyInit, { headers: { "content-type": "image/jpeg" } }));
   await assert.rejects(mismatch.download(
     "https://cdn.pixabay.com/a.jpg",
     ["cdn.pixabay.com"],
-  ));
+  ), (error: unknown) => (error as { code?: string }).code === "IMAGE_IMPORT_CONTENT_MISMATCH");
 
   const small = await png(100, 100);
   const invalidDimensions = new SecureImageDownloader(settings, async () =>
@@ -79,7 +79,7 @@ test("secure downloader rejects oversized, MIME-mismatched and invalid dimension
   await assert.rejects(invalidDimensions.download(
     "https://cdn.pixabay.com/a.png",
     ["cdn.pixabay.com"],
-  ));
+  ), (error: unknown) => (error as { code?: string }).code === "IMAGE_IMPORT_INVALID_DIMENSIONS");
 });
 
 test("secure downloader maps network timeouts to a stable import error", async () => {
@@ -88,6 +88,33 @@ test("secure downloader maps network timeouts to a stable import error", async (
   });
   await assert.rejects(
     downloader.download("https://cdn.pixabay.com/a.png", ["cdn.pixabay.com"]),
-    (error: unknown) => (error as { code?: string }).code === "IMAGE_IMPORT_REJECTED",
+    (error: unknown) => (error as { code?: string }).code === "IMAGE_IMPORT_TIMEOUT",
   );
+});
+
+test("secure downloader retries timeout, 429 and 503 at most twice", async () => {
+  const input = await png();
+  for (const failure of ["timeout", "429", "503"] as const) {
+    let calls = 0;
+    const downloader = new SecureImageDownloader(settings, async () => {
+      calls += 1;
+      if (calls < 3) {
+        if (failure === "timeout") throw new DOMException("timed out", "TimeoutError");
+        return new Response(null, { status: Number(failure), headers: failure === "429" ? { "Retry-After": "0" } : {} });
+      }
+      return new Response(input as unknown as BodyInit, { headers: { "content-type": "image/png" } });
+    }, async () => undefined);
+    await downloader.download("https://cdn.pixabay.com/a.png", ["cdn.pixabay.com"]);
+    assert.equal(calls, 3);
+  }
+});
+
+test("secure downloader never retries fixed validation failures", async () => {
+  let calls = 0;
+  const downloader = new SecureImageDownloader(settings, async () => {
+    calls += 1;
+    return new Response(Buffer.from("not-an-image") as unknown as BodyInit, { headers: { "content-type": "image/png" } });
+  }, async () => undefined);
+  await assert.rejects(downloader.download("https://cdn.pixabay.com/a.png", ["cdn.pixabay.com"]));
+  assert.equal(calls, 1);
 });

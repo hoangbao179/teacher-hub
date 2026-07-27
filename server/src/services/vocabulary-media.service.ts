@@ -14,27 +14,46 @@ import {
 } from "@teacher/shared";
 import { AppError } from "../errors/app-error";
 import type { VocabularyMediaSettings } from "../config/vocabulary-media-settings";
-import type { ImageSearchProvider } from "../integrations/images/image-search.provider";
+import { StaticImageProviderRegistry, type ImageProviderRegistry, type ImageSearchProvider } from "../integrations/images/image-search.provider";
 import { VocabularyMediaRepository } from "../repositories/vocabulary-media.repository";
 import { SecureImageDownloader } from "./secure-image-downloader";
+import { processVocabularyImage } from "./secure-image-downloader";
 import { VocabularyMediaStorage } from "./vocabulary-media-storage";
+import { InMemoryProviderRateCoordinator, type ProviderRateCoordinator } from "../integrations/images/provider-rate-coordinator";
 
 export function normalizeImageQuery(value: string): string {
   return value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("en");
 }
 
 export class VocabularyMediaService {
+  private lifecycleTimer?: ReturnType<typeof setInterval>;
+  private readonly registry: ImageProviderRegistry;
+  private readonly provider: ImageSearchProvider | null;
   constructor(
     private readonly repository: VocabularyMediaRepository,
-    private readonly provider: ImageSearchProvider | null,
+    providerOrRegistry: ImageSearchProvider | ImageProviderRegistry | null,
     private readonly settings: VocabularyMediaSettings,
     private readonly downloader = new SecureImageDownloader(settings),
     private readonly storage = new VocabularyMediaStorage(settings.storagePath),
     private readonly now: () => Date = () => new Date(),
-  ) {}
+    private readonly coordinator: ProviderRateCoordinator = new InMemoryProviderRateCoordinator(),
+  ) {
+    this.registry = providerOrRegistry && "get" in providerOrRegistry
+      ? providerOrRegistry
+      : new StaticImageProviderRegistry(providerOrRegistry ? [providerOrRegistry] : []);
+    this.provider = this.registry.primary("ILLUSTRATION");
+  }
 
-  initialize(): Promise<void> {
-    return this.storage.initialize();
+  async initialize(): Promise<void> {
+    await this.storage.initialize();
+    if (process.env.NODE_ENV === "test" || this.lifecycleTimer) return;
+    const run = async () => {
+      try { await this.cleanupOrphans(); await this.reconcile(); }
+      catch (error) { console.error(JSON.stringify({ level: "error", event: "vocabulary_media_lifecycle_failed", error: error instanceof Error ? error.name : "UnknownError" })); }
+    };
+    void run();
+    this.lifecycleTimer = globalThis.setInterval(() => { void run(); }, 6 * 60 * 60 * 1_000);
+    this.lifecycleTimer.unref?.();
   }
 
   async search(raw: VocabularyMediaSearchQuery): Promise<VocabularyMediaSearchResponse> {
@@ -63,14 +82,14 @@ export class VocabularyMediaService {
     if (!cached) {
       let payload;
       try {
-        payload = await provider.search({
+        payload = await this.coordinator.run(provider.name, () => provider.search({
           query,
           page,
           pageSize,
           mediaType,
           orientation,
           safeSearch: true,
-        });
+        }));
       } catch (error) {
         console.warn(JSON.stringify({
           level: "warn",
@@ -126,8 +145,8 @@ export class VocabularyMediaService {
       );
     if (!Number.isInteger(actorUserId) || actorUserId < 1)
       throw new AppError(401, "UNAUTHORIZED", "Chưa xác thực.");
-    if (!vocabularyImageProviders.includes(input.provider) ||
-        input.provider !== this.provider?.name)
+    const importProvider = this.registry.get(input.provider);
+    if (!vocabularyImageProviders.includes(input.provider) || !importProvider)
       throw new AppError(400, "VALIDATION_ERROR", "Nguồn ảnh không hợp lệ.");
     const providerAssetId = String(input.providerAssetId ?? "").trim();
     if (!/^[A-Za-z0-9_-]{1,160}$/.test(providerAssetId))
@@ -137,17 +156,37 @@ export class VocabularyMediaService {
       throw new AppError(400, "VALIDATION_ERROR", "Mô tả ảnh phải dài từ 1 đến 200 ký tự.");
     const existing = await this.repository.findMedia(input.provider, providerAssetId);
     if (existing) return existing;
-    const asset = await this.repository.findCachedAsset(input.provider, providerAssetId, this.now());
+    let asset = await this.repository.findCachedAsset(input.provider, providerAssetId, this.now());
     if (!asset)
       throw new AppError(
         409,
         "IMAGE_CACHE_MISS",
         "Kết quả tìm kiếm đã hết hạn. Hãy tìm lại ảnh trước khi chọn.",
       );
-    const processed = await this.downloader.download(
-      asset.downloadUrl,
-      this.provider!.allowedDownloadHosts,
-    );
+    const startedAt = Date.now();
+    let processed;
+    try {
+      try {
+        processed = await this.downloader.download(asset.downloadUrl, importProvider!.allowedDownloadHosts);
+      } catch (error) {
+        if (!(error instanceof AppError) || error.code !== "IMAGE_IMPORT_SOURCE_UNAVAILABLE" || !importProvider?.resolveAsset)
+          throw error;
+        const refreshed = await this.coordinator.run(importProvider.name, () => importProvider.resolveAsset!(providerAssetId));
+        if (!refreshed) throw error;
+        asset = refreshed;
+        processed = await this.downloader.download(asset.downloadUrl, importProvider.allowedDownloadHosts);
+      }
+    } catch (error) {
+      console.warn(JSON.stringify({
+        level: "warn", event: "vocabulary_media_import_failed", provider: input.provider,
+        providerAssetId, stage: "download", upstreamStatus:
+          error instanceof AppError && typeof error.details === "object" && error.details && "upstreamStatus" in error.details
+            ? (error.details as { upstreamStatus?: unknown }).upstreamStatus : undefined,
+        reasonCode: error instanceof AppError ? error.code : "UNEXPECTED",
+        durationMs: Date.now() - startedAt,
+      }));
+      throw error;
+    }
     const files = await this.storage.write(processed.game, processed.thumbnail);
     try {
       const result = await this.repository.createMedia({
@@ -160,6 +199,7 @@ export class VocabularyMediaService {
         width: processed.width,
         height: processed.height,
         contentSha256: processed.contentSha256,
+        thumbnailByteSize: processed.thumbnail.byteLength,
       }, actorUserId);
       if (!result.created)
         await this.storage.remove(files.absoluteStoragePath, files.absoluteThumbnailPath);
@@ -168,6 +208,68 @@ export class VocabularyMediaService {
       await this.storage.remove(files.absoluteStoragePath, files.absoluteThumbnailPath);
       throw error;
     }
+  }
+
+  async uploadMedia(file: Express.Multer.File | undefined, altTextValue: unknown, actorUserId: number) {
+    if (!Number.isInteger(actorUserId) || actorUserId < 1)
+      throw new AppError(401, "UNAUTHORIZED", "Chưa xác thực.");
+    if (!file)
+      throw new AppError(422, "IMAGE_IMPORT_INVALID_CONTENT_TYPE", "Chưa chọn file ảnh.");
+    const altText = String(altTextValue ?? "Ảnh từ máy").normalize("NFKC").trim().replace(/\s+/gu, " ");
+    if (altText.length < 1 || altText.length > 200)
+      throw new AppError(400, "VALIDATION_ERROR", "Mô tả ảnh phải dài từ 1 đến 200 ký tự.");
+    const processed = await processVocabularyImage(file.buffer, file.mimetype, this.settings);
+    const existing = await this.repository.findMediaBySha(processed.contentSha256);
+    if (existing) return existing;
+    const providerAssetId = processed.contentSha256;
+    const files = await this.storage.write(processed.game, processed.thumbnail);
+    try {
+      const result = await this.repository.createMedia({
+        provider: "USER_UPLOAD",
+        asset: {
+          provider: "USER_UPLOAD", providerAssetId, previewUrl: "", thumbnailUrl: "", downloadUrl: "",
+          width: processed.width, height: processed.height, mediaType: "PHOTO", tags: [],
+          contributorName: "", contributorUrl: "", attributionText: "", sourcePageUrl: "", licenseLabel: "",
+        },
+        storagePath: files.storagePath, thumbnailPath: files.thumbnailPath, altText,
+        byteSize: processed.byteSize, thumbnailByteSize: processed.thumbnail.byteLength,
+        width: processed.width, height: processed.height, contentSha256: processed.contentSha256,
+      }, actorUserId);
+      if (!result.created) await this.storage.remove(files.absoluteStoragePath, files.absoluteThumbnailPath);
+      return result.media;
+    } catch (error) {
+      await this.storage.remove(files.absoluteStoragePath, files.absoluteThumbnailPath);
+      throw error;
+    }
+  }
+
+  metrics() { return this.repository.metrics(); }
+
+  async cleanupOrphans(maxAgeMs = 24 * 60 * 60 * 1_000): Promise<number> {
+    const candidates = await this.repository.temporaryOrphans(new Date(this.now().getTime() - maxAgeMs));
+    let removed = 0;
+    for (const item of candidates) {
+      if (!await this.repository.deleteUnreferenced(item.id)) continue;
+      await this.storage.remove(this.storage.resolve(item.storagePath), this.storage.resolve(item.thumbnailPath));
+      removed += 1;
+    }
+    return removed;
+  }
+
+  async reconcile() {
+    const [rows, files] = await Promise.all([this.repository.activePaths(), this.storage.files()]);
+    const disk = new Set(files);
+    const tracked = new Set(rows.flatMap((row) => [row.storagePath, row.thumbnailPath]));
+    const missingRowIds: number[] = [];
+    const thumbnailSizes: Array<{ id: number; byteSize: number }> = [];
+    for (const row of rows)
+      if (!disk.has(row.storagePath) || !disk.has(row.thumbnailPath)) missingRowIds.push(row.id);
+      else thumbnailSizes.push({ id: row.id, byteSize: await this.storage.size(row.thumbnailPath) });
+    await Promise.all([
+      this.repository.markMissingFiles(missingRowIds),
+      this.repository.updateThumbnailSizes(thumbnailSizes),
+    ]);
+    return { missingFileMediaIds: missingRowIds, untrackedFiles: files.filter((file) => !tracked.has(file)) };
   }
 
   async mediaFile(id: number, variant: string | undefined) {
@@ -191,9 +293,12 @@ export class VocabularyMediaService {
   }
 
   providerStatus() {
+    const cooldownUntil = this.provider ? this.coordinator.cooldownUntil(this.provider.name) : null;
     return {
       enabled: Boolean(this.settings.enabled && this.provider),
       provider: "PIXABAY" as const,
+      ...(cooldownUntil ? { cooldownUntil: cooldownUntil.toISOString() } : {}),
+      providers: this.registry.status(),
     };
   }
 

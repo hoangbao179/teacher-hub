@@ -10,6 +10,7 @@ import { api, apiUrl } from "./client";
 export interface VocabularyMediaProviderStatus {
   enabled: boolean;
   provider: "PIXABAY";
+  cooldownUntil?: string;
 }
 
 export const getVocabularyMediaStatus = (signal?: AbortSignal) =>
@@ -37,6 +38,13 @@ export const importVocabularyMedia = (values: ImportVocabularyMediaRequest) =>
     method: "POST",
     body: JSON.stringify(values),
   });
+
+export function uploadVocabularyMedia(file: File, altText: string) {
+  const body = new FormData();
+  body.append("image", file);
+  body.append("altText", altText);
+  return api<VocabularyStoredMedia>("/api/vocabulary/media/upload", { method: "POST", body });
+}
 
 export const vocabularyMediaUrl = (mediaId: number, variant: "GAME" | "THUMBNAIL") =>
   apiUrl(`/api/public/vocabulary-media/${mediaId}?variant=${variant}`);

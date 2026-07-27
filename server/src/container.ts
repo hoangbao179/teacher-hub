@@ -42,6 +42,7 @@ import { VocabularyMediaController } from "./controllers/vocabulary-media.contro
 import { VocabularyMediaRepository } from "./repositories/vocabulary-media.repository";
 import { VocabularyMediaService } from "./services/vocabulary-media.service";
 import { PixabayImageSearchProvider } from "./integrations/images/pixabay-image-search.provider";
+import { StaticImageProviderRegistry } from "./integrations/images/image-search.provider";
 import { AssignmentController } from "./controllers/assignment.controller";
 import { AssignmentRepository } from "./repositories/assignment.repository";
 import { AssignmentService } from "./services/assignment.service";
@@ -83,9 +84,12 @@ const vocabularyService = new VocabularyService(vocabulary);
 const vocabularyImageProvider = config.vocabularyMedia.enabled
   ? new PixabayImageSearchProvider(config.vocabularyMedia.apiKey)
   : null;
+const vocabularyImageProviders = new StaticImageProviderRegistry(
+  vocabularyImageProvider ? [vocabularyImageProvider] : [],
+);
 export const vocabularyMediaService = new VocabularyMediaService(
   vocabularyMedia,
-  vocabularyImageProvider,
+  vocabularyImageProviders,
   config.vocabularyMedia,
 );
 const assignmentService = new AssignmentService(

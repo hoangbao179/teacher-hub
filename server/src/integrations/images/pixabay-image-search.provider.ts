@@ -27,6 +27,7 @@ const mediaType = (value: VocabularyImageMediaType) => value.toLowerCase();
 const orientation = (value: VocabularyImageOrientation) => value.toLowerCase();
 const queryNoise = new Set([
   "isolated", "cartoon", "illustration", "white", "background", "child", "face", "emotion",
+  "transport", "weather", "object", "school", "family", "food", "action", "actions",
   "pets", "pet", "animals", "animal",
 ]);
 const animalWords = new Set([
@@ -98,6 +99,7 @@ function retryAfterSeconds(response: Response, now = Date.now()): number {
 export class PixabayImageSearchProvider implements ImageSearchProvider {
   readonly name = "PIXABAY" as const;
   readonly allowedDownloadHosts = ["cdn.pixabay.com", "pixabay.com"] as const;
+  readonly supportedMediaTypes = ["ALL", "PHOTO", "ILLUSTRATION", "VECTOR"] as const;
 
   constructor(
     private readonly apiKey: string,
@@ -172,6 +174,39 @@ export class PixabayImageSearchProvider implements ImageSearchProvider {
       total: Number(payload.totalHits ?? 0),
       items: rankAndDeduplicate(input, items),
       rateLimit,
+    };
+  }
+
+  async resolveAsset(providerAssetId: string) {
+    if (!/^\d{1,20}$/.test(providerAssetId)) return null;
+    const url = new URL("https://pixabay.com/api/");
+    url.searchParams.set("key", this.apiKey);
+    url.searchParams.set("id", providerAssetId);
+    url.searchParams.set("safesearch", "true");
+    let response: Response;
+    try {
+      response = await this.fetcher(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(5_000) });
+    } catch {
+      throw new AppError(503, "IMAGE_PROVIDER_UNAVAILABLE", "Nguồn ảnh đang tạm gián đoạn.");
+    }
+    if (response.status === 429) {
+      const seconds = retryAfterSeconds(response);
+      throw new AppError(429, "IMAGE_PROVIDER_RATE_LIMITED", "Nguồn ảnh đang giới hạn tần suất.", {
+        cooldownUntil: new Date(Date.now() + seconds * 1_000).toISOString(),
+      }, seconds);
+    }
+    if (!response.ok) throw new AppError(503, "IMAGE_PROVIDER_UNAVAILABLE", "Nguồn ảnh đang tạm gián đoạn.");
+    const hit = ((await response.json()) as { hits?: PixabayHit[] }).hits?.[0];
+    if (!hit) return null;
+    return {
+      provider: "PIXABAY" as const, providerAssetId: String(hit.id),
+      previewUrl: hit.webformatURL || hit.previewURL, thumbnailUrl: hit.previewURL,
+      downloadUrl: hit.largeImageURL || hit.webformatURL, width: Number(hit.imageWidth), height: Number(hit.imageHeight),
+      mediaType: hit.type === "illustration" ? "ILLUSTRATION" as const : hit.type === "vector" ? "VECTOR" as const : "PHOTO" as const,
+      tags: hit.tags.split(",").map(normalize).filter(Boolean), contributorName: hit.user || "Pixabay contributor",
+      contributorUrl: `https://pixabay.com/users/${encodeURIComponent(hit.user)}-${hit.user_id}/`,
+      attributionText: `Ảnh của ${hit.user || "cộng tác viên"} trên Pixabay`, sourcePageUrl: hit.pageURL,
+      licenseLabel: "Pixabay Content License",
     };
   }
 }

@@ -67,4 +67,22 @@ export class VocabularyMediaStorage {
   async remove(...absolutePaths: string[]): Promise<void> {
     await Promise.all(absolutePaths.map((value) => fs.rm(value, { force: true })));
   }
+
+  async exists(relativePath: string): Promise<boolean> {
+    return fs.access(this.resolve(relativePath), constants.R_OK).then(() => true).catch(() => false);
+  }
+
+  async files(): Promise<string[]> {
+    await this.initialize();
+    const result: string[] = [];
+    for (const folder of ["game", "thumbnail"] as const) {
+      const names = await fs.readdir(path.join(this.root, folder));
+      result.push(...names.filter((name) => /^[a-f0-9-]+\.webp$/i.test(name)).map((name) => `${folder}/${name}`));
+    }
+    return result;
+  }
+
+  async size(relativePath: string): Promise<number> {
+    return (await fs.stat(this.resolve(relativePath))).size;
+  }
 }

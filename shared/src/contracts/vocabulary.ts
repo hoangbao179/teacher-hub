@@ -48,7 +48,11 @@ export const vocabularyImageOrientations = [
 export type VocabularyImageOrientation =
   (typeof vocabularyImageOrientations)[number];
 
-export const vocabularyImageProviders = ["PIXABAY", "LOCAL_ASSET"] as const;
+export const vocabularyImageProviders = [
+  "PIXABAY",
+  "LOCAL_ASSET",
+  "USER_UPLOAD",
+] as const;
 export type VocabularyImageProvider =
   (typeof vocabularyImageProviders)[number];
 
@@ -241,6 +245,7 @@ export interface VocabularyMediaSearchResponse {
   pageSize: number;
   total: number;
   items: VocabularyMediaSearchItem[];
+  cooldownUntil?: string;
 }
 
 export interface ImportVocabularyMediaRequest {
@@ -266,6 +271,13 @@ export interface VocabularyStoredMedia {
   licenseLabel: string;
 }
 
+export interface VocabularyMediaMetrics {
+  mediaCount: number;
+  referencedCount: number;
+  orphanCount: number;
+  totalBytes: number;
+}
+
 export type VocabularyTopicPage = PageResult<VocabularyTopicListItem>;
 export type VocabularySetPage = PageResult<VocabularySetListItem>;
 
@@ -280,6 +292,14 @@ export type VocabularyErrorCode =
   | "IMAGE_PROVIDER_UNAVAILABLE"
   | "IMAGE_CACHE_MISS"
   | "IMAGE_IMPORT_REJECTED"
+  | "IMAGE_IMPORT_SOURCE_RATE_LIMITED"
+  | "IMAGE_IMPORT_SOURCE_UNAVAILABLE"
+  | "IMAGE_IMPORT_TIMEOUT"
+  | "IMAGE_IMPORT_INVALID_CONTENT_TYPE"
+  | "IMAGE_IMPORT_TOO_LARGE"
+  | "IMAGE_IMPORT_INVALID_DIMENSIONS"
+  | "IMAGE_IMPORT_CONTENT_MISMATCH"
+  | "IMAGE_IMPORT_UNSAFE_REDIRECT"
   | "VOCABULARY_MEDIA_NOT_FOUND"
   | "VALIDATION_ERROR";
 

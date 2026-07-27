@@ -362,6 +362,7 @@ export class VocabularyRepository {
     try {
       await connection.beginTransaction();
       const id = await this.insertSet(connection, input, teacherUserId);
+      await this.promoteReferencedMedia(connection, input);
       await this.audit.record(connection, {
         actorUserId: teacherUserId,
         action,
@@ -434,6 +435,7 @@ export class VocabularyRepository {
           [id, ...archivedIds],
         );
       }
+      await this.promoteReferencedMedia(connection, input);
       await this.audit.record(connection, {
         actorUserId: teacherUserId,
         action: "VOCABULARY_SET_UPDATED",
@@ -653,6 +655,20 @@ export class VocabularyRepository {
         item.id!,
         setId,
       ],
+    );
+  }
+
+  private async promoteReferencedMedia(
+    connection: PoolConnection,
+    input: PreparedVocabularySet,
+  ): Promise<void> {
+    const ids = [...new Set(input.items.map((item) => item.mediaId).filter(
+      (id): id is number => Number.isInteger(id) && Number(id) > 0,
+    ))];
+    if (!ids.length) return;
+    await connection.execute(
+      `UPDATE vocabulary_media SET status='ACTIVE' WHERE status='TEMPORARY' AND id IN (${ids.map(() => "?").join(",")})`,
+      ids,
     );
   }
 }
