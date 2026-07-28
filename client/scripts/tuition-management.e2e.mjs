@@ -176,8 +176,10 @@ try {
     throw new Error(`Unexpected workbook sheets: ${sheetNames.join(", ")}`);
   if (workbook.getWorksheet("Quá trình học tập").rowCount !== 11 || workbook.getWorksheet("Học phí").rowCount !== 11)
     throw new Error("Downloaded workbook row counts do not match canonical data");
-  if (workbook.getWorksheet("Học phí").getCell("F2").value !== due.packagePriceSnapshot)
-    throw new Error("Downloaded workbook did not preserve numeric price snapshot");
+  const tuitionSheet = workbook.getWorksheet("Học phí");
+  if (tuitionSheet.columnCount !== 8 || tuitionSheet.getCell("A9").master.address !== "A2" ||
+      tuitionSheet.getCell("C9").master.address !== "C2" || tuitionSheet.getCell("D9").master.address !== "D2")
+    throw new Error("Downloaded workbook did not keep the compact merged tuition layout");
   const downloadSuccess = page.getByText(/Đã tải báo cáo Excel:/);
   await downloadSuccess.waitFor();
   await downloadSuccess.waitFor({ state: "hidden", timeout: 3000 });

@@ -60,6 +60,25 @@ function styleSheet(sheet: ExcelJS.Worksheet, columnCount: number): void {
   });
 }
 
+function mergeTuitionCycleCells(
+  sheet: ExcelJS.Worksheet,
+  rows: StudentTuitionReportRow[],
+): void {
+  let start = 0;
+  while (start < rows.length) {
+    let end = start;
+    while (end + 1 < rows.length && rows[end + 1].cycleId === rows[start].cycleId) end += 1;
+    if (end > start) {
+      for (const key of ["cycle", "started", "reached"]) {
+        const column = sheet.getColumn(key).number;
+        sheet.mergeCells(start + 2, column, end + 2, column);
+        sheet.getCell(start + 2, column).alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      }
+    }
+    start = end + 1;
+  }
+}
+
 export interface StudentWorkbookInput {
   student: StudentReportStudent;
   learningRows: StudentLearningReportRow[];
@@ -77,10 +96,10 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
 
   const learning = workbook.addWorksheet("Quá trình học tập", { properties: { defaultRowHeight: 20 } });
   learning.columns = [
-    { header: "Ngày học", key: "date", width: 13 }, { header: "Lớp", key: "class", width: 24 },
+    { header: "Ngày học", key: "date", width: 13 }, { header: "Lớp", key: "class", width: 14 },
     { header: "Loại buổi", key: "type", width: 18 }, { header: "Giờ dự kiến bắt đầu", key: "scheduledStart", width: 18 },
-    { header: "Giờ dự kiến kết thúc", key: "scheduledEnd", width: 18 }, { header: "Thời lượng thực tế (phút)", key: "duration", width: 19 },
-    { header: "Trạng thái", key: "status", width: 14 }, { header: "Nội dung buổi học", key: "content", width: 38 },
+    { header: "Giờ dự kiến kết thúc", key: "scheduledEnd", width: 18 }, { header: "Trạng thái", key: "status", width: 14 },
+    { header: "Nội dung buổi học", key: "content", width: 38 },
     { header: "Bài tập về nhà", key: "homework", width: 34 }, { header: "Nhận xét học sinh", key: "studentNote", width: 32 },
   ];
   const orderedLearningRows = [...input.learningRows].sort((left, right) =>
@@ -91,7 +110,7 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
   for (const row of orderedLearningRows) learning.addRow({
     date: excelDate(row.sessionDate), class: safeSpreadsheetText(row.className),
     type: lessonTypeLabels[row.lessonType], scheduledStart: row.scheduledStartTime,
-    scheduledEnd: row.scheduledEndTime, duration: row.actualDurationMinutes,
+    scheduledEnd: row.scheduledEndTime,
     status: attendanceLabels[row.attendanceStatus], content: safeSpreadsheetText(row.content),
     homework: safeSpreadsheetText(row.homework), studentNote: safeSpreadsheetText(row.studentNote),
   });
@@ -101,28 +120,21 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
   const tuition = workbook.addWorksheet("Học phí", { properties: { defaultRowHeight: 20 } });
   tuition.columns = [
     { header: "Số chu kỳ", key: "cycle", width: 12 }, { header: "Trạng thái chu kỳ", key: "status", width: 20 },
-    { header: "Lớp", key: "class", width: 24 }, { header: "Ngày bắt đầu", key: "started", width: 14 },
-    { header: "Ngày đủ 8 buổi", key: "reached", width: 16 }, { header: "Giá gói đã chốt", key: "price", width: 20 },
+    { header: "Ngày bắt đầu", key: "started", width: 14 }, { header: "Ngày đủ 8 buổi", key: "reached", width: 16 },
     { header: "Ngày thanh toán", key: "paidAt", width: 16 }, { header: "Phương thức thanh toán", key: "method", width: 22 },
-    { header: "Ghi chú thanh toán", key: "paymentNote", width: 30 }, { header: "Tổng buổi trong chu kỳ", key: "itemCount", width: 20 },
     { header: "Ngày học", key: "date", width: 13 }, { header: "Giờ dự kiến", key: "scheduled", width: 20 },
-    { header: "Giờ thực tế", key: "actual", width: 20 }, { header: "Thời lượng thực tế (phút)", key: "duration", width: 19 },
-    { header: "Thứ tự buổi", key: "sequence", width: 14 },
   ];
   const orderedTuitionRows = [...input.tuitionRows].sort((left, right) =>
     left.cycleNumber - right.cycleNumber || left.cycleId - right.cycleId || left.sequenceNumber - right.sequenceNumber,
   );
   for (const row of orderedTuitionRows) tuition.addRow({
-    cycle: row.cycleNumber, status: cycleStatusLabels[row.cycleStatus], class: safeSpreadsheetText(row.className),
-    started: excelDate(row.startedAt), reached: excelDate(row.reachedTargetAt), price: row.packagePriceSnapshot,
+    cycle: row.cycleNumber, status: cycleStatusLabels[row.cycleStatus],
+    started: excelDate(row.startedAt), reached: excelDate(row.reachedTargetAt),
     paidAt: excelDate(row.paidAt), method: row.paymentMethod ? paymentLabels[row.paymentMethod] : "—",
-    paymentNote: safeSpreadsheetText(row.paymentNote), itemCount: row.cycleItemCount,
     date: excelDate(row.sessionDate), scheduled: `${row.scheduledStartTime} – ${row.scheduledEndTime}`,
-    actual: row.actualStartTime && row.actualEndTime ? `${row.actualStartTime} – ${row.actualEndTime}` : "—",
-    duration: row.actualDurationMinutes, sequence: row.sequenceNumber,
   });
   for (const key of ["started", "reached", "paidAt", "date"]) tuition.getColumn(key).numFmt = "dd/mm/yyyy";
-  tuition.getColumn("price").numFmt = '#,##0 "₫"';
+  mergeTuitionCycleCells(tuition, orderedTuitionRows);
   styleSheet(tuition, tuition.columnCount);
 
   const summary = workbook.addWorksheet("Tổng hợp", { properties: { defaultRowHeight: 22 } });

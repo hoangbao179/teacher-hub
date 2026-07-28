@@ -116,16 +116,17 @@ integration("canonical workbook contains normalized history, paid eight-item and
   assert.equal(history.rowCount, 13);
   assert.equal(fees.rowCount, 11);
   assert.equal(history.getCell("A2").numFmt, "dd/mm/yyyy");
-  assert.equal(history.getCell("G12").value, "Nghỉ");
-  assert.equal(history.getCell("G13").value, "Miễn phí");
-  assert.equal(history.getCell("H2").value, "'=HYPERLINK(\"https://invalid\")");
-  assert.equal(history.getCell("J3").value, "'+cmd");
-  assert.deepEqual(Array.from({ length: 8 }, (_, index) => fees.getCell(`O${index + 2}`).value), [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.equal(history.getCell("F12").value, "Nghỉ");
+  assert.equal(history.getCell("F13").value, "Miễn phí");
+  assert.equal(history.getCell("G2").value, "'=HYPERLINK(\"https://invalid\")");
+  assert.equal(history.getCell("I3").value, "'+cmd");
+  assert.equal(fees.getCell("A9").master.address, "A2");
+  assert.equal(fees.getCell("C9").master.address, "C2");
+  assert.equal(fees.getCell("D9").master.address, "D2");
+  assert.equal(fees.getCell("A11").master.address, "A10");
   assert.equal(fees.getCell("B2").value, "Đã thu");
-  assert.equal(fees.getCell("F2").value, 2_400_000);
   assert.equal(fees.getCell("B10").value, "Đang tích lũy");
-  assert.equal(fees.getCell("J2").value, 8);
-  assert.equal(fees.getCell("I2").value, "'@đã nhận");
+  assert.equal(fees.columnCount, 8);
   for (const sheet of workbook.worksheets) sheet.eachRow((row) => row.eachCell((cell) => assert.notEqual(cell.type, ExcelJS.ValueType.Formula)));
 
   const [audits] = await pool.query<RowDataPacket[]>(

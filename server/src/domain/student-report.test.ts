@@ -53,11 +53,12 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   assert.ok(Array.isArray(headerValues));
   assert.deepEqual(headerValues.slice(1), [
     "Ngày học", "Lớp", "Loại buổi", "Giờ dự kiến bắt đầu", "Giờ dự kiến kết thúc",
-    "Thời lượng thực tế (phút)", "Trạng thái", "Nội dung buổi học", "Bài tập về nhà", "Nhận xét học sinh",
+    "Trạng thái", "Nội dung buổi học", "Bài tập về nhà", "Nhận xét học sinh",
   ]);
-  assert.deepEqual([history.getCell("G2").value, history.getCell("G3").value, history.getCell("G4").value], ["Có mặt", "Nghỉ", "Miễn phí"]);
-  assert.equal(history.getCell("H2").value, "'=1+1");
-  assert.equal(history.getCell("H4").value, "'@không chạy");
+  assert.equal(history.getColumn(2).width, 14);
+  assert.deepEqual([history.getCell("F2").value, history.getCell("F3").value, history.getCell("F4").value], ["Có mặt", "Nghỉ", "Miễn phí"]);
+  assert.equal(history.getCell("G2").value, "'=1+1");
+  assert.equal(history.getCell("G4").value, "'@không chạy");
   const headerFill = history.getCell("A1").fill;
   assert.equal(headerFill.type, "pattern");
   assert.equal(headerFill.type === "pattern" ? headerFill.fgColor?.argb : undefined, "FFD9EAF7");
@@ -71,9 +72,16 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
 
   const fees = workbook.getWorksheet("Học phí")!;
   assert.equal(fees.rowCount, 9);
-  assert.deepEqual(Array.from({ length: 8 }, (_, index) => fees.getCell(`O${index + 2}`).value), [1, 2, 3, 4, 5, 6, 7, 8]);
-  assert.equal(fees.getCell("F2").value, 2_400_000);
-  assert.equal(fees.getCell("F2").numFmt, '#,##0 "₫"');
+  const feeHeaders = fees.getRow(1).values;
+  assert.ok(Array.isArray(feeHeaders));
+  assert.deepEqual(feeHeaders.slice(1), [
+    "Số chu kỳ", "Trạng thái chu kỳ", "Ngày bắt đầu", "Ngày đủ 8 buổi",
+    "Ngày thanh toán", "Phương thức thanh toán", "Ngày học", "Giờ dự kiến",
+  ]);
+  for (const range of ["A2:A9", "C2:C9", "D2:D9"]) assert.ok(fees.getCell(range.split(":")[1]).isMerged);
+  assert.equal(fees.getCell("A9").master.address, "A2");
+  assert.equal(fees.getCell("C9").master.address, "C2");
+  assert.equal(fees.getCell("D9").master.address, "D2");
   for (const sheet of workbook.worksheets) sheet.eachRow((row) => row.eachCell((cell) => {
     assert.notEqual(cell.type, ExcelJS.ValueType.Formula);
   }));
