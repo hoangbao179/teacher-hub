@@ -15,6 +15,22 @@ const formatPrice = (value: string | number): string => {
   const digits = priceDigits(String(value));
   return digits ? Number(digits).toLocaleString("vi-VN") : "";
 };
+const time24Pattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+const formatTime24Input = (value: string): string => {
+  const cleaned = value.replace(/[^\d:]/g, "");
+  if (cleaned.includes(":")) {
+    const [hour, ...minuteParts] = cleaned.split(":");
+    return `${hour.slice(0, 2)}:${minuteParts.join("").slice(0, 2)}`;
+  }
+  const digits = cleaned.slice(0, 4);
+  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}:${digits.slice(2)}`;
+};
+const normalizeTime24 = (value: string): string => {
+  const match = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return value;
+  const hour = Number(match[1]); const minute = Number(match[2]);
+  return hour <= 23 && minute <= 59 ? `${String(hour).padStart(2, "0")}:${match[2]}` : value;
+};
 
 export function ClassFormPage() {
   const { id } = useParams();
@@ -52,6 +68,11 @@ export function ClassFormPage() {
     const parsedPrice = Number(priceDigits(price));
     if (!Number.isInteger(parsedPrice) || parsedPrice <= 0) {
       setError("Học phí gói 8 buổi phải lớn hơn 0.");
+      return;
+    }
+    if (schedules.some((schedule) => !time24Pattern.test(schedule.startTime) ||
+      !time24Pattern.test(schedule.endTime) || schedule.endTime <= schedule.startTime)) {
+      setError("Giờ học phải theo định dạng 24 giờ HH:mm và giờ kết thúc phải sau giờ bắt đầu.");
       return;
     }
     if (editing && status !== originalStatus && (status === "PAUSED" || status === "CLOSED") &&
@@ -97,8 +118,16 @@ export function ClassFormPage() {
         <FormControl><InputLabel>Thứ</InputLabel><Select label="Thứ" value={schedule.dayOfWeek} onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, dayOfWeek: Number(e.target.value) as RecurringScheduleInput["dayOfWeek"] } : x))}>
           {[1,2,3,4,5,6,7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}
         </Select></FormControl>
-        <Stack direction="row" spacing={1}><TextField fullWidth type="time" label="Bắt đầu" value={schedule.startTime} onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, startTime: e.target.value } : x))} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField fullWidth type="time" label="Kết thúc" value={schedule.endTime} onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, endTime: e.target.value } : x))} slotProps={{ inputLabel: { shrink: true } }} /></Stack>
+        <Stack direction="row" spacing={1}><TextField fullWidth required label="Bắt đầu (24 giờ)" placeholder="18:00" value={schedule.startTime}
+          onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, startTime: formatTime24Input(e.target.value) } : x))}
+          onBlur={() => setSchedules((old) => old.map((x, i) => i === index ? { ...x, startTime: normalizeTime24(x.startTime) } : x))}
+          error={schedule.startTime.length >= 4 && !time24Pattern.test(schedule.startTime)} helperText="Ví dụ: 18:00"
+          slotProps={{ htmlInput: { inputMode: "numeric", maxLength: 5, pattern: "(?:[01]\\d|2[0-3]):[0-5]\\d" } }} />
+        <TextField fullWidth required label="Kết thúc (24 giờ)" placeholder="19:30" value={schedule.endTime}
+          onChange={(e) => setSchedules((old) => old.map((x, i) => i === index ? { ...x, endTime: formatTime24Input(e.target.value) } : x))}
+          onBlur={() => setSchedules((old) => old.map((x, i) => i === index ? { ...x, endTime: normalizeTime24(x.endTime) } : x))}
+          error={schedule.endTime.length >= 4 && !time24Pattern.test(schedule.endTime)} helperText="Ví dụ: 19:30"
+          slotProps={{ htmlInput: { inputMode: "numeric", maxLength: 5, pattern: "(?:[01]\\d|2[0-3]):[0-5]\\d" } }} /></Stack>
         <Button color="error" startIcon={<Delete />} disabled={schedules.length === 1} onClick={() => setSchedules((old) => old.filter((_, i) => i !== index))}>Xóa lịch</Button>
       </Stack></CardContent></Card>)}
       <Button startIcon={<Add />} onClick={() => setSchedules((old) => [...old, { ...emptySchedule }])}>Thêm lịch</Button>
