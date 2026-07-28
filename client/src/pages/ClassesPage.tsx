@@ -47,11 +47,23 @@ export function ClassesPage() {
           Thêm lớp
         </Button>} />
       {error && <Alert severity="warning">{error}</Alert>}
-      <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ width: "100%", maxWidth: 700 }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(240px, 1fr)" },
+          gap: 1.5,
+          width: "100%",
+          p: { md: 1.5 },
+          border: { md: 1 },
+          borderColor: { md: "divider" },
+          borderRadius: { md: 2.5 },
+          bgcolor: { md: "background.paper" },
+          boxShadow: { md: "0 4px 16px rgba(36,29,62,.04)" },
+        }}
+      >
         <TextField
           fullWidth
           size="small"
-          sx={{ width: { md: 440 }, flex: { md: "0 1 440px" } }}
           label="Tìm theo tên lớp"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -61,7 +73,6 @@ export function ClassesPage() {
           select
           fullWidth
           size="small"
-          sx={{ width: { md: 260 }, flex: { md: "0 0 260px" } }}
           label="Hiển thị"
           value={filter}
           onChange={(event) => setFilter(event.target.value as ClassFilter)}
@@ -72,7 +83,7 @@ export function ClassesPage() {
           <MenuItem value="CLOSED">Đã đóng{closedCount ? ` (${closedCount})` : ""}</MenuItem>
           <MenuItem value="ALL">Tất cả</MenuItem>
         </TextField>
-      </Stack>
+      </Box>
       <Box data-testid="class-card-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.5 }}>
       {visibleItems.map((item) => { const tone = classColor(item.id); return (
         <Card

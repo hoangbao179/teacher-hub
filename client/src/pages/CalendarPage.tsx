@@ -73,16 +73,18 @@ export function CalendarPage() {
       <MenuItem component={Link} to="/admin/busy-slots/new?type=EXTERNAL_CLASS" onClick={() => setAddMenuAnchor(null)}>Lịch dạy tại trường/trung tâm</MenuItem>
       <MenuItem component={Link} to="/admin/busy-slots/new" onClick={() => setAddMenuAnchor(null)}>Lịch bận cá nhân</MenuItem>
     </Menu>
-    <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", width: "100%", maxWidth: 500 }}>
-      <IconButton aria-label="Tuần trước" onClick={() => { setData(null); setError(""); setFrom(addDays(from, -7)); }}><ChevronLeft /></IconButton>
-      <TextField fullWidth type="date" label="Tuần bắt đầu" value={from} onChange={(event) => { setData(null); setError(""); setFrom(weekStart(event.target.value)); }} slotProps={{ inputLabel: { shrink: true } }} />
-      <IconButton aria-label="Tuần sau" onClick={() => { setData(null); setError(""); setFrom(addDays(from, 7)); }}><ChevronRight /></IconButton>
-    </Stack>
-    <Box data-testid="calendar-quick-actions" sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, max-content)" }, gap: 1, justifyContent: "start" }}>
-      <Button variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`} sx={{ gridColumn: { xs: "1 / -1", md: "auto" } }}>Ghi nhận buổi học</Button>
-      <Button variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`}>Buổi học bù</Button>
-      <Button variant="outlined" onClick={(event) => setAddMenuAnchor(event.currentTarget)}>Thêm lịch</Button>
-      <Button variant="text" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`} sx={{ gridColumn: { xs: "1 / -1", md: "auto" }, justifySelf: { xs: "start", md: "auto" } }}>Kiểm tra lịch tuần</Button>
+    <Box sx={{ display: { xs: "contents", md: "grid" }, gridTemplateColumns: { md: "minmax(0, 1fr)", xl: "minmax(360px, 1fr) auto" }, alignItems: { md: "center" }, gap: { md: 1.5, xl: 2 }, p: { md: 1.5 }, border: { md: 1 }, borderColor: { md: "divider" }, borderRadius: { md: 2.5 }, bgcolor: { md: "background.paper" }, boxShadow: { md: "0 4px 16px rgba(36,29,62,.04)" } }}>
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", width: "100%", maxWidth: { md: 500, xl: "none" } }}>
+        <IconButton aria-label="Tuần trước" onClick={() => { setData(null); setError(""); setFrom(addDays(from, -7)); }}><ChevronLeft /></IconButton>
+        <TextField fullWidth type="date" label="Tuần bắt đầu" value={from} onChange={(event) => { setData(null); setError(""); setFrom(weekStart(event.target.value)); }} slotProps={{ inputLabel: { shrink: true } }} />
+        <IconButton aria-label="Tuần sau" onClick={() => { setData(null); setError(""); setFrom(addDays(from, 7)); }}><ChevronRight /></IconButton>
+      </Stack>
+      <Box data-testid="calendar-quick-actions" sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, max-content)" }, gap: 1, justifyContent: { xs: "start", md: "start", xl: "end" } }}>
+        <Button variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`} sx={{ gridColumn: { xs: "1 / -1", md: "auto" } }}>Ghi nhận buổi học</Button>
+        <Button variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`}>Buổi học bù</Button>
+        <Button variant="outlined" onClick={(event) => setAddMenuAnchor(event.currentTarget)}>Thêm lịch</Button>
+        <Button variant="text" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`} sx={{ gridColumn: { xs: "1 / -1", md: "auto" }, justifySelf: { xs: "start", md: "auto" } }}>Kiểm tra lịch tuần</Button>
+      </Box>
     </Box>
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     {!data && !error && <LoadingCards />}
