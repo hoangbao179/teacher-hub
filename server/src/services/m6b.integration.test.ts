@@ -110,7 +110,7 @@ integration("canonical workbook contains normalized history, paid eight-item and
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(result.buffer as never);
-  assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["Quá trình học tập", "Học phí", "Tổng hợp"]);
+  assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["Quá trình học tập", "Học phí"]);
   const history = workbook.getWorksheet("Quá trình học tập")!;
   const fees = workbook.getWorksheet("Học phí")!;
   assert.equal(history.rowCount, 13);
@@ -118,15 +118,22 @@ integration("canonical workbook contains normalized history, paid eight-item and
   assert.equal(history.getCell("A2").numFmt, "dd/mm/yyyy");
   assert.equal(history.getCell("F12").value, "Nghỉ");
   assert.equal(history.getCell("F13").value, "Miễn phí");
+  const absentFill = history.getCell("A12").fill;
+  assert.equal(absentFill.type === "pattern" ? absentFill.fgColor?.argb : undefined, "FFFFDADA");
+  const absentLastColumnFill = history.getCell("I12").fill;
+  assert.equal(absentLastColumnFill.type === "pattern" ? absentLastColumnFill.fgColor?.argb : undefined, "FFFFDADA");
   assert.equal(history.getCell("G2").value, "'=HYPERLINK(\"https://invalid\")");
   assert.equal(history.getCell("I3").value, "'+cmd");
   assert.equal(fees.getCell("A9").master.address, "A2");
+  assert.equal(fees.getCell("B9").master.address, "B2");
   assert.equal(fees.getCell("C9").master.address, "C2");
-  assert.equal(fees.getCell("D9").master.address, "D2");
+  assert.equal(fees.getCell("F9").master.address, "F2");
   assert.equal(fees.getCell("A11").master.address, "A10");
-  assert.equal(fees.getCell("B2").value, "Đã thu");
-  assert.equal(fees.getCell("B10").value, "Đang tích lũy");
-  assert.equal(fees.columnCount, 8);
+  assert.equal(fees.getCell("A2").alignment.horizontal, "center");
+  assert.equal(fees.getCell("B2").alignment.horizontal, "center");
+  assert.equal(fees.getCell("C2").alignment.horizontal, "center");
+  assert.equal(fees.getCell("F2").alignment.horizontal, "center");
+  assert.equal(fees.columnCount, 6);
   for (const sheet of workbook.worksheets) sheet.eachRow((row) => row.eachCell((cell) => assert.notEqual(cell.type, ExcelJS.ValueType.Formula)));
 
   const [audits] = await pool.query<RowDataPacket[]>(

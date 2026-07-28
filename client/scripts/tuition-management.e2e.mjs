@@ -172,13 +172,14 @@ try {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(fs.readFileSync(downloadPath));
   const sheetNames = workbook.worksheets.map((sheet) => sheet.name);
-  if (JSON.stringify(sheetNames) !== JSON.stringify(["Quá trình học tập", "Học phí", "Tổng hợp"]))
+  if (JSON.stringify(sheetNames) !== JSON.stringify(["Quá trình học tập", "Học phí"]))
     throw new Error(`Unexpected workbook sheets: ${sheetNames.join(", ")}`);
   if (workbook.getWorksheet("Quá trình học tập").rowCount !== 11 || workbook.getWorksheet("Học phí").rowCount !== 11)
     throw new Error("Downloaded workbook row counts do not match canonical data");
   const tuitionSheet = workbook.getWorksheet("Học phí");
-  if (tuitionSheet.columnCount !== 8 || tuitionSheet.getCell("A9").master.address !== "A2" ||
-      tuitionSheet.getCell("C9").master.address !== "C2" || tuitionSheet.getCell("D9").master.address !== "D2")
+  if (tuitionSheet.columnCount !== 6 || tuitionSheet.getCell("A9").master.address !== "A2" ||
+      tuitionSheet.getCell("B9").master.address !== "B2" || tuitionSheet.getCell("C9").master.address !== "C2" ||
+      tuitionSheet.getCell("F9").master.address !== "F2")
     throw new Error("Downloaded workbook did not keep the compact merged tuition layout");
   const downloadSuccess = page.getByText(/Đã tải báo cáo Excel:/);
   await downloadSuccess.waitFor();

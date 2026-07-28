@@ -36,7 +36,7 @@ test("spreadsheet text and filename neutralize formulas and unsafe path characte
 test("workbook is chronological, localized, snapshot-based and formula-free", async () => {
   const learningRows = [
     learning({ attendanceId: 3, lessonId: 3, sessionDate: "2026-07-03", attendanceStatus: "FREE", content: "@không chạy" }),
-    learning({ attendanceId: 2, lessonId: 2, sessionDate: "2026-07-02", attendanceStatus: "ABSENT", actualStartTime: null, actualEndTime: null, actualDurationMinutes: null }),
+    learning({ attendanceId: 2, lessonId: 2, sessionDate: "2026-07-02", attendanceStatus: "ABSENT", actualStartTime: null, actualEndTime: null, actualDurationMinutes: null, homework: null }),
     learning({ attendanceId: 1, lessonId: 1, sessionDate: "2026-07-01", attendanceStatus: "PRESENT", content: "=1+1" }),
   ];
   const tuitionRows = Array.from({ length: 8 }, (_, index) => tuition({ sequenceNumber: 8 - index, sessionDate: `2026-07-${String(8 - index).padStart(2, "0")}` }));
@@ -46,7 +46,7 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   });
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(bytes as never);
-  assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["Quá trình học tập", "Học phí", "Tổng hợp"]);
+  assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["Quá trình học tập", "Học phí"]);
 
   const history = workbook.getWorksheet("Quá trình học tập")!;
   const headerValues = history.getRow(1).values;
@@ -59,11 +59,18 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   assert.deepEqual([history.getCell("F2").value, history.getCell("F3").value, history.getCell("F4").value], ["Có mặt", "Nghỉ", "Miễn phí"]);
   assert.equal(history.getCell("G2").value, "'=1+1");
   assert.equal(history.getCell("G4").value, "'@không chạy");
+  for (let column = 1; column <= 9; column += 1) {
+    const absentFill = history.getRow(3).getCell(column).fill;
+    assert.equal(absentFill.type === "pattern" ? absentFill.fgColor?.argb : undefined, "FFFFDADA");
+  }
+  assert.equal(history.columnCount, 9);
+  const outsideTableFill = history.getCell("J3").fill;
+  assert.notEqual(outsideTableFill.type === "pattern" ? outsideTableFill.fgColor?.argb : undefined, "FFFFDADA");
   const headerFill = history.getCell("A1").fill;
   assert.equal(headerFill.type, "pattern");
   assert.equal(headerFill.type === "pattern" ? headerFill.fgColor?.argb : undefined, "FFD9EAF7");
   for (let row = 1; row <= history.rowCount; row += 1) {
-    for (let column = 1; column <= history.columnCount; column += 1) {
+    for (let column = 1; column <= 9; column += 1) {
       assert.equal(history.getRow(row).getCell(column).border.bottom?.style, "thin");
     }
   }
@@ -75,13 +82,17 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   const feeHeaders = fees.getRow(1).values;
   assert.ok(Array.isArray(feeHeaders));
   assert.deepEqual(feeHeaders.slice(1), [
-    "Số chu kỳ", "Trạng thái chu kỳ", "Ngày bắt đầu", "Ngày đủ 8 buổi",
-    "Ngày thanh toán", "Phương thức thanh toán", "Ngày học", "Giờ dự kiến",
+    "Số chu kỳ", "Ngày bắt đầu", "Ngày đủ 8 buổi", "Ngày học", "Giờ dự kiến", "Số tài khoản (VietinBank)",
   ]);
-  for (const range of ["A2:A9", "C2:C9", "D2:D9"]) assert.ok(fees.getCell(range.split(":")[1]).isMerged);
+  for (const range of ["A2:A9", "B2:B9", "C2:C9", "F2:F9"]) assert.ok(fees.getCell(range.split(":")[1]).isMerged);
   assert.equal(fees.getCell("A9").master.address, "A2");
+  assert.equal(fees.getCell("B9").master.address, "B2");
   assert.equal(fees.getCell("C9").master.address, "C2");
-  assert.equal(fees.getCell("D9").master.address, "D2");
+  assert.equal(fees.getCell("F9").master.address, "F2");
+  for (const address of ["A2", "B2", "C2", "F2"]) {
+    assert.equal(fees.getCell(address).alignment.horizontal, "center");
+    assert.equal(fees.getCell(address).alignment.vertical, "middle");
+  }
   for (const sheet of workbook.worksheets) sheet.eachRow((row) => row.eachCell((cell) => {
     assert.notEqual(cell.type, ExcelJS.ValueType.Formula);
   }));
