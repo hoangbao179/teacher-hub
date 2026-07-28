@@ -29,13 +29,13 @@ async function clean(): Promise<void> {
   } finally { connection.release(); }
 }
 
-async function fixture(): Promise<{ actorId: number; studentId: number }> {
+async function fixture(): Promise<{ actorId: number; studentId: number; classId: number }> {
   await clean();
   const [actor] = await pool.execute<ResultSetHeader>(
     "INSERT INTO users(username,email,password_hash,display_name) VALUES ('v16a','v16a@example.test','hash','V16A')");
-  await pool.execute("INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp hiện tại','ONE_TO_ONE',2000000,90,'2025-06-01')");
+  const [classResult] = await pool.execute<ResultSetHeader>("INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp hiện tại','ONE_TO_ONE',2000000,90,'2025-06-01')");
   const [student] = await pool.execute<ResultSetHeader>("INSERT INTO students(full_name,nickname) VALUES ('Học sinh Preview','Mây')");
-  return { actorId: actor.insertId, studentId: student.insertId };
+  return { actorId: actor.insertId, studentId: student.insertId, classId: classResult.insertId };
 }
 
 async function counts(): Promise<Record<string, number>> {
@@ -182,6 +182,43 @@ integration("apply reparses the workbook, writes atomically, audits rows and rep
     assert.equal(replayResult.importId, firstResult.importId);
     const [afterReplay] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) count FROM lesson_attendances");
     assert.equal(Number(afterReplay[0].count), 1);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+integration("legacy apply snapshots the mapped class current price when historical policy is unavailable", async () => {
+  const data = await fixture();
+  const server = createApp().listen(0);
+  try {
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}/api/students/${data.studentId}/legacy-imports`;
+    const token = jwt.sign({ id: data.actorId, username: "v16a", displayName: "V16A", role: "TEACHER" },
+      config.jwt.secret, { expiresIn: "5m" });
+    const bytes = await validWorkbook();
+    const previewBody = new FormData();
+    previewBody.append("file", new Blob([blobPart(bytes)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "history.xlsx");
+    const previewResponse = await fetch(`${base}/preview`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: previewBody });
+    assert.equal(previewResponse.status, 200);
+    const preview = ((await previewResponse.json()) as { data: {
+      file: { sha256: string };
+      rows: Array<{ sourceSheet: string; sourceRow: number; rowType: string }>;
+      academicPeriods: Array<{ id: string }>;
+    } }).data;
+    const periodRow = preview.rows.find((row) => row.rowType === "ACADEMIC_PERIOD")!;
+    const decisions = [{ sourceSheet: periodRow.sourceSheet, sourceRow: periodRow.sourceRow,
+      issueCode: "ACADEMIC_PERIOD_MAPPING_REQUIRED", action: "MAP_ACADEMIC_PERIOD",
+      resolvedValue: { periodId: preview.academicPeriods[0].id, gradeLevel: 6,
+        classMapping: { type: "EXISTING_CLASS", classId: data.classId, className: "Lớp hiện tại" } } }];
+    const applyBody = new FormData();
+    applyBody.append("file", new Blob([blobPart(bytes)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "history.xlsx");
+    applyBody.append("previewSha256", preview.file.sha256);
+    applyBody.append("decisions", JSON.stringify(decisions));
+    const response = await fetch(`${base}/apply`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: applyBody });
+    assert.equal(response.status, 201);
+    const [cycles] = await pool.query<RowDataPacket[]>("SELECT package_price_snapshot FROM tuition_cycles");
+    assert.equal(Number(cycles[0].package_price_snapshot), 2_000_000);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

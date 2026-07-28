@@ -476,8 +476,9 @@ export class LegacyImportRepository {
         [anchorEnrollment],
       );
       const [policyRows] = await connection.query<RowDataPacket[]>(
-        `SELECT ep.tuition_mode,COALESCE(ep.custom_package_price,cp.package_price) package_price
+        `SELECT ep.tuition_mode,COALESCE(ep.custom_package_price,cp.package_price,c.default_package_price) package_price
          FROM class_enrollments e
+         JOIN classes c ON c.id=e.class_id
          JOIN enrollment_tuition_policies ep ON ep.enrollment_id=e.id AND ep.effective_from<=?
            AND (ep.effective_to IS NULL OR ep.effective_to>=?)
          LEFT JOIN class_tuition_policies cp ON cp.class_id=e.class_id AND cp.effective_from<=?
