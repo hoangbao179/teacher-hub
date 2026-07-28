@@ -7,12 +7,17 @@ import ExcelJS from "exceljs";
 import type { ClassListItem, StudentDetail } from "@teacher/shared";
 import { LegacyDateNormalizer } from "./legacy-date-normalizer";
 import { LegacyWorkbookParser } from "./legacy-workbook-parser";
-import { LegacyReconciliationEngine } from "./legacy-reconciliation-engine";
+import { LegacyReconciliationEngine, lessonTimes } from "./legacy-reconciliation-engine";
 import { LegacyImportPreview } from "./legacy-import-preview";
 
 interface LearningFixture { date: string; absent?: boolean; name?: string }
 
-async function workbookBytes(learningRows: LearningFixture[], tuitionDates: string[], paidAfterTuitionIndex?: number): Promise<Buffer> {
+async function workbookBytes(
+  learningRows: LearningFixture[],
+  tuitionDates: string[],
+  paidAfterTuitionIndex?: number,
+  tuitionDuration = "18:00-19:30",
+): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   const learning = workbook.addWorksheet("Quá trình học tập");
   learningRows.forEach((item, index) => {
@@ -39,7 +44,7 @@ async function workbookBytes(learningRows: LearningFixture[], tuitionDates: stri
   tuitionDates.forEach((date, index) => {
     const row = index + 2;
     tuition.getCell(row, 1).value = "Học sinh Mẫu";
-    tuition.getCell(row, 2).value = "18:00-19:30";
+    tuition.getCell(row, 2).value = tuitionDuration;
     tuition.getCell(row, 3).value = new Date(`${date}T00:00:00Z`);
     tuition.getCell(row, 3).numFmt = "d/m/yyyy";
     tuition.getCell(row, 4).value = 45_000 + index;
@@ -53,6 +58,51 @@ async function withWorkbook(bytes: Buffer, action: (path: string) => Promise<voi
   const path = join(directory, "fixture.xlsx");
   try { await writeFile(path, bytes); await action(path); } finally { await rm(directory, { recursive: true, force: true }); }
 }
+
+test("lessonTimes normalizes supported legacy durations and rejects invalid ranges", () => {
+  const validCases = [
+    ["8h30-10h", { start: "08:30", end: "10:00" }],
+    ["8h-10h", { start: "08:00", end: "10:00" }],
+    ["8h30-10h30", { start: "08:30", end: "10:30" }],
+    ["8:30-10:00", { start: "08:30", end: "10:00" }],
+    ["08.30 – 10.00", { start: "08:30", end: "10:00" }],
+  ] as const;
+  for (const [value, expected] of validCases) assert.deepEqual(lessonTimes(value), expected);
+
+  for (const value of ["25h-26h", "8h75-10h", "10h-8h", "10h-10h", null, ""]) {
+    assert.deepEqual(lessonTimes(value), { start: null, end: null });
+  }
+});
+
+test("legacy duration without end minutes keeps lesson time and learning-column mappings", async () => {
+  const bytes = await workbookBytes([{ date: "2025-06-01" }], ["2025-06-01"], undefined, "8h30-10h");
+  await withWorkbook(bytes, async (path) => {
+    const reconciled = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    const student = {
+      id: 7, fullName: "Học sinh Mẫu", nickname: null, status: "ACTIVE", parentName: null, parentPhone: null,
+      classId: null, className: null, enrollmentId: null, enrollmentStatus: null, tuitionMode: null,
+      customPackagePrice: null, currentProgress: 0, hasPaymentDue: false, dateOfBirth: null, note: null,
+      joinedAt: "2025-01-01", effectivePackagePrice: null, incompleteCycle: null, advanceReceipt: null,
+    } satisfies StudentDetail;
+    const preview = new LegacyImportPreview().build(
+      student,
+      [],
+      { name: "fixture.xlsx", size: bytes.length, sha256: "a".repeat(64) },
+      reconciled,
+    );
+    const lesson = reconciled.lessons[0];
+    const lessonRow = preview.rows.find((row) => row.rowType === "LESSON");
+
+    assert.equal(lesson.scheduledStartTime, "08:30");
+    assert.equal(lesson.scheduledEndTime, "10:00");
+    assert.equal(lesson.content, "Nội dung 1");
+    assert.equal(lesson.homework, "Bài tập 1");
+    assert.equal(lesson.note, "Ghi chú 1");
+    assert.ok(!lessonRow?.issueCodes.includes("INVALID_TIME"));
+    assert.equal(lessonRow?.normalizedValues.homework, "Bài tập 1");
+    assert.equal(lessonRow?.normalizedValues.studentNote, "Ghi chú 1");
+  });
+});
 
 test("LegacyDateNormalizer resolves a missing year from tuition references", () => {
   const normalizer = new LegacyDateNormalizer();
@@ -95,6 +145,8 @@ test("reconciliation covers absence, tuition-only, date suggestions, duplicates 
     assert.equal(result.lessons.length, 6);
     assert.equal(result.lessons[0].reconciliationStatus, "MATCHED");
     assert.equal(result.lessons[1].reconciliationStatus, "LEARNING_ONLY_ABSENT");
+    assert.equal(result.lessons[1].scheduledStartTime, null);
+    assert.equal(result.lessons[1].scheduledEndTime, null);
     assert.equal(result.lessons[2].reconciliationStatus, "DATE_CORRECTION_SUGGESTED");
     assert.equal(result.lessons[2].suggestedDate, "2025-06-16");
     assert.equal(result.lessons[3].reconciliationStatus, "DUPLICATE_SUSPECTED");

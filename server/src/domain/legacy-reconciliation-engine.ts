@@ -10,13 +10,23 @@ function daysBetween(left: string, right: string): number {
   return Math.round((Date.parse(`${left}T00:00:00Z`) - Date.parse(`${right}T00:00:00Z`)) / 86_400_000);
 }
 
-function lessonTimes(value: string | null): { start: string | null; end: string | null } {
+export function lessonTimes(value: string | null): { start: string | null; end: string | null } {
   if (!value) return { start: null, end: null };
-  const match = value.match(/(?:^|\D)([01]?\d|2[0-3])[:h.]([0-5]\d)\s*[-–—]\s*([01]?\d|2[0-3])[:h.]([0-5]\d)(?:\D|$)/i);
+  const match = value.trim().match(/^(\d{1,2})(?:h(\d{1,2})?|[:.](\d{1,2}))\s*[-\u2013\u2014]\s*(\d{1,2})(?:h(\d{1,2})?|[:.](\d{1,2}))$/i);
   if (!match) return { start: null, end: null };
+  const startHour = Number(match[1]);
+  const startMinute = Number(match[2] ?? match[3] ?? 0);
+  const endHour = Number(match[4]);
+  const endMinute = Number(match[5] ?? match[6] ?? 0);
+  if (startHour > 23 || endHour > 23 || startMinute > 59 || endMinute > 59) {
+    return { start: null, end: null };
+  }
+  if (endHour * 60 + endMinute <= startHour * 60 + startMinute) {
+    return { start: null, end: null };
+  }
   return {
-    start: `${match[1].padStart(2, "0")}:${match[2]}`,
-    end: `${match[3].padStart(2, "0")}:${match[4]}`,
+    start: `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}`,
+    end: `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`,
   };
 }
 
