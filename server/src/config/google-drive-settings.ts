@@ -8,6 +8,9 @@ export interface GoogleDriveSettings {
   templateVersion: string;
 }
 
+const GOOGLE_DRIVE_OWNER_LABEL = "Cô Vy";
+const GOOGLE_SHEETS_TEMPLATE_VERSION = "v2";
+
 function text(env: NodeJS.ProcessEnv, name: string): string {
   return env[name]?.trim() ?? "";
 }
@@ -22,8 +25,8 @@ export function resolveGoogleDriveSettings(env: NodeJS.ProcessEnv): GoogleDriveS
     clientSecret: text(env, "GOOGLE_DRIVE_CLIENT_SECRET"),
     refreshToken: text(env, "GOOGLE_DRIVE_REFRESH_TOKEN"),
     rootFolderId: text(env, "GOOGLE_DRIVE_ROOT_FOLDER_ID"),
-    ownerLabel: text(env, "GOOGLE_DRIVE_OWNER_LABEL") || "Cô Vy",
-    templateVersion: text(env, "GOOGLE_SHEETS_TEMPLATE_VERSION") || "v2",
+    ownerLabel: GOOGLE_DRIVE_OWNER_LABEL,
+    templateVersion: GOOGLE_SHEETS_TEMPLATE_VERSION,
   };
   if (enabled) {
     for (const [field, value] of Object.entries({

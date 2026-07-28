@@ -43,22 +43,18 @@ oauth.setCredentials(tokenResult.tokens);
 if (!tokenResult.tokens.refresh_token) throw new Error("Google không trả refresh token. Hãy thu hồi quyền cũ rồi chạy lại với consent.");
 const drive = google.drive({ version: "v3", auth: oauth });
 let rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID?.trim();
-let ownerLabel = "";
 if (rootFolderId) {
-  const folder = await drive.files.get({ fileId: rootFolderId, fields: "id,name,owners(displayName,emailAddress),mimeType,trashed" });
+  const folder = await drive.files.get({ fileId: rootFolderId, fields: "id,name,mimeType,trashed" });
   if (folder.data.trashed || folder.data.mimeType !== "application/vnd.google-apps.folder") throw new Error("GOOGLE_DRIVE_ROOT_FOLDER_ID không phải thư mục hợp lệ.");
-  ownerLabel = folder.data.owners?.[0]?.displayName ?? folder.data.owners?.[0]?.emailAddress ?? "";
 } else {
   const folder = await drive.files.create({ requestBody: { name: "Lớp học cô Vy - Sổ theo dõi phụ huynh",
     mimeType: "application/vnd.google-apps.folder", appProperties: { teacherHubManaged: "true", resourceType: "parentTrackingRoot" } },
-    fields: "id,owners(displayName,emailAddress)" });
+    fields: "id" });
   rootFolderId = folder.data.id ?? "";
-  ownerLabel = folder.data.owners?.[0]?.displayName ?? folder.data.owners?.[0]?.emailAddress ?? "";
 }
 console.log("\nChỉ sao chép các giá trị sau vào secret runtime; không commit hoặc gửi qua chat:");
 console.log(`GOOGLE_DRIVE_REFRESH_TOKEN=${tokenResult.tokens.refresh_token}`);
 console.log(`GOOGLE_DRIVE_ROOT_FOLDER_ID=${rootFolderId}`);
-if (ownerLabel) console.log(`GOOGLE_DRIVE_OWNER_LABEL=${ownerLabel}`);
 console.log("Access token không được in.");
 }
 

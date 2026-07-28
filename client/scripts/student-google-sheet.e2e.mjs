@@ -13,8 +13,7 @@ const testEnv = { ...process.env, NODE_ENV: "test", DB_HOST: process.env.DB_HOST
   JWT_SECRET: "google-sheet-e2e-secret-at-least-32-characters", BOOTSTRAP_ADMIN_PASSWORD: "google-sheet-e2e-password-123",
   PORT: String(apiPort), CORS_ORIGIN: origin, GOOGLE_DRIVE_ENABLED: "true", GOOGLE_DRIVE_CLIENT_ID: "fake-client",
   GOOGLE_DRIVE_CLIENT_SECRET: "fake-secret", GOOGLE_DRIVE_REFRESH_TOKEN: "fake-refresh", GOOGLE_DRIVE_ROOT_FOLDER_ID: "fake-root",
-  GOOGLE_DRIVE_OWNER_LABEL: "Cô Vy test", GOOGLE_SHEETS_TEMPLATE_VERSION: "v1", GOOGLE_DRIVE_FAKE: "1",
-  GOOGLE_DRIVE_FAKE_FAIL_ONCE: "1", GOOGLE_DRIVE_FAKE_DELAY_MS: "400",
+  GOOGLE_DRIVE_FAKE: "1", GOOGLE_DRIVE_FAKE_FAIL_ONCE: "1", GOOGLE_DRIVE_FAKE_DELAY_MS: "400",
   GOOGLE_SHEET_SYNC_ENABLED: "true" };
 const children = []; let browser;
 function run(command, args, cwd = root) {

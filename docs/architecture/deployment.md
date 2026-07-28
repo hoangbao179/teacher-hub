@@ -34,6 +34,6 @@ read/write của media root lúc startup và provider có thể tắt mà không
 emoji/public asset. Các result route là protected `/api`; `/play/*` và
 `/api/public/*` giữ nguyên proxy/noindex/no-referrer đã harden.
 
-V20F nâng `GOOGLE_SHEETS_TEMPLATE_VERSION` mặc định lên `v2`. Existing spreadsheet
-được bổ sung tab `Ôn từ vựng` tại chỗ; worker chỉ clear/write managed range và không
-tạo file mới chỉ vì thiếu tab.
+V20F dùng Google Sheets template version cố định `v2`. Existing spreadsheet được bổ
+sung tab `Ôn từ vựng` tại chỗ; worker chỉ clear/write managed range và không tạo file
+mới chỉ vì thiếu tab.

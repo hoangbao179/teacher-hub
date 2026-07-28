@@ -29,18 +29,16 @@ GOOGLE_DRIVE_CLIENT_ID=
 GOOGLE_DRIVE_CLIENT_SECRET=
 GOOGLE_DRIVE_REFRESH_TOKEN=
 GOOGLE_DRIVE_ROOT_FOLDER_ID=
-GOOGLE_DRIVE_OWNER_LABEL=Cô Vy
-GOOGLE_SHEETS_TEMPLATE_VERSION=v2
 GOOGLE_SHEET_SYNC_ENABLED=true
-GOOGLE_SHEET_SYNC_INTERVAL_MS=30000
-GOOGLE_SHEET_SYNC_BATCH_SIZE=20
-GOOGLE_SHEET_SYNC_MAX_ATTEMPTS=8
-GOOGLE_SHEET_SYNC_LOCK_TIMEOUT_MS=600000
 ```
 
 `false` cho phép server chạy không cần credential. `true` mà thiếu một credential bắt
 buộc sẽ làm startup fail rõ ràng. Các giá trị này chỉ được cấp cho API container lúc
 runtime, không phải Docker build args.
+
+Backend cố định nhãn chủ sở hữu là `Cô Vy`, template version là `v2`, chu kỳ sync là
+30 giây, batch 20 event, tối đa 8 lần thử và lock timeout 10 phút. Các giá trị này
+không cấu hình qua environment.
 
 ## Smoke thật
 

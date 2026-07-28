@@ -5,14 +5,19 @@ import { GoogleSheetSyncWorker, googleSyncBackoffMs } from "./google-sheet-sync.
 import { classifyGoogleError } from "../integrations/google/google-integration.errors";
 import { FakeGoogleSheetProvider } from "../integrations/google/fake-google-sheet.provider";
 
-test("Google Sheet sync settings are disabled by default and validate bounds", () => {
+test("Google Sheet sync settings use fixed operational values and are disabled by default", () => {
   const settings = resolveGoogleSheetSyncSettings({});
   assert.equal(settings.enabled, false);
   assert.equal(settings.intervalMs, 30_000);
-  assert.throws(
-    () => resolveGoogleSheetSyncSettings({ GOOGLE_SHEET_SYNC_BATCH_SIZE: "0" }),
-    /GOOGLE_SHEET_SYNC_BATCH_SIZE/,
-  );
+  assert.equal(settings.batchSize, 20);
+  assert.equal(settings.maxAttempts, 8);
+  assert.equal(settings.lockTimeoutMs, 600_000);
+});
+
+test("only GOOGLE_SHEET_SYNC_ENABLED changes the sync state", () => {
+  assert.equal(resolveGoogleSheetSyncSettings({ GOOGLE_SHEET_SYNC_ENABLED: "true" }).enabled, true);
+  assert.throws(() => resolveGoogleSheetSyncSettings({ GOOGLE_SHEET_SYNC_ENABLED: "yes" }),
+    /GOOGLE_SHEET_SYNC_ENABLED must be true or false/);
 });
 
 test("Google Sheet sync retry uses bounded exponential backoff", () => {

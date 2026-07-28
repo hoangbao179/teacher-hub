@@ -5,6 +5,7 @@ import { redactGoogleError, resolveGoogleDriveSettings } from "./google-drive-se
 test("Google Drive may be disabled without credentials", () => {
   const settings = resolveGoogleDriveSettings({ GOOGLE_DRIVE_ENABLED: "false" });
   assert.equal(settings.enabled, false);
+  assert.equal(settings.ownerLabel, "Cô Vy");
   assert.equal(settings.templateVersion, "v2");
 });
 
