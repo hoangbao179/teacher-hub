@@ -3,6 +3,7 @@ import { resolveAuthSettings, type AppEnvironment } from "./auth-settings";
 import { resolveGoogleDriveSettings } from "./google-drive-settings";
 import { resolveGoogleSheetSyncSettings } from "./google-sheet-sync-settings";
 import { resolveVocabularyMediaSettings } from "./vocabulary-media-settings";
+import { resolveStudentReportSettings } from "./student-report-settings";
 import path from "node:path";
 
 const nodeEnv = process.env.NODE_ENV ?? "development";
@@ -66,4 +67,5 @@ export const config = {
   googleDrive: resolveGoogleDriveSettings(process.env),
   googleSheetSync: resolveGoogleSheetSyncSettings(process.env),
   vocabularyMedia: resolveVocabularyMediaSettings(process.env),
+  studentReport: resolveStudentReportSettings(process.env),
 };

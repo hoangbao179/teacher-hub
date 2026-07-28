@@ -78,7 +78,10 @@ const tuitionService = new TuitionService(tuition);
 const scheduleService = new ScheduleService(schedules, lessonService);
 const dashboardService = new DashboardService(tuition, schedules);
 const enrollmentService = new EnrollmentService(enrollments);
-const studentReportService = new StudentReportService(studentReports);
+const studentReportService = new StudentReportService(
+  studentReports,
+  config.studentReport.vietinBankAccountNumber,
+);
 const legacyImportService = new LegacyImportService(studentService, classService);
 const vocabularyService = new VocabularyService(vocabulary);
 const vocabularyImageProvider = config.vocabularyMedia.enabled

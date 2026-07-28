@@ -79,6 +79,8 @@ Các biến trong `/opt/teacher-hub/.env` được giữ tối thiểu:
 - Image/runtime: `GHCR_OWNER`, `IMAGE_TAG`.
 - Database secrets: `MYSQL_ROOT_PASSWORD`, `DB_PASSWORD`.
 - API secret: `JWT_SECRET`.
+- Báo cáo Excel: `REPORT_VIETINBANK_ACCOUNT_NUMBER` chứa số tài khoản VietinBank;
+  chỉ đặt trong runtime `.env`, không commit giá trị thật.
 - Google runtime (khi bật V16C): `GOOGLE_DRIVE_ENABLED` và OAuth/root-folder values
   theo `docs/deployment/google-drive.md`.
 - Vocabulary V20 khi enable: `VOCABULARY_IMAGE_PROVIDER_ENABLED`,

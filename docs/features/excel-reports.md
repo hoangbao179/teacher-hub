@@ -25,8 +25,8 @@ GET /api/students/{studentId}/export.xlsx?fromDate=&toDate=&classId=
 - `Học phí`: chỉ stored cycle items billable theo stored sequence; dùng snapshot
   và payment data đã lưu, không suy lại từ cấu hình lớp hiện tại. Thông tin đầu
   chu kỳ được gộp dọc, căn giữa theo các dòng ngày học thuộc cùng chu kỳ; cột
-  `Số tài khoản (VietinBank)` cuối sheet được merge theo chu kỳ và để trống cho
-  giáo viên điền thủ công.
+  `Số tài khoản (VietinBank)` cuối sheet lấy từ cấu hình server
+  `REPORT_VIETINBANK_ACCOUNT_NUMBER`, được merge và căn giữa theo chu kỳ.
 
 Header được freeze/filter, text dài wrap, ngày hiển thị `dd/MM/yyyy`, tiền là số
 nguyên VND. Text bắt đầu bằng `=`, `+`, `-`, `@` được prefix apostrophe để không

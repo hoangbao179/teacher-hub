@@ -15,6 +15,7 @@ import { TuitionService } from "./tuition.service";
 
 const enabled = process.env.RUN_MYSQL_INTEGRATION === "1";
 const integration = enabled ? test : test.skip;
+const reportAccountNumber = "123456789012";
 
 async function clean(): Promise<void> {
   const connection = await pool.getConnection();
@@ -104,7 +105,7 @@ async function fixture() {
 
 integration("canonical workbook contains normalized history, paid eight-item and accumulating cycles", async () => {
   const data = await fixture();
-  const service = new StudentReportService(new StudentReportRepository());
+  const service = new StudentReportService(new StudentReportRepository(), reportAccountNumber);
   const result = await service.export(data.studentId, {}, data.actorId);
   assert.match(result.filename, /^Bao-cao-Nguyen-Minh-An-\d{8}\.xlsx$/);
 
@@ -128,6 +129,7 @@ integration("canonical workbook contains normalized history, paid eight-item and
   assert.equal(fees.getCell("B9").master.address, "B2");
   assert.equal(fees.getCell("C9").master.address, "C2");
   assert.equal(fees.getCell("F9").master.address, "F2");
+  assert.equal(fees.getCell("F2").value, reportAccountNumber);
   assert.equal(fees.getCell("A11").master.address, "A10");
   assert.equal(fees.getCell("A2").alignment.horizontal, "center");
   assert.equal(fees.getCell("B2").alignment.horizontal, "center");
@@ -146,7 +148,7 @@ integration("canonical workbook contains normalized history, paid eight-item and
 
 integration("filters validate dates and class relationship and bound representative rows", async () => {
   const data = await fixture();
-  const service = new StudentReportService(new StudentReportRepository());
+  const service = new StudentReportService(new StudentReportRepository(), reportAccountNumber);
   await assert.rejects(() => service.export(999999, {}, data.actorId), (error: unknown) => error instanceof AppError && error.code === "STUDENT_NOT_FOUND");
   await assert.rejects(() => service.export(data.studentId, { fromDate: "2026-07-09", toDate: "2026-07-01" }, data.actorId),
     (error: unknown) => error instanceof AppError && error.code === "VALIDATION_ERROR");

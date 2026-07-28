@@ -20,6 +20,7 @@ const testEnv = {
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: `${process.env.DB_NAME ?? "teacher_hub"}_test`,
   JWT_SECRET: "tuition-e2e-secret-with-at-least-32-characters",
+  REPORT_VIETINBANK_ACCOUNT_NUMBER: "123456789012",
   BOOTSTRAP_ADMIN_PASSWORD: "tuition-e2e-password-123",
   PORT: "4102",
   CORS_ORIGIN: "http://127.0.0.1:5176",
@@ -179,7 +180,7 @@ try {
   const tuitionSheet = workbook.getWorksheet("Học phí");
   if (tuitionSheet.columnCount !== 6 || tuitionSheet.getCell("A9").master.address !== "A2" ||
       tuitionSheet.getCell("B9").master.address !== "B2" || tuitionSheet.getCell("C9").master.address !== "C2" ||
-      tuitionSheet.getCell("F9").master.address !== "F2")
+      tuitionSheet.getCell("F9").master.address !== "F2" || tuitionSheet.getCell("F2").value !== "123456789012")
     throw new Error("Downloaded workbook did not keep the compact merged tuition layout");
   const downloadSuccess = page.getByText(/Đã tải báo cáo Excel:/);
   await downloadSuccess.waitFor();

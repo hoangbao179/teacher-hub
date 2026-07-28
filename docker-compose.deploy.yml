@@ -56,6 +56,7 @@ services:
       PIXABAY_API_KEY: ${PIXABAY_API_KEY:-}
       VOCABULARY_MEDIA_STORAGE_PATH: /app/data/vocabulary-media
       PUBLIC_APP_ORIGIN: ${PUBLIC_APP_ORIGIN:-https://tienganhcovy.com}
+      REPORT_VIETINBANK_ACCOUNT_NUMBER: ${REPORT_VIETINBANK_ACCOUNT_NUMBER:-}
       PUBLIC_LEARNING_ASSET_PATH: /app/public-learning-assets
     volumes:
       - vocabulary-media:/app/data/vocabulary-media

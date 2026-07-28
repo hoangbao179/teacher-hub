@@ -93,6 +93,7 @@ export interface StudentWorkbookInput {
   tuitionRows: StudentTuitionReportRow[];
   query: StudentReportExportQuery;
   generatedAt: string;
+  vietinBankAccountNumber: string;
 }
 
 export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise<Buffer> {
@@ -139,7 +140,7 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
     cycle: row.cycleNumber,
     started: excelDate(row.startedAt), reached: excelDate(row.reachedTargetAt),
     date: excelDate(row.sessionDate), scheduled: `${row.scheduledStartTime} – ${row.scheduledEndTime}`,
-    accountNumber: "",
+    accountNumber: safeSpreadsheetText(input.vietinBankAccountNumber),
   });
   for (const key of ["started", "reached", "date"]) tuition.getColumn(key).numFmt = "dd/mm/yyyy";
   styleSheet(tuition, tuition.columnCount);

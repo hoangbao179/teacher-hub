@@ -13,7 +13,10 @@ function validDate(value: string): boolean {
 }
 
 export class StudentReportService {
-  constructor(private readonly repository: StudentReportRepository) {}
+  constructor(
+    private readonly repository: StudentReportRepository,
+    private readonly vietinBankAccountNumber = "",
+  ) {}
 
   async export(studentId: number, query: StudentReportExportQuery, actorUserId: number) {
     if (!Number.isInteger(studentId) || studentId <= 0)
@@ -40,7 +43,14 @@ export class StudentReportService {
       throw new AppError(413, "REPORT_TOO_LARGE", "Báo cáo vượt quá 5.000 dòng; vui lòng chọn khoảng ngày ngắn hơn.");
 
     const generatedAt = new Date().toISOString();
-    const buffer = await buildStudentWorkbook({ student, learningRows, tuitionRows, query, generatedAt });
+    const buffer = await buildStudentWorkbook({
+      student,
+      learningRows,
+      tuitionRows,
+      query,
+      generatedAt,
+      vietinBankAccountNumber: this.vietinBankAccountNumber,
+    });
     await this.repository.recordExport(studentId, actorUserId, query);
     return {
       buffer,

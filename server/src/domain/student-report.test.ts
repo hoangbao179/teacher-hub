@@ -43,6 +43,7 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   const bytes = await buildStudentWorkbook({
     student: { id: 1, fullName: "Nguyễn Văn An", nickname: "An", parentName: null, parentPhone: null, currentClassName: "Lớp Toán" },
     learningRows, tuitionRows, query: {}, generatedAt: "2026-07-21T00:00:00.000Z",
+    vietinBankAccountNumber: "123456789012",
   });
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(bytes as never);
@@ -89,6 +90,7 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   assert.equal(fees.getCell("B9").master.address, "B2");
   assert.equal(fees.getCell("C9").master.address, "C2");
   assert.equal(fees.getCell("F9").master.address, "F2");
+  assert.equal(fees.getCell("F2").value, "123456789012");
   for (const address of ["A2", "B2", "C2", "F2"]) {
     assert.equal(fees.getCell(address).alignment.horizontal, "center");
     assert.equal(fees.getCell(address).alignment.vertical, "middle");
