@@ -2220,7 +2220,7 @@ components:
       properties:
         data:
           type: object
-          required: [mode, student, file, lessons, tuitionRows, paymentEvents, tuitionCycles, academicPeriods, classCandidates, rows, summary, warnings]
+          required: [mode, student, file, lessons, tuitionRows, paymentEvents, tuitionCycles, timeMappings, academicPeriods, classCandidates, rows, summary, warnings]
           properties:
             mode: {type: string, enum: [PREVIEW_ONLY]}
             student: {type: object}
@@ -2235,6 +2235,7 @@ components:
             tuitionRows: {type: array, items: {type: object}}
             paymentEvents: {type: array, items: {type: object}}
             tuitionCycles: {type: array, items: {type: object}}
+            timeMappings: {type: array, items: {type: object}}
             academicPeriods: {type: array, items: {type: object}}
             classCandidates: {type: array, items: {type: object}}
             rows: {type: array, items: {$ref: '#/components/schemas/LegacyImportRow'}}
@@ -2245,7 +2246,7 @@ components:
       required: [id, rowType, sourceSheet, sourceRow, rawValues, normalizedValues, issueCodes, status, supportedActions]
       properties:
         id: {type: string}
-        rowType: {type: string, enum: [LESSON, TUITION, PAYMENT, ACADEMIC_PERIOD]}
+        rowType: {type: string, enum: [LESSON, TUITION, PAYMENT, ACADEMIC_PERIOD, TIME_MAPPING]}
         sourceSheet: {type: string}
         sourceRow: {type: integer, minimum: 1}
         rawValues: {type: object, additionalProperties: true}
@@ -2261,7 +2262,7 @@ components:
         sourceSheet: {type: string}
         sourceRow: {type: integer, minimum: 1}
         issueCode: {type: string}
-        action: {type: string, enum: [EDIT_ROW, CONFIRM_STUDENT, SET_ATTENDANCE, MAP_ACADEMIC_PERIOD, MATCH_EXISTING_LESSON, CREATE_LESSON, KEEP_EXISTING_LESSON, USE_IMPORTED_LESSON, EDIT_LESSON_CONTENT, CONFIRM_PAYMENT, SKIP]}
+        action: {type: string, enum: [EDIT_ROW, CONFIRM_STUDENT, SET_ATTENDANCE, MAP_ACADEMIC_PERIOD, MATCH_EXISTING_LESSON, CREATE_LESSON, KEEP_EXISTING_LESSON, USE_IMPORTED_LESSON, EDIT_LESSON_CONTENT, CONFIRM_PAYMENT, CONFIRM_TIME_MAPPING, SKIP]}
         resolvedValue: {nullable: true}
         reason: {type: string, enum: [UNIDENTIFIABLE_DATA, DUPLICATE_ROW, WRONG_STUDENT, NOT_NEEDED, OTHER]}
     LegacyImportApplyEnvelope:

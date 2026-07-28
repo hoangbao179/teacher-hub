@@ -74,7 +74,7 @@ async function makeWorkbook(studentName) {
   for (let index = 0; index < 10; index += 1) {
     const row = index + 2;
     tuition.getCell(row, 1).value = studentName;
-    tuition.getCell(row, 2).value = "18:00-19:30";
+    tuition.getCell(row, 2).value = "3h30-5h";
     tuition.getCell(row, 3).value = new Date(`2026-07-${String(index + 1).padStart(2, "0")}T00:00:00Z`);
     tuition.getCell(row, 3).numFmt = "d/m/yyyy";
     tuition.getCell(row, 4).value = 45_000 + index;
@@ -123,6 +123,7 @@ try {
   await page.getByLabel("Khối").click();
   await page.getByRole("option", { name: "Lớp 9" }).click();
   await page.getByRole("button", { name: "Xác nhận mapping" }).click();
+  await page.getByRole("button", { name: "Xác nhận cho tất cả dòng cùng khung giờ" }).click();
   const paymentCard = page.getByText("Sự kiện thanh toán cần xác nhận").locator("xpath=ancestor::*[contains(@class,'MuiCard-root')]");
   await paymentCard.getByLabel("Cách hiểu PAID").click();
   await page.getByRole("option", { name: "Trả đợt trước" }).click();

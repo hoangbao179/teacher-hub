@@ -30,6 +30,7 @@ function actionAllowedForIssue(issue: LegacyImportIssueCode, action: LegacyImpor
     TUITION_ROW_UNMATCHED: [], ACADEMIC_PERIOD_MAPPING_REQUIRED: ["MAP_ACADEMIC_PERIOD"],
     PAYMENT_REVIEW_REQUIRED: ["CONFIRM_PAYMENT"], NEAR_LESSON_MATCH: ["MATCH_EXISTING_LESSON", "CREATE_LESSON"],
     LESSON_CONTENT_CONFLICT: ["KEEP_EXISTING_LESSON", "USE_IMPORTED_LESSON", "EDIT_LESSON_CONTENT"],
+    TIME_MAPPING_REQUIRED: ["CONFIRM_TIME_MAPPING"],
   };
   return allowed[issue].includes(action);
 }
@@ -61,6 +62,11 @@ function validateDecisionPayload(decision: LegacyImportRowDecision, studentId: n
     if (decision.reason === "OTHER" && !decision.otherReason?.trim()) invalid("Lý do khác là bắt buộc khi bỏ qua.");
   } else if (decision.action === "CONFIRM_PAYMENT" && decision.resolvedValue === "UNDETERMINED")
     invalid("Sự kiện thanh toán phải có quyết định rõ ràng trước khi Apply.");
+  if (decision.action === "CONFIRM_TIME_MAPPING") {
+    if (!decision.resolvedValue.mappingId || !timePattern.test(decision.resolvedValue.startTime) ||
+        !timePattern.test(decision.resolvedValue.endTime) || decision.resolvedValue.endTime <= decision.resolvedValue.startTime)
+      invalid("Khung giờ xác nhận không hợp lệ.");
+  }
 }
 
 export interface ResolvedLegacyImportRow extends LegacyImportRowPreview {
@@ -84,6 +90,8 @@ export function resolveLegacyImportDecisions(
     if (!row || !row.issueCodes.includes(decision.issueCode)) invalid("Quyết định không thuộc vấn đề của dòng preview.");
     if (!row.supportedActions.includes(decision.action) || !actionAllowedForIssue(decision.issueCode, decision.action))
       invalid("Thao tác không được hỗ trợ cho vấn đề của dòng này.");
+    if (decision.action === "CONFIRM_TIME_MAPPING" && decision.resolvedValue.mappingId !== row.normalizedValues.mappingId)
+      invalid("Mã mapping khung giờ không khớp preview.");
     validateDecisionPayload(decision, preview.student.id);
     byIssue.set(key, decision);
   }
@@ -103,7 +111,14 @@ export function resolveLegacyImportDecisions(
     }
     return { ...row, normalizedValues, status: "RESOLVED", decisions: rowDecisions };
   });
-  return resolved;
+  const confirmedMappings = new Map(decisions.filter((decision) => decision.action === "CONFIRM_TIME_MAPPING")
+    .map((decision) => [decision.resolvedValue.mappingId, decision.resolvedValue]));
+  return resolved.map((row) => {
+    if (row.rowType !== "LESSON" || typeof row.normalizedValues.timeMappingId !== "string") return row;
+    const mapping = confirmedMappings.get(row.normalizedValues.timeMappingId);
+    return mapping ? { ...row, normalizedValues: { ...row.normalizedValues,
+      startTime: mapping.startTime, endTime: mapping.endTime } } : row;
+  });
 }
 
 export function validateLegacyBulkDecision(

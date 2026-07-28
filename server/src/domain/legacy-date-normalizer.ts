@@ -49,53 +49,47 @@ function partsFromValue(value: unknown, display: string): DateParts | null {
   };
 }
 
-function dateDistance(left: string, right: string): number {
-  return Math.abs(Date.parse(`${left}T00:00:00Z`) - Date.parse(`${right}T00:00:00Z`)) / 86_400_000;
-}
-
 export class LegacyDateNormalizer {
   normalize(inputs: LegacyDateInput[], tuitionReferenceDates: string[]): NormalizedLegacyDate[] {
     const references = [...new Set(tuitionReferenceDates)].sort();
-    const years = [...new Set(references.map((value) => Number(value.slice(0, 4))))];
     const parsed = inputs.map((input) => partsFromValue(input.raw, input.display));
-    const results: NormalizedLegacyDate[] = inputs.map((input, index) => {
-      const value = parsed[index];
-      if (!value) return { originalDate: input.display, normalizedDate: null, resolution: "UNRESOLVED" };
-      if (value.year != null) {
-        const normalizedDate = iso(value.year, value.month, value.day);
-        return { originalDate: input.display, normalizedDate, resolution: normalizedDate ? "EXACT" : "UNRESOLVED" };
-      }
-      const exactReferences = references.filter((reference) =>
-        Number(reference.slice(5, 7)) === value.month && Number(reference.slice(8, 10)) === value.day);
-      if (exactReferences.length === 1) {
-        return { originalDate: input.display, normalizedDate: exactReferences[0], resolution: "TUITION_REFERENCE" };
-      }
-      return { originalDate: input.display, normalizedDate: null, resolution: "UNRESOLVED" };
-    });
-
-    const resolvedIndexes = () => results.map((item, index) => item.normalizedDate ? index : -1).filter((index) => index >= 0);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let index = 0; index < results.length; index += 1) {
-        if (results[index].normalizedDate || !parsed[index] || parsed[index]!.year != null || years.length === 0) continue;
-        const indexes = resolvedIndexes();
-        const nearest = indexes.sort((a, b) => Math.abs(a - index) - Math.abs(b - index))[0];
-        if (nearest == null) continue;
-        const part = parsed[index]!;
-        const candidateYears = [...new Set(years.flatMap((year) => [year - 1, year, year + 1]))];
-        const candidates = candidateYears.map((year) => iso(year, part.month, part.day)).filter((item): item is string => Boolean(item));
-        if (!candidates.length) continue;
-        const anchor = results[nearest].normalizedDate!;
-        results[index] = {
-          originalDate: inputs[index].display,
-          normalizedDate: candidates.sort((a, b) => dateDistance(a, anchor) - dateDistance(b, anchor))[0],
-          resolution: "SEQUENCE_INFERENCE",
-        };
-        changed = true;
-      }
+    const offsets: number[] = [];
+    let offset = 0;
+    let previousMonth: number | null = null;
+    for (const part of parsed) {
+      if (part && previousMonth != null && previousMonth - part.month >= 6) offset += 1;
+      offsets.push(offset);
+      if (part) previousMonth = part.month;
     }
-    return results;
+
+    const baseYearVotes = new Map<number, number>();
+    parsed.forEach((part, index) => {
+      if (!part) return;
+      if (part.year != null) {
+        const base = part.year - offsets[index];
+        baseYearVotes.set(base, (baseYearVotes.get(base) ?? 0) + 4);
+        return;
+      }
+      for (const reference of references) {
+        if (Number(reference.slice(5, 7)) === part.month && Number(reference.slice(8, 10)) === part.day) {
+          const base = Number(reference.slice(0, 4)) - offsets[index];
+          baseYearVotes.set(base, (baseYearVotes.get(base) ?? 0) + 1);
+        }
+      }
+    });
+    const baseYear = [...baseYearVotes.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0]
+      ?? (references[0] ? Number(references[0].slice(0, 4)) : null);
+
+    return inputs.map((input, index): NormalizedLegacyDate => {
+      const part = parsed[index];
+      if (!part) return { originalDate: input.display, normalizedDate: null, resolution: "UNRESOLVED" };
+      const year = part.year ?? (baseYear == null ? null : baseYear + offsets[index]);
+      const normalizedDate = year == null ? null : iso(year, part.month, part.day);
+      if (!normalizedDate) return { originalDate: input.display, normalizedDate: null, resolution: "UNRESOLVED" };
+      if (part.year != null) return { originalDate: input.display, normalizedDate, resolution: "EXACT" };
+      return { originalDate: input.display, normalizedDate,
+        resolution: references.includes(normalizedDate) ? "TUITION_REFERENCE" : "SEQUENCE_INFERENCE" };
+    });
   }
 
   normalizeFullDate(raw: unknown, display: string): string | null {

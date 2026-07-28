@@ -14,7 +14,8 @@ export type LegacyImportIssueCode =
   | "ACADEMIC_PERIOD_MAPPING_REQUIRED"
   | "PAYMENT_REVIEW_REQUIRED"
   | "NEAR_LESSON_MATCH"
-  | "LESSON_CONTENT_CONFLICT";
+  | "LESSON_CONTENT_CONFLICT"
+  | "TIME_MAPPING_REQUIRED";
 
 export type LegacyImportErrorCode =
   | "LEGACY_FILE_REQUIRED"
@@ -40,6 +41,7 @@ export type LegacyImportDecisionAction =
   | "USE_IMPORTED_LESSON"
   | "EDIT_LESSON_CONTENT"
   | "CONFIRM_PAYMENT"
+  | "CONFIRM_TIME_MAPPING"
   | "SKIP";
 
 export type LegacyImportSkipReason =
@@ -105,6 +107,11 @@ export interface LegacyImportPaymentDecision extends LegacyImportDecisionBase {
   resolvedValue: LegacyPaymentResolution;
 }
 
+export interface LegacyImportTimeMappingDecision extends LegacyImportDecisionBase {
+  action: "CONFIRM_TIME_MAPPING";
+  resolvedValue: { mappingId: string; startTime: string; endTime: string };
+}
+
 export type LegacyImportRowDecision =
   | LegacyImportRowResolution
   | LegacyImportSkipDecision
@@ -112,7 +119,8 @@ export type LegacyImportRowDecision =
   | LegacyImportAttendanceDecision
   | LegacyAcademicPeriodDecision
   | LegacyImportStudentDecision
-  | LegacyImportPaymentDecision;
+  | LegacyImportPaymentDecision
+  | LegacyImportTimeMappingDecision;
 
 export interface LegacyImportApplyRequest {
   previewSha256: string;
@@ -121,7 +129,7 @@ export interface LegacyImportApplyRequest {
 
 export interface LegacyImportRowPreview {
   id: string;
-  rowType: "LESSON" | "TUITION" | "PAYMENT" | "ACADEMIC_PERIOD";
+  rowType: "LESSON" | "TUITION" | "PAYMENT" | "ACADEMIC_PERIOD" | "TIME_MAPPING";
   sourceSheet: string;
   sourceRow: number;
   rawValues: Record<string, string | number | boolean | null>;
@@ -182,6 +190,8 @@ export interface LegacyLearningLessonPreview {
   sourceRow: number;
   reconciliationStatus: LegacyReconciliationStatus;
   matchedTuitionSourceRow: number | null;
+  rawTime: string | null;
+  timeMappingId: string | null;
 }
 
 export interface LegacyTuitionRowPreview {
@@ -189,10 +199,21 @@ export interface LegacyTuitionRowPreview {
   date: string | null;
   time: string | null;
   paidMarker: boolean;
+  offMarker: boolean;
   sourceSheet: "Học phí";
   sourceRow: number;
   reconciliationStatus: LegacyReconciliationStatus;
   matchedLearningSourceRow: number | null;
+}
+
+export interface LegacyTimeMappingPreview {
+  id: string;
+  periodId: string;
+  rawValue: string;
+  proposedStartTime: string | null;
+  proposedEndTime: string | null;
+  reason: "AMBIGUOUS_12H" | "TYPO_SUGGESTION";
+  lessonSourceRows: number[];
 }
 
 export type LegacyPaymentResolution =
@@ -269,6 +290,7 @@ export interface LegacyImportPreview {
   tuitionRows: LegacyTuitionRowPreview[];
   paymentEvents: LegacyPaymentEventPreview[];
   tuitionCycles: LegacyTuitionCyclePreview[];
+  timeMappings: LegacyTimeMappingPreview[];
   academicPeriods: LegacyAcademicPeriodPreview[];
   classCandidates: LegacyClassCandidate[];
   rows: LegacyImportRowPreview[];

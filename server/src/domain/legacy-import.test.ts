@@ -9,12 +9,14 @@ import { LegacyDateNormalizer } from "./legacy-date-normalizer";
 import { LegacyWorkbookParser } from "./legacy-workbook-parser";
 import { LegacyReconciliationEngine, lessonTimes } from "./legacy-reconciliation-engine";
 import { LegacyImportPreview } from "./legacy-import-preview";
+import { resolveLegacyImportDecisions } from "./legacy-import-decisions";
 
 interface LearningFixture { date: string; absent?: boolean; name?: string }
+interface TuitionFixture { date: string; time?: string; off?: boolean }
 
 async function workbookBytes(
   learningRows: LearningFixture[],
-  tuitionDates: string[],
+  tuitionDates: Array<string | TuitionFixture>,
   paidAfterTuitionIndex?: number,
   tuitionDuration = "18:00-19:30",
 ): Promise<Buffer> {
@@ -41,13 +43,15 @@ async function workbookBytes(
   });
   const tuition = workbook.addWorksheet("Học phí");
   ["FULL NAME", "DURATION", "DATE", "HOURS", "VIETINBANK", ""].forEach((value, column) => tuition.getCell(1, column + 1).value = value);
-  tuitionDates.forEach((date, index) => {
+  tuitionDates.forEach((item, index) => {
+    const fixture = typeof item === "string" ? { date: item } : item;
     const row = index + 2;
     tuition.getCell(row, 1).value = "Học sinh Mẫu";
-    tuition.getCell(row, 2).value = tuitionDuration;
-    tuition.getCell(row, 3).value = new Date(`${date}T00:00:00Z`);
+    tuition.getCell(row, 2).value = fixture.time ?? tuitionDuration;
+    tuition.getCell(row, 3).value = new Date(`${fixture.date}T00:00:00Z`);
     tuition.getCell(row, 3).numFmt = "d/m/yyyy";
     tuition.getCell(row, 4).value = 45_000 + index;
+    if (fixture.off) tuition.getCell(row, 5).value = "  off ";
     if (paidAfterTuitionIndex === index + 1) tuition.getCell(row + 1, 6).value = "PAID";
   });
   return Buffer.from(await workbook.xlsx.writeBuffer());
@@ -145,8 +149,8 @@ test("reconciliation covers absence, tuition-only, date suggestions, duplicates 
     assert.equal(result.lessons.length, 6);
     assert.equal(result.lessons[0].reconciliationStatus, "MATCHED");
     assert.equal(result.lessons[1].reconciliationStatus, "LEARNING_ONLY_ABSENT");
-    assert.equal(result.lessons[1].scheduledStartTime, null);
-    assert.equal(result.lessons[1].scheduledEndTime, null);
+    assert.equal(result.lessons[1].scheduledStartTime, "18:00");
+    assert.equal(result.lessons[1].scheduledEndTime, "19:30");
     assert.equal(result.lessons[2].reconciliationStatus, "DATE_CORRECTION_SUGGESTED");
     assert.equal(result.lessons[2].suggestedDate, "2025-06-16");
     assert.equal(result.lessons[3].reconciliationStatus, "DUPLICATE_SUSPECTED");
@@ -185,5 +189,119 @@ test("preview splits school years and never applies a filename grade to history"
     assert.deepEqual(preview.academicPeriods.map((period) => period.schoolYear), ["2024-2025", "2025-2026", "2026-2027"]);
     assert.ok(preview.academicPeriods.every((period) => period.gradeLevel === null));
     assert.ok(preview.academicPeriods.some((period) => period.proposedClassMapping.type === "CURRENT_CLASS"));
+  });
+});
+
+function previewStudent(): StudentDetail {
+  return {
+    id: 7, fullName: "Học sinh Mẫu", nickname: null, status: "ACTIVE", parentName: null, parentPhone: null,
+    classId: null, className: null, enrollmentId: null, enrollmentStatus: null, tuitionMode: null,
+    customPackagePrice: null, currentProgress: 0, hasPaymentDue: false, dateOfBirth: null, note: null,
+    joinedAt: "2025-01-01", effectivePackagePrice: null, incompleteCycle: null, advanceReceipt: null,
+  };
+}
+
+test("an absent lesson without a tuition row infers the unique recurring time and stays non-billable", async () => {
+  const dates = ["2026-06-15", "2026-06-17", "2026-06-22", "2026-06-24", "2026-07-01",
+    "2026-07-06", "2026-07-08", "2026-07-13", "2026-07-15"];
+  const bytes = await workbookBytes(dates.map((date, index) => ({ date, absent: index === 7 })),
+    dates.filter((_, index) => index !== 7), undefined, "8h30-10h");
+  await withWorkbook(bytes, async (path) => {
+    const reconciled = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    const absent = reconciled.lessons[7];
+    assert.equal(absent.reconciliationStatus, "LEARNING_ONLY_ABSENT");
+    assert.equal(absent.scheduledStartTime, "08:30");
+    assert.equal(absent.scheduledEndTime, "10:00");
+    assert.equal(absent.attendanceStatus, "ABSENT");
+    assert.equal(absent.billingType, "NONE");
+    assert.deepEqual(reconciled.tuitionCycles.map((cycle) => cycle.itemCount), [8]);
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "fixture.xlsx", size: bytes.length, sha256: "a".repeat(64) }, reconciled);
+    assert.ok(!preview.rows.find((row) => row.id === absent.id)?.issueCodes.includes("INVALID_TIME"));
+  });
+});
+
+test("two absent lessons share one confirmed ambiguous time mapping instead of row-level time reviews", async () => {
+  const dates = ["2026-06-10", "2026-06-15", "2026-06-17", "2026-06-22", "2026-06-24",
+    "2026-06-29", "2026-07-01", "2026-07-06", "2026-07-08", "2026-07-13", "2026-07-15"];
+  const bytes = await workbookBytes(dates.map((date, index) => ({ date, absent: index === 3 || index === 4 })),
+    dates.filter((_, index) => index !== 3 && index !== 4), undefined, "3h30-5h");
+  await withWorkbook(bytes, async (path) => {
+    const reconciled = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    assert.deepEqual(reconciled.lessons.filter((lesson) => lesson.attendanceStatus === "ABSENT")
+      .map((lesson) => [lesson.scheduledStartTime, lesson.scheduledEndTime]), [["15:30", "17:00"], ["15:30", "17:00"]]);
+    assert.equal(reconciled.timeMappings.length, 1);
+    assert.equal(reconciled.timeMappings[0].lessonSourceRows.length, 11);
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "fixture.xlsx", size: bytes.length, sha256: "b".repeat(64) }, reconciled);
+    assert.equal(preview.rows.filter((row) => row.issueCodes.includes("TIME_MAPPING_REQUIRED")).length, 1);
+    assert.equal(preview.rows.filter((row) => row.issueCodes.includes("INVALID_TIME")).length, 0);
+    const mappingRow = preview.rows.find((row) => row.rowType === "TIME_MAPPING")!;
+    const resolved = resolveLegacyImportDecisions({ ...preview,
+      rows: preview.rows.filter((row) => row.rowType === "LESSON" || row.rowType === "TIME_MAPPING") }, [{
+      sourceSheet: mappingRow.sourceSheet, sourceRow: mappingRow.sourceRow, issueCode: "TIME_MAPPING_REQUIRED",
+      action: "CONFIRM_TIME_MAPPING", resolvedValue: { mappingId: String(mappingRow.normalizedValues.mappingId),
+        startTime: "15:30", endTime: "17:00" },
+    }]);
+    assert.ok(resolved.filter((row) => row.rowType === "LESSON")
+      .every((row) => row.normalizedValues.startTime === "15:30" && row.normalizedValues.endTime === "17:00"));
+  });
+});
+
+test("exact absent plus OFF is a clear non-billable match and OFF is not PAID", async () => {
+  const bytes = await workbookBytes([{ date: "2026-06-29", absent: true }],
+    [{ date: "2026-06-29", time: "3h30-5h", off: true }]);
+  await withWorkbook(bytes, async (path) => {
+    const parsed = await new LegacyWorkbookParser().parse(path);
+    assert.equal(parsed.tuitionRows[0].offMarker, true);
+    assert.equal(parsed.tuitionRows[0].paidMarker, false);
+    const reconciled = new LegacyReconciliationEngine().reconcile(parsed);
+    assert.equal(reconciled.lessons[0].reconciliationStatus, "MATCHED");
+    assert.equal(reconciled.lessons[0].billingType, "NONE");
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "fixture.xlsx", size: bytes.length, sha256: "c".repeat(64) }, reconciled);
+    assert.ok(!preview.rows.find((row) => row.rowType === "LESSON")?.issueCodes.includes("ATTENDANCE_AMBIGUOUS"));
+  });
+});
+
+test("a backward June day suggests the unused same day in July without silently changing it", async () => {
+  const bytes = await workbookBytes([{ date: "June 29" }, { date: "June 1" }, { date: "Jul 6" }],
+    ["2026-06-29", "2026-07-01", "2026-07-06"]);
+  await withWorkbook(bytes, async (path) => {
+    const reconciled = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    assert.equal(reconciled.lessons[1].normalizedDate, "2026-06-01");
+    assert.equal(reconciled.lessons[1].suggestedDate, "2026-07-01");
+    assert.equal(reconciled.lessons[1].reconciliationStatus, "DATE_CORRECTION_SUGGESTED");
+  });
+});
+
+test("the learning sequence anchors 2025 through the 2026 rollover", () => {
+  const dates = ["June 24", "July 1", "August 27", "September 3", "December 20", "January 3", "July 15"];
+  const references = ["2025-09-03", "2025-12-20", "2026-01-03", "2026-07-15"];
+  assert.deepEqual(new LegacyDateNormalizer().normalize(dates.map((date) => ({ raw: date, display: date })), references)
+    .map((item) => item.normalizedDate),
+  ["2025-06-24", "2025-07-01", "2025-08-27", "2025-09-03", "2025-12-20", "2026-01-03", "2026-07-15"]);
+});
+
+test("a fully matched clear-time workbook keeps every lesson matched", async () => {
+  const dates = ["2026-06-15", "2026-06-17", "2026-06-22", "2026-06-24", "2026-06-29",
+    "2026-07-01", "2026-07-06", "2026-07-08", "2026-07-13", "2026-07-15"];
+  const bytes = await workbookBytes(dates.map((date) => ({ date })), dates, undefined, "8h30-10h");
+  await withWorkbook(bytes, async (path) => {
+    const reconciled = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    assert.equal(reconciled.lessons.filter((lesson) => lesson.reconciliationStatus === "MATCHED").length, 10);
+    assert.equal(reconciled.timeMappings.length, 0);
+  });
+});
+
+test("single-digit h-minutes are typo suggestions, not literal minutes", async () => {
+  assert.deepEqual(lessonTimes("20h8-22h"), { start: null, end: null });
+  const bytes = await workbookBytes([{ date: "2025-09-03" }, { date: "2025-09-06" }],
+    [{ date: "2025-09-03", time: "20h-22h" }, { date: "2025-09-06", time: "20h8-22h" }]);
+  await withWorkbook(bytes, async (path) => {
+    const reconciled = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    const mapping = reconciled.timeMappings.find((item) => item.rawValue === "20h8-22h");
+    assert.deepEqual([mapping?.proposedStartTime, mapping?.proposedEndTime], ["20:00", "22:00"]);
+    assert.equal(mapping?.reason, "TYPO_SUGGESTION");
   });
 });

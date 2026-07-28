@@ -82,10 +82,10 @@ export class LegacyImportPreview {
       return {
         id: lesson.id, rowType: "LESSON", sourceSheet: lesson.sourceSheet, sourceRow: lesson.sourceRow,
         rawValues: { date: lesson.originalDate, studentName: lesson.studentName, attendance: lesson.attendanceStatus,
-          content: lesson.content, homework: lesson.homework, studentNote: lesson.note },
+          content: lesson.content, homework: lesson.homework, studentNote: lesson.note, time: lesson.rawTime },
         normalizedValues: { date: lesson.normalizedDate, startTime: lesson.scheduledStartTime,
           endTime: lesson.scheduledEndTime, attendance: lesson.attendanceStatus, content: lesson.content,
-          homework: lesson.homework, studentNote: lesson.note },
+          homework: lesson.homework, studentNote: lesson.note, timeMappingId: lesson.timeMappingId },
         issueCodes, status: lifecycleStatus(issueCodes), supportedActions,
         ...(lesson.suggestedDate && issueCodes.includes("DATE_CORRECTION") ? { suggestedResolution: {
           sourceSheet: lesson.sourceSheet, sourceRow: lesson.sourceRow, issueCode: "DATE_CORRECTION" as const,
@@ -97,8 +97,8 @@ export class LegacyImportPreview {
       .filter((row) => row.reconciliationStatus !== "MATCHED")
       .map((row) => ({
         id: row.id, rowType: "TUITION", sourceSheet: row.sourceSheet, sourceRow: row.sourceRow,
-        rawValues: { date: row.date, time: row.time, paidMarker: row.paidMarker },
-        normalizedValues: { date: row.date, time: row.time, paidMarker: row.paidMarker },
+        rawValues: { date: row.date, time: row.time, paidMarker: row.paidMarker, offMarker: row.offMarker },
+        normalizedValues: { date: row.date, time: row.time, paidMarker: row.paidMarker, offMarker: row.offMarker },
         issueCodes: ["TUITION_ROW_UNMATCHED"], status: "NEEDS_REVIEW",
         supportedActions: ["SKIP"],
       }));
@@ -116,7 +116,16 @@ export class LegacyImportPreview {
       issueCodes: ["ACADEMIC_PERIOD_MAPPING_REQUIRED"], status: "NEEDS_REVIEW",
       supportedActions: ["MAP_ACADEMIC_PERIOD"],
     }));
-    const rows = [...lessonRows, ...tuitionPreviewRows, ...paymentRows, ...periodRows];
+    const timeMappingRows: LegacyImportRowPreview[] = result.timeMappings.map((mapping, index) => ({
+      id: mapping.id, rowType: "TIME_MAPPING", sourceSheet: "Khung giờ", sourceRow: index + 1,
+      rawValues: { rawTime: mapping.rawValue, periodId: mapping.periodId,
+        affectedLessonCount: mapping.lessonSourceRows.length, reason: mapping.reason },
+      normalizedValues: { mappingId: mapping.id, startTime: mapping.proposedStartTime,
+        endTime: mapping.proposedEndTime },
+      issueCodes: ["TIME_MAPPING_REQUIRED"], status: "NEEDS_REVIEW",
+      supportedActions: ["CONFIRM_TIME_MAPPING"],
+    }));
+    const rows = [...lessonRows, ...tuitionPreviewRows, ...paymentRows, ...periodRows, ...timeMappingRows];
     const unresolvedIssueCount = rows.filter((row) => row.status === "NEEDS_REVIEW" || row.status === "BLOCKED").length;
     const hasAdvancePayment = result.paymentEvents.some((event) => event.recommendedResolution === "CURRENT_CYCLE_ADVANCE")
       ? true : result.paymentEvents.some((event) => event.requiresReview) ? null : false;
@@ -128,6 +137,7 @@ export class LegacyImportPreview {
       tuitionRows: result.tuitionRows,
       paymentEvents: result.paymentEvents,
       tuitionCycles: result.tuitionCycles,
+      timeMappings: result.timeMappings,
       academicPeriods,
       classCandidates,
       rows,

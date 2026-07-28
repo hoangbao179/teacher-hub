@@ -24,6 +24,7 @@ const issueLabels: Record<LegacyImportIssueCode, string> = {
   ACADEMIC_PERIOD_MAPPING_REQUIRED: "Cần map năm học, khối và lớp",
   PAYMENT_REVIEW_REQUIRED: "Sự kiện thanh toán cần xác nhận",
   NEAR_LESSON_MATCH: "Có lesson gần giống", LESSON_CONTENT_CONFLICT: "Nội dung lesson đang khác",
+  TIME_MAPPING_REQUIRED: "Cần xác nhận cách hiểu khung giờ",
 };
 const skipLabels: Record<LegacyImportSkipReason, string> = {
   UNIDENTIFIABLE_DATA: "Dữ liệu không xác định được", DUPLICATE_ROW: "Dòng trùng",
@@ -123,6 +124,11 @@ export function LegacyImportPage() {
     const next: LegacyImportRowDecision[] = [];
     for (const issueCode of row.issueCodes) {
       const base = { sourceSheet: row.sourceSheet, sourceRow: row.sourceRow, issueCode };
+      if (issueCode === "TIME_MAPPING_REQUIRED") {
+        next.push({ ...base, action: "CONFIRM_TIME_MAPPING", resolvedValue: {
+          mappingId: String(row.normalizedValues.mappingId), startTime: draft.startTime, endTime: draft.endTime } });
+        continue;
+      }
       if (["INVALID_DATE", "INVALID_TIME", "DATE_CORRECTION"].includes(issueCode))
         next.push({ ...base, action: "EDIT_ROW", resolvedValue: { date: draft.date || undefined,
           startTime: draft.startTime || undefined, endTime: draft.endTime || undefined,
@@ -186,7 +192,8 @@ export function LegacyImportPage() {
       skipped: statuses.filter((item) => item === "SKIPPED").length };
   })();
   const unresolved = summary.review + summary.blocked;
-  const visibleRows = (preview?.rows ?? []).filter((row) => row.rowType !== "ACADEMIC_PERIOD" &&
+  const timeMappingRows = (preview?.rows ?? []).filter((row) => row.rowType === "TIME_MAPPING");
+  const visibleRows = (preview?.rows ?? []).filter((row) => row.rowType !== "ACADEMIC_PERIOD" && row.rowType !== "TIME_MAPPING" &&
     (!onlyNeedsReview || ["NEEDS_REVIEW", "BLOCKED"].includes(rowStatus(row))));
 
   const applyImport = async () => {
@@ -273,6 +280,22 @@ export function LegacyImportPage() {
             label="Chỉ xem dòng cần xử lý" />
         </Stack>
         {visibleRows.length === 0 && <Alert severity="success">Không còn dòng cần xử lý.</Alert>}
+        {timeMappingRows.map((row) => {
+          const draft = drafts[row.id] ?? initialDraft(row); const status = rowStatus(row);
+          return <Card key={row.id} variant="outlined"><CardContent><Stack spacing={1.25}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between" }}>
+              <Typography sx={{ fontWeight: 700 }}>Xác nhận khung giờ: {String(row.rawValues.rawTime)}</Typography>
+              <Chip size="small" color={status === "RESOLVED" ? "success" : "warning"}
+                label={status === "RESOLVED" ? "Đã xác nhận" : "Cần xác nhận"} sx={{ alignSelf: "flex-start" }} />
+            </Stack>
+            <Typography variant="body2" color="text.secondary">Áp dụng cho {String(row.rawValues.affectedLessonCount)} lesson trong cùng giai đoạn.</Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
+              <TextField type="time" label="Bắt đầu" value={draft.startTime} onChange={(event) => setDraft(row, { startTime: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+              <TextField type="time" label="Kết thúc" value={draft.endTime} onChange={(event) => setDraft(row, { endTime: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+            </Box>
+            <Button variant="contained" onClick={() => resolveRow(row)}>Xác nhận cho tất cả dòng cùng khung giờ</Button>
+          </Stack></CardContent></Card>;
+        })}
         {visibleRows.map((row) => {
           const draft = drafts[row.id] ?? initialDraft(row); const status = rowStatus(row);
           return <Card key={row.id} variant="outlined"><CardContent><Stack spacing={1.25} sx={{ minWidth: 0 }}>

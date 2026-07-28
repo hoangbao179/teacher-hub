@@ -22,6 +22,7 @@ export interface ParsedLegacyTuitionRow {
   date: string;
   time: string | null;
   paidMarker: boolean;
+  offMarker: boolean;
 }
 
 export interface ParsedLegacyPaymentEvent { sourceRow: number; date: string | null }
@@ -82,11 +83,12 @@ export class LegacyWorkbookParser {
       const dateCell = row.getCell(3);
       const date = this.dates.normalizeFullDate(dateCell.value, plainText(dateCell));
       const paidMarker = /\bPAID\b/i.test(plainText(row.getCell(6)));
+      const offMarker = /^\s*OFF\s*$/i.test(plainText(row.getCell(5)));
       if (date) {
         const duration = plainText(row.getCell(2));
         const hoursCell = row.getCell(4);
         const fallbackHours = typeof hoursCell.value === "string" ? plainText(hoursCell) : "";
-        tuitionRows.push({ sourceRow: rowNumber, date, time: nullable(duration || fallbackHours), paidMarker });
+        tuitionRows.push({ sourceRow: rowNumber, date, time: nullable(duration || fallbackHours), paidMarker, offMarker });
         lastTuitionDate = date;
       }
       if (paidMarker) paymentEvents.push({ sourceRow: rowNumber, date: date ?? lastTuitionDate });
