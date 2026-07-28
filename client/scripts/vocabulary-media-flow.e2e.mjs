@@ -1,7 +1,9 @@
 /* global process, fetch, setTimeout, console, localStorage */
 import { spawn, spawnSync } from "node:child_process";
+import { Buffer } from "node:buffer";
 import fs from "node:fs";
 import path from "node:path";
+import { URL } from "node:url";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
 
@@ -38,7 +40,7 @@ function start(command, args, cwd) {
 async function waitUrl(url) {
   const end = Date.now() + 30_000;
   while (Date.now() < end) {
-    try { if ((await fetch(url)).ok) return; } catch {}
+    try { if ((await fetch(url)).ok) return; } catch { /* Server is not ready; retry. */ }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   throw new Error(`Timeout: ${url}`);
@@ -166,7 +168,7 @@ try {
       await api(`/api/vocabulary/sets/${createdId}/archive`, {
         method: "POST", headers: { Authorization: `Bearer ${login.token}` }, body: "{}",
       });
-    } catch {}
+    } catch { /* Best-effort cleanup must not hide the test result. */ }
   }
   for (const child of children.reverse()) child.kill();
 }
