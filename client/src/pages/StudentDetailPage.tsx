@@ -79,6 +79,11 @@ export function StudentDetailPage() {
     const timer = window.setInterval(() => void loadGoogleSheet(), 2000);
     return () => window.clearInterval(timer);
   }, [googleState?.sheet?.status, googleState?.sheet?.canRetryGeneration, loadGoogleSheet]);
+  useEffect(() => {
+    if (!success.startsWith("Đã tải báo cáo Excel:")) return;
+    const timer = window.setTimeout(() => setSuccess((current) => current === success ? "" : current), 2000);
+    return () => window.clearTimeout(timer);
+  }, [success]);
   const openTransfer = async () => {
     setError("");
     try {
@@ -116,7 +121,7 @@ export function StudentDetailPage() {
     await api(`/api/enrollments/${item.enrollmentId}/${action}`, { method: "POST", body: JSON.stringify({ effectiveDate: statusEffectiveDate, reason: statusReason || undefined }) }); await load(); setStatusActionName(null); setSuccess(action === "pause" ? "Đã tạm dừng ghi danh theo ngày hiệu lực." : "Đã mở lại ghi danh theo ngày hiệu lực.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi trạng thái ghi danh."); } finally { setBusy(false); } };
   const exportReport = async () => { setError(""); setSuccess(""); setBusy(true); try {
-    const filename = await downloadStudentReport(item!.id); setSuccess(`Đã tải báo cáo Excel: ${filename}`);
+    const filename = await downloadStudentReport(item!.id, item!.fullName, today); setSuccess(`Đã tải báo cáo Excel: ${filename}`);
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể xuất báo cáo Excel."); } finally { setBusy(false); } };
   const mutateGoogle = async (action: "create" | "retry" | "regenerate" | "resync" | "archive") => {
     setError(""); setSuccess(""); setGoogleBusy(true);

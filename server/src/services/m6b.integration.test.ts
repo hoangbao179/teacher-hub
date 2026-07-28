@@ -116,10 +116,10 @@ integration("canonical workbook contains normalized history, paid eight-item and
   assert.equal(history.rowCount, 13);
   assert.equal(fees.rowCount, 11);
   assert.equal(history.getCell("A2").numFmt, "dd/mm/yyyy");
-  assert.equal(history.getCell("I12").value, "Nghỉ");
-  assert.equal(history.getCell("I13").value, "Miễn phí");
-  assert.equal(history.getCell("J2").value, "'=HYPERLINK(\"https://invalid\")");
-  assert.equal(history.getCell("L3").value, "'+cmd");
+  assert.equal(history.getCell("G12").value, "Nghỉ");
+  assert.equal(history.getCell("G13").value, "Miễn phí");
+  assert.equal(history.getCell("H2").value, "'=HYPERLINK(\"https://invalid\")");
+  assert.equal(history.getCell("J3").value, "'+cmd");
   assert.deepEqual(Array.from({ length: 8 }, (_, index) => fees.getCell(`O${index + 2}`).value), [1, 2, 3, 4, 5, 6, 7, 8]);
   assert.equal(fees.getCell("B2").value, "Đã thu");
   assert.equal(fees.getCell("F2").value, 2_400_000);
@@ -161,10 +161,11 @@ integration("HTTP export requires auth and returns a parseable XLSX attachment",
     const url = `http://127.0.0.1:${port}/api/students/${data.studentId}/export.xlsx`;
     assert.equal((await fetch(url)).status, 401);
     const token = jwt.sign({ id: data.actorId, username: "m6b", displayName: "M6B", role: "TEACHER" }, config.jwt.secret, { expiresIn: "5m" });
-    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Origin: "http://localhost:5173" } });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-type"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     assert.match(response.headers.get("content-disposition") ?? "", /attachment; filename="Bao-cao-Nguyen-Minh-An-/);
+    assert.match(response.headers.get("access-control-expose-headers") ?? "", /Content-Disposition/i);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(await response.arrayBuffer()) as never);
     assert.equal(workbook.getWorksheet("Học phí")!.rowCount, 11);

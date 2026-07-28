@@ -49,9 +49,23 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["Quá trình học tập", "Học phí", "Tổng hợp"]);
 
   const history = workbook.getWorksheet("Quá trình học tập")!;
-  assert.deepEqual([history.getCell("I2").value, history.getCell("I3").value, history.getCell("I4").value], ["Có mặt", "Nghỉ", "Miễn phí"]);
-  assert.equal(history.getCell("J2").value, "'=1+1");
-  assert.equal(history.getCell("J4").value, "'@không chạy");
+  const headerValues = history.getRow(1).values;
+  assert.ok(Array.isArray(headerValues));
+  assert.deepEqual(headerValues.slice(1), [
+    "Ngày học", "Lớp", "Loại buổi", "Giờ dự kiến bắt đầu", "Giờ dự kiến kết thúc",
+    "Thời lượng thực tế (phút)", "Trạng thái", "Nội dung buổi học", "Bài tập về nhà", "Nhận xét học sinh",
+  ]);
+  assert.deepEqual([history.getCell("G2").value, history.getCell("G3").value, history.getCell("G4").value], ["Có mặt", "Nghỉ", "Miễn phí"]);
+  assert.equal(history.getCell("H2").value, "'=1+1");
+  assert.equal(history.getCell("H4").value, "'@không chạy");
+  const headerFill = history.getCell("A1").fill;
+  assert.equal(headerFill.type, "pattern");
+  assert.equal(headerFill.type === "pattern" ? headerFill.fgColor?.argb : undefined, "FFD9EAF7");
+  for (let row = 1; row <= history.rowCount; row += 1) {
+    for (let column = 1; column <= history.columnCount; column += 1) {
+      assert.equal(history.getRow(row).getCell(column).border.bottom?.style, "thin");
+    }
+  }
   assert.equal(history.views[0].state, "frozen");
   assert.ok(history.autoFilter);
 

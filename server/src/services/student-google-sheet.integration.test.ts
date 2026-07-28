@@ -445,7 +445,7 @@ integration("outbox is transactional, revision-safe and worker syncs the canonic
 
 integration("completed vocabulary attempt is synced once to the derived vocabulary tab", async () => {
   const data = await fixture();
-  await data.service.create(data.studentId, {}, data.actorId);
+  const active = await data.service.create(data.studentId, {}, data.actorId);
   const [assignment] = await pool.execute<ResultSetHeader>(
     `INSERT INTO learning_assignments
       (teacher_user_id,title,audience_type,status,template_code,age_band,
@@ -530,11 +530,8 @@ integration("completed vocabulary attempt is synced once to the derived vocabula
     true,
   );
   assert.equal(await worker.runOnce(), 1);
-  assert.equal(data.provider.rendered.at(-1)?.snapshot.vocabularyAttempts.length, 1);
-  assert.equal(
-    data.provider.rendered.at(-1)?.snapshot.vocabularyAttempts[0]?.assignmentTitle,
-    "Ôn tập con vật",
-  );
+  const vocabularyRow = data.provider.vocabularyRows.get(`fake-sheet-${active.sheet.id}:${attempt.insertId}`);
+  assert.equal(vocabularyRow?.assignmentTitle, "Ôn tập con vật");
   const [events] = await pool.query<RowDataPacket[]>(
     `SELECT status,revision FROM google_sheet_sync_outbox
      WHERE entity_type='VOCABULARY_ATTEMPT' AND entity_id=?`,

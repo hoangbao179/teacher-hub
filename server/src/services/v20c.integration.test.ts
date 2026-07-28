@@ -219,7 +219,7 @@ integration("selected students and open link keep separate recipient semantics",
   const assignments = service();
   const selected = await assignments.create({
     title: "Selected",
-    ageBand: "G2_G3",
+    ageBand: "PRESCHOOL_G1",
     audienceType: "SELECTED_STUDENTS",
     selectedStudentIds: [data.studentIds[1], data.studentIds[1]],
     templateCode: "WORD_RECOGNITION",
@@ -238,7 +238,7 @@ integration("selected students and open link keep separate recipient semantics",
 
   const open = await assignments.create({
     title: "Open",
-    ageBand: "G4_G5",
+    ageBand: "PRESCHOOL_G1",
     audienceType: "OPEN_LINK",
     templateCode: "PRE_TEST_REVIEW",
     answerFeedbackMode: "IMMEDIATE",

@@ -68,7 +68,7 @@ export async function apiEnvelope<T>(
   return payload;
 }
 
-export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string }> {
+export async function apiDownload(path: string, fallbackFilename = "bao-cao-hoc-sinh.xlsx"): Promise<{ blob: Blob; filename: string }> {
   const token = getToken();
   let response: Response;
   try {
@@ -91,6 +91,6 @@ export async function apiDownload(path: string): Promise<{ blob: Blob; filename:
   const fallback = disposition.match(/filename="([^"]+)"/i)?.[1];
   return {
     blob: await response.blob(),
-    filename: encoded ? decodeURIComponent(encoded) : (fallback ?? "bao-cao-hoc-sinh.xlsx"),
+    filename: encoded ? decodeURIComponent(encoded) : (fallback ?? fallbackFilename),
   };
 }

@@ -2,8 +2,16 @@ import { apiDownload } from "./client";
 import { api } from "./client";
 import type { CreateStudentGoogleSheetRequest, EndEnrollmentRequest, LegacyImportApplyResult, LegacyImportPreview, LegacyImportRowDecision, StudentGoogleSheetMutationResult, StudentGoogleSheetResyncResult, StudentGoogleSheetState, TransferEnrollmentRequest, TransferEnrollmentResult } from "@teacher/shared";
 
-export async function downloadStudentReport(studentId: number): Promise<string> {
-  const { blob, filename } = await apiDownload(`/api/students/${studentId}/export.xlsx`);
+function fallbackStudentReportFilename(studentName: string, reportDate: string): string {
+  const safeName = studentName.trim().replace(/[<>:"/\\|?*]+/g, "-").replace(/\s+/g, "-") || "hoc-sinh";
+  return `Bao-cao-${safeName}-${reportDate.replace(/-/g, "")}.xlsx`;
+}
+
+export async function downloadStudentReport(studentId: number, studentName: string, reportDate: string): Promise<string> {
+  const { blob, filename } = await apiDownload(
+    `/api/students/${studentId}/export.xlsx`,
+    fallbackStudentReportFilename(studentName, reportDate),
+  );
   const url = URL.createObjectURL(blob);
   try {
     const anchor = document.createElement("a");

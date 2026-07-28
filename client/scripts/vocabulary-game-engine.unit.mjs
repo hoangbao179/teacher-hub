@@ -9,6 +9,7 @@ const app = read("src/App.tsx");
 const api = read("src/api/vocabularyGames.ts");
 const metadata = read("src/components/RouteMetadata.tsx");
 const question = read("src/features/vocabulary-games/GameQuestion.tsx");
+const answerSubmission = read("src/features/vocabulary-games/answerSubmission.ts");
 const start = read("src/features/vocabulary-games/pages/PlayStartPage.tsx");
 const game = read("src/features/vocabulary-games/pages/PlayGamePage.tsx");
 
@@ -52,7 +53,8 @@ test("game UI includes all V20D mechanics with child-sized controls", () => {
 test("access URL is replaced and network retries preserve the answer id", () => {
   assert.ok(start.includes("encodeURIComponent(result.sessionToken)"));
   assert.ok(start.includes("{ replace: true }"));
-  assert.ok(game.includes("pending.current"));
-  assert.ok(game.includes("crypto.randomUUID()"));
-  assert.ok(game.includes("pending.current ? send() : load()"));
+  assert.ok(game.includes("submissionRef.current"));
+  assert.ok(game.includes("beginAnswerSubmission(submissionRef.current"));
+  assert.ok(answerSubmission.includes("crypto.randomUUID()"));
+  assert.ok(game.includes("submissionRef.current.pending ? send() : load()"));
 });

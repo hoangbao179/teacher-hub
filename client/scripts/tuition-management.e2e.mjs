@@ -165,6 +165,8 @@ try {
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Xuất báo cáo Excel" }).click();
   const download = await downloadPromise;
+  if (!/^Bao-cao-.+-\d{8}\.xlsx$/.test(download.suggestedFilename()))
+    throw new Error(`Downloaded report has an ambiguous filename: ${download.suggestedFilename()}`);
   const downloadPath = path.join(os.tmpdir(), `teacher-hub-m6b-${suffix}.xlsx`);
   await download.saveAs(downloadPath);
   const workbook = new ExcelJS.Workbook();
@@ -176,7 +178,9 @@ try {
     throw new Error("Downloaded workbook row counts do not match canonical data");
   if (workbook.getWorksheet("Học phí").getCell("F2").value !== due.packagePriceSnapshot)
     throw new Error("Downloaded workbook did not preserve numeric price snapshot");
-  await page.getByText(/Đã tải báo cáo Excel:/).waitFor();
+  const downloadSuccess = page.getByText(/Đã tải báo cáo Excel:/);
+  await downloadSuccess.waitFor();
+  await downloadSuccess.waitFor({ state: "hidden", timeout: 3000 });
 
   const paidDetail = await api(`/api/tuition-cycles/${due.id}`, token);
   const dashboardAfterPayment = await api("/api/dashboard", token);

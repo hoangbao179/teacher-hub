@@ -35,19 +35,27 @@ function rangeText(query: StudentReportExportQuery): string {
 }
 
 function styleSheet(sheet: ExcelJS.Worksheet, columnCount: number): void {
+  const tableBorder: Partial<ExcelJS.Borders> = {
+    top: { style: "thin", color: { argb: "FFB8CBD8" } },
+    left: { style: "thin", color: { argb: "FFB8CBD8" } },
+    bottom: { style: "thin", color: { argb: "FFB8CBD8" } },
+    right: { style: "thin", color: { argb: "FFB8CBD8" } },
+  };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columnCount } };
   const header = sheet.getRow(1);
   header.height = 30;
   header.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF5B35D5" } };
+    cell.font = { bold: true, color: { argb: "FF17324D" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9EAF7" } };
+    cell.border = tableBorder;
     cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
   });
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber > 1) {
       row.alignment = { vertical: "top", wrapText: true };
-      if (rowNumber % 2 === 0) row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF7F5FF" } };
+      if (rowNumber % 2 === 0) row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F8FC" } };
+      for (let column = 1; column <= columnCount; column += 1) row.getCell(column).border = tableBorder;
     }
   });
 }
@@ -71,11 +79,9 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
   learning.columns = [
     { header: "Ngày học", key: "date", width: 13 }, { header: "Lớp", key: "class", width: 24 },
     { header: "Loại buổi", key: "type", width: 18 }, { header: "Giờ dự kiến bắt đầu", key: "scheduledStart", width: 18 },
-    { header: "Giờ dự kiến kết thúc", key: "scheduledEnd", width: 18 }, { header: "Giờ thực tế bắt đầu", key: "actualStart", width: 18 },
-    { header: "Giờ thực tế kết thúc", key: "actualEnd", width: 18 }, { header: "Thời lượng thực tế (phút)", key: "duration", width: 19 },
+    { header: "Giờ dự kiến kết thúc", key: "scheduledEnd", width: 18 }, { header: "Thời lượng thực tế (phút)", key: "duration", width: 19 },
     { header: "Trạng thái", key: "status", width: 14 }, { header: "Nội dung buổi học", key: "content", width: 38 },
     { header: "Bài tập về nhà", key: "homework", width: 34 }, { header: "Nhận xét học sinh", key: "studentNote", width: 32 },
-    { header: "Ghi chú chung", key: "lessonNote", width: 30 },
   ];
   const orderedLearningRows = [...input.learningRows].sort((left, right) =>
     left.sessionDate.localeCompare(right.sessionDate) ||
@@ -85,11 +91,9 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
   for (const row of orderedLearningRows) learning.addRow({
     date: excelDate(row.sessionDate), class: safeSpreadsheetText(row.className),
     type: lessonTypeLabels[row.lessonType], scheduledStart: row.scheduledStartTime,
-    scheduledEnd: row.scheduledEndTime, actualStart: row.actualStartTime ?? "—",
-    actualEnd: row.actualEndTime ?? "—", duration: row.actualDurationMinutes,
+    scheduledEnd: row.scheduledEndTime, duration: row.actualDurationMinutes,
     status: attendanceLabels[row.attendanceStatus], content: safeSpreadsheetText(row.content),
     homework: safeSpreadsheetText(row.homework), studentNote: safeSpreadsheetText(row.studentNote),
-    lessonNote: safeSpreadsheetText(row.lessonNote),
   });
   learning.getColumn("date").numFmt = "dd/mm/yyyy";
   styleSheet(learning, learning.columnCount);

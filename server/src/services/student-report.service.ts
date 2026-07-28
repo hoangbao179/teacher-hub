@@ -2,6 +2,7 @@ import type { StudentReportExportQuery } from "@teacher/shared";
 import { AppError } from "../errors/app-error";
 import { buildStudentWorkbook, safeStudentReportFilename } from "../domain/student-report";
 import { StudentReportRepository } from "../repositories/student-report.repository";
+import { todayInHoChiMinh } from "../utils/date";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -43,8 +44,7 @@ export class StudentReportService {
     await this.repository.recordExport(studentId, actorUserId, query);
     return {
       buffer,
-      filename: safeStudentReportFilename(student.fullName, generatedAt.slice(0, 10)),
+      filename: safeStudentReportFilename(student.fullName, todayInHoChiMinh()),
     };
   }
 }
-

@@ -20,7 +20,7 @@ GET /api/students/{studentId}/export.xlsx?fromDate=&toDate=&classId=
 ## Workbook
 
 - `Quá trình học tập`: một dòng/attendance hoàn thành, gồm PRESENT/ABSENT/FREE,
-  giờ dự kiến/thực tế, duration, nội dung, bài tập và nhận xét.
+  giờ dự kiến, duration, nội dung, bài tập và nhận xét học sinh.
 - `Học phí`: chỉ stored cycle items billable theo stored sequence; dùng snapshot
   giá và payment data đã lưu, không suy lại từ cấu hình lớp hiện tại.
 - `Tổng hợp`: aggregate bounded từ hai tập dữ liệu report.
