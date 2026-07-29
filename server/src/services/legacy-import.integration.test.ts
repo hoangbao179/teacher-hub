@@ -72,6 +72,37 @@ async function tuitionOnlyWorkbook(): Promise<Buffer> {
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+async function paidBlockWithTuitionOnlyWorkbook(): Promise<Buffer> {
+  const dates = Array.from({ length: 8 }, (_, index) => `2025-06-${String(index + 1).padStart(2, "0")}`);
+  const workbook = new ExcelJS.Workbook();
+  const learning = workbook.addWorksheet("Quá trình học tập");
+  dates.slice(0, 7).forEach((date, index) => {
+    const start = index * 5 + 1;
+    learning.getCell(start, 1).value = "DATE";
+    learning.getCell(start, 2).value = date;
+    learning.getCell(start, 3).value = "CONTENT -NỘI DUNG HỌC";
+    learning.getCell(start, 6).value = `Nội dung mẫu ${index + 1}`;
+    learning.getCell(start + 1, 1).value = "TEACHER";
+    learning.getCell(start + 1, 2).value = "Cô Vy";
+    ["STT", "FULL NAME", "", "ABSENCE", "BTVN", "BÀI TẠI LỚP", "GHI CHÚ"].forEach((value, column) =>
+      learning.getCell(start + 2, column + 1).value = value);
+    learning.getCell(start + 3, 1).value = 1;
+    learning.getCell(start + 3, 2).value = "Học sinh Preview (Mây)";
+  });
+  const tuition = workbook.addWorksheet("Học phí");
+  ["FULL NAME", "DURATION", "DATE", "HOURS", "VIETINBANK", ""].forEach((value, column) =>
+    tuition.getCell(1, column + 1).value = value);
+  dates.forEach((date, index) => {
+    tuition.getCell(index + 2, 1).value = "Học sinh Preview";
+    tuition.getCell(index + 2, 2).value = "18:00-19:30";
+    tuition.getCell(index + 2, 3).value = new Date(`${date}T00:00:00Z`);
+    tuition.getCell(index + 2, 3).numFmt = "d/m/yyyy";
+  });
+  tuition.getCell(10, 6).value = "PAID";
+  tuition.getCell(11, 1).value = "TOTAL";
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
 async function learningOnlyWorkbook(): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await validWorkbook() as never);
@@ -333,12 +364,14 @@ integration("grouped tuition-only decision creates minimal lessons and preserves
     const previewResponse = await fetch(`${base}/preview`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: previewBody });
     assert.equal(previewResponse.status, 200);
     const preview = ((await previewResponse.json()) as { data: {
-      file: { sha256: string }; rows: Array<{ sourceSheet: string; sourceRow: number; rowType: string; normalizedValues: Record<string, unknown> }>;
+      file: { sha256: string }; rows: Array<{ sourceSheet: string; sourceRow: number; rowType: string;
+        supportedActions: string[]; normalizedValues: Record<string, unknown> }>;
       academicPeriods: Array<{ id: string }>; minimalLessonGroups: Array<{ id: string; tuitionSourceRows: number[] }>;
     } }).data;
     const periodRow = preview.rows.find((row) => row.rowType === "ACADEMIC_PERIOD")!;
     const groupRow = preview.rows.find((row) => row.rowType === "TUITION_GROUP")!;
     const group = preview.minimalLessonGroups[0];
+    assert.deepEqual(groupRow.supportedActions, ["CREATE_MINIMAL_LEGACY_LESSONS", "SKIP"]);
     const decisions = [
       { sourceSheet: periodRow.sourceSheet, sourceRow: periodRow.sourceRow, issueCode: "ACADEMIC_PERIOD_MAPPING_REQUIRED",
         action: "MAP_ACADEMIC_PERIOD", resolvedValue: { periodId: preview.academicPeriods[0].id, gradeLevel: 6,
@@ -359,6 +392,74 @@ integration("grouped tuition-only decision creates minimal lessons and preserves
        WHERE link.source_sheet='Học phí' GROUP BY l.id,a.id`);
     assert.deepEqual([minimal[0].note, minimal[0].attendance_status, Number(minimal[0].counts_for_tuition), Number(minimal[0].cycle_count)],
       ["Khôi phục từ lịch sử học phí", "PRESENT", 1, 1]);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+integration("paid tuition-only rows require minimal lessons and preserve the complete paid cycle", async () => {
+  const data = await fixture();
+  const server = createApp().listen(0);
+  try {
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}/api/students/${data.studentId}/legacy-imports`;
+    const token = jwt.sign({ id: data.actorId, username: "v16a", displayName: "V16A", role: "TEACHER" },
+      config.jwt.secret, { expiresIn: "5m" });
+    const bytes = await paidBlockWithTuitionOnlyWorkbook();
+    const form = () => {
+      const body = new FormData();
+      body.append("file", new Blob([blobPart(bytes)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+        "Student Grade 6.xlsx");
+      return body;
+    };
+    const previewResponse = await fetch(`${base}/preview`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form(),
+    });
+    assert.equal(previewResponse.status, 200);
+    const preview = ((await previewResponse.json()) as { data: {
+      file: { sha256: string };
+      rows: Array<{ sourceSheet: string; sourceRow: number; rowType: string; supportedActions: string[];
+        rawValues: Record<string, unknown>; normalizedValues: Record<string, unknown> }>;
+      academicPeriods: Array<{ id: string }>;
+      minimalLessonGroups: Array<{ id: string; tuitionSourceRows: number[] }>;
+    } }).data;
+    const periodRow = preview.rows.find((row) => row.rowType === "ACADEMIC_PERIOD")!;
+    const groupRow = preview.rows.find((row) => row.rowType === "TUITION_GROUP")!;
+    const group = preview.minimalLessonGroups[0];
+    assert.equal(groupRow.rawValues.paidLessonCount, 1);
+    assert.equal(groupRow.normalizedValues.requiresPaidCyclePreservation, true);
+    assert.deepEqual(groupRow.supportedActions, ["CREATE_MINIMAL_LEGACY_LESSONS"]);
+    const periodDecision = { sourceSheet: periodRow.sourceSheet, sourceRow: periodRow.sourceRow,
+      issueCode: "ACADEMIC_PERIOD_MAPPING_REQUIRED", action: "MAP_ACADEMIC_PERIOD",
+      resolvedValue: { periodId: preview.academicPeriods[0].id, gradeLevel: 6,
+        classMapping: { type: "EXISTING_CLASS", classId: data.classId, className: "Lớp hiện tại" } } };
+    const skipBody = form();
+    skipBody.append("previewSha256", preview.file.sha256);
+    skipBody.append("decisions", JSON.stringify([periodDecision, { sourceSheet: groupRow.sourceSheet,
+      sourceRow: groupRow.sourceRow, issueCode: "TUITION_ONLY_GROUP", action: "SKIP", reason: "UNIDENTIFIABLE_DATA" }]));
+    const skipped = await fetch(`${base}/apply`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, body: skipBody,
+    });
+    assert.equal(skipped.status, 400);
+    assert.equal(((await skipped.json()) as { error: { code: string; message: string } }).error.message,
+      "Nhóm buổi thuộc chu kỳ đã thanh toán phải được import thành lesson tối giản.");
+    const applyBody = form();
+    applyBody.append("previewSha256", preview.file.sha256);
+    applyBody.append("decisions", JSON.stringify([periodDecision, { sourceSheet: groupRow.sourceSheet,
+      sourceRow: groupRow.sourceRow, issueCode: "TUITION_ONLY_GROUP", action: "CREATE_MINIMAL_LEGACY_LESSONS",
+      resolvedValue: { groupId: group.id, tuitionSourceRows: group.tuitionSourceRows } }]));
+    const applied = await fetch(`${base}/apply`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, body: applyBody,
+    });
+    assert.equal(applied.status, 201);
+    const [cycle] = await pool.query<RowDataPacket[]>(
+      `SELECT c.status,COUNT(tcs.id) item_count
+       FROM tuition_cycles c JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=c.id GROUP BY c.id,c.status`);
+    assert.deepEqual([cycle[0].status, Number(cycle[0].item_count)], ["PAID", 8]);
+    const [minimal] = await pool.query<RowDataPacket[]>(
+      "SELECT COUNT(*) count FROM legacy_import_lesson_links WHERE source_sheet='Học phí'");
+    assert.equal(Number(minimal[0].count), 1);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

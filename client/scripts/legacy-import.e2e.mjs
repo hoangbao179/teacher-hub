@@ -61,10 +61,11 @@ async function makeWorkbook(studentName) {
     { dates: ["2026-09-01", "2026-09-03", "2026-09-05"], paidAfter: null },
   ];
   const dates = blocks.flatMap((block) => block.dates);
-  for (let index = 0; index < dates.length; index += 1) {
+  const learningDates = dates.filter((_, index) => index !== 7);
+  for (let index = 0; index < learningDates.length; index += 1) {
     const start = index * 5 + 1;
     learning.getCell(start, 1).value = "DATE";
-    learning.getCell(start, 2).value = dates[index];
+    learning.getCell(start, 2).value = learningDates[index];
     learning.getCell(start, 3).value = "CONTENT -NỘI DUNG HỌC";
     learning.getCell(start, 6).value = `Nội dung ${index + 1}`;
     learning.getCell(start + 1, 1).value = "TEACHER";
@@ -133,6 +134,9 @@ try {
   await page.getByText("2 buổi học thêm sau đợt đã thanh toán").waitFor();
   await page.getByText("Đợt 1: Đã thu · Không rõ ngày").waitFor();
   if (await page.getByText("Sự kiện thanh toán cần xác nhận").count()) throw new Error("Clear PAID block created a payment review card");
+  await page.getByText("Các buổi này chỉ có trong sheet Học phí và thuộc chu kỳ đã thanh toán.", { exact: false }).waitFor();
+  if (await page.getByRole("button", { name: "Bỏ qua dòng" }).count()) throw new Error("Paid tuition-only group can still be skipped");
+  await page.getByRole("button", { name: "Tạo 1 lesson tối giản" }).click();
   if (await page.getByLabel("Khối").count() !== 1) throw new Error("Workbook was split into multiple automatic grade periods");
   if (!(await page.getByLabel("Khối").textContent())?.includes("Lớp 9")) throw new Error("Workbook Grade 9 context was not proposed");
   await page.getByLabel("Chỉ xem mục cần xử lý").check();

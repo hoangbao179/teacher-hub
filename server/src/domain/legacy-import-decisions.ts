@@ -98,6 +98,9 @@ export function resolveLegacyImportDecisions(
     if (byIssue.has(key)) invalid("Một vấn đề của dòng chỉ được có một quyết định.");
     const row = rows.get(rowKey(decision.sourceSheet, decision.sourceRow));
     if (!row || !row.issueCodes.includes(decision.issueCode)) invalid("Quyết định không thuộc vấn đề của dòng preview.");
+    if (decision.action === "SKIP" && decision.issueCode === "TUITION_ONLY_GROUP" &&
+        row.normalizedValues.requiresPaidCyclePreservation === true)
+      invalid("Nhóm buổi thuộc chu kỳ đã thanh toán phải được import thành lesson tối giản.");
     if (!row.supportedActions.includes(decision.action) || !actionAllowedForIssue(decision.issueCode, decision.action))
       invalid("Thao tác không được hỗ trợ cho vấn đề của dòng này.");
     if (decision.action === "CONFIRM_TIME_MAPPING" && decision.resolvedValue.mappingId !== row.normalizedValues.mappingId)

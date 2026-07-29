@@ -341,6 +341,8 @@ export function LegacyImportPage() {
                 label={status === "VALID" ? "Hợp lệ" : status === "RESOLVED" ? "Đã xử lý" : status === "SKIPPED" ? "Đã bỏ qua" : status === "BLOCKED" ? "Bị chặn" : "Cần xử lý"} sx={{ alignSelf: "flex-start" }} />
             </Stack>
             <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap" }}>{row.issueCodes.map((issue) => <Chip key={issue} size="small" variant="outlined" label={issueLabels[issue]} />)}</Stack>
+            {row.rowType === "TUITION_GROUP" && row.normalizedValues.requiresPaidCyclePreservation === true &&
+              <Alert severity="info">Các buổi này chỉ có trong sheet Học phí và thuộc chu kỳ đã thanh toán. Hệ thống sẽ tạo lesson tối giản để giữ đủ 8 buổi.</Alert>}
             <Box component="details"><Typography component="summary" variant="body2" sx={{ cursor: "pointer" }}>Xem chi tiết</Typography>
               <Stack spacing={0.5} sx={{ mt: 1 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>Giá trị trong workbook: {JSON.stringify(row.rawValues)}</Typography>
@@ -390,7 +392,8 @@ export function LegacyImportPage() {
               </Select></FormControl>
               {draft.skipReason === "OTHER" && <TextField label="Lý do khác" value={draft.otherReason} onChange={(event) => setDraft(row, { otherReason: event.target.value })} />}
             </Box>}<Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button variant="contained" onClick={() => resolveRow(row)}>Xác nhận dòng này</Button>
+              <Button variant="contained" onClick={() => resolveRow(row)}>{row.rowType === "TUITION_GROUP"
+                ? `Tạo ${String(row.rawValues.affectedLessonCount)} lesson tối giản` : "Xác nhận dòng này"}</Button>
               {equivalentCount > 1 && <Button variant="outlined" onClick={() => resolveRow(row, true)}>Áp dụng cho {equivalentCount} dòng cùng trường hợp</Button>}
               {row.supportedActions.includes("SKIP") && <Button color="inherit" onClick={() => skipRow(row)}>Bỏ qua dòng</Button>}
             </Stack></>}

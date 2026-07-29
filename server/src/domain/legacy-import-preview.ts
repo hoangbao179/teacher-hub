@@ -100,13 +100,25 @@ export class LegacyImportPreview {
         suggestedResolution: { sourceSheet: row.sourceSheet, sourceRow: row.sourceRow,
           issueCode: "TUITION_DATE_CORRECTION", action: "EDIT_ROW", resolvedValue: { date: row.suggestedDate! } },
       }));
-    const tuitionGroupRows: LegacyImportRowPreview[] = result.minimalLessonGroups.map((group, index) => ({
-      id: group.id, rowType: "TUITION_GROUP", sourceSheet: "Nhóm học phí", sourceRow: index + 1,
-      rawValues: { affectedLessonCount: group.lessonCount, fromDate: group.fromDate, toDate: group.toDate },
-      normalizedValues: { groupId: group.id, tuitionSourceRows: group.tuitionSourceRows.join(",") },
-      issueCodes: ["TUITION_ONLY_GROUP"], status: "NEEDS_REVIEW",
-      supportedActions: ["CREATE_MINIMAL_LEGACY_LESSONS", "SKIP"],
-    }));
+    const paidClearTuitionRows = new Set(result.tuitionCyclePlans
+      .filter((plan) => plan.paymentState === "PAID_CLEAR")
+      .flatMap((plan) => plan.tuitionSourceRows));
+    const tuitionGroupRows: LegacyImportRowPreview[] = result.minimalLessonGroups.map((group, index) => {
+      const paidLessonCount = group.tuitionSourceRows.filter((sourceRow) => paidClearTuitionRows.has(sourceRow)).length;
+      return {
+        id: group.id, rowType: "TUITION_GROUP", sourceSheet: "Nhóm học phí", sourceRow: index + 1,
+        rawValues: { affectedLessonCount: group.lessonCount, paidLessonCount,
+          fromDate: group.fromDate, toDate: group.toDate },
+        normalizedValues: { groupId: group.id, tuitionSourceRows: group.tuitionSourceRows.join(","),
+          requiresPaidCyclePreservation: paidLessonCount > 0 },
+        issueCodes: ["TUITION_ONLY_GROUP"], status: "NEEDS_REVIEW",
+        supportedActions: paidLessonCount > 0
+          ? ["CREATE_MINIMAL_LEGACY_LESSONS"] : ["CREATE_MINIMAL_LEGACY_LESSONS", "SKIP"],
+        suggestedResolution: { sourceSheet: "Nhóm học phí", sourceRow: index + 1,
+          issueCode: "TUITION_ONLY_GROUP", action: "CREATE_MINIMAL_LEGACY_LESSONS",
+          resolvedValue: { groupId: group.id, tuitionSourceRows: group.tuitionSourceRows } },
+      };
+    });
     const paymentRows: LegacyImportRowPreview[] = result.paymentEvents.filter((event) => event.requiresReview).map((event) => ({
       id: event.id, rowType: "PAYMENT", sourceSheet: "Học phí", sourceRow: event.sourceRow,
       rawValues: { date: event.date, billableCount: event.billableCount, reviewKind: event.kind },
