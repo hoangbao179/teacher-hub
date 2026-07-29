@@ -17,4 +17,5 @@ và không tin trực tiếp cột HOURS do Excel có thể tự chuyển thành
 - Một workbook mặc định thuộc một grade/class context từ lesson đầu đến lesson cuối;
   không tự tách hoặc tăng grade tại 01/06.
 - `20h-21h35)` được chuẩn hóa thành `20:00-21:35`; raw time thực sự mơ hồ vẫn cần xác nhận.
+- Marker đã thu có thể đặt ở dòng bên dưới bằng chữ `PAID` tại cột F (file cũ) hoặc cột G. Màu nền chỉ để dễ nhìn và không ảnh hưởng nhận diện.
 - Bulk review dùng equivalence riêng theo issue; backend vẫn validate từng row.

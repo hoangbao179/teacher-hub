@@ -122,7 +122,7 @@ export class LegacyWorkbookParser {
       const blockRows: ParsedLegacyTuitionRow[] = [];
       for (let rowNumber = headerRow + 1; rowNumber <= sourceEndRow; rowNumber += 1) {
         const row = tuition.getRow(rowNumber);
-        const paidMarker = /\bPAID\b/i.test(Array.from({ length: 6 }, (_, column) => plainText(row.getCell(column + 1))).join(" "));
+        const paidMarker = /\bPAID\b/i.test(Array.from({ length: 7 }, (_, column) => plainText(row.getCell(column + 1))).join(" "));
         if (paidMarker && paidMarkerSourceRow == null) paidMarkerSourceRow = rowNumber;
         const dateCell = row.getCell(3);
         const date = this.dates.normalizeFullDate(dateCell.value, plainText(dateCell));

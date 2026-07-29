@@ -19,6 +19,7 @@ async function workbookBytes(
   tuitionDates: Array<string | TuitionFixture>,
   paidAfterTuitionIndex?: number,
   tuitionDuration = "18:00-19:30",
+  paidMarkerColumn = 6,
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   const learning = workbook.addWorksheet("Quá trình học tập");
@@ -53,7 +54,11 @@ async function workbookBytes(
     tuition.getCell(row, 4).value = 45_000 + index;
     if (fixture.off) tuition.getCell(row, 5).value = "  off ";
     if (fixture.marker) tuition.getCell(row, 5).value = fixture.marker;
-    if (paidAfterTuitionIndex === index + 1) tuition.getCell(row + 1, 6).value = "PAID";
+    if (paidAfterTuitionIndex === index + 1) {
+      const paidCell = tuition.getCell(row + 1, paidMarkerColumn);
+      paidCell.value = "PAID";
+      paidCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+    }
   });
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
@@ -224,6 +229,18 @@ test("LegacyWorkbookParser reads both sheets, preserves every learning block and
     assert.equal(parsed.learningRows[3].studentName, null);
     assert.equal(parsed.tuitionRows[0].time, "18:00-19:30");
     assert.doesNotMatch(parsed.tuitionRows[0].time ?? "", /^45/);
+  });
+});
+
+test("LegacyWorkbookParser recognizes a colored PAID marker in column G", async () => {
+  const dates = Array.from({ length: 8 }, (_, index) => `2025-06-${String(index + 1).padStart(2, "0")}`);
+  const bytes = await workbookBytes(dates.map((date) => ({ date })), dates, 8, "18:00-19:30", 7);
+  await withWorkbook(bytes, async (path) => {
+    const parsed = await new LegacyWorkbookParser().parse(path);
+    assert.equal(parsed.tuitionBlocks[0].paidMarkerSourceRow, 10);
+    assert.equal(parsed.tuitionBlocks[0].paidCandidateSourceRows.length, 8);
+    const result = new LegacyReconciliationEngine().reconcile(parsed);
+    assert.deepEqual(result.tuitionCycles.map((cycle) => [cycle.itemCount, cycle.paymentState]), [[8, "PAID_CLEAR"]]);
   });
 });
 
