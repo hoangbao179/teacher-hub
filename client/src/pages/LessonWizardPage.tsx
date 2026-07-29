@@ -46,7 +46,7 @@ const stepTones = [
   { main: "#2f6fed", soft: "#dce9ff" },
   { main: "#168754", soft: "#dff4e8" },
   { main: "#bd6d00", soft: "#fff0c9" },
-  { main: "#6d3df5", soft: "#e9e1ff" },
+  { main: "#14b8a6", soft: "#ddf7f1" },
 ] as const;
 const today = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit",

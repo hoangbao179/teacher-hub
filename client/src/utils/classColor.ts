@@ -1,5 +1,5 @@
 const classTones = [
-  { accent: "#6d5bd0", soft: "#f0ebff", text: "#4937a7" },
+  { accent: "#14a695", soft: "#e2f7f2", text: "#0f766e" },
   { accent: "#2b8bc6", soft: "#e8f5ff", text: "#146692" },
   { accent: "#2f9a72", soft: "#e7f7ef", text: "#176d4e" },
   { accent: "#d27a32", soft: "#fff1df", text: "#9a4f16" },

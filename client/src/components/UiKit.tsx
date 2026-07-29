@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { displayDate } from "../utils/date";
+import { uiTokens } from "../theme";
 
 const visibleLabels: Record<string, string> = {
   ACTIVE: "Đang dạy",
@@ -46,7 +47,7 @@ export function visibleStatusLabel(value: string): string {
 }
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
-  return <Stack direction="row" useFlexGap sx={{ alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap" }}>
+  return <Stack direction="row" useFlexGap sx={{ alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap", pb: 0.25 }}>
     <Box sx={{ minWidth: 0 }}>
       <Typography component="h1" variant="h5" sx={{ overflowWrap: "anywhere" }}>{title}</Typography>
       {subtitle && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{subtitle}</Typography>}
@@ -87,7 +88,7 @@ export function StickyActionBar({ children }: { children: ReactNode }) {
 }
 
 export function MobileCard({ children, ...props }: { children: ReactNode; component?: ElementType; to?: string }) {
-  return <Card variant="outlined" {...props} sx={{ minWidth: 0, textDecoration: "none", color: "inherit" }}><CardContent>{children}</CardContent></Card>;
+  return <Card variant="outlined" {...props} sx={{ minWidth: 0, textDecoration: "none", color: "inherit", bgcolor: "background.paper" }}><CardContent>{children}</CardContent></Card>;
 }
 
 export function CurrencyDisplay({ value }: { value: number | null | undefined }) {
@@ -103,12 +104,12 @@ export function ProgressCount({ value, target = 8, label = "Tiến độ" }: { v
   const safeValue = Math.min(Math.max(value, 0), target);
   return <Stack spacing={0.75}>
     <Typography variant="subtitle2">{label} {safeValue}/{target}</Typography>
-    <LinearProgress aria-label={`${label} ${safeValue} trên ${target}`} variant="determinate" value={target ? (safeValue / target) * 100 : 0} sx={{ height: 6, borderRadius: 4, bgcolor: "#e6e1f3", "& .MuiLinearProgress-bar": { borderRadius: 4 } }} />
+    <LinearProgress aria-label={`${label} ${safeValue} trên ${target}`} variant="determinate" value={target ? (safeValue / target) * 100 : 0} sx={{ height: 6, borderRadius: 4, bgcolor: "#dceee9", "& .MuiLinearProgress-bar": { borderRadius: 4 } }} />
   </Stack>;
 }
 
 export function FormSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
-  return <Card variant="outlined"><CardContent><Stack spacing={2}>
+  return <Card variant="outlined" sx={{ bgcolor: "background.paper" }}><CardContent><Stack spacing={2}>
     <Box><Typography component="h2" variant="h6">{title}</Typography>{description && <Typography variant="body2" color="text.secondary">{description}</Typography>}</Box>
     {children}
   </Stack></CardContent></Card>;
@@ -124,7 +125,7 @@ export function SectionHeader({ title, action }: { title: string; action?: React
 export function SummaryMetricCard({ icon, value, label, tone = "default" }: {
   icon?: ReactNode; value: ReactNode; label: string; tone?: "default" | "primary" | "warning";
 }) {
-  return <Card variant="outlined" sx={{ bgcolor: tone === "primary" ? "#f2edff" : tone === "warning" ? "#fff7ed" : "background.paper" }}>
+  return <Card variant="outlined" sx={{ bgcolor: tone === "primary" ? uiTokens.colors.primarySurface : tone === "warning" ? uiTokens.colors.peach : "background.paper", borderColor: tone === "primary" ? "#b8e8df" : tone === "warning" ? uiTokens.colors.peachBorder : "divider" }}>
     <CardContent><Stack spacing={0.75}>
       {icon}
       <Typography component="p" variant="h6">{value}</Typography>

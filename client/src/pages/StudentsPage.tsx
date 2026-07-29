@@ -58,7 +58,7 @@ function matchesFilter(item: StudentListItem, filter: StudentFilter): boolean {
 }
 
 const avatarTones = [
-  { bg: "#eee8ff", text: "#6d3df5" },
+  { bg: "#ddf7f1", text: "#0f766e" },
   { bg: "#e4f5ec", text: "#168754" },
   { bg: "#e7f3ff", text: "#087ca7" },
   { bg: "#fff0df", text: "#b85c00" },

@@ -7,7 +7,10 @@ Global Success public learning release are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
 
-ADMIN-UI-VISUAL-REFRESH: **DESIGN APPROVED / NOT IMPLEMENTED**.
+ADMIN-UI-VISUAL-REFRESH: **IMPLEMENTED – PENDING FINAL VISUAL REVIEW** on 29/07/2026.
+Admin theme/layout/shared surfaces and Dashboard are implemented with local assets;
+responsive screenshots cover 1440×900, 1366×768, 390×844 and 360×800. No route, API,
+contract or business behavior changed. Final `npm run check:full`: PASS.
 
 V19A-PUBLIC-HOMEPAGE-SINGLE-LOCATION-GOOGLE-MAPS: PASS on 25/07/2026. Homepage
 now presents one canonical location, optional Google Maps Embed with a no-key

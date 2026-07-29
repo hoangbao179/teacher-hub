@@ -9,6 +9,19 @@ Visual refresh đã được duyệt dùng teal làm primary, kết hợp mint, 
 và coral có tiết chế. Đây chỉ là thay đổi trình bày; route, API, validation, state
 machine, query/cache, dữ liệu và hành vi hiện có không thay đổi.
 
+## Trạng thái triển khai
+
+**IMPLEMENTED – PENDING FINAL VISUAL REVIEW** từ 29/07/2026. Phạm vi đã áp dụng gồm
+theme Admin tách khỏi Homepage, login, desktop sidebar/topbar, mobile header/bottom
+navigation, Dashboard và các surface/control dùng chung trong `UiKit`. Illustration
+greeting/sidebar dùng WebP local; không thêm route, menu, API, query, dữ liệu demo hay
+feature từ annotated board.
+
+Dashboard đã được chụp và audit tại 1440×900, 1366×768, 390×844 và 360×800. Client
+typecheck, lint, unit test, production build, Playwright responsive/navigation smoke
+và gate `npm run check:full` đã PASS. Chi tiết triển khai và khác biệt có chủ đích nằm tại
+[`../design/admin-ui-visual-refresh.md`](../design/admin-ui-visual-refresh.md).
+
 ## Responsive và navigation
 
 - Viewport hỗ trợ chính: 360, 375, 390, 393, 400, 412 và 430 px; kiểm tra thêm

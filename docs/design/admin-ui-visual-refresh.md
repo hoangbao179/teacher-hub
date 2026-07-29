@@ -1,6 +1,6 @@
 # Admin UI visual refresh — design handoff
 
-> Trạng thái: **DESIGN APPROVED / NOT IMPLEMENTED**
+> Trạng thái: **IMPLEMENTED – PENDING FINAL VISUAL REVIEW**
 > Phạm vi: khu vực quản lý giáo viên `/admin/*`
 > Mục tiêu: đổi diện mạo, không đổi nghiệp vụ, API, route hoặc luồng thao tác.
 
@@ -217,5 +217,27 @@ Khi nhập bộ handoff này vào repository, cần cập nhật đồng bộ:
      phù hợp cho backlog/next work;
    - không đánh dấu implemented.
 
-Không sửa acceptance, API, ADR hoặc product business rule vì đây là thay đổi tài liệu
-visual, chưa phải implementation.
+Danh sách trên ghi lại phạm vi đồng bộ tài liệu ở thời điểm handoff được duyệt. Đợt
+implementation vẫn không sửa acceptance, API, ADR hoặc product business rule.
+
+## 11. Trạng thái triển khai 29/07/2026
+
+Visual refresh đã được triển khai cho theme Admin, login, `AdminLayout`, Dashboard và
+các component dùng chung trong `UiKit`. Theme teal được lồng riêng cho `/admin/*` để
+không đổi palette Homepage. Hai illustration WebP local được bundle tại
+`client/public/assets/admin-ui/`; không có ảnh remote hoặc dependency runtime mới.
+
+Đã kiểm tra Dashboard bằng screenshot runtime tại 1440×900, 1366×768, 390×844 và
+360×800; các ảnh được giữ trong test artifact tạm, không commit vào wireframe. Audit
+responsive xác nhận không tràn ngang, sidebar/bottom navigation đổi đúng breakpoint,
+bottom navigation không che item cuối và sidebar illustration không che menu.
+
+Các khác biệt có chủ đích so với board: giữ đúng ba metric, ba quick action, menu,
+event và dữ liệu thật của source; không thêm hoạt động gần đây, avatar, thông báo,
+import hoặc các action demo. Các trang quản lý còn lại chỉ nhận token/card/form/table/
+dialog/badge mới, không được thiết kế lại luồng nghiệp vụ.
+
+Kiểm tra targeted đã chạy: client typecheck, lint, unit test, production build,
+Playwright responsive/navigation smoke và schedule operations đều PASS. Gate cuối
+`npm run check:full` cũng PASS toàn bộ typecheck, lint, build, unit, integration, E2E
+và repository consistency.
