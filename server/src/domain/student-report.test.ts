@@ -82,7 +82,7 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
     }
   }
   assert.equal(history.views[0].state, "frozen");
-  assert.ok(history.autoFilter);
+  assert.equal(history.autoFilter, undefined);
 
   const fees = workbook.getWorksheet("Học phí")!;
   assert.equal(fees.rowCount, 9);
@@ -110,4 +110,5 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   for (const sheet of workbook.worksheets) sheet.eachRow((row) => row.eachCell((cell) => {
     assert.notEqual(cell.type, ExcelJS.ValueType.Formula);
   }));
+  for (const sheet of workbook.worksheets) assert.equal(sheet.autoFilter, undefined);
 });

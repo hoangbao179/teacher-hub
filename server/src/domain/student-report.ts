@@ -35,7 +35,6 @@ function styleSheet(sheet: ExcelJS.Worksheet, columnCount: number): void {
     right: { style: "thin", color: { argb: "FFB8CBD8" } },
   };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
-  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columnCount } };
   const header = sheet.getRow(1);
   header.height = 30;
   for (let column = 1; column <= columnCount; column += 1) {

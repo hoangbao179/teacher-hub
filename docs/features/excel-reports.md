@@ -28,10 +28,10 @@ GET /api/students/{studentId}/export.xlsx?fromDate=&toDate=&classId=
   `Số tài khoản (VietinBank)` cuối sheet lấy từ cấu hình server
   `REPORT_VIETINBANK_ACCOUNT_NUMBER`, được merge và căn giữa theo chu kỳ.
 
-Header được freeze/filter, text dài wrap, ngày hiển thị `dd/MM/yyyy`, tiền là số
-nguyên VND. Text bắt đầu bằng `=`, `+`, `-`, `@` được prefix apostrophe để không
-trở thành công thức. Workbook không có macro, external link, credential hoặc dữ
-liệu học sinh khác.
+Header được freeze nhưng không bật AutoFilter, text dài wrap, ngày hiển thị
+`dd/MM/yyyy`, tiền là số nguyên VND. Text bắt đầu bằng `=`, `+`, `-`, `@` được
+prefix apostrophe để không trở thành công thức. Workbook không có macro, external
+link, credential hoặc dữ liệu học sinh khác.
 
 Style của bảng chỉ áp dụng theo từng cell trong phạm vi header: `A:I` ở sheet
 `Quá trình học tập` và `A:F` ở sheet `Học phí`. Các cột nằm ngoài phạm vi này

@@ -10,7 +10,7 @@
 - [x] Tuition rows contain only stored billable cycle items in stored sequence;
   FREE/ABSENT are excluded, full cycles have eight items and partial cycles are clear.
 - [x] Stored price snapshot/payment fields are used without fabricating data.
-- [x] Headers freeze, filters work, long text wraps, practical widths and
+- [x] Headers freeze without AutoFilter; long text wraps, practical widths and
   `dd/MM/yyyy`/consistent time formatting are applied.
 - [x] User text beginning with `=`, `+`, `-` or `@` cannot become a workbook
   formula; no macros, external links, hidden business data or credentials exist.
