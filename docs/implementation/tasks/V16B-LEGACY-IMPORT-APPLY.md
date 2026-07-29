@@ -14,8 +14,9 @@ participant/attendance riêng, cycle tám buổi theo student, idempotency và a
   Apply chỉ mở khi không còn dòng unresolved/blocked.
 - Structured decision cho sửa ngày, map period/class, attendance, exact/near lesson,
   conflict content và skip; không có force-import raw invalid row.
-- Bulk decision chỉ cho cùng issue code + raw normalized value, hiển thị affected
-  row count và yêu cầu confirmation.
+- Bulk decision dùng tiêu chí tương đương riêng theo issue, hiển thị affected row
+  count thực tế và yêu cầu confirmation trước khi đổi state; backend vẫn validate
+  decision của từng row.
 - Xác minh workbook khớp student đang chọn; xử lý nhiều năm học/grade/class.
 - Exact match theo class/date/scheduled time; near duplicate và conflict content/homework cần user decision.
 - Import note từng file thành student-specific note; chỉ gợi ý general comment.

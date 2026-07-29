@@ -103,5 +103,9 @@
 - Route hiện hành: `/admin/students/{studentId}/legacy-import`.
 - V16A cung cấp preview/audit; V16B đã thêm confirm/apply với exact/near lesson
   review, attendance riêng, idempotency theo student + SHA-256 và không gọi Google.
+- Mỗi workbook mặc định có một grade/class mapping; không tự tách theo 01/06.
+  Learning-only lesson không cần xác nhận chỉ vì thiếu dòng Học phí.
+- Nút bulk hiển thị đúng số row cùng trường hợp, hỏi xác nhận trước khi đổi state;
+  correction ngày dùng đề xuất riêng của từng row.
 - **IMPLEMENTED V16C / PLANNED V16D–V16E:** Sheet được dựng từ canonical DB sau apply, không convert
   workbook gốc và không reset khi student lên lớp.

@@ -15,8 +15,7 @@ function daysBetween(left: string, right: string): number {
 }
 
 function periodId(date: string): string {
-  const year = Number(date.slice(0, 4));
-  return `period-${Number(date.slice(5, 7)) >= 6 ? year : year - 1}-06-01`;
+  return "period-workbook";
 }
 
 interface AnalyzedTime { start: string; end: string; needsConfirmation: boolean }
@@ -26,9 +25,18 @@ function clock(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
+export function normalizeLegacyTime(value: string | null): string | null {
+  if (!value) return null;
+  const normalized = value.trim()
+    .replace(/[\u2012\u2013\u2014\u2212]/g, "-")
+    .replace(/[\s\)\],.]+$/g, "")
+    .trim();
+  return normalized || null;
+}
+
 function analyzedLessonTime(value: string | null): AnalyzedTime | null {
   if (!value) return null;
-  const match = value.trim().match(/^(\d{1,2})(?:h(\d{1,2})?|[:.](\d{1,2}))\s*(am|pm)?\s*[-\u2013\u2014]\s*(\d{1,2})(?:h(\d{1,2})?|[:.](\d{1,2}))\s*(am|pm)?$/i);
+  const match = normalizeLegacyTime(value)?.match(/^(\d{1,2})(?:h(\d{1,2})?|[:.](\d{1,2}))\s*(am|pm)?\s*-\s*(\d{1,2})(?:h(\d{1,2})?|[:.](\d{1,2}))\s*(am|pm)?$/i);
   if (!match) return null;
   if ((match[2]?.length === 1 && match[2] !== "0") || (match[6]?.length === 1 && match[6] !== "0")) return null;
   let startHour = Number(match[1]);
@@ -123,17 +131,19 @@ export class LegacyReconciliationEngine {
     };
     const ensureMapping = (row: ParsedLegacyTuitionRow, proposed: { start: string; end: string } | null,
       reason: LegacyTimeMappingPreview["reason"]): string => {
-      const groupKey = `${periodId(effectiveDate(row))}\u0000${proposed?.start ?? ""}\u0000${proposed?.end ?? ""}\u0000${reason}`;
+      const normalizedRaw = normalizeLegacyTime(row.time) ?? "";
+      const rawKey = reason === "TYPO_SUGGESTION" ? normalizedRaw.toLocaleLowerCase("vi") : "";
+      const groupKey = `${periodId(effectiveDate(row))}\u0000${proposed?.start ?? ""}\u0000${proposed?.end ?? ""}\u0000${reason}\u0000${rawKey}`;
       const existing = mappingByKey.get(groupKey);
       if (existing) {
-        const raw = row.time?.trim() ?? "";
+        const raw = normalizeLegacyTime(row.time) ?? "";
         if (!existing.rawValues.includes(raw)) existing.rawValues.push(raw);
         existing.tuitionSourceRows.push(row.sourceRow);
         return existing.id;
       }
       const mapping: LegacyTimeMappingPreview = {
         id: `time-${periodId(effectiveDate(row)).slice(7)}-${row.sourceRow}`,
-        periodId: periodId(effectiveDate(row)), rawValues: [row.time?.trim() ?? ""],
+        periodId: periodId(effectiveDate(row)), rawValues: [normalizeLegacyTime(row.time) ?? ""],
         proposedStartTime: proposed?.start ?? null, proposedEndTime: proposed?.end ?? null,
         reason, lessonSourceRows: [], tuitionSourceRows: [row.sourceRow],
       };
@@ -211,7 +221,7 @@ export class LegacyReconciliationEngine {
       const tuition = matchedTuition.get(row.sourceRow) ?? null;
       const mode = matchMode.get(row.sourceRow);
       const times = tuition ? timeByTuitionRow.get(tuition.sourceRow) : null;
-      let reconciliationStatus: LegacyLearningLessonPreview["reconciliationStatus"] = "LEARNING_ONLY_NEEDS_REVIEW";
+      let reconciliationStatus: LegacyLearningLessonPreview["reconciliationStatus"] = "LEARNING_ONLY_PRESENT";
       if (!row.normalizedDate) reconciliationStatus = "UNRESOLVED_DATE";
       else if (duplicateRows.has(row.sourceRow)) reconciliationStatus = "DUPLICATE_SUSPECTED";
       else if (tuition) reconciliationStatus = mode === "CORRECT_LEARNING_DATE" || mode === "CORRECT_TUITION_DATE"
@@ -234,12 +244,12 @@ export class LegacyReconciliationEngine {
     });
 
     // Learning-only rows without time are grouped by academic period instead of becoming one blocked card per row.
-    for (const lesson of lessons.filter((item) => !item.scheduledStartTime && item.normalizedDate)) {
+    for (const lesson of lessons.filter((item) => !item.scheduledStartTime && !item.timeMappingId && item.normalizedDate)) {
       const proposed = dominantTime(lesson.normalizedDate!);
-      const groupKey = `${periodId(lesson.normalizedDate!)}\u0000${proposed?.start ?? ""}\u0000${proposed?.end ?? ""}\u0000TYPO_SUGGESTION`;
-      let mapping = timeMappings.find((item) => item.periodId === periodId(lesson.normalizedDate!) &&
-        item.proposedStartTime === (proposed?.start ?? null) && item.proposedEndTime === (proposed?.end ?? null))
-        ?? mappingByKey.get(groupKey);
+      const groupKey = `${periodId(lesson.normalizedDate!)}\u0000${proposed?.start ?? ""}\u0000${proposed?.end ?? ""}\u0000TYPO_SUGGESTION\u0000`;
+      let mapping = timeMappings.find((item) => item.reason === "AMBIGUOUS_12H" &&
+        item.periodId === periodId(lesson.normalizedDate!) && item.proposedStartTime === (proposed?.start ?? null) &&
+        item.proposedEndTime === (proposed?.end ?? null)) ?? mappingByKey.get(groupKey);
       if (!mapping) {
         mapping = { id: `learning-time-${periodId(lesson.normalizedDate!).slice(7)}-${lesson.sourceRow}`,
           periodId: periodId(lesson.normalizedDate!), rawValues: [], proposedStartTime: proposed?.start ?? null,

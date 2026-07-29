@@ -58,10 +58,22 @@ test("duplicate decisions for one issue are rejected", () => {
     (error: unknown) => (error as { code?: string }).code === "LEGACY_DECISIONS_INVALID");
 });
 
-test("bulk decisions require the same issue, normalized value and valid action", () => {
+test("bulk attendance allows different lesson values but requires the same business reason", () => {
+  const first = row({ id: "first", issueCodes: ["ATTENDANCE_AMBIGUOUS"], supportedActions: ["SET_ATTENDANCE"],
+    normalizedValues: { date: "2025-01-01", attendanceReason: "UNCLEAR_MARKER" } });
+  const second = row({ id: "second", sourceRow: 9, issueCodes: ["ATTENDANCE_AMBIGUOUS"],
+    supportedActions: ["SET_ATTENDANCE"], normalizedValues: { date: "2025-02-01", content: "Khác",
+      attendanceReason: "UNCLEAR_MARKER" } });
+  assert.doesNotThrow(() => validateLegacyBulkDecision([first, second], "ATTENDANCE_AMBIGUOUS", "SET_ATTENDANCE"));
+  assert.throws(() => validateLegacyBulkDecision([first, { ...second,
+    normalizedValues: { ...second.normalizedValues, attendanceReason: "MISSING_MARKER" } }],
+  "ATTENDANCE_AMBIGUOUS", "SET_ATTENDANCE"),
+  (error: unknown) => (error as { code?: string }).code === "LEGACY_DECISIONS_INVALID");
+});
+
+test("date corrections cannot be bulked because each row owns its suggestion", () => {
   const first = row({ id: "first", normalizedValues: { date: null } });
   const second = row({ id: "second", sourceRow: 9, normalizedValues: { date: null } });
-  assert.doesNotThrow(() => validateLegacyBulkDecision([first, second], "INVALID_DATE", "EDIT_ROW"));
-  assert.throws(() => validateLegacyBulkDecision([first, { ...second, normalizedValues: { date: "2025-01-01" } }],
-    "INVALID_DATE", "EDIT_ROW"), (error: unknown) => (error as { code?: string }).code === "LEGACY_DECISIONS_INVALID");
+  assert.throws(() => validateLegacyBulkDecision([first, second], "INVALID_DATE", "EDIT_ROW"),
+    (error: unknown) => (error as { code?: string }).code === "LEGACY_DECISIONS_INVALID");
 });

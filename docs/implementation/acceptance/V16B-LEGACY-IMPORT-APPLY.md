@@ -12,7 +12,7 @@ môi trường restricted; không lưu workbook hoặc log chứa dữ liệu ri
 - [x] `BLOCKED` chỉ thành `RESOLVED` sau khi dữ liệu hợp lệ hoặc thành `SKIPPED`; không có force-import raw invalid row.
 - [x] Một dòng lỗi không bắt buộc hủy toàn file khi admin có quyền skip, nhập lý do hợp lệ và các dòng còn lại đã sẵn sàng.
 - [x] File-level error chặn cả file và không thể được giải quyết bằng skip row.
-- [x] File không khớp student bị chặn; nhiều năm học/grade/class giữ mapping đã xác nhận.
+- [x] File không khớp student bị chặn; workbook không tự tách grade/class theo 01/06.
 - [x] Student 1–1 và group dùng cùng model; file nhiều student dùng lại exact lesson nhưng có participant/attendance/note riêng.
 - [x] Exact match dùng class/date/scheduled start/end; near duplicate bắt buộc user quyết định.
 - [x] Duplicate/near-match có decision ghép lesson hiện có, tạo lesson mới hoặc bỏ qua; không tự merge.
@@ -20,7 +20,8 @@ môi trường restricted; không lưu workbook hoặc log chứa dữ liệu ri
 - [x] `PRESENT`, `ABSENT`, `FREE` có billable semantics đúng; chỉ `PRESENT` tính phí.
 - [x] Cycle đủ 8, cycle dở, paid rõ và payment chưa rõ được xử lý đúng feature spec; không nhóm cứ tám dòng Excel.
 - [x] Conflict content/homework không bị ghi đè; comment file student là note riêng và comment giống nhau chỉ được gợi ý gộp.
-- [x] Bulk decision chỉ chạy cho cùng issue code + raw normalized value, hiển thị affected row count và cần confirmation.
+- [x] Bulk decision dùng equivalence riêng theo issue, hiển thị affected row count
+  thực tế và cần confirmation trước khi thay đổi state; backend validate từng row.
 - [x] Workbook chỉ là migration source; Sheet sau này phải được dựng từ DB.
 
 ## Transaction/idempotency

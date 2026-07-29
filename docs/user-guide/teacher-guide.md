@@ -45,8 +45,10 @@ Học sinh**. Nút thao tác cố định nằm phía trên thanh. Desktop dùng
 7. **Xuất Excel**: mở chi tiết học sinh và chọn **Xuất báo cáo Excel**. Workbook
    chuẩn hóa chứa lịch sử học/học phí/tổng hợp; không dùng làm generic import.
 8. **Import lịch sử Excel**: mở chi tiết đúng học sinh, chọn **Import lịch sử**, tải
-   file `.xlsx`, map từng năm học/khối/lớp và xử lý mọi dòng Cần xử lý/Blocked. Có thể
-   sửa ngày/giờ, xác nhận điểm danh, ghép/tạo lesson hoặc bỏ qua với lý do. Kiểm tra
+   file `.xlsx`, xác nhận grade/class context của workbook và xử lý mọi mục Cần xử lý/
+   Bị chặn. Hệ thống không tự chia grade tại 01/06; lesson trong Quá trình học tập
+   không cần xác nhận chỉ vì thiếu dòng Học phí. Có thể sửa đúng trường được issue
+   hỗ trợ, xác nhận một dòng hoặc bulk các dòng cùng trường hợp, ghép/tạo lesson hoặc bỏ qua với lý do. Kiểm tra
    tổng accepted/resolved/skipped rồi chọn **Xác nhận import**. Nếu file đã đổi sau
    preview, hệ thống từ chối và yêu cầu preview lại; import lại cùng file không tạo trùng.
 9. **Sổ theo dõi phụ huynh**: tại chi tiết học sinh, chọn **Tạo sổ theo dõi**.

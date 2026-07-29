@@ -217,7 +217,9 @@ chuẩn hóa ngày thiếu năm, đối soát lesson/học phí, chia năm học
   `.agent-reports/`.
 - V16B-LEGACY-IMPORT-HARDENING: **PASS on 29/07/2026** — parser header động,
   reconciliation reserve exact, grouped decisions và cycle plan giữ nguyên member
-  từ Preview tới Apply; regression fixtures hoàn toàn ẩn danh.
+  từ Preview tới Apply; bổ sung workbook single-context, learning-only non-billable,
+  issue-specific bulk, suggested resolution và parser time có trailing delimiter;
+  regression fixtures hoàn toàn ẩn danh.
 - V16C-STUDENT-GOOGLE-SHEET: **IMPLEMENTED — MANUAL GOOGLE SMOKE PENDING** — OAuth,
   provider/template, mapping, fake-provider tests và Student Detail đã có; chưa thể
   verdict PASS khi môi trường chưa có credential Google test.

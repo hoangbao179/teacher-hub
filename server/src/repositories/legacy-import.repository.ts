@@ -399,8 +399,8 @@ export class LegacyImportRepository {
     if (attendanceRows[0])
       throw new AppError(409, "LEGACY_IMPORT_DUPLICATE", `Lesson dòng ${row.sourceRow} đã có điểm danh của học sinh.`);
     const status = String(row.normalizedValues.attendance);
-    const billable = isBillable(status);
-    const excluded = status === "FREE";
+    const billable = isBillable(status) && row.normalizedValues.countsForTuition !== false;
+    const excluded = status === "FREE" || status === "PRESENT" && !billable;
     const [created] = await connection.execute<ResultSetHeader>(
       `INSERT INTO lesson_attendances
         (lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition,excluded_from_tuition,student_note)

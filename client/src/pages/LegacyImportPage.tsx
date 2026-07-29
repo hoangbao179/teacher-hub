@@ -1,7 +1,7 @@
 import {
   Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent,
   DialogTitle, Divider, FormControl, FormControlLabel, InputLabel, MenuItem, Select,
-  Stack, Switch, TextField, Typography,
+  Snackbar, Stack, Switch, TextField, Typography,
 } from "@mui/material";
 import { ArrowBack, CheckCircle, UploadFile } from "@mui/icons-material";
 import { useEffect, useRef, useState } from "react";
@@ -15,6 +15,11 @@ import { api } from "../api/client";
 import { applyLegacyWorkbook, previewLegacyWorkbook } from "../api/students";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/UiKit";
+import {
+  getEquivalentImportRows, initialLegacyImportDraft, isLegacyImportRowVisible, legacyImportEditableFields,
+  legacyImportDecisionKey, legacyImportRowStatus, mergeLegacyImportDecisionsAfterConfirmation,
+  type LegacyImportRowDraft,
+} from "../features/legacy-import-review";
 
 const issueLabels: Record<LegacyImportIssueCode, string> = {
   INVALID_DATE: "Ngày không hợp lệ", INVALID_TIME: "Giờ học chưa hợp lệ",
@@ -40,39 +45,9 @@ const paymentLabels: Record<LegacyPaymentResolution, string> = {
   EXCLUDE_FINANCE: "Không nhập trạng thái học phí của block này",
 };
 
-interface RowDraft {
-  date: string;
-  startTime: string;
-  endTime: string;
-  attendance: AttendanceStatus;
-  lessonAction: "MATCH" | "CREATE" | "KEEP" | "USE_IMPORT" | "EDIT";
-  content: string;
-  homework: string;
-  payment: LegacyPaymentResolution;
-  skipReason: LegacyImportSkipReason;
-  otherReason: string;
-}
-
-function decisionKey(sheet: string, row: number, issue: LegacyImportIssueCode): string {
-  return `${sheet}\u0000${row}\u0000${issue}`;
-}
-
 function classMappingValue(mapping: LegacyClassMapping): string {
   if (mapping.type === "CREATE_CLOSED_CLASS") return "closed";
   return `${mapping.type === "CURRENT_CLASS" ? "current" : "existing"}:${mapping.classId}`;
-}
-
-function initialDraft(row: LegacyImportRowPreview): RowDraft {
-  return {
-    date: String(row.normalizedValues.date ?? ""), startTime: String(row.normalizedValues.startTime ?? ""),
-    endTime: String(row.normalizedValues.endTime ?? ""),
-    attendance: (row.normalizedValues.attendance ?? "PRESENT") as AttendanceStatus,
-    lessonAction: row.normalizedValues.existingLessonId ? "KEEP" : "CREATE",
-    content: String(row.normalizedValues.content ?? ""), homework: String(row.normalizedValues.homework ?? ""),
-    payment: (String(row.normalizedValues.resolutionOptions ?? "").split(",").filter(Boolean)[0] ??
-      row.normalizedValues.paymentResolution ?? "UNDETERMINED") as LegacyPaymentResolution,
-    skipReason: "UNIDENTIFIABLE_DATA", otherReason: "",
-  };
 }
 
 export function LegacyImportPage() {
@@ -82,13 +57,14 @@ export function LegacyImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LegacyImportPreview | null>(null);
   const [periods, setPeriods] = useState<LegacyAcademicPeriodPreview[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
+  const [drafts, setDrafts] = useState<Record<string, LegacyImportRowDraft>>({});
   const [decisions, setDecisions] = useState<Record<string, LegacyImportRowDecision>>({});
   const [onlyNeedsReview, setOnlyNeedsReview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [result, setResult] = useState<LegacyImportApplyResult | null>(null);
   const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState("");
 
   useEffect(() => {
     api<StudentDetail>(`/api/students/${id}`).then(setStudent).catch((reason: Error) => setError(reason.message));
@@ -102,31 +78,25 @@ export function LegacyImportPage() {
     try {
       const next = await previewLegacyWorkbook(id, selected);
       setFile(selected); setPreview(next); setPeriods(next.academicPeriods); setDecisions({});
-      setDrafts(Object.fromEntries(next.rows.map((row) => [row.id, initialDraft(row)])));
+      setDrafts(Object.fromEntries(next.rows.map((row) => [row.id, initialLegacyImportDraft(row)])));
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Không thể phân tích workbook."); }
     finally { setBusy(false); if (inputRef.current) inputRef.current.value = ""; }
   };
 
-  const setDraft = (row: LegacyImportRowPreview, update: Partial<RowDraft>) =>
-    setDrafts((values) => ({ ...values, [row.id]: { ...(values[row.id] ?? initialDraft(row)), ...update } }));
+  const setDraft = (row: LegacyImportRowPreview, update: Partial<LegacyImportRowDraft>) =>
+    setDrafts((values) => ({ ...values, [row.id]: { ...(values[row.id] ?? initialLegacyImportDraft(row)), ...update } }));
   const setDecision = (decision: LegacyImportRowDecision) =>
     setDecisions((values) => ({ ...values,
-      [decisionKey(decision.sourceSheet, decision.sourceRow, decision.issueCode)]: decision }));
+      [legacyImportDecisionKey(decision.sourceSheet, decision.sourceRow, decision.issueCode)]: decision }));
   const clearRowDecisions = (row: LegacyImportRowPreview) => setDecisions((values) => {
     const next = { ...values };
-    row.issueCodes.forEach((issue) => delete next[decisionKey(row.sourceSheet, row.sourceRow, issue)]);
+    row.issueCodes.forEach((issue) => delete next[legacyImportDecisionKey(row.sourceSheet, row.sourceRow, issue)]);
     return next;
   });
 
-  const rowStatus = (row: LegacyImportRowPreview) => {
-    if (!row.issueCodes.length) return "VALID" as const;
-    const selected = row.issueCodes.map((issue) => decisions[decisionKey(row.sourceSheet, row.sourceRow, issue)]).filter(Boolean);
-    if (selected.some((decision) => decision.action === "SKIP")) return "SKIPPED" as const;
-    return selected.length === row.issueCodes.length ? "RESOLVED" as const : row.status;
-  };
+  const rowStatus = (row: LegacyImportRowPreview) => legacyImportRowStatus(row, decisions);
 
-  const resolveRow = (row: LegacyImportRowPreview, bulk = false) => {
-    const draft = drafts[row.id] ?? initialDraft(row);
+  const buildRowDecisions = (row: LegacyImportRowPreview, draft: LegacyImportRowDraft) => {
     const next: LegacyImportRowDecision[] = [];
     for (const issueCode of row.issueCodes) {
       const base = { sourceSheet: row.sourceSheet, sourceRow: row.sourceRow, issueCode };
@@ -135,10 +105,11 @@ export function LegacyImportPage() {
           mappingId: String(row.normalizedValues.mappingId), startTime: draft.startTime, endTime: draft.endTime } });
         continue;
       }
-      if (["INVALID_DATE", "INVALID_TIME", "DATE_CORRECTION", "TUITION_DATE_CORRECTION"].includes(issueCode))
-        next.push({ ...base, action: "EDIT_ROW", resolvedValue: { date: draft.date || undefined,
-          startTime: draft.startTime || undefined, endTime: draft.endTime || undefined,
-          content: draft.content, homework: draft.homework } });
+      if (["INVALID_DATE", "DATE_CORRECTION", "TUITION_DATE_CORRECTION"].includes(issueCode))
+        next.push({ ...base, action: "EDIT_ROW", resolvedValue: { date: draft.date || undefined } });
+      else if (issueCode === "INVALID_TIME")
+        next.push({ ...base, action: "EDIT_ROW", resolvedValue: {
+          startTime: draft.startTime || undefined, endTime: draft.endTime || undefined } });
       else if (issueCode === "STUDENT_MISMATCH")
         next.push({ ...base, action: "CONFIRM_STUDENT", resolvedValue: { studentId: id } });
       else if (issueCode === "ATTENDANCE_AMBIGUOUS")
@@ -157,29 +128,52 @@ export function LegacyImportPage() {
         next.push({ ...base, action: "CONFIRM_PAYMENT", resolvedValue: draft.payment });
       else if (issueCode === "TUITION_ONLY_GROUP") {
         const group = preview?.minimalLessonGroups.find((item) => item.id === row.normalizedValues.groupId);
-        if (!group) { setError("Không tìm thấy nhóm lesson tối giản trong preview."); return; }
+        if (!group) { setError("Không tìm thấy nhóm lesson tối giản trong preview."); return null; }
         next.push({ ...base, action: "CREATE_MINIMAL_LEGACY_LESSONS", resolvedValue: {
           groupId: group.id, tuitionSourceRows: group.tuitionSourceRows } });
       }
-      else { setError("Dòng này chỉ có thể được bỏ qua với lý do."); return; }
+      else { setError("Dòng này chỉ có thể được bỏ qua với lý do."); return null; }
     }
     if (next.some((item) => item.action === "MATCH_EXISTING_LESSON" && !(item as { lessonId?: number }).lessonId)) {
-      setError("Không có lesson hợp lệ để ghép."); return;
+      setError("Không có lesson hợp lệ để ghép."); return null;
     }
-    next.forEach(setDecision); setError("");
+    return next;
+  };
+
+  const resolveRow = (row: LegacyImportRowPreview, bulk = false) => {
+    const draft = drafts[row.id] ?? initialLegacyImportDraft(row);
+    const current = buildRowDecisions(row, draft);
+    if (!current) return;
     if (bulk && preview) {
-      const siblings = preview.rows.filter((candidate) => candidate.id !== row.id &&
-        JSON.stringify(candidate.normalizedValues) === JSON.stringify(row.normalizedValues) &&
-        candidate.issueCodes.join("|") === row.issueCodes.join("|"));
-      if (siblings.length && window.confirm(`Áp dụng quyết định này cho ${siblings.length + 1} dòng giống nhau?`)) {
-        for (const sibling of siblings) next.forEach((item) => setDecision({ ...item,
-          sourceSheet: sibling.sourceSheet, sourceRow: sibling.sourceRow }));
-      }
+      const candidates = preview.rows.filter((candidate) => candidate.id === row.id ||
+        ["NEEDS_REVIEW", "BLOCKED"].includes(rowStatus(candidate)));
+      const equivalentRows = getEquivalentImportRows(row, candidates, draft);
+      if (equivalentRows.length <= 1) return;
+      const next = equivalentRows.flatMap((candidate) => buildRowDecisions(candidate, draft) ?? []);
+      const merged = mergeLegacyImportDecisionsAfterConfirmation(decisions, next, () =>
+        window.confirm(`Áp dụng quyết định này cho ${equivalentRows.length} dòng cùng trường hợp?`));
+      if (!merged.applied) return;
+      setDecisions(merged.decisions);
+      setFeedback(`Đã áp dụng cho ${equivalentRows.length} dòng cùng trường hợp.`);
+    } else {
+      current.forEach(setDecision);
+      setFeedback(`Đã xác nhận dòng ${row.sourceRow}.`);
     }
+    setError("");
+  };
+
+  const resolveTimeMapping = (row: LegacyImportRowPreview) => {
+    const affected = Number(row.rawValues.affectedLessonCount ?? 0);
+    if (!window.confirm(`Xác nhận khung giờ này cho ${affected} lesson?`)) return;
+    const next = buildRowDecisions(row, drafts[row.id] ?? initialLegacyImportDraft(row));
+    if (!next) return;
+    next.forEach(setDecision);
+    setError("");
+    setFeedback(`Đã xác nhận khung giờ cho ${affected} lesson.`);
   };
 
   const skipRow = (row: LegacyImportRowPreview) => {
-    const draft = drafts[row.id] ?? initialDraft(row);
+    const draft = drafts[row.id] ?? initialLegacyImportDraft(row);
     clearRowDecisions(row);
     setDecision({ sourceSheet: row.sourceSheet, sourceRow: row.sourceRow, issueCode: row.issueCodes[0],
       action: "SKIP", reason: draft.skipReason, ...(draft.skipReason === "OTHER" ? { otherReason: draft.otherReason } : {}) });
@@ -204,9 +198,10 @@ export function LegacyImportPage() {
       skipped: statuses.filter((item) => item === "SKIPPED").length };
   })();
   const unresolved = summary.review + summary.blocked;
-  const timeMappingRows = (preview?.rows ?? []).filter((row) => row.rowType === "TIME_MAPPING");
+  const timeMappingRows = (preview?.rows ?? []).filter((row) => row.rowType === "TIME_MAPPING" &&
+    isLegacyImportRowVisible(row, onlyNeedsReview, decisions));
   const visibleRows = (preview?.rows ?? []).filter((row) => row.rowType !== "ACADEMIC_PERIOD" && row.rowType !== "TIME_MAPPING" &&
-    (!onlyNeedsReview || ["NEEDS_REVIEW", "BLOCKED"].includes(rowStatus(row))));
+    isLegacyImportRowVisible(row, onlyNeedsReview, decisions));
 
   const applyImport = async () => {
     if (!file || !preview || unresolved) return;
@@ -223,6 +218,8 @@ export function LegacyImportPage() {
     </Button>
     <PageHeader title="Import lịch sử" subtitle={student?.fullName ?? "Học sinh"} />
     {error && <Alert severity="error">{error}</Alert>}
+    <Snackbar open={Boolean(feedback)} autoHideDuration={3500} onClose={() => setFeedback("")}
+      message={feedback} anchorOrigin={{ vertical: "top", horizontal: "center" }} />
     <Alert severity="info">Preview không ghi dữ liệu. Chỉ nút “Xác nhận import” mới áp dụng toàn bộ thay đổi trong một transaction.</Alert>
     <Card><CardContent><Stack spacing={1.5}>
       <Typography variant="h6">Chọn workbook cô Vy</Typography>
@@ -295,11 +292,11 @@ export function LegacyImportPage() {
         <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}>
           <Typography variant="h6">Xử lý từng dòng</Typography>
           <FormControlLabel control={<Switch checked={onlyNeedsReview} onChange={(event) => setOnlyNeedsReview(event.target.checked)} />}
-            label="Chỉ xem dòng cần xử lý" />
+            label="Chỉ xem mục cần xử lý" />
         </Stack>
         {visibleRows.length === 0 && <Alert severity="success">Không còn dòng cần xử lý.</Alert>}
         {timeMappingRows.map((row) => {
-          const draft = drafts[row.id] ?? initialDraft(row); const status = rowStatus(row);
+          const draft = drafts[row.id] ?? initialLegacyImportDraft(row); const status = rowStatus(row);
           return <Card key={row.id} variant="outlined"><CardContent><Stack spacing={1.25}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between" }}>
               <Typography sx={{ fontWeight: 700 }}>Xác nhận khung giờ: {String(row.rawValues.rawTime)}</Typography>
@@ -311,11 +308,17 @@ export function LegacyImportPage() {
               <TextField type="time" label="Bắt đầu" value={draft.startTime} onChange={(event) => setDraft(row, { startTime: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
               <TextField type="time" label="Kết thúc" value={draft.endTime} onChange={(event) => setDraft(row, { endTime: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
             </Box>
-            <Button variant="contained" onClick={() => resolveRow(row)}>Xác nhận cho tất cả dòng cùng khung giờ</Button>
+            <Button variant="contained" onClick={() => resolveTimeMapping(row)}>Xác nhận khung giờ cho {String(row.rawValues.affectedLessonCount)} lesson</Button>
           </Stack></CardContent></Card>;
         })}
         {visibleRows.map((row) => {
-          const draft = drafts[row.id] ?? initialDraft(row); const status = rowStatus(row);
+          const draft = drafts[row.id] ?? initialLegacyImportDraft(row); const status = rowStatus(row);
+          const unresolvedCandidates = (preview?.rows ?? []).filter((candidate) => candidate.id === row.id ||
+            ["NEEDS_REVIEW", "BLOCKED"].includes(rowStatus(candidate)));
+          const equivalentCount = getEquivalentImportRows(row, unresolvedCandidates, draft).length;
+          const editable = legacyImportEditableFields(row);
+          const showsDate = editable.date;
+          const showsTime = editable.time;
           return <Card key={row.id} variant="outlined"><CardContent><Stack spacing={1.25} sx={{ minWidth: 0 }}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between" }}>
               <Typography sx={{ fontWeight: 700 }}>{row.sourceSheet} · dòng {row.sourceRow}</Typography>
@@ -324,16 +327,27 @@ export function LegacyImportPage() {
             </Stack>
             <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap" }}>{row.issueCodes.map((issue) => <Chip key={issue} size="small" variant="outlined" label={issueLabels[issue]} />)}</Stack>
             <Box component="details"><Typography component="summary" variant="body2" sx={{ cursor: "pointer" }}>Xem chi tiết</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-                Giá trị nguồn: {JSON.stringify(row.rawValues)}
-              </Typography>
+              <Stack spacing={0.5} sx={{ mt: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>Giá trị trong workbook: {JSON.stringify(row.rawValues)}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>Giá trị đối chiếu: {JSON.stringify(row.normalizedValues)}</Typography>
+                {row.suggestedResolution && row.suggestedResolution.action !== "SKIP" && <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+                  Giá trị được đề xuất: {JSON.stringify(row.suggestedResolution.resolvedValue)}
+                </Typography>}
+              </Stack>
             </Box>
-            {row.rowType === "LESSON" && status !== "VALID" && status !== "SKIPPED" && <>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3,1fr)" }, gap: 1 }}>
+            {status !== "VALID" && status !== "SKIPPED" && <>
+              {(showsDate || showsTime) && <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: showsDate && showsTime ? "repeat(3,1fr)" : "repeat(2,1fr)" }, gap: 1 }}>
+                {showsDate &&
                 <TextField type="date" label="Ngày" value={draft.date} onChange={(event) => setDraft(row, { date: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+                }
+                {showsTime && <>
                 <TextField type="time" label="Bắt đầu" value={draft.startTime} onChange={(event) => setDraft(row, { startTime: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
                 <TextField type="time" label="Kết thúc" value={draft.endTime} onChange={(event) => setDraft(row, { endTime: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
-              </Box>
+                </>}
+              </Box>}
+              {row.rowType === "LESSON" && editable.timeMappingReadOnly && <Typography variant="body2" color="text.secondary">
+                Khung giờ dùng mapping chung và được chỉnh tại thẻ xác nhận khung giờ ở phía trên.
+              </Typography>}
               {row.issueCodes.includes("ATTENDANCE_AMBIGUOUS") && <FormControl><InputLabel id={`${row.id}-attendance`}>Điểm danh</InputLabel><Select labelId={`${row.id}-attendance`} label="Điểm danh" value={draft.attendance}
                 onChange={(event) => setDraft(row, { attendance: event.target.value as AttendanceStatus })}>
                 <MenuItem value="PRESENT">Có mặt · tính phí</MenuItem><MenuItem value="ABSENT">Nghỉ · không tính phí</MenuItem>
@@ -341,7 +355,7 @@ export function LegacyImportPage() {
               </Select></FormControl>}
               {(row.issueCodes.includes("DUPLICATE_ROW") || row.issueCodes.includes("NEAR_LESSON_MATCH") || row.issueCodes.includes("LESSON_CONTENT_CONFLICT")) &&
                 <FormControl><InputLabel id={`${row.id}-lesson-action`}>Xử lý lesson</InputLabel><Select labelId={`${row.id}-lesson-action`} label="Xử lý lesson" value={draft.lessonAction}
-                  onChange={(event) => setDraft(row, { lessonAction: event.target.value as RowDraft["lessonAction"] })}>
+                  onChange={(event) => setDraft(row, { lessonAction: event.target.value as LegacyImportRowDraft["lessonAction"] })}>
                   {(row.normalizedValues.existingLessonId || row.normalizedValues.nearLessonId) && <MenuItem value="MATCH">Ghép lesson hiện có</MenuItem>}
                   <MenuItem value="CREATE">Tạo lesson mới</MenuItem><MenuItem value="KEEP">Giữ nội dung hiện có</MenuItem>
                   <MenuItem value="USE_IMPORT">Dùng nội dung từ file</MenuItem><MenuItem value="EDIT">Chỉnh nội dung thủ công</MenuItem>
@@ -354,15 +368,15 @@ export function LegacyImportPage() {
               {Object.entries(paymentLabels).filter(([value]) => String(row.normalizedValues.resolutionOptions ?? "").split(",").includes(value))
                 .map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
             </Select></FormControl>}
-            {status !== "VALID" && <><Divider /><Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
+            {status !== "VALID" && <><Divider />{row.supportedActions.includes("SKIP") && <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
               <FormControl><InputLabel id={`${row.id}-skip`}>Lý do bỏ qua</InputLabel><Select labelId={`${row.id}-skip`} label="Lý do bỏ qua" value={draft.skipReason}
                 onChange={(event) => setDraft(row, { skipReason: event.target.value as LegacyImportSkipReason })}>
                 {Object.entries(skipLabels).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
               </Select></FormControl>
               {draft.skipReason === "OTHER" && <TextField label="Lý do khác" value={draft.otherReason} onChange={(event) => setDraft(row, { otherReason: event.target.value })} />}
-            </Box><Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button variant="contained" onClick={() => resolveRow(row)}>Áp dụng quyết định</Button>
-              <Button variant="outlined" onClick={() => resolveRow(row, true)}>Áp dụng cho dòng giống nhau</Button>
+            </Box>}<Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button variant="contained" onClick={() => resolveRow(row)}>Xác nhận dòng này</Button>
+              {equivalentCount > 1 && <Button variant="outlined" onClick={() => resolveRow(row, true)}>Áp dụng cho {equivalentCount} dòng cùng trường hợp</Button>}
               {row.supportedActions.includes("SKIP") && <Button color="inherit" onClick={() => skipRow(row)}>Bỏ qua dòng</Button>}
             </Stack></>}
           </Stack></CardContent></Card>;

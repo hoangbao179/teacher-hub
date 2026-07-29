@@ -9,7 +9,9 @@ legacy, chuẩn hóa ngày, đối soát lesson/học phí và mô phỏng gói 
 
 - Chỉ preview/audit; không ghi lesson, class, enrollment hoặc tuition.
 - Không migration và không tích hợp Drive/Sheets.
-- Không suy khối từ tên file; khối và mapping lớp được trình bày theo từng năm học.
+- Một workbook mặc định là một ngữ cảnh grade/class lịch sử từ lesson đầu đến
+  lesson cuối. Grade trong tên workbook được dùng làm đề xuất và vẫn cần user xác nhận;
+  không tự tăng grade hay tách period theo mốc 01/06.
 - Workbook thật chỉ được dùng cục bộ trong `.private-data` và không được commit/log.
 
 ## Kiểm tra

@@ -133,9 +133,8 @@ try {
   await page.getByText("2 buổi học thêm sau đợt đã thanh toán").waitFor();
   await page.getByText("Đợt 1: Đã thu · Không rõ ngày").waitFor();
   if (await page.getByText("Sự kiện thanh toán cần xác nhận").count()) throw new Error("Clear PAID block created a payment review card");
-  if ((await page.getByLabel("Khối").first().textContent())?.replaceAll("\u200B", "").trim()) throw new Error("Filename grade was applied to an academic period");
-  await page.getByLabel("Khối").click();
-  await page.getByRole("option", { name: "Lớp 9" }).click();
+  if (await page.getByLabel("Khối").count() !== 1) throw new Error("Workbook was split into multiple automatic grade periods");
+  if (!(await page.getByLabel("Khối").textContent())?.includes("Lớp 9")) throw new Error("Workbook Grade 9 context was not proposed");
   await page.getByRole("button", { name: "Xác nhận mapping" }).click();
   for (const width of [360, 375, 390, 393, 400, 412, 430]) {
     await page.setViewportSize({ width, height: 844 });

@@ -149,7 +149,32 @@ export function validateLegacyBulkDecision(
   const issueRows = rows.filter((row) => row.issueCodes.includes(issueCode));
   if (issueRows.length !== rows.length || rows.some((row) => !row.supportedActions.includes(action)))
     invalid("Bulk decision chỉ áp dụng cho cùng vấn đề và thao tác hợp lệ.");
-  const normalized = JSON.stringify(issueRows[0].normalizedValues);
-  if (issueRows.some((row) => JSON.stringify(row.normalizedValues) !== normalized))
-    invalid("Bulk decision chỉ áp dụng cho cùng giá trị chuẩn hóa.");
+  if (rows.length === 1) return;
+  if (issueCode === "INVALID_DATE" || issueCode === "DATE_CORRECTION" || issueCode === "TUITION_DATE_CORRECTION")
+    invalid("Các vấn đề ngày phải được xác nhận riêng theo đề xuất của từng dòng.");
+  const first = issueRows[0];
+  const same = (left: unknown, right: unknown) => String(left ?? "").trim().toLocaleLowerCase("vi") ===
+    String(right ?? "").trim().toLocaleLowerCase("vi");
+  const financialIssues: LegacyImportIssueCode[] = ["TUITION_ROW_UNMATCHED", "TUITION_ONLY_GROUP",
+    "PAYMENT_REVIEW_REQUIRED", "PAYMENT_BLOCK_REVIEW_REQUIRED"];
+  const equivalent = (row: LegacyImportRowPreview): boolean => {
+    if (issueCode === "ATTENDANCE_AMBIGUOUS")
+      return same(row.normalizedValues.attendanceReason ?? row.normalizedValues.legacyReason,
+        first.normalizedValues.attendanceReason ?? first.normalizedValues.legacyReason);
+    if (issueCode === "STUDENT_MISMATCH") return same(row.rawValues.studentName, first.rawValues.studentName);
+    if (issueCode === "INVALID_TIME" || issueCode === "TIME_MAPPING_REQUIRED") {
+      const sameMapping = Boolean(first.normalizedValues.mappingId) &&
+        same(row.normalizedValues.mappingId, first.normalizedValues.mappingId);
+      const sameRaw = same(row.rawValues.rawTime ?? row.rawValues.time, first.rawValues.rawTime ?? first.rawValues.time);
+      return (sameMapping || sameRaw) && same(row.normalizedValues.startTime, first.normalizedValues.startTime) &&
+        same(row.normalizedValues.endTime, first.normalizedValues.endTime);
+    }
+    if (financialIssues.includes(issueCode)) {
+      const firstGroup = first.normalizedValues.blockId ?? first.normalizedValues.groupId;
+      return Boolean(firstGroup) && same(row.normalizedValues.blockId ?? row.normalizedValues.groupId, firstGroup);
+    }
+    return false;
+  };
+  if (issueRows.some((row) => !equivalent(row)))
+    invalid("Các dòng bulk không cùng trường hợp nghiệp vụ.");
 }

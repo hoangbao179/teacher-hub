@@ -72,6 +72,19 @@ async function tuitionOnlyWorkbook(): Promise<Buffer> {
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+async function learningOnlyWorkbook(): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await validWorkbook() as never);
+  const learning = workbook.getWorksheet("Quá trình học tập")!;
+  learning.getCell("A6").value = "DATE"; learning.getCell("B6").value = "08/06";
+  learning.getCell("C6").value = "CONTENT -NỘI DUNG HỌC"; learning.getCell("F6").value = "Nội dung không có dòng học phí";
+  learning.getCell("A7").value = "TEACHER"; learning.getCell("B7").value = "Cô Vy";
+  ["STT", "FULL NAME", "", "ABSENCE", "BTVN", "BÀI TẠI LỚP", "GHI CHÚ"].forEach((value, index) =>
+    learning.getCell(8, index + 1).value = value);
+  learning.getCell("A9").value = 1; learning.getCell("B9").value = "Học sinh Preview (Mây)";
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
 async function paidBlocksWorkbook(): Promise<Buffer> {
   const blocks = [
     { dates: Array.from({ length: 10 }, (_, index) => `2025-07-${String(index + 1).padStart(2, "0")}`), paidAfter: 8 },
@@ -144,7 +157,7 @@ integration("authenticated multipart preview removes temp files and leaves busin
     assert.equal(payload.data.mode, "PREVIEW_ONLY");
     assert.match(payload.data.file.sha256, /^[a-f0-9]{64}$/);
     assert.equal(payload.data.lessons.length, 1);
-    assert.ok(payload.data.academicPeriods.every((period) => period.gradeLevel == null));
+    assert.deepEqual(payload.data.academicPeriods.map((period) => period.gradeLevel), [9]);
     assert.deepEqual(await counts(), beforeCounts);
     assert.deepEqual(await tempFiles(), beforeTemp);
 
@@ -233,6 +246,73 @@ integration("apply reparses the workbook, writes atomically, audits rows and rep
     assert.equal(replayResult.importId, firstResult.importId);
     const [afterReplay] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) count FROM lesson_attendances");
     assert.equal(Number(afterReplay[0].count), 1);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+integration("learning-only lesson applies as PRESENT without creating tuition obligation", async () => {
+  const data = await fixture();
+  const server = createApp().listen(0);
+  try {
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}/api/students/${data.studentId}/legacy-imports`;
+    const token = jwt.sign({ id: data.actorId, username: "v16a", displayName: "V16A", role: "TEACHER" },
+      config.jwt.secret, { expiresIn: "5m" });
+    const bytes = await learningOnlyWorkbook();
+    const form = () => {
+      const body = new FormData();
+      body.append("file", new Blob([blobPart(bytes)], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }), "Student Grade 3.xlsx");
+      return body;
+    };
+    const previewResponse = await fetch(`${base}/preview`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form(),
+    });
+    assert.equal(previewResponse.status, 200);
+    const preview = ((await previewResponse.json()) as { data: {
+      file: { sha256: string };
+      rows: Array<{ sourceSheet: string; sourceRow: number; rowType: string; issueCodes: string[];
+        normalizedValues: Record<string, unknown> }>;
+      academicPeriods: Array<{ id: string; gradeLevel: number | null }>;
+    } }).data;
+    const lessonRows = preview.rows.filter((row) => row.rowType === "LESSON");
+    assert.equal(lessonRows.length, 2);
+    assert.ok(lessonRows.every((row) => !row.issueCodes.includes("ATTENDANCE_AMBIGUOUS")));
+    assert.equal(lessonRows.find((row) => row.sourceRow === 9)?.normalizedValues.countsForTuition, false);
+    assert.deepEqual(preview.academicPeriods.map((period) => period.gradeLevel), [3]);
+    const periodRow = preview.rows.find((row) => row.rowType === "ACADEMIC_PERIOD")!;
+    const timeRow = preview.rows.find((row) => row.rowType === "TIME_MAPPING")!;
+    const decisions = [
+      { sourceSheet: periodRow.sourceSheet, sourceRow: periodRow.sourceRow,
+        issueCode: "ACADEMIC_PERIOD_MAPPING_REQUIRED", action: "MAP_ACADEMIC_PERIOD",
+        resolvedValue: { periodId: preview.academicPeriods[0].id, gradeLevel: 3,
+          classMapping: { type: "CREATE_CLOSED_CLASS", proposedName: "Lớp lịch sử Grade 3" } } },
+      { sourceSheet: timeRow.sourceSheet, sourceRow: timeRow.sourceRow,
+        issueCode: "TIME_MAPPING_REQUIRED", action: "CONFIRM_TIME_MAPPING",
+        resolvedValue: { mappingId: timeRow.normalizedValues.mappingId,
+          startTime: timeRow.normalizedValues.startTime, endTime: timeRow.normalizedValues.endTime } },
+    ];
+    const applyBody = form();
+    applyBody.append("previewSha256", preview.file.sha256);
+    applyBody.append("decisions", JSON.stringify(decisions));
+    const apply = await fetch(`${base}/apply`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, body: applyBody,
+    });
+    assert.equal(apply.status, 201);
+    const [attendance] = await pool.query<RowDataPacket[]>(
+      `SELECT attendance_status,counts_for_tuition,excluded_from_tuition
+       FROM lesson_attendances ORDER BY id`,
+    );
+    assert.deepEqual(attendance.map((item) => [item.attendance_status, Number(item.counts_for_tuition),
+      Number(item.excluded_from_tuition)]), [["PRESENT", 1, 0], ["PRESENT", 0, 1]]);
+    const [finance] = await pool.query<RowDataPacket[]>(
+      `SELECT (SELECT COUNT(*) FROM tuition_cycle_sessions) cycle_items,
+        (SELECT COUNT(*) FROM tuition_cycles) cycles`,
+    );
+    assert.deepEqual([Number(finance[0].cycle_items), Number(finance[0].cycles)], [1, 1]);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

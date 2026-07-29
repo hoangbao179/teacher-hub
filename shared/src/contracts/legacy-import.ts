@@ -174,6 +174,7 @@ export interface LegacyImportApplyResult {
 export type LegacyReconciliationStatus =
   | "MATCHED"
   | "LEARNING_ONLY_ABSENT"
+  | "LEARNING_ONLY_PRESENT"
   | "LEARNING_ONLY_NEEDS_REVIEW"
   | "TUITION_ONLY_NEEDS_REVIEW"
   | "DATE_CORRECTION_SUGGESTED"

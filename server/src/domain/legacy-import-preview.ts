@@ -9,11 +9,9 @@ import type {
 } from "@teacher/shared";
 import type { LegacyReconciliationResult } from "./legacy-reconciliation-engine";
 
-function schoolPeriod(date: string): { start: string; end: string; schoolYear: string } {
-  const year = Number(date.slice(0, 4));
-  const month = Number(date.slice(5, 7));
-  const startYear = month >= 6 ? year : year - 1;
-  return { start: `${startYear}-06-01`, end: `${startYear + 1}-05-31`, schoolYear: `${startYear}-${startYear + 1}` };
+function gradeFromWorkbookName(name: string): number | null {
+  const match = name.match(/(?:grade|khối|lớp)\s*[-_. ]*([1-9])\b/i);
+  return match ? Number(match[1]) : null;
 }
 
 export interface LegacyPreviewFile { name: string; size: number; sha256: string }
@@ -32,7 +30,6 @@ function lessonIssues(
   if ((!lesson.scheduledStartTime || !lesson.scheduledEndTime) && !lesson.timeMappingId) issues.push("INVALID_TIME");
   if (lesson.reconciliationStatus === "DUPLICATE_SUSPECTED") issues.push("DUPLICATE_ROW");
   if (lesson.reconciliationStatus === "DATE_CORRECTION_SUGGESTED" && lesson.suggestedDate) issues.push("DATE_CORRECTION");
-  if (lesson.reconciliationStatus === "LEARNING_ONLY_NEEDS_REVIEW") issues.push("ATTENDANCE_AMBIGUOUS");
   if (lesson.studentName && comparableName(lesson.studentName) !== comparableName(student.fullName))
     issues.push("STUDENT_MISMATCH");
   return issues;
@@ -46,33 +43,22 @@ function lifecycleStatus(issues: LegacyImportIssueCode[]): LegacyImportRowPrevie
 
 export class LegacyImportPreview {
   build(student: StudentDetail, classes: ClassListItem[], file: LegacyPreviewFile, result: LegacyReconciliationResult): LegacyImportPreviewContract {
-    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-    const grouped = new Map<string, { start: string; end: string; schoolYear: string; count: number }>();
-    for (const lesson of result.lessons) {
-      if (!lesson.normalizedDate) continue;
-      const period = schoolPeriod(lesson.normalizedDate);
-      grouped.set(period.start, { ...period, count: (grouped.get(period.start)?.count ?? 0) + 1 });
-    }
-    for (const group of result.minimalLessonGroups) {
-      for (const date of [group.fromDate, group.toDate]) {
-        const period = schoolPeriod(date);
-        if (!grouped.has(period.start)) grouped.set(period.start, { ...period, count: 0 });
-      }
-    }
-    const academicPeriods: LegacyAcademicPeriodPreview[] = [...grouped.values()].sort((a, b) => a.start.localeCompare(b.start)).map((period) => {
-      const current = period.start <= today && period.end >= today && student.classId != null && student.className != null;
-      return {
-        id: `period-${period.start}`,
-        fromDate: period.start,
-        toDate: period.end >= today ? null : period.end,
-        schoolYear: period.schoolYear,
-        gradeLevel: null,
-        proposedClassMapping: current
-          ? { type: "CURRENT_CLASS" as const, classId: student.classId!, className: student.className! }
-          : { type: "CREATE_CLOSED_CLASS" as const, proposedName: `Lớp lịch sử ${period.schoolYear}` },
-        lessonCount: period.count,
-      };
-    });
+    const dates = [...result.lessons.map((lesson) => lesson.normalizedDate).filter((date): date is string => Boolean(date)),
+      ...result.minimalLessonGroups.flatMap((group) => [group.fromDate, group.toDate])].sort();
+    const fromDate = dates[0];
+    const toDate = dates.at(-1);
+    const gradeLevel = gradeFromWorkbookName(file.name);
+    const academicPeriods: LegacyAcademicPeriodPreview[] = fromDate && toDate ? [{
+      id: "period-workbook",
+      fromDate,
+      toDate,
+      schoolYear: fromDate.slice(0, 4) === toDate.slice(0, 4)
+        ? fromDate.slice(0, 4) : `${fromDate.slice(0, 4)}-${toDate.slice(0, 4)}`,
+      gradeLevel,
+      proposedClassMapping: { type: "CREATE_CLOSED_CLASS", proposedName: gradeLevel
+        ? `Lớp lịch sử Grade ${gradeLevel}` : "Lớp lịch sử từ workbook" },
+      lessonCount: result.lessons.length + result.minimalLessonGroups.reduce((total, group) => total + group.lessonCount, 0),
+    }] : [];
     const classCandidates: LegacyClassCandidate[] = classes.map((item) => ({
       id: item.id, name: item.name, status: item.status, isCurrent: item.id === student.classId,
     }));
@@ -92,6 +78,9 @@ export class LegacyImportPreview {
         normalizedValues: { date: lesson.normalizedDate, startTime: lesson.scheduledStartTime,
           endTime: lesson.scheduledEndTime, attendance: lesson.attendanceStatus, content: lesson.content,
           homework: lesson.homework, studentNote: lesson.note, timeMappingId: lesson.timeMappingId,
+          countsForTuition: lesson.billingType === "BILLABLE",
+          ...(lesson.reconciliationStatus === "LEARNING_ONLY_PRESENT" || lesson.reconciliationStatus === "LEARNING_ONLY_ABSENT"
+            ? { reconciliationNote: "Không có dữ liệu học phí đối chiếu" } : {}),
           ...(lesson.attendanceStatus === "FREE" ? { legacyReason: "LEGACY_POST_PAID_FREE" } : {}) },
         issueCodes, status: lifecycleStatus(issueCodes), supportedActions,
         ...(lesson.suggestedDate && issueCodes.includes("DATE_CORRECTION") ? { suggestedResolution: {
@@ -134,10 +123,14 @@ export class LegacyImportPreview {
       issueCodes: ["ACADEMIC_PERIOD_MAPPING_REQUIRED"], status: "NEEDS_REVIEW",
       supportedActions: ["MAP_ACADEMIC_PERIOD"],
     }));
+    const matchedTuitionSourceRows = new Set(result.lessons.map((lesson) => lesson.matchedTuitionSourceRow)
+      .filter((sourceRow): sourceRow is number => sourceRow != null));
     const timeMappingRows: LegacyImportRowPreview[] = result.timeMappings.map((mapping, index) => ({
       id: mapping.id, rowType: "TIME_MAPPING", sourceSheet: "Khung giờ", sourceRow: index + 1,
       rawValues: { rawTime: mapping.rawValues.join(" · "), periodId: mapping.periodId,
-        affectedLessonCount: mapping.lessonSourceRows.length + mapping.tuitionSourceRows.length, reason: mapping.reason },
+        affectedLessonCount: new Set(mapping.lessonSourceRows).size + mapping.tuitionSourceRows
+          .filter((sourceRow) => !matchedTuitionSourceRows.has(sourceRow)).length,
+        affectedTuitionRowCount: new Set(mapping.tuitionSourceRows).size, reason: mapping.reason },
       normalizedValues: { mappingId: mapping.id, startTime: mapping.proposedStartTime,
         endTime: mapping.proposedEndTime },
       issueCodes: ["TIME_MAPPING_REQUIRED"], status: "NEEDS_REVIEW",
@@ -183,7 +176,7 @@ export class LegacyImportPreview {
       },
       warnings: [
         "Đây chỉ là bản xem trước; hệ thống chưa ghi lesson, lớp, ghi danh hoặc học phí.",
-        "Khối lớp không được suy từ tên file. Hãy xác nhận khối cho từng năm học.",
+        "Mỗi workbook mặc định thuộc một ngữ cảnh lớp lịch sử; hãy xác nhận mapping trước khi import.",
         "PAID chỉ xác nhận đợt học phí đã thu; workbook lịch sử không cung cấp ngày hoặc phương thức thanh toán.",
       ],
     };

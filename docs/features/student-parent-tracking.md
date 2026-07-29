@@ -226,10 +226,13 @@ snapshot, issue code, skip reason, decided by và decided at. Ưu tiên sanitize
 snapshot đủ tái kiểm tra; raw values chỉ được giữ trong vùng restricted theo chính
 sách dữ liệu riêng tư.
 
-Bulk decision chỉ được phép khi tất cả dòng có cùng issue code và cùng raw
-normalized value. UI phải hiển thị chính xác số dòng chịu ảnh hưởng và yêu cầu admin
-xác nhận rõ trước khi ghi từng decision/audit; không bulk theo label hiển thị gần
-giống hoặc theo giá trị raw chưa normalize.
+Bulk decision dùng tiêu chí tương đương riêng theo từng issue, không so sánh toàn
+bộ `normalizedValues`: attendance theo loại nguyên nhân và lựa chọn điểm danh;
+student mismatch theo tên trong workbook và student đích; time theo raw time đã
+normalize hoặc `mappingId` cùng giờ đề xuất; correction ngày không bulk; issue tài
+chính chỉ bulk trong cùng block/group nghiệp vụ. UI phải hiển thị đúng số dòng thực
+sự chịu ảnh hưởng và hỏi xác nhận trước khi thay đổi cả dòng hiện tại. Bulk chỉ là
+thao tác rút gọn trên UI; Apply vẫn validate structured decision của từng row.
 
 ### Apply transaction
 
@@ -256,6 +259,11 @@ giống hoặc theo giá trị raw chưa normalize.
 
 ### Lesson matching
 
+Sheet `Quá trình học tập` là nguồn chuẩn của lesson. Lesson learning-only vẫn được
+import theo attendance thể hiện trong workbook dù thiếu dòng đối chiếu ở `Học phí`;
+trường hợp này không tạo `ATTENDANCE_AMBIGUOUS`, không tự gán `FREE` và không tạo
+cycle/khoản nợ. Có thể giữ note audit “Không có dữ liệu học phí đối chiếu”.
+
 Exact match ưu tiên khóa `(classId, lesson date, scheduled start, scheduled end)`.
 Content, homework hoặc comment không phải khóa chính. Near match không tự merge;
 preview yêu cầu user chọn dùng lesson hiện hữu hay tạo lesson lịch sử mới.
@@ -274,7 +282,7 @@ Khi nhiều file student lần lượt mô tả cùng group lesson:
 | Đúng student, chưa import | Cho review rồi apply một lần. |
 | Cùng student + cùng SHA đã apply | Trả idempotent; không ghi lần hai. |
 | Không khớp student | Chặn apply. |
-| Nhiều năm học / grade / class | Giữ từng period và mapping đã xác nhận. |
+| Workbook kéo dài qua 01/06 | Mặc định giữ một grade/class context từ lesson đầu đến lesson cuối; chỉ tách khi workbook thể hiện rõ hoặc user chủ động chọn. |
 | Student 1–1 | Dùng cùng domain lesson/participant như group. |
 | Group import từ nhiều file | Exact lesson dùng chung; attendance/note riêng. |
 | Exact lesson match | Merge participant theo lựa chọn đã review. |

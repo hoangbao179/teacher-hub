@@ -15,6 +15,12 @@ giữ nguyên member của từng cycle từ Preview tới Apply.
 - Cycle plan theo block/source row với validation trước khi insert.
 - Fixture ẩn danh long-history, shifted columns, no-PAID và V/OFF/duplicate-date.
 - UI mobile và API contract liên quan.
+- Quá trình học tập là nguồn lesson chuẩn; thiếu tuition row không tạo attendance
+  review hoặc nghĩa vụ học phí.
+- Một workbook mặc định là một grade/class context, không tách theo 01/06.
+- Time parser bỏ ký tự đóng thừa (`20h-21h35)` → `20:00-21:35`) và affected lesson
+  count không cộng trùng tuition source row.
+- UI dùng suggested resolution, editor theo đúng issue và bulk equivalence theo issue.
 
 ## Ngoài phạm vi
 

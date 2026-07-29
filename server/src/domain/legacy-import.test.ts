@@ -159,10 +159,13 @@ test("lessonTimes normalizes supported legacy durations and rejects invalid rang
     ["8h30-10h30", { start: "08:30", end: "10:30" }],
     ["8:30-10:00", { start: "08:30", end: "10:00" }],
     ["08.30 – 10.00", { start: "08:30", end: "10:00" }],
+    ["20h-21h35)", { start: "20:00", end: "21:35" }],
+    ["20h-21h35", { start: "20:00", end: "21:35" }],
+    ["20h-22h", { start: "20:00", end: "22:00" }],
   ] as const;
   for (const [value, expected] of validCases) assert.deepEqual(lessonTimes(value), expected);
 
-  for (const value of ["25h-26h", "8h75-10h", "10h-8h", "10h-10h", null, ""]) {
+  for (const value of ["25h-26h", "8h75-10h", "10h-8h", "10h-10h", "20h-10h", null, ""]) {
     assert.deepEqual(lessonTimes(value), { start: null, end: null });
   }
 });
@@ -285,7 +288,7 @@ test("an ambiguous ten-row block before PAID stays grouped for payment review", 
   });
 });
 
-test("preview splits school years and never applies a filename grade to history", async () => {
+test("preview keeps one workbook class context across 01/06 and uses its filename grade", async () => {
   const bytes = await workbookBytes([{ date: "2025-05-31" }, { date: "2025-06-01" }, { date: "2026-06-01" }],
     ["2025-05-31", "2025-06-01", "2026-06-01"]);
   await withWorkbook(bytes, async (path) => {
@@ -297,9 +300,11 @@ test("preview splits school years and never applies a filename grade to history"
     const classes = [{ id: 4, name: "Lớp hiện tại", type: "ONE_TO_ONE", subject: null, status: "ACTIVE", defaultPackagePrice: 2_000_000,
       defaultDurationMinutes: 90, activeStudentCount: 1, paymentDueCount: 0 }] satisfies ClassListItem[];
     const preview = new LegacyImportPreview().build(student, classes, { name: "Student Grade 9.xlsx", size: bytes.length, sha256: "a".repeat(64) }, reconciled);
-    assert.deepEqual(preview.academicPeriods.map((period) => period.schoolYear), ["2024-2025", "2025-2026", "2026-2027"]);
-    assert.ok(preview.academicPeriods.every((period) => period.gradeLevel === null));
-    assert.ok(preview.academicPeriods.some((period) => period.proposedClassMapping.type === "CURRENT_CLASS"));
+    assert.equal(preview.academicPeriods.length, 1);
+    assert.equal(preview.academicPeriods[0].gradeLevel, 9);
+    assert.equal(preview.academicPeriods[0].fromDate, "2025-05-31");
+    assert.equal(preview.academicPeriods[0].toDate, "2026-06-01");
+    assert.equal(preview.academicPeriods[0].lessonCount, 3);
   });
 });
 
@@ -328,7 +333,28 @@ test("an absent lesson without a tuition row infers the unique recurring time an
     assert.deepEqual(reconciled.tuitionCycles.map((cycle) => cycle.itemCount), [8]);
     const preview = new LegacyImportPreview().build(previewStudent(), [],
       { name: "fixture.xlsx", size: bytes.length, sha256: "a".repeat(64) }, reconciled);
-    assert.ok(!preview.rows.find((row) => row.id === absent.id)?.issueCodes.includes("INVALID_TIME"));
+    const absentRow = preview.rows.find((row) => row.id === absent.id);
+    assert.ok(!absentRow?.issueCodes.includes("INVALID_TIME"));
+    assert.ok(!absentRow?.issueCodes.includes("ATTENDANCE_AMBIGUOUS"));
+    assert.equal(absentRow?.normalizedValues.countsForTuition, false);
+  });
+});
+
+test("a present learning-only lesson is valid without tuition evidence and stays non-billable", async () => {
+  const bytes = await workbookBytes([{ date: "2026-07-01" }, { date: "2026-07-08" }],
+    [{ date: "2026-07-08", time: "20h-22h" }]);
+  await withWorkbook(bytes, async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    const learningOnly = result.lessons[0];
+    assert.equal(learningOnly.reconciliationStatus, "LEARNING_ONLY_PRESENT");
+    assert.equal(learningOnly.attendanceStatus, "PRESENT");
+    assert.equal(learningOnly.billingType, "NONE");
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "Học sinh Grade 3.xlsx", size: bytes.length, sha256: "1".repeat(64) }, result);
+    const row = preview.rows.find((item) => item.id === learningOnly.id)!;
+    assert.ok(!row.issueCodes.includes("ATTENDANCE_AMBIGUOUS"));
+    assert.equal(row.normalizedValues.countsForTuition, false);
+    assert.equal(row.normalizedValues.reconciliationNote, "Không có dữ liệu học phí đối chiếu");
   });
 });
 
@@ -497,7 +523,7 @@ test("tuition marker kinds are normalized and never enter a billable candidate",
   });
 });
 
-test("7h is ambiguous and malformed raw times sharing a proposal use one grouped mapping", async () => {
+test("7h is ambiguous while distinct malformed raw times keep separate mappings", async () => {
   const ambiguous = await workbookBytes([{ date: "2026-12-01" }], [{ date: "2026-12-01", time: "7:30-9h" }]);
   await withWorkbook(ambiguous, async (path) => {
     const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
@@ -509,9 +535,11 @@ test("7h is ambiguous and malformed raw times sharing a proposal use one grouped
   const grouped = await workbookBytes(dates.map((date) => ({ date })), dates.map((date, index) => ({ date, time: rawTimes[index] })));
   await withWorkbook(grouped, async (path) => {
     const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
-    const mapping = result.timeMappings.find((item) => item.proposedStartTime === "20:00" && item.proposedEndTime === "22:00");
-    assert.ok(mapping);
-    assert.deepEqual(new Set(mapping.rawValues), new Set(rawTimes.slice(1)));
+    assert.ok(!result.timeMappings.some((item) => item.rawValues.includes("20h-21h35)")));
+    assert.equal(result.lessons[3].scheduledStartTime, "20:00");
+    assert.equal(result.lessons[3].scheduledEndTime, "21:35");
+    for (const rawTime of ["20h8-22h", "20h5-22h", "20h-10h"])
+      assert.equal(result.timeMappings.filter((item) => item.rawValues.includes(rawTime)).length, 1);
   });
 });
 
@@ -543,5 +571,33 @@ test("long-history fixture collapses row noise into grouped decisions and stable
       { name: "long-history.xlsx", size: bytes.length, sha256: "f".repeat(64) }, result);
     assert.equal(preview.rows.filter((row) => row.rowType === "TUITION_GROUP").length, 1);
     assert.ok(preview.rows.filter((row) => row.rowType === "TIME_MAPPING").length <= 2);
+  });
+});
+
+test("time mapping affected lesson count does not double-count matched tuition rows", async () => {
+  const dates = ["2026-12-01", "2026-12-02"];
+  const bytes = await workbookBytes(dates.map((date) => ({ date })),
+    dates.map((date) => ({ date, time: "20h8-22h" })));
+  await withWorkbook(bytes, async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "fixture Grade 3.xlsx", size: bytes.length, sha256: "2".repeat(64) }, result);
+    const mappingRow = preview.rows.find((row) => row.rowType === "TIME_MAPPING")!;
+    assert.equal(mappingRow.rawValues.affectedLessonCount, 2);
+    assert.equal(mappingRow.rawValues.affectedTuitionRowCount, 2);
+  });
+});
+
+test("suggested date correction is preserved as a structured preview resolution", async () => {
+  const bytes = await workbookBytes([{ date: "2026-11-14" }], ["2026-11-15"]);
+  await withWorkbook(bytes, async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "fixture Grade 3.xlsx", size: bytes.length, sha256: "3".repeat(64) }, result);
+    const correction = preview.rows.find((row) => row.issueCodes.includes("DATE_CORRECTION"))!;
+    assert.deepEqual(correction.suggestedResolution, {
+      sourceSheet: "Quá trình học tập", sourceRow: correction.sourceRow,
+      issueCode: "DATE_CORRECTION", action: "EDIT_ROW", resolvedValue: { date: "2026-11-15" },
+    });
   });
 });
