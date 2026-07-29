@@ -135,7 +135,10 @@ try {
   if (await page.getByText("Sự kiện thanh toán cần xác nhận").count()) throw new Error("Clear PAID block created a payment review card");
   if (await page.getByLabel("Khối").count() !== 1) throw new Error("Workbook was split into multiple automatic grade periods");
   if (!(await page.getByLabel("Khối").textContent())?.includes("Lớp 9")) throw new Error("Workbook Grade 9 context was not proposed");
+  await page.getByLabel("Chỉ xem mục cần xử lý").check();
   await page.getByRole("button", { name: "Xác nhận mapping" }).click();
+  await page.getByText("Không còn mục cần xử lý.").waitFor();
+  await page.getByText("Tất cả mục đã sẵn sàng.").waitFor();
   for (const width of [360, 375, 390, 393, 400, 412, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

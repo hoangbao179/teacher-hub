@@ -186,6 +186,7 @@ export function LegacyImportPage() {
       resolvedValue: { periodId: period.id, gradeLevel: period.gradeLevel,
         classMapping: period.proposedClassMapping } });
     setError("");
+    setFeedback(`Đã xác nhận mapping ${period.schoolYear}.`);
   };
 
   const summary = (() => {
@@ -198,6 +199,10 @@ export function LegacyImportPage() {
       skipped: statuses.filter((item) => item === "SKIPPED").length };
   })();
   const unresolved = summary.review + summary.blocked;
+  const visiblePeriods = periods.flatMap((period, index) => {
+    const row = (preview?.rows ?? []).find((item) => item.rowType === "ACADEMIC_PERIOD" && item.sourceRow === index + 1);
+    return row && isLegacyImportRowVisible(row, onlyNeedsReview, decisions) ? [{ period, index, row }] : [];
+  });
   const timeMappingRows = (preview?.rows ?? []).filter((row) => row.rowType === "TIME_MAPPING" &&
     isLegacyImportRowVisible(row, onlyNeedsReview, decisions));
   const visibleRows = (preview?.rows ?? []).filter((row) => row.rowType !== "ACADEMIC_PERIOD" && row.rowType !== "TIME_MAPPING" &&
@@ -259,10 +264,16 @@ export function LegacyImportPage() {
         </Alert>}
       </Stack></CardContent></Card>
 
-      <Stack spacing={1.5}>
+      {visiblePeriods.length > 0 && <Stack spacing={1.5}>
         <Typography variant="h6">Năm học, khối và lớp</Typography>
-        {periods.map((period, index) => <Card key={period.id} variant="outlined"><CardContent><Stack spacing={1.5}>
-          <Typography sx={{ fontWeight: 700 }}>{period.schoolYear} · {period.lessonCount} lesson</Typography>
+        {visiblePeriods.map(({ period, index, row }) => {
+          const status = rowStatus(row);
+          return <Card key={period.id} variant="outlined"><CardContent><Stack spacing={1.5}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between" }}>
+            <Typography sx={{ fontWeight: 700 }}>{period.schoolYear} · {period.lessonCount} lesson</Typography>
+            <Chip size="small" color={status === "RESOLVED" ? "success" : "warning"}
+              label={status === "RESOLVED" ? "Đã xác nhận" : "Cần xác nhận"} sx={{ alignSelf: "flex-start" }} />
+          </Stack>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
             <FormControl><InputLabel id={`${period.id}-grade-label`}>Khối</InputLabel><Select labelId={`${period.id}-grade-label`}
               label="Khối" value={period.gradeLevel ?? ""} onChange={(event) => {
@@ -284,9 +295,13 @@ export function LegacyImportPage() {
               <MenuItem value="closed">Tạo lớp lịch sử đã đóng</MenuItem>
             </Select></FormControl>
           </Box>
-          <Button variant="outlined" onClick={() => confirmPeriod(period, index)}>Xác nhận mapping</Button>
-        </Stack></CardContent></Card>)}
-      </Stack>
+          <Button variant={status === "RESOLVED" ? "outlined" : "contained"} disabled={status === "RESOLVED"}
+            onClick={() => confirmPeriod(period, index)}>
+            {status === "RESOLVED" ? "Đã xác nhận mapping" : "Xác nhận mapping"}
+          </Button>
+        </Stack></CardContent></Card>;
+        })}
+      </Stack>}
 
       <Stack spacing={1.5}>
         <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}>
@@ -294,7 +309,7 @@ export function LegacyImportPage() {
           <FormControlLabel control={<Switch checked={onlyNeedsReview} onChange={(event) => setOnlyNeedsReview(event.target.checked)} />}
             label="Chỉ xem mục cần xử lý" />
         </Stack>
-        {visibleRows.length === 0 && <Alert severity="success">Không còn dòng cần xử lý.</Alert>}
+        {onlyNeedsReview && unresolved === 0 && <Alert severity="success">Không còn mục cần xử lý.</Alert>}
         {timeMappingRows.map((row) => {
           const draft = drafts[row.id] ?? initialLegacyImportDraft(row); const status = rowStatus(row);
           return <Card key={row.id} variant="outlined"><CardContent><Stack spacing={1.25}>
@@ -384,7 +399,7 @@ export function LegacyImportPage() {
       </Stack>
 
       <Card sx={{ position: "sticky", bottom: { xs: 72, sm: 16 }, zIndex: 2 }}><CardContent><Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}>
-        <Typography>{unresolved ? `Còn ${unresolved} dòng chưa xử lý.` : "Tất cả dòng đã sẵn sàng."}</Typography>
+        <Typography>{unresolved ? `Còn ${unresolved} mục chưa xử lý.` : "Tất cả mục đã sẵn sàng."}</Typography>
         <Button variant="contained" disabled={busy || unresolved > 0} onClick={() => setConfirmOpen(true)}>Xác nhận import</Button>
       </Stack></CardContent></Card>
     </>}
