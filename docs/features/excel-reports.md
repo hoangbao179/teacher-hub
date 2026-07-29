@@ -16,6 +16,8 @@ GET /api/students/{studentId}/export.xlsx?fromDate=&toDate=&classId=
 - `classId` cho phép lọc lịch sử nhưng phải thuộc một enrollment của học sinh.
 - Mỗi sheet bị giới hạn 5.000 data rows để memory có biên rõ ràng.
 - Audit `STUDENT_REPORT_EXPORTED` lưu actor, student ID, filters và timestamp.
+- Tên file tải xuống gồm tên học sinh, lớp hiện tại và ngày xuất; các ký tự không an toàn
+  được chuẩn hóa trước khi đưa vào `Content-Disposition`.
 
 ## Workbook
 

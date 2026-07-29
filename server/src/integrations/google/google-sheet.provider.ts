@@ -2,7 +2,7 @@ import type { GoogleDriveSettings } from "../../config/google-drive-settings";
 import { classifyGoogleError } from "./google-integration.errors";
 import { createGoogleOAuthClient } from "./google-auth.client";
 import { GoogleDriveClient } from "./google-drive.client";
-import { googleLearningRowValues, googleVocabularyAttemptRowValues, GoogleSheetTemplateService } from "./google-sheet-template.service";
+import { googleLearningRowValues, GoogleSheetTemplateService } from "./google-sheet-template.service";
 import { GoogleSheetsClient } from "./google-sheets.client";
 import type { CreateManagedSpreadsheetInput, GoogleSheetProvider, ManagedSpreadsheet, StudentGoogleSheetSnapshot } from "./google-integration.types";
 
@@ -31,12 +31,17 @@ export class GoogleApiSheetProvider implements GoogleSheetProvider {
       return await this.drive.attachSpreadsheet(spreadsheetId, input);
     } catch (error) { throw classifyGoogleError(error, "SPREADSHEET_MISSING"); }
   }
+  async rename(resource: ManagedSpreadsheet, name: string): Promise<ManagedSpreadsheet> {
+    try { return await this.drive.rename(resource, name); } catch (error) {
+      throw classifyGoogleError(error, "SPREADSHEET_MISSING");
+    }
+  }
   async render(resource: ManagedSpreadsheet, snapshot: StudentGoogleSheetSnapshot, metadata: {
     templateVersion: string; recordId: number; generatedAt: string; syncedAt?: string | null;
   }): Promise<void> {
     try {
       const ids = await this.sheets.ensureSheets(resource.spreadsheetId, this.template.sheetNames,
-        this.template.obsoleteSheetNames);
+        this.template.obsoleteSheetNames, this.template.renamedSheetNames);
       const plan = this.template.build(snapshot, resource.spreadsheetId, ids, metadata);
       await this.sheets.clearAndWrite(resource.spreadsheetId, plan.values, plan.clearRanges, plan.requests);
     } catch (error) { throw classifyGoogleError(error, "SPREADSHEET_MISSING"); }
@@ -56,20 +61,11 @@ export class GoogleApiSheetProvider implements GoogleSheetProvider {
     } catch (error) { throw classifyGoogleError(error); }
   }
   async syncVocabularyAttempt(
-    resource: ManagedSpreadsheet,
-    row: StudentGoogleSheetSnapshot["vocabularyAttempts"][number],
-    attemptId: number,
-    syncedAt: string,
-  ): Promise<void> {
-    try {
-      await this.sheets.syncVocabularyRow(
-        resource.spreadsheetId,
-        attemptId,
-        googleVocabularyAttemptRowValues(row),
-        syncedAt,
-      );
-    } catch (error) { throw classifyGoogleError(error); }
-  }
+    _resource: ManagedSpreadsheet,
+    _row: StudentGoogleSheetSnapshot["vocabularyAttempts"][number],
+    _attemptId: number,
+    _syncedAt: string,
+  ): Promise<void> {}
   async trash(spreadsheetId: string): Promise<void> {
     try { await this.drive.trash(spreadsheetId); } catch (error) {
       throw classifyGoogleError(error, "SPREADSHEET_MISSING");

@@ -18,7 +18,6 @@ import {
   isCorrectAnswer,
   type GeneratedQueue,
 } from "../services/game-question-generator";
-import { GoogleSheetSyncRepository } from "./google-sheet-sync.repository";
 import { calculateItemScore, itemAnswerCorrect, shouldScheduleAdaptiveReview } from "../domain/vocabulary-game-rules";
 
 interface AssignmentAccessRow extends RowDataPacket {
@@ -120,10 +119,6 @@ function expired(): AppError {
 }
 
 export class VocabularyGameRepository {
-  constructor(
-    private readonly googleSheetSync = new GoogleSheetSyncRepository(),
-  ) {}
-
   async summary(publicCode: string): Promise<PublicAssignmentSummary | null> {
     const [rows] = await pool.query<AssignmentAccessRow[]>(
       `SELECT a.*,
@@ -788,17 +783,6 @@ export class VocabularyGameRepository {
            WHERE id=? AND completed_at IS NULL`,
           [state.attempt.recipient_id],
         );
-        const [recipients] = await connection.query<RowDataPacket[]>(
-          `SELECT student_id FROM learning_assignment_recipients
-           WHERE id=? LIMIT 1`,
-          [state.attempt.recipient_id],
-        );
-        if (recipients[0])
-          await this.googleSheetSync.enqueueVocabularyAttempt(
-            connection,
-            Number(recipients[0].student_id),
-            Number(state.attempt.id),
-          );
       }
       await connection.commit();
       return reward;

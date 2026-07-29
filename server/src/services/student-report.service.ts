@@ -54,7 +54,7 @@ export class StudentReportService {
     await this.repository.recordExport(studentId, actorUserId, query);
     return {
       buffer,
-      filename: safeStudentReportFilename(student.fullName, todayInHoChiMinh()),
+      filename: safeStudentReportFilename(student.fullName, student.currentClassName, todayInHoChiMinh()),
     };
   }
 }

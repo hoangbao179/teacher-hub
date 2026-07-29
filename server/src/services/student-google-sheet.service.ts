@@ -14,8 +14,9 @@ function providerError(error: unknown): AppError {
   return new AppError(status, `GOOGLE_${classified.failureCode}`, classified.message, { retryable: classified.retryable });
 }
 
-function safeName(name: string): string {
-  return `Sổ theo dõi - ${name.replace(/[\u0000-\u001f/\\]/g, " ").replace(/\s+/g, " ").trim()}`.slice(0, 240);
+function safeName(name: string, className: string | null): string {
+  const clean = (value: string) => value.replace(/[\u0000-\u001f/\\]/g, " ").replace(/\s+/g, " ").trim();
+  return `Sổ theo dõi - ${clean(name)} - ${clean(className ?? "Chưa xếp lớp")}`.slice(0, 240);
 }
 
 export class StudentGoogleSheetService {
@@ -51,7 +52,8 @@ export class StudentGoogleSheetService {
     if (input.forceRegenerate) throw new AppError(400, "VALIDATION_ERROR", "Hãy dùng thao tác tạo lại nội dung.");
     const student = await this.students.detail(studentId);
     const claim = await this.repository.claim({ studentId, legacyImportId: input.legacyImportId,
-      fileName: safeName(student.fullName), rootFolderId: this.settings.rootFolderId, templateVersion: this.settings.templateVersion }, retry);
+      fileName: safeName(student.fullName, student.className), rootFolderId: this.settings.rootFolderId,
+      templateVersion: this.settings.templateVersion }, retry);
     if (claim.sheet.status === "ACTIVE") return { sheet: claim.sheet, reused: true };
     if (!claim.owner) return { sheet: claim.sheet, reused: true };
     let resource: ManagedSpreadsheet | null = null;
@@ -85,15 +87,17 @@ export class StudentGoogleSheetService {
 
   async regenerate(studentId: number, actorUserId: number): Promise<StudentGoogleSheetMutationResult> {
     const provider = this.requireProvider();
-    await this.students.detail(studentId);
+    const student = await this.students.detail(studentId);
     const sheet = await this.repository.get(studentId);
     if (!sheet || sheet.status !== "ACTIVE") throw new AppError(409, "GOOGLE_SHEET_NOT_ACTIVE", "Học sinh chưa có Google Sheet đang hoạt động.");
     try {
       const resource = await provider.findByRecordId(sheet.id);
       if (!resource) throw new GoogleIntegrationError("SPREADSHEET_MISSING", "Không tìm thấy Google Sheet đã liên kết.", false);
-      await provider.render(resource, await this.repository.snapshot(studentId), { templateVersion: this.settings.templateVersion,
+      const fileName = safeName(student.fullName, student.className);
+      const currentResource = resource.name === fileName ? resource : await provider.rename(resource, fileName);
+      await provider.render(currentResource, await this.repository.snapshot(studentId), { templateVersion: this.settings.templateVersion,
         recordId: sheet.id, generatedAt: new Date().toISOString(), syncedAt: sheet.lastSyncedAt });
-      return { sheet: await this.repository.regenerated(sheet.id, actorUserId, this.settings.templateVersion), reused: true };
+      return { sheet: await this.repository.regenerated(sheet.id, actorUserId, this.settings.templateVersion, fileName), reused: true };
     } catch (error) {
       const classified = classifyGoogleError(error);
       await this.repository.recordRegenerationError(sheet.id, classified.message);

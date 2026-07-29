@@ -107,7 +107,7 @@ integration("canonical workbook contains normalized history, paid eight-item and
   const data = await fixture();
   const service = new StudentReportService(new StudentReportRepository(), reportAccountNumber);
   const result = await service.export(data.studentId, {}, data.actorId);
-  assert.match(result.filename, /^Bao-cao-Nguyen-Minh-An-\d{8}\.xlsx$/);
+  assert.match(result.filename, /^Bao-cao-Nguyen-Minh-An-Lop-M6B-\d{8}\.xlsx$/);
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(result.buffer as never);

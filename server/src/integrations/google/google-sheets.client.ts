@@ -38,13 +38,21 @@ export function teacherHubFormattingCleanup(
 }
 
 export function templateSheetReconciliationRequests(
-  ids: Record<string, number>, requiredNames: string[], obsoleteNames: string[],
+  ids: Record<string, number>, requiredNames: string[], obsoleteNames: string[], renamedNames: Record<string, string> = {},
 ): sheets_v4.Schema$Request[] {
-  const add = requiredNames.filter((name) => ids[name] == null).map((title) =>
+  const effectiveIds = { ...ids };
+  const rename = Object.entries(renamedNames).flatMap(([oldName, newName]) => {
+    if (effectiveIds[oldName] == null || effectiveIds[newName] != null || !requiredNames.includes(newName)) return [];
+    const sheetId = effectiveIds[oldName];
+    delete effectiveIds[oldName];
+    effectiveIds[newName] = sheetId;
+    return [{ updateSheetProperties: { properties: { sheetId, title: newName }, fields: "title" } }];
+  });
+  const add = requiredNames.filter((name) => effectiveIds[name] == null).map((title) =>
     ({ addSheet: { properties: { title, ...(title === "_TeacherHub" ? { hidden: true } : {}) } } }));
-  const remove = obsoleteNames.filter((name) => !requiredNames.includes(name) && ids[name] != null).map((name) =>
-    ({ deleteSheet: { sheetId: ids[name] } }));
-  return [...add, ...remove];
+  const remove = obsoleteNames.filter((name) => !requiredNames.includes(name) && effectiveIds[name] != null).map((name) =>
+    ({ deleteSheet: { sheetId: effectiveIds[name] } }));
+  return [...rename, ...add, ...remove];
 }
 
 export class GoogleSheetsClient {
@@ -53,8 +61,7 @@ export class GoogleSheetsClient {
 
   async create(title: string): Promise<string> {
     const response = await this.sheets.spreadsheets.create({ requestBody: { properties: { title }, sheets: [
-      { properties: { title: "Nhật ký học tập" } }, { properties: { title: "Học phí" } },
-      { properties: { title: "Ôn từ vựng" } },
+      { properties: { title: "Quá trình học tập" } }, { properties: { title: "Học phí" } },
       { properties: { title: "_TeacherHub", hidden: true } },
     ] }, fields: "spreadsheetId" });
     if (!response.data.spreadsheetId) throw new Error("Malformed spreadsheet create response");
@@ -67,9 +74,10 @@ export class GoogleSheetsClient {
       sheet.properties?.title && sheet.properties.sheetId != null ? [[sheet.properties.title, sheet.properties.sheetId]] : []));
   }
 
-  async ensureSheets(spreadsheetId: string, names: string[], obsoleteNames: string[] = []): Promise<Record<string, number>> {
+  async ensureSheets(spreadsheetId: string, names: string[], obsoleteNames: string[] = [],
+    renamedNames: Record<string, string> = {}): Promise<Record<string, number>> {
     let ids = await this.metadata(spreadsheetId);
-    const requests = templateSheetReconciliationRequests(ids, names, obsoleteNames);
+    const requests = templateSheetReconciliationRequests(ids, names, obsoleteNames, renamedNames);
     if (requests.length) {
       await this.sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
       ids = await this.metadata(spreadsheetId);
@@ -98,7 +106,7 @@ export class GoogleSheetsClient {
     row: Array<string | number | boolean> | null,
     syncedAt: string,
   ): Promise<void> {
-    const range = "'Nhật ký học tập'!A:J";
+    const range = "'Quá trình học tập'!A:J";
     const response = await this.sheets.spreadsheets.values.get({ spreadsheetId, range });
     const values = response.data.values ?? [];
     const rowIndex = values.findIndex((candidate, index) => index > 0 && String(candidate[0] ?? "") === String(lessonId));
@@ -106,7 +114,7 @@ export class GoogleSheetsClient {
       if (rowIndex >= 1) {
         await this.sheets.spreadsheets.values.update({
           spreadsheetId,
-          range: `'Nhật ký học tập'!A${rowIndex + 1}:J${rowIndex + 1}`,
+          range: `'Quá trình học tập'!A${rowIndex + 1}:J${rowIndex + 1}`,
           valueInputOption: "RAW",
           requestBody: { values: [row] },
         });
@@ -124,7 +132,7 @@ export class GoogleSheetsClient {
       await this.sheets.spreadsheets.batchUpdate({
         spreadsheetId,
         requestBody: { requests: [{ deleteDimension: { range: {
-          sheetId: ids["Nhật ký học tập"], dimension: "ROWS", startIndex: rowIndex, endIndex: rowIndex + 1,
+          sheetId: ids["Quá trình học tập"], dimension: "ROWS", startIndex: rowIndex, endIndex: rowIndex + 1,
         } } }] },
       });
     }
@@ -139,37 +147,4 @@ export class GoogleSheetsClient {
     });
   }
 
-  async syncVocabularyRow(
-    spreadsheetId: string,
-    attemptId: number,
-    row: Array<string | number | boolean>,
-    syncedAt: string,
-  ): Promise<void> {
-    const range = "'Ôn từ vựng'!A:P";
-    const response = await this.sheets.spreadsheets.values.get({ spreadsheetId, range });
-    const values = response.data.values ?? [];
-    const rowIndex = values.findIndex((candidate, index) =>
-      index > 0 && String(candidate[0] ?? "") === String(attemptId));
-    if (rowIndex >= 1)
-      await this.sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `'Ôn từ vựng'!A${rowIndex + 1}:P${rowIndex + 1}`,
-        valueInputOption: "RAW",
-        requestBody: { values: [row] },
-      });
-    else
-      await this.sheets.spreadsheets.values.append({
-        spreadsheetId,
-        range,
-        valueInputOption: "RAW",
-        insertDataOption: "INSERT_ROWS",
-        requestBody: { values: [row] },
-      });
-    await this.sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId,
-      requestBody: { valueInputOption: "RAW", data: [
-        { range: "'_TeacherHub'!B7", values: [[syncedAt]] },
-      ] },
-    });
-  }
 }

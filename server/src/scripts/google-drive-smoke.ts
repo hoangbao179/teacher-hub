@@ -29,7 +29,7 @@ try {
   await provider.render(resource, fake, { templateVersion: config.googleDrive.templateVersion, recordId, generatedAt: new Date().toISOString() });
   const recovered = await provider.findByRecordId(recordId);
   if (recovered?.spreadsheetId !== spreadsheetId) throw new Error("Không đọc lại được appProperties của file smoke.");
-  console.log(JSON.stringify({ event: "google_drive_smoke_passed", fourSheetsRendered: true, metadataRecovered: true }));
+  console.log(JSON.stringify({ event: "google_drive_smoke_passed", threeSheetsRendered: true, twoVisibleSheets: true, metadataRecovered: true }));
 } finally {
   if (spreadsheetId) await provider.trash(spreadsheetId);
 }

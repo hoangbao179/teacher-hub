@@ -33,6 +33,13 @@ export class GoogleDriveClient {
       webViewUrl: result.data.webViewLink ?? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` };
   }
 
+  async rename(resource: ManagedSpreadsheet, name: string): Promise<ManagedSpreadsheet> {
+    const result = await this.drive.files.update({ fileId: resource.spreadsheetId,
+      requestBody: { name }, fields: "id,name,webViewLink" });
+    return { spreadsheetId: resource.spreadsheetId, name: result.data.name ?? name,
+      webViewUrl: result.data.webViewLink ?? resource.webViewUrl };
+  }
+
   async trash(spreadsheetId: string): Promise<void> {
     await this.drive.files.update({ fileId: spreadsheetId, requestBody: { trashed: true } });
   }

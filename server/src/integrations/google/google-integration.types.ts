@@ -76,6 +76,7 @@ export interface CreateManagedSpreadsheetInput {
 export interface GoogleSheetProvider {
   findByRecordId(recordId: number): Promise<ManagedSpreadsheet | null>;
   create(input: CreateManagedSpreadsheetInput): Promise<ManagedSpreadsheet>;
+  rename(resource: ManagedSpreadsheet, name: string): Promise<ManagedSpreadsheet>;
   render(resource: ManagedSpreadsheet, snapshot: StudentGoogleSheetSnapshot, metadata: {
     templateVersion: string; recordId: number; generatedAt: string; syncedAt?: string | null;
   }): Promise<void>;

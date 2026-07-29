@@ -30,7 +30,8 @@ function tuition(overrides: Partial<StudentTuitionReportRow> = {}): StudentTuiti
 test("spreadsheet text and filename neutralize formulas and unsafe path characters", () => {
   for (const value of ["=SUM(A1:A2)", "+cmd", "-2+3", "@IMPORT"]) assert.equal(safeSpreadsheetText(value), `'${value}`);
   assert.equal(safeSpreadsheetText("Nội dung bình thường"), "Nội dung bình thường");
-  assert.equal(safeStudentReportFilename("Nguyễn / Văn: An\r\n.xlsx", "2026-07-21"), "Bao-cao-Nguyen-Van-An-xlsx-20260721.xlsx");
+  assert.equal(safeStudentReportFilename("Nguyễn / Văn: An\r\n.xlsx", "Lớp 3A", "2026-07-21"),
+    "Bao-cao-Nguyen-Van-An-xlsx-Lop-3A-20260721.xlsx");
 });
 
 test("workbook is chronological, localized, snapshot-based and formula-free", async () => {

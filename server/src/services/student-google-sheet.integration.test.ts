@@ -193,12 +193,18 @@ integration("regenerate upgrades an existing spreadsheet to the current template
   const data = await fixture();
   const created = await data.service.create(data.studentId, {}, data.actorId);
   await pool.execute("UPDATE student_google_sheets SET template_version='v0' WHERE id=?", [created.sheet.id]);
+  const [classResult] = await pool.execute<ResultSetHeader>(
+    "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp 3A','ONE_TO_ONE',2000000,90,'2026-06-01')");
+  await pool.execute("INSERT INTO class_enrollments(class_id,student_id,joined_at,status) VALUES (?,?,'2026-06-01','ACTIVE')",
+    [classResult.insertId, data.studentId]);
 
   const regenerated = await data.service.regenerate(data.studentId, data.actorId);
 
   assert.equal(regenerated.sheet.id, created.sheet.id);
   assert.equal(regenerated.sheet.webViewUrl, created.sheet.webViewUrl);
   assert.equal(regenerated.sheet.templateVersion, settings.templateVersion);
+  assert.match(regenerated.sheet.fileName, /Học sinh Google Test - Lớp 3A$/);
+  assert.equal(data.provider.resources.get(created.sheet.id)?.name, regenerated.sheet.fileName);
   assert.equal(data.provider.rendered.length, 2);
 });
 
@@ -456,7 +462,7 @@ integration("outbox is transactional, revision-safe and worker syncs the canonic
   assert.equal(active.sheet.id > 0, true);
 });
 
-integration("completed vocabulary attempt is synced once to the derived vocabulary tab", async () => {
+integration("legacy vocabulary events are acknowledged without recreating a vocabulary tab", async () => {
   const data = await fixture();
   const active = await data.service.create(data.studentId, {}, data.actorId);
   const [assignment] = await pool.execute<ResultSetHeader>(
@@ -543,8 +549,7 @@ integration("completed vocabulary attempt is synced once to the derived vocabula
     true,
   );
   assert.equal(await worker.runOnce(), 1);
-  const vocabularyRow = data.provider.vocabularyRows.get(`fake-sheet-${active.sheet.id}:${attempt.insertId}`);
-  assert.equal(vocabularyRow?.assignmentTitle, "Ôn tập con vật");
+  assert.equal(data.provider.vocabularyRows.has(`fake-sheet-${active.sheet.id}:${attempt.insertId}`), false);
   const [events] = await pool.query<RowDataPacket[]>(
     `SELECT status,revision FROM google_sheet_sync_outbox
      WHERE entity_type='VOCABULARY_ATTEMPT' AND entity_id=?`,

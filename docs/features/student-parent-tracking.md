@@ -57,10 +57,12 @@ tuition sync và sharing tự động vẫn thuộc V16E **PLANNED**.
 - Sheet thuộc tài khoản Google của cô Vy và gắn với `student_id`, không gắn với
   class hoặc enrollment.
 - URL/spreadsheet ID ổn định xuyên suốt quá trình học.
+- Tên file gồm tên học sinh và lớp hiện tại; thao tác tạo lại nội dung cập nhật tên nếu
+  học sinh đã chuyển lớp nhưng vẫn giữ nguyên URL.
 - Không tạo Sheet mới khi học sinh lên lớp, chuyển lớp/nhóm, đổi lịch, tạm nghỉ
   hoặc quay lại.
 - Khi lên lớp/chuyển lớp: đóng enrollment cũ, tạo enrollment mới và giữ lịch sử; các dòng
-  nhật ký mới mang tên lớp mới.
+  quá trình học tập mới mang tên lớp mới.
 - Một cycle dở của student được tiếp tục qua enrollment theo quy tắc tại mục 7;
   không reset âm thầm chỉ vì chuyển lớp.
 - Chỉ thay Sheet khi file lỗi, giáo viên chủ động archive, có yêu cầu riêng tư,
@@ -69,7 +71,7 @@ tuition sync và sharing tự động vẫn thuộc V16E **PLANNED**.
 
 ## 4. Template Google Sheet — IMPLEMENTED V16C
 
-### `Nhật ký học tập`
+### `Quá trình học tập`
 
 Một dòng cho mỗi lesson + student participant. Các cột nghiệp vụ đồng nhất với sheet
 `Quá trình học tập` trong file Excel tải xuống, theo thứ tự:
@@ -85,8 +87,9 @@ Một dòng cho mỗi lesson + student participant. Các cột nghiệp vụ đ�
 9. Bài tập về nhà.
 10. Nhận xét học sinh.
 
-Cột `Nội dung buổi học` rộng 300 px và `Nhận xét học sinh` rộng 200 px. Template không
-tạo sheet `Tổng quan`.
+Cột `Nội dung buổi học` rộng 300 px và `Nhận xét học sinh` rộng 200 px. Đây cùng với
+`Học phí` là hai sheet hiển thị, đồng nhất với file Excel tải xuống. Template không tạo
+sheet `Tổng quan` hoặc `Ôn từ vựng`; `_TeacherHub` chỉ là sheet kỹ thuật bị ẩn.
 
 ### `Học phí`
 
@@ -159,7 +162,7 @@ nhận xét chung một lần.
 - Retry dùng mốc 1 phút, 5 phút, 900 giây, 1 giờ rồi exponential có giới hạn;
   lỗi vĩnh viễn chuyển `DEAD` và chỉ lưu message đã rút gọn.
 - Worker đọc snapshot canonical mới nhất, tìm row bằng `Teacher Hub Lesson ID` rồi
-  append/update/remove đúng row. Chỉ cập nhật `Nhật ký học tập` và timestamp
+  append/update/remove đúng row. Chỉ cập nhật `Quá trình học tập` và timestamp
   `_TeacherHub`; không sửa tab `Học phí`.
 - `POST /api/students/:studentId/google-sheet/resync` chỉ upsert event cho toàn bộ
   lesson đã hoàn thành, không gọi Google trong request và có audit.

@@ -40,7 +40,7 @@ test("Google 404 is classified by the resource being accessed", () => {
   assert.equal(classifyGoogleError(missing, "ROOT_FOLDER_MISSING").failureCode, "ROOT_FOLDER_MISSING");
 });
 
-test("vocabulary attempt sync upserts one row without a full workbook render", async () => {
+test("legacy vocabulary sync events are acknowledged without creating a sheet row", async () => {
   const provider = new FakeGoogleSheetProvider();
   provider.resources.set(10, { spreadsheetId: "sheet-10", name: "Student", webViewUrl: "https://example.test" });
   const event = {
@@ -72,6 +72,6 @@ test("vocabulary attempt sync upserts one row without a full workbook render", a
   const worker = new GoogleSheetSyncWorker(outbox as never, sheets as never, provider, settings, true);
   assert.equal(await worker.runOnce(), 1);
   assert.equal(provider.rendered.length, 0);
-  assert.deepEqual(provider.vocabularyRows.get("sheet-10:77"), row);
+  assert.equal(provider.vocabularyRows.has("sheet-10:77"), false);
   assert.equal(succeeded, true);
 });

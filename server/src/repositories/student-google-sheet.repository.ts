@@ -133,18 +133,18 @@ export class StudentGoogleSheetRepository {
       [safeMessage.slice(0, 500), id]);
   }
 
-  async regenerated(id: number, actorUserId: number, templateVersion: string): Promise<StudentGoogleSheetInfo> {
+  async regenerated(id: number, actorUserId: number, templateVersion: string, fileName: string): Promise<StudentGoogleSheetInfo> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
       const [rows] = await connection.query<RowDataPacket[]>("SELECT * FROM student_google_sheets WHERE id=? AND status='ACTIVE' FOR UPDATE", [id]);
       if (!rows[0]) throw new AppError(409, "GOOGLE_SHEET_STATE_CONFLICT", "Google Sheet không còn hoạt động.");
       await connection.execute(
-        "UPDATE student_google_sheets SET template_version=?,last_generated_at=NOW(),last_sync_error=NULL WHERE id=?",
-        [templateVersion, id],
+        "UPDATE student_google_sheets SET template_version=?,file_name=?,last_generated_at=NOW(),last_sync_error=NULL WHERE id=?",
+        [templateVersion, fileName, id],
       );
       await this.audit.record(connection, { actorUserId, action: "STUDENT_GOOGLE_SHEET_REGENERATED", entityType: "STUDENT_GOOGLE_SHEET", entityId: id,
-        newValues: { studentId: Number(rows[0].student_id), spreadsheetId: String(rows[0].spreadsheet_id), templateVersion } });
+        newValues: { studentId: Number(rows[0].student_id), spreadsheetId: String(rows[0].spreadsheet_id), templateVersion, fileName } });
       const [updated] = await connection.query<RowDataPacket[]>("SELECT * FROM student_google_sheets WHERE id=?", [id]);
       await connection.commit(); return mapSheet(updated[0]);
     } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }

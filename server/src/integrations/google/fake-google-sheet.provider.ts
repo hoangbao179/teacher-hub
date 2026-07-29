@@ -31,6 +31,12 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
     if (this.timeoutAfterCreate) { this.timeoutAfterCreate = false; throw new Error("network timeout after create"); }
     return resource;
   }
+  async rename(resource: ManagedSpreadsheet, name: string): Promise<ManagedSpreadsheet> {
+    const renamed = { ...resource, name };
+    for (const [recordId, candidate] of this.resources)
+      if (candidate.spreadsheetId === resource.spreadsheetId) this.resources.set(recordId, renamed);
+    return renamed;
+  }
   async render(resource: ManagedSpreadsheet, snapshot: StudentGoogleSheetSnapshot, metadata: {
     templateVersion: string; recordId: number; generatedAt: string; syncedAt?: string | null;
   }): Promise<void> {
@@ -38,9 +44,8 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
     if (this.delayMs) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     this.template.build(snapshot, resource.spreadsheetId,
       {
-        "Nhật ký học tập": 2,
+        "Quá trình học tập": 2,
         "Học phí": 3,
-        "Ôn từ vựng": 4,
         _TeacherHub: 5,
       }, metadata);
     this.rendered.push({ resource, snapshot });
@@ -62,14 +67,12 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
     this.synced.push({ resource, lessonId, row });
   }
   async syncVocabularyAttempt(
-    resource: ManagedSpreadsheet,
-    row: StudentGoogleSheetSnapshot["vocabularyAttempts"][number],
-    attemptId: number,
+    _resource: ManagedSpreadsheet,
+    _row: StudentGoogleSheetSnapshot["vocabularyAttempts"][number],
+    _attemptId: number,
   ): Promise<void> {
     if (this.failure === "NETWORK") throw new Error("network timeout");
     if (this.failure === "AUTH") throw Object.assign(new Error("permission denied"), { code: 403 });
-    const key = `${resource.spreadsheetId}:${attemptId}`;
-    this.vocabularyRows.set(key, row);
   }
   async trash(spreadsheetId: string): Promise<void> { this.trashed.push(spreadsheetId); }
 }

@@ -254,22 +254,7 @@ export class GoogleSheetSyncRepository {
       let enqueued = 0;
       for (const lesson of lessons)
         if (await this.enqueue(connection, studentId, Number(lesson.id), "LESSON_UPSERT")) enqueued += 1;
-      const [attempts] = await connection.query<RowDataPacket[]>(
-        `SELECT attempt.id
-         FROM learning_attempts attempt
-         JOIN learning_assignment_recipients recipient
-           ON recipient.id=attempt.recipient_id AND recipient.student_id=?
-         WHERE attempt.status='COMPLETED'
-         ORDER BY attempt.id`,
-        [studentId],
-      );
-      let vocabularyAttempts = 0;
-      for (const attempt of attempts)
-        if (await this.enqueueVocabularyAttempt(
-          connection,
-          studentId,
-          Number(attempt.id),
-        )) vocabularyAttempts += 1;
+      const vocabularyAttempts = 0;
       await this.audit.record(connection, {
         actorUserId,
         action: "STUDENT_GOOGLE_SHEET_RESYNC_ENQUEUED",

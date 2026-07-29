@@ -23,17 +23,18 @@ test("formula-like Google cell text is escaped", () => {
   for (const prefix of ["=", "+", "-", "@"]) assert.equal(safeGoogleCell(`${prefix}value`), `'${prefix}value`);
 });
 
-test("template aligns learning log with Excel export and protects technical metadata", () => {
+test("template renders only the two visible Excel-equivalent sheets and protects technical metadata", () => {
   const template = new GoogleSheetTemplateService();
   const plan = template.build(snapshot, "sheet-1",
-    { "Nhật ký học tập": 2, "Học phí": 3, "Ôn từ vựng": 4, _TeacherHub: 5 },
-    { templateVersion: "v3", generatedAt: "2026-07-26T00:00:00Z" });
-  assert.equal(plan.values.length, 4);
-  assert.deepEqual(template.sheetNames, ["Nhật ký học tập", "Học phí", "Ôn từ vựng", "_TeacherHub"]);
-  assert.deepEqual(template.obsoleteSheetNames, ["Tổng quan"]);
-  assert.deepEqual(plan.clearRanges, ["'Nhật ký học tập'!A:N"]);
-  assert.ok(!plan.values.some((item) => item.range?.includes("Tổng quan")));
-  const learning = plan.values.find((item) => item.range?.includes("Nhật ký"))!.values!;
+    { "Quá trình học tập": 2, "Học phí": 3, _TeacherHub: 5 },
+    { templateVersion: "v4", generatedAt: "2026-07-26T00:00:00Z" });
+  assert.equal(plan.values.length, 3);
+  assert.deepEqual(template.sheetNames, ["Quá trình học tập", "Học phí", "_TeacherHub"]);
+  assert.deepEqual(template.obsoleteSheetNames, ["Tổng quan", "Nhật ký học tập", "Ôn từ vựng"]);
+  assert.deepEqual(template.renamedSheetNames, { "Nhật ký học tập": "Quá trình học tập" });
+  assert.deepEqual(plan.clearRanges, ["'Quá trình học tập'!A:N"]);
+  assert.ok(!plan.values.some((item) => item.range?.includes("Tổng quan") || item.range?.includes("Ôn từ vựng")));
+  const learning = plan.values.find((item) => item.range?.includes("Quá trình"))!.values!;
   assert.deepEqual(learning[0], ["Teacher Hub Lesson ID", "Ngày học", "Lớp", "Loại buổi", "Giờ dự kiến bắt đầu",
     "Giờ dự kiến kết thúc", "Trạng thái", "Nội dung buổi học", "Bài tập về nhà", "Nhận xét học sinh"]);
   assert.equal(learning[1].length, 10);

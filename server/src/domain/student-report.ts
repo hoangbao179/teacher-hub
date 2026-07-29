@@ -14,11 +14,16 @@ export function safeSpreadsheetText(value: string | null | undefined): string {
   return /^[=+\-@]/.test(text) ? `'${text}` : text;
 }
 
-export function safeStudentReportFilename(studentName: string, generatedDate: string): string {
-  const slug = studentName.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+function filenamePart(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/g, "d").replace(/Đ/g, "D").replace(/[^A-Za-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "").slice(0, 80) || "hoc-sinh";
-  return `Bao-cao-${slug}-${generatedDate.replace(/-/g, "")}.xlsx`;
+    .replace(/^-+|-+$/g, "").slice(0, 80);
+}
+
+export function safeStudentReportFilename(studentName: string, className: string | null, generatedDate: string): string {
+  const student = filenamePart(studentName) || "hoc-sinh";
+  const classPart = filenamePart(className ?? "") || "Chua-xep-lop";
+  return `Bao-cao-${student}-${classPart}-${generatedDate.replace(/-/g, "")}.xlsx`;
 }
 
 function excelDate(value: string | null): Date | null {

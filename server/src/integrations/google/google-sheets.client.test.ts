@@ -2,14 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { teacherHubFormattingCleanup, templateSheetReconciliationRequests } from "./google-sheets.client";
 
-test("template reconciliation adds missing sheets and removes obsolete overview", () => {
+test("template reconciliation renames learning history and removes obsolete visible sheets", () => {
   assert.deepEqual(templateSheetReconciliationRequests(
-    { "Tổng quan": 1, "Nhật ký học tập": 2, "Học phí": 3, _TeacherHub: 5 },
-    ["Nhật ký học tập", "Học phí", "Ôn từ vựng", "_TeacherHub"],
-    ["Tổng quan"],
+    { "Tổng quan": 1, "Nhật ký học tập": 2, "Học phí": 3, "Ôn từ vựng": 4, _TeacherHub: 5 },
+    ["Quá trình học tập", "Học phí", "_TeacherHub"],
+    ["Tổng quan", "Nhật ký học tập", "Ôn từ vựng"],
+    { "Nhật ký học tập": "Quá trình học tập" },
   ), [
-    { addSheet: { properties: { title: "Ôn từ vựng" } } },
+    { updateSheetProperties: { properties: { sheetId: 2, title: "Quá trình học tập" }, fields: "title" } },
     { deleteSheet: { sheetId: 1 } },
+    { deleteSheet: { sheetId: 4 } },
   ]);
 });
 
