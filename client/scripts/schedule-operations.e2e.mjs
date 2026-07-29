@@ -147,6 +147,23 @@ try {
   await page.goto(`http://127.0.0.1:5177/admin/reconciliation?from=${today}&to=${today}&classId=${klass.id}&state=UNRECORDED`);
   await page.getByTestId("occurrence-card").first().waitFor();
   if (await page.getByTestId("occurrence-card").count() !== 6) throw new Error("Reconciliation did not render six occurrences");
+  const createNone = page.getByRole("button", { name: "Tạo 0 buổi để ghi nhận" });
+  const skipNone = page.getByRole("button", { name: "Cho 0 buổi nghỉ" });
+  const [createNoneBox, skipNoneBox] = await Promise.all([createNone.boundingBox(), skipNone.boundingBox()]);
+  if (!createNoneBox || !skipNoneBox || Math.abs(createNoneBox.x - skipNoneBox.x) > 1
+    || Math.abs(createNoneBox.width - skipNoneBox.width) > 1
+    || skipNoneBox.y - createNoneBox.y - createNoneBox.height < 11)
+    throw new Error(`Reconciliation mobile bulk actions are not balanced: ${JSON.stringify({ createNoneBox, skipNoneBox })}`);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const [filterBox, bulkBox, occurrenceBox] = await Promise.all([
+    page.getByTestId("reconciliation-filter-card").boundingBox(),
+    page.getByTestId("reconciliation-bulk-card").boundingBox(),
+    page.getByTestId("occurrence-card").first().boundingBox(),
+  ]);
+  if (!filterBox || !bulkBox || !occurrenceBox || [bulkBox, occurrenceBox].some((box) =>
+    Math.abs(box.x - filterBox.x) > 1 || Math.abs(box.width - filterBox.width) > 1))
+    throw new Error(`Reconciliation desktop column is not aligned: ${JSON.stringify({ filterBox, bulkBox, occurrenceBox })}`);
+  await page.setViewportSize({ width: 390, height: 844 });
 
   const taughtCard = page.getByTestId("occurrence-card").filter({ hasText: "08:00–09:00" });
   await taughtCard.getByRole("button", { name: "Đã dạy" }).click();

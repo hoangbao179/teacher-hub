@@ -127,7 +127,7 @@ export function ReconciliationPage() {
   }
 
   return (
-    <Stack spacing={2} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page">
+    <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page" data-form-width="bounded">
       <Typography component="h1" variant="h5">Xác nhận lịch dạy</Typography>
       <Typography color="text.secondary">Kiểm tra các buổi theo lịch và chọn Đã dạy, Nghỉ hoặc Đổi lịch. Học phí chỉ thay đổi sau khi hoàn tất ghi nhận.</Typography>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setItems(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
@@ -136,7 +136,7 @@ export function ReconciliationPage() {
         Có {warnings.length} xung đột lịch; thao tác vẫn được lưu. {warnings.map((item) => `${item.title} ${item.startTime}–${item.endTime}`).join("; ")}
       </Alert>}
 
-      <Card variant="outlined" sx={{ width: "100%", maxWidth: "var(--app-form-width)" }}><CardContent><Stack spacing={1.5}>
+      <Card variant="outlined" data-testid="reconciliation-filter-card"><CardContent><Stack spacing={1.5}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
           <TextField fullWidth type="date" label="Từ ngày" value={from} onChange={(event) => { setItems(null); setError(""); setFrom(event.target.value); }} slotProps={{ inputLabel: { shrink: true } }} />
           <TextField fullWidth type="date" label="Đến ngày" value={to} onChange={(event) => { setItems(null); setError(""); setTo(event.target.value); }} slotProps={{ inputLabel: { shrink: true } }} />
@@ -149,17 +149,17 @@ export function ReconciliationPage() {
         </TextField>
       </Stack></CardContent></Card>
 
-      {selectable.length > 0 && <Card variant="outlined"><CardContent><Stack spacing={1}>
+      {selectable.length > 0 && <Card variant="outlined" data-testid="reconciliation-bulk-card"><CardContent><Stack spacing={1.5}>
         <FormControlLabel control={<Checkbox checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectable.map((item) => item.key))} />} label={`Chọn tất cả (${selected.length} đã chọn)`} />
-        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-          <Button variant="contained" disabled={!selected.length || Boolean(busyKey)} onClick={() => setBulkConfirm(true)}>Tạo {selected.length} buổi để ghi nhận</Button>
-          <Button variant="outlined" color="error" disabled={!selected.length || Boolean(busyKey)} onClick={() => setSkipDialog({ keys: selected, bulk: true })}>Cho {selected.length} buổi nghỉ</Button>
-        </Stack>
+        <Box data-testid="reconciliation-bulk-actions" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, max-content)" }, gap: { xs: 1.5, sm: 1 }, justifyContent: { sm: "start" } }}>
+          <Button variant="contained" disabled={!selected.length || Boolean(busyKey)} onClick={() => setBulkConfirm(true)} sx={{ width: { xs: "100%", sm: "auto" }, whiteSpace: "nowrap" }}>Tạo {selected.length} buổi để ghi nhận</Button>
+          <Button variant="outlined" color="error" disabled={!selected.length || Boolean(busyKey)} onClick={() => setSkipDialog({ keys: selected, bulk: true })} sx={{ width: { xs: "100%", sm: "auto" }, whiteSpace: "nowrap" }}>Cho {selected.length} buổi nghỉ</Button>
+        </Box>
       </Stack></CardContent></Card>}
 
       {!items && <LoadingCards />}
       {items?.length === 0 && !error && <EmptyState message="Không có buổi dự kiến phù hợp trong khoảng đã chọn." />}
-      <Box data-testid="reconciliation-card-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.5, alignItems: "start" }}>
+      <Box data-testid="reconciliation-card-grid" sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 1.5, alignItems: "start" }}>
       {items?.map((item) => {
         const replacement = item.projectionSource === "RESCHEDULED";
         return <Card key={item.key} id={`occurrence-${item.key}`} data-testid="occurrence-card" variant="outlined"><CardContent><Stack spacing={1.25}>
