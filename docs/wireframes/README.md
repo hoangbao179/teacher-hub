@@ -7,6 +7,20 @@ Screenshot đã duyệt trong `v2-branding/` được chụp từ ứng dụng c
 tham chiếu styling hiện hành cho màn hình tương ứng. Khi có V2, không hoàn nguyên
 màu sắc/layout về P0. P0 vẫn hữu ích cho workflow chưa có V2.
 
+## Admin UI refresh
+
+Thư mục [`admin-ui-refresh/`](admin-ui-refresh/README.md) lưu design handoff đã
+duyệt cho đợt refresh Admin Dashboard. Ba visual target chính là:
+
+- `01-dashboard-desktop-approved.png`;
+- `02-dashboard-mobile-390-approved.png`;
+- `03-dashboard-mobile-360-approved.png`.
+
+Các ảnh Playwright approved có ưu tiên cao hơn annotated board về layout. Design
+system board và annotated board chỉ hướng dẫn palette, spacing, hierarchy, icon
+và illustration; text, số liệu hoặc section minh họa không phải requirement.
+Wireframe không được ghi đè business rule, contract hoặc source hiện tại.
+
 V13 cập nhật lại các ảnh V2 của Homepage, Dashboard, danh sách học sinh và học phí
 sau khi hoàn thiện hero/filter/thuật ngữ mobile; chỉ ảnh tài liệu chính thức được lưu tại đây.
 

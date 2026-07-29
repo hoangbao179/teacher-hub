@@ -5,6 +5,10 @@ liệu từ API và không tự suy diễn học phí/trạng thái. Phong cách
 Admin bình tĩnh và dày thông tin hơn Homepage, vẫn giữ nhận diện giáo dục phù hợp
 học sinh lớp 1–9, không tạo cảm giác mầm non.
 
+Visual refresh đã được duyệt dùng teal làm primary, kết hợp mint, sky blue, peach
+và coral có tiết chế. Đây chỉ là thay đổi trình bày; route, API, validation, state
+machine, query/cache, dữ liệu và hành vi hiện có không thay đổi.
+
 ## Responsive và navigation
 
 - Viewport hỗ trợ chính: 360, 375, 390, 393, 400, 412 và 430 px; kiểm tra thêm
@@ -14,18 +18,24 @@ học sinh lớp 1–9, không tạo cảm giác mầm non.
 - Desktop chuyển sang sidebar cố định ở breakpoint phù hợp; nội dung không dùng
   bảng rộng cho thao tác cốt lõi.
 
-## Phân cấp màu
+## Phân cấp màu và minh họa
 
-- Dashboard metric: lavender cho học phí, mint cho buổi cần xác nhận, soft blue cho lịch;
-  thao tác nhanh dùng grid một nút chính và hai nút phụ bằng nhau.
+- Dashboard dùng teal cho primary action và active navigation; mint, sky blue,
+  peach và coral hỗ trợ phân nhóm metric/trạng thái. Thao tác nhanh dùng grid một
+  nút chính và hai nút phụ bằng nhau.
 - Mỗi lớp có accent pastel ổn định tính từ `classId`, dùng nhất quán ở card/lịch mà không
   thay schema. ACTIVE: green; PAUSED: warm orange; CLOSED: neutral outline.
-- Học sinh dùng avatar pastel ổn định theo ID và progress bar tím rõ, không tạo dữ
-  liệu giả ở client.
-- Lesson wizard: Thông tin blue, Điểm danh mint, Nội dung yellow, Xác nhận purple;
+- Học sinh dùng avatar pastel ổn định theo ID và progress bar có tương phản rõ,
+  không tạo dữ liệu giả ở client.
+- Lesson wizard: Thông tin sky blue, Điểm danh mint, Nội dung peach, Xác nhận teal;
   nhãn/số vẫn truyền đạt trạng thái khi không nhìn màu.
 - Học phí: Chưa đủ 8 buổi blue, Cần thu orange, Đã thu green, Dở dang neutral.
   Không hiển thị raw enum.
+- Minh họa Admin phải là static asset local đã tối ưu; không gọi API ảnh bên ngoài
+  ở runtime. Ảnh trang trí dùng `alt=""` và `aria-hidden="true"`, không chứa text
+  quan trọng và không thay thế icon của thư viện hiện tại.
+- Annotated board chỉ định hướng palette, spacing, hierarchy, icon và illustration.
+  Không tạo dữ liệu giả, metric, section hoặc feature chỉ vì chúng xuất hiện trong ảnh.
 
 ## Bộ lọc và biểu mẫu
 

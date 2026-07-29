@@ -14,6 +14,12 @@ screenshot chạy thật trong `wireframes/v2-branding/` là tham chiếu stylin
 hành cho màn hình tương ứng. Nội dung Home do developer sửa trong source, không có
 CMS V1. Excel migration tạm hoãn; file cũ chỉ nằm trong `reference/legacy-excel/`.
 
+Đợt refresh giao diện Admin đã được duyệt về thiết kế nhưng chưa triển khai. Xem
+[`design/admin-ui-visual-refresh.md`](design/admin-ui-visual-refresh.md); ba ảnh
+Playwright approved trong `wireframes/admin-ui-refresh/` là visual target mới cho
+Admin Dashboard. Thứ tự ưu tiên của business rules, contracts và source code ở
+trên không thay đổi.
+
 Khi thêm/sửa feature quan trọng, cập nhật tài liệu feature và shared contract trong cùng PR.
 
 V16B đã có preview/row resolution/apply legacy Excel vào MySQL. V16C đã có OAuth,

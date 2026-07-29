@@ -7,6 +7,8 @@ Global Success public learning release are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
 
+ADMIN-UI-VISUAL-REFRESH: **DESIGN APPROVED / NOT IMPLEMENTED**.
+
 V19A-PUBLIC-HOMEPAGE-SINGLE-LOCATION-GOOGLE-MAPS: PASS on 25/07/2026. Homepage
 now presents one canonical location, optional Google Maps Embed with a no-key
 fallback, synchronized JSON-LD and responsive evidence in `.agent-reports`.

@@ -4,7 +4,8 @@
 
 - Brand: **Lớp học cô Vy** — **Tiếng Anh lớp 1–9 tại Huế**.
 - Homepage nhiều màu và giàu chất giáo dục; phù hợp dải lớp 1–9 nhưng không mang
-  phong cách mầm non. Admin dùng cùng hệ màu ở mức bình tĩnh, ít trang trí hơn.
+  phong cách mầm non. Admin dùng palette teal, mint, sky blue, peach và coral ở
+  mức bình tĩnh, ít trang trí hơn; palette Admin không thay thế quy tắc riêng của Homepage.
 - Copy ngắn, thân thiện và chính xác; không dùng dữ liệu/testimonial chưa xác minh.
 
 ## Responsive
@@ -23,11 +24,26 @@ không quá nặng; hierarchy phải rõ khi zoom và trên màn hình hẹp.
 
 ## Colors
 
-- Purple/violet là primary action và active navigation.
-- Lavender, soft blue và mint dùng cho grouping/metric/class type.
+- Trong Admin, teal là primary action, active navigation, focus accent và progress;
+  không dùng purple/violet cho các vai trò này.
+- Mint, sky blue và peach dùng cho grouping/metric/class type của Admin.
 - Warm yellow/orange báo cần chú ý hoặc paused/payment due.
 - Coral chỉ là accent nhỏ; green dùng cho success/active/paid.
 - Màu không được là tín hiệu duy nhất: luôn kèm nhãn, icon hoặc cấu trúc.
+
+## Surfaces và illustration
+
+- Admin dùng grid cơ sở 8 px, cho phép 4 px để tinh chỉnh icon/badge; card padding
+  16 px trên mobile và 18–24 px trên desktop; khoảng cách section tương ứng 16–20 px
+  và 20–24 px.
+- Radius mặc định 12 px, card chính 16 px, banner lớn tối đa 20–24 px. Card dùng
+  border rất nhẹ kết hợp shadow/elevation nhất quán, không dùng glow màu.
+- Minh họa theo hướng giáo dục thân thiện, có chọn lọc ở greeting banner, sidebar
+  desktop hoặc empty state; không phủ minh họa lên mọi card.
+- Asset trang trí Admin phải được bundle/local và tối ưu trước khi đưa vào production;
+  không gọi API ảnh bên ngoài ở runtime.
+- Ảnh chỉ để trang trí dùng `alt=""` và `aria-hidden="true"`; không đặt text quan
+  trọng trong ảnh và không dùng ảnh handoff thay icon từ `@mui/icons-material`.
 
 ## Motion
 
