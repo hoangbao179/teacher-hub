@@ -123,6 +123,7 @@ integration("canonical workbook contains normalized history, paid eight-item and
   assert.equal(absentFill.type === "pattern" ? absentFill.fgColor?.argb : undefined, "FFFFDADA");
   const absentLastColumnFill = history.getCell("I12").fill;
   assert.equal(absentLastColumnFill.type === "pattern" ? absentLastColumnFill.fgColor?.argb : undefined, "FFFFDADA");
+  assert.notEqual(history.getCell("J12").fill?.type, "pattern");
   assert.equal(history.getCell("G2").value, "'=HYPERLINK(\"https://invalid\")");
   assert.equal(history.getCell("I3").value, "'+cmd");
   assert.equal(fees.getCell("A9").master.address, "A2");
@@ -136,6 +137,8 @@ integration("canonical workbook contains normalized history, paid eight-item and
   assert.equal(fees.getCell("C2").alignment.horizontal, "center");
   assert.equal(fees.getCell("F2").alignment.horizontal, "center");
   assert.equal(fees.columnCount, 6);
+  assert.notEqual(fees.getCell("G1").fill?.type, "pattern");
+  assert.notEqual(fees.getCell("G2").fill?.type, "pattern");
   for (const sheet of workbook.worksheets) sheet.eachRow((row) => row.eachCell((cell) => assert.notEqual(cell.type, ExcelJS.ValueType.Formula)));
 
   const [audits] = await pool.query<RowDataPacket[]>(

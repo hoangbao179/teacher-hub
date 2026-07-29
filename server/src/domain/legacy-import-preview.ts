@@ -85,7 +85,8 @@ export class LegacyImportPreview {
           content: lesson.content, homework: lesson.homework, studentNote: lesson.note, time: lesson.rawTime },
         normalizedValues: { date: lesson.normalizedDate, startTime: lesson.scheduledStartTime,
           endTime: lesson.scheduledEndTime, attendance: lesson.attendanceStatus, content: lesson.content,
-          homework: lesson.homework, studentNote: lesson.note, timeMappingId: lesson.timeMappingId },
+          homework: lesson.homework, studentNote: lesson.note, timeMappingId: lesson.timeMappingId,
+          ...(lesson.attendanceStatus === "FREE" ? { legacyReason: "LEGACY_POST_PAID_FREE" } : {}) },
         issueCodes, status: lifecycleStatus(issueCodes), supportedActions,
         ...(lesson.suggestedDate && issueCodes.includes("DATE_CORRECTION") ? { suggestedResolution: {
           sourceSheet: lesson.sourceSheet, sourceRow: lesson.sourceRow, issueCode: "DATE_CORRECTION" as const,
@@ -135,6 +136,7 @@ export class LegacyImportPreview {
       file,
       lessons: result.lessons,
       tuitionRows: result.tuitionRows,
+      tuitionBlocks: result.tuitionBlocks,
       paymentEvents: result.paymentEvents,
       tuitionCycles: result.tuitionCycles,
       timeMappings: result.timeMappings,
@@ -148,6 +150,7 @@ export class LegacyImportPreview {
         academicPeriodCount: academicPeriods.length,
         completedCycleCount: result.tuitionCycles.filter((item) => item.state === "COMPLETE").length,
         paidCycleCount: result.tuitionCycles.filter((item) => item.paymentState === "PAID_CLEAR").length,
+        freeLessonCount: result.lessons.filter((item) => item.attendanceStatus === "FREE").length,
         currentCycleProgress: [...result.tuitionCycles].reverse().find((item) => item.state === "CURRENT")?.itemCount ?? 0,
         hasAdvancePayment,
         unresolvedIssueCount,
@@ -162,7 +165,7 @@ export class LegacyImportPreview {
       warnings: [
         "Đây chỉ là bản xem trước; hệ thống chưa ghi lesson, lớp, ghi danh hoặc học phí.",
         "Khối lớp không được suy từ tên file. Hãy xác nhận khối cho từng năm học.",
-        "PAID là sự kiện thanh toán và không tự động được dùng làm ranh giới chu kỳ.",
+        "PAID chỉ xác nhận đợt học phí đã thu; workbook lịch sử không cung cấp ngày hoặc phương thức thanh toán.",
       ],
     };
   }

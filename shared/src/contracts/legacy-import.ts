@@ -184,7 +184,7 @@ export interface LegacyLearningLessonPreview {
   homework: string | null;
   classwork: string | null;
   note: string | null;
-  attendanceStatus: "PRESENT" | "ABSENT";
+  attendanceStatus: "PRESENT" | "ABSENT" | "FREE";
   billingType: "BILLABLE" | "NONE";
   sourceSheet: "Quá trình học tập";
   sourceRow: number;
@@ -204,6 +204,18 @@ export interface LegacyTuitionRowPreview {
   sourceRow: number;
   reconciliationStatus: LegacyReconciliationStatus;
   matchedLearningSourceRow: number | null;
+  blockId: string;
+  postPaidFree: boolean;
+}
+
+export interface LegacyTuitionBlockPreview {
+  id: string;
+  sourceStartRow: number;
+  sourceEndRow: number;
+  paidMarkerSourceRow: number | null;
+  tuitionSourceRows: number[];
+  paidCandidateSourceRows: number[];
+  postPaidSourceRows: number[];
 }
 
 export interface LegacyTimeMappingPreview {
@@ -270,6 +282,7 @@ export interface LegacyImportPreviewSummary {
   academicPeriodCount: number;
   completedCycleCount: number;
   paidCycleCount: number;
+  freeLessonCount: number;
   currentCycleProgress: number;
   hasAdvancePayment: boolean | null;
   unresolvedIssueCount: number;
@@ -288,6 +301,7 @@ export interface LegacyImportPreview {
   file: { name: string; size: number; sha256: string };
   lessons: LegacyLearningLessonPreview[];
   tuitionRows: LegacyTuitionRowPreview[];
+  tuitionBlocks: LegacyTuitionBlockPreview[];
   paymentEvents: LegacyPaymentEventPreview[];
   tuitionCycles: LegacyTuitionCyclePreview[];
   timeMappings: LegacyTimeMappingPreview[];

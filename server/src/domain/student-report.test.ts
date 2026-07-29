@@ -66,7 +66,13 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   }
   assert.equal(history.columnCount, 9);
   const outsideTableFill = history.getCell("J3").fill;
-  assert.notEqual(outsideTableFill.type === "pattern" ? outsideTableFill.fgColor?.argb : undefined, "FFFFDADA");
+  assert.notEqual(outsideTableFill?.type === "pattern" ? outsideTableFill.fgColor?.argb : undefined, "FFFFDADA");
+  for (const address of ["J1", "J2", "J3"]) assert.notEqual(history.getCell(address).fill?.type, "pattern");
+  for (let column = 1; column <= 9; column += 1) {
+    assert.equal(history.getRow(1).getCell(column).fill.type, "pattern");
+    assert.equal(history.getRow(2).getCell(column).fill.type, "pattern");
+    assert.equal(history.getRow(3).getCell(column).fill.type, "pattern");
+  }
   const headerFill = history.getCell("A1").fill;
   assert.equal(headerFill.type, "pattern");
   assert.equal(headerFill.type === "pattern" ? headerFill.fgColor?.argb : undefined, "FFD9EAF7");
@@ -91,6 +97,12 @@ test("workbook is chronological, localized, snapshot-based and formula-free", as
   assert.equal(fees.getCell("C9").master.address, "C2");
   assert.equal(fees.getCell("F9").master.address, "F2");
   assert.equal(fees.getCell("F2").value, "123456789012");
+  for (let column = 1; column <= 6; column += 1) {
+    assert.equal(fees.getRow(1).getCell(column).fill.type, "pattern");
+    assert.equal(fees.getRow(2).getCell(column).fill.type, "pattern");
+  }
+  assert.notEqual(fees.getCell("G1").fill?.type, "pattern");
+  assert.notEqual(fees.getCell("G2").fill?.type, "pattern");
   for (const address of ["A2", "B2", "C2", "F2"]) {
     assert.equal(fees.getCell(address).alignment.horizontal, "center");
     assert.equal(fees.getCell(address).alignment.vertical, "middle");

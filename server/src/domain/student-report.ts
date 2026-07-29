@@ -38,17 +38,22 @@ function styleSheet(sheet: ExcelJS.Worksheet, columnCount: number): void {
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columnCount } };
   const header = sheet.getRow(1);
   header.height = 30;
-  header.eachCell((cell) => {
+  for (let column = 1; column <= columnCount; column += 1) {
+    const cell = header.getCell(column);
     cell.font = { bold: true, color: { argb: "FF17324D" } };
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9EAF7" } };
     cell.border = tableBorder;
     cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
-  });
+  }
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber > 1) {
-      row.alignment = { vertical: "top", wrapText: true };
-      if (rowNumber % 2 === 0) row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F8FC" } };
-      for (let column = 1; column <= columnCount; column += 1) row.getCell(column).border = tableBorder;
+      for (let column = 1; column <= columnCount; column += 1) {
+        const cell = row.getCell(column);
+        cell.alignment = { vertical: "top", wrapText: true };
+        if (rowNumber % 2 === 0)
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F8FC" } };
+        cell.border = tableBorder;
+      }
     }
   });
 }
@@ -75,11 +80,12 @@ function mergeTuitionCycleCells(
 function highlightAbsentLearningRows(
   sheet: ExcelJS.Worksheet,
   rows: StudentLearningReportRow[],
+  columnCount: number,
 ): void {
   rows.forEach((source, index) => {
     if (source.attendanceStatus !== "ABSENT") return;
     const row = sheet.getRow(index + 2);
-    for (let column = 1; column <= sheet.columnCount; column += 1) {
+    for (let column = 1; column <= columnCount; column += 1) {
       const cell = row.getCell(column);
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFDADA" } };
       cell.font = { ...cell.font, color: { argb: "FF8A1C1C" } };
@@ -124,8 +130,8 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
     homework: safeSpreadsheetText(row.homework), studentNote: safeSpreadsheetText(row.studentNote),
   });
   learning.getColumn("date").numFmt = "dd/mm/yyyy";
-  styleSheet(learning, learning.columnCount);
-  highlightAbsentLearningRows(learning, orderedLearningRows);
+  styleSheet(learning, 9);
+  highlightAbsentLearningRows(learning, orderedLearningRows, 9);
 
   const tuition = workbook.addWorksheet("Học phí", { properties: { defaultRowHeight: 20 } });
   tuition.columns = [
@@ -143,7 +149,7 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
     accountNumber: safeSpreadsheetText(input.vietinBankAccountNumber),
   });
   for (const key of ["started", "reached", "date"]) tuition.getColumn(key).numFmt = "dd/mm/yyyy";
-  styleSheet(tuition, tuition.columnCount);
+  styleSheet(tuition, 6);
   mergeTuitionCycleCells(tuition, orderedTuitionRows);
 
   const bytes = await workbook.xlsx.writeBuffer();

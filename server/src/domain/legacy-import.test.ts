@@ -63,6 +63,50 @@ async function withWorkbook(bytes: Buffer, action: (path: string) => Promise<voi
   try { await writeFile(path, bytes); await action(path); } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
+async function blockedTuitionWorkbookBytes(): Promise<Buffer> {
+  const first = Array.from({ length: 10 }, (_, index) => `2026-03-${String(index + 20).padStart(2, "0")}`);
+  const second = Array.from({ length: 8 }, (_, index) => `2026-06-${String(index + 10).padStart(2, "0")}`);
+  const current = ["2026-07-08", "2026-07-13", "2026-07-15"];
+  const dates = [...first, ...second, ...current];
+  const workbook = new ExcelJS.Workbook();
+  const learning = workbook.addWorksheet("Quá trình học tập");
+  dates.forEach((date, index) => {
+    const row = index * 5 + 1;
+    learning.getCell(row, 1).value = "DATE";
+    learning.getCell(row, 2).value = date;
+    learning.getCell(row, 3).value = "CONTENT -NỘI DUNG HỌC";
+    learning.getCell(row, 6).value = `Nội dung ẩn danh ${index + 1}`;
+    learning.getCell(row + 1, 1).value = "TEACHER";
+    learning.getCell(row + 1, 2).value = "Giáo viên";
+    ["STT", "FULL NAME", "", "ABSENCE", "BTVN", "BÀI TẠI LỚP", "GHI CHÚ"].forEach((value, column) =>
+      learning.getCell(row + 2, column + 1).value = value);
+    learning.getCell(row + 3, 1).value = 1;
+    learning.getCell(row + 3, 2).value = "Học sinh Ẩn danh";
+  });
+  const tuition = workbook.addWorksheet("Học phí");
+  let row = 1;
+  const addBlock = (blockDates: string[], paidAfter: number | null, postPaidCount = 0) => {
+    ["FULL NAME", "DURATION", "DATE", "HOURS", "VIETINBANK", ""].forEach((value, column) =>
+      tuition.getCell(row, column + 1).value = value);
+    row += 1;
+    blockDates.forEach((date, index) => {
+      tuition.getCell(row, 1).value = "Học sinh Ẩn danh";
+      tuition.getCell(row, 2).value = "18:00-19:30";
+      tuition.getCell(row, 3).value = new Date(`${date}T00:00:00Z`);
+      tuition.getCell(row, 3).numFmt = "d/m/yyyy";
+      row += 1;
+      if (paidAfter === index + 1) { tuition.getCell(row, 6).value = "PAID"; row += 1; }
+    });
+    assert.equal(postPaidCount, paidAfter == null ? 0 : blockDates.length - paidAfter);
+    tuition.getCell(row, 1).value = "TOTAL";
+    row += 1;
+  };
+  addBlock(first, 8, 2);
+  addBlock(second, 8);
+  addBlock(current, null);
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
 test("lessonTimes normalizes supported legacy durations and rejects invalid ranges", () => {
   const validCases = [
     ["8h30-10h", { start: "08:30", end: "10:00" }],
@@ -160,7 +204,30 @@ test("reconciliation covers absence, tuition-only, date suggestions, duplicates 
   });
 });
 
-test("ten present lessons before PAID become 8 + 2 and keep payment resolution undecided", async () => {
+test("tuition blocks create paid eight-item cycles, post-PAID free lessons and a new current cycle", async () => {
+  const bytes = await blockedTuitionWorkbookBytes();
+  await withWorkbook(bytes, async (path) => {
+    const parsed = await new LegacyWorkbookParser().parse(path);
+    assert.equal(parsed.tuitionBlocks.length, 3);
+    assert.deepEqual(parsed.tuitionBlocks[0].paidCandidateSourceRows.length, 8);
+    assert.deepEqual(parsed.tuitionBlocks[0].postPaidSourceRows.length, 2);
+    const result = new LegacyReconciliationEngine().reconcile(parsed);
+    assert.deepEqual(result.tuitionCycles.map((cycle) => [cycle.itemCount, cycle.paymentState]),
+      [[8, "PAID_CLEAR"], [8, "PAID_CLEAR"], [3, "UNPAID"]]);
+    assert.equal(result.lessons.filter((lesson) => lesson.attendanceStatus === "FREE").length, 2);
+    assert.equal(result.tuitionRows.filter((row) => row.postPaidFree).length, 2);
+    assert.ok(result.paymentEvents.every((event) => !event.requiresReview && event.date == null));
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "fixture.xlsx", size: bytes.length, sha256: "d".repeat(64) }, result);
+    assert.equal(preview.summary.paidCycleCount, 2);
+    assert.equal(preview.summary.freeLessonCount, 2);
+    assert.equal(preview.summary.currentCycleProgress, 3);
+    assert.equal(preview.rows.filter((row) => row.issueCodes.includes("PAYMENT_REVIEW_REQUIRED")).length, 0);
+    assert.equal(preview.rows.filter((row) => row.normalizedValues.legacyReason === "LEGACY_POST_PAID_FREE").length, 2);
+  });
+});
+
+test("an ambiguous ten-row block before PAID stays grouped for payment review", async () => {
   const dates = Array.from({ length: 10 }, (_, index) => `2025-07-${String(index + 1).padStart(2, "0")}`);
   const bytes = await workbookBytes(dates.map((date) => ({ date })), dates, 10);
   await withWorkbook(bytes, async (path) => {

@@ -55,10 +55,16 @@ async function waitUrl(url, timeout = 30_000) {
 async function makeWorkbook(studentName) {
   const workbook = new ExcelJS.Workbook();
   const learning = workbook.addWorksheet("Quá trình học tập");
-  for (let index = 0; index < 10; index += 1) {
+  const blocks = [
+    { dates: Array.from({ length: 10 }, (_, index) => `2026-07-${String(index + 1).padStart(2, "0")}`), paidAfter: 8 },
+    { dates: Array.from({ length: 8 }, (_, index) => `2026-08-${String(index + 1).padStart(2, "0")}`), paidAfter: 8 },
+    { dates: ["2026-09-01", "2026-09-03", "2026-09-05"], paidAfter: null },
+  ];
+  const dates = blocks.flatMap((block) => block.dates);
+  for (let index = 0; index < dates.length; index += 1) {
     const start = index * 5 + 1;
     learning.getCell(start, 1).value = "DATE";
-    learning.getCell(start, 2).value = `${String(index + 1).padStart(2, "0")}/07`;
+    learning.getCell(start, 2).value = dates[index];
     learning.getCell(start, 3).value = "CONTENT -NỘI DUNG HỌC";
     learning.getCell(start, 6).value = `Nội dung ${index + 1}`;
     learning.getCell(start + 1, 1).value = "TEACHER";
@@ -70,16 +76,21 @@ async function makeWorkbook(studentName) {
     learning.getCell(start + 3, 5).value = `Bài tập ${index + 1}`;
   }
   const tuition = workbook.addWorksheet("Học phí");
-  ["FULL NAME", "DURATION", "DATE", "HOURS", "VIETINBANK", ""].forEach((value, column) => tuition.getCell(1, column + 1).value = value);
-  for (let index = 0; index < 10; index += 1) {
-    const row = index + 2;
-    tuition.getCell(row, 1).value = studentName;
-    tuition.getCell(row, 2).value = "3h30-5h";
-    tuition.getCell(row, 3).value = new Date(`2026-07-${String(index + 1).padStart(2, "0")}T00:00:00Z`);
-    tuition.getCell(row, 3).numFmt = "d/m/yyyy";
-    tuition.getCell(row, 4).value = 45_000 + index;
+  let row = 1;
+  for (const block of blocks) {
+    ["FULL NAME", "DURATION", "DATE", "HOURS", "VIETINBANK", ""].forEach((value, column) => tuition.getCell(row, column + 1).value = value);
+    row += 1;
+    block.dates.forEach((date, index) => {
+      tuition.getCell(row, 1).value = studentName;
+      tuition.getCell(row, 2).value = "18:00-19:30";
+      tuition.getCell(row, 3).value = new Date(`${date}T00:00:00Z`);
+      tuition.getCell(row, 3).numFmt = "d/m/yyyy";
+      row += 1;
+      if (block.paidAfter === index + 1) { tuition.getCell(row, 6).value = "PAID"; row += 1; }
+    });
+    tuition.getCell(row, 1).value = "TOTAL";
+    row += 1;
   }
-  tuition.getCell(12, 6).value = "PAID";
   await workbook.xlsx.writeFile(workbookPath);
 }
 
@@ -119,15 +130,13 @@ try {
   if (!(await studentNav.getAttribute("class"))?.includes("Mui-selected")) throw new Error("Student navigation is not active on legacy import route");
   await page.locator('input[type="file"]').setInputFiles({ name: "Synthetic Grade 9.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: fs.readFileSync(workbookPath) });
   await page.getByRole("heading", { name: "Tổng hợp kiểm tra" }).waitFor();
+  await page.getByText("2 buổi học thêm sau đợt đã thanh toán").waitFor();
+  await page.getByText("Đợt 1: Đã thu · Không rõ ngày").waitFor();
+  if (await page.getByText("Sự kiện thanh toán cần xác nhận").count()) throw new Error("Clear PAID block created a payment review card");
   if ((await page.getByLabel("Khối").first().textContent())?.replaceAll("\u200B", "").trim()) throw new Error("Filename grade was applied to an academic period");
   await page.getByLabel("Khối").click();
   await page.getByRole("option", { name: "Lớp 9" }).click();
   await page.getByRole("button", { name: "Xác nhận mapping" }).click();
-  await page.getByRole("button", { name: "Xác nhận cho tất cả dòng cùng khung giờ" }).click();
-  const paymentCard = page.getByText("Sự kiện thanh toán cần xác nhận").locator("xpath=ancestor::*[contains(@class,'MuiCard-root')]");
-  await paymentCard.getByLabel("Cách hiểu PAID").click();
-  await page.getByRole("option", { name: "Trả đợt trước" }).click();
-  await paymentCard.getByRole("button", { name: "Áp dụng quyết định" }).click();
   for (const width of [360, 375, 390, 393, 400, 412, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

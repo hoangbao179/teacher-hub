@@ -33,6 +33,10 @@ nguyên VND. Text bắt đầu bằng `=`, `+`, `-`, `@` được prefix apostro
 trở thành công thức. Workbook không có macro, external link, credential hoặc dữ
 liệu học sinh khác.
 
+Style của bảng chỉ áp dụng theo từng cell trong phạm vi header: `A:I` ở sheet
+`Quá trình học tập` và `A:F` ở sheet `Học phí`. Các cột nằm ngoài phạm vi này
+không nhận fill hoặc border của bảng.
+
 ## Legacy files
 
 Workbook xuất là normalized canonical output và không mô phỏng cấu trúc file cũ.
@@ -40,3 +44,9 @@ V16B đã parse/preview controlled workbook legacy theo student và chỉ ghi da
 sau khi structured decisions được xác nhận; workbook gốc chỉ là migration source, binary
 không được giữ lâu dài theo mặc định. Google Sheet V16C–V16E sẽ được dựng từ dữ
 liệu canonical trong DB, không convert hoặc chia sẻ nguyên trạng workbook cũ.
+
+Sheet `Học phí` được đọc theo block từ header `FULL NAME` đến `TOTAL` (hoặc trước
+header kế tiếp). Một block có đúng tám buổi hợp lệ trước/đến marker `PAID` tạo một
+cycle `PAID` tám item với `paid_at` và `payment_method` để trống; note ghi rõ không
+biết ngày thanh toán. Các buổi sau marker trong cùng block được nhập là `FREE`,
+không thuộc cycle và không tăng tiến độ. Block kế tiếp bắt đầu cycle sequence mới.

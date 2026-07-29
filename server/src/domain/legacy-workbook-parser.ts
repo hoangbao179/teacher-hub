@@ -23,14 +23,26 @@ export interface ParsedLegacyTuitionRow {
   time: string | null;
   paidMarker: boolean;
   offMarker: boolean;
+  blockId: string;
 }
 
 export interface ParsedLegacyPaymentEvent { sourceRow: number; date: string | null }
+
+export interface ParsedLegacyTuitionBlock {
+  id: string;
+  sourceStartRow: number;
+  sourceEndRow: number;
+  paidMarkerSourceRow: number | null;
+  tuitionSourceRows: number[];
+  paidCandidateSourceRows: number[];
+  postPaidSourceRows: number[];
+}
 
 export interface ParsedLegacyWorkbook {
   learningRows: ParsedLegacyLearningRow[];
   tuitionRows: ParsedLegacyTuitionRow[];
   paymentEvents: ParsedLegacyPaymentEvent[];
+  tuitionBlocks: ParsedLegacyTuitionBlock[];
 }
 
 function plainText(cell: ExcelJS.Cell): string {
@@ -77,21 +89,41 @@ export class LegacyWorkbookParser {
 
     const tuitionRows: ParsedLegacyTuitionRow[] = [];
     const paymentEvents: ParsedLegacyPaymentEvent[] = [];
-    let lastTuitionDate: string | null = null;
-    for (let rowNumber = 1; rowNumber <= tuition.rowCount; rowNumber += 1) {
-      const row = tuition.getRow(rowNumber);
-      const dateCell = row.getCell(3);
-      const date = this.dates.normalizeFullDate(dateCell.value, plainText(dateCell));
-      const paidMarker = /\bPAID\b/i.test(plainText(row.getCell(6)));
-      const offMarker = /^\s*OFF\s*$/i.test(plainText(row.getCell(5)));
-      if (date) {
+    const tuitionBlocks: ParsedLegacyTuitionBlock[] = [];
+    const headerRows: number[] = [];
+    for (let rowNumber = 1; rowNumber <= tuition.rowCount; rowNumber += 1)
+      if (key(plainText(tuition.getRow(rowNumber).getCell(1))) === "FULL NAME") headerRows.push(rowNumber);
+    for (const [blockIndex, headerRow] of headerRows.entries()) {
+      const nextHeader = headerRows[blockIndex + 1] ?? tuition.rowCount + 1;
+      let sourceEndRow = nextHeader - 1;
+      for (let rowNumber = headerRow + 1; rowNumber < nextHeader; rowNumber += 1) {
+        if (key(plainText(tuition.getRow(rowNumber).getCell(1))) === "TOTAL") { sourceEndRow = rowNumber; break; }
+      }
+      const id = `tuition-block-${headerRow}`;
+      let paidMarkerSourceRow: number | null = null;
+      const blockRows: ParsedLegacyTuitionRow[] = [];
+      for (let rowNumber = headerRow + 1; rowNumber <= sourceEndRow; rowNumber += 1) {
+        const row = tuition.getRow(rowNumber);
+        const paidMarker = /\bPAID\b/i.test(Array.from({ length: 6 }, (_, column) => plainText(row.getCell(column + 1))).join(" "));
+        if (paidMarker && paidMarkerSourceRow == null) paidMarkerSourceRow = rowNumber;
+        const dateCell = row.getCell(3);
+        const date = this.dates.normalizeFullDate(dateCell.value, plainText(dateCell));
+        if (!date) continue;
         const duration = plainText(row.getCell(2));
         const hoursCell = row.getCell(4);
         const fallbackHours = typeof hoursCell.value === "string" ? plainText(hoursCell) : "";
-        tuitionRows.push({ sourceRow: rowNumber, date, time: nullable(duration || fallbackHours), paidMarker, offMarker });
-        lastTuitionDate = date;
+        blockRows.push({ sourceRow: rowNumber, date, time: nullable(duration || fallbackHours), paidMarker,
+          offMarker: /^\s*OFF\s*$/i.test(plainText(row.getCell(5))), blockId: id });
       }
-      if (paidMarker) paymentEvents.push({ sourceRow: rowNumber, date: date ?? lastTuitionDate });
+      const tuitionSourceRows = blockRows.map((row) => row.sourceRow);
+      const paidCandidateSourceRows = paidMarkerSourceRow == null ? []
+        : tuitionSourceRows.filter((row) => row <= paidMarkerSourceRow!);
+      const postPaidSourceRows = paidMarkerSourceRow == null ? []
+        : tuitionSourceRows.filter((row) => row > paidMarkerSourceRow!);
+      tuitionRows.push(...blockRows);
+      tuitionBlocks.push({ id, sourceStartRow: headerRow, sourceEndRow, paidMarkerSourceRow,
+        tuitionSourceRows, paidCandidateSourceRows, postPaidSourceRows });
+      if (paidMarkerSourceRow != null) paymentEvents.push({ sourceRow: paidMarkerSourceRow, date: null });
     }
 
     const rawLearning: Array<Omit<ParsedLegacyLearningRow, "originalDate" | "normalizedDate" | "dateResolution"> & { dateInput: LegacyDateInput }> = [];
@@ -145,6 +177,6 @@ export class LegacyWorkbookParser {
       normalizedDate: normalized[index].normalizedDate,
       dateResolution: normalized[index].resolution,
     }));
-    return { learningRows, tuitionRows, paymentEvents };
+    return { learningRows, tuitionRows, paymentEvents, tuitionBlocks };
   }
 }

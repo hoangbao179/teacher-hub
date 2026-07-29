@@ -234,14 +234,20 @@ export function LegacyImportPage() {
       <Card><CardContent><Stack spacing={1}>
         <Typography variant="h6">Tổng hợp kiểm tra</Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", sm: "repeat(5,minmax(0,1fr))" }, gap: 1 }}>
-          {[["Tổng dòng", preview.rows.length], ["Hợp lệ", summary.valid], ["Cần xử lý", summary.review],
-            ["Blocked", summary.blocked], ["Đã resolve", summary.resolved], ["Bỏ qua", summary.skipped],
-            ["Lesson dự kiến", preview.summary.expectedLessonCount], ["Cycle dự kiến", preview.summary.expectedTuitionCycleCount]]
+          {[["Buổi lịch sử", preview.summary.totalLessons], ["Đợt đã thanh toán", preview.summary.paidCycleCount],
+            ["Buổi học thêm miễn phí", preview.summary.freeLessonCount], ["Đợt hiện tại", `${preview.summary.currentCycleProgress}/8`],
+            ["Cần xử lý", summary.review], ["Blocked", summary.blocked], ["Đã resolve", summary.resolved],
+            ["Bỏ qua", summary.skipped]]
             .map(([label, value]) => <Box key={label} sx={{ p: 1.25, bgcolor: "background.default", borderRadius: 1.5, minWidth: 0 }}>
               <Typography variant="caption" color="text.secondary">{label}</Typography><Typography variant="h6">{value}</Typography>
             </Box>)}
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>SHA-256: {preview.file.sha256}</Typography>
+        {preview.tuitionCycles.filter((cycle) => cycle.paymentState === "PAID_CLEAR").map((cycle) =>
+          <Typography key={cycle.cycleNumber} variant="body2">Đợt {cycle.cycleNumber}: Đã thu · Không rõ ngày</Typography>)}
+        {preview.summary.freeLessonCount > 0 && <Alert severity="info">
+          Hệ thống nhận diện {preview.summary.freeLessonCount} buổi học thêm sau đợt đã thanh toán và sẽ lưu là miễn phí.
+        </Alert>}
       </Stack></CardContent></Card>
 
       <Stack spacing={1.5}>
@@ -305,9 +311,11 @@ export function LegacyImportPage() {
                 label={status === "VALID" ? "Hợp lệ" : status === "RESOLVED" ? "Đã resolve" : status === "SKIPPED" ? "Đã bỏ qua" : status === "BLOCKED" ? "Blocked" : "Cần xử lý"} sx={{ alignSelf: "flex-start" }} />
             </Stack>
             <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap" }}>{row.issueCodes.map((issue) => <Chip key={issue} size="small" variant="outlined" label={issueLabels[issue]} />)}</Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-              Giá trị gốc: {JSON.stringify(row.rawValues)}
-            </Typography>
+            <Box component="details"><Typography component="summary" variant="body2" sx={{ cursor: "pointer" }}>Xem chi tiết</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                Giá trị nguồn: {JSON.stringify(row.rawValues)}
+              </Typography>
+            </Box>
             {row.rowType === "LESSON" && status !== "VALID" && status !== "SKIPPED" && <>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3,1fr)" }, gap: 1 }}>
                 <TextField type="date" label="Ngày" value={draft.date} onChange={(event) => setDraft(row, { date: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />

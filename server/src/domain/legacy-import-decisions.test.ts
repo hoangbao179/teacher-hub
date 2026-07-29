@@ -15,10 +15,10 @@ function row(overrides: Partial<LegacyImportRowPreview> = {}): LegacyImportRowPr
 function preview(rows: LegacyImportRowPreview[]): LegacyImportPreview {
   return {
     mode: "PREVIEW_ONLY", student: { id: 7, fullName: "Học sinh Mẫu", currentClassId: 2, currentClassName: "Lớp 7" },
-    file: { name: "history.xlsx", size: 100, sha256: "a".repeat(64) }, lessons: [], tuitionRows: [],
+    file: { name: "history.xlsx", size: 100, sha256: "a".repeat(64) }, lessons: [], tuitionRows: [], tuitionBlocks: [],
     paymentEvents: [], tuitionCycles: [], timeMappings: [], academicPeriods: [], classCandidates: [], rows,
     summary: { totalLessons: 0, presentLessons: 0, absentLessons: 0, academicPeriodCount: 0,
-      completedCycleCount: 0, paidCycleCount: 0, currentCycleProgress: 0, hasAdvancePayment: false,
+      completedCycleCount: 0, paidCycleCount: 0, freeLessonCount: 0, currentCycleProgress: 0, hasAdvancePayment: false,
       unresolvedIssueCount: rows.length, validRowCount: 0, needsReviewRowCount: 0, blockedRowCount: rows.length,
       resolvedRowCount: 0, skippedRowCount: 0, expectedLessonCount: 0, expectedTuitionCycleCount: 0 },
     warnings: [],

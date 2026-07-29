@@ -392,11 +392,12 @@ export class LegacyImportRepository {
       throw new AppError(409, "LEGACY_IMPORT_DUPLICATE", `Lesson dòng ${row.sourceRow} đã có điểm danh của học sinh.`);
     const status = String(row.normalizedValues.attendance);
     const billable = isBillable(status);
+    const excluded = status === "FREE";
     const [created] = await connection.execute<ResultSetHeader>(
       `INSERT INTO lesson_attendances
-        (lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition,student_note)
-       VALUES (?,?,?,?,?,?)`,
-      [lessonId, participantId, enrollmentId, status, billable, row.normalizedValues.studentNote ?? null],
+        (lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition,excluded_from_tuition,student_note)
+       VALUES (?,?,?,?,?,?,?)`,
+      [lessonId, participantId, enrollmentId, status, billable, excluded, row.normalizedValues.studentNote ?? null],
     );
     counts.attendances += 1;
     return created.insertId;
@@ -498,12 +499,12 @@ export class LegacyImportRepository {
       const [created] = await connection.execute<ResultSetHeader>(
         `INSERT INTO tuition_cycles
           (enrollment_id,cycle_number,target_session_count,package_price_snapshot,status,started_at,reached_target_at,
-           paid_at,paid_amount,payment_note)
-         VALUES (?,?,8,?,?,?,?,?,?,?)`,
+           paid_at,paid_amount,payment_method,payment_note)
+         VALUES (?,?,8,?,?,?,?,?,?,?,?)`,
         [anchorEnrollment, Number(numberRows[0].next_number), price, status, dateOnly(group[0].session_date),
           full ? dateOnly(group.at(-1)!.session_date) : null,
-          paidClear ? `${dateOnly(group.at(-1)!.session_date)} 00:00:00` : null,
-          paidClear ? price : null, paidClear ? "Xác nhận từ workbook lịch sử" : null],
+          null, null, null,
+          paidClear ? "Đã thanh toán theo workbook lịch sử; không rõ ngày thanh toán" : null],
       );
       for (const [index, attendance] of group.entries())
         await connection.execute(

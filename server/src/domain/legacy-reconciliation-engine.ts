@@ -2,6 +2,7 @@ import type {
   LegacyLearningLessonPreview,
   LegacyPaymentEventPreview,
   LegacyTimeMappingPreview,
+  LegacyTuitionBlockPreview,
   LegacyTuitionCyclePreview,
   LegacyTuitionRowPreview,
 } from "@teacher/shared";
@@ -64,6 +65,7 @@ function nextMonthSameDay(date: string): string | null {
 export interface LegacyReconciliationResult {
   lessons: LegacyLearningLessonPreview[];
   tuitionRows: LegacyTuitionRowPreview[];
+  tuitionBlocks: LegacyTuitionBlockPreview[];
   paymentEvents: LegacyPaymentEventPreview[];
   tuitionCycles: LegacyTuitionCyclePreview[];
   timeMappings: LegacyTimeMappingPreview[];
@@ -146,7 +148,7 @@ export class LegacyReconciliationEngine {
         if (exact) {
           usedTuition.add(exact.sourceRow);
           matchedTuitionSourceRow = exact.sourceRow;
-          reconciliationStatus = row.absent && !exact.offMarker ? "LEARNING_ONLY_NEEDS_REVIEW" : "MATCHED";
+          reconciliationStatus = "MATCHED";
         } else if (row.absent) reconciliationStatus = "LEARNING_ONLY_ABSENT";
         else {
           const previousDate = parsed.learningRows[index - 1]?.normalizedDate;
@@ -165,7 +167,7 @@ export class LegacyReconciliationEngine {
             matchedTuitionSourceRow = candidate.sourceRow;
             usedTuition.add(candidate.sourceRow);
             reconciliationStatus = "DATE_CORRECTION_SUGGESTED";
-          } else reconciliationStatus = "LEARNING_ONLY_NEEDS_REVIEW";
+          } else reconciliationStatus = "LEARNING_ONLY_ABSENT";
         }
       }
       const matchedTuition = matchedTuitionSourceRow == null
@@ -176,7 +178,8 @@ export class LegacyReconciliationEngine {
         scheduledStartTime: times?.start ?? null, scheduledEndTime: times?.end ?? null,
         dateResolution: row.dateResolution, suggestedDate, teacher: row.teacher, studentName: row.studentName,
         nickname: row.nickname, content: row.content, homework: row.homework, classwork: row.classwork, note: row.note,
-        attendanceStatus: row.absent ? "ABSENT" : "PRESENT", billingType: row.absent ? "NONE" : "BILLABLE",
+        attendanceStatus: row.absent ? "ABSENT" : "PRESENT",
+        billingType: row.absent || matchedTuitionSourceRow == null ? "NONE" : "BILLABLE",
         sourceSheet: "Quá trình học tập", sourceRow: row.sourceRow, reconciliationStatus,
         matchedTuitionSourceRow, rawTime: matchedTuition?.time ?? null, timeMappingId: times?.mappingId ?? null,
       };
@@ -229,42 +232,55 @@ export class LegacyReconciliationEngine {
 
     const matchByTuitionRow = new Map(lessons.filter((lesson) => lesson.matchedTuitionSourceRow != null)
       .map((lesson) => [lesson.matchedTuitionSourceRow!, lesson.sourceRow]));
+    const clearPaidBlockIds = new Set(parsed.tuitionBlocks.filter((block) => {
+      if (block.paidMarkerSourceRow == null || block.paidCandidateSourceRows.length !== 8) return false;
+      return block.paidCandidateSourceRows.every((sourceRow) => {
+        const tuition = parsed.tuitionRows.find((item) => item.sourceRow === sourceRow);
+        const lesson = lessons.find((item) => item.matchedTuitionSourceRow === sourceRow);
+        return Boolean(tuition && !tuition.offMarker && lesson?.normalizedDate && lesson.scheduledStartTime &&
+          lesson.scheduledEndTime && lesson.attendanceStatus === "PRESENT");
+      });
+    }).map((block) => block.id));
+    const clearPostPaidRows = new Set(parsed.tuitionBlocks.filter((block) => clearPaidBlockIds.has(block.id))
+      .flatMap((block) => block.postPaidSourceRows));
+    for (const lesson of lessons) {
+      if (lesson.matchedTuitionSourceRow != null && clearPostPaidRows.has(lesson.matchedTuitionSourceRow)) {
+        lesson.attendanceStatus = "FREE";
+        lesson.billingType = "NONE";
+      }
+    }
     const tuitionRows: LegacyTuitionRowPreview[] = parsed.tuitionRows.map((row) => ({
       id: `tuition-${row.sourceRow}`, date: row.date, time: row.time, paidMarker: row.paidMarker, offMarker: row.offMarker,
       sourceSheet: "Học phí", sourceRow: row.sourceRow,
       reconciliationStatus: usedTuition.has(row.sourceRow) ? "MATCHED" : "TUITION_ONLY_NEEDS_REVIEW",
       matchedLearningSourceRow: matchByTuitionRow.get(row.sourceRow) ?? null,
+      blockId: row.blockId, postPaidFree: clearPostPaidRows.has(row.sourceRow),
     }));
 
-    const billable = lessons.filter((lesson) => lesson.attendanceStatus === "PRESENT" && lesson.billingType === "BILLABLE" && lesson.normalizedDate)
-      .sort((a, b) => a.normalizedDate!.localeCompare(b.normalizedDate!) || a.sourceRow - b.sourceRow);
     const tuitionCycles: LegacyTuitionCyclePreview[] = [];
-    for (let index = 0; index < billable.length; index += 8) {
-      const items = billable.slice(index, index + 8);
-      tuitionCycles.push({ cycleNumber: tuitionCycles.length + 1, lessonSourceRows: items.map((item) => item.sourceRow),
-        fromDate: items[0]?.normalizedDate ?? null, toDate: items.at(-1)?.normalizedDate ?? null,
-        itemCount: items.length, state: items.length === 8 ? "COMPLETE" : "CURRENT", paymentState: "UNPAID" });
+    for (const block of parsed.tuitionBlocks) {
+      const sourceRows = clearPaidBlockIds.has(block.id) ? block.paidCandidateSourceRows : block.tuitionSourceRows;
+      const blockLessons = sourceRows.map((sourceRow) => lessons.find((lesson) =>
+        lesson.matchedTuitionSourceRow === sourceRow && lesson.billingType === "BILLABLE"))
+        .filter((lesson): lesson is LegacyLearningLessonPreview => Boolean(lesson?.normalizedDate));
+      for (let offset = 0; offset < blockLessons.length; offset += 8) {
+        const items = blockLessons.slice(offset, offset + 8);
+        const paidClear = offset === 0 && items.length === 8 && clearPaidBlockIds.has(block.id);
+        tuitionCycles.push({ cycleNumber: tuitionCycles.length + 1, lessonSourceRows: items.map((item) => item.sourceRow),
+          fromDate: items[0]?.normalizedDate ?? null, toDate: items.at(-1)?.normalizedDate ?? null,
+          itemCount: items.length, state: items.length === 8 ? "COMPLETE" : "CURRENT",
+          paymentState: paidClear ? "PAID_CLEAR" : "UNPAID" });
+      }
     }
-
-    const clearlyPaidCycles = new Set<number>();
     const paymentEvents = parsed.paymentEvents.map((event, index): LegacyPaymentEventPreview => {
-      const beforeOrOn = event.date ? billable.filter((lesson) => lesson.normalizedDate! <= event.date!).length : 0;
-      const completedCycle = Math.floor(beforeOrOn / 8);
-      const remainder = beforeOrOn % 8;
-      const canClearlyPayPrevious = Boolean(event.date) && remainder === 0 && completedCycle > 0 && !clearlyPaidCycles.has(completedCycle);
-      if (canClearlyPayPrevious) clearlyPaidCycles.add(completedCycle);
-      const beforeFirstLesson = Boolean(event.date && billable[0]?.normalizedDate && event.date < billable[0].normalizedDate);
-      return { id: `payment-${event.sourceRow}-${index}`, date: event.date, sourceRow: event.sourceRow,
-        recommendedResolution: canClearlyPayPrevious ? "PREVIOUS_CYCLE" : beforeFirstLesson ? "CURRENT_CYCLE_ADVANCE" : "UNDETERMINED",
-        resolutionOptions: ["PREVIOUS_CYCLE", "CURRENT_CYCLE_ADVANCE", "SETTLE_INCOMPLETE", "UNDETERMINED"],
-        requiresReview: !canClearlyPayPrevious && !beforeFirstLesson };
+      const block = parsed.tuitionBlocks.find((item) => item.paidMarkerSourceRow === event.sourceRow);
+      const clear = Boolean(block && clearPaidBlockIds.has(block.id));
+      return { id: `payment-${event.sourceRow}-${index}`, date: null, sourceRow: event.sourceRow,
+        recommendedResolution: clear ? "PREVIOUS_CYCLE" : "UNDETERMINED",
+        resolutionOptions: clear ? [] : ["PREVIOUS_CYCLE", "CURRENT_CYCLE_ADVANCE", "SETTLE_INCOMPLETE", "UNDETERMINED"],
+        requiresReview: !clear };
     });
-    for (const cycle of tuitionCycles) if (clearlyPaidCycles.has(cycle.cycleNumber)) cycle.paymentState = "PAID_CLEAR";
-    for (const event of paymentEvents.filter((item) => item.requiresReview)) {
-      const candidate = event.date ? tuitionCycles.find((cycle) => cycle.fromDate && cycle.fromDate <= event.date! && (!cycle.toDate || cycle.toDate >= event.date!)) : undefined;
-      if (candidate) candidate.paymentState = "NEEDS_REVIEW";
-    }
-    return { lessons, tuitionRows, paymentEvents, tuitionCycles,
+    return { lessons, tuitionRows, tuitionBlocks: parsed.tuitionBlocks, paymentEvents, tuitionCycles,
       timeMappings: timeMappings.filter((mapping) => mapping.lessonSourceRows.length > 0) };
   }
 }
