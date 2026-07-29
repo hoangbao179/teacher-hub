@@ -25,6 +25,9 @@ const issueLabels: Record<LegacyImportIssueCode, string> = {
   PAYMENT_REVIEW_REQUIRED: "Sự kiện thanh toán cần xác nhận",
   NEAR_LESSON_MATCH: "Có lesson gần giống", LESSON_CONTENT_CONFLICT: "Nội dung lesson đang khác",
   TIME_MAPPING_REQUIRED: "Cần xác nhận cách hiểu khung giờ",
+  TUITION_DATE_CORRECTION: "Ngày học phí có khả năng nhập nhầm",
+  TUITION_ONLY_GROUP: "Nhóm buổi chỉ có trong sheet Học phí",
+  PAYMENT_BLOCK_REVIEW_REQUIRED: "Trạng thái học phí của block cần xác nhận",
 };
 const skipLabels: Record<LegacyImportSkipReason, string> = {
   UNIDENTIFIABLE_DATA: "Dữ liệu không xác định được", DUPLICATE_ROW: "Dòng trùng",
@@ -33,6 +36,8 @@ const skipLabels: Record<LegacyImportSkipReason, string> = {
 const paymentLabels: Record<LegacyPaymentResolution, string> = {
   PREVIOUS_CYCLE: "Trả đợt trước", CURRENT_CYCLE_ADVANCE: "Thu trước đợt hiện tại",
   SETTLE_INCOMPLETE: "Chốt đợt dở", UNDETERMINED: "Chưa xác định",
+  PAID_UNDATED: "Đã thu, không rõ ngày", UNPAID: "Chưa thu",
+  EXCLUDE_FINANCE: "Không nhập trạng thái học phí của block này",
 };
 
 interface RowDraft {
@@ -64,7 +69,8 @@ function initialDraft(row: LegacyImportRowPreview): RowDraft {
     attendance: (row.normalizedValues.attendance ?? "PRESENT") as AttendanceStatus,
     lessonAction: row.normalizedValues.existingLessonId ? "KEEP" : "CREATE",
     content: String(row.normalizedValues.content ?? ""), homework: String(row.normalizedValues.homework ?? ""),
-    payment: (row.normalizedValues.paymentResolution ?? "UNDETERMINED") as LegacyPaymentResolution,
+    payment: (String(row.normalizedValues.resolutionOptions ?? "").split(",").filter(Boolean)[0] ??
+      row.normalizedValues.paymentResolution ?? "UNDETERMINED") as LegacyPaymentResolution,
     skipReason: "UNIDENTIFIABLE_DATA", otherReason: "",
   };
 }
@@ -129,7 +135,7 @@ export function LegacyImportPage() {
           mappingId: String(row.normalizedValues.mappingId), startTime: draft.startTime, endTime: draft.endTime } });
         continue;
       }
-      if (["INVALID_DATE", "INVALID_TIME", "DATE_CORRECTION"].includes(issueCode))
+      if (["INVALID_DATE", "INVALID_TIME", "DATE_CORRECTION", "TUITION_DATE_CORRECTION"].includes(issueCode))
         next.push({ ...base, action: "EDIT_ROW", resolvedValue: { date: draft.date || undefined,
           startTime: draft.startTime || undefined, endTime: draft.endTime || undefined,
           content: draft.content, homework: draft.homework } });
@@ -147,8 +153,14 @@ export function LegacyImportPage() {
           : draft.lessonAction === "EDIT" ? { ...base, action: "EDIT_LESSON_CONTENT",
             resolvedValue: { content: draft.content, homework: draft.homework } }
           : { ...base, action: "KEEP_EXISTING_LESSON" });
-      } else if (issueCode === "PAYMENT_REVIEW_REQUIRED")
+      } else if (issueCode === "PAYMENT_REVIEW_REQUIRED" || issueCode === "PAYMENT_BLOCK_REVIEW_REQUIRED")
         next.push({ ...base, action: "CONFIRM_PAYMENT", resolvedValue: draft.payment });
+      else if (issueCode === "TUITION_ONLY_GROUP") {
+        const group = preview?.minimalLessonGroups.find((item) => item.id === row.normalizedValues.groupId);
+        if (!group) { setError("Không tìm thấy nhóm lesson tối giản trong preview."); return; }
+        next.push({ ...base, action: "CREATE_MINIMAL_LEGACY_LESSONS", resolvedValue: {
+          groupId: group.id, tuitionSourceRows: group.tuitionSourceRows } });
+      }
       else { setError("Dòng này chỉ có thể được bỏ qua với lý do."); return; }
     }
     if (next.some((item) => item.action === "MATCH_EXISTING_LESSON" && !(item as { lessonId?: number }).lessonId)) {
@@ -236,7 +248,7 @@ export function LegacyImportPage() {
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", sm: "repeat(5,minmax(0,1fr))" }, gap: 1 }}>
           {[["Buổi lịch sử", preview.summary.totalLessons], ["Đợt đã thanh toán", preview.summary.paidCycleCount],
             ["Buổi học thêm miễn phí", preview.summary.freeLessonCount], ["Đợt hiện tại", `${preview.summary.currentCycleProgress}/8`],
-            ["Cần xử lý", summary.review], ["Blocked", summary.blocked], ["Đã resolve", summary.resolved],
+            ["Cần xử lý", summary.review], ["Bị chặn", summary.blocked], ["Đã xử lý", summary.resolved],
             ["Bỏ qua", summary.skipped]]
             .map(([label, value]) => <Box key={label} sx={{ p: 1.25, bgcolor: "background.default", borderRadius: 1.5, minWidth: 0 }}>
               <Typography variant="caption" color="text.secondary">{label}</Typography><Typography variant="h6">{value}</Typography>
@@ -308,7 +320,7 @@ export function LegacyImportPage() {
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between" }}>
               <Typography sx={{ fontWeight: 700 }}>{row.sourceSheet} · dòng {row.sourceRow}</Typography>
               <Chip size="small" color={status === "VALID" || status === "RESOLVED" ? "success" : status === "BLOCKED" ? "error" : status === "SKIPPED" ? "default" : "warning"}
-                label={status === "VALID" ? "Hợp lệ" : status === "RESOLVED" ? "Đã resolve" : status === "SKIPPED" ? "Đã bỏ qua" : status === "BLOCKED" ? "Blocked" : "Cần xử lý"} sx={{ alignSelf: "flex-start" }} />
+                label={status === "VALID" ? "Hợp lệ" : status === "RESOLVED" ? "Đã xử lý" : status === "SKIPPED" ? "Đã bỏ qua" : status === "BLOCKED" ? "Bị chặn" : "Cần xử lý"} sx={{ alignSelf: "flex-start" }} />
             </Stack>
             <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap" }}>{row.issueCodes.map((issue) => <Chip key={issue} size="small" variant="outlined" label={issueLabels[issue]} />)}</Stack>
             <Box component="details"><Typography component="summary" variant="body2" sx={{ cursor: "pointer" }}>Xem chi tiết</Typography>
@@ -337,9 +349,10 @@ export function LegacyImportPage() {
               {draft.lessonAction === "EDIT" && <><TextField label="Nội dung" multiline value={draft.content} onChange={(event) => setDraft(row, { content: event.target.value })} />
                 <TextField label="Bài tập" multiline value={draft.homework} onChange={(event) => setDraft(row, { homework: event.target.value })} /></>}
             </>}
-            {row.rowType === "PAYMENT" && <FormControl><InputLabel id={`${row.id}-payment`}>Cách hiểu PAID</InputLabel><Select labelId={`${row.id}-payment`} label="Cách hiểu PAID" value={draft.payment}
+            {row.rowType === "PAYMENT" && <FormControl><InputLabel id={`${row.id}-payment`}>Trạng thái học phí</InputLabel><Select labelId={`${row.id}-payment`} label="Trạng thái học phí" value={draft.payment}
               onChange={(event) => setDraft(row, { payment: event.target.value as LegacyPaymentResolution })}>
-              {Object.entries(paymentLabels).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
+              {Object.entries(paymentLabels).filter(([value]) => String(row.normalizedValues.resolutionOptions ?? "").split(",").includes(value))
+                .map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
             </Select></FormControl>}
             {status !== "VALID" && <><Divider /><Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
               <FormControl><InputLabel id={`${row.id}-skip`}>Lý do bỏ qua</InputLabel><Select labelId={`${row.id}-skip`} label="Lý do bỏ qua" value={draft.skipReason}
@@ -350,7 +363,7 @@ export function LegacyImportPage() {
             </Box><Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button variant="contained" onClick={() => resolveRow(row)}>Áp dụng quyết định</Button>
               <Button variant="outlined" onClick={() => resolveRow(row, true)}>Áp dụng cho dòng giống nhau</Button>
-              <Button color="inherit" onClick={() => skipRow(row)}>Bỏ qua dòng</Button>
+              {row.supportedActions.includes("SKIP") && <Button color="inherit" onClick={() => skipRow(row)}>Bỏ qua dòng</Button>}
             </Stack></>}
           </Stack></CardContent></Card>;
         })}

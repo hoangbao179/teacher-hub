@@ -15,7 +15,10 @@ export type LegacyImportIssueCode =
   | "PAYMENT_REVIEW_REQUIRED"
   | "NEAR_LESSON_MATCH"
   | "LESSON_CONTENT_CONFLICT"
-  | "TIME_MAPPING_REQUIRED";
+  | "TIME_MAPPING_REQUIRED"
+  | "TUITION_DATE_CORRECTION"
+  | "TUITION_ONLY_GROUP"
+  | "PAYMENT_BLOCK_REVIEW_REQUIRED";
 
 export type LegacyImportErrorCode =
   | "LEGACY_FILE_REQUIRED"
@@ -42,6 +45,8 @@ export type LegacyImportDecisionAction =
   | "EDIT_LESSON_CONTENT"
   | "CONFIRM_PAYMENT"
   | "CONFIRM_TIME_MAPPING"
+  | "CREATE_MINIMAL_LEGACY_LESSONS"
+  | "EXCLUDE_FINANCE_BLOCK"
   | "SKIP";
 
 export type LegacyImportSkipReason =
@@ -112,6 +117,16 @@ export interface LegacyImportTimeMappingDecision extends LegacyImportDecisionBas
   resolvedValue: { mappingId: string; startTime: string; endTime: string };
 }
 
+export interface LegacyMinimalLessonDecision extends LegacyImportDecisionBase {
+  action: "CREATE_MINIMAL_LEGACY_LESSONS";
+  resolvedValue: { groupId: string; tuitionSourceRows: number[] };
+}
+
+export interface LegacyExcludeFinanceDecision extends LegacyImportDecisionBase {
+  action: "EXCLUDE_FINANCE_BLOCK";
+  resolvedValue: { blockId: string };
+}
+
 export type LegacyImportRowDecision =
   | LegacyImportRowResolution
   | LegacyImportSkipDecision
@@ -120,7 +135,9 @@ export type LegacyImportRowDecision =
   | LegacyAcademicPeriodDecision
   | LegacyImportStudentDecision
   | LegacyImportPaymentDecision
-  | LegacyImportTimeMappingDecision;
+  | LegacyImportTimeMappingDecision
+  | LegacyMinimalLessonDecision
+  | LegacyExcludeFinanceDecision;
 
 export interface LegacyImportApplyRequest {
   previewSha256: string;
@@ -129,7 +146,7 @@ export interface LegacyImportApplyRequest {
 
 export interface LegacyImportRowPreview {
   id: string;
-  rowType: "LESSON" | "TUITION" | "PAYMENT" | "ACADEMIC_PERIOD" | "TIME_MAPPING";
+  rowType: "LESSON" | "TUITION" | "TUITION_GROUP" | "PAYMENT" | "ACADEMIC_PERIOD" | "TIME_MAPPING";
   sourceSheet: string;
   sourceRow: number;
   rawValues: Record<string, string | number | boolean | null>;
@@ -197,9 +214,11 @@ export interface LegacyLearningLessonPreview {
 export interface LegacyTuitionRowPreview {
   id: string;
   date: string | null;
+  suggestedDate: string | null;
   time: string | null;
   paidMarker: boolean;
   offMarker: boolean;
+  kind: LegacyTuitionRowKind;
   sourceSheet: "Học phí";
   sourceRow: number;
   reconciliationStatus: LegacyReconciliationStatus;
@@ -221,17 +240,21 @@ export interface LegacyTuitionBlockPreview {
 export interface LegacyTimeMappingPreview {
   id: string;
   periodId: string;
-  rawValue: string;
+  rawValues: string[];
   proposedStartTime: string | null;
   proposedEndTime: string | null;
   reason: "AMBIGUOUS_12H" | "TYPO_SUGGESTION";
   lessonSourceRows: number[];
+  tuitionSourceRows: number[];
 }
 
 export type LegacyPaymentResolution =
   | "PREVIOUS_CYCLE"
   | "CURRENT_CYCLE_ADVANCE"
   | "SETTLE_INCOMPLETE"
+  | "PAID_UNDATED"
+  | "UNPAID"
+  | "EXCLUDE_FINANCE"
   | "UNDETERMINED";
 
 export interface LegacyPaymentEventPreview {
@@ -241,6 +264,9 @@ export interface LegacyPaymentEventPreview {
   recommendedResolution: LegacyPaymentResolution;
   resolutionOptions: LegacyPaymentResolution[];
   requiresReview: boolean;
+  blockId: string;
+  kind: "PAID_MARKER" | "MISSING_PAYMENT_STATUS" | "INCOMPLETE_PAID_BLOCK";
+  billableCount: number;
 }
 
 export interface LegacyTuitionCyclePreview {
@@ -250,6 +276,26 @@ export interface LegacyTuitionCyclePreview {
   toDate: string | null;
   itemCount: number;
   state: "COMPLETE" | "CURRENT";
+  paymentState: "PAID_CLEAR" | "UNPAID" | "NEEDS_REVIEW";
+  blockId: string;
+  tuitionSourceRows: number[];
+}
+
+export type LegacyTuitionRowKind = "BILLABLE" | "FREE" | "ABSENT" | "OFF";
+
+export interface LegacyMinimalLessonGroupPreview {
+  id: string;
+  tuitionSourceRows: number[];
+  lessonCount: number;
+  fromDate: string;
+  toDate: string;
+}
+
+export interface LegacyTuitionCyclePlan {
+  blockId: string;
+  lessonSourceRows: number[];
+  tuitionSourceRows: number[];
+  attendanceKind: "BILLABLE";
   paymentState: "PAID_CLEAR" | "UNPAID" | "NEEDS_REVIEW";
 }
 
@@ -304,6 +350,8 @@ export interface LegacyImportPreview {
   tuitionBlocks: LegacyTuitionBlockPreview[];
   paymentEvents: LegacyPaymentEventPreview[];
   tuitionCycles: LegacyTuitionCyclePreview[];
+  tuitionCyclePlans: LegacyTuitionCyclePlan[];
+  minimalLessonGroups: LegacyMinimalLessonGroupPreview[];
   timeMappings: LegacyTimeMappingPreview[];
   academicPeriods: LegacyAcademicPeriodPreview[];
   classCandidates: LegacyClassCandidate[];

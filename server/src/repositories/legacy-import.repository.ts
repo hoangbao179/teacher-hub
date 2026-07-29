@@ -11,6 +11,7 @@ import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/prom
 import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
 import type { ResolvedLegacyImportRow } from "../domain/legacy-import-decisions";
+import { lessonTimes } from "../domain/legacy-reconciliation-engine";
 import { AuditRepository } from "./audit.repository";
 
 interface ApplyInput {
@@ -160,10 +161,12 @@ export class LegacyImportRepository {
       const counts: ApplyCounts = { lessons: 0, matchedLessons: 0, attendances: 0, classes: 0, enrollments: 0, cycles: 0 };
       const periods = this.periodRuntimes(input.preview, input.rows);
       const lessonRows = input.rows.filter((row) => row.rowType === "LESSON" && row.status !== "SKIPPED");
-      const acceptedDates = lessonRows.map((row) => String(row.normalizedValues.date ?? ""));
+      const acceptedDates = [...lessonRows.map((row) => String(row.normalizedValues.date ?? "")),
+        ...input.preview.minimalLessonGroups.flatMap((group) => [group.fromDate, group.toDate])];
       for (const period of periods)
         if (acceptedDates.some((date) => period.fromDate <= date && (period.toDate == null || period.toDate >= date)))
           await this.ensurePeriodClass(connection, period, input.actorUserId, counts);
+      const attendanceBySource = new Map<string, number>();
       for (const row of lessonRows) {
         const date = String(row.normalizedValues.date ?? "");
         const start = String(row.normalizedValues.startTime ?? "");
@@ -181,8 +184,12 @@ export class LegacyImportRepository {
             (legacy_import_id,source_sheet,source_row,lesson_id,attendance_id) VALUES (?,?,?,?,?)`,
           [importId, row.sourceSheet, row.sourceRow, lessonId, attendanceId],
         );
+        attendanceBySource.set(`LESSON:${row.sourceRow}`, attendanceId);
+        if (lessonPreview.matchedTuitionSourceRow != null)
+          attendanceBySource.set(`TUITION:${lessonPreview.matchedTuitionSourceRow}`, attendanceId);
       }
-      counts.cycles = await this.rebuildStudentTuition(connection, input.studentId, input.preview, input.rows);
+      await this.createMinimalLessons(connection, importId, input, periods, attendanceBySource, counts);
+      counts.cycles = await this.applyTuitionCyclePlans(connection, input.studentId, input.preview, input.rows, attendanceBySource);
       await this.writeRowAudits(connection, importId, input.rows, input.actorUserId);
       await this.audit.record(connection, { actorUserId: input.actorUserId, action: "LEGACY_IMPORT_APPLIED",
         entityType: "LEGACY_IMPORT", entityId: importId,
@@ -350,9 +357,10 @@ export class LegacyImportRepository {
         (class_id,class_name_snapshot,class_type_snapshot,subject_snapshot,session_date,
          scheduled_start_time,scheduled_end_time,actual_start_time,actual_end_time,actual_duration_minutes,
          lesson_type,status,content,homework,note,completed_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,'REGULAR','COMPLETED',?,?,NULL,NOW())`,
+         VALUES (?,?,?,?,?,?,?,?,?,?,'REGULAR','COMPLETED',?,?,?,NOW())`,
       [classId, classRows[0].name, classRows[0].class_type, classRows[0].subject ?? null,
-        date, start, end, start, end, duration, lesson.content, lesson.homework],
+        date, start, end, start, end, duration, lesson.content, lesson.homework,
+        row.sourceSheet === "Học phí" ? "Khôi phục từ lịch sử học phí" : null],
     );
     counts.lessons += 1;
     await this.audit.record(connection, { actorUserId, action: "LESSON_COMPLETED", entityType: "LESSON",
@@ -403,114 +411,144 @@ export class LegacyImportRepository {
     return created.insertId;
   }
 
-  private async rebuildStudentTuition(
-    connection: PoolConnection, studentId: number, preview: LegacyImportPreview, rows: ResolvedLegacyImportRow[],
-  ): Promise<number> {
-    const [cycles] = await connection.query<RowDataPacket[]>(
-      `SELECT tc.id,tc.status,tc.cycle_number,tc.enrollment_id
-       FROM tuition_cycles tc JOIN class_enrollments e ON e.id=tc.enrollment_id
-       WHERE e.student_id=? ORDER BY tc.id FOR UPDATE`, [studentId],
-    );
-    const mutableIds = cycles.filter((cycle) => cycle.status !== "PAID").map((cycle) => Number(cycle.id));
-    if (mutableIds.length) {
-      const placeholders = mutableIds.map(() => "?").join(",");
-      await connection.execute(
-        `UPDATE tuition_receipts tr JOIN tuition_receipt_allocations tra ON tra.receipt_id=tr.id
-         SET tr.status=IF(tr.status='TRANSFERRED','TRANSFERRED','AVAILABLE')
-         WHERE tra.tuition_cycle_id IN (${placeholders})`, mutableIds,
-      );
-      await connection.execute(`DELETE FROM tuition_receipt_allocations WHERE tuition_cycle_id IN (${placeholders})`, mutableIds);
-      await connection.execute(`DELETE FROM tuition_cycle_sessions WHERE tuition_cycle_id IN (${placeholders})`, mutableIds);
-      await connection.execute(`DELETE FROM tuition_cycles WHERE id IN (${placeholders})`, mutableIds);
-    }
-    const [attendances] = await connection.query<RowDataPacket[]>(
-      `SELECT a.id attendance_id,a.enrollment_id,l.session_date,
-        TIME_FORMAT(COALESCE(l.actual_start_time,l.scheduled_start_time),'%H:%i') effective_start,
-        TIME_FORMAT(l.scheduled_start_time,'%H:%i') scheduled_start,l.id lesson_id,
-        paid.id paid_cycle_id
-       FROM lesson_attendances a
-       JOIN class_enrollments e ON e.id=a.enrollment_id AND e.student_id=?
-       JOIN lesson_sessions l ON l.id=a.lesson_session_id AND l.status='COMPLETED'
-       LEFT JOIN tuition_cycle_sessions paid_item ON paid_item.attendance_id=a.id
-       LEFT JOIN tuition_cycles paid ON paid.id=paid_item.tuition_cycle_id AND paid.status='PAID'
-       WHERE a.counts_for_tuition=1 AND a.excluded_from_tuition=0
-       ORDER BY l.session_date,effective_start,l.scheduled_start_time,l.id,a.id FOR UPDATE`,
-      [studentId],
-    );
-    const paid = attendances.filter((row) => row.paid_cycle_id != null);
-    const mutable = attendances.filter((row) => row.paid_cycle_id == null);
-    if (paid.length && mutable.length) {
-      const boundary = paid.at(-1)!;
-      const first = mutable[0];
-      const boundaryKey = `${dateOnly(boundary.session_date)}|${boundary.effective_start}|${boundary.scheduled_start}|${boundary.lesson_id}|${boundary.attendance_id}`;
-      const firstKey = `${dateOnly(first.session_date)}|${first.effective_start}|${first.scheduled_start}|${first.lesson_id}|${first.attendance_id}`;
-      if (firstKey <= boundaryKey)
-        throw new AppError(409, "LEGACY_PAID_CYCLE_CONFLICT", "Dữ liệu import nằm trước ranh giới chu kỳ đã thu.");
-    }
-    const [active] = await connection.query<RowDataPacket[]>(
-      "SELECT id FROM class_enrollments WHERE student_id=? AND status='ACTIVE' LIMIT 1", [studentId],
-    );
-    const confirmedPreviousPaymentDates = rows
-      .filter((row) => row.rowType === "PAYMENT" && row.status !== "SKIPPED")
-      .flatMap((row) => row.decisions
-        .filter((decision): decision is LegacyImportPaymentDecision =>
-          decision.action === "CONFIRM_PAYMENT" && decision.resolvedValue === "PREVIOUS_CYCLE")
-        .map(() => String(row.normalizedValues.date ?? "")))
-      .filter(Boolean)
-      .sort();
-    const confirmedPaidCycleIndexes = new Set<number>();
-    for (const paymentDate of confirmedPreviousPaymentDates) {
-      for (let index = Math.floor(mutable.length / 8) - 1; index >= 0; index -= 1) {
-        const group = mutable.slice(index * 8, index * 8 + 8);
-        if (group.length === 8 && dateOnly(group.at(-1)!.session_date) <= paymentDate && !confirmedPaidCycleIndexes.has(index)) {
-          confirmedPaidCycleIndexes.add(index);
-          break;
-        }
+  private async createMinimalLessons(
+    connection: PoolConnection, importId: number, input: ApplyInput, periods: PeriodRuntime[],
+    attendanceBySource: Map<string, number>, counts: ApplyCounts,
+  ): Promise<void> {
+    const confirmedMappings = new Map(input.rows.flatMap((row) => row.decisions)
+      .filter((decision) => decision.action === "CONFIRM_TIME_MAPPING")
+      .map((decision) => [decision.resolvedValue.mappingId, decision.resolvedValue]));
+    const correctedDates = new Map(input.rows.filter((row) => row.rowType === "TUITION" && row.status !== "SKIPPED")
+      .map((row) => [row.sourceRow, String(row.normalizedValues.date ?? "")]));
+    for (const groupRow of input.rows.filter((row) => row.rowType === "TUITION_GROUP" && row.status !== "SKIPPED")) {
+      const decision = groupRow.decisions.find((item) => item.action === "CREATE_MINIMAL_LEGACY_LESSONS");
+      if (!decision) throw new AppError(409, "LEGACY_ROWS_UNRESOLVED", "Nhóm lesson tối giản chưa được xác nhận.");
+      const group = input.preview.minimalLessonGroups.find((item) => item.id === decision.resolvedValue.groupId);
+      if (!group || serialized(group.tuitionSourceRows) !== serialized(decision.resolvedValue.tuitionSourceRows))
+        throw new AppError(400, "LEGACY_DECISIONS_INVALID", "Danh sách dòng học phí của nhóm đã thay đổi.");
+      for (const sourceRow of group.tuitionSourceRows) {
+        const tuition = input.preview.tuitionRows.find((row) => row.sourceRow === sourceRow && row.kind === "BILLABLE");
+        if (!tuition?.date) throw new AppError(400, "LEGACY_DECISIONS_INVALID", "Dòng học phí tối giản không còn tồn tại.");
+        const date = correctedDates.get(sourceRow) || tuition.suggestedDate || tuition.date;
+        const mapping = input.preview.timeMappings.find((item) => item.tuitionSourceRows.includes(sourceRow));
+        const confirmed = mapping ? confirmedMappings.get(mapping.id) : null;
+        const parsedTime = lessonTimes(tuition.time);
+        const start = confirmed?.startTime ?? parsedTime.start;
+        const end = confirmed?.endTime ?? parsedTime.end;
+        if (!start || !end) throw new AppError(409, "LEGACY_ROWS_UNRESOLVED", `Nhóm lesson tối giản còn thiếu giờ ở dòng ${sourceRow}.`);
+        const period = periods.find((item) => item.fromDate <= date && (item.toDate == null || item.toDate >= date));
+        if (!period?.classId) throw new AppError(409, "LEGACY_ROWS_UNRESOLVED", `Chưa map lớp cho dòng học phí ${sourceRow}.`);
+        const enrollmentId = await this.ensureEnrollment(connection, period, input.studentId, input.actorUserId, counts);
+        const synthetic = {
+          id: `tuition-${sourceRow}`, rowType: "LESSON" as const, sourceSheet: "Học phí", sourceRow,
+          rawValues: { date: tuition.date, time: tuition.time }, normalizedValues: { date, startTime: start, endTime: end,
+            attendance: "PRESENT", content: null, homework: null, studentNote: null }, issueCodes: [], status: "RESOLVED" as const,
+          supportedActions: [], decisions: [],
+        } satisfies ResolvedLegacyImportRow;
+        const lessonPreview: LegacyImportPreview["lessons"][number] = {
+          id: synthetic.id, originalDate: tuition.date, normalizedDate: date, scheduledStartTime: start, scheduledEndTime: end,
+          dateResolution: "EXACT", suggestedDate: null, teacher: null, studentName: input.preview.student.fullName,
+          nickname: null, content: null, homework: null, classwork: null, note: null, attendanceStatus: "PRESENT",
+          billingType: "BILLABLE", sourceSheet: "Quá trình học tập", sourceRow,
+          reconciliationStatus: "MATCHED", matchedTuitionSourceRow: sourceRow, rawTime: tuition.time,
+          timeMappingId: mapping?.id ?? null,
+        };
+        const lessonId = await this.ensureLesson(connection, period.classId, synthetic, lessonPreview, input.actorUserId, counts);
+        const attendanceId = await this.ensureAttendance(connection, lessonId, enrollmentId, input.studentId,
+          input.preview.student.fullName, synthetic, input.actorUserId, counts);
+        await connection.execute(
+          `INSERT INTO legacy_import_lesson_links
+            (legacy_import_id,source_sheet,source_row,lesson_id,attendance_id) VALUES (?,?,?,?,?)`,
+          [importId, "Học phí", sourceRow, lessonId, attendanceId],
+        );
+        attendanceBySource.set(`TUITION:${sourceRow}`, attendanceId);
       }
     }
+  }
+
+  private async applyTuitionCyclePlans(
+    connection: PoolConnection, studentId: number, preview: LegacyImportPreview, rows: ResolvedLegacyImportRow[],
+    attendanceBySource: Map<string, number>,
+  ): Promise<number> {
+    const paymentByBlock = new Map(rows.filter((row) => row.rowType === "PAYMENT" && row.status !== "SKIPPED")
+      .map((row) => [String(row.normalizedValues.blockId), row.decisions.find((item): item is LegacyImportPaymentDecision =>
+        item.action === "CONFIRM_PAYMENT")]));
+    const [active] = await connection.query<RowDataPacket[]>(
+      "SELECT id FROM class_enrollments WHERE student_id=? AND status='ACTIVE' LIMIT 1", [studentId]);
+    const claimed = new Set<number>();
     let createdCount = 0;
-    for (let offset = 0; offset < mutable.length; offset += 8) {
-      const group = mutable.slice(offset, offset + 8);
-      const anchorEnrollment = Number(group[0].enrollment_id);
+    for (const plan of preview.tuitionCyclePlans) {
+      const payment = paymentByBlock.get(plan.blockId);
+      if (payment?.resolvedValue === "EXCLUDE_FINANCE") {
+        const excludedIds = [...plan.lessonSourceRows.map((row) => attendanceBySource.get(`LESSON:${row}`)),
+          ...plan.tuitionSourceRows.map((row) => attendanceBySource.get(`TUITION:${row}`))]
+          .filter((id): id is number => Boolean(id));
+        if (excludedIds.length) await connection.execute(
+          `UPDATE lesson_attendances SET excluded_from_tuition=1 WHERE id IN (${excludedIds.map(() => "?").join(",")})`,
+          excludedIds,
+        );
+        continue;
+      }
+      let paymentState = plan.paymentState;
+      if (paymentState === "NEEDS_REVIEW") {
+        if (!payment || payment.resolvedValue === "UNDETERMINED")
+          throw new AppError(409, "LEGACY_ROWS_UNRESOLVED", `Block ${plan.blockId} chưa có quyết định học phí.`);
+        if (payment.resolvedValue === "PAID_UNDATED") paymentState = "PAID_CLEAR";
+        else if (payment.resolvedValue === "UNPAID") paymentState = "UNPAID";
+        else continue;
+      }
+      const sourceKeys = [...plan.lessonSourceRows
+        .filter((sourceRow) => !rows.some((row) => row.rowType === "LESSON" && row.sourceRow === sourceRow && row.status === "SKIPPED"))
+        .map((row) => `LESSON:${row}`), ...plan.tuitionSourceRows.map((row) => `TUITION:${row}`)];
+      if (!sourceKeys.length) continue;
+      const ids = sourceKeys.map((key) => attendanceBySource.get(key));
+      if (ids.some((id) => !id))
+        throw new AppError(409, "LEGACY_ROWS_UNRESOLVED", `Source row trong plan ${plan.blockId} không còn tồn tại sau resolution.`);
+      const attendanceIds = ids as number[];
+      if (attendanceIds.some((id) => claimed.has(id)))
+        throw new AppError(400, "LEGACY_DECISIONS_INVALID", "Một attendance xuất hiện trong nhiều cycle plan.");
+      attendanceIds.forEach((id) => claimed.add(id));
+      const placeholders = attendanceIds.map(() => "?").join(",");
+      const [items] = await connection.query<RowDataPacket[]>(
+        `SELECT a.id attendance_id,a.enrollment_id,a.attendance_status,a.counts_for_tuition,a.excluded_from_tuition,
+          l.session_date FROM lesson_attendances a JOIN lesson_sessions l ON l.id=a.lesson_session_id
+         WHERE a.id IN (${placeholders}) ORDER BY FIELD(a.id,${placeholders}) FOR UPDATE`,
+        [...attendanceIds, ...attendanceIds]);
+      if (items.length !== attendanceIds.length || items.some((item) => item.attendance_status !== "PRESENT" ||
+          !Number(item.counts_for_tuition) || Number(item.excluded_from_tuition)))
+        throw new AppError(400, "LEGACY_DECISIONS_INVALID", "FREE/ABSENT/OFF không được nằm trong cycle plan.");
+      const full = items.length === 8;
+      if (paymentState === "PAID_CLEAR" && !full)
+        throw new AppError(400, "LEGACY_DECISIONS_INVALID", "Cycle PAID legacy phải có đúng 8 attendance tính phí.");
+      if (!full && plan.paymentState === "NEEDS_REVIEW") continue;
+      const anchorEnrollment = Number(items[0].enrollment_id);
+      const firstDate = dateOnly(items[0].session_date);
       const [numberRows] = await connection.query<RowDataPacket[]>(
-        "SELECT COALESCE(MAX(cycle_number),0)+1 next_number FROM tuition_cycles WHERE enrollment_id=? FOR UPDATE",
-        [anchorEnrollment],
-      );
+        "SELECT COALESCE(MAX(cycle_number),0)+1 next_number FROM tuition_cycles WHERE enrollment_id=? FOR UPDATE", [anchorEnrollment]);
       const [policyRows] = await connection.query<RowDataPacket[]>(
         `SELECT ep.tuition_mode,COALESCE(ep.custom_package_price,cp.package_price,c.default_package_price) package_price
-         FROM class_enrollments e
-         JOIN classes c ON c.id=e.class_id
+         FROM class_enrollments e JOIN classes c ON c.id=e.class_id
          JOIN enrollment_tuition_policies ep ON ep.enrollment_id=e.id AND ep.effective_from<=?
            AND (ep.effective_to IS NULL OR ep.effective_to>=?)
          LEFT JOIN class_tuition_policies cp ON cp.class_id=e.class_id AND cp.effective_from<=?
            AND (cp.effective_to IS NULL OR cp.effective_to>=?)
          WHERE e.id=? ORDER BY ep.effective_from DESC,cp.effective_from DESC LIMIT 1`,
-        [dateOnly(group[0].session_date), dateOnly(group[0].session_date), dateOnly(group[0].session_date),
-          dateOnly(group[0].session_date), anchorEnrollment],
-      );
+        [firstDate, firstDate, firstDate, firstDate, anchorEnrollment]);
       const price = Number(policyRows[0]?.package_price ?? 0);
       if (!price || policyRows[0]?.tuition_mode === "FREE")
         throw new AppError(409, "TUITION_POLICY_NOT_FOUND", "Không tìm thấy chính sách học phí cho dữ liệu lịch sử.");
-      const full = group.length === 8;
-      const cycleIndex = Math.floor(offset / 8);
-      const sourceCycle = preview.tuitionCycles[cycleIndex];
-      const paidClear = full && (sourceCycle?.paymentState === "PAID_CLEAR" || confirmedPaidCycleIndexes.has(cycleIndex));
-      const status = paidClear ? "PAID" : full ? "PAYMENT_DUE" : active[0] ? "ACCUMULATING" : "INCOMPLETE";
+      const status = paymentState === "PAID_CLEAR" ? "PAID" : full ? "PAYMENT_DUE" : active[0] ? "ACCUMULATING" : "INCOMPLETE";
       const [created] = await connection.execute<ResultSetHeader>(
         `INSERT INTO tuition_cycles
           (enrollment_id,cycle_number,target_session_count,package_price_snapshot,status,started_at,reached_target_at,
            paid_at,paid_amount,payment_method,payment_note)
-         VALUES (?,?,8,?,?,?,?,?,?,?,?)`,
-        [anchorEnrollment, Number(numberRows[0].next_number), price, status, dateOnly(group[0].session_date),
-          full ? dateOnly(group.at(-1)!.session_date) : null,
-          null, null, null,
-          paidClear ? "Đã thanh toán theo workbook lịch sử; không rõ ngày thanh toán" : null],
-      );
-      for (const [index, attendance] of group.entries())
-        await connection.execute(
-          "INSERT INTO tuition_cycle_sessions(tuition_cycle_id,attendance_id,sequence_number) VALUES (?,?,?)",
-          [created.insertId, Number(attendance.attendance_id), index + 1],
-        );
+         VALUES (?,?,8,?,?,?,?,NULL,NULL,NULL,?)`,
+        [anchorEnrollment, Number(numberRows[0].next_number), price, status, firstDate,
+          full ? dateOnly(items.at(-1)!.session_date) : null,
+          paymentState === "PAID_CLEAR" ? "Đã thanh toán theo workbook lịch sử; không rõ ngày thanh toán" : null]);
+      for (const [index, item] of items.entries()) await connection.execute(
+        "INSERT INTO tuition_cycle_sessions(tuition_cycle_id,attendance_id,sequence_number) VALUES (?,?,?)",
+        [created.insertId, Number(item.attendance_id), index + 1]);
       createdCount += 1;
     }
     return createdCount;

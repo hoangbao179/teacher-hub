@@ -31,6 +31,9 @@ function actionAllowedForIssue(issue: LegacyImportIssueCode, action: LegacyImpor
     PAYMENT_REVIEW_REQUIRED: ["CONFIRM_PAYMENT"], NEAR_LESSON_MATCH: ["MATCH_EXISTING_LESSON", "CREATE_LESSON"],
     LESSON_CONTENT_CONFLICT: ["KEEP_EXISTING_LESSON", "USE_IMPORTED_LESSON", "EDIT_LESSON_CONTENT"],
     TIME_MAPPING_REQUIRED: ["CONFIRM_TIME_MAPPING"],
+    TUITION_DATE_CORRECTION: ["EDIT_ROW"],
+    TUITION_ONLY_GROUP: ["CREATE_MINIMAL_LEGACY_LESSONS"],
+    PAYMENT_BLOCK_REVIEW_REQUIRED: ["CONFIRM_PAYMENT", "EXCLUDE_FINANCE_BLOCK"],
   };
   return allowed[issue].includes(action);
 }
@@ -67,6 +70,13 @@ function validateDecisionPayload(decision: LegacyImportRowDecision, studentId: n
         !timePattern.test(decision.resolvedValue.endTime) || decision.resolvedValue.endTime <= decision.resolvedValue.startTime)
       invalid("Khung giờ xác nhận không hợp lệ.");
   }
+  if (decision.action === "CREATE_MINIMAL_LEGACY_LESSONS") {
+    if (!decision.resolvedValue.groupId || !decision.resolvedValue.tuitionSourceRows.length ||
+        decision.resolvedValue.tuitionSourceRows.some((row) => !Number.isInteger(row) || row < 1))
+      invalid("Nhóm lesson tối giản không hợp lệ.");
+  }
+  if (decision.action === "EXCLUDE_FINANCE_BLOCK" && !decision.resolvedValue.blockId)
+    invalid("Mã block học phí không hợp lệ.");
 }
 
 export interface ResolvedLegacyImportRow extends LegacyImportRowPreview {
@@ -92,6 +102,15 @@ export function resolveLegacyImportDecisions(
       invalid("Thao tác không được hỗ trợ cho vấn đề của dòng này.");
     if (decision.action === "CONFIRM_TIME_MAPPING" && decision.resolvedValue.mappingId !== row.normalizedValues.mappingId)
       invalid("Mã mapping khung giờ không khớp preview.");
+    if (decision.action === "CREATE_MINIMAL_LEGACY_LESSONS" &&
+        decision.resolvedValue.groupId !== row.normalizedValues.groupId)
+      invalid("Mã nhóm lesson tối giản không khớp preview.");
+    if (decision.action === "EXCLUDE_FINANCE_BLOCK" &&
+        decision.resolvedValue.blockId !== row.normalizedValues.blockId)
+      invalid("Mã block học phí không khớp preview.");
+    if (decision.action === "CONFIRM_PAYMENT" && typeof row.normalizedValues.resolutionOptions === "string" &&
+        !row.normalizedValues.resolutionOptions.split(",").includes(decision.resolvedValue))
+      invalid("Trạng thái học phí không thuộc lựa chọn được backend hỗ trợ.");
     validateDecisionPayload(decision, preview.student.id);
     byIssue.set(key, decision);
   }

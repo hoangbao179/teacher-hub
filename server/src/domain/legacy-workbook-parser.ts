@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { AppError } from "../errors/app-error";
+import type { LegacyTuitionRowKind } from "@teacher/shared";
 import { LegacyDateNormalizer, type LegacyDateInput } from "./legacy-date-normalizer";
 
 export interface ParsedLegacyLearningRow {
@@ -23,6 +24,7 @@ export interface ParsedLegacyTuitionRow {
   time: string | null;
   paidMarker: boolean;
   offMarker: boolean;
+  kind: LegacyTuitionRowKind;
   blockId: string;
 }
 
@@ -71,6 +73,22 @@ function isAbsent(value: string): boolean {
   return Boolean(normalized) && !["0", "NO", "PRESENT", "CO MAT"].includes(normalized);
 }
 
+function tuitionKind(value: string): LegacyTuitionRowKind {
+  const marker = key(value);
+  if (marker === "FREE") return "FREE";
+  if (marker === "V") return "ABSENT";
+  if (marker === "OFF") return "OFF";
+  return "BILLABLE";
+}
+
+function findColumn(row: ExcelJS.Row, labels: string[]): number | null {
+  for (let column = 1; column <= row.cellCount; column += 1) {
+    const value = key(plainText(row.getCell(column)));
+    if (labels.some((label) => value === label || value.startsWith(label))) return column;
+  }
+  return null;
+}
+
 export class LegacyWorkbookParser {
   constructor(private readonly dates = new LegacyDateNormalizer()) {}
 
@@ -112,12 +130,14 @@ export class LegacyWorkbookParser {
         const duration = plainText(row.getCell(2));
         const hoursCell = row.getCell(4);
         const fallbackHours = typeof hoursCell.value === "string" ? plainText(hoursCell) : "";
+        const kind = tuitionKind(plainText(row.getCell(5)));
         blockRows.push({ sourceRow: rowNumber, date, time: nullable(duration || fallbackHours), paidMarker,
-          offMarker: /^\s*OFF\s*$/i.test(plainText(row.getCell(5))), blockId: id });
+          offMarker: kind === "OFF", kind, blockId: id });
       }
       const tuitionSourceRows = blockRows.map((row) => row.sourceRow);
       const paidCandidateSourceRows = paidMarkerSourceRow == null ? []
-        : tuitionSourceRows.filter((row) => row <= paidMarkerSourceRow!);
+        : blockRows.filter((row) => row.sourceRow <= paidMarkerSourceRow! && row.kind === "BILLABLE")
+          .map((row) => row.sourceRow);
       const postPaidSourceRows = paidMarkerSourceRow == null ? []
         : tuitionSourceRows.filter((row) => row > paidMarkerSourceRow!);
       tuitionRows.push(...blockRows);
@@ -129,18 +149,30 @@ export class LegacyWorkbookParser {
     const rawLearning: Array<Omit<ParsedLegacyLearningRow, "originalDate" | "normalizedDate" | "dateResolution"> & { dateInput: LegacyDateInput }> = [];
     for (let headerRow = 1; headerRow <= learning.rowCount; headerRow += 1) {
       const row = learning.getRow(headerRow);
-      if (key(plainText(row.getCell(1))) !== "DATE" || !key(plainText(row.getCell(3))).startsWith("CONTENT")) continue;
-      const dateCell = row.getCell(2);
+      const dateLabelColumn = findColumn(row, ["DATE"]);
+      const contentLabelColumn = findColumn(row, ["CONTENT - NOI DUNG HOC", "CONTENT"]);
+      if (!dateLabelColumn || !contentLabelColumn) continue;
+      const dateCell = row.getCell(dateLabelColumn + 1);
       const teacher = nullable(plainText(learning.getRow(headerRow + 1).getCell(2)));
-      const content = nullable(plainText(row.getCell(6)));
+      let content: string | null = null;
+      for (let column = contentLabelColumn + 1; column <= row.cellCount; column += 1) {
+        content = nullable(plainText(row.getCell(column)));
+        if (content) break;
+      }
       const participantHeader = learning.getRow(headerRow + 2);
-      if (key(plainText(participantHeader.getCell(1))) !== "STT") continue;
+      const sttColumn = findColumn(participantHeader, ["STT"]);
+      const nameColumn = findColumn(participantHeader, ["TEN HOC VIEN", "FULL NAME"]);
+      const absenceColumn = findColumn(participantHeader, ["ABSENCE"]);
+      const homeworkColumn = findColumn(participantHeader, ["BTVN"]);
+      const classworkColumn = findColumn(participantHeader, ["BAI TAI LOP"]);
+      const noteColumn = findColumn(participantHeader, ["GHI CHU"]);
+      if (!sttColumn || !nameColumn || !absenceColumn || !homeworkColumn || !classworkColumn || !noteColumn) continue;
       const learningCountBeforeBlock = rawLearning.length;
       for (let dataRow = headerRow + 3; dataRow <= learning.rowCount; dataRow += 1) {
         const candidate = learning.getRow(dataRow);
-        if (dataRow > headerRow + 3 && key(plainText(candidate.getCell(1))) === "DATE") break;
-        const sequence = plainText(candidate.getCell(1));
-        const student = plainText(candidate.getCell(2));
+        if (dataRow > headerRow + 3 && findColumn(candidate, ["DATE"])) break;
+        const sequence = plainText(candidate.getCell(sttColumn));
+        const student = plainText(candidate.getCell(nameColumn));
         if (!sequence && !student) break;
         if (!student || !/^\d+$/.test(sequence)) continue;
         rawLearning.push({
@@ -149,10 +181,10 @@ export class LegacyWorkbookParser {
           teacher,
           ...splitStudent(student),
           content,
-          homework: nullable(plainText(candidate.getCell(5))),
-          classwork: nullable(plainText(candidate.getCell(6))),
-          note: nullable(plainText(candidate.getCell(7))),
-          absent: isAbsent(plainText(candidate.getCell(4))),
+          homework: nullable(plainText(candidate.getCell(homeworkColumn))),
+          classwork: nullable(plainText(candidate.getCell(classworkColumn))),
+          note: nullable(plainText(candidate.getCell(noteColumn))),
+          absent: isAbsent(plainText(candidate.getCell(absenceColumn))),
         });
       }
       if (rawLearning.length === learningCountBeforeBlock) {
@@ -161,12 +193,12 @@ export class LegacyWorkbookParser {
           sourceRow: headerRow,
           dateInput: { raw: dateCell.value, display: plainText(dateCell) },
           teacher,
-          ...splitStudent(plainText(candidate.getCell(2))),
+          ...splitStudent(plainText(candidate.getCell(nameColumn))),
           content,
-          homework: nullable(plainText(candidate.getCell(5))),
-          classwork: nullable(plainText(candidate.getCell(6))),
-          note: nullable(plainText(candidate.getCell(7))),
-          absent: isAbsent(plainText(candidate.getCell(4))),
+          homework: nullable(plainText(candidate.getCell(homeworkColumn))),
+          classwork: nullable(plainText(candidate.getCell(classworkColumn))),
+          note: nullable(plainText(candidate.getCell(noteColumn))),
+          absent: isAbsent(plainText(candidate.getCell(absenceColumn))),
         });
       }
     }

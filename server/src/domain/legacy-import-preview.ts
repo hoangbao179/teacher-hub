@@ -29,9 +29,9 @@ function lessonIssues(
 ): LegacyImportIssueCode[] {
   const issues: LegacyImportIssueCode[] = [];
   if (!lesson.normalizedDate) issues.push("INVALID_DATE");
-  if (!lesson.scheduledStartTime || !lesson.scheduledEndTime) issues.push("INVALID_TIME");
+  if ((!lesson.scheduledStartTime || !lesson.scheduledEndTime) && !lesson.timeMappingId) issues.push("INVALID_TIME");
   if (lesson.reconciliationStatus === "DUPLICATE_SUSPECTED") issues.push("DUPLICATE_ROW");
-  if (lesson.reconciliationStatus === "DATE_CORRECTION_SUGGESTED") issues.push("DATE_CORRECTION");
+  if (lesson.reconciliationStatus === "DATE_CORRECTION_SUGGESTED" && lesson.suggestedDate) issues.push("DATE_CORRECTION");
   if (lesson.reconciliationStatus === "LEARNING_ONLY_NEEDS_REVIEW") issues.push("ATTENDANCE_AMBIGUOUS");
   if (lesson.studentName && comparableName(lesson.studentName) !== comparableName(student.fullName))
     issues.push("STUDENT_MISMATCH");
@@ -52,6 +52,12 @@ export class LegacyImportPreview {
       if (!lesson.normalizedDate) continue;
       const period = schoolPeriod(lesson.normalizedDate);
       grouped.set(period.start, { ...period, count: (grouped.get(period.start)?.count ?? 0) + 1 });
+    }
+    for (const group of result.minimalLessonGroups) {
+      for (const date of [group.fromDate, group.toDate]) {
+        const period = schoolPeriod(date);
+        if (!grouped.has(period.start)) grouped.set(period.start, { ...period, count: 0 });
+      }
     }
     const academicPeriods: LegacyAcademicPeriodPreview[] = [...grouped.values()].sort((a, b) => a.start.localeCompare(b.start)).map((period) => {
       const current = period.start <= today && period.end >= today && student.classId != null && student.className != null;
@@ -95,19 +101,30 @@ export class LegacyImportPreview {
       };
     });
     const tuitionPreviewRows: LegacyImportRowPreview[] = result.tuitionRows
-      .filter((row) => row.reconciliationStatus !== "MATCHED")
+      .filter((row) => Boolean(row.suggestedDate))
       .map((row) => ({
         id: row.id, rowType: "TUITION", sourceSheet: row.sourceSheet, sourceRow: row.sourceRow,
-        rawValues: { date: row.date, time: row.time, paidMarker: row.paidMarker, offMarker: row.offMarker },
-        normalizedValues: { date: row.date, time: row.time, paidMarker: row.paidMarker, offMarker: row.offMarker },
-        issueCodes: ["TUITION_ROW_UNMATCHED"], status: "NEEDS_REVIEW",
-        supportedActions: ["SKIP"],
+        rawValues: { date: row.date, time: row.time, kind: row.kind },
+        normalizedValues: { date: row.suggestedDate, blockId: row.blockId },
+        issueCodes: ["TUITION_DATE_CORRECTION"], status: "NEEDS_REVIEW",
+        supportedActions: ["EDIT_ROW"],
+        suggestedResolution: { sourceSheet: row.sourceSheet, sourceRow: row.sourceRow,
+          issueCode: "TUITION_DATE_CORRECTION", action: "EDIT_ROW", resolvedValue: { date: row.suggestedDate! } },
       }));
+    const tuitionGroupRows: LegacyImportRowPreview[] = result.minimalLessonGroups.map((group, index) => ({
+      id: group.id, rowType: "TUITION_GROUP", sourceSheet: "Nhóm học phí", sourceRow: index + 1,
+      rawValues: { affectedLessonCount: group.lessonCount, fromDate: group.fromDate, toDate: group.toDate },
+      normalizedValues: { groupId: group.id, tuitionSourceRows: group.tuitionSourceRows.join(",") },
+      issueCodes: ["TUITION_ONLY_GROUP"], status: "NEEDS_REVIEW",
+      supportedActions: ["CREATE_MINIMAL_LEGACY_LESSONS", "SKIP"],
+    }));
     const paymentRows: LegacyImportRowPreview[] = result.paymentEvents.filter((event) => event.requiresReview).map((event) => ({
       id: event.id, rowType: "PAYMENT", sourceSheet: "Học phí", sourceRow: event.sourceRow,
-      rawValues: { date: event.date }, normalizedValues: { date: event.date, paymentResolution: event.recommendedResolution },
-      issueCodes: ["PAYMENT_REVIEW_REQUIRED"], status: "NEEDS_REVIEW",
-      supportedActions: ["CONFIRM_PAYMENT", "SKIP"],
+      rawValues: { date: event.date, billableCount: event.billableCount, reviewKind: event.kind },
+      normalizedValues: { date: event.date, blockId: event.blockId, paymentResolution: event.recommendedResolution,
+        resolutionOptions: event.resolutionOptions.join(",") },
+      issueCodes: ["PAYMENT_BLOCK_REVIEW_REQUIRED"], status: "NEEDS_REVIEW",
+      supportedActions: ["CONFIRM_PAYMENT"],
     }));
     const periodRows: LegacyImportRowPreview[] = academicPeriods.map((period, index) => ({
       id: period.id, rowType: "ACADEMIC_PERIOD", sourceSheet: "Giai đoạn học", sourceRow: index + 1,
@@ -119,14 +136,14 @@ export class LegacyImportPreview {
     }));
     const timeMappingRows: LegacyImportRowPreview[] = result.timeMappings.map((mapping, index) => ({
       id: mapping.id, rowType: "TIME_MAPPING", sourceSheet: "Khung giờ", sourceRow: index + 1,
-      rawValues: { rawTime: mapping.rawValue, periodId: mapping.periodId,
-        affectedLessonCount: mapping.lessonSourceRows.length, reason: mapping.reason },
+      rawValues: { rawTime: mapping.rawValues.join(" · "), periodId: mapping.periodId,
+        affectedLessonCount: mapping.lessonSourceRows.length + mapping.tuitionSourceRows.length, reason: mapping.reason },
       normalizedValues: { mappingId: mapping.id, startTime: mapping.proposedStartTime,
         endTime: mapping.proposedEndTime },
       issueCodes: ["TIME_MAPPING_REQUIRED"], status: "NEEDS_REVIEW",
       supportedActions: ["CONFIRM_TIME_MAPPING"],
     }));
-    const rows = [...lessonRows, ...tuitionPreviewRows, ...paymentRows, ...periodRows, ...timeMappingRows];
+    const rows = [...lessonRows, ...tuitionPreviewRows, ...tuitionGroupRows, ...paymentRows, ...periodRows, ...timeMappingRows];
     const unresolvedIssueCount = rows.filter((row) => row.status === "NEEDS_REVIEW" || row.status === "BLOCKED").length;
     const hasAdvancePayment = result.paymentEvents.some((event) => event.recommendedResolution === "CURRENT_CYCLE_ADVANCE")
       ? true : result.paymentEvents.some((event) => event.requiresReview) ? null : false;
@@ -139,6 +156,8 @@ export class LegacyImportPreview {
       tuitionBlocks: result.tuitionBlocks,
       paymentEvents: result.paymentEvents,
       tuitionCycles: result.tuitionCycles,
+      tuitionCyclePlans: result.tuitionCyclePlans,
+      minimalLessonGroups: result.minimalLessonGroups,
       timeMappings: result.timeMappings,
       academicPeriods,
       classCandidates,

@@ -62,6 +62,16 @@ async function validWorkbook(studentName = "Học sinh Preview (Mây)"): Promise
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+async function tuitionOnlyWorkbook(): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  const base = await validWorkbook();
+  await workbook.xlsx.load(base as never);
+  const tuition = workbook.getWorksheet("Học phí")!;
+  tuition.getCell("A3").value = "Học sinh Preview"; tuition.getCell("B3").value = "18:00-19:30";
+  tuition.getCell("C3").value = new Date("2025-06-08T00:00:00Z"); tuition.getCell("C3").numFmt = "d/m/yyyy";
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
 async function paidBlocksWorkbook(): Promise<Buffer> {
   const blocks = [
     { dates: Array.from({ length: 10 }, (_, index) => `2025-07-${String(index + 1).padStart(2, "0")}`), paidAfter: 8 },
@@ -228,6 +238,52 @@ integration("apply reparses the workbook, writes atomically, audits rows and rep
   }
 });
 
+integration("grouped tuition-only decision creates minimal lessons and preserves its cycle member", async () => {
+  const data = await fixture();
+  const server = createApp().listen(0);
+  try {
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}/api/students/${data.studentId}/legacy-imports`;
+    const token = jwt.sign({ id: data.actorId, username: "v16a", displayName: "V16A", role: "TEACHER" },
+      config.jwt.secret, { expiresIn: "5m" });
+    const bytes = await tuitionOnlyWorkbook();
+    const previewBody = new FormData();
+    previewBody.append("file", new Blob([blobPart(bytes)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "synthetic.xlsx");
+    const previewResponse = await fetch(`${base}/preview`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: previewBody });
+    assert.equal(previewResponse.status, 200);
+    const preview = ((await previewResponse.json()) as { data: {
+      file: { sha256: string }; rows: Array<{ sourceSheet: string; sourceRow: number; rowType: string; normalizedValues: Record<string, unknown> }>;
+      academicPeriods: Array<{ id: string }>; minimalLessonGroups: Array<{ id: string; tuitionSourceRows: number[] }>;
+    } }).data;
+    const periodRow = preview.rows.find((row) => row.rowType === "ACADEMIC_PERIOD")!;
+    const groupRow = preview.rows.find((row) => row.rowType === "TUITION_GROUP")!;
+    const group = preview.minimalLessonGroups[0];
+    const decisions = [
+      { sourceSheet: periodRow.sourceSheet, sourceRow: periodRow.sourceRow, issueCode: "ACADEMIC_PERIOD_MAPPING_REQUIRED",
+        action: "MAP_ACADEMIC_PERIOD", resolvedValue: { periodId: preview.academicPeriods[0].id, gradeLevel: 6,
+          classMapping: { type: "EXISTING_CLASS", classId: data.classId, className: "Lớp hiện tại" } } },
+      { sourceSheet: groupRow.sourceSheet, sourceRow: groupRow.sourceRow, issueCode: "TUITION_ONLY_GROUP",
+        action: "CREATE_MINIMAL_LEGACY_LESSONS", resolvedValue: { groupId: group.id, tuitionSourceRows: group.tuitionSourceRows } },
+    ];
+    const body = new FormData();
+    body.append("file", new Blob([blobPart(bytes)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "synthetic.xlsx");
+    body.append("previewSha256", preview.file.sha256); body.append("decisions", JSON.stringify(decisions));
+    const response = await fetch(`${base}/apply`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body });
+    assert.equal(response.status, 201);
+    const [minimal] = await pool.query<RowDataPacket[]>(
+      `SELECT l.note,a.attendance_status,a.counts_for_tuition,COUNT(tcs.id) cycle_count
+       FROM legacy_import_lesson_links link JOIN lesson_sessions l ON l.id=link.lesson_id
+       JOIN lesson_attendances a ON a.id=link.attendance_id
+       LEFT JOIN tuition_cycle_sessions tcs ON tcs.attendance_id=a.id
+       WHERE link.source_sheet='Học phí' GROUP BY l.id,a.id`);
+    assert.deepEqual([minimal[0].note, minimal[0].attendance_status, Number(minimal[0].counts_for_tuition), Number(minimal[0].cycle_count)],
+      ["Khôi phục từ lịch sử học phí", "PRESENT", 1, 1]);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
 integration("clear PAID blocks persist null payment metadata and exclude post-PAID FREE lessons", async () => {
   const data = await fixture();
   const server = createApp().listen(0);
@@ -246,6 +302,7 @@ integration("clear PAID blocks persist null payment metadata and exclude post-PA
       file: { sha256: string }; summary: { paidCycleCount: number; freeLessonCount: number; currentCycleProgress: number };
       rows: Array<{ sourceSheet: string; sourceRow: number; rowType: string; issueCodes: string[] }>;
       academicPeriods: Array<{ id: string }>;
+      tuitionCyclePlans: Array<{ lessonSourceRows: number[]; tuitionSourceRows: number[] }>;
     } }).data;
     assert.deepEqual(preview.summary, { ...preview.summary, paidCycleCount: 2, freeLessonCount: 2, currentCycleProgress: 3 });
     assert.equal(preview.rows.filter((row) => row.issueCodes.includes("PAYMENT_REVIEW_REQUIRED")).length, 0);
@@ -276,6 +333,13 @@ integration("clear PAID blocks persist null payment metadata and exclude post-PA
        GROUP BY tc.id ORDER BY tc.cycle_number`);
     assert.deepEqual(cycles.map((cycle) => [cycle.status, Number(cycle.item_count)]),
       [["PAID", 8], ["PAID", 8], ["INCOMPLETE", 3]]);
+    const [appliedMembers] = await pool.query<RowDataPacket[]>(
+      `SELECT tc.cycle_number,GROUP_CONCAT(l.source_row ORDER BY tcs.sequence_number) source_rows
+       FROM tuition_cycles tc JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
+       JOIN legacy_import_lesson_links l ON l.attendance_id=tcs.attendance_id
+       GROUP BY tc.id ORDER BY tc.cycle_number`);
+    assert.deepEqual(appliedMembers.map((item) => String(item.source_rows).split(",").map(Number)),
+      preview.tuitionCyclePlans.map((plan) => [...plan.lessonSourceRows, ...plan.tuitionSourceRows]));
     for (const cycle of cycles.slice(0, 2)) {
       assert.equal(cycle.paid_at, null);
       assert.equal(cycle.paid_amount, null);

@@ -12,7 +12,7 @@ import { LegacyImportPreview } from "./legacy-import-preview";
 import { resolveLegacyImportDecisions } from "./legacy-import-decisions";
 
 interface LearningFixture { date: string; absent?: boolean; name?: string }
-interface TuitionFixture { date: string; time?: string; off?: boolean }
+interface TuitionFixture { date: string; time?: string; off?: boolean; marker?: string }
 
 async function workbookBytes(
   learningRows: LearningFixture[],
@@ -52,6 +52,7 @@ async function workbookBytes(
     tuition.getCell(row, 3).numFmt = "d/m/yyyy";
     tuition.getCell(row, 4).value = 45_000 + index;
     if (fixture.off) tuition.getCell(row, 5).value = "  off ";
+    if (fixture.marker) tuition.getCell(row, 5).value = fixture.marker;
     if (paidAfterTuitionIndex === index + 1) tuition.getCell(row + 1, 6).value = "PAID";
   });
   return Buffer.from(await workbook.xlsx.writeBuffer());
@@ -104,6 +105,50 @@ async function blockedTuitionWorkbookBytes(): Promise<Buffer> {
   addBlock(first, 8, 2);
   addBlock(second, 8);
   addBlock(current, null);
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+async function longHistoryWorkbookBytes(): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  const learning = workbook.addWorksheet("Quá trình học tập");
+  const dateAt = (offset: number) => new Date(Date.UTC(2025, 0, 1 + offset)).toISOString().slice(0, 10);
+  const paidBlocks = Array.from({ length: 7 }, (_, block) =>
+    Array.from({ length: 8 }, (_, item) => dateAt(31 + block * 8 + item)));
+  const postPaid = [dateAt(87), dateAt(88)];
+  const current = [dateAt(89), dateAt(90), dateAt(91)];
+  const tuitionOnly = new Set(paidBlocks.slice(0, 6).map((block) => block[0]));
+  const learningDates = [
+    ...Array.from({ length: 14 }, (_, index) => dateAt(index)),
+    ...paidBlocks.flat().filter((date) => !tuitionOnly.has(date)), ...postPaid, ...current,
+    dateAt(19), dateAt(20),
+  ];
+  learningDates.forEach((date, index) => {
+    const row = index * 5 + 1;
+    learning.getCell(row, 1).value = "DATE"; learning.getCell(row, 2).value = date;
+    learning.getCell(row, 3).value = "CONTENT - NỘI DUNG HỌC"; learning.getCell(row, 6).value = `Nội dung ẩn danh ${index + 1}`;
+    learning.getCell(row + 1, 1).value = "TEACHER"; learning.getCell(row + 1, 2).value = "Giáo viên";
+    ["STT", "FULL NAME", "", "ABSENCE", "BTVN", "BÀI TẠI LỚP", "GHI CHÚ"].forEach((value, column) =>
+      learning.getCell(row + 2, column + 1).value = value);
+    learning.getCell(row + 3, 1).value = 1; learning.getCell(row + 3, 2).value = "Học sinh Ẩn danh";
+    if (index >= learningDates.length - 2) learning.getCell(row + 3, 4).value = "x";
+  });
+  const tuition = workbook.addWorksheet("Học phí");
+  let row = 1;
+  const addBlock = (dates: string[], paid: boolean) => {
+    ["FULL NAME", "DURATION", "DATE", "HOURS", "VIETINBANK", ""].forEach((value, column) =>
+      tuition.getCell(row, column + 1).value = value);
+    row += 1;
+    dates.forEach((date, index) => {
+      tuition.getCell(row, 1).value = "Học sinh Ẩn danh"; tuition.getCell(row, 2).value = "20h-22h";
+      tuition.getCell(row, 3).value = new Date(`${date}T00:00:00Z`); row += 1;
+      if (paid && index === 7) { tuition.getCell(row, 6).value = "PAID"; row += 1; }
+    });
+  };
+  paidBlocks.forEach((dates, index) => {
+    addBlock(index === 0 ? [...dates, ...postPaid] : dates, true);
+    tuition.getCell(row, 1).value = "TOTAL"; row += 1;
+  });
+  addBlock(current, false);
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
@@ -236,8 +281,7 @@ test("an ambiguous ten-row block before PAID stays grouped for payment review", 
     assert.equal(result.paymentEvents.length, 1);
     assert.equal(result.paymentEvents[0].recommendedResolution, "UNDETERMINED");
     assert.equal(result.paymentEvents[0].requiresReview, true);
-    assert.deepEqual(result.paymentEvents[0].resolutionOptions,
-      ["PREVIOUS_CYCLE", "CURRENT_CYCLE_ADVANCE", "SETTLE_INCOMPLETE", "UNDETERMINED"]);
+    assert.deepEqual(result.paymentEvents[0].resolutionOptions, ["EXCLUDE_FINANCE"]);
   });
 });
 
@@ -367,8 +411,137 @@ test("single-digit h-minutes are typo suggestions, not literal minutes", async (
     [{ date: "2025-09-03", time: "20h-22h" }, { date: "2025-09-06", time: "20h8-22h" }]);
   await withWorkbook(bytes, async (path) => {
     const reconciled = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
-    const mapping = reconciled.timeMappings.find((item) => item.rawValue === "20h8-22h");
+    const mapping = reconciled.timeMappings.find((item) => item.rawValues.includes("20h8-22h"));
     assert.deepEqual([mapping?.proposedStartTime, mapping?.proposedEndTime], ["20:00", "22:00"]);
     assert.equal(mapping?.reason, "TYPO_SUGGESTION");
+  });
+});
+
+test("shifted learning headers and FREE plus eight BILLABLE rows produce one exact PAID cycle", async () => {
+  const workbook = new ExcelJS.Workbook();
+  const learning = workbook.addWorksheet("Quá trình học tập");
+  const dates = Array.from({ length: 9 }, (_, index) => `2026-08-${String(index + 1).padStart(2, "0")}`);
+  dates.forEach((date, index) => {
+    const row = index * 5 + 1;
+    learning.getCell(row, 1).value = "DATE"; learning.getCell(row, 2).value = date;
+    learning.getCell(row, 4).value = "CONTENT - NỘI DUNG HỌC"; learning.getCell(row, 7).value = `Nội dung lệch ${index + 1}`;
+    learning.getCell(row + 1, 1).value = "TEACHER"; learning.getCell(row + 1, 2).value = "Giáo viên";
+    ["STT", "FULL NAME", "", "", "ABSENCE", "BTVN", "BÀI TẠI LỚP", "GHI CHÚ"].forEach((value, column) =>
+      learning.getCell(row + 2, column + 1).value = value);
+    learning.getCell(row + 3, 1).value = 1; learning.getCell(row + 3, 2).value = "Học sinh Mẫu";
+    learning.getCell(row + 3, 6).value = `BTVN ${index + 1}`; learning.getCell(row + 3, 8).value = `Ghi chú ${index + 1}`;
+  });
+  const tuition = workbook.addWorksheet("Học phí");
+  ["FULL NAME", "DURATION", "DATE", "HOURS", "VIETINBANK", ""].forEach((value, index) => tuition.getCell(1, index + 1).value = value);
+  dates.forEach((date, index) => {
+    const row = index + 2; tuition.getCell(row, 1).value = "Học sinh Mẫu"; tuition.getCell(row, 2).value = "20h-22h";
+    tuition.getCell(row, 3).value = new Date(`${date}T00:00:00Z`);
+    if (index === 0) tuition.getCell(row, 5).value = " free ";
+  });
+  tuition.getCell(11, 6).value = "PAID";
+  await withWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), async (path) => {
+    const parsed = await new LegacyWorkbookParser().parse(path);
+    assert.equal(parsed.learningRows[0].content, "Nội dung lệch 1");
+    assert.equal(parsed.learningRows[0].homework, "BTVN 1");
+    assert.equal(parsed.learningRows[0].note, "Ghi chú 1");
+    assert.equal(parsed.tuitionRows[0].kind, "FREE");
+    assert.equal(parsed.tuitionBlocks[0].paidCandidateSourceRows.length, 8);
+    const result = new LegacyReconciliationEngine().reconcile(parsed);
+    assert.equal(result.lessons.filter((lesson) => lesson.attendanceStatus === "FREE").length, 1);
+    assert.deepEqual(result.tuitionCycles.map((cycle) => [cycle.itemCount, cycle.paymentState]), [[8, "PAID_CLEAR"]]);
+  });
+});
+
+test("exact reservations prevent a nearby learning row from stealing another row's exact tuition date", async () => {
+  const bytes = await workbookBytes([{ date: "2026-11-14" }, { date: "2026-11-15" }], ["2026-11-12", "2026-11-15"]);
+  await withWorkbook(bytes, async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    assert.equal(result.lessons[1].matchedTuitionSourceRow, 3);
+    assert.equal(result.lessons[1].reconciliationStatus, "MATCHED");
+    assert.equal(result.lessons[0].matchedTuitionSourceRow, 2);
+  });
+});
+
+test("duplicate tuition date keeps the later learning date and flags the tuition direction", async () => {
+  const bytes = await workbookBytes([{ date: "2026-07-03" }, { date: "2026-07-04" }], ["2026-07-03", "2026-07-03"]);
+  await withWorkbook(bytes, async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    assert.equal(result.lessons[1].normalizedDate, "2026-07-04");
+    assert.equal(result.lessons[1].suggestedDate, null);
+    assert.equal(result.lessons[1].matchedTuitionSourceRow, 3);
+    assert.equal(result.lessons[1].reconciliationStatus, "DATE_CORRECTION_SUGGESTED");
+  });
+});
+
+test("a full block without PAID remains reviewable and never silently becomes historical debt", async () => {
+  const dates = Array.from({ length: 8 }, (_, index) => `2026-09-${String(index + 1).padStart(2, "0")}`);
+  const bytes = await workbookBytes(dates.map((date) => ({ date })), dates);
+  await withWorkbook(bytes, async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    assert.equal(result.tuitionCycles[0].paymentState, "NEEDS_REVIEW");
+    assert.equal(result.paymentEvents[0].kind, "MISSING_PAYMENT_STATUS");
+    assert.deepEqual(result.paymentEvents[0].resolutionOptions, ["PAID_UNDATED", "UNPAID", "EXCLUDE_FINANCE"]);
+  });
+});
+
+test("tuition marker kinds are normalized and never enter a billable candidate", async () => {
+  const bytes = await workbookBytes(
+    [{ date: "2026-10-01" }, { date: "2026-10-02" }, { date: "2026-10-03" }, { date: "2026-10-04" }],
+    [{ date: "2026-10-01", marker: " free " }, { date: "2026-10-02", marker: " v " },
+      { date: "2026-10-03", marker: " OFF " }, { date: "2026-10-04", marker: "123456789012" }], 4,
+  );
+  await withWorkbook(bytes, async (path) => {
+    const parsed = await new LegacyWorkbookParser().parse(path);
+    assert.deepEqual(parsed.tuitionRows.map((row) => row.kind), ["FREE", "ABSENT", "OFF", "BILLABLE"]);
+    assert.deepEqual(parsed.tuitionBlocks[0].paidCandidateSourceRows, [5]);
+  });
+});
+
+test("7h is ambiguous and malformed raw times sharing a proposal use one grouped mapping", async () => {
+  const ambiguous = await workbookBytes([{ date: "2026-12-01" }], [{ date: "2026-12-01", time: "7:30-9h" }]);
+  await withWorkbook(ambiguous, async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    assert.equal(result.timeMappings[0].reason, "AMBIGUOUS_12H");
+    assert.deepEqual([result.timeMappings[0].proposedStartTime, result.timeMappings[0].proposedEndTime], ["19:30", "21:00"]);
+  });
+  const rawTimes = ["20h-22h", "20h8-22h", "20h5-22h", "20h-21h35)", "20h-10h"];
+  const dates = rawTimes.map((_, index) => `2026-12-${String(index + 1).padStart(2, "0")}`);
+  const grouped = await workbookBytes(dates.map((date) => ({ date })), dates.map((date, index) => ({ date, time: rawTimes[index] })));
+  await withWorkbook(grouped, async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    const mapping = result.timeMappings.find((item) => item.proposedStartTime === "20:00" && item.proposedEndTime === "22:00");
+    assert.ok(mapping);
+    assert.deepEqual(new Set(mapping.rawValues), new Set(rawTimes.slice(1)));
+  });
+});
+
+test("a backward full tuition date proposes a structured year correction", async () => {
+  const dates = ["2025-12-29", "2026-01-03", "2026-01-19", "2025-01-24", "2026-01-26"];
+  const bytes = await workbookBytes(dates.map((date) => ({ date: date === "2025-01-24" ? "2026-01-24" : date })), dates);
+  await withWorkbook(bytes, async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    assert.equal(result.tuitionRows.find((row) => row.date === "2025-01-24")?.suggestedDate, "2026-01-24");
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "fixture.xlsx", size: bytes.length, sha256: "e".repeat(64) }, result);
+    assert.equal(preview.rows.filter((row) => row.issueCodes.includes("TUITION_DATE_CORRECTION")).length, 1);
+  });
+});
+
+test("long-history fixture collapses row noise into grouped decisions and stable cycle plans", async () => {
+  const bytes = await longHistoryWorkbookBytes();
+  await withWorkbook(bytes, async (path) => {
+    const parsed = await new LegacyWorkbookParser().parse(path);
+    assert.equal(parsed.learningRows.length, 71);
+    assert.equal(parsed.tuitionRows.length, 61);
+    const result = new LegacyReconciliationEngine().reconcile(parsed);
+    assert.equal(result.minimalLessonGroups[0].lessonCount, 6);
+    assert.equal(result.tuitionCycles.filter((cycle) => cycle.paymentState === "PAID_CLEAR").length, 7);
+    assert.equal(result.lessons.filter((lesson) => lesson.attendanceStatus === "FREE").length, 2);
+    assert.equal(result.tuitionCycles.at(-1)?.itemCount, 3);
+    assert.deepEqual(result.tuitionCycles.map((cycle) => cycle.blockId), result.tuitionCyclePlans.map((plan) => plan.blockId));
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "long-history.xlsx", size: bytes.length, sha256: "f".repeat(64) }, result);
+    assert.equal(preview.rows.filter((row) => row.rowType === "TUITION_GROUP").length, 1);
+    assert.ok(preview.rows.filter((row) => row.rowType === "TIME_MAPPING").length <= 2);
   });
 });
