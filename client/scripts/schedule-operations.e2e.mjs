@@ -295,7 +295,12 @@ try {
     quickActions.getByRole("button", { name: "Thêm lịch", exact: true }).boundingBox(),
     quickActions.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).boundingBox(),
   ]);
-  if (![primaryBox, makeupBox, addBox, checkBox].every(Boolean) || primaryBox.width < makeupBox.width + addBox.width || Math.abs(makeupBox.y - addBox.y) > 1 || !(primaryBox.y < makeupBox.y && makeupBox.y < checkBox.y))
+  const primaryGap = makeupBox && primaryBox ? makeupBox.y - primaryBox.y - primaryBox.height : 0;
+  const secondaryGap = addBox && makeupBox ? addBox.x - makeupBox.x - makeupBox.width : 0;
+  const checkGap = checkBox && makeupBox ? checkBox.y - makeupBox.y - makeupBox.height : 0;
+  if (![primaryBox, makeupBox, addBox, checkBox].every(Boolean) || primaryBox.width < makeupBox.width + addBox.width
+    || Math.abs(makeupBox.y - addBox.y) > 1 || !(primaryBox.y < makeupBox.y && makeupBox.y < checkBox.y)
+    || primaryGap < 11 || secondaryGap < 11 || checkGap < 15)
     throw new Error(`Calendar mobile hierarchy is incorrect: ${JSON.stringify({ primaryBox, makeupBox, addBox, checkBox })}`);
   await page.getByRole("button", { name: "Thêm lịch", exact: true }).first().click();
   await page.getByRole("menuitem", { name: "Lịch dạy tại trường/trung tâm" }).waitFor();
