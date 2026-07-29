@@ -189,6 +189,19 @@ integration("timeout-after-create is recovered by appProperties and retry keeps 
   assert.equal(data.provider.rendered.length, 1);
 });
 
+integration("regenerate upgrades an existing spreadsheet to the current template version", async () => {
+  const data = await fixture();
+  const created = await data.service.create(data.studentId, {}, data.actorId);
+  await pool.execute("UPDATE student_google_sheets SET template_version='v0' WHERE id=?", [created.sheet.id]);
+
+  const regenerated = await data.service.regenerate(data.studentId, data.actorId);
+
+  assert.equal(regenerated.sheet.id, created.sheet.id);
+  assert.equal(regenerated.sheet.webViewUrl, created.sheet.webViewUrl);
+  assert.equal(regenerated.sheet.templateVersion, settings.templateVersion);
+  assert.equal(data.provider.rendered.length, 2);
+});
+
 integration("stale CREATING before provider.create is reclaimed after ten minutes", async () => {
   const repository = new StudentGoogleSheetRepository();
   const data = await fixture(repository);

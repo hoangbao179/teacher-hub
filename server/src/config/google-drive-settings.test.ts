@@ -6,7 +6,7 @@ test("Google Drive may be disabled without credentials", () => {
   const settings = resolveGoogleDriveSettings({ GOOGLE_DRIVE_ENABLED: "false" });
   assert.equal(settings.enabled, false);
   assert.equal(settings.ownerLabel, "Cô Vy");
-  assert.equal(settings.templateVersion, "v2");
+  assert.equal(settings.templateVersion, "v3");
 });
 
 test("enabled Google Drive requires every runtime credential", () => {

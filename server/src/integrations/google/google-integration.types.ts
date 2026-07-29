@@ -1,10 +1,12 @@
 export interface GoogleLearningRow {
   lessonId: number;
+  lessonType: "REGULAR" | "MAKEUP" | "EXTRA";
+  scheduledStartTime: string;
+  scheduledEndTime: string;
   academicYear: string;
   grade: string;
   className: string;
   date: string;
-  time: string;
   attendance: "PRESENT" | "ABSENT" | "FREE";
   billable: boolean;
   cycleSequence: number | null;

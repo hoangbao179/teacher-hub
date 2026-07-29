@@ -133,15 +133,18 @@ export class StudentGoogleSheetRepository {
       [safeMessage.slice(0, 500), id]);
   }
 
-  async regenerated(id: number, actorUserId: number): Promise<StudentGoogleSheetInfo> {
+  async regenerated(id: number, actorUserId: number, templateVersion: string): Promise<StudentGoogleSheetInfo> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
       const [rows] = await connection.query<RowDataPacket[]>("SELECT * FROM student_google_sheets WHERE id=? AND status='ACTIVE' FOR UPDATE", [id]);
       if (!rows[0]) throw new AppError(409, "GOOGLE_SHEET_STATE_CONFLICT", "Google Sheet không còn hoạt động.");
-      await connection.execute("UPDATE student_google_sheets SET last_generated_at=NOW(),last_sync_error=NULL WHERE id=?", [id]);
+      await connection.execute(
+        "UPDATE student_google_sheets SET template_version=?,last_generated_at=NOW(),last_sync_error=NULL WHERE id=?",
+        [templateVersion, id],
+      );
       await this.audit.record(connection, { actorUserId, action: "STUDENT_GOOGLE_SHEET_REGENERATED", entityType: "STUDENT_GOOGLE_SHEET", entityId: id,
-        newValues: { studentId: Number(rows[0].student_id), spreadsheetId: String(rows[0].spreadsheet_id) } });
+        newValues: { studentId: Number(rows[0].student_id), spreadsheetId: String(rows[0].spreadsheet_id), templateVersion } });
       const [updated] = await connection.query<RowDataPacket[]>("SELECT * FROM student_google_sheets WHERE id=?", [id]);
       await connection.commit(); return mapSheet(updated[0]);
     } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
@@ -169,8 +172,10 @@ export class StudentGoogleSheetRepository {
        LEFT JOIN classes c ON c.id=e.class_id WHERE s.id=? ORDER BY FIELD(e.status,'ACTIVE','PAUSED') LIMIT 1`, [studentId]);
     if (!students[0]) throw new AppError(404, "STUDENT_NOT_FOUND", "Không tìm thấy học sinh.");
     const [lessons] = await pool.query<RowDataPacket[]>(
-      `SELECT l.id lesson_id,l.session_date,TIME_FORMAT(COALESCE(l.actual_start_time,l.scheduled_start_time),'%H:%i') start_time,
-        TIME_FORMAT(COALESCE(l.actual_end_time,l.scheduled_end_time),'%H:%i') end_time,COALESCE(l.class_name_snapshot,c.name) class_name,
+      `SELECT l.id lesson_id,l.session_date,l.lesson_type,
+        TIME_FORMAT(l.scheduled_start_time,'%H:%i') scheduled_start_time,
+        TIME_FORMAT(l.scheduled_end_time,'%H:%i') scheduled_end_time,
+        COALESCE(l.class_name_snapshot,c.name) class_name,
         a.attendance_status,a.counts_for_tuition,l.content,l.homework,l.general_comment,a.student_note,l.updated_at,
         tcs.tuition_cycle_id,tcs.sequence_number
        FROM lesson_attendances a JOIN class_enrollments e ON e.id=a.enrollment_id AND e.student_id=?
@@ -220,9 +225,11 @@ export class StudentGoogleSheetRepository {
        GROUP BY a.id,item.id,item.word`,
       [studentId],
     );
-    const learning = lessons.map((row) => ({ lessonId: Number(row.lesson_id), academicYear: academicYear(String(row.session_date).slice(0, 10)),
+    const learning = lessons.map((row) => ({ lessonId: Number(row.lesson_id), lessonType: row.lesson_type,
+      scheduledStartTime: String(row.scheduled_start_time), scheduledEndTime: String(row.scheduled_end_time),
+      academicYear: academicYear(String(row.session_date).slice(0, 10)),
       grade: gradeFromClassName(String(row.class_name)), className: String(row.class_name), date: String(row.session_date).slice(0, 10),
-      time: `${row.start_time}–${row.end_time}`, attendance: row.attendance_status, billable: Boolean(row.counts_for_tuition),
+      attendance: row.attendance_status, billable: Boolean(row.counts_for_tuition),
       cycleId: row.tuition_cycle_id == null ? null : Number(row.tuition_cycle_id),
       cycleSequence: row.sequence_number == null ? null : Number(row.sequence_number), content: String(row.content ?? ""),
       homework: String(row.homework ?? ""),

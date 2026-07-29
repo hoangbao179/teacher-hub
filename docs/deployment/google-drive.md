@@ -36,7 +36,7 @@ GOOGLE_SHEET_SYNC_ENABLED=true
 buộc sẽ làm startup fail rõ ràng. Các giá trị này chỉ được cấp cho API container lúc
 runtime, không phải Docker build args.
 
-Backend cố định nhãn chủ sở hữu là `Cô Vy`, template version là `v2`, chu kỳ sync là
+Backend cố định nhãn chủ sở hữu là `Cô Vy`, template version là `v3`, chu kỳ sync là
 30 giây, batch 20 event, tối đa 8 lần thử và lock timeout 10 phút. Các giá trị này
 không cấu hình qua environment.
 
@@ -48,7 +48,7 @@ Chỉ dùng account test hoặc dữ liệu giả:
 GOOGLE_DRIVE_SMOKE=1 npm -w server run google-drive:smoke
 ```
 
-Script xác minh auth/root folder, tạo và format năm sheet bằng dữ liệu giả, đọc lại
+Script xác minh auth/root folder, tạo và format bốn sheet bằng dữ liệu giả, đọc lại
 appProperties rồi đưa file thử vào Trash. Không chạy trong CI và không dùng học sinh thật.
 
 ## Vận hành
@@ -62,6 +62,8 @@ appProperties rồi đưa file thử vào Trash. Không chạy trong CI và khô
   Retry tìm file bằng `appProperties` trước khi tạo mới để recovery không tạo duplicate.
 - Regenerate giữ nguyên spreadsheet ID/URL và không xóa formatting/protection do
   người dùng tự tạo ngoài rule Teacher Hub quản lý.
+- Khi nâng lên template `v3`, dùng **Tạo lại nội dung** một lần cho spreadsheet cũ để
+  xóa tab `Tổng quan`, dọn các cột nhật ký cũ và đồng nhất bố cục với file Excel tải xuống.
 - Worker chỉ chạy khi cả Drive và sync đều bật. Tắt sync không xóa event; khi bật
   lại worker tiếp tục pending/retry, hoặc admin chọn **Đồng bộ lại**.
 - V16D không cập nhật tab `Học phí`; dùng regenerate thủ công nếu cần dựng lại

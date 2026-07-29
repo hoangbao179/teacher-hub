@@ -10,7 +10,7 @@ function isTeacherHubConditionalRule(rule: sheets_v4.Schema$ConditionalFormatRul
   const range = ranges[0];
   if (range.startRowIndex !== 1) return false;
   if (condition?.type === "CUSTOM_FORMULA" && value === "=ISEVEN(ROW())")
-    return range.startColumnIndex === 0 && (range.endColumnIndex === 13 || range.endColumnIndex === 14);
+    return range.startColumnIndex === 0 && (range.endColumnIndex === 10 || range.endColumnIndex === 13 || range.endColumnIndex === 14);
   if (condition?.type === "TEXT_EQ" && value === "Nghỉ")
     return range.startColumnIndex === 6 && range.endColumnIndex === 7;
   if (condition?.type === "TEXT_EQ" && value === "Cần thu")
@@ -37,14 +37,24 @@ export function teacherHubFormattingCleanup(
   return cleanup;
 }
 
+export function templateSheetReconciliationRequests(
+  ids: Record<string, number>, requiredNames: string[], obsoleteNames: string[],
+): sheets_v4.Schema$Request[] {
+  const add = requiredNames.filter((name) => ids[name] == null).map((title) =>
+    ({ addSheet: { properties: { title, ...(title === "_TeacherHub" ? { hidden: true } : {}) } } }));
+  const remove = obsoleteNames.filter((name) => !requiredNames.includes(name) && ids[name] != null).map((name) =>
+    ({ deleteSheet: { sheetId: ids[name] } }));
+  return [...add, ...remove];
+}
+
 export class GoogleSheetsClient {
   private readonly sheets: sheets_v4.Sheets;
   constructor(auth: GoogleOAuthClient) { this.sheets = google.sheets({ version: "v4", auth }); }
 
   async create(title: string): Promise<string> {
     const response = await this.sheets.spreadsheets.create({ requestBody: { properties: { title }, sheets: [
-      { properties: { title: "Tổng quan", gridProperties: { hideGridlines: true } } },
       { properties: { title: "Nhật ký học tập" } }, { properties: { title: "Học phí" } },
+      { properties: { title: "Ôn từ vựng" } },
       { properties: { title: "_TeacherHub", hidden: true } },
     ] }, fields: "spreadsheetId" });
     if (!response.data.spreadsheetId) throw new Error("Malformed spreadsheet create response");
@@ -57,23 +67,25 @@ export class GoogleSheetsClient {
       sheet.properties?.title && sheet.properties.sheetId != null ? [[sheet.properties.title, sheet.properties.sheetId]] : []));
   }
 
-  async ensureSheets(spreadsheetId: string, names: string[]): Promise<Record<string, number>> {
+  async ensureSheets(spreadsheetId: string, names: string[], obsoleteNames: string[] = []): Promise<Record<string, number>> {
     let ids = await this.metadata(spreadsheetId);
-    const missing = names.filter((name) => ids[name] == null);
-    if (missing.length) {
-      await this.sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: missing.map((title) =>
-        ({ addSheet: { properties: { title, hidden: title === "_TeacherHub" } } })) } });
+    const requests = templateSheetReconciliationRequests(ids, names, obsoleteNames);
+    if (requests.length) {
+      await this.sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
       ids = await this.metadata(spreadsheetId);
     }
     return ids;
   }
 
-  async clearAndWrite(spreadsheetId: string, values: sheets_v4.Schema$ValueRange[], requests: sheets_v4.Schema$Request[]): Promise<void> {
+  async clearAndWrite(spreadsheetId: string, values: sheets_v4.Schema$ValueRange[], clearRanges: string[],
+    requests: sheets_v4.Schema$Request[]): Promise<void> {
     const current = await this.sheets.spreadsheets.get({ spreadsheetId,
       fields: "sheets(properties(sheetId),conditionalFormats(ranges,booleanRule(condition(type,values(userEnteredValue)))),protectedRanges(protectedRangeId,description))" });
     const cleanup = teacherHubFormattingCleanup(current.data.sheets ?? []);
     if (cleanup.length) await this.sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: cleanup } });
-    await this.sheets.spreadsheets.values.batchClear({ spreadsheetId, requestBody: { ranges: values.map((item) => item.range!) } });
+    await this.sheets.spreadsheets.values.batchClear({ spreadsheetId, requestBody: {
+      ranges: [...new Set([...values.map((item) => item.range!), ...clearRanges])],
+    } });
     await this.sheets.spreadsheets.values.batchUpdate({ spreadsheetId, requestBody: {
       valueInputOption: "RAW", data: values,
     } });
@@ -84,10 +96,9 @@ export class GoogleSheetsClient {
     spreadsheetId: string,
     lessonId: number,
     row: Array<string | number | boolean> | null,
-    overview: Array<{ range: string; value: string | number | boolean }>,
     syncedAt: string,
   ): Promise<void> {
-    const range = "'Nhật ký học tập'!A:N";
+    const range = "'Nhật ký học tập'!A:J";
     const response = await this.sheets.spreadsheets.values.get({ spreadsheetId, range });
     const values = response.data.values ?? [];
     const rowIndex = values.findIndex((candidate, index) => index > 0 && String(candidate[0] ?? "") === String(lessonId));
@@ -95,7 +106,7 @@ export class GoogleSheetsClient {
       if (rowIndex >= 1) {
         await this.sheets.spreadsheets.values.update({
           spreadsheetId,
-          range: `'Nhật ký học tập'!A${rowIndex + 1}:N${rowIndex + 1}`,
+          range: `'Nhật ký học tập'!A${rowIndex + 1}:J${rowIndex + 1}`,
           valueInputOption: "RAW",
           requestBody: { values: [row] },
         });
@@ -122,7 +133,6 @@ export class GoogleSheetsClient {
       requestBody: {
         valueInputOption: "RAW",
         data: [
-          ...overview.map((item) => ({ range: `'Tổng quan'!${item.range}`, values: [[item.value]] })),
           { range: "'_TeacherHub'!B7", values: [[syncedAt]] },
         ],
       },

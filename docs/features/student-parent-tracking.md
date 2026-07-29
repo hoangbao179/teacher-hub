@@ -59,8 +59,8 @@ tuition sync và sharing tự động vẫn thuộc V16E **PLANNED**.
 - URL/spreadsheet ID ổn định xuyên suốt quá trình học.
 - Không tạo Sheet mới khi học sinh lên lớp, chuyển lớp/nhóm, đổi lịch, tạm nghỉ
   hoặc quay lại.
-- Khi lên lớp/chuyển lớp: đóng enrollment cũ, tạo enrollment mới, cập nhật lớp/khối
-  hiện tại trên `Tổng quan`, giữ lịch sử; dòng mới mang năm học, khối và lớp mới.
+- Khi lên lớp/chuyển lớp: đóng enrollment cũ, tạo enrollment mới và giữ lịch sử; các dòng
+  nhật ký mới mang tên lớp mới.
 - Một cycle dở của student được tiếp tục qua enrollment theo quy tắc tại mục 7;
   không reset âm thầm chỉ vì chuyển lớp.
 - Chỉ thay Sheet khi file lỗi, giáo viên chủ động archive, có yêu cầu riêng tư,
@@ -69,30 +69,24 @@ tuition sync và sharing tự động vẫn thuộc V16E **PLANNED**.
 
 ## 4. Template Google Sheet — IMPLEMENTED V16C
 
-### `Tổng quan`
-
-Hiển thị tên học sinh; lớp và năm học hiện tại; giáo viên; tiến độ cycle hiện tại;
-số buổi có mặt; số buổi nghỉ không tính phí; chuyên cần; buổi, nhận xét và bài tập
-gần nhất; trạng thái học phí; thời điểm đồng bộ cuối.
-
 ### `Nhật ký học tập`
 
-Một dòng cho mỗi lesson + student participant, theo thứ tự:
+Một dòng cho mỗi lesson + student participant. Các cột nghiệp vụ đồng nhất với sheet
+`Quá trình học tập` trong file Excel tải xuống, theo thứ tự:
 
 1. `Teacher Hub Lesson ID` — ẩn.
-2. Năm học.
-3. Khối.
-4. Lớp.
-5. Ngày học.
-6. Khung giờ.
-7. Điểm danh.
-8. Có tính phí.
-9. Số thứ tự buổi trong cycle, để trống nếu không billable.
-10. Nội dung học.
-11. Bài tập.
-12. Nhận xét chung.
-13. Nhận xét riêng.
-14. Cập nhật lúc.
+2. Ngày học.
+3. Lớp.
+4. Loại buổi.
+5. Giờ dự kiến bắt đầu.
+6. Giờ dự kiến kết thúc.
+7. Trạng thái.
+8. Nội dung buổi học.
+9. Bài tập về nhà.
+10. Nhận xét học sinh.
+
+Cột `Nội dung buổi học` rộng 300 px và `Nhận xét học sinh` rộng 200 px. Template không
+tạo sheet `Tổng quan`.
 
 ### `Học phí`
 
@@ -165,8 +159,8 @@ nhận xét chung một lần.
 - Retry dùng mốc 1 phút, 5 phút, 900 giây, 1 giờ rồi exponential có giới hạn;
   lỗi vĩnh viễn chuyển `DEAD` và chỉ lưu message đã rút gọn.
 - Worker đọc snapshot canonical mới nhất, tìm row bằng `Teacher Hub Lesson ID` rồi
-  append/update/remove đúng row. Chỉ cập nhật `Nhật ký học tập`, các ô liên quan
-  trong `Tổng quan` và timestamp `_TeacherHub`; không sửa tab `Học phí`.
+  append/update/remove đúng row. Chỉ cập nhật `Nhật ký học tập` và timestamp
+  `_TeacherHub`; không sửa tab `Học phí`.
 - `POST /api/students/:studentId/google-sheet/resync` chỉ upsert event cho toàn bộ
   lesson đã hoàn thành, không gọi Google trong request và có audit.
 

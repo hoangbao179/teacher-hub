@@ -38,7 +38,6 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
     if (this.delayMs) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     this.template.build(snapshot, resource.spreadsheetId,
       {
-        "Tổng quan": 1,
         "Nhật ký học tập": 2,
         "Học phí": 3,
         "Ôn từ vựng": 4,

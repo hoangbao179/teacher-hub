@@ -91,9 +91,9 @@ export class StudentGoogleSheetService {
     try {
       const resource = await provider.findByRecordId(sheet.id);
       if (!resource) throw new GoogleIntegrationError("SPREADSHEET_MISSING", "Không tìm thấy Google Sheet đã liên kết.", false);
-      await provider.render(resource, await this.repository.snapshot(studentId), { templateVersion: sheet.templateVersion,
+      await provider.render(resource, await this.repository.snapshot(studentId), { templateVersion: this.settings.templateVersion,
         recordId: sheet.id, generatedAt: new Date().toISOString(), syncedAt: sheet.lastSyncedAt });
-      return { sheet: await this.repository.regenerated(sheet.id, actorUserId), reused: true };
+      return { sheet: await this.repository.regenerated(sheet.id, actorUserId, this.settings.templateVersion), reused: true };
     } catch (error) {
       const classified = classifyGoogleError(error);
       await this.repository.recordRegenerationError(sheet.id, classified.message);

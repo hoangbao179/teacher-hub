@@ -2,10 +2,10 @@ import type { sheets_v4 } from "googleapis";
 import type { StudentGoogleSheetSnapshot } from "./google-integration.types";
 
 const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Nghỉ", FREE: "Miễn phí" } as const;
+const lessonTypeLabels = { REGULAR: "Buổi thường", MAKEUP: "Buổi học bù", EXTRA: "Buổi học thêm" } as const;
 const tuitionLabels = { ACCUMULATING: "Đang tích lũy", PAYMENT_DUE: "Cần thu", PAID: "Đã thu", INCOMPLETE: "Chưa hoàn thành" } as const;
 const paymentLabels = { CASH: "Tiền mặt", BANK_TRANSFER: "Chuyển khoản", "": "" } as const;
 const names = [
-  "Tổng quan",
   "Nhật ký học tập",
   "Học phí",
   "Ôn từ vựng",
@@ -13,10 +13,9 @@ const names = [
 ] as const;
 
 export function googleLearningRowValues(row: StudentGoogleSheetSnapshot["learning"][number]): Array<string | number | boolean> {
-  return [row.lessonId, row.academicYear, row.grade, safeGoogleCell(row.className), row.date, row.time,
-    attendanceLabels[row.attendance], row.billable ? "Có" : "Không", row.cycleSequence ?? "", safeGoogleCell(row.content),
-    safeGoogleCell(row.homework), safeGoogleCell(row.attendance === "ABSENT" ? "" : row.generalComment),
-    safeGoogleCell(row.studentComment), row.updatedAt];
+  return [row.lessonId, row.date, safeGoogleCell(row.className), lessonTypeLabels[row.lessonType],
+    row.scheduledStartTime, row.scheduledEndTime, attendanceLabels[row.attendance], safeGoogleCell(row.content),
+    safeGoogleCell(row.homework), safeGoogleCell(row.studentComment)];
 }
 
 export function googleVocabularyAttemptRowValues(
@@ -58,27 +57,20 @@ function tableRequests(sheetId: number, columns: number, rows: number): sheets_v
 
 export interface GoogleTemplatePlan {
   values: sheets_v4.Schema$ValueRange[];
+  clearRanges: string[];
   requests: sheets_v4.Schema$Request[];
 }
 
 export class GoogleSheetTemplateService {
   readonly sheetNames = [...names];
+  readonly obsoleteSheetNames = ["Tổng quan"];
 
   build(snapshot: StudentGoogleSheetSnapshot, spreadsheetId: string, ids: Record<string, number>, metadata: {
     templateVersion: string; generatedAt: string; syncedAt?: string | null;
   }): GoogleTemplatePlan {
     for (const name of names) if (ids[name] == null) throw new Error(`Missing template sheet: ${name}`);
-    const overview = [
-      ["LỚP TIẾNG ANH CÔ VY"], ["SỔ THEO DÕI HỌC TẬP"], ["Học sinh", safeGoogleCell(snapshot.student.fullName)],
-      ["Năm học hiện tại", safeGoogleCell(snapshot.student.currentAcademicYear)], ["Khối hiện tại", safeGoogleCell(snapshot.student.currentGrade)],
-      ["Lớp hiện tại", safeGoogleCell(snapshot.student.currentClass)], ["Giáo viên", safeGoogleCell(snapshot.overview.teacher)],
-      ["Cập nhật gần nhất", metadata.generatedAt], [], ["Tiến độ chu kỳ", `${snapshot.overview.currentProgress}/8`],
-      ["Chuyên cần", `${snapshot.overview.attendanceRate}%`], ["Buổi gần nhất", snapshot.overview.latestLesson],
-      ["Trạng thái học phí", snapshot.overview.tuitionStatus], [], ["Nhận xét gần nhất", safeGoogleCell(snapshot.overview.latestComment)],
-      ["Bài tập gần nhất", safeGoogleCell(snapshot.overview.latestHomework)],
-    ];
-    const learning = [["Teacher Hub Lesson ID", "Năm học", "Khối", "Lớp", "Ngày học", "Giờ học", "Điểm danh",
-      "Có tính phí", "Buổi số trong chu kỳ", "Nội dung học", "Bài tập", "Nhận xét chung", "Nhận xét riêng", "Cập nhật lúc"],
+    const learning = [["Teacher Hub Lesson ID", "Ngày học", "Lớp", "Loại buổi", "Giờ dự kiến bắt đầu",
+      "Giờ dự kiến kết thúc", "Trạng thái", "Nội dung buổi học", "Bài tập về nhà", "Nhận xét học sinh"],
       ...snapshot.learning.map(googleLearningRowValues)];
     const tuition = [["Teacher Hub Tuition Cycle ID", "Chu kỳ", "Năm học", "Lớp", "Từ ngày", "Đến ngày", "Số buổi tính phí",
       "Số buổi nghỉ", "Tổng lịch học", "Mức học phí", "Trạng thái", "Ngày thu", "Hình thức thanh toán"],
@@ -95,7 +87,7 @@ export class GoogleSheetTemplateService {
       ["studentId", snapshot.student.id], ["spreadsheetId", spreadsheetId], ["lastGeneratedAt", metadata.generatedAt],
       ["lastSyncedAt", metadata.syncedAt ?? ""]];
     const values: sheets_v4.Schema$ValueRange[] = [
-      { range: "'Tổng quan'!A1:B40", values: overview }, { range: "'Nhật ký học tập'!A1:N", values: learning },
+      { range: "'Nhật ký học tập'!A1:J", values: learning },
       { range: "'Học phí'!A1:M", values: tuition }, { range: "'_TeacherHub'!A1:B100", values: technical },
       { range: "'Ôn từ vựng'!A1:P", values: vocabulary },
     ];
@@ -103,16 +95,8 @@ export class GoogleSheetTemplateService {
     const tuitionId = ids["Học phí"];
     const technicalId = ids._TeacherHub;
     const vocabularyId = ids["Ôn từ vựng"];
-    const overviewId = ids["Tổng quan"];
     const requests: sheets_v4.Schema$Request[] = [
-      { updateSheetProperties: { properties: { sheetId: overviewId, gridProperties: { hideGridlines: true } }, fields: "gridProperties.hideGridlines" } },
-      { repeatCell: { range: { sheetId: overviewId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 2 },
-        cell: { userEnteredFormat: { backgroundColor: { red: 0.42, green: 0.31, blue: 0.72 }, textFormat: {
-          foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 16 } } }, fields: "userEnteredFormat" } },
-      { repeatCell: { range: { sheetId: overviewId, startRowIndex: 9, endRowIndex: 13, startColumnIndex: 0, endColumnIndex: 2 },
-        cell: { userEnteredFormat: { backgroundColor: { red: 0.9, green: 0.98, blue: 0.94 }, textFormat: { bold: true }, wrapStrategy: "WRAP" } },
-        fields: "userEnteredFormat" } },
-      ...tableRequests(learningId, 14, learning.length), ...tableRequests(tuitionId, 13, tuition.length),
+      ...tableRequests(learningId, 10, learning.length), ...tableRequests(tuitionId, 13, tuition.length),
       ...tableRequests(vocabularyId, 16, vocabulary.length),
       { addConditionalFormatRule: { index: 0, rule: { ranges: [{ sheetId: learningId, startRowIndex: 1, endRowIndex: Math.max(learning.length, 2), startColumnIndex: 6, endColumnIndex: 7 }],
         booleanRule: { condition: { type: "TEXT_EQ", values: [{ userEnteredValue: "Nghỉ" }] },
@@ -122,6 +106,10 @@ export class GoogleSheetTemplateService {
           format: { backgroundColor: { red: 1, green: 0.94, blue: 0.72 }, textFormat: { bold: true } } } } } },
       { updateDimensionProperties: { range: { sheetId: learningId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
         properties: { hiddenByUser: true }, fields: "hiddenByUser" } },
+      { updateDimensionProperties: { range: { sheetId: learningId, dimension: "COLUMNS", startIndex: 7, endIndex: 8 },
+        properties: { pixelSize: 300 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId: learningId, dimension: "COLUMNS", startIndex: 9, endIndex: 10 },
+        properties: { pixelSize: 200 }, fields: "pixelSize" } },
       { updateDimensionProperties: { range: { sheetId: tuitionId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
         properties: { hiddenByUser: true }, fields: "hiddenByUser" } },
       { updateDimensionProperties: { range: { sheetId: vocabularyId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
@@ -130,6 +118,6 @@ export class GoogleSheetTemplateService {
       { addProtectedRange: { protectedRange: { range: { sheetId: technicalId }, description: "Teacher Hub metadata",
         warningOnly: false } } },
     ];
-    return { values, requests };
+    return { values, clearRanges: ["'Nhật ký học tập'!A:N"], requests };
   }
 }
