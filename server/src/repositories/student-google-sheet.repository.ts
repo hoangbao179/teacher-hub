@@ -59,13 +59,13 @@ export class StudentGoogleSheetRepository {
         sha = String(imports[0].sha256);
       }
       const [existingRows] = await connection.query<RowDataPacket[]>(
-        `SELECT * FROM student_google_sheets WHERE student_id=? AND status IN ('ACTIVE','CREATING')
+        `SELECT *,generation_started_at <= DATE_SUB(NOW(),INTERVAL 10 MINUTE) AS generation_is_stale
+         FROM student_google_sheets WHERE student_id=? AND status IN ('ACTIVE','CREATING')
          ORDER BY id DESC LIMIT 1 FOR UPDATE`, [input.studentId]);
       if (existingRows[0]) {
         const existing = existingRows[0];
         const staleCreating = existing.status === "CREATING" && retry &&
-          existing.generation_started_at != null &&
-          new Date(existing.generation_started_at).getTime() <= Date.now() - 10 * 60_000;
+          Number(existing.generation_is_stale) === 1;
         if (!staleCreating) {
           await connection.commit();
           return { sheet: mapSheet(existing), owner: false, sourceImportSha256: existing.source_import_sha256 ?? null };
