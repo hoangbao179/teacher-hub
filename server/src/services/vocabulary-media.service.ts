@@ -360,7 +360,7 @@ export class VocabularyMediaService {
   }
 
   providerStatus() {
-    const provider = this.registry.primary("ILLUSTRATION");
+    const provider = this.registry.get("ARASAAC");
     const cooldownUntil = provider ? this.coordinator.cooldownUntil(provider.name) : null;
     return {
       enabled: Boolean(this.settings.enabled && provider),
@@ -379,7 +379,7 @@ export class VocabularyMediaService {
   }
 
   private ensureEnabled(): void {
-    if (!this.settings.enabled || !this.registry.primary("ALL"))
+    if (!this.settings.enabled || (!this.registry.get("ARASAAC") && !this.registry.get("PIXABAY")))
       throw new AppError(
         503,
         "IMAGE_PROVIDER_DISABLED",
@@ -389,15 +389,18 @@ export class VocabularyMediaService {
 
   private providerFor(mediaType: VocabularyImageMediaType): ImageSearchProvider {
     this.ensureEnabled();
-    const provider = this.registry.primary(mediaType);
+    const providerName: VocabularyImageProvider = mediaType === "PHOTO" || mediaType === "VECTOR"
+      ? "PIXABAY"
+      : "ARASAAC";
+    const provider = this.registry.get(providerName);
     if (!provider)
       throw new AppError(
         503,
         "IMAGE_PROVIDER_DISABLED",
-        mediaType === "PHOTO"
-          ? "Nguồn ảnh thật đang tắt. Hãy dùng Minh họa hoặc tải ảnh từ máy."
+        providerName === "PIXABAY"
+          ? "Nguồn Pixabay đang tắt. Hãy dùng Minh họa hoặc tải ảnh từ máy."
           : "Nguồn hình minh họa đang tắt. Bạn vẫn có thể tải ảnh từ máy.",
-        { mediaType },
+        { mediaType, provider: providerName },
       );
     return provider;
   }

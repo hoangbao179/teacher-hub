@@ -50,7 +50,6 @@ export interface ImageSearchProvider {
 
 export interface ImageProviderRegistry {
   get(name: VocabularyImageProvider): ImageSearchProvider | null;
-  primary(mediaType: VocabularyImageMediaType): ImageSearchProvider | null;
   status(): Array<{ provider: VocabularyImageProvider; enabled: boolean }>;
 }
 
@@ -60,10 +59,6 @@ export class StaticImageProviderRegistry implements ImageProviderRegistry {
     providers.forEach((provider) => this.providers.set(provider.name, provider));
   }
   get(name: VocabularyImageProvider) { return this.providers.get(name) ?? null; }
-  primary(mediaType: VocabularyImageMediaType) {
-    return [...this.providers.values()].find((provider) =>
-      !provider.supportedMediaTypes || provider.supportedMediaTypes.includes(mediaType) || mediaType === "ALL") ?? null;
-  }
   status() {
     return (["ARASAAC", "PIXABAY"] as VocabularyImageProvider[]).map((provider) => ({
       provider,

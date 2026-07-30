@@ -173,13 +173,13 @@ test("media import pauses while a consistent recovery set is being created", asy
 
 test("search uses cache, or persists a 24-hour safe result on miss", async () => {
   const hit = makeService({ cached: true });
-  const hitResult = await hit.service.search({ query: "  APPLE " });
+  const hitResult = await hit.service.search({ query: "  APPLE ", mediaType: "PHOTO" });
   assert.equal(hit.providerCalls(), 0);
   assert.equal(hitResult.safeSearch, true);
   assert.equal("downloadUrl" in hitResult.items[0], false);
 
   const miss = makeService();
-  const missResult = await miss.service.search({ query: "Apple" });
+  const missResult = await miss.service.search({ query: "Apple", mediaType: "PHOTO" });
   assert.equal(miss.providerCalls(), 1);
   assert.ok(miss.savedCache());
   assert.equal(missResult.cacheExpiresAt, "2026-07-27T00:00:00.000Z");
@@ -187,20 +187,20 @@ test("search uses cache, or persists a 24-hour safe result on miss", async () =>
 
 test("search forwards page and defaults to eight results per page", async () => {
   const value = makeService();
-  const result = await value.service.search({ query: "Apple", page: 2, pageSize: 8 });
+  const result = await value.service.search({ query: "Apple", page: 2, pageSize: 8, mediaType: "PHOTO" });
   assert.equal(result.page, 2);
   assert.equal(result.pageSize, 8);
   assert.deepEqual(value.providerInput(), {
     query: "apple",
     page: 2,
     pageSize: 8,
-    mediaType: "ALL",
+    mediaType: "PHOTO",
     orientation: "ALL",
     safeSearch: true,
   });
 
   const defaults = makeService();
-  assert.equal((await defaults.service.search({ query: "Pear" })).pageSize, 8);
+  assert.equal((await defaults.service.search({ query: "Pear", mediaType: "PHOTO" })).pageSize, 8);
 });
 
 test("ARASAAC caches normalized result for seven days independently of requested pagination", async () => {
@@ -257,7 +257,7 @@ test("provider rate limits remain distinct and preserve retry timing", async () 
   const value = makeService({ providerError: new AppError(
     429, "IMAGE_PROVIDER_RATE_LIMITED", "limited", { remaining: 0 }, 9,
   ) });
-  await assert.rejects(value.service.search({ query: "bird cartoon isolated" }),
+  await assert.rejects(value.service.search({ query: "bird cartoon isolated", mediaType: "PHOTO" }),
     (error: unknown) => error instanceof AppError &&
       error.code === "IMAGE_PROVIDER_RATE_LIMITED" && error.retryAfterSeconds === 9);
 });
@@ -303,7 +303,7 @@ test("metadata rollback removes both newly written renditions", async () => {
   assert.equal(value.removed(), true);
 });
 
-test("search selects ARASAAC for illustration/all and Pixabay for photos", async () => {
+test("search selects ARASAAC for illustration/all and Pixabay for photos/vectors", async () => {
   const calls: string[] = [];
   const arasaacAsset: ProviderImageAsset = {
     ...asset,
@@ -343,11 +343,39 @@ test("search selects ARASAAC for illustration/all and Pixabay for photos", async
   assert.equal((await service.search({ query: "apple", mediaType: "ILLUSTRATION" })).provider, "ARASAAC");
   assert.equal((await service.search({ query: "apple", mediaType: "ALL" })).provider, "ARASAAC");
   assert.equal((await service.search({ query: "apple", mediaType: "PHOTO" })).provider, "PIXABAY");
-  assert.deepEqual(calls, ["ARASAAC", "ARASAAC", "PIXABAY"]);
+  assert.equal((await service.search({ query: "apple", mediaType: "VECTOR" })).provider, "PIXABAY");
+  assert.deepEqual(calls, ["ARASAAC", "ARASAAC", "PIXABAY", "PIXABAY"]);
   assert.deepEqual(service.providerStatus().providers.map(({ provider, enabled }) => ({ provider, enabled })), [
     { provider: "ARASAAC", enabled: true },
     { provider: "PIXABAY", enabled: true },
   ]);
+});
+
+test("illustration never falls back to Pixabay when ARASAAC is disabled", async () => {
+  let pixabayCalls = 0;
+  const registry = new StaticImageProviderRegistry([{
+    name: "PIXABAY",
+    allowedDownloadHosts: ["cdn.pixabay.com"],
+    supportedMediaTypes: ["ALL", "PHOTO", "ILLUSTRATION", "VECTOR"],
+    search: async () => { pixabayCalls += 1; return { total: 1, items: [asset] }; },
+  }]);
+  const service = new VocabularyMediaService(
+    { findCache: async () => null, saveCache: async () => undefined } as never,
+    registry,
+    { ...settings, arasaacEnabled: false, pixabayEnabled: true },
+    undefined,
+    { initialize: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    service.search({ query: "doll", mediaType: "ILLUSTRATION" }),
+    (error: unknown) => error instanceof AppError &&
+      error.code === "IMAGE_PROVIDER_DISABLED" &&
+      (error.details as { provider?: string }).provider === "ARASAAC",
+  );
+  assert.equal(pixabayCalls, 0);
+  assert.equal(service.providerStatus().provider, null);
+  assert.equal(service.providerStatus().enabled, false);
 });
 
 test("ARASAAC import resolves a cache miss and coalesces concurrent requests", async () => {
