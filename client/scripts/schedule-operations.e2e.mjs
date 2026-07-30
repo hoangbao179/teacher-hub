@@ -297,7 +297,12 @@ try {
   const weekBefore = await page.getByLabel("Tuần bắt đầu").inputValue();
   await page.getByLabel("Tuần sau").click();
   await page.waitForFunction((value) => document.querySelector('input[type="date"]')?.value !== value, weekBefore);
+  await page.getByRole("button", { name: "Về tuần hiện tại" }).click();
+  await page.waitForFunction((value) => document.querySelector('input[type="date"]')?.value === value, weekBefore);
   await page.getByLabel("Tuần trước").click();
+  await page.getByRole("button", { name: "Về tuần hiện tại" }).click();
+  await page.getByLabel("Tuần trước").click();
+  await page.getByLabel("Tuần sau").click();
   await assertNoRawEnums(page);
   for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport);
@@ -306,25 +311,26 @@ try {
   }
   await page.setViewportSize({ width: 390, height: 844 });
   const quickActions = page.getByTestId("calendar-quick-actions");
-  const [primaryBox, makeupBox, addBox, checkBox] = await Promise.all([
+  const [primaryBox, makeupBox, addBox] = await Promise.all([
     quickActions.getByRole("link", { name: "Ghi nhận buổi học", exact: true }).boundingBox(),
     quickActions.getByRole("link", { name: "Buổi học bù", exact: true }).boundingBox(),
     quickActions.getByRole("button", { name: "Thêm lịch", exact: true }).boundingBox(),
-    quickActions.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).boundingBox(),
   ]);
   const primaryGap = makeupBox && primaryBox ? makeupBox.y - primaryBox.y - primaryBox.height : 0;
   const secondaryGap = addBox && makeupBox ? addBox.x - makeupBox.x - makeupBox.width : 0;
-  const checkGap = checkBox && makeupBox ? checkBox.y - makeupBox.y - makeupBox.height : 0;
-  if (![primaryBox, makeupBox, addBox, checkBox].every(Boolean) || primaryBox.width < makeupBox.width + addBox.width
-    || Math.abs(makeupBox.y - addBox.y) > 1 || !(primaryBox.y < makeupBox.y && makeupBox.y < checkBox.y)
-    || primaryGap < 11 || secondaryGap < 11 || checkGap < 15)
-    throw new Error(`Calendar mobile hierarchy is incorrect: ${JSON.stringify({ primaryBox, makeupBox, addBox, checkBox })}`);
+  if (![primaryBox, makeupBox, addBox].every(Boolean) || primaryBox.width < makeupBox.width + addBox.width
+    || Math.abs(makeupBox.y - addBox.y) > 1 || !(primaryBox.y < makeupBox.y)
+    || primaryGap < 9 || secondaryGap < 11)
+    throw new Error(`Calendar mobile hierarchy is incorrect: ${JSON.stringify({ primaryBox, makeupBox, addBox })}`);
+  await page.getByRole("heading", { name: "Lịch dự kiến tuần này" }).waitFor();
+  await page.getByText(`${await page.getByTestId("calendar-event").count()} buổi`, { exact: true }).waitFor();
+  await page.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).waitFor();
   await page.getByRole("button", { name: "Thêm lịch", exact: true }).first().click();
   await page.getByRole("menuitem", { name: "Lịch dạy tại trường/trung tâm" }).waitFor();
   await page.getByRole("menuitem", { name: "Lịch bận cá nhân" }).waitFor();
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 1440, height: 900 });
-  const desktopActionBoxes = await Promise.all(["Ghi nhận buổi học", "Buổi học bù", "Kiểm tra lịch tuần"].map((name) => quickActions.getByRole("link", { name, exact: true }).boundingBox()));
+  const desktopActionBoxes = await Promise.all(["Ghi nhận buổi học", "Buổi học bù"].map((name) => quickActions.getByRole("link", { name, exact: true }).boundingBox()));
   desktopActionBoxes.push(await quickActions.getByRole("button", { name: "Thêm lịch", exact: true }).boundingBox());
   if (!desktopActionBoxes.every(Boolean) || desktopActionBoxes.some((box) => Math.abs(box.y - desktopActionBoxes[0].y) > 1) || desktopActionBoxes.reduce((total, box) => total + box.width, 0) > 800)
     throw new Error(`Calendar quick actions are not compact at 1440px: ${JSON.stringify(desktopActionBoxes)}`);

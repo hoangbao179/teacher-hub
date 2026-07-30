@@ -99,20 +99,20 @@ export function LoginPage() {
       <AutoStories aria-hidden="true" sx={{ position: "absolute", left: { xs: 12, sm: "8%" }, top: { xs: "70%", sm: "62%" }, color: "rgba(24,145,103,.18)", fontSize: { xs: 30, sm: 42 }, transform: "rotate(-8deg)" }} />
       <StarOutlined aria-hidden="true" sx={{ position: "absolute", right: { xs: 18, sm: "12%" }, bottom: { xs: 26, sm: "18%" }, color: "rgba(234,151,27,.2)", fontSize: 34 }} />
       <Stack sx={{ position: "relative", width: "100%", maxWidth: 460, minHeight: { xs: "auto", sm: "calc(100svh - 40px)" }, mx: "auto", justifyContent: { xs: "flex-start", sm: "center" } }}>
-        <Button component={Link} to="/" startIcon={<ArrowBack />} color="inherit" sx={{ alignSelf: "flex-start", mb: { xs: 1.5, sm: 2 } }}>
+        <Button component={Link} to="/" startIcon={<ArrowBack />} color="inherit" sx={{ alignSelf: "flex-start", mb: { xs: 1, sm: 2 } }}>
           Về trang chủ
         </Button>
-        <Paper component="form" aria-labelledby="login-title" onSubmit={submit} elevation={3} sx={{ p: { xs: 2.5, sm: 3.5 }, width: "100%", border: "1px solid", borderColor: "rgba(20,184,166,.17)", borderRadius: 3 }}>
-          <Stack spacing={1} sx={{ alignItems: "center", textAlign: "center" }}>
-            <Box sx={{ display: "grid", placeItems: "center", width: 52, height: 52, borderRadius: 2.5, color: "primary.dark", bgcolor: uiTokens.colors.primarySurface }}>
-              <School aria-hidden="true" sx={{ fontSize: 29 }} />
+        <Paper component="form" aria-labelledby="login-title" onSubmit={submit} elevation={3} sx={{ p: { xs: 2.25, sm: 3.5 }, width: "100%", border: "1px solid", borderColor: "rgba(20,184,166,.17)", borderRadius: 3 }}>
+          <Stack spacing={0.75} sx={{ alignItems: "center", textAlign: "center" }}>
+            <Box sx={{ display: "grid", placeItems: "center", width: 48, height: 48, borderRadius: 2.25, color: "primary.dark", bgcolor: uiTokens.colors.primarySurface }}>
+              <School aria-hidden="true" sx={{ fontSize: 27 }} />
             </Box>
             <Typography variant="overline" color="primary">LỚP HỌC CÔ VY</Typography>
             <Typography id="login-title" component="h1" variant="h5">Chào mừng cô Vy trở lại</Typography>
             <Typography color="text.secondary" sx={{ fontWeight: 600 }}>Tiếng Anh lớp 1–9</Typography>
           </Stack>
 
-          <Typography component="h2" variant="subtitle1" sx={{ mt: 2.5 }}>Đăng nhập</Typography>
+          <Typography component="h2" variant="subtitle1" sx={{ mt: 2 }}>Đăng nhập</Typography>
           {blockedSeconds > 0 && (
             <Alert severity="warning" aria-live="polite" sx={{ mt: 1.5 }}>
               {retryFallback
@@ -129,7 +129,7 @@ export function LoginPage() {
             label="Tên đăng nhập"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
-            sx={{ mt: 2 }}
+            sx={{ mt: 1.5 }}
           />
           <TextField
             fullWidth
@@ -140,7 +140,7 @@ export function LoginPage() {
             label="Mật khẩu"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            sx={{ mt: 2 }}
+            sx={{ mt: 1.5 }}
             slotProps={{
               input: {
                 endAdornment: (
@@ -164,15 +164,12 @@ export function LoginPage() {
               label="Ghi nhớ đăng nhập"
             />
             <Typography variant="body2" color="text.secondary" sx={{ pl: 1.75 }}>
-              Chỉ chọn trên thiết bị cá nhân.
+              Không sử dụng trên thiết bị dùng chung.
             </Typography>
           </Stack>
-          <Button fullWidth type="submit" variant="contained" size="large" disabled={loading || blockedSeconds > 0} sx={{ mt: 2.5 }}>
+          <Button fullWidth type="submit" variant="contained" size="large" disabled={loading || blockedSeconds > 0} sx={{ mt: 2 }}>
             {loading ? "Đang đăng nhập…" : "Đăng nhập"}
           </Button>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 2 }}>
-            Ứng dụng chỉ ghi nhớ phiên và tên đăng nhập theo lựa chọn của cô. Trình duyệt có thể đề nghị lưu mật khẩu an toàn trên thiết bị này.
-          </Typography>
         </Paper>
       </Stack>
     </Box>
