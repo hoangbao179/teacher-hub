@@ -34,6 +34,11 @@ const mobileViewports = [
   { width: 414, height: 896 },
   { width: 430, height: 932 },
 ];
+const navigationRegressionViewports = [
+  { width: 360, height: 800 },
+  { width: 390, height: 844 },
+  { width: 412, height: 915 },
+];
 const tabs = [
   { label: "Hôm nay", path: "/admin", slug: "today" },
   { label: "Lịch", path: "/admin/calendar", slug: "calendar" },
@@ -121,6 +126,72 @@ async function waitForSelectedLabel(page, containerTestId, label, itemClass) {
   }, { containerTestId, expected: label, itemClass });
 }
 
+async function inspectNavigationGeometry(page) {
+  return page.evaluate(() => {
+    const navigation = document.querySelector('[data-testid="mobile-navigation"]');
+    const root = navigation?.parentElement;
+    if (!navigation || !root) throw new Error("Mobile navigation root is missing");
+    const navigationRect = navigation.getBoundingClientRect();
+    const navigationStyle = getComputedStyle(navigation);
+    const rootStyle = getComputedStyle(root);
+    const actions = [...navigation.querySelectorAll(".MuiBottomNavigationAction-root")].map((action) => {
+      const actionRect = action.getBoundingClientRect();
+      const iconRect = action.querySelector("svg")?.getBoundingClientRect();
+      const labelRect = action.querySelector(".MuiBottomNavigationAction-label")?.getBoundingClientRect();
+      return {
+        top: actionRect.top,
+        bottom: actionRect.bottom,
+        height: actionRect.height,
+        iconTop: iconRect?.top ?? 0,
+        iconBottom: iconRect?.bottom ?? 0,
+        labelTop: labelRect?.top ?? 0,
+        labelBottom: labelRect?.bottom ?? 0,
+      };
+    });
+    return {
+      viewportHeight: window.innerHeight,
+      scrollY: window.scrollY,
+      navigation: {
+        top: navigationRect.top,
+        bottom: navigationRect.bottom,
+        height: navigationRect.height,
+        paddingBottom: Number.parseFloat(navigationStyle.paddingBottom),
+        boxSizing: navigationStyle.boxSizing,
+      },
+      rootPaddingBottom: Number.parseFloat(rootStyle.paddingBottom),
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      actions,
+    };
+  });
+}
+
+function assertNavigationGeometry(geometry, width, expectedSafeBottom = 0) {
+  const expectedHeight = 64 + expectedSafeBottom;
+  const actionAreaBottom = geometry.navigation.top + 64;
+  assert(Math.abs(geometry.navigation.height - expectedHeight) <= 1, `Navigation height is ${geometry.navigation.height}px instead of ${expectedHeight}px at ${width}px`);
+  assert(Math.abs(geometry.navigation.paddingBottom - expectedSafeBottom) <= 1, `Navigation padding is ${geometry.navigation.paddingBottom}px instead of ${expectedSafeBottom}px at ${width}px`);
+  assert(geometry.navigation.boxSizing === "border-box", `Navigation does not use border-box at ${width}px`);
+  assert(Math.abs(geometry.navigation.bottom - geometry.viewportHeight) <= 1, `Navigation is not fixed to the viewport bottom at ${width}px`);
+  assert(geometry.rootPaddingBottom >= expectedHeight + 15 && geometry.rootPaddingBottom <= expectedHeight + 17, `Content reserve is not synchronized at ${width}px`);
+  assert(geometry.overflow <= 1, `Page has ${geometry.overflow}px horizontal overflow at ${width}px`);
+  assert(geometry.actions.length === 5, `Expected five navigation actions at ${width}px`);
+  assert(geometry.actions.every((action) => Math.abs(action.height - 64) <= 1), `An action is not 64px high at ${width}px`);
+  assert(geometry.actions.every((action) => action.top >= geometry.navigation.top - 1 && action.bottom <= actionAreaBottom + 1), `An action stretches into the safe area at ${width}px`);
+  assert(geometry.actions.every((action) => action.iconTop >= geometry.navigation.top - 1 && action.iconBottom <= actionAreaBottom + 1 && action.labelTop >= geometry.navigation.top - 1 && action.labelBottom <= actionAreaBottom + 1), `An icon or label leaves the 64px action area at ${width}px`);
+}
+
+function assertActionPositionsUnchanged(before, after, description) {
+  assert(before.actions.length === after.actions.length, `Action count changed ${description}`);
+  before.actions.forEach((action, index) => {
+    const next = after.actions[index];
+    for (const key of ["iconTop", "iconBottom", "labelTop", "labelBottom"]) {
+      const beforeOffset = action[key] - before.navigation.top;
+      const afterOffset = next[key] - after.navigation.top;
+      assert(Math.abs(beforeOffset - afterOffset) <= 1, `Action ${index + 1} ${key} moved ${description}`);
+    }
+  });
+}
+
 try {
   fs.mkdirSync(artifactDir, { recursive: true });
   run("node", ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
@@ -156,6 +227,76 @@ try {
   await page.locator('[data-testid="dashboard-page"]').waitFor();
   await page.getByRole("heading", { level: 1, name: "Xin chào, cô Vy 👋" }).waitFor();
 
+  for (const viewport of navigationRegressionViewports) {
+    await page.setViewportSize(viewport);
+    await page.goto(`${origin}/admin`, { waitUntil: "networkidle" });
+    await page.locator('[data-testid="mobile-navigation"]').waitFor({ state: "visible" });
+
+    const atTop = await inspectNavigationGeometry(page);
+    assert(atTop.scrollY === 0, `Dashboard did not open at scrollY=0 at ${viewport.width}px`);
+    assertNavigationGeometry(atTop, viewport.width);
+    if (viewport.width === 390) {
+      await page.screenshot({ path: path.join(artifactDir, "dashboard-top-390x844.png"), fullPage: false });
+    }
+
+    const scrollRange = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+    assert(scrollRange > 0, `Dashboard is not scrollable at ${viewport.width}px`);
+    await page.evaluate((target) => {
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo(0, target);
+    }, Math.max(1, Math.floor(scrollRange / 2)));
+    await page.waitForFunction(() => window.scrollY > 0);
+    const scrolled = await inspectNavigationGeometry(page);
+    assertNavigationGeometry(scrolled, viewport.width);
+    assertActionPositionsUnchanged(atTop, scrolled, `after scrolling at ${viewport.width}px`);
+    if (viewport.width === 390) {
+      await page.screenshot({ path: path.join(artifactDir, "dashboard-scrolled-390x844.png"), fullPage: false });
+    }
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForFunction(() => window.scrollY > 0);
+    const contentAtBottom = await page.evaluate(() => {
+      const content = document.querySelector('[data-testid="admin-content"]')?.getBoundingClientRect();
+      const navigation = document.querySelector('[data-testid="mobile-navigation"]')?.getBoundingClientRect();
+      return { contentBottom: content?.bottom ?? 0, navigationTop: navigation?.top ?? 0 };
+    });
+    const contentGap = contentAtBottom.navigationTop - contentAtBottom.contentBottom;
+    assert(contentGap >= 15 && contentGap <= 25, `Final content gap is ${contentGap}px at ${viewport.width}px`);
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForFunction(() => window.scrollY === 0);
+    const returnedTop = await inspectNavigationGeometry(page);
+    assertNavigationGeometry(returnedTop, viewport.width);
+    assertActionPositionsUnchanged(atTop, returnedTop, `after returning to the top at ${viewport.width}px`);
+    if (viewport.width === 390) {
+      await page.screenshot({ path: path.join(artifactDir, "dashboard-returned-top-390x844.png"), fullPage: false });
+    }
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${origin}/admin`, { waitUntil: "networkidle" });
+  await page.locator('[data-testid="mobile-navigation"]').waitFor({ state: "visible" });
+  const beforeResize = await inspectNavigationGeometry(page);
+  await page.setViewportSize({ width: 390, height: 720 });
+  const resized = await inspectNavigationGeometry(page);
+  assertNavigationGeometry(resized, 390);
+  assertActionPositionsUnchanged(beforeResize, resized, "after shrinking the visual viewport");
+  await page.screenshot({ path: path.join(artifactDir, "dashboard-resized-390x720.png"), fullPage: false });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const restored = await inspectNavigationGeometry(page);
+  assertNavigationGeometry(restored, 390);
+  assertActionPositionsUnchanged(beforeResize, restored, "after restoring the visual viewport");
+
+  await page.locator('[data-testid="mobile-navigation"]').evaluate((navigation) => {
+    navigation.parentElement?.style.setProperty("--admin-safe-bottom", "34px");
+  });
+  const iosSafeArea = await inspectNavigationGeometry(page);
+  assertNavigationGeometry(iosSafeArea, 390, 34);
+  assertActionPositionsUnchanged(beforeResize, iosSafeArea, "with a 34px iOS safe area");
+  await page.locator('[data-testid="mobile-navigation"]').evaluate((navigation) => {
+    navigation.parentElement?.style.removeProperty("--admin-safe-bottom");
+  });
+
   for (const viewport of mobileViewports) {
     await page.setViewportSize(viewport);
     await page.goto(`${origin}/admin`, { waitUntil: "networkidle" });
@@ -183,6 +324,19 @@ try {
     const sticky = await page.locator('[data-testid="sticky-action-bar"]').boundingBox();
     const navigation = await page.locator('[data-testid="mobile-navigation"]').boundingBox();
     assert(Boolean(sticky) && Boolean(navigation) && sticky.y + sticky.height <= navigation.y + 1, `Sticky action overlaps navigation at ${viewport.width}px`);
+    if (viewport.width === 390) {
+      await page.locator('[data-testid="mobile-navigation"]').evaluate((mobileNavigation) => {
+        mobileNavigation.parentElement?.style.setProperty("--admin-safe-bottom", "34px");
+      });
+      const safeGeometry = await inspectNavigationGeometry(page);
+      const safeSticky = await page.locator('[data-testid="sticky-action-bar"]').boundingBox();
+      const safeNavigation = await page.locator('[data-testid="mobile-navigation"]').boundingBox();
+      assertNavigationGeometry(safeGeometry, viewport.width, 34);
+      assert(Boolean(safeSticky) && Boolean(safeNavigation) && safeSticky.y + safeSticky.height <= safeNavigation.y + 1, "Sticky action overlaps the simulated iOS safe area");
+      await page.locator('[data-testid="mobile-navigation"]').evaluate((mobileNavigation) => {
+        mobileNavigation.parentElement?.style.removeProperty("--admin-safe-bottom");
+      });
+    }
   }
 
   await page.setViewportSize({ width: 390, height: 844 });

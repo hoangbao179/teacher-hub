@@ -443,7 +443,7 @@ export function LessonWizardPage() {
         <Summary label="Nhận xét chung" value={generalComment || "Chưa nhập"} />
       </Stack></CardContent></Card>}
 
-      <Box data-testid="sticky-action-bar" data-wizard-action sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1, mt: 2, borderTop: 1, borderColor: "divider" }}>
+      <Box data-testid="sticky-action-bar" data-wizard-action sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + var(--admin-safe-bottom) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1, mt: 2, borderTop: 1, borderColor: "divider" }}>
         <Stack direction="row" spacing={1}>
           {lesson?.status === "DRAFT" && <Button color="error" variant="outlined" disabled={busy} onClick={() => setCancelOpen(true)}>Hủy bản nháp</Button>}
           {step > 0 && <Button fullWidth variant="outlined" sx={{ minHeight: { xs: 48, md: 40 }, width: { md: 180 } }} disabled={busy} onClick={() => setStep((value) => value - 1)}>Quay lại</Button>}

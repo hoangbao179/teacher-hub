@@ -401,7 +401,7 @@ export function LegacyImportPage() {
         })}
       </Stack>
 
-      <Card sx={{ position: "sticky", bottom: { xs: 72, sm: 16 }, zIndex: 2 }}><CardContent><Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}>
+      <Card sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + var(--admin-safe-bottom) + 8px)", sm: 16 }, zIndex: 2 }}><CardContent><Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}>
         <Typography>{unresolved ? `Còn ${unresolved} mục chưa xử lý.` : "Tất cả mục đã sẵn sàng."}</Typography>
         <Button variant="contained" disabled={busy || unresolved > 0} onClick={() => setConfirmOpen(true)}>Xác nhận import</Button>
       </Stack></CardContent></Card>

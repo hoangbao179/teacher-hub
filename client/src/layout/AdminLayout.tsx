@@ -60,7 +60,20 @@ export function AdminLayout() {
   );
   return (
     <ThemeProvider theme={adminTheme}>
-    <Box sx={{ minHeight: "100dvh", minWidth: 0, overflowX: "clip", bgcolor: "background.default", pb: { xs: `calc(${uiTokens.navigationHeight}px + env(safe-area-inset-bottom) + 16px)`, md: 0 } }}>
+    <Box sx={{
+      "--admin-safe-bottom": "0px",
+      "@supports (-webkit-touch-callout: none)": {
+        "--admin-safe-bottom": "env(safe-area-inset-bottom, 0px)",
+      },
+      "@media (display-mode: standalone)": {
+        "--admin-safe-bottom": "env(safe-area-inset-bottom, 0px)",
+      },
+      minHeight: "100dvh",
+      minWidth: 0,
+      overflowX: "clip",
+      bgcolor: "background.default",
+      pb: { xs: `calc(${uiTokens.navigationHeight}px + var(--admin-safe-bottom) + 16px)`, md: 0 },
+    }}>
       <AppBar
         position="fixed"
         color="inherit"
@@ -139,12 +152,27 @@ export function AdminLayout() {
           left: 0,
           right: 0,
           zIndex: 20,
-          borderTop: 1,
-          borderColor: "divider",
           bgcolor: "rgba(255,255,255,.97)",
           boxShadow: "0 -7px 25px rgba(15, 118, 110, 0.08)",
-          pb: "env(safe-area-inset-bottom)",
-          height: `calc(${uiTokens.navigationHeight}px + env(safe-area-inset-bottom))`,
+          boxSizing: "border-box",
+          pb: "var(--admin-safe-bottom)",
+          height: `calc(${uiTokens.navigationHeight}px + var(--admin-safe-bottom))`,
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 1,
+            bgcolor: "divider",
+            pointerEvents: "none",
+          },
+          "& .MuiBottomNavigationAction-root": {
+            alignSelf: "flex-start",
+            boxSizing: "border-box",
+            height: `${uiTokens.navigationHeight}px`,
+            maxHeight: `${uiTokens.navigationHeight}px`,
+          },
         }}
       >
         {nav.map(([, icon, label]) => (
