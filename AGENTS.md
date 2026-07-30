@@ -200,39 +200,63 @@ liệu nguồn.
 
 ---
 
-## 7. Mức độ task và tài liệu cần tạo
+## 7. Mức độ task, kiểm thử và tài liệu
 
-### Task nhỏ
+Phân loại task theo diff thực tế và rủi ro, không theo số file đơn thuần.
+
+### Mức 1 — thay đổi rất nhỏ
 
 Ví dụ:
 
-- sửa text;
-- spacing;
-- màu sắc;
-- một lỗi UI;
-- một validation nhỏ;
-- dead code.
+- text, label, icon;
+- spacing, màu, border hoặc responsive CSS nhỏ;
+- dead code;
+- config không ảnh hưởng runtime logic.
+
+Chỉ chạy tối đa 2–3 command liên quan trực tiếp. Với thay đổi frontend, thường là:
+
+```bash
+npm -w client run typecheck
+npm -w client run lint
+```
+
+Nếu CSS/JSX rất nhỏ và hai command trên PASS thì không chạy build, unit toàn
+repo, integration, E2E hoặc `check:full`. Có thể kiểm tra trực quan đúng một route
+và viewport bằng Playwright khi task là lỗi UI thực tế.
 
 Không cần tạo task document, acceptance document hoặc report file trừ khi user
 yêu cầu.
 
-Chỉ cần:
-
-- sửa code;
-- chạy targeted checks;
-- tóm tắt trong final response;
-- commit sau PASS.
-
-### Task vừa
+### Mức 2 — logic cục bộ
 
 Ví dụ:
 
-- sửa nhiều màn có liên quan;
-- thêm search/filter;
-- thay đổi một luồng UX;
-- sửa auth hoặc vận hành local.
+- một component;
+- validation nhỏ;
+- utility;
+- state management trong một feature;
+- service thuần không đụng database.
 
-Tạo tối đa:
+Chạy typecheck/lint của workspace liên quan và unit test đúng file hoặc feature.
+Không chạy integration/E2E nếu logic không đi qua database hoặc browser flow.
+
+Task Mức 2 chỉ cần tài liệu triển khai khi thay đổi convention đã được duyệt hoặc
+khi user yêu cầu.
+
+### Mức 3 — thay đổi một luồng
+
+Ví dụ:
+
+- search → select → save;
+- form submit hoặc API gọi từ UI;
+- mobile navigation;
+- upload/import ảnh;
+- một endpoint và màn hình tương ứng.
+
+Chạy typecheck/lint workspace liên quan, targeted unit tests và đúng một hoặc vài
+targeted integration/E2E liên quan trực tiếp. Không chạy toàn bộ E2E.
+
+Task Mức 3 có thể tạo tối đa:
 
 ```text
 docs/implementation/tasks/<TASK_ID>.md
@@ -241,24 +265,26 @@ docs/implementation/acceptance/<TASK_ID>.md
 .agent-reports/<TASK_ID>-verification.md
 ```
 
-Không chia task vừa thành nhiều checkpoint nhỏ nếu không có dependency hoặc rủi
-ro riêng biệt.
+Không chia thành nhiều checkpoint nhỏ nếu không có dependency hoặc rủi ro riêng
+biệt.
 
-### Task lớn hoặc rủi ro cao
+### Mức 4 — thay đổi lớn hoặc rủi ro cao
 
-Chỉ chia checkpoint khi có một trong các yếu tố:
+Ví dụ:
 
-- migration;
-- thay đổi business rule;
+- migration/schema hoặc transaction nhiều bảng;
 - auth/security quan trọng;
-- nhiều transaction;
-- thay đổi API lớn;
-- deployment;
-- scope nhiều module độc lập.
+- contract shared ảnh hưởng cả client và server;
+- refactor nhiều module;
+- deployment, workflow CI hoặc Docker runtime phạm vi lớn;
+- thay đổi xuyên client/server/database.
 
-Mỗi checkpoint phải có lý do rõ ràng.
+Chạy targeted checks trước, sau đó integration liên quan và E2E smoke hoặc full
+khi rủi ro thực sự yêu cầu. Chỉ Mức 4 mới mặc định được cân nhắc `check:ci` hoặc
+`check:full`.
 
-Không chia checkpoint chỉ để tạo thêm report.
+Chỉ chia checkpoint khi có một trong các rủi ro trên hoặc scope gồm nhiều module
+độc lập. Mỗi checkpoint phải có lý do rõ ràng; không chia chỉ để tạo thêm report.
 
 ---
 
@@ -300,6 +326,10 @@ PASS
 FAIL
 ```
 
+`PASS` nghĩa là acceptance criteria đạt, các targeted mandatory checks đúng với
+mức task đã PASS và không còn lỗi trong phạm vi sửa. `PASS` không bắt buộc phải
+có `check:full`.
+
 Không copy toàn bộ log command vào report.
 
 Chỉ ghi:
@@ -318,64 +348,119 @@ docs/wireframes/v2-branding/
 
 ---
 
-## 9. Verification tiết kiệm thời gian
+## 9. Verification local theo phạm vi
 
-Trong lúc phát triển, chạy kiểm tra theo phạm vi.
+### Nguyên tắc
 
-### Shared/contracts
+- Không mặc định chạy `npm run check:full` hoặc `npm run check:ci` ở local.
+- Không mặc định chạy toàn bộ integration hoặc toàn bộ E2E.
+- CI/CD là gate rộng cho mỗi push; full regression là gate nightly/manual.
+- Agent local chỉ chạy kiểm tra đủ để chứng minh phần vừa sửa hoạt động.
+- Không chạy lại cùng một command đã PASS nếu source liên quan không đổi.
+- Không chạy build shared khi không đụng `shared/`.
+- Không chạy server checks cho thay đổi chỉ ở client và ngược lại.
+- Không khởi động MySQL, Chrome hoặc E2E infrastructure nếu không cần.
+- Không chạy test ngoài phạm vi chỉ để “cho chắc”.
+
+Các shortcut workspace:
 
 ```bash
-npm run build:shared
-npm run typecheck
+npm run check:client
+npm run check:server
+npm run check:shared
 ```
 
-### Backend
+Ưu tiên command chi tiết hoặc test file/feature cụ thể khi shortcut vẫn rộng hơn
+phạm vi cần chứng minh.
 
-```bash
-npm -w server run typecheck
-npm -w server run test
+### Test budget
+
+Với Mức 1, tối đa 2–3 command verification liên quan trực tiếp.
+
+Với Mức 2, chạy test file/feature liên quan trước. Chỉ mở rộng khi targeted test
+thất bại hoặc cho thấy ảnh hưởng lan rộng.
+
+Với Mức 3, dùng targeted integration/E2E đúng luồng; không chạy toàn bộ suite.
+Targeted E2E cụ thể của feature không cần user xác nhận.
+
+### Escalation
+
+Chỉ mở rộng phạm vi kiểm thử khi:
+
+- targeted test thất bại;
+- type error xuất hiện ở module khác;
+- contract thay đổi gây ảnh hưởng nhiều workspace;
+- lỗi chỉ tái hiện qua integration/E2E;
+- diff thực tế lớn hơn dự kiến;
+- phát hiện thay đổi database, auth hoặc security.
+
+Trước khi mở rộng, ghi một câu ngắn:
+
+```text
+Targeted check cho thấy ảnh hưởng sang X, nên mở rộng sang Y.
 ```
 
-Chạy integration khi thay đổi:
+Không âm thầm chuyển từ task CSS sang full regression.
 
-- SQL;
-- repository;
-- transaction;
-- auth;
-- migration;
-- business rule.
+### Command nặng
 
-```bash
-npm run test:integration
-```
+Các command sau được xem là nặng:
 
-### Frontend
-
-```bash
-npm -w client run typecheck
-npm -w client run lint
-```
-
-Chạy E2E targeted khi thay đổi luồng UI.
-
-### Gate cuối task
-
-Chỉ chạy một lần ở cuối:
-
-```bash
+```text
+npm run check
+npm run check:ci
 npm run check:full
+npm run test:integration
+npm run test:e2e
+npm run test:e2e:full
+docker build cả API và Web
+npm run package:source
 ```
 
-Khi thay đổi package/release:
+Nếu task không phải Mức 4, agent không tự chạy các command này. Nếu targeted
+evidence cho thấy cần mở rộng, phải nêu lý do cụ thể, phạm vi rủi ro và xin user
+xác nhận trước khi chạy command nặng. Targeted integration hoặc targeted E2E của
+một feature không thuộc hạn chế này.
+
+### Khi nào được chạy `check:full`
+
+Chỉ chạy `check:full` khi có ít nhất một điều kiện:
+
+1. User yêu cầu rõ “test full”, “rà soát toàn bộ” hoặc tương đương.
+2. Chuẩn bị release/package source.
+3. Thay đổi migration/schema.
+4. Thay đổi auth/security quan trọng.
+5. Thay đổi contract shared ảnh hưởng cả client và server.
+6. Refactor xuyên nhiều module.
+7. Thay đổi workflow CI/CD hoặc Docker runtime có phạm vi lớn.
+8. Targeted tests không đủ cô lập rủi ro và agent đã ghi rõ lý do.
+
+Nếu không thuộc các trường hợp trên thì không chạy `check:full`.
+
+Khi thay đổi package/release và đã xác định thuộc Mức 4:
 
 ```bash
 npm run package:source
 npm run check:package
 ```
 
-Không chạy `check:full` sau từng thay đổi nhỏ.
+### Ví dụ quyết định
 
-Không tuyên bố PASS khi command bắt buộc chưa chạy hoặc bị lỗi.
+- Sửa khoảng cách button: client typecheck, client lint, screenshot đúng route
+  nếu cần; không full E2E.
+- Sửa bottom navigation nháy: client typecheck, client lint,
+  mobile-navigation targeted E2E; không integration hoặc full E2E.
+- Sửa bulk chọn ảnh: client/server typecheck liên quan, unit test
+  scheduler/provider, vocabulary-media targeted E2E; không chạy lesson, tuition
+  hoặc Google Sheet E2E.
+- Sửa repository SQL: server typecheck, targeted server unit/integration; không
+  chạy toàn bộ client E2E.
+- Sửa migration/auth/contract shared: kiểm tra rộng hơn; có thể chạy `check:ci`
+  hoặc `check:full` tùy phạm vi.
+
+Không tuyên bố “all tests passed” khi chỉ chạy targeted tests; dùng “targeted
+checks passed”. Không tuyên bố PASS khi targeted mandatory check chưa chạy hoặc
+bị lỗi.
 
 ---
 
@@ -467,7 +552,7 @@ chore(release): hoàn tất kiểm tra gói phát hành
 Không commit khi:
 
 - verdict là FAIL;
-- test bắt buộc chưa chạy;
+- targeted mandatory checks theo mức task chưa chạy;
 - có secret/private data trong staged diff;
 - diff trộn thay đổi ngoài task;
 - không xác định rõ phạm vi.
@@ -517,9 +602,11 @@ Không ZIP nguyên working directory.
 Final response phải ngắn và có:
 
 1. Đã sửa gì.
-2. Kiểm tra nào đã chạy.
-3. Kết quả PASS hoặc FAIL.
-4. Commit hash và commit message nếu đã commit.
-5. Điểm còn tồn tại thực sự.
+2. Task level.
+3. Command đã chạy và command không chạy.
+4. Lý do không chạy full regression nếu không chạy.
+5. Kết quả PASS hoặc FAIL.
+6. Commit hash và commit message nếu đã commit.
+7. Điểm còn tồn tại thực sự.
 
 Không lặp lại toàn bộ report trong final response.
