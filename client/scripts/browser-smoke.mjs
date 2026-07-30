@@ -183,6 +183,7 @@ try {
     { path: "/admin/calendar", testId: "weekly-calendar", name: "calendar-1440" },
     { path: "/admin/tuition", testId: "tuition-list-page", name: "tuition-1440" },
     { path: "/admin/students", testId: "student-list-page", name: "students-1440" },
+    { path: "/admin/account", testId: "account-page", name: "account-1440" },
   ]) {
     await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${pageAudit.path}`)})`);
     await cdp.wait(`!!document.querySelector('[data-testid=${pageAudit.testId}]')`, pageAudit.name);
@@ -214,6 +215,7 @@ try {
     { path: "/admin/calendar", testId: "weekly-calendar", name: "calendar-390" },
     { path: "/admin/tuition", testId: "tuition-list-page", name: "tuition-390" },
     { path: "/admin/students", testId: "student-list-page", name: "students-390" },
+    { path: "/admin/account", testId: "account-page", name: "account-390" },
   ]) {
     await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${pageAudit.path}`)})`);
     await cdp.wait(`!!document.querySelector('[data-testid=${pageAudit.testId}]')`, pageAudit.name);

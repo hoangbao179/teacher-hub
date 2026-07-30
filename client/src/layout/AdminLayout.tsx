@@ -54,7 +54,7 @@ export function AdminLayout() {
     );
   const current = directIndex >= 0 ? directIndex
     : /^\/admin\/(reconciliation|busy-slots|lessons)/.test(location.pathname) ? 1
-      : /^\/admin\/(vocabulary|assignments)/.test(location.pathname) ? -1 : 0;
+      : /^\/admin\/(vocabulary|assignments|account)/.test(location.pathname) ? -1 : 0;
   const desktopCurrent = desktopNav.findIndex(([path]) =>
     path === "/admin" ? location.pathname === "/admin" : location.pathname.startsWith(path),
   );
