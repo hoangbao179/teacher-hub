@@ -264,7 +264,7 @@ try {
   await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${classPath}`)})`); await cdp.wait("document.body.innerText.includes('Ghi danh')", "class reload");
   await cdp.clickText("Ghi danh"); await cdp.wait("document.querySelector('[role=dialog]') && document.body.innerText.includes('Ngày vào học')", "enrollment dialog"); await cdp.select("Học sinh", studentName); await cdp.clickDialogText("Ghi danh"); await cdp.wait("document.body.innerText.includes('Đã ghi danh học sinh')", "enrollment success"); await cdp.wait(`document.body.innerText.includes(${JSON.stringify(studentName)})`, "enrolled student");
 
-  await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${studentPath}`)})`); await cdp.wait("document.body.innerText.includes('Đổi chế độ học phí')", "student reload");
+  await cdp.clickText(studentName); await cdp.wait(`location.pathname===${JSON.stringify(studentPath)}`, "class student card navigation"); await cdp.wait("document.body.innerText.includes('Đổi chế độ học phí')", "student detail from class");
   await cdp.clickText("Đổi chế độ học phí"); await cdp.wait("document.querySelector('[role=dialog]') && document.body.innerText.includes('Áp dụng từ')", "tuition dialog");
   await new Promise((resolve) => setTimeout(resolve, 350));
   const dialogFits = await cdp.eval("(() => { const r=document.querySelector('[role=dialog]').getBoundingClientRect(); return r.top>=0 && r.bottom<=innerHeight && r.left>=0 && r.right<=innerWidth; })()");

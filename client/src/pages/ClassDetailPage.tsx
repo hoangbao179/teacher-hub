@@ -120,7 +120,14 @@ export function ClassDetailPage() {
       </MobileCard>
       <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography variant="h6">Học sinh</Typography><Button variant="contained" disabled={busy || item!.status !== "ACTIVE" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => setDialogOpen(true)}>Ghi danh</Button></Stack>
       {item!.students.map((student) => (
-        <Card key={student.enrollmentId}>
+        <Card
+          key={student.enrollmentId}
+          component={Link}
+          to={`/admin/students/${student.studentId}`}
+          aria-label={`Xem chi tiết học sinh ${student.fullName}`}
+          data-testid="class-student-card"
+          sx={{ textDecoration: "none", color: "inherit", "&:hover": { borderColor: "primary.main" } }}
+        >
           <CardContent>
             <Stack direction="row" sx={{ justifyContent: "space-between" }}>
               <Typography variant="subtitle1">{student.fullName}</Typography>
