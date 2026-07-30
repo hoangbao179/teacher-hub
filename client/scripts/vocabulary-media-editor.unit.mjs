@@ -14,14 +14,15 @@ const api = read("src/api/vocabularyMedia.ts");
 const routes = read("../server/src/routes/index.ts");
 const nginx = read("../deploy/nginx.conf");
 
-test("bulk modal keeps explicit item states, batches eight and does not count pending as completed", () => {
-  assert.match(bulk, /"PENDING" \| "SEARCHING" \| "FOUND" \| "EMPTY" \| "RATE_LIMITED" \| "ERROR" \| "SKIPPED"/);
-  assert.match(bulk, /const BATCH_SIZE = 8/);
+test("bulk modal keeps draft/apply states, batches five and reports found, selected, applied and errors separately", () => {
+  for (const status of ["SEARCH_PENDING", "SEARCHING", "FOUND", "SELECTED", "APPLYING", "APPLIED", "EMPTY", "ERROR", "SKIPPED"])
+    assert.match(bulk, new RegExp(`"${status}"`));
+  assert.match(bulk, /const BATCH_SIZE = 5/);
   assert.match(bulk, /remote\.slice\(cursor\.current, cursor\.current \+ BATCH_SIZE\)/);
-  assert.match(bulk, /\["FOUND", "EMPTY", "ERROR", "SKIPPED"\]\.includes/);
+  assert.match(bulk, /Tìm thấy: \{found\}\/\{candidates\.length\}.*Đã chọn: \{selected\}.*Đã áp dụng: \{applied\}.*Lỗi: \{errors\}/s);
   assert.match(bulk, /state\.status === "EMPTY"/);
-  assert.match(bulk, /state\.status === "PENDING"/);
-  assert.match(bulk, /Tiếp tục tìm các từ còn lại/);
+  assert.match(bulk, /state\.status === "SEARCH_PENDING"/);
+  assert.match(bulk, /Áp dụng \$\{selectedCandidates\.length\} ảnh/);
 });
 
 test("429 stops at the current cursor and leaves later work pending", async () => {
@@ -36,6 +37,21 @@ test("429 stops at the current cursor and leaves later work pending", async () =
   assert.deepEqual(calls, ["cat", "dog"]);
   assert.deepEqual(completed, ["cat"]);
   assert.deepEqual(cooldown, [2]);
+});
+
+test("provider outage stops the batch immediately without consuming later work", async () => {
+  const calls = []; const errors = [];
+  const run = startSingleWorkerBatch({
+    items: ["cat", "dog", "bird"], delayMs: 0, sleep: async () => undefined,
+    runItem: async (item) => { calls.push(item); throw { unavailable: true }; },
+    rateLimitSeconds: () => undefined,
+    stopOnError: (error) => error?.unavailable === true,
+    onCooldown: () => undefined, onError: (error, item) => errors.push([error, item]),
+  });
+  await run.done;
+  assert.deepEqual(calls, ["cat"]);
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0][1], "cat");
 });
 
 test("closing pickers aborts active requests and stale generations cannot overwrite state", () => {
@@ -74,7 +90,7 @@ test("media type reset clears all remote results and waits for an explicit new b
 });
 
 test("Tìm lại owns one candidate controller and disables fallback", () => {
-  const retry = bulk.slice(bulk.indexOf("const retryCandidate"), bulk.indexOf("const choose"));
+  const retry = bulk.slice(bulk.indexOf("const retryCandidate"), bulk.indexOf("const selectFile"));
   assert.match(retry, /candidateLocks\.current\.has\(candidate\.index\)/);
   assert.match(retry, /new AbortController\(\)/);
   assert.match(retry, /allowFallback: false/);
@@ -90,17 +106,30 @@ test("local manifest is preferred and upload uses preview, exact MIME accept and
   }
   assert.match(picker, /uploadLock\.current/);
   assert.match(bulk, /uploadLocks\.current/);
-  assert.match(bulk, /importLocks\.current\.has/);
+  assert.match(bulk, /importedByAsset\.get\(dedupeKey\)/);
   assert.match(picker, /importLock\.current/);
   assert.match(api, /FormData/);
   assert.match(api, /\/api\/vocabulary\/media\/upload/);
 });
 
-test("429 codes have distinct client messages and countdown never schedules an automatic retry", () => {
+test("rate-limit and provider-unavailable codes have distinct client messages and no automatic retry", () => {
   const errors = read("src/features/vocabulary/vocabularyMediaErrors.ts");
-  for (const code of ["VOCABULARY_SEARCH_RATE_LIMITED", "IMAGE_PROVIDER_RATE_LIMITED", "IMAGE_IMPORT_SOURCE_RATE_LIMITED", "VOCABULARY_IMPORT_RATE_LIMITED"])
+  for (const code of ["VOCABULARY_SEARCH_RATE_LIMITED", "IMAGE_PROVIDER_RATE_LIMITED", "IMAGE_IMPORT_SOURCE_RATE_LIMITED", "VOCABULARY_IMPORT_RATE_LIMITED", "IMAGE_PROVIDER_UNAVAILABLE"])
     assert.match(errors, new RegExp(code));
+  assert.match(bulk, /stopOnError: providerUnavailable/);
   assert.doesNotMatch(bulk, /setTimeout\([^)]*startNextBatch/);
+});
+
+test("bulk cancel discards its draft while apply commits callbacks only after successful import", () => {
+  assert.doesNotMatch(bulk.slice(bulk.indexOf("const selectFile"), bulk.indexOf("const applySelections")), /onSelect(Local)?\(/);
+  const apply = bulk.slice(bulk.indexOf("const applySelections"), bulk.indexOf("const close"));
+  assert.match(apply, /onSelectLocal\(candidate\.index/);
+  assert.match(apply, /onSelect\(candidate\.index, await request\)/);
+  assert.match(apply, /status: "APPLIED"/);
+  assert.match(apply, /if \(failures === 0\) onClose\(\)/);
+  const close = bulk.slice(bulk.indexOf("const close"), bulk.indexOf("const searched"));
+  assert.doesNotMatch(close, /onSelect(Local)?\(/);
+  assert.match(bulk, />Hủy<\/Button>/);
 });
 
 test("public immutable media is not protected by the 60-per-minute business limiter", () => {
@@ -128,7 +157,7 @@ test("ARASAAC is the illustration source while unavailable filters and stale req
   assert.match(picker, /Sergio Palao \/ ARASAAC/);
   assert.match(bulk, /searchCache\.current\.get\(key\)/);
   assert.match(bulk, /candidateControllers\.current\.forEach\(\(controller\) => controller\.abort\(\)\)/);
-  assert.match(bulk, /Từ này đã có ảnh/);
+  assert.match(bulk, /status: candidate\.strategy\.publicAsset \? "SELECTED" : "SEARCH_PENDING"/);
   assert.doesNotMatch(bulk, /Pixabay đang tắt/);
   assert.doesNotMatch(picker, /không gửi yêu cầu tới Pixabay/);
 });

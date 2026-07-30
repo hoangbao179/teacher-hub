@@ -66,35 +66,80 @@ test("ARASAAC accepts an empty search result", async () => {
   assert.deepEqual(result, { total: 0, items: [] });
 });
 
-test("ARASAAC maps timeout and malformed responses to provider unavailable", async () => {
-  for (const fetcher of [
-    async () => { throw new DOMException("timeout", "AbortError"); },
-    async () => new Response("not-json", { status: 200 }),
-    async () => Response.json({ unexpected: true }),
-  ] as Array<typeof fetch>) {
+test("ARASAAC retries timeout/network exactly once and reports sanitized details", async () => {
+  for (const failure of [
+    new DOMException("timeout", "AbortError"),
+    new TypeError("socket closed"),
+  ]) {
+    let calls = 0;
+    const waits: number[] = [];
+    const fetcher = async () => { calls += 1; throw failure; };
     await assert.rejects(
-      new ArasaacImageSearchProvider(fetcher).search(input),
+      new ArasaacImageSearchProvider(fetcher, 5_000, async (milliseconds) => {
+        waits.push(milliseconds);
+      }, () => 0.5).search(input),
       (error: unknown) => error instanceof AppError &&
-        error.code === "IMAGE_PROVIDER_UNAVAILABLE" && error.statusCode === 503,
+        error.code === "IMAGE_PROVIDER_UNAVAILABLE" && error.statusCode === 503 &&
+        (error.details as { provider?: string }).provider === "ARASAAC" &&
+        (error.details as { operation?: string }).operation === "SEARCH" &&
+        (error.details as { reason?: string }).reason === (failure.name === "AbortError" ? "TIMEOUT" : "NETWORK"),
     );
+    assert.equal(calls, 2);
+    assert.deepEqual(waits, [850]);
   }
 });
 
-test("ARASAAC preserves Retry-After on 429 and maps 5xx", async () => {
+test("ARASAAC does not retry malformed responses", async () => {
+  for (const response of [
+    () => new Response("not-json", { status: 200 }),
+    () => Response.json({ unexpected: true }),
+  ]) {
+    let calls = 0;
+    await assert.rejects(
+      new ArasaacImageSearchProvider(async () => { calls += 1; return response(); }, 5_000,
+        async () => undefined).search(input),
+      (error: unknown) => error instanceof AppError &&
+        error.code === "IMAGE_PROVIDER_UNAVAILABLE" &&
+        (error.details as { reason?: string }).reason === "MALFORMED_RESPONSE",
+    );
+    assert.equal(calls, 1);
+  }
+});
+
+test("ARASAAC preserves Retry-After, retries selected 5xx once and does not retry other statuses", async () => {
+  let rateLimitCalls = 0;
   await assert.rejects(
-    new ArasaacImageSearchProvider(async () => new Response(null, {
+    new ArasaacImageSearchProvider(async () => { rateLimitCalls += 1; return new Response(null, {
       status: 429,
       headers: { "Retry-After": "9" },
-    })).search(input),
+    }); }).search(input),
     (error: unknown) => error instanceof AppError &&
       error.code === "IMAGE_PROVIDER_RATE_LIMITED" &&
       error.statusCode === 429 && error.retryAfterSeconds === 9,
   );
-  await assert.rejects(
-    new ArasaacImageSearchProvider(async () => new Response(null, { status: 503 })).search(input),
-    (error: unknown) => error instanceof AppError &&
-      error.code === "IMAGE_PROVIDER_UNAVAILABLE",
-  );
+  assert.equal(rateLimitCalls, 1);
+
+  for (const status of [500, 502, 503, 504]) {
+    let calls = 0;
+    await assert.rejects(
+      new ArasaacImageSearchProvider(async () => { calls += 1; return new Response(null, { status }); },
+        5_000, async () => undefined).search(input),
+      (error: unknown) => error instanceof AppError &&
+        error.code === "IMAGE_PROVIDER_UNAVAILABLE" &&
+        (error.details as { upstreamStatus?: number }).upstreamStatus === status,
+    );
+    assert.equal(calls, 2);
+  }
+  for (const status of [400, 404]) {
+    let calls = 0;
+    await assert.rejects(
+      new ArasaacImageSearchProvider(async () => { calls += 1; return new Response(null, { status }); },
+        5_000, async () => undefined).search(input),
+      (error: unknown) => error instanceof AppError &&
+        error.code === "IMAGE_PROVIDER_UNAVAILABLE",
+    );
+    assert.equal(calls, 1);
+  }
 });
 
 test("ARASAAC resolveAsset verifies a positive ID and reconstructs trusted URLs", async () => {

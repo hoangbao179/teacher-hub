@@ -7,7 +7,9 @@ export interface ProviderRateCoordinator {
 
 interface Bucket {
   nextAllowedAt: number;
-  cooldownUntil: number;
+  rateLimitUntil: number;
+  circuitUntil: number;
+  unavailableFailures: number;
   tail: Promise<void>;
 }
 
@@ -21,13 +23,18 @@ export class InMemoryProviderRateCoordinator implements ProviderRateCoordinator 
   ) {}
 
   cooldownUntil(provider: string): Date | null {
-    const value = this.buckets.get(provider)?.cooldownUntil ?? 0;
+    const bucket = this.buckets.get(provider);
+    const value = Math.max(bucket?.rateLimitUntil ?? 0, bucket?.circuitUntil ?? 0);
     return value > this.now() ? new Date(value) : null;
   }
 
   async run<T>(provider: string, operation: () => Promise<T>): Promise<T> {
     const bucket = this.buckets.get(provider) ?? {
-      nextAllowedAt: 0, cooldownUntil: 0, tail: Promise.resolve(),
+      nextAllowedAt: 0,
+      rateLimitUntil: 0,
+      circuitUntil: 0,
+      unavailableFailures: 0,
+      tail: Promise.resolve(),
     };
     this.buckets.set(provider, bucket);
     const previous = bucket.tail;
@@ -41,12 +48,36 @@ export class InMemoryProviderRateCoordinator implements ProviderRateCoordinator 
       this.throwIfCoolingDown(provider, bucket);
       bucket.nextAllowedAt = this.now() + this.minimumIntervalMs;
       try {
-        return await operation();
+        const result = await operation();
+        bucket.unavailableFailures = 0;
+        bucket.circuitUntil = 0;
+        return result;
       } catch (error) {
         if (error instanceof AppError && error.statusCode === 429) {
           const seconds = Math.max(1, error.retryAfterSeconds ?? 60);
-          bucket.cooldownUntil = this.now() + seconds * 1_000;
-          bucket.nextAllowedAt = bucket.cooldownUntil;
+          bucket.rateLimitUntil = this.now() + seconds * 1_000;
+          bucket.nextAllowedAt = bucket.rateLimitUntil;
+          bucket.unavailableFailures = 0;
+        } else if (error instanceof AppError && error.code === "IMAGE_PROVIDER_UNAVAILABLE") {
+          bucket.unavailableFailures += 1;
+          if (bucket.unavailableFailures >= 2) {
+            bucket.circuitUntil = this.now() + 30_000;
+            bucket.nextAllowedAt = bucket.circuitUntil;
+            const details = typeof error.details === "object" && error.details ? error.details : {};
+            throw new AppError(
+              503,
+              "IMAGE_PROVIDER_UNAVAILABLE",
+              error.message,
+              {
+                ...details,
+                provider,
+                circuitOpenUntil: new Date(bucket.circuitUntil).toISOString(),
+              },
+              30,
+            );
+          }
+        } else {
+          bucket.unavailableFailures = 0;
         }
         throw error;
       }
@@ -57,11 +88,19 @@ export class InMemoryProviderRateCoordinator implements ProviderRateCoordinator 
 
   private throwIfCoolingDown(provider: string, bucket: Bucket): void {
     const now = this.now();
-    if (bucket.cooldownUntil <= now) return;
-    const seconds = Math.max(1, Math.ceil((bucket.cooldownUntil - now) / 1_000));
+    if (bucket.circuitUntil > now) {
+      const seconds = Math.max(1, Math.ceil((bucket.circuitUntil - now) / 1_000));
+      throw new AppError(503, "IMAGE_PROVIDER_UNAVAILABLE", "Nguồn ảnh đang tạm gián đoạn.", {
+        provider,
+        reason: "CIRCUIT_OPEN",
+        circuitOpenUntil: new Date(bucket.circuitUntil).toISOString(),
+      }, seconds);
+    }
+    if (bucket.rateLimitUntil <= now) return;
+    const seconds = Math.max(1, Math.ceil((bucket.rateLimitUntil - now) / 1_000));
     throw new AppError(429, "IMAGE_PROVIDER_RATE_LIMITED", "Nguồn ảnh đang tạm giới hạn tần suất.", {
       provider,
-      cooldownUntil: new Date(bucket.cooldownUntil).toISOString(),
+      cooldownUntil: new Date(bucket.rateLimitUntil).toISOString(),
     }, seconds);
   }
 }

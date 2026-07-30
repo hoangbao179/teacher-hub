@@ -203,6 +203,56 @@ test("search forwards page and defaults to eight results per page", async () => 
   assert.equal((await defaults.service.search({ query: "Pear" })).pageSize, 8);
 });
 
+test("ARASAAC caches normalized result for seven days independently of requested pagination", async () => {
+  const cache = new Map<string, { payload: { total: number; items: ProviderImageAsset[] }; expiresAt: Date }>();
+  const saved: Array<{ cacheKey: string; page: number; pageSize: number; expiresAt: Date }> = [];
+  const repository = {
+    findCache: async (_provider: string, cacheKey: string) => cache.get(cacheKey) ?? null,
+    saveCache: async (value: { cacheKey: string; page: number; pageSize: number; payload: { total: number; items: ProviderImageAsset[] }; expiresAt: Date }) => {
+      saved.push(value);
+      cache.set(value.cacheKey, { payload: value.payload, expiresAt: value.expiresAt });
+    },
+  };
+  let calls = 0;
+  let providerInput: unknown;
+  const items = Array.from({ length: 7 }, (_, index): ProviderImageAsset => ({
+    ...asset,
+    provider: "ARASAAC",
+    providerAssetId: String(index + 1),
+    mediaType: "ILLUSTRATION",
+    previewUrl: `https://static.arasaac.org/${index + 1}_300.png`,
+    thumbnailUrl: `https://static.arasaac.org/${index + 1}_300.png`,
+    downloadUrl: `https://static.arasaac.org/${index + 1}_500.png`,
+  }));
+  const provider = {
+    name: "ARASAAC" as const,
+    allowedDownloadHosts: ["static.arasaac.org"] as const,
+    supportedMediaTypes: ["ALL", "ILLUSTRATION"] as const,
+    search: async (input: unknown) => { calls += 1; providerInput = input; return { total: items.length, items }; },
+  };
+  const now = new Date("2026-07-26T00:00:00Z");
+  const service = new VocabularyMediaService(
+    repository as never,
+    provider,
+    { ...settings, arasaacEnabled: true, pixabayEnabled: false },
+    undefined,
+    { initialize: async () => undefined } as never,
+    () => now,
+  );
+  const first = await service.search({ query: "  RED   APPLE ", page: 1, pageSize: 3, mediaType: "ILLUSTRATION" });
+  const second = await service.search({ query: "red apple", page: 2, pageSize: 3, mediaType: "ILLUSTRATION" });
+  assert.equal(calls, 1);
+  assert.deepEqual(providerInput, {
+    query: "red apple", page: 1, pageSize: 50, mediaType: "ILLUSTRATION", orientation: "ALL", safeSearch: true,
+  });
+  assert.deepEqual(first.items.map((item) => item.providerAssetId), ["1", "2", "3"]);
+  assert.deepEqual(second.items.map((item) => item.providerAssetId), ["4", "5", "6"]);
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].page, 1);
+  assert.equal(saved[0].pageSize, 50);
+  assert.equal(saved[0].expiresAt.toISOString(), "2026-08-02T00:00:00.000Z");
+});
+
 test("provider rate limits remain distinct and preserve retry timing", async () => {
   const value = makeService({ providerError: new AppError(
     429, "IMAGE_PROVIDER_RATE_LIMITED", "limited", { remaining: 0 }, 9,

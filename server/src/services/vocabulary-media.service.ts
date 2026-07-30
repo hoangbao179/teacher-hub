@@ -73,9 +73,10 @@ export class VocabularyMediaService {
       query,
       mediaType,
       orientation,
-      page,
-      pageSize,
+      ...(provider.name === "ARASAAC" ? {} : { page, pageSize }),
     })).digest("hex");
+    const providerPage = provider.name === "ARASAAC" ? 1 : page;
+    const providerPageSize = provider.name === "ARASAAC" ? 50 : pageSize;
     const now = this.now();
     let cached = await this.repository.findCache(provider.name, cacheKey, now);
     if (!cached) {
@@ -83,30 +84,38 @@ export class VocabularyMediaService {
       try {
         payload = await this.coordinator.run(provider.name, () => provider.search({
           query,
-          page,
-          pageSize,
+          page: providerPage,
+          pageSize: providerPageSize,
           mediaType,
           orientation,
           safeSearch: true,
         }));
       } catch (error) {
+        const details = error instanceof AppError && typeof error.details === "object" && error.details
+          ? error.details as Record<string, unknown>
+          : {};
         console.warn(JSON.stringify({
           level: "warn",
           event: "vocabulary_image_provider_failed",
           provider: provider.name,
           category: error instanceof AppError ? error.code : "UNEXPECTED",
+          operation: details.operation,
+          reason: details.reason,
+          upstreamStatus: details.upstreamStatus,
         }));
         throw error;
       }
-      const expiresAt = new Date(now.getTime() + this.settings.cacheTtlMs);
+      const expiresAt = new Date(now.getTime() + (provider.name === "ARASAAC"
+        ? 7 * 24 * 60 * 60 * 1_000
+        : this.settings.cacheTtlMs));
       await this.repository.saveCache({
         provider: provider.name,
         cacheKey,
         normalizedQuery: query,
         mediaType,
         orientation,
-        page,
-        pageSize,
+        page: providerPage,
+        pageSize: providerPageSize,
         payload,
         expiresAt,
       });
@@ -119,7 +128,9 @@ export class VocabularyMediaService {
       page,
       pageSize,
       total: cached.payload.total,
-      items: cached.payload.items.map((item) => ({
+      items: (provider.name === "ARASAAC"
+        ? cached.payload.items.slice((page - 1) * pageSize, page * pageSize)
+        : cached.payload.items).map((item) => ({
         provider: item.provider,
         providerAssetId: item.providerAssetId,
         previewUrl: item.previewUrl,

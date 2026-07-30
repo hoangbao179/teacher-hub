@@ -26,13 +26,24 @@ function retryAfterSeconds(response: Response, now = Date.now()): number {
   return Number.isFinite(date) ? Math.max(1, Math.ceil((date - now) / 1_000)) : 60;
 }
 
-function unavailable(): AppError {
+type ProviderOperation = "SEARCH" | "RESOLVE";
+type UnavailableReason = "TIMEOUT" | "NETWORK" | "UPSTREAM_STATUS" | "MALFORMED_RESPONSE";
+
+function unavailable(operation: ProviderOperation, reason: UnavailableReason, upstreamStatus?: number): AppError {
   return new AppError(
     503,
     "IMAGE_PROVIDER_UNAVAILABLE",
     "Nguồn hình minh họa đang tạm gián đoạn. Vui lòng thử lại.",
+    {
+      provider: "ARASAAC",
+      operation,
+      reason,
+      ...(upstreamStatus === undefined ? {} : { upstreamStatus }),
+    },
   );
 }
+
+const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
 
 function positiveId(value: unknown): string | null {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) return null;
@@ -88,12 +99,15 @@ export class ArasaacImageSearchProvider implements ImageSearchProvider {
   constructor(
     private readonly fetcher: typeof fetch = fetch,
     private readonly timeoutMs = 5_000,
+    private readonly sleep: (milliseconds: number) => Promise<void> = (milliseconds) =>
+      new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds)),
+    private readonly random: () => number = Math.random,
   ) {}
 
   async search(input: ProviderSearchInput): Promise<ProviderSearchResult> {
     const url = `https://api.arasaac.org/v1/pictograms/en/bestsearch/${encodeURIComponent(input.query)}`;
-    const payload = await this.fetchJson(url, false);
-    if (!Array.isArray(payload)) throw unavailable();
+    const payload = await this.fetchJson(url, false, "SEARCH");
+    if (!Array.isArray(payload)) throw unavailable("SEARCH", "MALFORMED_RESPONSE");
     const seen = new Set<string>();
     const allItems: ProviderImageAsset[] = [];
     for (const value of payload) {
@@ -115,38 +129,69 @@ export class ArasaacImageSearchProvider implements ImageSearchProvider {
     const payload = await this.fetchJson(
       `https://api.arasaac.org/v1/pictograms/en/${providerAssetId}`,
       true,
+      "RESOLVE",
     );
     if (payload == null || Array.isArray(payload) || typeof payload !== "object") return null;
     const item = mapPictogram(payload as ArasaacPictogram);
     return item?.providerAssetId === providerAssetId ? item : null;
   }
 
-  private async fetchJson(url: string, allowNotFound: boolean): Promise<unknown | null> {
-    let response: Response;
-    try {
-      response = await this.fetcher(url, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
-    } catch {
-      throw unavailable();
+  private async fetchJson(
+    url: string,
+    allowNotFound: boolean,
+    operation: ProviderOperation,
+  ): Promise<unknown | null> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      let response: Response;
+      try {
+        response = await this.fetcher(url, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(this.timeoutMs),
+        });
+      } catch (error) {
+        const reason: UnavailableReason = error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name)
+          ? "TIMEOUT"
+          : "NETWORK";
+        if (attempt === 0) {
+          await this.retryDelay();
+          continue;
+        }
+        throw unavailable(operation, reason);
+      }
+      if (allowNotFound && response.status === 404) return null;
+      if (response.status === 429) {
+        const seconds = retryAfterSeconds(response);
+        throw new AppError(
+          429,
+          "IMAGE_PROVIDER_RATE_LIMITED",
+          "Nguồn hình minh họa đang giới hạn tần suất. Vui lòng thử lại sau.",
+          {
+            provider: "ARASAAC",
+            operation,
+            upstreamStatus: 429,
+            cooldownUntil: new Date(Date.now() + seconds * 1_000).toISOString(),
+          },
+          seconds,
+        );
+      }
+      if (!response.ok) {
+        if (attempt === 0 && RETRYABLE_STATUSES.has(response.status)) {
+          await this.retryDelay();
+          continue;
+        }
+        throw unavailable(operation, "UPSTREAM_STATUS", response.status);
+      }
+      try {
+        return JSON.parse(await response.text()) as unknown;
+      } catch {
+        throw unavailable(operation, "MALFORMED_RESPONSE");
+      }
     }
-    if (allowNotFound && response.status === 404) return null;
-    if (response.status === 429) {
-      const seconds = retryAfterSeconds(response);
-      throw new AppError(
-        429,
-        "IMAGE_PROVIDER_RATE_LIMITED",
-        "Nguồn hình minh họa đang giới hạn tần suất. Vui lòng thử lại sau.",
-        { cooldownUntil: new Date(Date.now() + seconds * 1_000).toISOString() },
-        seconds,
-      );
-    }
-    if (!response.ok) throw unavailable();
-    try {
-      return JSON.parse(await response.text()) as unknown;
-    } catch {
-      throw unavailable();
-    }
+    throw unavailable(operation, "NETWORK");
+  }
+
+  private retryDelay(): Promise<void> {
+    const milliseconds = 500 + Math.floor(Math.max(0, Math.min(1, this.random())) * 700);
+    return this.sleep(milliseconds);
   }
 }

@@ -46,3 +46,40 @@ test("provider coordinator never overlaps provider calls", async () => {
   await Promise.all([first, second]);
   assert.deepEqual(order, ["first-start", "first-end", "second"]);
 });
+
+test("provider coordinator opens an isolated 30-second circuit after two consecutive outages", async () => {
+  let now = 1_000;
+  let arasaacCalls = 0;
+  let pixabayCalls = 0;
+  const coordinator = new InMemoryProviderRateCoordinator(0, () => now);
+  const fail = async () => {
+    arasaacCalls += 1;
+    throw new AppError(503, "IMAGE_PROVIDER_UNAVAILABLE", "down", {
+      provider: "ARASAAC", operation: "SEARCH", upstreamStatus: 503,
+    });
+  };
+  await assert.rejects(coordinator.run("ARASAAC", fail));
+  await assert.rejects(coordinator.run("ARASAAC", fail),
+    (error: unknown) => error instanceof AppError && error.retryAfterSeconds === 30);
+  await assert.rejects(coordinator.run("ARASAAC", async () => { arasaacCalls += 1; }),
+    (error: unknown) => error instanceof AppError &&
+      error.code === "IMAGE_PROVIDER_UNAVAILABLE" && error.retryAfterSeconds === 30 &&
+      (error.details as { reason?: string }).reason === "CIRCUIT_OPEN");
+  assert.equal(arasaacCalls, 2);
+  await coordinator.run("PIXABAY", async () => { pixabayCalls += 1; });
+  assert.equal(pixabayCalls, 1);
+  assert.equal(coordinator.cooldownUntil("ARASAAC")?.getTime(), 31_000);
+  now += 30_000;
+  await coordinator.run("ARASAAC", async () => { arasaacCalls += 1; });
+  assert.equal(arasaacCalls, 3);
+  assert.equal(coordinator.cooldownUntil("ARASAAC"), null);
+});
+
+test("provider coordinator resets consecutive outage count after success", async () => {
+  const coordinator = new InMemoryProviderRateCoordinator(0);
+  const outage = () => Promise.reject(new AppError(503, "IMAGE_PROVIDER_UNAVAILABLE", "down"));
+  await assert.rejects(coordinator.run("ARASAAC", outage));
+  await coordinator.run("ARASAAC", async () => "ok");
+  await assert.rejects(coordinator.run("ARASAAC", outage),
+    (error: unknown) => error instanceof AppError && error.retryAfterSeconds === undefined);
+});

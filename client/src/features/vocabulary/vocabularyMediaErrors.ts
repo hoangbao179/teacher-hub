@@ -5,6 +5,7 @@ const messages: Record<string, string> = {
   IMAGE_PROVIDER_RATE_LIMITED: "Nguồn ảnh đang giới hạn tần suất. Các từ chưa xử lý vẫn được giữ nguyên.",
   IMAGE_IMPORT_SOURCE_RATE_LIMITED: "Nguồn tải ảnh đang giới hạn. Bạn có thể chờ hoặc dùng Tải ảnh từ máy.",
   VOCABULARY_IMPORT_RATE_LIMITED: "Bạn đã nhập ảnh quá nhanh. Vui lòng chờ trước khi chọn ảnh tiếp theo.",
+  IMAGE_PROVIDER_UNAVAILABLE: "Nguồn hình minh họa đang tạm gián đoạn. Các từ chưa tìm vẫn được giữ lại.",
 };
 
 export function vocabularyMediaErrorMessage(value: unknown, fallback: string): string {
@@ -13,7 +14,9 @@ export function vocabularyMediaErrorMessage(value: unknown, fallback: string): s
 }
 
 export function vocabularyMediaCooldownSeconds(value: unknown): number | undefined {
-  return value instanceof ApiError && value.status === 429
-    ? Math.max(1, value.retryAfterSeconds ?? 60)
-    : undefined;
+  if (!(value instanceof ApiError)) return undefined;
+  if (value.status === 429) return Math.max(1, value.retryAfterSeconds ?? 60);
+  if (value.code === "IMAGE_PROVIDER_UNAVAILABLE")
+    return Math.max(1, value.retryAfterSeconds ?? 30);
+  return undefined;
 }
