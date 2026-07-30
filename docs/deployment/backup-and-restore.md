@@ -78,6 +78,10 @@ Từ V20F, restore verification phải kiểm tra thêm migration `0021`/`0022`,
 fallback của `learning_attempt_question_items` và outbox vocabulary với `lesson_id`
 nullable. Không sửa ngược hai migration đã áp dụng; mọi correction dùng migration mới.
 
+Runner cũng nhận diện `0021`/`0022` chưa có migration record nhưng đã để lại DDL do
+deploy bị ngắt. Recovery chỉ hoàn tất các object còn thiếu, backfill giá trị `NULL` và
+ghi migration record sau cùng; không tự restore backup hoặc rollback dữ liệu production.
+
 ## Lịch vận hành và kiểm chứng
 
 - Chạy backup hằng ngày; giữ tối thiểu 14 bản ngày và 8 bản tuần, cộng một bản

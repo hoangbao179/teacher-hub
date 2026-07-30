@@ -53,6 +53,8 @@ function runNpx(args, options = {}) {
 
 try {
   run(process.execPath, ["scripts/prepare-test-db.cjs"]);
+  run(process.execPath, ["scripts/migration-recovery.integration.cjs"]);
+  run(process.execPath, ["scripts/prepare-test-db.cjs"]);
   runNpm(["run", "db:migrate"]);
   runNpx(["tsx", "--test", "--test-concurrency=1", "src/**/*.integration.test.ts"]);
 } catch (error) {

@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { recoverInterruptedMigrations } from "./migration-recovery";
 import { pool } from "./pool";
 
 async function migrate(): Promise<void> {
@@ -9,6 +10,8 @@ async function migrate(): Promise<void> {
       version VARCHAR(100) PRIMARY KEY,
       applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+
+    await recoverInterruptedMigrations(connection);
 
     const migrationDir = path.join(__dirname, "migrations");
     const files = (await fs.readdir(migrationDir))
