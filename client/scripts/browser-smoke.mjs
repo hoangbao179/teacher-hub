@@ -193,10 +193,14 @@ try {
       overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth,
       inputHeights: [...document.querySelectorAll('.MuiOutlinedInput-root')].filter((element) => element.offsetParent !== null).map((element) => element.getBoundingClientRect().height),
       buttonHeights: [...document.querySelectorAll('.MuiButton-root')].filter((element) => element.offsetParent !== null).map((element) => element.getBoundingClientRect().height),
+      studentToolbarRows: [...new Set([...document.querySelectorAll('[data-testid="student-filter-toolbar"] .MuiOutlinedInput-root')]
+        .filter((element) => element.offsetParent !== null)
+        .map((element) => Math.round(element.getBoundingClientRect().top)))].length,
     }))()`);
     if (desktopDensity.overflow > 1
       || desktopDensity.inputHeights.some((height) => height < 44 || height > 45)
-      || desktopDensity.buttonHeights.some((height) => height < 44 || height > 45))
+      || desktopDensity.buttonHeights.some((height) => height < 44 || height > 45)
+      || (pageAudit.path === "/admin/students" && desktopDensity.studentToolbarRows !== 1))
       throw new Error(`Invalid accessible desktop density on ${pageAudit.path}: ${JSON.stringify(desktopDensity)}`);
     await cdp.screenshot(pageAudit.name);
   }

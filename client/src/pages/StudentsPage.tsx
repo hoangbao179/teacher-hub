@@ -108,11 +108,24 @@ export function StudentsPage() {
       <PageHeader title="Học sinh" action={<Button component={Link} to="/admin/students/new" startIcon={<Add />} variant="contained">Thêm học sinh</Button>} />
       {error && <Alert severity="warning">{error}</Alert>}
 
-      <Stack direction="row" spacing={1} sx={{ width: "100%", maxWidth: { md: 700 } }}>
+      <Box
+        data-testid="student-filter-toolbar"
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "minmax(0, 1fr) auto", md: "repeat(2, minmax(0, 1fr))" },
+          gap: 1,
+          width: "100%",
+          maxWidth: { md: 580 },
+          "@media (min-width:960px)": {
+            gridTemplateColumns: "minmax(0, 1fr) minmax(180px, 240px) minmax(180px, 220px)",
+            maxWidth: "none",
+          },
+        }}
+      >
         <TextField
           fullWidth
           size="small"
-          sx={{ width: { md: 620 }, flex: { md: "0 1 620px" } }}
+          sx={{ gridColumn: { md: "1 / -1" }, "@media (min-width:960px)": { gridColumn: "auto" } }}
           label="Tìm tên, tên gọi hoặc lớp"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -121,16 +134,13 @@ export function StudentsPage() {
         <Button variant="outlined" startIcon={<FilterList />} onClick={openFilters} sx={{ display: { xs: "inline-flex", md: "none" }, whiteSpace: "nowrap" }}>
           Lọc{filter !== "ALL" || sort !== "AZ" ? " •" : ""}
         </Button>
-      </Stack>
-
-      <Stack direction="row" spacing={1} sx={{ display: { xs: "none", md: "flex" }, width: "100%", maxWidth: 580 }}>
-        <FormControl size="small" sx={{ width: 280 }}><InputLabel>Trạng thái</InputLabel><Select label="Trạng thái" value={filter} onChange={(event) => setFilter(event.target.value as StudentFilter)}>
+        <FormControl size="small" sx={{ display: { xs: "none", md: "inline-flex" }, minWidth: 0 }}><InputLabel>Trạng thái</InputLabel><Select label="Trạng thái" value={filter} onChange={(event) => setFilter(event.target.value as StudentFilter)}>
           {filterOptions.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
         </Select></FormControl>
-        <FormControl size="small" sx={{ width: 280 }}><InputLabel>Sắp xếp</InputLabel><Select label="Sắp xếp" value={sort} onChange={(event) => setSort(event.target.value as StudentSort)}>
+        <FormControl size="small" sx={{ display: { xs: "none", md: "inline-flex" }, minWidth: 0 }}><InputLabel>Sắp xếp</InputLabel><Select label="Sắp xếp" value={sort} onChange={(event) => setSort(event.target.value as StudentSort)}>
           <MenuItem value="AZ">Tên A–Z</MenuItem><MenuItem value="ZA">Tên Z–A</MenuItem>
         </Select></FormControl>
-      </Stack>
+      </Box>
 
       <Dialog open={filterOpen} onClose={() => setFilterOpen(false)} fullWidth maxWidth="xs" aria-labelledby="student-filter-title">
         <DialogTitle id="student-filter-title">Lọc và sắp xếp</DialogTitle>
