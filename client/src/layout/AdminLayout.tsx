@@ -43,6 +43,20 @@ const desktopNav = [
   ["/admin/vocabulary", <Translate key="vocabulary" />, "Kho từ vựng"],
   ["/admin/assignments", <Assignment key="assignments" />, "Bài tập từ vựng"],
 ] as const;
+
+function shouldUseAdminSafeArea() {
+  if (typeof navigator === "undefined") return false;
+  const iosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const standalone = typeof window !== "undefined"
+    && Boolean(window.matchMedia?.("(display-mode: standalone)").matches);
+  return iosDevice || standalone;
+}
+
+const adminSafeBottom = shouldUseAdminSafeArea()
+  ? "env(safe-area-inset-bottom, 0px)"
+  : "0px";
+
 export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,15 +74,9 @@ export function AdminLayout() {
   );
   return (
     <ThemeProvider theme={adminTheme}>
-    <Box sx={{
-      "--admin-safe-bottom": "0px",
-      "@supports (-webkit-touch-callout: none)": {
-        "--admin-safe-bottom": "env(safe-area-inset-bottom, 0px)",
-      },
-      "@media (display-mode: standalone)": {
-        "--admin-safe-bottom": "env(safe-area-inset-bottom, 0px)",
-      },
-      minHeight: "100dvh",
+    <Box data-testid="admin-layout" sx={{
+      "--admin-safe-bottom": adminSafeBottom,
+      minHeight: { xs: "100svh", md: "100dvh" },
       minWidth: 0,
       overflowX: "clip",
       bgcolor: "background.default",
@@ -139,24 +147,26 @@ export function AdminLayout() {
           <Outlet />
         </Container>
       </Box>
-      <BottomNavigation
-        showLabels
-        data-testid="mobile-navigation"
-        aria-label="Điều hướng quản trị chính"
-        value={current}
-        onChange={(_e, value) => navigate(nav[value][0])}
+      <Box
+        data-testid="mobile-navigation-shell"
         sx={{
           display: { xs: "flex", md: "none" },
+          flexDirection: "column",
           position: "fixed",
           bottom: 0,
           left: 0,
           right: 0,
           zIndex: 20,
-          bgcolor: "rgba(255,255,255,.97)",
+          height: `calc(${uiTokens.navigationHeight}px + var(--admin-safe-bottom))`,
+          bgcolor: "#ffffff",
           boxShadow: "0 -7px 25px rgba(15, 118, 110, 0.08)",
           boxSizing: "border-box",
-          pb: "var(--admin-safe-bottom)",
-          height: `calc(${uiTokens.navigationHeight}px + var(--admin-safe-bottom))`,
+          transform: "translate3d(0, 0, 0)",
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+          contain: "layout paint",
+          isolation: "isolate",
+          transition: "none",
           "&::before": {
             content: '""',
             position: "absolute",
@@ -168,17 +178,39 @@ export function AdminLayout() {
             pointerEvents: "none",
           },
           "& .MuiBottomNavigationAction-root": {
-            alignSelf: "flex-start",
             boxSizing: "border-box",
             height: `${uiTokens.navigationHeight}px`,
             maxHeight: `${uiTokens.navigationHeight}px`,
+            transition: "none",
           },
         }}
       >
-        {nav.map(([, icon, label]) => (
-          <BottomNavigationAction key={label} label={label} icon={icon} aria-label={label} />
-        ))}
-      </BottomNavigation>
+        <BottomNavigation
+          showLabels
+          data-testid="mobile-navigation"
+          aria-label="Điều hướng quản trị chính"
+          value={current}
+          onChange={(_e, value) => navigate(nav[value][0])}
+          sx={{
+            display: { xs: "flex", md: "none" },
+            flex: "0 0 auto",
+            width: "100%",
+            height: `${uiTokens.navigationHeight}px`,
+            bgcolor: "#ffffff",
+            boxSizing: "border-box",
+            transition: "none",
+          }}
+        >
+          {nav.map(([, icon, label]) => (
+            <BottomNavigationAction key={label} label={label} icon={icon} aria-label={label} />
+          ))}
+        </BottomNavigation>
+        <Box
+          data-testid="mobile-navigation-safe-area"
+          aria-hidden="true"
+          sx={{ flex: "0 0 auto", width: "100%", height: "var(--admin-safe-bottom)", bgcolor: "#ffffff" }}
+        />
+      </Box>
     </Box>
     </ThemeProvider>
   );

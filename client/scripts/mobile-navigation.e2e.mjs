@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, document, getComputedStyle, URL, window */
+/* global process, fetch, setTimeout, console, document, getComputedStyle, navigator, URL, window */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -39,6 +39,8 @@ const navigationRegressionViewports = [
   { width: 390, height: 844 },
   { width: 412, height: 915 },
 ];
+const samsungUserAgent = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36";
+const stabilityFrameCount = 20;
 const tabs = [
   { label: "Hôm nay", path: "/admin", slug: "today" },
   { label: "Lịch", path: "/admin/calendar", slug: "calendar" },
@@ -126,18 +128,26 @@ async function waitForSelectedLabel(page, containerTestId, label, itemClass) {
   }, { containerTestId, expected: label, itemClass });
 }
 
-async function inspectNavigationGeometry(page) {
-  return page.evaluate(() => {
+async function inspectNavigationGeometry(page, frameCount = 1) {
+  const samples = await page.evaluate(async (frames) => {
+    function inspect() {
+    const shell = document.querySelector('[data-testid="mobile-navigation-shell"]');
     const navigation = document.querySelector('[data-testid="mobile-navigation"]');
-    const root = navigation?.parentElement;
-    if (!navigation || !root) throw new Error("Mobile navigation root is missing");
+    const spacer = document.querySelector('[data-testid="mobile-navigation-safe-area"]');
+    const root = document.querySelector('[data-testid="admin-layout"]');
+    if (!shell || !navigation || !spacer || !root) throw new Error("Mobile navigation geometry target is missing");
+    const shellRect = shell.getBoundingClientRect();
     const navigationRect = navigation.getBoundingClientRect();
+    const spacerRect = spacer.getBoundingClientRect();
+    const shellStyle = getComputedStyle(shell);
     const navigationStyle = getComputedStyle(navigation);
+    const spacerStyle = getComputedStyle(spacer);
     const rootStyle = getComputedStyle(root);
     const actions = [...navigation.querySelectorAll(".MuiBottomNavigationAction-root")].map((action) => {
       const actionRect = action.getBoundingClientRect();
       const iconRect = action.querySelector("svg")?.getBoundingClientRect();
       const labelRect = action.querySelector(".MuiBottomNavigationAction-label")?.getBoundingClientRect();
+      const style = getComputedStyle(action);
       return {
         top: actionRect.top,
         bottom: actionRect.bottom,
@@ -146,33 +156,76 @@ async function inspectNavigationGeometry(page) {
         iconBottom: iconRect?.bottom ?? 0,
         labelTop: labelRect?.top ?? 0,
         labelBottom: labelRect?.bottom ?? 0,
+        transitionDuration: style.transitionDuration,
       };
     });
+    const shellAlphaMatch = shellStyle.backgroundColor.match(/^rgba?\([^,]+,[^,]+,[^,]+(?:,\s*([\d.]+))?\)$/);
+    const navigationAlphaMatch = navigationStyle.backgroundColor.match(/^rgba?\([^,]+,[^,]+,[^,]+(?:,\s*([\d.]+))?\)$/);
+    const spacerAlphaMatch = spacerStyle.backgroundColor.match(/^rgba?\([^,]+,[^,]+,[^,]+(?:,\s*([\d.]+))?\)$/);
     return {
       viewportHeight: window.innerHeight,
       scrollY: window.scrollY,
+      userAgent: navigator.userAgent,
+      safeBottom: Number.parseFloat(rootStyle.getPropertyValue("--admin-safe-bottom")) || 0,
+      shell: {
+        top: shellRect.top,
+        bottom: shellRect.bottom,
+        height: shellRect.height,
+        backgroundColor: shellStyle.backgroundColor,
+        backgroundAlpha: shellAlphaMatch?.[1] == null ? 1 : Number.parseFloat(shellAlphaMatch[1]),
+        boxSizing: shellStyle.boxSizing,
+        transitionDuration: shellStyle.transitionDuration,
+      },
       navigation: {
         top: navigationRect.top,
         bottom: navigationRect.bottom,
         height: navigationRect.height,
         paddingBottom: Number.parseFloat(navigationStyle.paddingBottom),
+        backgroundColor: navigationStyle.backgroundColor,
+        backgroundAlpha: navigationAlphaMatch?.[1] == null ? 1 : Number.parseFloat(navigationAlphaMatch[1]),
         boxSizing: navigationStyle.boxSizing,
+        transitionDuration: navigationStyle.transitionDuration,
+      },
+      spacer: {
+        height: spacerRect.height,
+        backgroundColor: spacerStyle.backgroundColor,
+        backgroundAlpha: spacerAlphaMatch?.[1] == null ? 1 : Number.parseFloat(spacerAlphaMatch[1]),
       },
       rootPaddingBottom: Number.parseFloat(rootStyle.paddingBottom),
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      runningAnimations: [shell, navigation, ...navigation.querySelectorAll(".MuiBottomNavigationAction-root")]
+        .flatMap((element) => element.getAnimations())
+        .filter((animation) => animation.playState === "running").length,
       actions,
     };
-  });
+    }
+    const results = [];
+    for (let frame = 0; frame < frames; frame += 1) {
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      results.push(inspect());
+    }
+    return results;
+  }, frameCount);
+  return frameCount === 1 ? samples[0] : samples;
 }
 
 function assertNavigationGeometry(geometry, width, expectedSafeBottom = 0) {
-  const expectedHeight = 64 + expectedSafeBottom;
+  const expectedShellHeight = 64 + expectedSafeBottom;
   const actionAreaBottom = geometry.navigation.top + 64;
-  assert(Math.abs(geometry.navigation.height - expectedHeight) <= 1, `Navigation height is ${geometry.navigation.height}px instead of ${expectedHeight}px at ${width}px`);
-  assert(Math.abs(geometry.navigation.paddingBottom - expectedSafeBottom) <= 1, `Navigation padding is ${geometry.navigation.paddingBottom}px instead of ${expectedSafeBottom}px at ${width}px`);
+  assert(Math.abs(geometry.safeBottom - expectedSafeBottom) <= 1, `Safe bottom is ${geometry.safeBottom}px instead of ${expectedSafeBottom}px at ${width}px`);
+  assert(Math.abs(geometry.shell.height - expectedShellHeight) <= 1, `Navigation shell height is ${geometry.shell.height}px instead of ${expectedShellHeight}px at ${width}px`);
+  assert(Math.abs(geometry.navigation.height - 64) <= 1, `Action area height is ${geometry.navigation.height}px instead of 64px at ${width}px`);
+  assert(Math.abs(geometry.spacer.height - expectedSafeBottom) <= 1, `Safe-area spacer is ${geometry.spacer.height}px instead of ${expectedSafeBottom}px at ${width}px`);
+  assert(Math.abs(geometry.navigation.paddingBottom) <= 1, `Action area has ${geometry.navigation.paddingBottom}px bottom padding at ${width}px`);
+  assert(geometry.shell.boxSizing === "border-box", `Navigation shell does not use border-box at ${width}px`);
   assert(geometry.navigation.boxSizing === "border-box", `Navigation does not use border-box at ${width}px`);
-  assert(Math.abs(geometry.navigation.bottom - geometry.viewportHeight) <= 1, `Navigation is not fixed to the viewport bottom at ${width}px`);
-  assert(geometry.rootPaddingBottom >= expectedHeight + 15 && geometry.rootPaddingBottom <= expectedHeight + 17, `Content reserve is not synchronized at ${width}px`);
+  assert(Math.abs(geometry.shell.bottom - geometry.viewportHeight) <= 1, `Navigation shell is not fixed to the viewport bottom at ${width}px`);
+  assert(geometry.rootPaddingBottom >= expectedShellHeight + 15 && geometry.rootPaddingBottom <= expectedShellHeight + 17, `Content reserve is not synchronized at ${width}px`);
+  assert(geometry.shell.backgroundAlpha === 1 && geometry.shell.backgroundColor === "rgb(255, 255, 255)", `Navigation background is not opaque white at ${width}px`);
+  assert(geometry.navigation.backgroundAlpha === 1 && geometry.navigation.backgroundColor === "rgb(255, 255, 255)", `Action area background is not opaque white at ${width}px`);
+  assert(geometry.spacer.backgroundAlpha === 1 && geometry.spacer.backgroundColor === "rgb(255, 255, 255)", `Safe-area background is not opaque white at ${width}px`);
+  assert(geometry.shell.transitionDuration === "0s" && geometry.navigation.transitionDuration === "0s" && geometry.actions.every((action) => action.transitionDuration === "0s"), `Navigation has an active CSS transition at ${width}px`);
+  assert(geometry.runningAnimations === 0, `Navigation has ${geometry.runningAnimations} running animations at ${width}px`);
   assert(geometry.overflow <= 1, `Page has ${geometry.overflow}px horizontal overflow at ${width}px`);
   assert(geometry.actions.length === 5, `Expected five navigation actions at ${width}px`);
   assert(geometry.actions.every((action) => Math.abs(action.height - 64) <= 1), `An action is not 64px high at ${width}px`);
@@ -183,13 +236,26 @@ function assertNavigationGeometry(geometry, width, expectedSafeBottom = 0) {
 function assertActionPositionsUnchanged(before, after, description) {
   assert(before.actions.length === after.actions.length, `Action count changed ${description}`);
   before.actions.forEach((action, index) => {
-    const next = after.actions[index];
-    for (const key of ["iconTop", "iconBottom", "labelTop", "labelBottom"]) {
-      const beforeOffset = action[key] - before.navigation.top;
+      const next = after.actions[index];
+      for (const key of ["iconTop", "iconBottom", "labelTop", "labelBottom"]) {
+        const beforeOffset = action[key] - before.navigation.top;
       const afterOffset = next[key] - after.navigation.top;
       assert(Math.abs(beforeOffset - afterOffset) <= 1, `Action ${index + 1} ${key} moved ${description}`);
     }
   });
+}
+
+function assertStableFrames(reference, samples, width, description, expectedSafeBottom = 0) {
+  assert(samples.length === stabilityFrameCount, `Expected ${stabilityFrameCount} frames ${description}`);
+  const firstSample = samples[0];
+  for (const sample of samples) {
+    assertNavigationGeometry(sample, width, expectedSafeBottom);
+    assertActionPositionsUnchanged(reference, sample, description);
+    assert(Math.abs(sample.shell.height - firstSample.shell.height) <= 1, `Shell height changed ${description}`);
+    assert(Math.abs(sample.shell.bottom - sample.viewportHeight) <= 1, `Shell bottom detached ${description}`);
+    assert(sample.navigation.paddingBottom === reference.navigation.paddingBottom, `Navigation padding changed ${description}`);
+    assert(sample.shell.backgroundColor === reference.shell.backgroundColor, `Navigation background changed ${description}`);
+  }
 }
 
 try {
@@ -209,7 +275,14 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    userAgent: samsungUserAgent,
+    isMobile: true,
+    hasTouch: true,
+    reducedMotion: "reduce",
+  });
   const page = await context.newPage();
 
   for (const viewport of [{ width: 390, height: 844 }, { width: 393, height: 852 }, { width: 412, height: 915 }, { width: 1440, height: 900 }]) {
@@ -234,67 +307,76 @@ try {
 
     const atTop = await inspectNavigationGeometry(page);
     assert(atTop.scrollY === 0, `Dashboard did not open at scrollY=0 at ${viewport.width}px`);
+    assert(atTop.userAgent === samsungUserAgent, `Samsung-like user agent is missing at ${viewport.width}px`);
     assertNavigationGeometry(atTop, viewport.width);
     if (viewport.width === 390) {
-      await page.screenshot({ path: path.join(artifactDir, "dashboard-top-390x844.png"), fullPage: false });
+      await page.screenshot({ path: path.join(artifactDir, "android-top.png"), fullPage: false });
     }
 
+    await page.locator('[data-testid="admin-content"]').evaluate((content) => {
+      const currentPadding = Number.parseFloat(getComputedStyle(content).paddingBottom);
+      content.style.paddingBottom = `${currentPadding + 400}px`;
+    });
     const scrollRange = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
-    assert(scrollRange > 0, `Dashboard is not scrollable at ${viewport.width}px`);
-    await page.evaluate((target) => {
-      document.documentElement.style.scrollBehavior = "auto";
-      window.scrollTo(0, target);
-    }, Math.max(1, Math.floor(scrollRange / 2)));
-    await page.waitForFunction(() => window.scrollY > 0);
-    const scrolled = await inspectNavigationGeometry(page);
-    assertNavigationGeometry(scrolled, viewport.width);
-    assertActionPositionsUnchanged(atTop, scrolled, `after scrolling at ${viewport.width}px`);
-    if (viewport.width === 390) {
-      await page.screenshot({ path: path.join(artifactDir, "dashboard-scrolled-390x844.png"), fullPage: false });
+    assert(scrollRange >= 400, `Scroll harness did not create enough range at ${viewport.width}px`);
+    await page.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; });
+    const scrollStops = [
+      { name: "down", top: 300 },
+      { name: "top", top: 0 },
+      { name: "bottom", top: scrollRange },
+      { name: "middle", top: Math.floor(scrollRange / 2) },
+    ];
+    for (let iteration = 0; iteration < 10; iteration += 1) {
+      for (const stop of scrollStops) {
+        await page.evaluate((top) => window.scrollTo(0, top), stop.top);
+        await page.waitForFunction((top) => Math.abs(window.scrollY - top) <= 1, Math.min(stop.top, scrollRange));
+        const samples = await inspectNavigationGeometry(page, stabilityFrameCount);
+        assertStableFrames(atTop, samples, viewport.width, `during ${stop.name}, iteration ${iteration + 1}, at ${viewport.width}px`);
+        if (viewport.width === 390 && iteration === 0 && stop.name === "down") {
+          await page.screenshot({ path: path.join(artifactDir, "android-scrolled.png"), fullPage: false });
+        }
+        if (viewport.width === 390 && iteration === 0 && stop.name === "top") {
+          await page.screenshot({ path: path.join(artifactDir, "android-returned-top.png"), fullPage: false });
+        }
+      }
     }
 
+    await page.locator('[data-testid="admin-content"]').evaluate((content) => {
+      content.style.removeProperty("padding-bottom");
+    });
+    const naturalScrollRange = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    await page.waitForFunction(() => window.scrollY > 0);
+    await page.waitForFunction((top) => Math.abs(window.scrollY - top) <= 1, naturalScrollRange);
     const contentAtBottom = await page.evaluate(() => {
       const content = document.querySelector('[data-testid="admin-content"]')?.getBoundingClientRect();
-      const navigation = document.querySelector('[data-testid="mobile-navigation"]')?.getBoundingClientRect();
-      return { contentBottom: content?.bottom ?? 0, navigationTop: navigation?.top ?? 0 };
+      const shell = document.querySelector('[data-testid="mobile-navigation-shell"]')?.getBoundingClientRect();
+      return { contentBottom: content?.bottom ?? 0, shellTop: shell?.top ?? 0 };
     });
-    const contentGap = contentAtBottom.navigationTop - contentAtBottom.contentBottom;
+    const contentGap = contentAtBottom.shellTop - contentAtBottom.contentBottom;
     assert(contentGap >= 15 && contentGap <= 25, `Final content gap is ${contentGap}px at ${viewport.width}px`);
-
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForFunction(() => window.scrollY === 0);
-    const returnedTop = await inspectNavigationGeometry(page);
-    assertNavigationGeometry(returnedTop, viewport.width);
-    assertActionPositionsUnchanged(atTop, returnedTop, `after returning to the top at ${viewport.width}px`);
-    if (viewport.width === 390) {
-      await page.screenshot({ path: path.join(artifactDir, "dashboard-returned-top-390x844.png"), fullPage: false });
-    }
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${origin}/admin`, { waitUntil: "networkidle" });
   await page.locator('[data-testid="mobile-navigation"]').waitFor({ state: "visible" });
   const beforeResize = await inspectNavigationGeometry(page);
-  await page.setViewportSize({ width: 390, height: 720 });
-  const resized = await inspectNavigationGeometry(page);
-  assertNavigationGeometry(resized, 390);
-  assertActionPositionsUnchanged(beforeResize, resized, "after shrinking the visual viewport");
-  await page.screenshot({ path: path.join(artifactDir, "dashboard-resized-390x720.png"), fullPage: false });
-  await page.setViewportSize({ width: 390, height: 844 });
-  const restored = await inspectNavigationGeometry(page);
-  assertNavigationGeometry(restored, 390);
-  assertActionPositionsUnchanged(beforeResize, restored, "after restoring the visual viewport");
+  for (const height of [844, 760, 720, 800, 844]) {
+    await page.setViewportSize({ width: 390, height });
+    const resizeSamples = await inspectNavigationGeometry(page, stabilityFrameCount);
+    assertStableFrames(beforeResize, resizeSamples, 390, `during resize to ${height}px`);
+    if (height === 720) {
+      await page.screenshot({ path: path.join(artifactDir, "android-resized.png"), fullPage: false });
+    }
+  }
 
-  await page.locator('[data-testid="mobile-navigation"]').evaluate((navigation) => {
-    navigation.parentElement?.style.setProperty("--admin-safe-bottom", "34px");
+  await page.locator('[data-testid="admin-layout"]').evaluate((layout) => {
+    layout.style.setProperty("--admin-safe-bottom", "34px");
   });
-  const iosSafeArea = await inspectNavigationGeometry(page);
-  assertNavigationGeometry(iosSafeArea, 390, 34);
-  assertActionPositionsUnchanged(beforeResize, iosSafeArea, "with a 34px iOS safe area");
-  await page.locator('[data-testid="mobile-navigation"]').evaluate((navigation) => {
-    navigation.parentElement?.style.removeProperty("--admin-safe-bottom");
+  const iosSafeAreaFrames = await inspectNavigationGeometry(page, stabilityFrameCount);
+  assertStableFrames(beforeResize, iosSafeAreaFrames, 390, "with a 34px iOS safe area", 34);
+  await page.screenshot({ path: path.join(artifactDir, "ios-safe-area.png"), fullPage: false });
+  await page.locator('[data-testid="admin-layout"]').evaluate((layout) => {
+    layout.style.removeProperty("--admin-safe-bottom");
   });
 
   for (const viewport of mobileViewports) {
@@ -322,19 +404,19 @@ try {
 
     await page.goto(`${origin}/admin/lessons/new`, { waitUntil: "networkidle" });
     const sticky = await page.locator('[data-testid="sticky-action-bar"]').boundingBox();
-    const navigation = await page.locator('[data-testid="mobile-navigation"]').boundingBox();
-    assert(Boolean(sticky) && Boolean(navigation) && sticky.y + sticky.height <= navigation.y + 1, `Sticky action overlaps navigation at ${viewport.width}px`);
+    const navigationShell = await page.locator('[data-testid="mobile-navigation-shell"]').boundingBox();
+    assert(Boolean(sticky) && Boolean(navigationShell) && sticky.y + sticky.height <= navigationShell.y + 1, `Sticky action overlaps navigation at ${viewport.width}px`);
     if (viewport.width === 390) {
-      await page.locator('[data-testid="mobile-navigation"]').evaluate((mobileNavigation) => {
-        mobileNavigation.parentElement?.style.setProperty("--admin-safe-bottom", "34px");
+      await page.locator('[data-testid="admin-layout"]').evaluate((layout) => {
+        layout.style.setProperty("--admin-safe-bottom", "34px");
       });
       const safeGeometry = await inspectNavigationGeometry(page);
       const safeSticky = await page.locator('[data-testid="sticky-action-bar"]').boundingBox();
-      const safeNavigation = await page.locator('[data-testid="mobile-navigation"]').boundingBox();
+      const safeNavigation = await page.locator('[data-testid="mobile-navigation-shell"]').boundingBox();
       assertNavigationGeometry(safeGeometry, viewport.width, 34);
       assert(Boolean(safeSticky) && Boolean(safeNavigation) && safeSticky.y + safeSticky.height <= safeNavigation.y + 1, "Sticky action overlaps the simulated iOS safe area");
-      await page.locator('[data-testid="mobile-navigation"]').evaluate((mobileNavigation) => {
-        mobileNavigation.parentElement?.style.removeProperty("--admin-safe-bottom");
+      await page.locator('[data-testid="admin-layout"]').evaluate((layout) => {
+        layout.style.removeProperty("--admin-safe-bottom");
       });
     }
   }
