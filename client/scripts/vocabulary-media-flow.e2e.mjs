@@ -230,9 +230,13 @@ try {
     item.illustration.kind === "STORED_MEDIA" && item.illustration.mediaId === storedFixture.id && item.supportsImageGame === true),
   "ARASAAC imports were not persisted as stored media");
   await page.reload({ waitUntil: "networkidle" });
-  await page.locator(`img[src*="vocabulary-media/${storedFixture.id}"]`).first().waitFor({ state: "attached", timeout: 15_000 });
-  assert(await page.locator(`img[src*="vocabulary-media/${storedFixture.id}"]`).count() >= 3,
+  const storedImages = page.locator(`img[src*="vocabulary-media/${storedFixture.id}"]`);
+  await storedImages.first().waitFor({ state: "attached", timeout: 15_000 });
+  await storedImages.first().evaluate((image) => image.decode());
+  assert(await storedImages.count() >= 3,
     "saved stored-media thumbnails did not survive reload");
+  assert(await storedImages.first().evaluate((image) => image.naturalWidth > 0),
+    "saved stored-media thumbnail was present but the browser could not decode it");
 
   providerMode = "unavailable";
   const outageSet = await createSet(auth, ["window", "pencil", "schoolbag"], `Provider outage ${Date.now()}`);

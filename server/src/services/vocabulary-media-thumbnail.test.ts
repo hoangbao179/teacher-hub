@@ -86,6 +86,7 @@ test("provider import 201 serves a non-empty decodable thumbnail from the same s
     const thumbnail = await fetch(`http://127.0.0.1:${port}/api/public/vocabulary-media/77?variant=THUMBNAIL`);
     assert.equal(thumbnail.status, 200);
     assert.equal(thumbnail.headers.get("content-type"), "image/webp");
+    assert.equal(thumbnail.headers.get("cross-origin-resource-policy"), "cross-origin");
     const body = Buffer.from(await thumbnail.arrayBuffer());
     assert.ok(body.byteLength > 0);
     assert.equal((await sharp(body).metadata()).format, "webp");
