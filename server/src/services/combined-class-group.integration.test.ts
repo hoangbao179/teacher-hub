@@ -12,7 +12,10 @@ import { ScheduleService } from "./schedule.service";
 
 const integration = process.env.RUN_MYSQL_INTEGRATION === "1" ? test : test.skip;
 test.after(async () => {
-  if (process.env.RUN_MYSQL_INTEGRATION === "1") await pool.end();
+  if (process.env.RUN_MYSQL_INTEGRATION === "1") {
+    await clean();
+    await pool.end();
+  }
 });
 
 async function clean() {

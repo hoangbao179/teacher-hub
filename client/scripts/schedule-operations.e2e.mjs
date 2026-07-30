@@ -326,7 +326,7 @@ try {
     || primaryGap < 9 || secondaryGap < 11)
     throw new Error(`Calendar mobile hierarchy is incorrect: ${JSON.stringify({ primaryBox, makeupBox, addBox })}`);
   await page.getByRole("heading", { name: "Lịch dự kiến tuần này" }).waitFor();
-  await page.getByText(`${await page.getByTestId("calendar-event").count()} buổi`, { exact: true }).waitFor();
+  await page.getByText(`${await page.getByTestId("calendar-event").count()} buổi dạy`, { exact: true }).waitFor();
   await page.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).waitFor();
   await page.getByRole("button", { name: "Thêm lịch", exact: true }).first().click();
   await page.getByRole("menuitem", { name: "Lịch dạy tại trường/trung tâm" }).waitFor();
