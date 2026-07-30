@@ -2,7 +2,9 @@ import path from "node:path";
 
 export interface VocabularyMediaSettings {
   enabled: boolean;
-  apiKey: string;
+  arasaacEnabled: boolean;
+  pixabayEnabled: boolean;
+  pixabayApiKey: string;
   storagePath: string;
   cacheTtlMs: number;
   timeoutMs: number;
@@ -33,13 +35,16 @@ function integer(
 export function resolveVocabularyMediaSettings(
   env: NodeJS.ProcessEnv,
 ): VocabularyMediaSettings {
-  const isEnabled = enabled(env.PIXABAY_ENABLED);
-  const apiKey = env.PIXABAY_API_KEY?.trim() ?? "";
-  if (isEnabled && !apiKey && env.NODE_ENV !== "test")
+  const arasaacEnabled = enabled(env.ARASAAC_ENABLED);
+  const pixabayEnabled = enabled(env.PIXABAY_ENABLED);
+  const pixabayApiKey = env.PIXABAY_API_KEY?.trim() ?? "";
+  if (pixabayEnabled && !pixabayApiKey && env.NODE_ENV !== "test")
     throw new Error("PIXABAY_API_KEY is required when PIXABAY_ENABLED=true");
   return {
-    enabled: isEnabled,
-    apiKey,
+    enabled: arasaacEnabled || pixabayEnabled,
+    arasaacEnabled,
+    pixabayEnabled,
+    pixabayApiKey,
     storagePath: path.resolve(
       env.VOCABULARY_MEDIA_STORAGE_PATH?.trim() ||
         path.join(process.cwd(), "data", "vocabulary-media"),

@@ -17,8 +17,9 @@ Vocabulary Media Editor V20B dùng named volume
 `vocabulary-media:/app/data/vocabulary-media` gắn vào API. Binary ảnh đã chọn
 không lưu trong MySQL hoặc writable layer tạm của container. Media được phục vụ
 same-origin qua `/api/public/vocabulary-media/:mediaId`; volume phải được đưa vào
-capacity monitoring, backup/restore và restore drill. Nếu Pixabay tắt hoặc thiếu
-key thì API vẫn khởi động, còn editor tiếp tục dùng emoji/public asset.
+capacity monitoring, backup/restore và restore drill. ARASAAC mặc định không cần key;
+Pixabay có thể tắt độc lập. Khi không có remote provider, API vẫn khởi động và editor
+tiếp tục dùng upload/emoji/public asset.
 
 Mỗi deploy tạo backup trước khi chạy forward-only migration. Khi V20 media được
 enable, backup pre-deploy phải tạo một recovery set nhất quán gồm MySQL dump,

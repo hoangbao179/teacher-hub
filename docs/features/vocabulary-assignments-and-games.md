@@ -493,16 +493,17 @@ interface ImageSearchProvider {
 
 Yêu cầu:
 
-- Provider MVP đầu tiên là Pixabay; search luôn gửi `safesearch=true`.
+- ARASAAC là provider mặc định cho `ILLUSTRATION`/`ALL`; Pixabay chỉ dùng cho
+  `PHOTO` khi được bật bằng config và search Pixabay luôn gửi `safesearch=true`.
 - Kết quả search được cache tối thiểu 24 giờ theo query/filter/page đã chuẩn hóa,
-  đúng yêu cầu API của Pixabay.
-- Image picker luôn hiển thị nguồn Pixabay khi trình bày search result.
+  và provider.
+- Image picker hiển thị provider/attribution thực tế của search result.
 - URL preview chỉ dùng tạm trong picker. Ảnh đã chọn phải được tải về storage của
   ứng dụng; không lưu URL preview làm URL game và không permanent hotlink.
 - Provider có thể tắt bằng config; khi tắt API search trả lỗi khả dụng có kiểm
   soát và editor vẫn cho phép `NONE`, `EMOJI` hoặc `PUBLIC_ASSET`.
-- Test dùng fake provider, không gọi Pixabay thật.
-- API key chỉ nằm ở server;
+- Unit test mock provider/fetch, không gọi ARASAAC/Pixabay thật.
+- ARASAAC không cần API key; Pixabay API key chỉ nằm ở server;
 - rate limit và cache kết quả tìm kiếm;
 - lưu provider, source URL, attribution và license metadata;
 - ảnh được chọn phải được import/resize sang storage do ứng dụng kiểm soát nếu
@@ -511,7 +512,8 @@ Yêu cầu:
 - tạo thumbnail WebP cho danh sách và ảnh lớn cho game;
 - alt text dựa trên nghĩa đã duyệt, không chỉ dùng tên file.
 
-Theo [Pixabay API documentation](https://pixabay.com/api/docs/) được kiểm tra ngày
+ARASAAC dùng `bestsearch` tiếng Anh và lưu attribution Sergio Palao / ARASAAC,
+Government of Aragón, `CC BY-NC-SA`. Theo [Pixabay API documentation](https://pixabay.com/api/docs/) được kiểm tra ngày
 26/07/2026, search result phải ghi nguồn, cache 24 giờ, URL chỉ được dùng tạm và
 nội dung dùng lâu dài phải tải về server. Trước khi enable production vẫn phải
 kiểm tra lại API terms/[Content License](https://pixabay.com/service/license-summary/)
@@ -520,10 +522,12 @@ hiện hành và lưu metadata tại thời điểm import.
 ### 7.4 Import ảnh an toàn
 
 Frontend chỉ gửi `{ provider, providerAssetId }`, tuyệt đối không gửi URL download.
-Backend chỉ import asset còn tồn tại trong search cache chưa hết hạn và thực hiện:
+Backend ưu tiên asset trong search cache chưa hết hạn; khi cache không còn, provider
+có `resolveAsset` phải xác minh lại ID trước khi dựng URL tin cậy và thực hiện:
 
 1. deduplicate bằng unique `(provider, provider_asset_id)`;
-2. resolve URL từ cache phía server và chỉ cho host Pixabay/CDN đã cấu hình;
+2. resolve URL từ metadata phía server và chỉ cho host provider đã cấu hình
+   (`static.arasaac.org` hoặc Pixabay/CDN);
 3. timeout 5 giây, tối đa 2 redirect và kiểm tra lại allowlist sau mỗi redirect;
 4. giới hạn 5 MiB trước/sau download;
 5. sniff MIME từ bytes, không tin `Content-Type` hoặc extension;

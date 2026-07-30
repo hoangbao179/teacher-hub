@@ -215,7 +215,14 @@ try {
     await page.route("**/api/vocabulary/media/status", (route) => route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ data: { enabled: true, provider: "PIXABAY" } }),
+      body: JSON.stringify({ data: {
+        enabled: true,
+        provider: "PIXABAY",
+        providers: [
+          { provider: "ARASAAC", enabled: false },
+          { provider: "PIXABAY", enabled: true },
+        ],
+      } }),
     }));
     await page.route("**/api/vocabulary/media/search?*", (route) => route.fulfill({
       status: 200,
@@ -226,7 +233,7 @@ try {
     const picker = page.locator('[data-testid="vocabulary-image-picker"]');
     await picker.locator('input[maxlength="100"]').fill("family gia đình");
     await picker.locator('button[type="submit"]').click();
-    await picker.getByText("Pixabay 1").waitFor();
+    await picker.locator('button[aria-label^="Đánh dấu ảnh"]').first().waitFor();
     await auditPage(page, viewport.width < 600);
     await page.screenshot({ path: path.join(mediaArtifactDir, `image-picker-${viewport.suffix}-${viewport.width}x${viewport.height}.png`), fullPage: false });
     await picker.locator(".MuiDialogActions-root button").click();

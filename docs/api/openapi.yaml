@@ -677,10 +677,10 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [enabled, provider]
+                    required: [enabled, provider, providers]
                     properties:
                       enabled: {type: boolean}
-                      provider: {type: string, enum: [PIXABAY]}
+                      provider: {type: string, enum: [ARASAAC, PIXABAY], nullable: true}
                       cooldownUntil: {type: string, format: date-time}
                       providers:
                         type: array
@@ -688,12 +688,13 @@ paths:
                           type: object
                           required: [provider, enabled]
                           properties:
-                            provider: {type: string, enum: [PIXABAY]}
+                            provider: {type: string, enum: [ARASAAC, PIXABAY]}
                             enabled: {type: boolean}
+                            cooldownUntil: {type: string, format: date-time}
   /api/vocabulary/media/search:
     get:
       tags: [Vocabulary teacher]
-      summary: Search Pixabay phía server với safe search và cache 24 giờ
+      summary: Search provider ảnh theo mediaType phía server với safe search và cache 24 giờ
       parameters:
         - {in: query, name: query, required: true, schema: {type: string, minLength: 2, maxLength: 100}}
         - {in: query, name: mediaType, schema: {type: string, enum: [ALL, PHOTO, ILLUSTRATION, VECTOR], default: ALL}}
@@ -1235,7 +1236,7 @@ components:
       type: object
       required: [provider, providerAssetId, previewUrl, thumbnailUrl, width, height, mediaType, sourcePageUrl, contributorName, attributionText]
       properties:
-        provider: {type: string, enum: [PIXABAY]}
+        provider: {type: string, enum: [ARASAAC, PIXABAY]}
         providerAssetId: {type: string, minLength: 1, maxLength: 100}
         previewUrl: {type: string, format: uri, description: Tạm thời, không persist làm game URL}
         thumbnailUrl: {type: string, format: uri, description: Tạm thời, chỉ dùng trong picker}
@@ -1254,7 +1255,7 @@ components:
           type: object
           required: [provider, safeSearch, cacheExpiresAt, page, pageSize, total, items]
           properties:
-            provider: {type: string, enum: [PIXABAY]}
+            provider: {type: string, enum: [ARASAAC, PIXABAY]}
             safeSearch: {type: boolean, enum: [true]}
             cacheExpiresAt: {type: string, format: date-time}
             page: {type: integer, minimum: 1}
@@ -1266,7 +1267,7 @@ components:
       additionalProperties: false
       required: [provider, providerAssetId, altText]
       properties:
-        provider: {type: string, enum: [PIXABAY]}
+        provider: {type: string, enum: [ARASAAC, PIXABAY]}
         providerAssetId: {type: string, minLength: 1, maxLength: 100}
         altText: {type: string, minLength: 1, maxLength: 200}
     VocabularyMedia:
@@ -1274,7 +1275,7 @@ components:
       required: [id, provider, providerAssetId, url, thumbnailUrl, altText, mimeType, byteSize, width, height, sourcePageUrl, contributorName, attributionText, licenseLabel]
       properties:
         id: {type: integer, format: int64}
-        provider: {type: string, enum: [PIXABAY, LOCAL_ASSET, USER_UPLOAD]}
+        provider: {type: string, enum: [ARASAAC, PIXABAY, LOCAL_ASSET, USER_UPLOAD]}
         providerAssetId: {type: string}
         url: {type: string, pattern: '^/api/public/vocabulary-media/'}
         thumbnailUrl: {type: string, pattern: '^/api/public/vocabulary-media/'}

@@ -1,13 +1,13 @@
-import { Cancel, Collections, Refresh, UploadFile } from "@mui/icons-material";
+import { Cancel, CheckCircle, Collections, Refresh, UploadFile } from "@mui/icons-material";
 import {
   Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, LinearProgress, MenuItem, Stack, TextField, Typography,
   useMediaQuery, useTheme,
 } from "@mui/material";
-import type { VocabularyMediaSearchItem, VocabularySetItemInput, VocabularyStoredMedia } from "@teacher/shared";
+import type { VocabularyMediaSearchItem, VocabularyMediaSearchResponse, VocabularySetItemInput, VocabularyStoredMedia } from "@teacher/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "../../../api/client";
-import { getVocabularyMediaStatus, importVocabularyMedia, uploadVocabularyMedia } from "../../../api/vocabularyMedia";
+import { getVocabularyMediaStatus, importVocabularyMedia, searchVocabularyMedia, uploadVocabularyMedia } from "../../../api/vocabularyMedia";
 import { startSingleWorkerBatch, type BatchRun } from "../bulkImageSuggestionScheduler";
 import { vocabularyMediaCooldownSeconds, vocabularyMediaErrorMessage } from "../vocabularyMediaErrors";
 import { buildVocabularyImageStrategy, type VocabularyImageFilter, type VocabularyImageStrategy } from "../vocabularyImageStrategy";
@@ -48,6 +48,7 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
   const [running, setRunning] = useState(false);
   const [awaitingStart, setAwaitingStart] = useState(false);
   const [providerDisabled, setProviderDisabled] = useState(false);
+  const [photoEnabled, setPhotoEnabled] = useState(false);
   const [providerError, setProviderError] = useState("");
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
@@ -64,6 +65,22 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
   const importLocks = useRef(new Set<number>());
   const uploadLocks = useRef(new Set<number>());
   const editedQueries = useRef(new Set<number>());
+  const searchCache = useRef(new Map<string, Promise<VocabularyMediaSearchResponse>>());
+
+  const cachedSearch = useCallback((
+    values: Parameters<typeof searchVocabularyMedia>[0],
+    signal?: AbortSignal,
+  ) => {
+    const key = JSON.stringify(values);
+    const cached = searchCache.current.get(key);
+    if (cached) return cached;
+    const request = searchVocabularyMedia(values, signal).catch((error) => {
+      searchCache.current.delete(key);
+      throw error;
+    });
+    searchCache.current.set(key, request);
+    return request;
+  }, []);
 
   const applyCooldown = (error: unknown) => {
     const seconds = vocabularyMediaCooldownSeconds(error);
@@ -84,6 +101,8 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
       beforeRun: async (signal) => {
         const status = await getVocabularyMediaStatus(signal);
         setProviderDisabled(!status.enabled);
+        setPhotoEnabled(status.providers.some((provider) =>
+          provider.provider === "PIXABAY" && provider.enabled));
         if (status.cooldownUntil && Date.parse(status.cooldownUntil) > Date.now()) {
           const until = Date.parse(status.cooldownUntil);
           setCooldownUntil(until);
@@ -106,6 +125,7 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
           pageSize: 12,
           signal,
           allowFallback: !editedQueries.current.has(candidate.index) && query === candidate.strategy.query,
+          search: cachedSearch,
         });
         if (signal.aborted || queriesRef.current[candidate.index] !== query) return;
         setStates((current) => ({ ...current, [candidate.index]: {
@@ -136,7 +156,7 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
       onFinish: () => { activeBatch.current = null; setRunning(false); },
     });
     activeBatch.current = batch;
-  }, [remote]);
+  }, [cachedSearch, remote]);
 
   useEffect(() => {
     const controllers = candidateControllers.current;
@@ -170,6 +190,7 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
     candidateControllers.current.forEach((controller) => controller.abort());
     candidateControllers.current.clear();
     candidateLocks.current.clear();
+    searchCache.current.clear();
     cursor.current = 0;
     mediaTypeRef.current = next;
     setMediaType(next);
@@ -194,6 +215,7 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
       const result = await searchVocabularyImageSuggestions({
         strategy: candidate.strategy, query, mediaType: mediaTypeRef.current,
         page: 1, pageSize: 12, signal: controller.signal, allowFallback: false,
+        search: cachedSearch,
       });
       if (controller.signal.aborted || queriesRef.current[candidate.index] !== query) return;
       setStates((current) => ({ ...current, [candidate.index]: {
@@ -267,7 +289,13 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
       setImporting("");
     }
   };
-  const close = () => { activeBatch.current?.cancel(); activeBatch.current = null; onClose(); };
+  const close = () => {
+    activeBatch.current?.cancel();
+    activeBatch.current = null;
+    candidateControllers.current.forEach((controller) => controller.abort());
+    candidateControllers.current.clear();
+    onClose();
+  };
 
   const completed = Object.values(states).filter((state) =>
     ["FOUND", "EMPTY", "ERROR", "SKIPPED"].includes(state.status)).length;
@@ -286,11 +314,11 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
           <LinearProgress variant="determinate" value={candidates.length ? completed / candidates.length * 100 : 0} /></Box>
         <TextField select size="small" label="Loại ảnh" value={mediaType}
           onChange={(event) => changeMediaType(event.target.value as VocabularyImageFilter)}>
-          <MenuItem value="ILLUSTRATION">Minh họa</MenuItem><MenuItem value="PHOTO">Ảnh thật</MenuItem>
+          <MenuItem value="ILLUSTRATION">Minh họa</MenuItem>{photoEnabled && <MenuItem value="PHOTO">Ảnh thật</MenuItem>}
         </TextField>
       </Box>
       {cooldownSeconds > 0 && <Alert severity="warning">Có thể tiếp tục lúc {new Date(cooldownUntil).toLocaleTimeString("vi-VN")} ({cooldownSeconds} giây). Bạn vẫn có thể tải ảnh từ máy.</Alert>}
-      {providerDisabled && <Alert severity="info">Pixabay đang tắt. Bạn vẫn có thể tải ảnh từ máy.</Alert>}
+      {providerDisabled && <Alert severity="info">Nguồn hình minh họa đang tắt. Bạn vẫn có thể tải ảnh từ máy.</Alert>}
       {providerError && <Alert severity="warning">{providerError}</Alert>}
       {candidates.map((candidate) => {
         const state = states[candidate.index];
@@ -309,13 +337,14 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
             {state.status === "SEARCHING" && <Typography><CircularProgress size={16} /> Đang tìm…</Typography>}
             {state.status === "EMPTY" && <Typography color="text.secondary">Không có ảnh phù hợp.</Typography>}
             {state.error && <Alert severity="warning">{state.error}</Alert>}
+            {state.confirmedAssetId && <Alert icon={<CheckCircle />} severity="success">Từ này đã có ảnh.</Alert>}
             {state.items.length > 0 && <><Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,1fr)", sm: "repeat(6,1fr)" }, gap: 1 }}>
               {state.items.map((item) => <Button key={item.providerAssetId}
                 onClick={() => setStates((current) => ({ ...current, [candidate.index]: { ...current[candidate.index], selectedAssetId: item.providerAssetId } }))}
                 sx={{ p: 0, border: state.selectedAssetId === item.providerAssetId ? 3 : 1 }}>
-                <Box component="img" src={item.thumbnailUrl} alt={candidate.item.word} sx={{ width: "100%", aspectRatio: "1", objectFit: "cover" }} />
+                <Box component="img" src={item.thumbnailUrl} alt={candidate.item.word} sx={{ width: "100%", aspectRatio: "1", objectFit: item.provider === "ARASAAC" ? "contain" : "cover", bgcolor: item.provider === "ARASAAC" ? "grey.50" : undefined }} />
               </Button>)}</Box>
-              <Button variant="contained" disabled={!state.selectedAssetId || importLocks.current.has(candidate.index)}
+              <Button variant="contained" disabled={!state.selectedAssetId || Boolean(state.confirmedAssetId) || importLocks.current.has(candidate.index)}
                 onClick={() => void choose(candidate)}>
                 {importing.startsWith(`${candidate.index}-`) ? "Đang nhập…" : "Chọn ảnh"}
               </Button></>}
@@ -337,6 +366,7 @@ export function VocabularyBulkImageSuggestions({ open, items, onClose, onSelect,
       })}
       {(awaitingStart || cursor.current < remote.length) && <Button variant="outlined"
         disabled={running || cooldownSeconds > 0 || providerDisabled} onClick={startNextBatch}>{startLabel}</Button>}
+      {Object.values(states).some((state) => state.items.some((item) => item.provider === "ARASAAC")) && <Typography variant="caption" color="text.secondary">Pictogram: Sergio Palao / ARASAAC · Government of Aragón · CC BY-NC-SA.</Typography>}
     </Stack></DialogContent>
     <DialogActions><Button onClick={close}>Hủy</Button><Button variant="contained" startIcon={<Collections />} onClick={close}>Xong</Button></DialogActions>
   </Dialog>;

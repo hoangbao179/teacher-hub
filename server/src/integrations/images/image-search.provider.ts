@@ -65,7 +65,7 @@ export class StaticImageProviderRegistry implements ImageProviderRegistry {
       !provider.supportedMediaTypes || provider.supportedMediaTypes.includes(mediaType) || mediaType === "ALL") ?? null;
   }
   status() {
-    return (["PIXABAY"] as VocabularyImageProvider[]).map((provider) => ({
+    return (["ARASAAC", "PIXABAY"] as VocabularyImageProvider[]).map((provider) => ({
       provider,
       enabled: this.providers.has(provider),
     }));

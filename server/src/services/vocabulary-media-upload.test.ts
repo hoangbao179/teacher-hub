@@ -7,7 +7,8 @@ import { VocabularyMediaService } from "./vocabulary-media.service";
 import type { VocabularyMediaRepository } from "../repositories/vocabulary-media.repository";
 
 const settings: VocabularyMediaSettings = {
-  enabled: true, apiKey: "test", storagePath: "unused", cacheTtlMs: 86_400_000,
+  enabled: true, arasaacEnabled: false, pixabayEnabled: true, pixabayApiKey: "test",
+  storagePath: "unused", cacheTtlMs: 86_400_000,
   timeoutMs: 15_000, maxBytes: 5 * 1024 * 1024, maxRedirects: 2,
   minDimension: 256, maxDimension: 4096, maxPixels: 16_000_000,
 };

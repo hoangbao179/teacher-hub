@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, localStorage */
+/* global process, fetch, setTimeout, console, localStorage, document, window */
 import { spawn, spawnSync } from "node:child_process";
 import { Buffer } from "node:buffer";
 import fs from "node:fs";
@@ -86,22 +86,40 @@ try {
   const searchMediaTypes = [];
   await page.route("**/api/vocabulary/media/status", (route) => route.fulfill({
     status: 200, contentType: "application/json",
-    body: JSON.stringify({ data: { enabled: true, provider: "PIXABAY" } }),
+    body: JSON.stringify({ data: {
+      enabled: true,
+      provider: "ARASAAC",
+      providers: [
+        { provider: "ARASAAC", enabled: true },
+        { provider: "PIXABAY", enabled: true },
+      ],
+    } }),
   }));
   await page.route("**/api/vocabulary/media/search?*", (route) => {
     searches += 1;
     const url = new URL(route.request().url());
     const requestedMediaType = url.searchParams.get("mediaType");
     searchMediaTypes.push(requestedMediaType);
-    const results = Array.from({ length: 6 }, (_, index) => ({
-      provider: "PIXABAY", providerAssetId: `${searches}-${index}`,
-      previewUrl: `${origin}/images/teacher-english-hero-720.jpg`,
-      thumbnailUrl: `${origin}/images/teacher-english-hero-720.jpg`, width: 640, height: 640,
-      mediaType: requestedMediaType, contributorName: "Pixabay test", attributionText: "Pixabay test",
-      sourcePageUrl: "https://pixabay.com/",
-    }));
+    const provider = requestedMediaType === "PHOTO" ? "PIXABAY" : "ARASAAC";
+    const arasaacIds = [2462, 13645, 13644];
+    const resultCount = provider === "ARASAAC" ? arasaacIds.length : 6;
+    const results = Array.from({ length: resultCount }, (_, index) => {
+      const providerAssetId = provider === "ARASAAC"
+        ? String(arasaacIds[index])
+        : `${searches}-${index}`;
+      const previewUrl = provider === "ARASAAC"
+        ? `https://static.arasaac.org/pictograms/${providerAssetId}/${providerAssetId}_300.png`
+        : `${origin}/images/teacher-english-hero-720.jpg`;
+      return ({
+      provider, providerAssetId,
+      previewUrl,
+      thumbnailUrl: previewUrl, width: provider === "ARASAAC" ? 500 : 640, height: provider === "ARASAAC" ? 500 : 640,
+      mediaType: requestedMediaType, contributorName: provider === "ARASAAC" ? "Sergio Palao / ARASAAC" : "Pixabay test",
+      attributionText: provider === "ARASAAC" ? "Pictogram của Sergio Palao, nguồn ARASAAC, thuộc Government of Aragón" : "Pixabay test",
+      sourcePageUrl: provider === "ARASAAC" ? "https://arasaac.org/pictograms/en/42" : "https://pixabay.com/",
+    }); });
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-      data: { provider: "PIXABAY", safeSearch: true, cacheExpiresAt: "2026-08-01T00:00:00.000Z",
+      data: { provider, safeSearch: true, cacheExpiresAt: "2026-08-01T00:00:00.000Z",
         page: 1, pageSize: 12, total: results.length, items: results },
     }) });
   });
@@ -114,8 +132,9 @@ try {
   });
   await page.route("**/api/vocabulary/media/import", (route) => {
     imported += 1;
+    const provider = route.request().postDataJSON().provider;
     return route.fulfill({ status: 201, contentType: "application/json",
-      body: JSON.stringify({ data: stored(9001, "PIXABAY") }) });
+      body: JSON.stringify({ data: stored(9001, provider) }) });
   });
   await page.route("**/api/vocabulary/media/upload", (route) => {
     uploaded += 1;
@@ -132,16 +151,33 @@ try {
   const modal = page.locator('[data-testid="vocabulary-bulk-image-suggestions"]');
   await modal.waitFor();
   await modal.getByRole("button", { name: "Chọn ảnh" }).first().waitFor();
-  const illustrationSearches = searches;
-
+  const firstArasaacImage = modal.locator('img[src*="static.arasaac.org"]').first();
+  await firstArasaacImage.waitFor();
+  await firstArasaacImage.evaluate((image) => image.decode());
+  const screenshotDir = path.join(root, "test-results");
+  fs.mkdirSync(screenshotDir, { recursive: true });
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    "ARASAAC picker overflows at 390x844");
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: path.join(screenshotDir, "arasaac-390x844.png") });
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.waitForTimeout(100);
+  const dialogBox = await modal.boundingBox();
+  assert(dialogBox && dialogBox.x >= 0 && dialogBox.x + dialogBox.width <= 1366,
+    "ARASAAC dialog breaks at 1366x768");
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    "ARASAAC picker overflows at 1366x768");
+  await page.screenshot({ path: path.join(screenshotDir, "arasaac-1366x768.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
   await modal.getByLabel("Loại ảnh").click();
   await page.getByRole("option", { name: "Ảnh thật" }).click();
   await modal.getByText("Chưa tìm").first().waitFor();
+  const searchesAfterMediaTypeChange = searches;
   await page.waitForTimeout(700);
-  assert(searches === illustrationSearches, "changing PHOTO automatically started a search");
+  assert(searches === searchesAfterMediaTypeChange, "changing PHOTO automatically started a search");
   await modal.getByRole("button", { name: "Bắt đầu tìm ảnh thật" }).click();
   await modal.getByRole("button", { name: "Chọn ảnh" }).first().waitFor();
-  assert(searchMediaTypes.slice(illustrationSearches).every((value) => value === "PHOTO"),
+  assert(searchMediaTypes.slice(searchesAfterMediaTypeChange).every((value) => value === "PHOTO"),
     "PHOTO batch retained illustration searches");
 
   await modal.locator('img[src*="teacher-english"]').first().click();

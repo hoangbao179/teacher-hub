@@ -42,7 +42,8 @@ test("provider import 201 serves a non-empty decodable thumbnail from the same s
     findMediaRecord: async () => stored ? { media, ...stored } : null,
   } as unknown as VocabularyMediaRepository;
   const settings = {
-    enabled: true, apiKey: "test", storagePath: root, cacheTtlMs: 86_400_000,
+    enabled: true, arasaacEnabled: false, pixabayEnabled: true, pixabayApiKey: "test",
+    storagePath: root, cacheTtlMs: 86_400_000,
     timeoutMs: 2_000, maxBytes: 5 * 1024 * 1024, maxRedirects: 2,
     minDimension: 256, maxDimension: 4096, maxPixels: 16_000_000,
   };

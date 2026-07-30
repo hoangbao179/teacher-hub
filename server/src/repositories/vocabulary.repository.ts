@@ -17,6 +17,7 @@ import type {
   RowDataPacket,
 } from "mysql2/promise";
 import { pool } from "../db/pool";
+import { AppError } from "../errors/app-error";
 import { AuditRepository, type AuditAction } from "./audit.repository";
 
 export interface PreparedVocabularyItem {
@@ -361,6 +362,7 @@ export class VocabularyRepository {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
+      await this.validateReferencedMedia(connection, input);
       const id = await this.insertSet(connection, input, teacherUserId);
       await this.promoteReferencedMedia(connection, input);
       await this.audit.record(connection, {
@@ -406,6 +408,7 @@ export class VocabularyRepository {
         await connection.rollback();
         return "ARCHIVED";
       }
+      await this.validateReferencedMedia(connection, input);
       await connection.execute(
         `UPDATE vocabulary_sets
          SET title=?,description=?,age_band=?,updated_at=CURRENT_TIMESTAMP
@@ -670,5 +673,34 @@ export class VocabularyRepository {
       `UPDATE vocabulary_media SET status='ACTIVE' WHERE status='TEMPORARY' AND id IN (${ids.map(() => "?").join(",")})`,
       ids,
     );
+  }
+
+  private async validateReferencedMedia(
+    connection: PoolConnection,
+    input: PreparedVocabularySet,
+  ): Promise<void> {
+    const ids = [...new Set(input.items.map((item) => item.mediaId).filter(
+      (id): id is number => Number.isInteger(id) && Number(id) > 0,
+    ))];
+    if (!ids.length) return;
+    const placeholders = ids.map(() => "?").join(",");
+    const [rows] = await connection.execute<Array<RowDataPacket & {
+      id: number;
+      status: "TEMPORARY" | "ACTIVE" | "FAILED";
+    }>>(
+      `SELECT id,status FROM vocabulary_media
+       WHERE id IN (${placeholders}) AND status IN ('TEMPORARY','ACTIVE')
+       FOR UPDATE`,
+      ids,
+    );
+    const valid = new Set(rows.map((row) => Number(row.id)));
+    const invalidMediaIds = ids.filter((id) => !valid.has(id));
+    if (invalidMediaIds.length)
+      throw new AppError(
+        422,
+        "VOCABULARY_MEDIA_NOT_FOUND",
+        "Một hoặc nhiều hình minh họa không tồn tại hoặc không còn khả dụng.",
+        { invalidMediaIds },
+      );
   }
 }

@@ -6,7 +6,9 @@ import type { VocabularyMediaSettings } from "../config/vocabulary-media-setting
 
 const settings: VocabularyMediaSettings = {
   enabled: true,
-  apiKey: "test",
+  arasaacEnabled: false,
+  pixabayEnabled: true,
+  pixabayApiKey: "test",
   storagePath: "unused",
   cacheTtlMs: 86_400_000,
   timeoutMs: 500,
@@ -37,6 +39,37 @@ test("secure downloader accepts an allowed raster and creates WebP renditions", 
   assert.equal((await sharp(result.game).metadata()).format, "webp");
   assert.equal((await sharp(result.thumbnail).metadata()).width, 320);
   assert.match(result.contentSha256, /^[a-f0-9]{64}$/);
+});
+
+test("ARASAAC contain thumbnail preserves transparent padding without enlarging the game image", async () => {
+  const input = await sharp({
+    create: { width: 500, height: 300, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  }).composite([{
+    input: await sharp({
+      create: { width: 180, height: 180, channels: 4, background: "#2563eb" },
+    }).png().toBuffer(),
+    left: 160,
+    top: 60,
+  }]).png().toBuffer();
+  const downloader = new SecureImageDownloader(settings, async () =>
+    new Response(input as unknown as BodyInit, {
+      headers: { "content-type": "image/png" },
+    }));
+  const result = await downloader.download(
+    "https://static.arasaac.org/pictograms/42/42_500.png",
+    ["static.arasaac.org"],
+    "contain",
+  );
+  const game = await sharp(result.game).metadata();
+  const thumbnail = await sharp(result.thumbnail).metadata();
+  assert.equal(game.format, "webp");
+  assert.equal(game.width, 500);
+  assert.equal(game.height, 300);
+  assert.equal(game.hasAlpha, true);
+  assert.equal(thumbnail.format, "webp");
+  assert.equal(thumbnail.width, 320);
+  assert.equal(thumbnail.height, 320);
+  assert.equal(thumbnail.hasAlpha, true);
 });
 
 test("secure downloader rejects non-allowlisted hosts and redirect escapes", async () => {

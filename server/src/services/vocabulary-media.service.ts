@@ -6,6 +6,7 @@ import type {
   VocabularyImageProvider,
   VocabularyMediaSearchQuery,
   VocabularyMediaSearchResponse,
+  VocabularyStoredMedia,
 } from "@teacher/shared";
 import {
   vocabularyImageMediaTypes,
@@ -28,7 +29,7 @@ export function normalizeImageQuery(value: string): string {
 export class VocabularyMediaService {
   private lifecycleTimer?: ReturnType<typeof setInterval>;
   private readonly registry: ImageProviderRegistry;
-  private readonly provider: ImageSearchProvider | null;
+  private readonly imports = new Map<string, Promise<VocabularyStoredMedia>>();
   constructor(
     private readonly repository: VocabularyMediaRepository,
     providerOrRegistry: ImageSearchProvider | ImageProviderRegistry | null,
@@ -41,7 +42,6 @@ export class VocabularyMediaService {
     this.registry = providerOrRegistry && "get" in providerOrRegistry
       ? providerOrRegistry
       : new StaticImageProviderRegistry(providerOrRegistry ? [providerOrRegistry] : []);
-    this.provider = this.registry.primary("ILLUSTRATION");
   }
 
   async initialize(): Promise<void> {
@@ -57,7 +57,6 @@ export class VocabularyMediaService {
   }
 
   async search(raw: VocabularyMediaSearchQuery): Promise<VocabularyMediaSearchResponse> {
-    this.ensureEnabled();
     const query = normalizeImageQuery(raw.query ?? "");
     if (query.length < 2 || query.length > 100)
       throw new AppError(400, "VALIDATION_ERROR", "Từ khóa ảnh phải dài từ 2 đến 100 ký tự.");
@@ -68,7 +67,7 @@ export class VocabularyMediaService {
     if (!vocabularyImageMediaTypes.includes(mediaType) ||
       !vocabularyImageOrientations.includes(orientation))
       throw new AppError(400, "VALIDATION_ERROR", "Bộ lọc ảnh không hợp lệ.");
-    const provider = this.provider!;
+    const provider = this.providerFor(mediaType);
     const cacheKey = createHash("sha256").update(JSON.stringify({
       provider: provider.name,
       query,
@@ -154,35 +153,84 @@ export class VocabularyMediaService {
     const altText = String(input.altText ?? "").normalize("NFKC").trim().replace(/\s+/gu, " ");
     if (altText.length < 1 || altText.length > 200)
       throw new AppError(400, "VALIDATION_ERROR", "Mô tả ảnh phải dài từ 1 đến 200 ký tự.");
-    const existing = await this.repository.findMedia(input.provider, providerAssetId);
+    const importKey = `${input.provider}:${providerAssetId}`;
+    const activeImport = this.imports.get(importKey);
+    if (activeImport) return activeImport;
+    const pending = this.performImport(
+      importProvider,
+      providerAssetId,
+      altText,
+      actorUserId,
+    );
+    this.imports.set(importKey, pending);
+    try {
+      return await pending;
+    } finally {
+      if (this.imports.get(importKey) === pending) this.imports.delete(importKey);
+    }
+  }
+
+  private async performImport(
+    importProvider: ImageSearchProvider,
+    providerAssetId: string,
+    altText: string,
+    actorUserId: number,
+  ): Promise<VocabularyStoredMedia> {
+    const provider = importProvider.name;
+    const existing = await this.repository.findMedia(provider, providerAssetId);
     if (existing) return existing;
-    let asset = await this.repository.findCachedAsset(input.provider, providerAssetId, this.now());
-    if (!asset)
+    let asset = await this.repository.findCachedAsset(provider, providerAssetId, this.now());
+    const resolveAsset = importProvider.resolveAsset?.bind(importProvider);
+    if (!asset && resolveAsset) {
+      asset = await this.coordinator.run(
+        provider,
+        () => resolveAsset(providerAssetId),
+      );
+    }
+    if (!asset) {
+      if (resolveAsset)
+        throw new AppError(
+          422,
+          "IMAGE_IMPORT_REJECTED",
+          "Hình đã chọn không còn tồn tại hoặc mã hình không hợp lệ.",
+        );
       throw new AppError(
         409,
         "IMAGE_CACHE_MISS",
         "Kết quả tìm kiếm đã hết hạn. Hãy tìm lại ảnh trước khi chọn.",
       );
+    }
     const startedAt = Date.now();
     let processed;
     try {
       try {
-        processed = await this.downloader.download(asset.downloadUrl, importProvider!.allowedDownloadHosts);
+        processed = await this.downloader.download(
+          asset.downloadUrl,
+          importProvider.allowedDownloadHosts,
+          asset.provider === "ARASAAC" ? "contain" : "cover",
+        );
       } catch (error) {
         const upstreamStatus = error instanceof AppError && typeof error.details === "object" &&
           error.details && "upstreamStatus" in error.details
           ? Number((error.details as { upstreamStatus?: unknown }).upstreamStatus) : undefined;
         if (!(error instanceof AppError) || error.code !== "IMAGE_IMPORT_SOURCE_UNAVAILABLE" ||
-            ![401, 403, 404, 410].includes(upstreamStatus ?? 0) || !importProvider?.resolveAsset)
+            ![401, 403, 404, 410].includes(upstreamStatus ?? 0) || !resolveAsset)
           throw error;
-        const refreshed = await this.coordinator.run(importProvider.name, () => importProvider.resolveAsset!(providerAssetId));
+        const refreshed = await this.coordinator.run(
+          importProvider.name,
+          () => resolveAsset(providerAssetId),
+        );
         if (!refreshed) throw error;
         asset = refreshed;
-        processed = await this.downloader.download(asset.downloadUrl, importProvider.allowedDownloadHosts);
+        processed = await this.downloader.download(
+          asset.downloadUrl,
+          importProvider.allowedDownloadHosts,
+          asset.provider === "ARASAAC" ? "contain" : "cover",
+        );
       }
     } catch (error) {
       console.warn(JSON.stringify({
-        level: "warn", event: "vocabulary_media_import_failed", provider: input.provider,
+        level: "warn", event: "vocabulary_media_import_failed", provider,
         providerAssetId, stage: "download", upstreamStatus:
           error instanceof AppError && typeof error.details === "object" && error.details && "upstreamStatus" in error.details
             ? (error.details as { upstreamStatus?: unknown }).upstreamStatus : undefined,
@@ -194,7 +242,7 @@ export class VocabularyMediaService {
     const files = await this.storage.write(processed.game, processed.thumbnail);
     try {
       const result = await this.repository.createMedia({
-        provider: input.provider,
+        provider,
         asset,
         storagePath: files.storagePath,
         thumbnailPath: files.thumbnailPath,
@@ -301,22 +349,46 @@ export class VocabularyMediaService {
   }
 
   providerStatus() {
-    const cooldownUntil = this.provider ? this.coordinator.cooldownUntil(this.provider.name) : null;
+    const provider = this.registry.primary("ILLUSTRATION");
+    const cooldownUntil = provider ? this.coordinator.cooldownUntil(provider.name) : null;
     return {
-      enabled: Boolean(this.settings.enabled && this.provider),
-      provider: "PIXABAY" as const,
+      enabled: Boolean(this.settings.enabled && provider),
+      provider: provider?.name ?? null,
       ...(cooldownUntil ? { cooldownUntil: cooldownUntil.toISOString() } : {}),
-      providers: this.registry.status(),
+      providers: this.registry.status().map((status) => {
+        const providerCooldown = status.enabled
+          ? this.coordinator.cooldownUntil(status.provider)
+          : null;
+        return {
+          ...status,
+          ...(providerCooldown ? { cooldownUntil: providerCooldown.toISOString() } : {}),
+        };
+      }),
     };
   }
 
   private ensureEnabled(): void {
-    if (!this.settings.enabled || !this.provider)
+    if (!this.settings.enabled || !this.registry.primary("ALL"))
       throw new AppError(
         503,
         "IMAGE_PROVIDER_DISABLED",
         "Tìm ảnh đang tắt. Bạn vẫn có thể dùng emoji hoặc ảnh của Unit công khai.",
       );
+  }
+
+  private providerFor(mediaType: VocabularyImageMediaType): ImageSearchProvider {
+    this.ensureEnabled();
+    const provider = this.registry.primary(mediaType);
+    if (!provider)
+      throw new AppError(
+        503,
+        "IMAGE_PROVIDER_DISABLED",
+        mediaType === "PHOTO"
+          ? "Nguồn ảnh thật đang tắt. Hãy dùng Minh họa hoặc tải ảnh từ máy."
+          : "Nguồn hình minh họa đang tắt. Bạn vẫn có thể tải ảnh từ máy.",
+        { mediaType },
+      );
+    return provider;
   }
 
   private integer(

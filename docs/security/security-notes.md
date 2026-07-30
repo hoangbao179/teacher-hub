@@ -60,10 +60,13 @@ teacher result API và không đưa session/access token vào Google Sheet.
   `X-Robots-Tag: noindex, nofollow, noarchive`.
 - Public limiter tách login limiter: resolve/media 60/phút/IP; access/start
   20/10 phút theo IP+assignment; answer/complete 120/phút theo session+IP.
-- Image import chỉ nhận provider + provider asset ID còn trong cache. Backend
-  resolve URL, enforce host allowlist sau từng redirect, timeout 5 giây, tối đa
+- Image import chỉ nhận provider + provider asset ID. Backend dùng cache hoặc gọi
+  `resolveAsset` để xác minh ID, tự dựng URL, enforce host allowlist sau từng redirect,
+  timeout 5 giây, tối đa
   2 redirect/5 MiB, MIME sniff, JPEG/PNG/WebP, 256–4096 px và 16 MP.
-- Pixabay search luôn `safesearch=true`, cache tối thiểu 24 giờ và hiển thị nguồn.
+- ARASAAC là nguồn minh họa mặc định, chỉ tải từ `static.arasaac.org` và lưu đầy đủ
+  attribution/license; Pixabay search luôn `safesearch=true` khi được bật.
+  Search cache tối thiểu 24 giờ và luôn hiển thị nguồn thực tế.
   Preview URL chỉ tạm; selected binary tải vào named volume, không hotlink.
 - Media ID/bytes immutable, serve same-origin với `nosniff` và immutable cache.
   Binary không vào MySQL hoặc filesystem tạm; backup/restore gồm media volume.

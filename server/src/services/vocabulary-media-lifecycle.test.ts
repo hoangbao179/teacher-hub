@@ -18,7 +18,8 @@ test("orphan cleanup removes both renditions but never removes a newly reference
       temporaryOrphans: async () => [{ id: 7, storagePath: files.storagePath, thumbnailPath: files.thumbnailPath }],
       deleteUnreferenced: async () => !referenced,
     } as unknown as VocabularyMediaRepository;
-    const settings = { enabled: false, apiKey: "", storagePath: root, cacheTtlMs: 86_400_000,
+    const settings = { enabled: false, arasaacEnabled: false, pixabayEnabled: false,
+      pixabayApiKey: "", storagePath: root, cacheTtlMs: 86_400_000,
       timeoutMs: 15_000, maxBytes: 5 * 1024 * 1024, maxRedirects: 2,
       minDimension: 256, maxDimension: 4096, maxPixels: 16_000_000 } satisfies VocabularyMediaSettings;
     const service = new VocabularyMediaService(repository, null, settings, undefined, storage);

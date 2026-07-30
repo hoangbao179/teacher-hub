@@ -42,6 +42,7 @@ import { VocabularyMediaController } from "./controllers/vocabulary-media.contro
 import { VocabularyMediaRepository } from "./repositories/vocabulary-media.repository";
 import { VocabularyMediaService } from "./services/vocabulary-media.service";
 import { PixabayImageSearchProvider } from "./integrations/images/pixabay-image-search.provider";
+import { ArasaacImageSearchProvider } from "./integrations/images/arasaac-image-search.provider";
 import { StaticImageProviderRegistry } from "./integrations/images/image-search.provider";
 import { AssignmentController } from "./controllers/assignment.controller";
 import { AssignmentRepository } from "./repositories/assignment.repository";
@@ -84,11 +85,16 @@ const studentReportService = new StudentReportService(
 );
 const legacyImportService = new LegacyImportService(studentService, classService);
 const vocabularyService = new VocabularyService(vocabulary);
-const vocabularyImageProvider = config.vocabularyMedia.enabled
-  ? new PixabayImageSearchProvider(config.vocabularyMedia.apiKey)
-  : null;
+const vocabularyImageProviderList = [
+  ...(config.vocabularyMedia.arasaacEnabled
+    ? [new ArasaacImageSearchProvider(fetch, config.vocabularyMedia.timeoutMs)]
+    : []),
+  ...(config.vocabularyMedia.pixabayEnabled
+    ? [new PixabayImageSearchProvider(config.vocabularyMedia.pixabayApiKey)]
+    : []),
+];
 const vocabularyImageProviders = new StaticImageProviderRegistry(
-  vocabularyImageProvider ? [vocabularyImageProvider] : [],
+  vocabularyImageProviderList,
 );
 export const vocabularyMediaService = new VocabularyMediaService(
   vocabularyMedia,

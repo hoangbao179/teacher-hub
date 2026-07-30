@@ -26,12 +26,14 @@ thường):
 
 - `GOOGLE_DRIVE_ENABLED`
 - `GOOGLE_SHEET_SYNC_ENABLED`
+- `ARASAAC_ENABLED`
 - `PIXABAY_ENABLED`
 
 Khi `GOOGLE_DRIVE_ENABLED=true`, phải có thêm `GOOGLE_DRIVE_CLIENT_ID`,
 `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN` và
 `GOOGLE_DRIVE_ROOT_FOLDER_ID`. `GOOGLE_SHEET_SYNC_ENABLED=true` yêu cầu Google Drive
-cũng được bật. Khi `PIXABAY_ENABLED=true`, phải có `PIXABAY_API_KEY`.
+cũng được bật. `ARASAAC_ENABLED=true` không cần API key. Khi
+`PIXABAY_ENABLED=true`, phải có `PIXABAY_API_KEY`.
 
 `REPORT_VIETINBANK_ACCOUNT_NUMBER` là optional và sẽ được ghi rỗng vào runtime `.env`
 nếu không khai báo. `VITE_GOOGLE_MAPS_EMBED_API_KEY` chỉ dùng làm build arg của Web
@@ -102,7 +104,8 @@ Repository Secrets ở mỗi lần deploy:
   chỉ đặt trong runtime `.env`, không commit giá trị thật.
 - Google runtime (khi bật V16C): `GOOGLE_DRIVE_ENABLED` và OAuth/root-folder values
   theo `docs/deployment/google-drive.md`.
-- Vocabulary V20 khi enable: `PIXABAY_ENABLED` và `PIXABAY_API_KEY`. Đường dẫn media
+- Vocabulary V20 mặc định dùng `ARASAAC_ENABLED=true`; Pixabay chỉ cần
+  `PIXABAY_ENABLED` và `PIXABAY_API_KEY` khi bật nguồn ảnh thật. Đường dẫn media
   `/app/data/vocabulary-media` được cố định trong Compose. Key chỉ ở runtime server;
   không đưa vào Web image.
 
@@ -134,8 +137,9 @@ volumes:
 
 Đây là named volume production, không thay bằng `/tmp`, thư mục trong image hoặc
 bind mount không được backup. API phải fail startup khi provider bật nhưng
-`PIXABAY_API_KEY` thiếu, hoặc media root không writable. Provider có thể tắt bằng
-config mà vocabulary set dùng emoji/local asset vẫn hoạt động.
+`PIXABAY_API_KEY` thiếu khi Pixabay được bật, hoặc media root không writable.
+ARASAAC không cần key; từng provider có thể tắt bằng config mà vocabulary set dùng
+emoji/local asset vẫn hoạt động.
 
 Theo dõi riêng dung lượng, inode và tốc độ tăng của `vocabulary-media`. Cảnh báo
 trước khi filesystem đạt 80%, không tự xóa media còn được vocabulary item hoặc

@@ -108,12 +108,27 @@ test("public immutable media is not protected by the 60-per-minute business limi
   assert.doesNotMatch(publicRoute, /RateLimit|60/);
 });
 
-test("admin CSP permits only the required upload blob and Pixabay preview host", () => {
+test("admin CSP permits only the required upload blob and configured preview hosts", () => {
   const adminPolicies = nginx.match(/img-src[^;]+/g)?.filter((value) => value.includes("blob:")) ?? [];
   assert.equal(adminPolicies.length, 2);
   adminPolicies.forEach((policy) => {
     assert.match(policy, /blob:/);
+    assert.match(policy, /https:\/\/static\.arasaac\.org/);
     assert.match(policy, /https:\/\/cdn\.pixabay\.com/);
     assert.doesNotMatch(policy, /https:\/\/\*/);
   });
+});
+
+test("ARASAAC is the illustration source while unavailable filters and stale requests are controlled", () => {
+  assert.match(api, /provider: VocabularyImageProvider \| null/);
+  assert.match(api, /providers: Array/);
+  assert.match(picker, /provider\.provider === "PIXABAY" && provider\.enabled/);
+  assert.match(picker, /\{photoEnabled && <MenuItem value="PHOTO"/);
+  assert.match(picker, /item\.provider === "ARASAAC" \? "contain" : "cover"/);
+  assert.match(picker, /Sergio Palao \/ ARASAAC/);
+  assert.match(bulk, /searchCache\.current\.get\(key\)/);
+  assert.match(bulk, /candidateControllers\.current\.forEach\(\(controller\) => controller\.abort\(\)\)/);
+  assert.match(bulk, /Từ này đã có ảnh/);
+  assert.doesNotMatch(bulk, /Pixabay đang tắt/);
+  assert.doesNotMatch(picker, /không gửi yêu cầu tới Pixabay/);
 });

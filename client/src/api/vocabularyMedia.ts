@@ -2,6 +2,7 @@ import type {
   ImportVocabularyMediaRequest,
   VocabularyImageMediaType,
   VocabularyImageOrientation,
+  VocabularyImageProvider,
   VocabularyMediaSearchResponse,
   VocabularyStoredMedia,
 } from "@teacher/shared";
@@ -9,8 +10,13 @@ import { api, apiUrl } from "./client";
 
 export interface VocabularyMediaProviderStatus {
   enabled: boolean;
-  provider: "PIXABAY";
+  provider: VocabularyImageProvider | null;
   cooldownUntil?: string;
+  providers: Array<{
+    provider: VocabularyImageProvider;
+    enabled: boolean;
+    cooldownUntil?: string;
+  }>;
 }
 
 export const getVocabularyMediaStatus = (signal?: AbortSignal) =>

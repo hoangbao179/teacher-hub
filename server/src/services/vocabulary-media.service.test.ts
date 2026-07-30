@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AppError } from "../errors/app-error";
-import type { ProviderImageAsset } from "../integrations/images/image-search.provider";
+import {
+  StaticImageProviderRegistry,
+  type ProviderImageAsset,
+} from "../integrations/images/image-search.provider";
 import type { VocabularyMediaSettings } from "../config/vocabulary-media-settings";
 import {
   normalizeImageQuery,
@@ -10,7 +13,9 @@ import {
 
 const settings: VocabularyMediaSettings = {
   enabled: true,
-  apiKey: "test",
+  arasaacEnabled: false,
+  pixabayEnabled: true,
+  pixabayApiKey: "test",
   storagePath: "unused",
   cacheTtlMs: 86_400_000,
   timeoutMs: 500,
@@ -246,4 +251,154 @@ test("metadata rollback removes both newly written renditions", async () => {
     altText: "red apple",
   }, 1), /metadata failure/);
   assert.equal(value.removed(), true);
+});
+
+test("search selects ARASAAC for illustration/all and Pixabay for photos", async () => {
+  const calls: string[] = [];
+  const arasaacAsset: ProviderImageAsset = {
+    ...asset,
+    provider: "ARASAAC",
+    providerAssetId: "84",
+    previewUrl: "https://static.arasaac.org/pictograms/84/84_300.png",
+    thumbnailUrl: "https://static.arasaac.org/pictograms/84/84_300.png",
+    downloadUrl: "https://static.arasaac.org/pictograms/84/84_500.png",
+    mediaType: "ILLUSTRATION",
+  };
+  const registry = new StaticImageProviderRegistry([
+    {
+      name: "ARASAAC",
+      allowedDownloadHosts: ["static.arasaac.org"],
+      supportedMediaTypes: ["ALL", "ILLUSTRATION"],
+      search: async () => { calls.push("ARASAAC"); return { total: 1, items: [arasaacAsset] }; },
+    },
+    {
+      name: "PIXABAY",
+      allowedDownloadHosts: ["cdn.pixabay.com"],
+      supportedMediaTypes: ["ALL", "PHOTO", "ILLUSTRATION", "VECTOR"],
+      search: async () => { calls.push("PIXABAY"); return { total: 1, items: [asset] }; },
+    },
+  ]);
+  const repository = {
+    findCache: async () => null,
+    saveCache: async () => undefined,
+  };
+  const service = new VocabularyMediaService(
+    repository as never,
+    registry,
+    { ...settings, arasaacEnabled: true },
+    undefined,
+    { initialize: async () => undefined } as never,
+  );
+
+  assert.equal((await service.search({ query: "apple", mediaType: "ILLUSTRATION" })).provider, "ARASAAC");
+  assert.equal((await service.search({ query: "apple", mediaType: "ALL" })).provider, "ARASAAC");
+  assert.equal((await service.search({ query: "apple", mediaType: "PHOTO" })).provider, "PIXABAY");
+  assert.deepEqual(calls, ["ARASAAC", "ARASAAC", "PIXABAY"]);
+  assert.deepEqual(service.providerStatus().providers.map(({ provider, enabled }) => ({ provider, enabled })), [
+    { provider: "ARASAAC", enabled: true },
+    { provider: "PIXABAY", enabled: true },
+  ]);
+});
+
+test("ARASAAC import resolves a cache miss and coalesces concurrent requests", async () => {
+  const arasaacAsset: ProviderImageAsset = {
+    ...asset,
+    provider: "ARASAAC",
+    previewUrl: "https://static.arasaac.org/pictograms/42/42_300.png",
+    thumbnailUrl: "https://static.arasaac.org/pictograms/42/42_300.png",
+    downloadUrl: "https://static.arasaac.org/pictograms/42/42_500.png",
+    mediaType: "ILLUSTRATION",
+  };
+  let resolved = 0;
+  let downloaded = 0;
+  let written = 0;
+  let created = 0;
+  const media = {
+    id: 17, provider: "ARASAAC" as const, providerAssetId: "42",
+    url: "/api/public/vocabulary-media/17?variant=GAME",
+    thumbnailUrl: "/api/public/vocabulary-media/17?variant=THUMBNAIL",
+    width: 500, height: 500, mimeType: "image/webp" as const, byteSize: 4,
+    altText: "apple", contributorName: "Sergio Palao / ARASAAC",
+    attributionText: "ARASAAC", sourcePageUrl: "https://arasaac.org/pictograms/en/42",
+    licenseLabel: "CC BY-NC-SA",
+  };
+  const repository = {
+    findMedia: async () => null,
+    findCachedAsset: async () => null,
+    createMedia: async () => { created += 1; return { media, created: true }; },
+  };
+  const provider = {
+    name: "ARASAAC" as const,
+    allowedDownloadHosts: ["static.arasaac.org"] as const,
+    supportedMediaTypes: ["ALL", "ILLUSTRATION"] as const,
+    search: async () => ({ total: 0, items: [] }),
+    resolveAsset: async () => { resolved += 1; return arasaacAsset; },
+  };
+  const downloader = {
+    download: async (url: string, hosts: readonly string[], fit: string) => {
+      downloaded += 1;
+      assert.equal(url, arasaacAsset.downloadUrl);
+      assert.deepEqual(hosts, ["static.arasaac.org"]);
+      assert.equal(fit, "contain");
+      return {
+        game: Buffer.from("game"), thumbnail: Buffer.from("thumb"),
+        width: 500, height: 500, byteSize: 4, contentSha256: "c".repeat(64),
+      };
+    },
+  };
+  const storage = {
+    backupLocked: async () => false,
+    write: async () => {
+      written += 1;
+      return {
+        storagePath: "game/asset.webp", thumbnailPath: "thumbnail/asset.webp",
+        absoluteStoragePath: "C:/media/game/asset.webp",
+        absoluteThumbnailPath: "C:/media/thumbnail/asset.webp",
+      };
+    },
+    remove: async () => undefined,
+  };
+  const service = new VocabularyMediaService(
+    repository as never,
+    provider,
+    { ...settings, arasaacEnabled: true, pixabayEnabled: false },
+    downloader as never,
+    storage as never,
+  );
+  const request = { provider: "ARASAAC" as const, providerAssetId: "42", altText: "apple" };
+  const [first, second] = await Promise.all([
+    service.importMedia(request, 1),
+    service.importMedia(request, 1),
+  ]);
+  assert.equal(first.id, 17);
+  assert.equal(second.id, 17);
+  assert.equal(resolved, 1);
+  assert.equal(downloaded, 1);
+  assert.equal(written, 1);
+  assert.equal(created, 1);
+});
+
+test("ARASAAC rejects an invalid provider asset ID after resolver verification", async () => {
+  const repository = {
+    findMedia: async () => null,
+    findCachedAsset: async () => null,
+  };
+  const provider = {
+    name: "ARASAAC" as const,
+    allowedDownloadHosts: ["static.arasaac.org"] as const,
+    supportedMediaTypes: ["ALL", "ILLUSTRATION"] as const,
+    search: async () => ({ total: 0, items: [] }),
+    resolveAsset: async () => null,
+  };
+  const service = new VocabularyMediaService(
+    repository as never,
+    provider,
+    { ...settings, arasaacEnabled: true, pixabayEnabled: false },
+    undefined,
+    { backupLocked: async () => false } as never,
+  );
+  await assert.rejects(
+    service.importMedia({ provider: "ARASAAC", providerAssetId: "999", altText: "missing" }, 1),
+    (error: unknown) => error instanceof AppError && error.code === "IMAGE_IMPORT_REJECTED",
+  );
 });

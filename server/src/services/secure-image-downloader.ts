@@ -45,6 +45,7 @@ export async function processVocabularyImage(
   input: Buffer,
   declaredMime: string | undefined,
   settings: VocabularyMediaSettings,
+  thumbnailFit: "cover" | "contain" = "cover",
 ): Promise<ProcessedImage> {
   if (input.byteLength > settings.maxBytes)
     throw validation("IMAGE_IMPORT_TOO_LARGE", "Ảnh vượt quá 5 MiB.");
@@ -67,7 +68,10 @@ export async function processVocabularyImage(
   const [game, thumbnail] = await Promise.all([
     sharp(input).rotate().resize(1024, 1024, { fit: "inside", withoutEnlargement: true })
       .webp({ quality: 82 }).toBuffer(),
-    sharp(input).rotate().resize(320, 320, { fit: "cover", position: "attention" })
+    sharp(input).rotate().resize(320, 320, {
+      fit: thumbnailFit,
+      position: "attention",
+    })
       .webp({ quality: 76 }).toBuffer(),
   ]);
   const gameMetadata = await sharp(game).metadata();
@@ -90,12 +94,21 @@ export class SecureImageDownloader {
       new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds)),
   ) {}
 
-  async download(urlValue: string, allowedHosts: readonly string[]): Promise<ProcessedImage> {
+  async download(
+    urlValue: string,
+    allowedHosts: readonly string[],
+    thumbnailFit: "cover" | "contain" = "cover",
+  ): Promise<ProcessedImage> {
     const deadline = Date.now() + this.settings.timeoutMs + 500;
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return await this.downloadOnce(urlValue, allowedHosts, Math.max(1, deadline - Date.now()));
+        return await this.downloadOnce(
+          urlValue,
+          allowedHosts,
+          Math.max(1, deadline - Date.now()),
+          thumbnailFit,
+        );
       } catch (error) {
         lastError = error;
         if (error instanceof AppError && error.code === "IMAGE_IMPORT_SOURCE_RATE_LIMITED") throw error;
@@ -117,6 +130,7 @@ export class SecureImageDownloader {
     urlValue: string,
     allowedHosts: readonly string[],
     timeoutMs: number,
+    thumbnailFit: "cover" | "contain",
   ): Promise<ProcessedImage> {
     let current: URL;
     try { current = new URL(urlValue); }
@@ -170,6 +184,11 @@ export class SecureImageDownloader {
       }
       chunks.push(Buffer.from(value));
     }
-    return processVocabularyImage(Buffer.concat(chunks), declared, this.settings);
+    return processVocabularyImage(
+      Buffer.concat(chunks),
+      declared,
+      this.settings,
+      thumbnailFit,
+    );
   }
 }

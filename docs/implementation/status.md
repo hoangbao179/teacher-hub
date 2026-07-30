@@ -21,6 +21,9 @@ V20A-VOCABULARY-FOUNDATION: **PASS on 26/07/2026**. Shared contract, migration
 triển khai. V20B-VOCABULARY-MEDIA-EDITOR đã triển khai migration `0017`, Pixabay
 provider/fake, cache 24 giờ, secure WebP import, persistent media volume,
 same-origin delivery và responsive picker/bulk review; **PASS on 26/07/2026**.
+ARASAAC-VOCABULARY-MEDIA đã chuyển nguồn mặc định của minh họa sang ARASAAC, giữ
+Pixabay tùy chọn cho ảnh thật và harden resolver/import/save/assignment media;
+**PASS targeted + integration on 30/07/2026**, không cần migration mới.
 Vocabulary Media Hardening: **PASS on 27/07/2026** với queue 429 có cursor,
 provider-wide cooldown, upload Sharp, lifecycle/reconciliation/metrics và public
 immutable delivery không còn limiter 60 request/phút/IP.

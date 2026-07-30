@@ -49,6 +49,7 @@ export type VocabularyImageOrientation =
   (typeof vocabularyImageOrientations)[number];
 
 export const vocabularyImageProviders = [
+  "ARASAAC",
   "PIXABAY",
   "LOCAL_ASSET",
   "USER_UPLOAD",
