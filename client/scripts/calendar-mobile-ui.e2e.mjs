@@ -122,6 +122,20 @@ try {
   await page.getByText("Tuần này", { exact: true }).waitFor();
   await page.getByTestId("week-date-range").getByText(`${shortDate(currentWeek)} – ${shortDate(addDays(currentWeek, 6))}`, { exact: true }).waitFor();
   assert(await page.getByLabel("Tuần bắt đầu").getAttribute("type") === "date", "Week range no longer exposes the native date picker");
+  const [previousWeekBox, weekRangeBox, nextWeekBox] = await Promise.all([
+    page.getByLabel("Tuần trước").boundingBox(),
+    page.getByTestId("week-range-control").boundingBox(),
+    page.getByLabel("Tuần sau").boundingBox(),
+  ]);
+  const leftGap = previousWeekBox && weekRangeBox ? weekRangeBox.x - previousWeekBox.x - previousWeekBox.width : 0;
+  const rightGap = nextWeekBox && weekRangeBox ? nextWeekBox.x - weekRangeBox.x - weekRangeBox.width : 0;
+  assert(
+    previousWeekBox && weekRangeBox && nextWeekBox
+      && Math.abs(leftGap - rightGap) <= 1
+      && weekRangeBox.width >= 200
+      && weekRangeBox.height >= 52,
+    `Week navigator is not balanced: ${JSON.stringify({ previousWeekBox, weekRangeBox, nextWeekBox, leftGap, rightGap })}`,
+  );
   await page.getByRole("heading", { name: "Lịch dự kiến tuần này" }).waitFor();
   await page.getByText("0 buổi", { exact: true }).waitFor();
   await page.getByText("Tuần này chưa có lịch dự kiến", { exact: true }).waitFor();

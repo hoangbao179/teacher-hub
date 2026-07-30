@@ -52,17 +52,19 @@ function WeekNavigator({ from, currentWeekStart, onChange }: {
         ? <Typography variant="caption" color="primary.dark" sx={{ minHeight: 28, display: "flex", alignItems: "center", fontWeight: 700 }}>Tuần này</Typography>
         : <Button size="small" variant="text" onClick={() => onChange(currentWeekStart)} sx={{ minHeight: 28, py: 0, px: 1 }}>Về tuần hiện tại</Button>}
       <Stack direction="row" spacing={0.75} sx={{ width: "100%", alignItems: "center" }}>
-        <IconButton aria-label="Tuần trước" onClick={() => onChange(addDays(from, -7))} sx={{ flexShrink: 0, border: 1, borderColor: "divider", bgcolor: "background.paper" }}>
+        <IconButton aria-label="Tuần trước" onClick={() => onChange(addDays(from, -7))} sx={{ width: 48, height: 48, flexShrink: 0, border: 1, borderColor: "divider", bgcolor: "background.paper", "& .MuiSvgIcon-root": { fontSize: 25 } }}>
           <ChevronLeft />
         </IconButton>
         <Box
+          data-testid="week-range-control"
           sx={{
             position: "relative",
             display: "grid",
             placeItems: "center",
+            flex: 1,
             minWidth: 0,
-            minHeight: 48,
-            px: 1,
+            minHeight: 52,
+            px: 1.25,
             borderRadius: 2,
             bgcolor: "primary.light",
             color: "primary.dark",
@@ -70,8 +72,8 @@ function WeekNavigator({ from, currentWeekStart, onChange }: {
           }}
         >
           <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", pointerEvents: "none" }}>
-            <CalendarMonth sx={{ fontSize: 19 }} />
-            <Typography data-testid="week-date-range" sx={{ fontSize: { xs: 16, sm: 17 }, lineHeight: 1.2, fontWeight: 700, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{dateRange}</Typography>
+            <CalendarMonth sx={{ fontSize: 20 }} />
+            <Typography data-testid="week-date-range" sx={{ fontSize: { xs: 17, sm: 18 }, lineHeight: 1.2, fontWeight: 700, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{dateRange}</Typography>
           </Stack>
           <Box
             component="input"
@@ -82,7 +84,7 @@ function WeekNavigator({ from, currentWeekStart, onChange }: {
             sx={{ position: "absolute", inset: 0, zIndex: 1, width: "100%", height: "100%", m: 0, opacity: 0, cursor: "pointer" }}
           />
         </Box>
-        <IconButton aria-label="Tuần sau" onClick={() => onChange(addDays(from, 7))} sx={{ flexShrink: 0, border: 1, borderColor: "divider", bgcolor: "background.paper" }}>
+        <IconButton aria-label="Tuần sau" onClick={() => onChange(addDays(from, 7))} sx={{ width: 48, height: 48, flexShrink: 0, border: 1, borderColor: "divider", bgcolor: "background.paper", "& .MuiSvgIcon-root": { fontSize: 25 } }}>
           <ChevronRight />
         </IconButton>
       </Stack>
