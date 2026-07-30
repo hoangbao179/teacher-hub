@@ -24,6 +24,7 @@ import { api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, ErrorState, MobileCard, PageHeader, ProgressCount, StatusBadge } from "../components/UiKit";
 import { scheduleApi } from "../api/schedule";
+import { formatClassSchedule, formatClassScheduleItem } from "../utils/classSchedule";
 import { addDays, todayInHoChiMinh } from "../utils/date";
 export function ClassDetailPage() {
   const { id } = useParams();
@@ -113,9 +114,7 @@ export function ClassDetailPage() {
           <Typography>Giá mặc định: <CurrencyDisplay value={item!.defaultPackagePrice} /> / 8 buổi</Typography>
           <Typography>
             Lịch:{" "}
-            {item!.schedules
-              .map((s) => `T${s.dayOfWeek} ${s.startTime}`)
-              .join(", ")}
+            {formatClassSchedule(item!.schedules)}
           </Typography>
       </MobileCard>
       <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography variant="h6">Học sinh</Typography><Button variant="contained" disabled={busy || item!.status !== "ACTIVE" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => setDialogOpen(true)}>Ghi danh</Button></Stack>
@@ -166,7 +165,7 @@ export function ClassDetailPage() {
           <Alert severity="info">Hệ thống tạo exception cho từng buổi. Hết khoảng chọn, lớp tự trở về lịch gốc.</Alert>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}><TextField fullWidth required type="date" label="Từ ngày" value={temporaryFrom} onChange={(e) => { setTemporaryFrom(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /><TextField fullWidth required type="date" label="Đến ngày" value={temporaryTo} onChange={(e) => { setTemporaryTo(e.target.value); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /></Stack>
           {item!.schedules.map((schedule) => { const mapping = temporaryMappings[schedule.id]; if (!mapping) return null; return <Card key={schedule.id} variant="outlined"><CardContent><Stack spacing={1}>
-            <FormControlLabel control={<Checkbox checked={mapping.selected} onChange={(e) => { setTemporaryMappings((current) => ({ ...current, [schedule.id]: { ...current[schedule.id], selected: e.target.checked } })); setTemporaryPreview(null); }} />} label={`T${schedule.dayOfWeek} · ${schedule.startTime}–${schedule.endTime}`} />
+            <FormControlLabel control={<Checkbox checked={mapping.selected} onChange={(e) => { setTemporaryMappings((current) => ({ ...current, [schedule.id]: { ...current[schedule.id], selected: e.target.checked } })); setTemporaryPreview(null); }} />} label={formatClassScheduleItem(schedule)} />
             {mapping.selected && <><TextField select label="Chuyển sang" value={mapping.day} onChange={(e) => { setTemporaryMappings((current) => ({ ...current, [schedule.id]: { ...current[schedule.id], day: Number(e.target.value) as Weekday } })); setTemporaryPreview(null); }}>{[1,2,3,4,5,6,7].map((day) => <MenuItem key={day} value={day}>{day === 7 ? "Chủ nhật" : `Thứ ${day + 1}`}</MenuItem>)}</TextField>
             <Stack direction="row" spacing={1}><TextField fullWidth required type="time" label="Bắt đầu mới" value={mapping.start} onChange={(e) => { setTemporaryMappings((current) => ({ ...current, [schedule.id]: { ...current[schedule.id], start: e.target.value } })); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /><TextField fullWidth required type="time" label="Kết thúc mới" value={mapping.end} onChange={(e) => { setTemporaryMappings((current) => ({ ...current, [schedule.id]: { ...current[schedule.id], end: e.target.value } })); setTemporaryPreview(null); }} slotProps={{ inputLabel: { shrink: true } }} /></Stack></>}
           </Stack></CardContent></Card>; })}
