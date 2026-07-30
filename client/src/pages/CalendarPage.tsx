@@ -184,7 +184,7 @@ export function CalendarPage() {
     <Stack direction={{ xs: "column", sm: "row" }} useFlexGap sx={{ alignItems: { xs: "stretch", sm: "center" }, justifyContent: "space-between", gap: { xs: 0.5, sm: 1.5 } }}>
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", justifyContent: "space-between", minWidth: 0 }}>
         <Typography component="h2" variant="h6">{isCurrentWeek ? "Lịch dự kiến tuần này" : "Lịch dự kiến"}</Typography>
-        <Chip size="small" label={data ? `${entries.length} buổi` : "Đang tải"} color="primary" variant="outlined" sx={{ flexShrink: 0 }} />
+        <Chip size="small" label={data ? `${entries.length} buổi dạy` : "Đang tải"} color="primary" variant="outlined" sx={{ flexShrink: 0 }} />
       </Stack>
       <Button startIcon={<FactCheckOutlined />} variant="text" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`} sx={{ alignSelf: { xs: "flex-start", sm: "center" }, px: { xs: 0.5, sm: 1 } }}>Kiểm tra lịch tuần</Button>
     </Stack>

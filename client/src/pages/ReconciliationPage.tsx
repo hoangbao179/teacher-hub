@@ -1,3 +1,4 @@
+import { CalendarMonth, FilterList } from "@mui/icons-material";
 import {
   Alert,
   Box,
@@ -10,6 +11,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Drawer,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -30,6 +32,39 @@ const labels: Record<ReconciliationState, string> = {
 };
 
 interface SkipDialogState { keys: string[]; bulk: boolean }
+interface ReconciliationFilters {
+  from: string;
+  to: string;
+  classId: number;
+  state: ReconciliationState | "ALL";
+}
+
+function shortDate(date: string) {
+  return `${date.slice(8, 10)}/${date.slice(5, 7)}`;
+}
+
+function conflictLabel(count: number) {
+  return count === 1 ? "Trùng lịch với một buổi khác" : `Trùng với ${count} buổi khác`;
+}
+
+function ReconciliationFilterFields({ values, classes, onChange }: {
+  values: ReconciliationFilters;
+  classes: ClassListItem[];
+  onChange: (next: ReconciliationFilters) => void;
+}) {
+  return <Stack spacing={1.5}>
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+      <TextField required fullWidth type="date" label="Từ ngày" value={values.from} onChange={(event) => onChange({ ...values, from: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+      <TextField required fullWidth type="date" label="Đến ngày" value={values.to} onChange={(event) => onChange({ ...values, to: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+    </Stack>
+    <TextField select fullWidth label="Lớp" value={values.classId && classes.some((item) => item.id === values.classId) ? values.classId : 0} onChange={(event) => onChange({ ...values, classId: Number(event.target.value) })}>
+      <MenuItem value={0}>Tất cả lớp</MenuItem>{classes.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
+    </TextField>
+    <TextField select fullWidth label="Trạng thái" value={values.state} onChange={(event) => onChange({ ...values, state: event.target.value as ReconciliationState | "ALL" })}>
+      <MenuItem value="ALL">Tất cả</MenuItem>{Object.entries(labels).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
+    </TextField>
+  </Stack>;
+}
 
 export function ReconciliationPage() {
   const [params] = useSearchParams();
@@ -39,6 +74,8 @@ export function ReconciliationPage() {
   const [to, setTo] = useState(params.get("to") ?? today);
   const [classId, setClassId] = useState(Number(params.get("classId") ?? 0));
   const [state, setState] = useState<ReconciliationState | "ALL">((params.get("state") as ReconciliationState) ?? "UNRECORDED");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<ReconciliationFilters>({ from, to, classId, state });
   const [items, setItems] = useState<ScheduleOccurrence[] | null>(null);
   const [classes, setClasses] = useState<ClassListItem[]>([]);
   const [error, setError] = useState("");
@@ -70,6 +107,23 @@ export function ReconciliationPage() {
   const selectable = useMemo(() => items?.filter((item) => item.state === "UNRECORDED") ?? [], [items]);
   const allSelected = selectable.length > 0 && selectable.every((item) => selected.includes(item.key));
   const toggle = (key: string) => setSelected((old) => old.includes(key) ? old.filter((value) => value !== key) : [...old, key]);
+  const appliedFilters: ReconciliationFilters = { from, to, classId, state };
+  const selectedClassName = classes.find((item) => item.id === classId)?.name ?? (classId ? "Đang tải lớp…" : "Tất cả lớp");
+  const activeFilterCount = Number(Boolean(classId)) + Number(state !== "ALL");
+  const filterSummary = `${shortDate(from)}–${shortDate(to)}`;
+  const draftInvalid = !draftFilters.from || !draftFilters.to || draftFilters.from > draftFilters.to;
+
+  function applyFilters(next: ReconciliationFilters) {
+    setFilterOpen(false);
+    if (next.from === from && next.to === to && next.classId === classId && next.state === state) return;
+    setItems(null); setError("");
+    setFrom(next.from); setTo(next.to); setClassId(next.classId); setState(next.state);
+  }
+
+  function openFilters() {
+    setDraftFilters(appliedFilters);
+    setFilterOpen(true);
+  }
 
   async function createDraft(item: ScheduleOccurrence) {
     setBusyKey(item.key); setError("");
@@ -127,7 +181,7 @@ export function ReconciliationPage() {
   }
 
   return (
-    <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page" data-form-width="bounded">
+    <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page" data-form-width="bounded">
       <Typography component="h1" variant="h5">Xác nhận lịch dạy</Typography>
       <Typography color="text.secondary">Kiểm tra các buổi theo lịch và chọn Đã dạy, Nghỉ hoặc Đổi lịch. Học phí chỉ thay đổi sau khi hoàn tất ghi nhận.</Typography>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setItems(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
@@ -136,38 +190,42 @@ export function ReconciliationPage() {
         Có {warnings.length} xung đột lịch; thao tác vẫn được lưu. {warnings.map((item) => `${item.title} ${item.startTime}–${item.endTime}`).join("; ")}
       </Alert>}
 
-      <Card variant="outlined" data-testid="reconciliation-filter-card"><CardContent><Stack spacing={1.5}>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-          <TextField fullWidth type="date" label="Từ ngày" value={from} onChange={(event) => { setItems(null); setError(""); setFrom(event.target.value); }} slotProps={{ inputLabel: { shrink: true } }} />
-          <TextField fullWidth type="date" label="Đến ngày" value={to} onChange={(event) => { setItems(null); setError(""); setTo(event.target.value); }} slotProps={{ inputLabel: { shrink: true } }} />
+      <Card variant="outlined" data-testid="reconciliation-filter-summary" sx={{ display: { xs: "block", sm: "none" }, boxShadow: "none" }}><CardContent sx={{ p: 1.25, "&:last-child": { pb: 1.25 } }}>
+        <Stack direction="row" useFlexGap sx={{ alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+          <Chip icon={<CalendarMonth />} label={filterSummary} color="primary" variant="outlined" />
+          <Chip label={selectedClassName} variant="outlined" sx={{ maxWidth: 150, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />
+          {state !== "ALL" && <Chip label={labels[state]} color="warning" variant="outlined" />}
+          <Button startIcon={<FilterList />} size="small" variant="outlined" onClick={openFilters} sx={{ ml: "auto", minHeight: 36, px: 1.25 }}>
+            {activeFilterCount ? `Bộ lọc (${activeFilterCount})` : "Bộ lọc"}
+          </Button>
         </Stack>
-        <TextField select fullWidth label="Lớp" value={classId && classes.some((item) => item.id === classId) ? classId : 0} onChange={(event) => { setItems(null); setError(""); setClassId(Number(event.target.value)); }}>
-          <MenuItem value={0}>Tất cả lớp</MenuItem>{classes.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
-        </TextField>
-        <TextField select fullWidth label="Trạng thái" value={state} onChange={(event) => { setItems(null); setError(""); setState(event.target.value as ReconciliationState | "ALL"); }}>
-          <MenuItem value="ALL">Tất cả</MenuItem>{Object.entries(labels).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
-        </TextField>
-      </Stack></CardContent></Card>
+      </CardContent></Card>
+      <Card variant="outlined" data-testid="reconciliation-filter-card" sx={{ display: { xs: "none", sm: "block" } }}><CardContent>
+        <ReconciliationFilterFields values={appliedFilters} classes={classes} onChange={applyFilters} />
+      </CardContent></Card>
 
-      {selectable.length > 0 && <Card variant="outlined" data-testid="reconciliation-bulk-card"><CardContent><Stack spacing={1.5}>
-        <FormControlLabel control={<Checkbox checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectable.map((item) => item.key))} />} label={`Chọn tất cả (${selected.length} đã chọn)`} />
-        <Box data-testid="reconciliation-bulk-actions" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, max-content)" }, gap: { xs: 1.5, sm: 1 }, justifyContent: { sm: "start" } }}>
-          <Button variant="contained" disabled={!selected.length || Boolean(busyKey)} onClick={() => setBulkConfirm(true)} sx={{ width: { xs: "100%", sm: "auto" }, whiteSpace: "nowrap" }}>Tạo {selected.length} buổi để ghi nhận</Button>
-          <Button variant="outlined" color="error" disabled={!selected.length || Boolean(busyKey)} onClick={() => setSkipDialog({ keys: selected, bulk: true })} sx={{ width: { xs: "100%", sm: "auto" }, whiteSpace: "nowrap" }}>Cho {selected.length} buổi nghỉ</Button>
-        </Box>
+      {selectable.length > 0 && <Card variant="outlined" data-testid="reconciliation-bulk-card" sx={{ boxShadow: "none" }}><CardContent sx={{ py: { xs: 0.5, sm: 2 }, "&:last-child": { pb: { xs: 0.5, sm: 2 } } }}><Stack spacing={1.5}>
+        <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+          <FormControlLabel sx={{ m: 0 }} control={<Checkbox checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectable.map((item) => item.key))} />} label="Chọn tất cả" />
+          <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>{selected.length} đã chọn</Typography>
+        </Stack>
+        {selected.length > 0 && <Box data-testid="reconciliation-desktop-bulk-actions" sx={{ display: { xs: "none", sm: "grid" }, gridTemplateColumns: "repeat(2, max-content)", gap: 1, justifyContent: "start" }}>
+          <Button variant="contained" disabled={Boolean(busyKey)} onClick={() => setBulkConfirm(true)} sx={{ whiteSpace: "nowrap" }}>Tạo {selected.length} buổi để ghi nhận</Button>
+          <Button variant="outlined" color="error" disabled={Boolean(busyKey)} onClick={() => setSkipDialog({ keys: selected, bulk: true })} sx={{ whiteSpace: "nowrap" }}>Cho {selected.length} buổi nghỉ</Button>
+        </Box>}
       </Stack></CardContent></Card>}
 
       {!items && <LoadingCards />}
       {items?.length === 0 && !error && <EmptyState message="Không có buổi dự kiến phù hợp trong khoảng đã chọn." />}
-      <Box data-testid="reconciliation-card-grid" sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 1.5, alignItems: "start" }}>
+      <Box data-testid="reconciliation-card-grid" sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: { xs: 1.25, sm: 1.5 }, alignItems: "start", pb: { xs: selected.length ? 9 : 0, sm: 0 } }}>
       {items?.map((item) => {
         const replacement = item.projectionSource === "RESCHEDULED";
-        return <Card key={item.key} id={`occurrence-${item.key}`} data-testid="occurrence-card" variant="outlined"><CardContent><Stack spacing={1.25}>
+        return <Card key={item.key} id={`occurrence-${item.key}`} data-testid="occurrence-card" variant="outlined"><CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}><Stack spacing={1}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
             <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.className}</Typography><Typography variant="body2" color="text.secondary">{displayDate(item.occurrenceDate)} · {item.scheduledStartTime}–{item.scheduledEndTime}</Typography></Stack>
             <Chip size="small" color={item.state === "UNRECORDED" ? "warning" : item.state === "RECORDED" ? "success" : "default"} label={replacement && item.state === "UNRECORDED" ? "Lịch thay thế" : labels[item.state]} />
           </Stack>
-          {item.conflicts.length > 0 && <Alert severity="warning">{item.conflicts.length} cảnh báo trùng lịch</Alert>}
+          {item.conflicts.length > 0 && <Alert severity="warning" sx={{ py: 0.25 }}>{conflictLabel(item.conflicts.length)}</Alert>}
           {item.state === "SKIPPED" && item.skipReason && <Typography variant="body2" color="text.secondary">Lý do: {item.skipReason}</Typography>}
           {item.state === "UNRECORDED" && <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
             <Checkbox aria-label={`Chọn ${item.className} ${item.occurrenceDate}`} checked={selected.includes(item.key)} onChange={() => toggle(item.key)} />
@@ -182,6 +240,52 @@ export function ReconciliationPage() {
         </Stack></CardContent></Card>;
       })}
       </Box>
+
+      {selected.length > 0 && <Box
+        data-testid="reconciliation-mobile-bulk-actions"
+        sx={{
+          display: { xs: "grid", sm: "none" },
+          position: "fixed",
+          zIndex: 15,
+          left: 12,
+          right: 12,
+          bottom: "calc(var(--admin-nav-height) + var(--admin-safe-bottom) + 8px)",
+          gridTemplateColumns: "minmax(0, 1fr) auto auto",
+          alignItems: "center",
+          gap: 0.75,
+          p: 1,
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 2,
+          bgcolor: "background.paper",
+          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.16)",
+        }}
+      >
+        <Typography variant="subtitle2" noWrap>{selected.length} buổi đã chọn</Typography>
+        <Button size="small" variant="contained" aria-label={`Tạo ${selected.length} buổi để ghi nhận`} disabled={Boolean(busyKey)} onClick={() => setBulkConfirm(true)} sx={{ minHeight: 40, px: 1.25 }}>Đã dạy</Button>
+        <Button size="small" variant="outlined" color="error" aria-label={`Cho ${selected.length} buổi nghỉ`} disabled={Boolean(busyKey)} onClick={() => setSkipDialog({ keys: selected, bulk: true })} sx={{ minHeight: 40, px: 1.25 }}>Nghỉ</Button>
+      </Box>}
+
+      <Drawer
+        anchor="bottom"
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        data-testid="reconciliation-filter-sheet"
+        slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 24px)", borderRadius: "18px 18px 0 0", overflow: "auto" } } }}
+      >
+        <Stack spacing={2} sx={{ width: "100%", maxWidth: 600, mx: "auto", p: 2, pb: "calc(16px + env(safe-area-inset-bottom, 0px))" }}>
+          <Box>
+            <Typography component="h2" variant="h6">Bộ lọc lịch dạy</Typography>
+            <Typography variant="body2" color="text.secondary">Điều chỉnh khoảng ngày, lớp và trạng thái hiển thị.</Typography>
+          </Box>
+          <ReconciliationFilterFields values={draftFilters} classes={classes} onChange={setDraftFilters} />
+          <Stack direction="row" useFlexGap sx={{ alignItems: "center", justifyContent: "flex-end", gap: 0.75, flexWrap: "wrap" }}>
+            <Button onClick={() => setDraftFilters((current) => ({ ...current, classId: 0, state: "ALL" }))} sx={{ mr: "auto", px: 1 }}>Xóa bộ lọc</Button>
+            <Button onClick={() => setFilterOpen(false)}>Hủy</Button>
+            <Button variant="contained" disabled={draftInvalid} onClick={() => applyFilters(draftFilters)}>Áp dụng</Button>
+          </Stack>
+        </Stack>
+      </Drawer>
 
       <Dialog open={Boolean(skipDialog)} onClose={() => { if (!busyKey) setSkipDialog(null); }} fullWidth maxWidth="xs">
         <DialogTitle>{skipDialog?.bulk ? `Cho ${skipDialog.keys.length} buổi nghỉ` : "Xác nhận buổi nghỉ"}</DialogTitle>

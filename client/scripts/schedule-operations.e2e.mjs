@@ -147,13 +147,16 @@ try {
   await page.goto(`http://127.0.0.1:5177/admin/reconciliation?from=${today}&to=${today}&classId=${klass.id}&state=UNRECORDED`);
   await page.getByTestId("occurrence-card").first().waitFor();
   if (await page.getByTestId("occurrence-card").count() !== 6) throw new Error("Reconciliation did not render six occurrences");
-  const createNone = page.getByRole("button", { name: "Tạo 0 buổi để ghi nhận" });
-  const skipNone = page.getByRole("button", { name: "Cho 0 buổi nghỉ" });
-  const [createNoneBox, skipNoneBox] = await Promise.all([createNone.boundingBox(), skipNone.boundingBox()]);
-  if (!createNoneBox || !skipNoneBox || Math.abs(createNoneBox.x - skipNoneBox.x) > 1
-    || Math.abs(createNoneBox.width - skipNoneBox.width) > 1
-    || skipNoneBox.y - createNoneBox.y - createNoneBox.height < 11)
-    throw new Error(`Reconciliation mobile bulk actions are not balanced: ${JSON.stringify({ createNoneBox, skipNoneBox })}`);
+  await page.getByTestId("reconciliation-filter-summary").getByRole("button", { name: "Bộ lọc (2)" }).click();
+  const filterSheet = page.getByTestId("reconciliation-filter-sheet");
+  if (await filterSheet.getByLabel("Từ ngày").inputValue() !== today || await filterSheet.getByLabel("Đến ngày").inputValue() !== today)
+    throw new Error("Reconciliation filter sheet did not keep the route date range");
+  await filterSheet.getByRole("button", { name: "Hủy" }).click();
+  await page.getByText("0 đã chọn", { exact: true }).waitFor();
+  if (await page.getByTestId("reconciliation-mobile-bulk-actions").count()
+    || await page.getByRole("button", { name: "Tạo 0 buổi để ghi nhận" }).count()
+    || await page.getByRole("button", { name: "Cho 0 buổi nghỉ" }).count())
+    throw new Error("Reconciliation still renders zero-count bulk actions");
   await page.setViewportSize({ width: 1440, height: 900 });
   const [filterBox, bulkBox, occurrenceBox] = await Promise.all([
     page.getByTestId("reconciliation-filter-card").boundingBox(),
