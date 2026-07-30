@@ -9,6 +9,7 @@ export interface GoogleLearningRow {
   date: string;
   attendance: "PRESENT" | "ABSENT" | "FREE";
   billable: boolean;
+  cycleId: number | null;
   cycleSequence: number | null;
   content: string;
   homework: string;
@@ -31,6 +32,14 @@ export interface GoogleTuitionRow {
   status: "ACCUMULATING" | "PAYMENT_DUE" | "PAID" | "INCOMPLETE";
   paidAt: string;
   paymentMethod: "CASH" | "BANK_TRANSFER" | "";
+  startedAt: string;
+  reachedTargetAt: string;
+  sessions: Array<{
+    sequenceNumber: number;
+    sessionDate: string;
+    scheduledStartTime: string;
+    scheduledEndTime: string;
+  }>;
 }
 
 export interface GoogleVocabularyAttemptRow {
@@ -89,6 +98,7 @@ export interface GoogleSheetProvider {
       currentAcademicYear: string;
     },
     lessonId: number,
+    tuition: StudentGoogleSheetSnapshot["tuition"],
     syncedAt: string,
   ): Promise<void>;
   syncVocabularyAttempt(

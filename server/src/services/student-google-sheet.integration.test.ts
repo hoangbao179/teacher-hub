@@ -336,6 +336,9 @@ integration("snapshot shows 5/8 and includes two absences in the current cycle w
   assert.equal(snapshot.tuition[0].billableCount, 5);
   assert.equal(snapshot.tuition[0].absentCount, 2);
   assert.equal(snapshot.tuition[0].totalLessonCount, 7);
+  assert.deepEqual(snapshot.tuition[0].sessions.map((row) => row.sequenceNumber), [1, 2, 3, 4, 5]);
+  assert.equal(snapshot.tuition[0].startedAt, "2026-07-01");
+  assert.equal(snapshot.tuition[0].reachedTargetAt, "");
 });
 
 integration("PAYMENT_DUE snapshot shows 8/8 and includes later absences", async () => {
@@ -347,6 +350,8 @@ integration("PAYMENT_DUE snapshot shows 8/8 and includes later absences", async 
   assert.equal(snapshot.tuition[0].billableCount, 8);
   assert.equal(snapshot.tuition[0].absentCount, 2);
   assert.equal(snapshot.tuition[0].totalLessonCount, 10);
+  assert.equal(snapshot.tuition[0].sessions.length, 8);
+  assert.equal(snapshot.tuition[0].reachedTargetAt, "2026-07-08");
 });
 
 integration("cycle windows do not count one attendance twice", async () => {

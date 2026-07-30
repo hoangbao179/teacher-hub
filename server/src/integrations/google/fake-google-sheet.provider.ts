@@ -7,6 +7,7 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
   readonly trashed: string[] = [];
   readonly synced: Array<{ resource: ManagedSpreadsheet; lessonId: number; row: StudentGoogleSheetSnapshot["learning"][number] | null }> = [];
   readonly learningRows = new Map<string, StudentGoogleSheetSnapshot["learning"][number]>();
+  readonly tuitionRows = new Map<string, StudentGoogleSheetSnapshot["tuition"]>();
   readonly vocabularyRows = new Map<string, StudentGoogleSheetSnapshot["vocabularyAttempts"][number]>();
   createCount = 0;
   lastCreateInput: CreateManagedSpreadsheetInput | null = null;
@@ -14,7 +15,11 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
   failOnce = false;
   delayMs = 0;
   timeoutAfterCreate = false;
-  private readonly template = new GoogleSheetTemplateService();
+  private readonly template: GoogleSheetTemplateService;
+
+  constructor(vietinBankAccountNumber = "") {
+    this.template = new GoogleSheetTemplateService(vietinBankAccountNumber);
+  }
 
   async assertReady(): Promise<void> {
     if (this.failure === "AUTH") throw Object.assign(new Error("invalid_grant"), { code: 401 });
@@ -50,6 +55,7 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
       }, metadata);
     this.rendered.push({ resource, snapshot });
     for (const row of snapshot.learning) this.learningRows.set(`${resource.spreadsheetId}:${row.lessonId}`, row);
+    this.tuitionRows.set(resource.spreadsheetId, structuredClone(snapshot.tuition));
   }
   async syncLesson(
     resource: ManagedSpreadsheet,
@@ -58,12 +64,14 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
       currentClass: string; currentGrade: string; currentAcademicYear: string;
     },
     lessonId: number,
+    tuition: StudentGoogleSheetSnapshot["tuition"],
   ): Promise<void> {
     if (this.failure === "NETWORK") throw new Error("network timeout");
     if (this.failure === "AUTH") throw Object.assign(new Error("permission denied"), { code: 403 });
     if (this.delayMs) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     const key = `${resource.spreadsheetId}:${lessonId}`;
     if (row) this.learningRows.set(key, row); else this.learningRows.delete(key);
+    this.tuitionRows.set(resource.spreadsheetId, structuredClone(tuition));
     this.synced.push({ resource, lessonId, row });
   }
   async syncVocabularyAttempt(

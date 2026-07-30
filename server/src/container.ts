@@ -116,12 +116,12 @@ const studentGoogleSheets = new StudentGoogleSheetRepository();
 function createGoogleSheetProvider() {
   if (!config.googleDrive.enabled) return null;
   if (config.nodeEnv === "test" && process.env.GOOGLE_DRIVE_FAKE === "1") {
-    const fake = new FakeGoogleSheetProvider();
+    const fake = new FakeGoogleSheetProvider(config.studentReport.vietinBankAccountNumber);
     if (process.env.GOOGLE_DRIVE_FAKE_FAIL_ONCE === "1") { fake.failure = "NETWORK"; fake.failOnce = true; }
     fake.delayMs = Number(process.env.GOOGLE_DRIVE_FAKE_DELAY_MS ?? 0);
     return fake;
   }
-  return new GoogleApiSheetProvider(config.googleDrive);
+  return new GoogleApiSheetProvider(config.googleDrive, config.studentReport.vietinBankAccountNumber);
 }
 const googleSheetProvider = createGoogleSheetProvider();
 const studentGoogleSheetService = new StudentGoogleSheetService(

@@ -9,6 +9,15 @@ import type {
 const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Nghỉ", FREE: "Miễn phí" } as const;
 const lessonTypeLabels = { REGULAR: "Buổi thường", MAKEUP: "Buổi học bù", EXTRA: "Buổi học thêm" } as const;
 
+export const studentTuitionSheetHeaders = [
+  "Số chu kỳ",
+  "Ngày bắt đầu",
+  "Ngày đủ 8 buổi",
+  "Ngày học",
+  "Giờ dự kiến",
+  "Số tài khoản (VietinBank)",
+] as const;
+
 export function safeSpreadsheetText(value: string | null | undefined): string {
   const text = value ?? "";
   return /^[=+\-@]/.test(text) ? `'${text}` : text;
@@ -139,9 +148,12 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
 
   const tuition = workbook.addWorksheet("Học phí", { properties: { defaultRowHeight: 20 } });
   tuition.columns = [
-    { header: "Số chu kỳ", key: "cycle", width: 12 }, { header: "Ngày bắt đầu", key: "started", width: 14 },
-    { header: "Ngày đủ 8 buổi", key: "reached", width: 16 }, { header: "Ngày học", key: "date", width: 13 },
-    { header: "Giờ dự kiến", key: "scheduled", width: 20 }, { header: "Số tài khoản (VietinBank)", key: "accountNumber", width: 26 },
+    { header: studentTuitionSheetHeaders[0], key: "cycle", width: 12 },
+    { header: studentTuitionSheetHeaders[1], key: "started", width: 14 },
+    { header: studentTuitionSheetHeaders[2], key: "reached", width: 16 },
+    { header: studentTuitionSheetHeaders[3], key: "date", width: 13 },
+    { header: studentTuitionSheetHeaders[4], key: "scheduled", width: 20 },
+    { header: studentTuitionSheetHeaders[5], key: "accountNumber", width: 26 },
   ];
   const orderedTuitionRows = [...input.tuitionRows].sort((left, right) =>
     left.cycleNumber - right.cycleNumber || left.cycleId - right.cycleId || left.sequenceNumber - right.sequenceNumber,

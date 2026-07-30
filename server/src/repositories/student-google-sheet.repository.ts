@@ -183,7 +183,7 @@ export class StudentGoogleSheetRepository {
        LEFT JOIN tuition_cycle_sessions tcs ON tcs.attendance_id=a.id
        ORDER BY l.session_date,COALESCE(l.actual_start_time,l.scheduled_start_time),l.id`, [studentId]);
     const [cycles] = await pool.query<RowDataPacket[]>(
-      `SELECT tc.id,tc.cycle_number,tc.status,tc.started_at,COALESCE(tc.reached_target_at,
+      `SELECT tc.id,tc.cycle_number,tc.status,tc.started_at,tc.reached_target_at,COALESCE(tc.reached_target_at,
         (SELECT MAX(l2.session_date) FROM tuition_cycle_sessions t2 JOIN lesson_attendances a2 ON a2.id=t2.attendance_id
          JOIN lesson_sessions l2 ON l2.id=a2.lesson_session_id WHERE t2.tuition_cycle_id=tc.id)) to_date,
         tc.package_price_snapshot,tc.paid_at,tc.payment_method,
@@ -241,13 +241,23 @@ export class StudentGoogleSheetRepository {
       const startIndex = cycleStartIndexes[index];
       const nextStartIndex = cycleStartIndexes.slice(index + 1).find((value) => value >= 0) ?? learning.length;
       const inRange = startIndex >= 0 ? learning.slice(startIndex, nextStartIndex) : [];
+      const sessions = learning
+        .filter((row) => row.cycleId === Number(cycle.id) && row.cycleSequence != null)
+        .sort((left, right) => left.cycleSequence! - right.cycleSequence!)
+        .map((row) => ({
+          sequenceNumber: row.cycleSequence!,
+          sessionDate: row.date,
+          scheduledStartTime: row.scheduledStartTime,
+          scheduledEndTime: row.scheduledEndTime,
+        }));
       const fromDate = inRange[0]?.date ?? String(cycle.started_at ?? "").slice(0, 10);
       const toDate = inRange.at(-1)?.date ?? String(cycle.to_date ?? fromDate).slice(0, 10);
-      return { cycleId: Number(cycle.id), cycleNumber: index + 1, academicYear: fromDate ? academicYear(fromDate) : "—",
+      return { cycleId: Number(cycle.id), cycleNumber: Number(cycle.cycle_number), academicYear: fromDate ? academicYear(fromDate) : "—",
         className: String(cycle.class_names), fromDate, toDate, billableCount: Number(cycle.billable_count),
         absentCount: inRange.filter((row) => row.attendance === "ABSENT").length, totalLessonCount: inRange.length,
         packagePrice: Number(cycle.package_price_snapshot), status: cycle.status, paidAt: String(cycle.paid_at ?? "").slice(0, 10),
-        paymentMethod: cycle.payment_method ?? "" };
+        paymentMethod: cycle.payment_method ?? "", startedAt: String(cycle.started_at ?? "").slice(0, 10),
+        reachedTargetAt: String(cycle.reached_target_at ?? "").slice(0, 10), sessions };
     });
     const currentClass = String(students[0].class_name ?? "—");
     const ageBandLabels: Record<string, string> = {

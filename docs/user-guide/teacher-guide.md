@@ -56,7 +56,8 @@ Học sinh**. Nút thao tác cố định nằm phía trên thanh. Desktop dùng
    Sheet mặc định Restricted; cô Vy cấp Viewer thủ công trong Google Sheets.
    **Lưu trữ** không xóa file Google. Card hiển thị trạng thái đồng bộ lesson; khi
    cần, chọn **Đồng bộ lại** để xếp hàng toàn bộ lịch sử đã hoàn thành. Sheet vẫn
-   Restricted và tab Học phí chưa được auto-sync trong V16D.
+   Restricted; tab Học phí được đồng bộ cùng lịch sử buổi học và có cùng cấu trúc
+   với file Excel tải xuống.
 10. Tạm dừng/mở lại lớp hoặc ghi danh phải chọn ngày hiệu lực. Khoảng pause không
    sinh lịch/participant; lịch sử trước pause và dữ liệu nhập muộn vẫn theo ngày
    học thực tế. Đóng lớp/ngừng học không xóa lịch sử.

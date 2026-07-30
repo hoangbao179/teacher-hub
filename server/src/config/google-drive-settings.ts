@@ -9,7 +9,7 @@ export interface GoogleDriveSettings {
 }
 
 const GOOGLE_DRIVE_OWNER_LABEL = "Cô Vy";
-const GOOGLE_SHEETS_TEMPLATE_VERSION = "v4";
+const GOOGLE_SHEETS_TEMPLATE_VERSION = "v5";
 
 function text(env: NodeJS.ProcessEnv, name: string): string {
   return env[name]?.trim() ?? "";

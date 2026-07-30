@@ -2,18 +2,19 @@ import type { GoogleDriveSettings } from "../../config/google-drive-settings";
 import { classifyGoogleError } from "./google-integration.errors";
 import { createGoogleOAuthClient } from "./google-auth.client";
 import { GoogleDriveClient } from "./google-drive.client";
-import { googleLearningRowValues, GoogleSheetTemplateService } from "./google-sheet-template.service";
+import { googleLearningRowValues, googleTuitionValues, GoogleSheetTemplateService } from "./google-sheet-template.service";
 import { GoogleSheetsClient } from "./google-sheets.client";
 import type { CreateManagedSpreadsheetInput, GoogleSheetProvider, ManagedSpreadsheet, StudentGoogleSheetSnapshot } from "./google-integration.types";
 
 export class GoogleApiSheetProvider implements GoogleSheetProvider {
   private readonly drive: GoogleDriveClient;
   private readonly sheets: GoogleSheetsClient;
-  private readonly template = new GoogleSheetTemplateService();
-  constructor(private readonly settings: GoogleDriveSettings) {
+  private readonly template: GoogleSheetTemplateService;
+  constructor(private readonly settings: GoogleDriveSettings, private readonly vietinBankAccountNumber = "") {
     const auth = createGoogleOAuthClient(settings);
     this.drive = new GoogleDriveClient(auth);
     this.sheets = new GoogleSheetsClient(auth);
+    this.template = new GoogleSheetTemplateService(vietinBankAccountNumber);
   }
   async assertReady(rootFolderId: string): Promise<void> {
     try { await this.drive.assertFolder(rootFolderId); } catch (error) {
@@ -53,11 +54,13 @@ export class GoogleApiSheetProvider implements GoogleSheetProvider {
       currentClass: string; currentGrade: string; currentAcademicYear: string;
     },
     lessonId: number,
+    tuition: StudentGoogleSheetSnapshot["tuition"],
     syncedAt: string,
   ): Promise<void> {
     try {
       await this.sheets.syncLearningRow(resource.spreadsheetId, lessonId,
-        row ? googleLearningRowValues(row) : null, syncedAt);
+        row ? googleLearningRowValues(row) : null,
+        googleTuitionValues(tuition, this.vietinBankAccountNumber), syncedAt);
     } catch (error) { throw classifyGoogleError(error); }
   }
   async syncVocabularyAttempt(

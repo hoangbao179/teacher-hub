@@ -6,7 +6,7 @@ import type { StudentGoogleSheetSnapshot } from "../integrations/google/google-i
 async function main(): Promise<void> {
 if (process.env.GOOGLE_DRIVE_SMOKE !== "1") throw new Error("Smoke bị khóa. Đặt GOOGLE_DRIVE_SMOKE=1 để chạy chủ động.");
 if (!config.googleDrive.enabled) throw new Error("GOOGLE_DRIVE_ENABLED phải là true.");
-const provider = new GoogleApiSheetProvider(config.googleDrive);
+const provider = new GoogleApiSheetProvider(config.googleDrive, config.studentReport.vietinBankAccountNumber);
 const recordId = Date.now();
 const fake: StudentGoogleSheetSnapshot = {
   student: { id: 0, fullName: "Học sinh kiểm thử không có thật", currentClass: "Lớp kiểm thử", currentGrade: "Khối 6", currentAcademicYear: "2026–2027" },
@@ -14,7 +14,7 @@ const fake: StudentGoogleSheetSnapshot = {
     latestComment: "Dữ liệu giả", latestHomework: "Bài tập giả", teacher: "Cô Vy" },
   learning: [{ lessonId: 0, academicYear: "2026–2027", grade: "Khối 6", className: "Lớp kiểm thử", date: "2026-07-26",
     lessonType: "REGULAR", scheduledStartTime: "18:00", scheduledEndTime: "19:30",
-    attendance: "PRESENT", billable: true, cycleSequence: 1, content: "Dữ liệu giả", homework: "Dữ liệu giả",
+    attendance: "PRESENT", billable: true, cycleId: null, cycleSequence: 1, content: "Dữ liệu giả", homework: "Dữ liệu giả",
     generalComment: "", studentComment: "Dữ liệu giả", updatedAt: new Date().toISOString() }],
   tuition: [],
   vocabularyAttempts: [],

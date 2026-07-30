@@ -102,7 +102,7 @@ export class GoogleSheetSyncWorker {
         currentClass: snapshot.student.currentClass,
         currentGrade: snapshot.student.currentGrade,
         currentAcademicYear: snapshot.student.currentAcademicYear,
-      }, event.lessonId!, syncedAt);
+      }, event.lessonId!, snapshot.tuition, syncedAt);
       await this.outbox.succeed(event, syncedAt);
     } catch (error) {
       const classified = classifyGoogleError(error);
