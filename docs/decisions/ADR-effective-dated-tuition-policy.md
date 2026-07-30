@@ -40,6 +40,10 @@ same date supplies the package price. `CUSTOM` resolves its own positive price;
 `FREE` resolves no price. This makes historical class-default pricing independent
 of the mutable `classes.default_package_price` column.
 
+Class policy price `0` is the explicit “not configured” value. Attendance remains
+part of learning history but is not billable and does not create a tuition cycle
+until a positive class policy becomes effective. `CUSTOM` remains strictly positive.
+
 Policy ranges are inclusive, non-overlapping date ranges. A new policy closes the
 previous range on the prior date inside the same transaction. Class price edits
 without an explicit date become effective on the edit date in

@@ -22,6 +22,7 @@ import { TuitionPolicyRepository } from "../repositories/tuition-policy.reposito
 import { TuitionRepository } from "../repositories/tuition.repository";
 import { durationMinutes } from "../utils/date";
 import { occurrenceKey, parseOccurrenceKey } from "../domain/schedule-projection";
+import { isBillableAttendance } from "../domain/lesson-domain";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -486,7 +487,7 @@ export class LessonService {
       const policy = await this.policies.resolve(connection, input.enrollmentId, this.dateOnly(lesson.session_date), true);
       if (policy.mode === "FREE" && input.status === "PRESENT")
         throw new AppError(400, "FREE_ENROLLMENT_BILLABLE", "Học sinh miễn phí toàn phần phải dùng trạng thái Miễn phí hoặc Nghỉ.");
-      const billable = input.status === "PRESENT" && policy.mode !== "FREE";
+      const billable = isBillableAttendance(input.status, policy.mode, policy.packagePrice);
       const attendanceId = await this.lessons.upsertAttendance(
         connection, Number(lesson.id), Number(participant.participant_id), input.enrollmentId,
         input.status, billable, input.studentNote?.trim() || null,

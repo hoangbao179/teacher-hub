@@ -52,7 +52,8 @@
 
 ## ClassTuitionPolicy
 - id, classId, packagePrice, effectiveFrom, effectiveTo, createdAt, createdBy.
-- Khoảng ngày inclusive, không overlap; packagePrice là integer VND dương.
+- Khoảng ngày inclusive, không overlap; packagePrice là integer VND không âm.
+  Giá `0` nghĩa là chưa cấu hình và không sinh phân bổ học phí theo giá lớp.
 
 ## EnrollmentTuitionPolicy
 - id, enrollmentId, tuitionMode, customPackagePrice, effectiveFrom, effectiveTo,

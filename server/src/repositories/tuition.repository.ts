@@ -21,6 +21,7 @@ import {
   compareBillableAttendance,
   crossesPaidBoundary,
   groupIntoTuitionCycles,
+  isBillableAttendance,
   type BillableAttendanceOrder,
 } from "../domain/lesson-domain";
 import { TuitionPolicyRepository } from "./tuition-policy.repository";
@@ -141,8 +142,8 @@ export class TuitionRepository {
     const mutableBillable: RecalculationAttendance[] = [];
     for (const attendance of all) {
       const policy = await this.policies.resolve(connection, attendance.enrollmentId, attendance.sessionDate, true);
-      const billable = attendance.status === "PRESENT" &&
-        policy.mode !== "FREE" && !attendance.excluded;
+      const billable = isBillableAttendance(attendance.status, policy.mode, policy.packagePrice) &&
+        !attendance.excluded;
       if (attendance.paidCycleId != null) {
         if (!billable)
           throw new AppError(409, "PAID_CYCLE_CONFLICT", "Chỉnh sửa sẽ thay đổi attendance thuộc chu kỳ đã thu.");

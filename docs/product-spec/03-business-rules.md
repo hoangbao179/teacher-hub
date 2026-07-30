@@ -31,12 +31,15 @@ UI hiển thị ba lựa chọn:
 - `billingType`: `BILLABLE`, `FREE`, hoặc `NONE`.
 
 ## BR-05. Giá học phí
-1. Lớp có `defaultPackagePrice` cho 8 buổi.
+1. Lớp có `defaultPackagePrice` cho 8 buổi; giá `0` nghĩa là chưa cấu hình và
+   không theo dõi chu kỳ học phí theo giá lớp.
 2. Mỗi ghi danh có `tuitionMode`: `CLASS_DEFAULT`, `CUSTOM`, hoặc `FREE`.
 3. `CUSTOM` có giá riêng; `FREE` không tạo chu kỳ học phí.
 4. Giá được snapshot khi buổi tính phí đầu tiên của chu kỳ được ghi nhận.
 5. Thay đổi giá chỉ áp dụng từ chu kỳ tiếp theo, không đổi chu kỳ đã tồn tại.
 6. Tiền lưu số nguyên VND.
+7. Buổi `PRESENT` theo giá lớp `0` vẫn lưu lịch sử học nhưng không được phân bổ
+   vào chu kỳ học phí; khi có giá dương, các buổi sau ngày hiệu lực mới được tính.
 
 ## BR-06. Chu kỳ 8 buổi
 1. Chu kỳ thuộc từng học sinh trong từng ghi danh, không thuộc chung cả lớp.

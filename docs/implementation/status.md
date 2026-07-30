@@ -12,6 +12,10 @@ Admin theme/layout/shared surfaces and Dashboard are implemented with local asse
 responsive screenshots cover 1440×900, 1366×768, 390×844 and 360×800. No route, API,
 contract or business behavior changed. Final `npm run check:full`: PASS.
 
+OPTIONAL-CLASS-TUITION: **PASS on 30/07/2026**. Giá gói lớp là tùy chọn; bỏ
+trống lưu `0`, buổi `PRESENT` vẫn giữ lịch sử nhưng không tạo phân bổ/chu kỳ học
+phí cho đến khi có giá lớp dương. Migration `0025` và full regression đã PASS.
+
 V19A-PUBLIC-HOMEPAGE-SINGLE-LOCATION-GOOGLE-MAPS: PASS on 25/07/2026. Homepage
 now presents one canonical location, optional Google Maps Embed with a no-key
 fallback, synchronized JSON-LD and responsive evidence in `.agent-reports`.

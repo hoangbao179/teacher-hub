@@ -31,7 +31,8 @@ legacy_imports ─ legacy_import_lesson_links ─ lesson_sessions/lesson_attenda
 - MySQL là consistency boundary cuối: generated `active_student_key` chỉ có giá
   trị khi enrollment `ACTIVE`, unique index ngăn hai active enrollment cho cùng
   student kể cả khi có race.
-- `classes.default_package_price > 0` và tuition-mode/custom-price combinations
+- `classes.default_package_price >= 0`; giá `0` là chưa cấu hình và không sinh
+  phân bổ học phí. Tuition-mode/custom-price combinations
   được bảo vệ bằng check constraints.
 - ONE_TO_ONE capacity vẫn được khóa/kiểm tra trong transaction ở service/repository;
   constraint cross-table này không thể biểu diễn bằng MySQL `CHECK` thuần túy.

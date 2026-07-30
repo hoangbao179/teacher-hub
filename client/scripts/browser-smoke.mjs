@@ -249,8 +249,9 @@ try {
   if (formWidth > 681 || formWidth < 580) throw new Error(`Desktop form width is not bounded appropriately: ${formWidth}px`);
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await cdp.screenshot("class-form-390");
-  await cdp.setInput("Tên lớp", `Browser Smoke ${Date.now()}`); await cdp.setInput("Giá gói", "2400000"); await cdp.clickText("Lưu lớp");
+  await cdp.setInput("Tên lớp", `Browser Smoke ${Date.now()}`); await cdp.clickText("Lưu lớp");
   await cdp.wait("/\\/admin\\/classes\\/\\d+$/.test(location.pathname)", "class detail"); const classPath = await cdp.eval("location.pathname");
+  await cdp.wait("document.body.innerText.includes('0đ')", "zero-price class detail");
   await cdp.screenshot("class-detail-390");
 
   await cdp.clickText("Học sinh"); await cdp.wait("location.pathname==='/admin/students' && document.body.innerText.includes('Thêm')", "students"); await cdp.screenshot("student-list-390"); await cdp.clickText("Thêm");

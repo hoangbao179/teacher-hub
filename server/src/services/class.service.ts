@@ -64,7 +64,7 @@ export class ClassService {
       throw new AppError(400, "VALIDATION_ERROR", "Trạng thái lớp không hợp lệ.");
     if (
       !Number.isInteger(input.defaultPackagePrice) ||
-      input.defaultPackagePrice <= 0
+      input.defaultPackagePrice < 0
     )
       throw new AppError(400, "VALIDATION_ERROR", "Giá gói không hợp lệ.");
     if (!Number.isInteger(input.defaultDurationMinutes) || input.defaultDurationMinutes < 1)

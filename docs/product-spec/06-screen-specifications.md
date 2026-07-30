@@ -58,7 +58,8 @@
 - Hành động: sửa, tạm dừng, đóng lớp, ghi buổi, học bù, lịch học.
 
 ## 10 Tạo/sửa lớp
-- Tên, loại, môn, giá gói, thời lượng, ngày bắt đầu, lịch lặp, học sinh, trạng thái.
+- Tên, loại, môn, giá gói tùy chọn, thời lượng, ngày bắt đầu, lịch lặp, học sinh,
+  trạng thái. Bỏ trống giá gói lưu `0` và không tạo chu kỳ học phí theo giá lớp.
 - Với 1 kèm 1 chỉ cho tối đa một enrollment ACTIVE.
 
 ## 11 Danh sách học sinh

@@ -30,9 +30,9 @@ test("seven plus two late entries group into 8 and 1", () => {
 });
 
 test("absent, per-session free and globally free are excluded", () => {
-  assert.equal(isBillableAttendance("ABSENT", "CUSTOM"), false);
-  assert.equal(isBillableAttendance("FREE", "CUSTOM"), false);
-  assert.equal(isBillableAttendance("PRESENT", "FREE"), false);
+  assert.equal(isBillableAttendance("ABSENT", "CUSTOM", 2_000_000), false);
+  assert.equal(isBillableAttendance("FREE", "CUSTOM", 2_000_000), false);
+  assert.equal(isBillableAttendance("PRESENT", "FREE", null), false);
 });
 
 test("mutable attendance at or before paid boundary conflicts", () => {

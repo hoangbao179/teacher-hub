@@ -16,6 +16,7 @@ test("historical enrollment eligibility includes the ending date", () => {
 
 test("effective policy price handles class default, custom and free", () => {
   assert.equal(resolvePolicyPrice("CLASS_DEFAULT", null, 2_400_000), 2_400_000);
+  assert.equal(resolvePolicyPrice("CLASS_DEFAULT", null, 0), 0);
   assert.equal(resolvePolicyPrice("CUSTOM", 2_000_000, 2_400_000), 2_000_000);
   assert.equal(resolvePolicyPrice("FREE", null, 2_400_000), null);
 });
@@ -34,9 +35,10 @@ test("overlapping effective ranges are rejected", () => {
   ]));
 });
 
-test("only present is billable", () => {
-  assert.equal(isBillableAttendance("PRESENT", "CLASS_DEFAULT"), true);
-  assert.equal(isBillableAttendance("PRESENT", "FREE"), false);
-  assert.equal(isBillableAttendance("ABSENT", "CUSTOM"), false);
-  assert.equal(isBillableAttendance("FREE", "CUSTOM"), false);
+test("only present with a positive effective price is billable", () => {
+  assert.equal(isBillableAttendance("PRESENT", "CLASS_DEFAULT", 2_400_000), true);
+  assert.equal(isBillableAttendance("PRESENT", "CLASS_DEFAULT", 0), false);
+  assert.equal(isBillableAttendance("PRESENT", "FREE", null), false);
+  assert.equal(isBillableAttendance("ABSENT", "CUSTOM", 2_000_000), false);
+  assert.equal(isBillableAttendance("FREE", "CUSTOM", 2_000_000), false);
 });

@@ -10,9 +10,12 @@ const valid: CreateClassRequest = {
   defaultDurationMinutes: 90, startDate: "2026-07-20", schedules: [],
 };
 
-test("class package price must be a positive integer", async () => {
-  const service = new ClassService({ create: async () => 1 } as unknown as ClassRepository);
-  for (const price of [0, -1, 1.5]) {
+test("class package price accepts zero and rejects negative or fractional values", async () => {
+  const calls: CreateClassRequest[] = [];
+  const service = new ClassService({ create: async (input: CreateClassRequest) => { calls.push(input); return 1; } } as unknown as ClassRepository);
+  await service.create({ ...valid, defaultPackagePrice: 0 });
+  assert.equal(calls[0]?.defaultPackagePrice, 0);
+  for (const price of [-1, 1.5]) {
     await assert.rejects(() => service.create({ ...valid, defaultPackagePrice: price }),
       (error: unknown) => error instanceof AppError && error.code === "VALIDATION_ERROR");
   }

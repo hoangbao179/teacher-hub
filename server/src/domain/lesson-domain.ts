@@ -34,16 +34,18 @@ export function resolvePolicyPrice(
 ): number | null {
   if (mode === "FREE") return null;
   const price = mode === "CUSTOM" ? customPackagePrice : classPackagePrice;
-  if (!Number.isInteger(price) || (price ?? 0) <= 0)
-    throw new Error("Không tìm thấy giá học phí dương có hiệu lực.");
+  const minimum = mode === "CUSTOM" ? 1 : 0;
+  if (!Number.isInteger(price) || (price ?? -1) < minimum)
+    throw new Error("Không tìm thấy giá học phí hợp lệ.");
   return price;
 }
 
 export function isBillableAttendance(
   status: AttendanceStatus,
   mode: TuitionMode,
+  packagePrice: number | null,
 ): boolean {
-  return status === "PRESENT" && mode !== "FREE";
+  return status === "PRESENT" && mode !== "FREE" && Number.isInteger(packagePrice) && packagePrice! > 0;
 }
 
 export function attendanceCoverageIssue(
