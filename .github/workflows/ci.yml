@@ -7,8 +7,65 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  quality:
+    name: Fast quality gate
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      TZ: Asia/Ho_Chi_Minh
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm install -g npm@12.0.1
+      - run: npm ci
+      - run: npm run check:ci
+
+  integration:
+    name: Server integration tests
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: teacher_hub_test
+          TZ: Asia/Ho_Chi_Minh
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -prootpass --silent"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      NODE_ENV: test
+      TZ: Asia/Ho_Chi_Minh
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: rootpass
+      DB_NAME: teacher_hub_test
+      JWT_SECRET: ci-only-secret-with-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm install -g npm@12.0.1
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npm run test:integration
+
+  e2e-smoke:
+    name: Production smoke E2E
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -40,17 +97,24 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm install -g npm@12.0.1
       - run: npm ci
-      - run: npm run check:full
+      - run: npm run build:shared
+      - name: Build client assets required by public Homepage smoke
+        run: npm -w client run build:production
+      - run: npm run test:e2e:smoke
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: verification-reports
+          name: smoke-verification-reports
           path: .agent-reports/
+          if-no-files-found: ignore
 
   deploy-production:
     name: Publish and deploy production
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    needs: build
+    needs:
+      - quality
+      - integration
+      - e2e-smoke
     permissions:
       contents: read
       packages: write

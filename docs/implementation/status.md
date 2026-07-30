@@ -200,8 +200,9 @@ coverage without adding backend state or student identity.
 
 ## V17-PRODUCTION-CICD
 
-GitHub Actions verifies source, builds API/Web on the runner, pushes full-SHA and latest
-GHCR tags, then deploys only the full SHA to `/opt/teacher-hub`. Production Compose runs
+GitHub Actions chạy song song quality, integration và production smoke trên mỗi push;
+full regression chuyển sang nightly/manual. Sau ba gate, API/Web được build song song,
+push full-SHA/latest GHCR tags rồi deploy đúng full SHA vào `/opt/teacher-hub`. Production Compose runs
 MySQL, API, Web and Caddy within low-resource limits; deploy performs pre-migration
 backup, one migration, readiness checks and image-only rollback without exposing
 MySQL/API/Web ports or storing production secrets in the repository.

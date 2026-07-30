@@ -115,6 +115,8 @@ try {
   run("node", ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
   run("npm", ["run", "db:migrate"], path.join(root, "server"));
   run("npm", ["run", "db:bootstrap-admin"], path.join(root, "server"));
+  run("npm", ["run", "db:reset:dev"], path.join(root, "server"));
+  run("npm", ["run", "db:seed:dev"], path.join(root, "server"));
   const node = process.execPath;
   start(node, [path.join(root, "node_modules/tsx/dist/cli.mjs"), "src/index.ts"], path.join(root, "server"), testEnv);
   start(node, [path.join(root, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1", "--port", "5174"], path.join(root, "client"), { ...testEnv, VITE_API_BASE_URL: "http://127.0.0.1:4100" });

@@ -1,5 +1,7 @@
 .git
 .gitignore
+.github
+docs
 node_modules
 **/node_modules
 **/dist
@@ -27,6 +29,7 @@ screenshots
 *.sql.gz
 *.tmp
 *.log
+*.zip
 .idea
 .vscode
 .DS_Store

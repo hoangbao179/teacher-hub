@@ -15,8 +15,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Build and publish immutable images
+  publish-api:
+    name: Build and publish API image
     runs-on: ubuntu-24.04
     env:
       GHCR_OWNER: ${{ secrets.GHCR_OWNER || github.repository_owner }}
@@ -50,6 +50,31 @@ jobs:
             ghcr.io/${{ env.GHCR_OWNER }}/teacher-hub-api:latest
           cache-from: type=gha,scope=teacher-hub-api
           cache-to: type=gha,mode=max,scope=teacher-hub-api
+
+  publish-web:
+    name: Build and publish Web image
+    runs-on: ubuntu-24.04
+    env:
+      GHCR_OWNER: ${{ secrets.GHCR_OWNER || github.repository_owner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_sha }}
+      - name: Validate image owner
+        run: |
+          if [[ ! "$GHCR_OWNER" =~ ^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$ ]]; then
+            echo "GHCR_OWNER must be a lowercase GitHub owner name."
+            exit 1
+          fi
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push Web image
         uses: docker/build-push-action@v7
         with:
@@ -67,7 +92,9 @@ jobs:
 
   deploy:
     name: Deploy exact revision to production
-    needs: publish
+    needs:
+      - publish-api
+      - publish-web
     runs-on: ubuntu-24.04
     environment: production
     steps:

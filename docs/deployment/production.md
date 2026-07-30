@@ -160,12 +160,19 @@ docker compose --env-file .env -f docker-compose.deploy.yml run --rm \
 unset BOOTSTRAP_ADMIN_PASSWORD
 ```
 
-## Luồng deploy và rollback
+## Luồng CI, deploy và rollback
 
-Push vào `main` hoặc chạy `workflow_dispatch` sẽ:
+Mỗi push và pull request chạy ba job độc lập: `quality` (`check:ci`, không cần MySQL),
+`integration` và `e2e-smoke`. Smoke giữ các luồng public Homepage, đăng nhập, API/UI cơ
+bản, mobile navigation và vocabulary media. Push mới trên cùng branch hủy CI cũ chưa
+hoàn tất. Full integration + toàn bộ E2E vẫn chạy qua workflow `full-regression` lúc
+02:30 hằng ngày theo giờ Việt Nam hoặc khi chạy thủ công; workflow này không deploy.
 
-1. chạy `npm ci` và `npm run check:full` với MySQL test có tên thống nhất;
-2. build API/Web trên runner, push tag full commit SHA và tag tiện ích `latest`;
+Push vào `main` chỉ gọi production deploy sau khi cả ba job bắt buộc thành công:
+
+1. `publish-api` và `publish-web` build song song trên runner, push tag full commit SHA
+   và tag tiện ích `latest`;
+2. job `deploy` chờ đủ hai image;
 3. đọc `IMAGE_TAG` cũ, sinh runtime env từ Repository Secrets, copy thành `.env.next`,
    đặt mode `600` rồi `mv` nguyên tử thành `/opt/teacher-hub/.env`; đồng thời copy ba
    deployment file qua SSH host key đã pin;
