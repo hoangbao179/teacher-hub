@@ -10,6 +10,9 @@ const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ defau
 const LoginPage = lazy(() => import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })));
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const ClassesPage = lazy(() => import("./pages/ClassesPage").then((module) => ({ default: module.ClassesPage })));
+const CombinedClassGroupsPage = lazy(() => import("./pages/CombinedClassGroupsPage").then((module) => ({ default: module.CombinedClassGroupsPage })));
+const CombinedClassGroupFormPage = lazy(() => import("./pages/CombinedClassGroupFormPage").then((module) => ({ default: module.CombinedClassGroupFormPage })));
+const CombinedTeachingOccurrencePage = lazy(() => import("./pages/CombinedTeachingOccurrencePage").then((module) => ({ default: module.CombinedTeachingOccurrencePage })));
 const ClassDetailPage = lazy(() => import("./pages/ClassDetailPage").then((module) => ({ default: module.ClassDetailPage })));
 const StudentsPage = lazy(() => import("./pages/StudentsPage").then((module) => ({ default: module.StudentsPage })));
 const StudentDetailPage = lazy(() => import("./pages/StudentDetailPage").then((module) => ({ default: module.StudentDetailPage })));
@@ -94,6 +97,10 @@ export function App() {
           <Route path="/admin/classes/new" element={<ClassFormPage />} />
           <Route path="/admin/classes/:id" element={<ClassDetailPage />} />
           <Route path="/admin/classes/:id/edit" element={<ClassFormPage />} />
+          <Route path="/admin/combined-class-groups" element={<CombinedClassGroupsPage />} />
+          <Route path="/admin/combined-class-groups/new" element={<CombinedClassGroupFormPage />} />
+          <Route path="/admin/combined-class-groups/:id/edit" element={<CombinedClassGroupFormPage />} />
+          <Route path="/admin/combined-class-groups/occurrences/:id" element={<CombinedTeachingOccurrencePage />} />
           <Route path="/admin/students" element={<StudentsPage />} />
           <Route path="/admin/students/new" element={<StudentFormPage />} />
           <Route path="/admin/students/:id" element={<StudentDetailPage />} />

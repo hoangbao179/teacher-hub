@@ -1,5 +1,6 @@
 import { AuthController } from "./controllers/auth.controller";
 import { ClassController } from "./controllers/class.controller";
+import { CombinedClassGroupController } from "./controllers/combined-class-group.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { HealthController } from "./controllers/health.controller";
 import { LessonController } from "./controllers/lesson.controller";
@@ -9,6 +10,7 @@ import { TuitionController } from "./controllers/tuition.controller";
 import { StudentReportController } from "./controllers/student-report.controller";
 import { EnrollmentController } from "./controllers/enrollment.controller";
 import { ClassRepository } from "./repositories/class.repository";
+import { CombinedClassGroupRepository } from "./repositories/combined-class-group.repository";
 import { LessonRepository } from "./repositories/lesson.repository";
 import { ScheduleRepository } from "./repositories/schedule.repository";
 import { StudentRepository } from "./repositories/student.repository";
@@ -18,6 +20,7 @@ import { UserRepository } from "./repositories/user.repository";
 import { EnrollmentRepository } from "./repositories/enrollment.repository";
 import { AuthService } from "./services/auth.service";
 import { ClassService } from "./services/class.service";
+import { CombinedClassGroupService } from "./services/combined-class-group.service";
 import { DashboardService } from "./services/dashboard.service";
 import { LessonService } from "./services/lesson.service";
 import { ScheduleService } from "./services/schedule.service";
@@ -58,6 +61,7 @@ import { VocabularyResultsService } from "./services/vocabulary-results.service"
 
 const users = new UserRepository();
 const classes = new ClassRepository();
+const combinedClassGroups = new CombinedClassGroupRepository();
 const students = new StudentRepository();
 const lessons = new LessonRepository();
 const tuition = new TuitionRepository();
@@ -76,7 +80,8 @@ const studentService = new StudentService(students);
 const googleSheetSync = new GoogleSheetSyncRepository();
 const lessonService = new LessonService(lessons, tuition, undefined, undefined, googleSheetSync);
 const tuitionService = new TuitionService(tuition);
-const scheduleService = new ScheduleService(schedules, lessonService);
+const combinedClassGroupService = new CombinedClassGroupService(combinedClassGroups, lessonService);
+const scheduleService = new ScheduleService(schedules, lessonService, combinedClassGroupService);
 const dashboardService = new DashboardService(tuition, schedules);
 const enrollmentService = new EnrollmentService(enrollments);
 const studentReportService = new StudentReportService(
@@ -144,6 +149,7 @@ export const controllers = {
   health: new HealthController(),
   auth: new AuthController(authService),
   classes: new ClassController(classService, lessonService),
+  combinedClassGroups: new CombinedClassGroupController(combinedClassGroupService),
   students: new StudentController(studentService),
   lessons: new LessonController(lessonService),
   tuition: new TuitionController(tuitionService),

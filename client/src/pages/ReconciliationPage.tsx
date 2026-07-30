@@ -222,7 +222,14 @@ export function ReconciliationPage() {
         const replacement = item.projectionSource === "RESCHEDULED";
         return <Card key={item.key} id={`occurrence-${item.key}`} data-testid="occurrence-card" variant="outlined"><CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}><Stack spacing={1}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
-            <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.className}</Typography><Typography variant="body2" color="text.secondary">{displayDate(item.occurrenceDate)} · {item.scheduledStartTime}–{item.scheduledEndTime}</Typography></Stack>
+            <Stack sx={{ minWidth: 0 }}>
+              <Stack direction="row" spacing={0.75} useFlexGap sx={{ alignItems: "center", flexWrap: "wrap" }}>
+                <Typography variant="subtitle1">{item.className}</Typography>
+                {item.combinedGroupId && <Chip size="small" color="secondary" variant="outlined" label={`Học ghép · ${item.memberClasses.length} lớp`} />}
+              </Stack>
+              <Typography variant="body2" color="text.secondary">{displayDate(item.occurrenceDate)} · {item.scheduledStartTime}–{item.scheduledEndTime}</Typography>
+              {item.combinedGroupId && <Typography variant="body2" color="text.secondary">{item.memberClasses.map((member) => member.name).join(" · ")}</Typography>}
+            </Stack>
             <Chip size="small" color={item.state === "UNRECORDED" ? "warning" : item.state === "RECORDED" ? "success" : "default"} label={replacement && item.state === "UNRECORDED" ? "Lịch thay thế" : labels[item.state]} />
           </Stack>
           {item.conflicts.length > 0 && <Alert severity="warning" sx={{ py: 0.25 }}>{conflictLabel(item.conflicts.length)}</Alert>}
@@ -233,10 +240,13 @@ export function ReconciliationPage() {
             <Button size="small" color="error" variant="outlined" disabled={Boolean(busyKey)} onClick={() => { setMakeupRequired(true); setSkipDialog({ keys: [item.key], bulk: false }); }}>Nghỉ</Button>
             {!replacement && <Button size="small" variant="outlined" disabled={Boolean(busyKey)} onClick={() => openReschedule(item)}>Đổi lịch</Button>}
           </Stack>}
-          {item.linkedLessonId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/lessons/${item.linkedLessonId}/edit`)}>
+          {item.combinedTeachingOccurrenceId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/combined-class-groups/occurrences/${item.combinedTeachingOccurrenceId}`)}>
+            {item.state === "RECORDED" ? "Xem ca học ghép" : "Tiếp tục ghi nhận nhóm"}
+          </Button>}
+          {!item.combinedTeachingOccurrenceId && item.linkedLessonId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/lessons/${item.linkedLessonId}/edit`)}>
             {item.linkedLessonStatus === "DRAFT" ? "Tiếp tục ghi nhận" : item.linkedLessonStatus === "COMPLETED" ? "Xem buổi đã ghi" : item.linkedLessonStatus === "CANCELLED" ? "Xem buổi đã hủy" : "Xem buổi học"}
           </Button>}
-          {item.state === "SKIPPED" && <Button size="small" variant="contained" onClick={() => navigate(`/admin/lessons/new?classId=${item.classId}&type=MAKEUP&source=${encodeURIComponent(item.originalKey)}`)}>Tạo buổi học bù</Button>}
+          {item.state === "SKIPPED" && !item.combinedGroupId && <Button size="small" variant="contained" onClick={() => navigate(`/admin/lessons/new?classId=${item.classId}&type=MAKEUP&source=${encodeURIComponent(item.originalKey)}`)}>Tạo buổi học bù</Button>}
         </Stack></CardContent></Card>;
       })}
       </Box>

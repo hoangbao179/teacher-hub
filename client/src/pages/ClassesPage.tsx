@@ -1,4 +1,4 @@
-import { Add, Groups, Person, Search } from "@mui/icons-material";
+import { Add, Groups, Person, Search, HubOutlined } from "@mui/icons-material";
 import {
   Alert,
   Button,
@@ -43,9 +43,14 @@ export function ClassesPage() {
   if (!items && !error) return <LoadingState />;
   return (
     <Stack spacing={2}>
-      <PageHeader title="Lớp học" action={<Button startIcon={<Add />} variant="contained" component={Link} to="/admin/classes/new">
+      <PageHeader title="Lớp học" action={<Stack direction="row" spacing={1}>
+        <Button startIcon={<HubOutlined />} variant="outlined" component={Link} to="/admin/combined-class-groups">
+          Nhóm học ghép
+        </Button>
+        <Button startIcon={<Add />} variant="contained" component={Link} to="/admin/classes/new">
           Thêm lớp
-        </Button>} />
+        </Button>
+      </Stack>} />
       {error && <Alert severity="warning">{error}</Alert>}
       <Box
         sx={{

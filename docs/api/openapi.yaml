@@ -52,6 +52,18 @@ paths:
     post: {summary: Tạo lịch lặp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'201': {description: Đã tạo}}}
   /api/classes/{id}/lessons:
     get: {summary: Lịch sử lesson hiện có của lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
+  /api/combined-class-groups:
+    get: {summary: Danh sách nhóm học ghép, responses: {'200': {description: Thành công}}}
+    post: {summary: Tạo nhóm học ghép và lịch tuần, requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CombinedClassGroupMutation'}}}}, responses: {'201': {description: Đã tạo}, '409': {description: Lớp hoặc lịch nhóm bị chồng hiệu lực}}}
+  /api/combined-class-groups/{id}:
+    get: {summary: Chi tiết nhóm học ghép, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
+    patch: {summary: Cập nhật nhóm; không viết lại occurrence đã xử lý, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CombinedClassGroupMutation'}}}}, responses: {'200': {description: Đã cập nhật}, '409': {description: Xung đột lịch sử hoặc hiệu lực}}}
+  /api/combined-class-groups/{id}/end:
+    post: {summary: Kết thúc nhóm và giữ lịch sử, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Đã kết thúc}}}
+  /api/combined-teaching-occurrences/{id}:
+    get: {summary: Chi tiết một ca học ghép và học sinh chia theo lớp, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Thành công}}}
+  /api/combined-teaching-occurrences/{id}/complete:
+    post: {summary: Hoàn thành atomic toàn bộ lesson con của ca học ghép, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'200': {description: Đã hoàn thành}, '409': {description: Ca không thể ghi nhận}}}
   /api/recurring-schedules/{id}:
     patch: {summary: Tạo version lịch lặp mới từ effectiveFrom, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã tạo version}}}
     delete: {summary: End-date lịch lặp, không hard-delete lịch sử, parameters: [{$ref: '#/components/parameters/Id'}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EffectiveStatusRequest'}}}}, responses: {'204': {description: Đã kết thúc version}}}
@@ -1707,6 +1719,24 @@ components:
         date: {type: string, format: date}
         startTime: {type: string}
         endTime: {type: string}
+    CombinedClassGroupMutation:
+      type: object
+      required: [name, classIds, effectiveFrom, schedules]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 160}
+        classIds: {type: array, minItems: 2, uniqueItems: true, items: {type: integer, format: int64, minimum: 1}}
+        effectiveFrom: {type: string, format: date}
+        effectiveTo: {type: string, format: date, nullable: true}
+        schedules:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [dayOfWeek, startTime, endTime]
+            properties:
+              dayOfWeek: {type: integer, minimum: 1, maximum: 7}
+              startTime: {type: string, pattern: '^\d{2}:\d{2}$'}
+              endTime: {type: string, pattern: '^\d{2}:\d{2}$'}
     ScheduleOccurrence:
       type: object
       required: [key, originalKey, occurrenceDate, originalOccurrenceDate, recurringScheduleId, classId, className, scheduledStartTime, scheduledEndTime, projectionSource, state, conflicts, skipReason]
@@ -1730,6 +1760,16 @@ components:
         replacementEndTime: {type: string, nullable: true}
         conflicts: {type: array, items: {$ref: '#/components/schemas/ScheduleConflictWarning'}}
         skipReason: {type: string, nullable: true}
+        combinedGroupId: {type: integer, format: int64, nullable: true}
+        combinedGroupName: {type: string, nullable: true}
+        combinedGroupScheduleId: {type: integer, format: int64, nullable: true}
+        combinedTeachingOccurrenceId: {type: integer, format: int64, nullable: true}
+        memberClasses:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties: {id: {type: integer, format: int64}, name: {type: string}}
     ScheduleOccurrenceListEnvelope:
       type: object
       required: [data]

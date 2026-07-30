@@ -167,6 +167,19 @@ export function createRouter(): Router {
   router.post("/api/classes/:id/pause", asyncHandler(controllers.classes.pause));
   router.post("/api/classes/:id/resume", asyncHandler(controllers.classes.resume));
   router.post("/api/classes/:id/close", asyncHandler(controllers.classes.close));
+  router.get("/api/combined-class-groups", asyncHandler(controllers.combinedClassGroups.list));
+  router.post("/api/combined-class-groups", asyncHandler(controllers.combinedClassGroups.create));
+  router.get("/api/combined-class-groups/:id", asyncHandler(controllers.combinedClassGroups.detail));
+  router.patch("/api/combined-class-groups/:id", asyncHandler(controllers.combinedClassGroups.update));
+  router.post("/api/combined-class-groups/:id/end", asyncHandler(controllers.combinedClassGroups.end));
+  router.get(
+    "/api/combined-teaching-occurrences/:id",
+    asyncHandler(controllers.combinedClassGroups.occurrenceDetail),
+  );
+  router.post(
+    "/api/combined-teaching-occurrences/:id/complete",
+    asyncHandler(controllers.combinedClassGroups.completeOccurrence),
+  );
   router.post("/api/classes/:id/enrollments", asyncHandler(controllers.enrollments.create));
   router.post("/api/classes/:id/schedules", asyncHandler(controllers.schedule.createRecurring));
   router.patch("/api/recurring-schedules/:id", asyncHandler(controllers.schedule.updateRecurring));

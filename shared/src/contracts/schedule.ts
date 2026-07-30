@@ -36,6 +36,11 @@ export interface ScheduleOccurrence {
   skipReason: string | null;
   makeupRequired: boolean;
   replacementCancelled: boolean;
+  combinedGroupId: number | null;
+  combinedGroupName: string | null;
+  combinedGroupScheduleId: number | null;
+  memberClasses: Array<{ id: number; name: string }>;
+  combinedTeachingOccurrenceId: number | null;
 }
 
 export interface ScheduleOccurrenceQuery {
@@ -49,6 +54,7 @@ export interface ScheduleOccurrenceQuery {
 export interface CreateOccurrenceDraftResult {
   occurrenceKey: string;
   lessonId: number;
+  combinedTeachingOccurrenceId: number | null;
   wizardPath: string;
   idempotent: boolean;
   conflicts: ScheduleConflictWarning[];
@@ -276,6 +282,7 @@ export interface CalendarLessonEvent {
   endTime: string;
   status: LessonStatus;
   lessonType: "REGULAR" | "MAKEUP" | "EXTRA";
+  combinedTeachingOccurrenceId: number | null;
 }
 
 export interface CalendarBusyOccurrence {

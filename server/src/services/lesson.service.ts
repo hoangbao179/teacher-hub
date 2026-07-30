@@ -111,6 +111,47 @@ export class LessonService {
     return { lesson: await this.detail(lessonId), idempotent };
   }
 
+  async createDraftInTransaction(
+    connection: PoolConnection,
+    input: CreateLessonRequest,
+    sourceOccurrenceKey: string,
+    actorUserId: number | undefined,
+    combinedTeachingOccurrenceId: number,
+  ): Promise<{ lessonId: number; idempotent: boolean }> {
+    this.validateCreate(input);
+    if (!(await this.lessons.classExistsForUpdate(connection, input.classId)))
+      throw new AppError(404, "CLASS_NOT_FOUND", "Không tìm thấy lớp.");
+    const existing = await this.lessons.findByOccurrenceKeyForUpdate(connection, sourceOccurrenceKey);
+    if (existing) return { lessonId: Number(existing.id), idempotent: true };
+    const lessonId = await this.lessons.create(
+      connection,
+      input,
+      sourceOccurrenceKey,
+      combinedTeachingOccurrenceId,
+    );
+    const snapshotted = await this.lessons.snapshotParticipants(
+      connection,
+      lessonId,
+      input.classId,
+      input.sessionDate,
+      null,
+      actorUserId,
+    );
+    await this.audit.record(connection, {
+      actorUserId,
+      action: "LESSON_DRAFT_CREATED",
+      entityType: "LESSON",
+      entityId: lessonId,
+      newValues: {
+        ...input,
+        sourceOccurrenceKey,
+        combinedTeachingOccurrenceId,
+        participantEnrollmentIds: snapshotted,
+      },
+    });
+    return { lessonId, idempotent: false };
+  }
+
   async detail(id: number): Promise<LessonDetail> {
     this.validateId(id);
     const item = await this.lessons.findDetail(id);
@@ -366,6 +407,62 @@ export class LessonService {
     } catch (error) { await connection.rollback(); throw this.mapDatabaseError(error); }
     finally { connection.release(); }
     return this.detail(id);
+  }
+
+  async completeInTransaction(
+    connection: PoolConnection,
+    lessonId: number,
+    input: CompleteLessonRequest,
+    actorUserId?: number,
+  ): Promise<{ duplicate: boolean; impacts: TuitionProgressImpact[] }> {
+    this.validateId(lessonId);
+    this.validateTextLengths(input);
+    const duration = this.actualDuration(input.actualStartTime, input.actualEndTime);
+    const lesson = await this.lessons.findForUpdate(connection, lessonId);
+    if (!lesson) throw new AppError(404, "LESSON_NOT_FOUND", "Không tìm thấy buổi học.");
+    if (lesson.status === "COMPLETED") return { duplicate: true, impacts: [] };
+    if (lesson.status !== "DRAFT")
+      throw new AppError(409, "LESSON_NOT_DRAFT", "Chỉ buổi nháp mới được hoàn thành.");
+    const participants = await this.lessons.participantRowsForUpdate(connection, lessonId);
+    if (!participants.length)
+      throw new AppError(400, "INVALID_PARTICIPANT", "Buổi học phải có ít nhất một học sinh tham gia.");
+    const saved = await this.saveAttendances(connection, lesson, participants, input.attendances, true);
+    await this.lessons.markCompleted(
+      connection,
+      lessonId,
+      input.actualStartTime,
+      input.actualEndTime,
+      duration,
+      input.content?.trim() || lesson.content || null,
+      input.homework?.trim() || lesson.homework || null,
+      input.generalComment?.trim() || lesson.general_comment || null,
+      input.note?.trim() || lesson.note || null,
+    );
+    const impacts: TuitionProgressImpact[] = [];
+    for (const enrollmentId of new Set(saved.map((item) => item.enrollmentId)))
+      impacts.push(await this.recalculateWithAudit(connection, enrollmentId, lessonId, actorUserId));
+    await this.audit.record(connection, {
+      actorUserId,
+      action: "LESSON_COMPLETED",
+      entityType: "LESSON",
+      entityId: lessonId,
+      newValues: { duration, attendanceCount: saved.length, combined: true },
+    });
+    await this.googleSheetSync.enqueueMany(
+      connection,
+      saved.map((item) => item.studentId),
+      lessonId,
+      "LESSON_UPSERT",
+    );
+    return { duplicate: false, impacts };
+  }
+
+  async completedResult(
+    lessonId: number,
+    impacts: TuitionProgressImpact[],
+    duplicate = false,
+  ): Promise<CompleteLessonResult> {
+    return this.completionResult(await this.detail(lessonId), duplicate ? [] : impacts);
   }
 
   async complete(lessonId: number, input: CompleteLessonRequest, actorUserId?: number): Promise<CompleteLessonResult> {

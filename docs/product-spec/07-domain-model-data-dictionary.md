@@ -16,6 +16,21 @@
 ## RecurringSchedule
 - id, classId, dayOfWeek, scheduledStartTime, scheduledEndTime, effectiveFrom, effectiveTo.
 
+## CombinedClassGroup
+- id, name, status (`ACTIVE`/`ENDED`), effectiveFrom, effectiveTo, createdAt,
+  updatedAt, createdBy.
+- Có ít nhất hai `CombinedClassGroupClass` unique theo groupId + classId.
+- Có một hoặc nhiều `CombinedClassGroupSchedule`: id, groupId, dayOfWeek,
+  startTime, endTime; unique theo groupId + dayOfWeek + startTime.
+
+## CombinedTeachingOccurrence
+- id, groupId, groupScheduleId, occurrenceDate, scheduledStartTime,
+  scheduledEndTime, status (`DRAFT`/`COMPLETED`/`SKIPPED`/`RESCHEDULED`),
+  replacementDate/start/end, reason, note và audit timestamps.
+- Unique groupScheduleId + occurrenceDate. Mỗi lesson con có
+  `combinedTeachingOccurrenceId`; unique occurrence + classId.
+- Chỉ lưu khi ca được xử lý. Lịch dự kiến chưa xử lý vẫn là projection ảo.
+
 ## ScheduleException
 - id, classId, recurringScheduleId, originalDate, originalStartTime,
   originalEndTime, type (`SKIPPED`/`RESCHEDULED`), replacementDate,
@@ -33,7 +48,8 @@
 - Không có student, enrollment, attendance hoặc tuition behavior.
 
 ## LessonSession
-- id, classId, sourceOccurrenceKey (nullable/unique), lessonDate,
+- id, classId, sourceOccurrenceKey (nullable/unique),
+  combinedTeachingOccurrenceId (nullable), lessonDate,
   scheduledStartTime, scheduledEndTime, actualStartTime, actualEndTime,
   actualDurationMinutes, sessionType, content, homework, note, status, createdAt,
   updatedAt.

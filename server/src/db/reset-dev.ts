@@ -4,6 +4,7 @@ import { pool } from "./pool";
 const businessTables = [
   "student_google_sheets", "legacy_import_lesson_links", "legacy_import_row_audits", "legacy_imports",
   "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions",
+  "combined_teaching_occurrences", "combined_class_group_schedules", "combined_class_group_classes", "combined_class_groups",
   "schedule_exceptions", "recurring_schedules", "teacher_busy_slots", "class_enrollments",
   "enrollment_active_periods", "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies",
   "audit_logs", "students", "classes",

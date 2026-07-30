@@ -15,6 +15,18 @@
 - POST `/api/classes/{id}/close`
 - GET/POST `/api/classes/{id}/schedules`
 
+## Nhóm học ghép
+- GET/POST `/api/combined-class-groups`
+- GET/PATCH `/api/combined-class-groups/{id}`
+- POST `/api/combined-class-groups/{id}/end`
+- GET `/api/combined-teaching-occurrences/{id}`
+- POST `/api/combined-teaching-occurrences/{id}/complete`
+
+`/api/schedule/occurrences` và `/api/schedule/week` trả occurrence nhóm đã
+resolve cùng các occurrence lớp. Các lịch lớp thành viên bị lịch nhóm chồng giờ
+thay thế không xuất hiện trong kết quả. `create-draft`, `skip`, `reschedule` dùng
+chung route schedule và nhận cả key nhóm `cg:{groupId}:{scheduleId}:{date}`.
+
 ## Students and enrollments
 - GET/POST `/api/students`
 - GET/PATCH `/api/students/{id}`

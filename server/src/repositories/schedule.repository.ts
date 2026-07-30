@@ -28,6 +28,12 @@ import {
   type ProjectionLessonInput,
   type RecurringProjectionInput,
 } from "../domain/schedule-projection";
+import {
+  expandCombinedGroupSchedules,
+  parseCombinedOccurrenceKey,
+  suppressOverriddenClassOccurrences,
+  type CombinedGroupProjectionInput,
+} from "../domain/combined-class-group-projection";
 import { AppError } from "../errors/app-error";
 import { addDays, weekdayIso } from "../utils/date";
 import { AuditRepository } from "./audit.repository";
@@ -47,6 +53,7 @@ interface LessonEvent {
   endTime: string;
   status: "DRAFT" | "COMPLETED" | "CANCELLED";
   lessonType: "REGULAR" | "MAKEUP" | "EXTRA";
+  combinedTeachingOccurrenceId: number | null;
 }
 
 interface BusyOccurrence {
@@ -132,6 +139,22 @@ export class ScheduleRepository {
   }
 
   async resolveOccurrence(key: string): Promise<ScheduleOccurrence | null> {
+    const combined = parseCombinedOccurrenceKey(key);
+    if (combined) {
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT DATE_FORMAT(replacement_date,'%Y-%m-%d') replacement_date
+         FROM combined_teaching_occurrences
+         WHERE group_schedule_id=? AND occurrence_date=?`,
+        [combined.scheduleId, combined.occurrenceDate],
+      );
+      const replacementDate = rows[0]?.replacement_date == null
+        ? combined.occurrenceDate
+        : String(rows[0].replacement_date);
+      const from = replacementDate < combined.occurrenceDate ? replacementDate : combined.occurrenceDate;
+      const to = replacementDate > combined.occurrenceDate ? replacementDate : combined.occurrenceDate;
+      return (await this.listOccurrencesCore(from, to, undefined, true))
+        .find((item) => item.key === key) ?? null;
+    }
     const parsed = parseOccurrenceKey(key);
     if (!parsed) return null;
     const [rows] = await pool.query<RowDataPacket[]>(
@@ -356,7 +379,10 @@ export class ScheduleRepository {
     }
     for (const item of lessons) {
       if (item.id === excludeLessonId || item.status === "CANCELLED" || (excludeOriginalKey != null &&
-          (item.sourceKey === excludeOriginalKey || item.sourceKey === replacementOccurrenceKey(excludeOriginalKey)))) continue;
+          (item.sourceKey === excludeOriginalKey ||
+           item.sourceKey === replacementOccurrenceKey(excludeOriginalKey) ||
+           item.sourceKey?.startsWith(`${excludeOriginalKey}:class:`) ||
+           item.sourceKey?.startsWith(`${excludeOriginalKey}:R:class:`)))) continue;
       if (timeRangesOverlap(date, startTime, endTime, item.date, item.startTime, item.endTime))
         warnings.push({ kind: "LESSON", id: item.id, occurrenceKey: item.sourceKey,
           title: `${item.className} · ${item.lessonType}`, date: item.date, startTime: item.startTime, endTime: item.endTime });
@@ -572,7 +598,7 @@ export class ScheduleRepository {
     const busyOccurrences = await this.expandBusyEvents(from, to);
     return {
       from, to, occurrences: await this.listOccurrences(from, to),
-      lessons,
+      lessons: lessons.filter((item) => item.combinedTeachingOccurrenceId == null),
       busyOccurrences,
       classSchedules: schedules.map((row) => ({ classId: Number(row.class_id), className: String(row.class_name),
         dayOfWeek: Number(row.day_of_week), startTime: String(row.start_text), endTime: String(row.end_text) })),
@@ -652,7 +678,27 @@ export class ScheduleRepository {
       const lesson: ProjectionLessonInput | null = lessonEvent ? { id: lessonEvent.id, status: lessonEvent.status } : null;
       results.push(...reconcileOccurrence(base, exception, lesson));
     }
-    const filtered = results.filter((item) => item.occurrenceDate >= from && item.occurrenceDate <= to);
+    const combinedInputs = await this.listCombinedProjectionInputs(expansionFrom, expansionTo, classId);
+    const combinedOriginalDates = combinedInputs.flatMap((input) =>
+      Object.keys(input.persistedByDate ?? {}));
+    const combinedExpansionFrom = combinedOriginalDates.reduce(
+      (value, date) => date < value ? date : value,
+      expansionFrom,
+    );
+    const combinedExpansionTo = combinedOriginalDates.reduce(
+      (value, date) => date > value ? date : value,
+      expansionTo,
+    );
+    const combinedProjected = expandCombinedGroupSchedules(
+      combinedInputs,
+      combinedExpansionFrom,
+      combinedExpansionTo,
+    );
+    const effectiveResults = [
+      ...suppressOverriddenClassOccurrences(results, combinedProjected),
+      ...combinedProjected,
+    ];
+    const filtered = effectiveResults.filter((item) => item.occurrenceDate >= from && item.occurrenceDate <= to);
     if (includeConflicts) {
       const busy = await this.expandBusyEvents(from, to);
       for (const item of filtered) {
@@ -666,7 +712,9 @@ export class ScheduleRepository {
               date: other.occurrenceDate, startTime: other.scheduledStartTime, endTime: other.scheduledEndTime });
         }
         for (const event of lessons) {
-          if (event.status === "CANCELLED" || event.sourceKey === item.key) continue;
+          if (event.status === "CANCELLED" || event.sourceKey === item.key ||
+              (item.combinedTeachingOccurrenceId != null &&
+               event.combinedTeachingOccurrenceId === item.combinedTeachingOccurrenceId)) continue;
           if (timeRangesOverlap(item.occurrenceDate, item.scheduledStartTime, item.scheduledEndTime,
               event.date, event.startTime, event.endTime))
             warnings.push({ kind: "LESSON", id: event.id, occurrenceKey: event.sourceKey,
@@ -682,6 +730,97 @@ export class ScheduleRepository {
       }
     }
     return filtered.sort(compareOccurrences);
+  }
+
+  private async listCombinedProjectionInputs(
+    from: string,
+    to: string,
+    classId?: number,
+  ): Promise<CombinedGroupProjectionInput[]> {
+    const params: unknown[] = [to, from, from, to];
+    const memberFilter = classId
+      ? ` AND EXISTS (
+          SELECT 1 FROM combined_class_group_classes selected_member
+          WHERE selected_member.group_id=g.id AND selected_member.class_id=?
+        )`
+      : "";
+    if (classId) params.push(classId);
+    const [scheduleRows] = await pool.query<RowDataPacket[]>(
+      `SELECT s.id schedule_id,g.id group_id,g.name group_name,s.day_of_week,
+        TIME_FORMAT(s.start_time,'%H:%i') start_time,
+        TIME_FORMAT(s.end_time,'%H:%i') end_time,
+        DATE_FORMAT(g.effective_from,'%Y-%m-%d') effective_from,
+        DATE_FORMAT(g.effective_to,'%Y-%m-%d') effective_to
+       FROM combined_class_group_schedules s
+       JOIN combined_class_groups g ON g.id=s.group_id
+       WHERE (
+         (g.effective_from<=? AND (g.effective_to IS NULL OR g.effective_to>=?))
+         OR EXISTS (
+           SELECT 1 FROM combined_teaching_occurrences moved
+           WHERE moved.group_schedule_id=s.id AND moved.replacement_date BETWEEN ? AND ?
+         )
+       )${memberFilter}
+       ORDER BY g.id,s.day_of_week,s.start_time`,
+      params,
+    );
+    if (!scheduleRows.length) return [];
+    const groupIds = [...new Set(scheduleRows.map((row) => Number(row.group_id)))];
+    const groupPlaceholders = groupIds.map(() => "?").join(",");
+    const [memberRows] = await pool.query<RowDataPacket[]>(
+      `SELECT gc.group_id,c.id,c.name
+       FROM combined_class_group_classes gc JOIN classes c ON c.id=gc.class_id
+       WHERE gc.group_id IN (${groupPlaceholders}) ORDER BY c.name,c.id`,
+      groupIds,
+    );
+    const scheduleIds = scheduleRows.map((row) => Number(row.schedule_id));
+    const schedulePlaceholders = scheduleIds.map(() => "?").join(",");
+    const [occurrenceRows] = await pool.query<RowDataPacket[]>(
+      `SELECT o.id,o.group_schedule_id,
+        DATE_FORMAT(o.occurrence_date,'%Y-%m-%d') occurrence_date,o.status,
+        DATE_FORMAT(o.replacement_date,'%Y-%m-%d') replacement_date,
+        TIME_FORMAT(o.replacement_start_time,'%H:%i') replacement_start_time,
+        TIME_FORMAT(o.replacement_end_time,'%H:%i') replacement_end_time,
+        MIN(CASE WHEN l.status<>'CANCELLED' THEN l.id END) linked_lesson_id
+       FROM combined_teaching_occurrences o
+       LEFT JOIN lesson_sessions l ON l.combined_teaching_occurrence_id=o.id
+       WHERE o.group_schedule_id IN (${schedulePlaceholders})
+         AND (o.occurrence_date BETWEEN ? AND ? OR o.replacement_date BETWEEN ? AND ?)
+       GROUP BY o.id`,
+      [...scheduleIds, from, to, from, to],
+    );
+    return scheduleRows.map((row) => {
+      const persistedByDate: NonNullable<CombinedGroupProjectionInput["persistedByDate"]> = {};
+      for (const occurrence of occurrenceRows.filter(
+        (item) => Number(item.group_schedule_id) === Number(row.schedule_id),
+      )) {
+        persistedByDate[String(occurrence.occurrence_date)] = {
+          id: Number(occurrence.id),
+          status: occurrence.status,
+          replacementDate: occurrence.replacement_date == null ? null : String(occurrence.replacement_date),
+          replacementStartTime: occurrence.replacement_start_time == null
+            ? null
+            : String(occurrence.replacement_start_time),
+          replacementEndTime: occurrence.replacement_end_time == null
+            ? null
+            : String(occurrence.replacement_end_time),
+          linkedLessonId: occurrence.linked_lesson_id == null ? null : Number(occurrence.linked_lesson_id),
+        };
+      }
+      return {
+        groupId: Number(row.group_id),
+        groupName: String(row.group_name),
+        scheduleId: Number(row.schedule_id),
+        dayOfWeek: Number(row.day_of_week),
+        startTime: String(row.start_time),
+        endTime: String(row.end_time),
+        effectiveFrom: String(row.effective_from),
+        effectiveTo: row.effective_to == null ? null : String(row.effective_to),
+        memberClasses: memberRows
+          .filter((item) => Number(item.group_id) === Number(row.group_id))
+          .map((item) => ({ id: Number(item.id), name: String(item.name) })),
+        persistedByDate,
+      };
+    });
   }
 
   private async findException(scheduleId: number, date: string): Promise<ProjectionExceptionInput | null> {
@@ -705,7 +844,8 @@ export class ScheduleRepository {
     const classFilter = classId ? " AND l.class_id=?" : "";
     if (classId) params.push(classId);
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT l.id,l.source_occurrence_key,l.class_id,COALESCE(l.class_name_snapshot,c.name) class_name,
+      `SELECT l.id,l.source_occurrence_key,l.class_id,l.combined_teaching_occurrence_id,
+        COALESCE(l.class_name_snapshot,c.name) class_name,
         DATE_FORMAT(l.session_date,'%Y-%m-%d') session_date,
         TIME_FORMAT(l.scheduled_start_time,'%H:%i') start_time,
         TIME_FORMAT(l.scheduled_end_time,'%H:%i') end_time,l.status,l.lesson_type
@@ -714,7 +854,11 @@ export class ScheduleRepository {
     );
     return rows.map((row) => ({ id: Number(row.id), sourceKey: row.source_occurrence_key == null ? null : String(row.source_occurrence_key),
       classId: Number(row.class_id), className: String(row.class_name), date: String(row.session_date),
-      startTime: String(row.start_time), endTime: String(row.end_time), status: row.status, lessonType: row.lesson_type }));
+      startTime: String(row.start_time), endTime: String(row.end_time), status: row.status,
+      lessonType: row.lesson_type,
+      combinedTeachingOccurrenceId: row.combined_teaching_occurrence_id == null
+        ? null
+        : Number(row.combined_teaching_occurrence_id) }));
   }
 
   private async busyRows(from: string, to: string): Promise<RowDataPacket[]> {

@@ -95,14 +95,19 @@ const lessonSelect = `
 export class LessonRepository {
   constructor(private readonly policies = new TuitionPolicyRepository()) {}
 
-  async create(connection: PoolConnection, input: CreateLessonRequest, sourceOccurrenceKey?: string): Promise<number> {
+  async create(
+    connection: PoolConnection,
+    input: CreateLessonRequest,
+    sourceOccurrenceKey?: string,
+    combinedTeachingOccurrenceId?: number,
+  ): Promise<number> {
     const [result] = await connection.execute<ResultSetHeader>(
       `INSERT INTO lesson_sessions
-        (class_id,class_name_snapshot,class_type_snapshot,subject_snapshot,source_occurrence_key,
+        (class_id,class_name_snapshot,class_type_snapshot,subject_snapshot,source_occurrence_key,combined_teaching_occurrence_id,
          makeup_source_occurrence_key,session_date,scheduled_start_time,scheduled_end_time,lesson_type,note)
-       SELECT c.id,c.name,c.class_type,c.subject,?,?,?,?,?,?,?
+       SELECT c.id,c.name,c.class_type,c.subject,?,?,?,?,?,?,?,?
        FROM classes c WHERE c.id=?`,
-      [sourceOccurrenceKey ?? null, input.makeupSourceOccurrenceKey ?? null, input.sessionDate,
+      [sourceOccurrenceKey ?? null, combinedTeachingOccurrenceId ?? null, input.makeupSourceOccurrenceKey ?? null, input.sessionDate,
         input.scheduledStartTime, input.scheduledEndTime, input.lessonType,
         input.note?.trim() || null, input.classId],
     );

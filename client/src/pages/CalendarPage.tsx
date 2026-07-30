@@ -16,6 +16,7 @@ type CalendarEntry = {
   classId?: number;
   href?: string;
   warnings?: ScheduleConflictWarning[];
+  combined?: boolean;
 };
 
 const stateLabel: Record<ReconciliationState, string> = {
@@ -131,10 +132,18 @@ export function CalendarPage() {
     for (const item of data.occurrences) values.push({
       key: `occurrence-${item.key}`, classId: item.classId, date: item.occurrenceDate, startTime: item.scheduledStartTime,
       endTime: item.scheduledEndTime, title: item.className,
-      subtitle: item.projectionSource === "RESCHEDULED" && item.state === "UNRECORDED" ? "Lịch thay thế" : stateLabel[item.state],
+      subtitle: item.combinedGroupId
+        ? `Học ghép · ${item.memberClasses.length} lớp · ${item.projectionSource === "RESCHEDULED" && item.state === "UNRECORDED" ? "Lịch thay thế" : stateLabel[item.state]}`
+        : item.projectionSource === "RESCHEDULED" && item.state === "UNRECORDED" ? "Lịch thay thế" : stateLabel[item.state],
+      detail: item.combinedGroupId ? item.memberClasses.map((member) => member.name).join(" · ") : undefined,
       color: item.state === "UNRECORDED" ? "warning" : item.state === "RECORDED" ? "success" : item.state === "SKIPPED" ? "default" : "info",
-      href: item.linkedLessonId ? `/admin/lessons/${item.linkedLessonId}/edit` : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
+      href: item.combinedTeachingOccurrenceId
+        ? `/admin/combined-class-groups/occurrences/${item.combinedTeachingOccurrenceId}`
+        : item.linkedLessonId
+          ? `/admin/lessons/${item.linkedLessonId}/edit`
+          : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
       warnings: item.conflicts,
+      combined: Boolean(item.combinedGroupId),
     });
     for (const item of data.lessons.filter((lesson) => !linkedLessonIds.has(lesson.id))) values.push({
       key: `lesson-${item.id}`, classId: item.classId, date: item.date, startTime: item.startTime, endTime: item.endTime,
@@ -193,7 +202,7 @@ export function CalendarPage() {
     {grouped.map(([date, items]) => <Stack key={date} spacing={1} data-testid="calendar-day">
       <Typography variant="h6" sx={{ mt: 1 }}>{displayDate(date)}</Typography>
       {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: item.classId ? classColor(item.classId).accent : `${item.color}.main` }} data-testid="calendar-event">
-        <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
+        <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction={item.combined ? "column" : "row"} spacing={1} sx={{ justifyContent: "space-between", alignItems: item.combined ? "flex-start" : "center" }}>
           <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}{item.detail ? ` · ${item.detail}` : ""}</Typography></Stack>
           <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>{Boolean(item.warnings?.length) && <IconButton size="small" color="warning" aria-label={`Xem ${item.warnings!.length} cảnh báo trùng lịch`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setConflicts(item.warnings!); }}><WarningAmber fontSize="small" /></IconButton>}<Chip size="small" color={item.color} label={item.subtitle} /></Stack>
         </Stack></CardContent>

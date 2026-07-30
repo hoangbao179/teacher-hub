@@ -1,6 +1,7 @@
 export * from "./contracts/common.js";
 export * from "./contracts/auth.js";
 export * from "./contracts/classes.js";
+export * from "./contracts/combined-class-groups.js";
 export * from "./contracts/students.js";
 export * from "./contracts/lessons.js";
 export * from "./contracts/tuition.js";

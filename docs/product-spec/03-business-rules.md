@@ -12,6 +12,19 @@
 3. Nghỉ/hủy occurrence không tính buổi và không tính phí.
 4. Lịch dạy tại trường/trung tâm là một `TeacherBusySlot` loại `EXTERNAL_CLASS` có thể chứa nhiều khung giờ hằng tuần, dùng để hiển thị và cảnh báo trùng lịch; không có học sinh, ghi danh, buổi học, điểm danh hoặc học phí trên hệ thống.
 
+## BR-02A. Nhóm học ghép
+1. Nhóm học ghép liên kết ít nhất hai lớp ACTIVE; không tạo lớp mới và không
+   chuyển enrollment khỏi lớp gốc.
+2. Trong khoảng hiệu lực, lịch nhóm thay thế đúng các lịch riêng của lớp thành
+   viên có cùng thứ và chồng giờ. Lịch riêng khác ngày/không chồng giờ vẫn hoạt
+   động; định nghĩa lịch gốc không bị sửa hoặc xóa.
+3. Hết hiệu lực, lớp thành viên tự quay lại lịch riêng.
+4. Một ca nhóm là một occurrence của giáo viên nhưng có một lesson con cho mỗi
+   lớp. Ghi nhận ca nhóm atomic; attendance, tiến độ và học phí vẫn tách theo
+   enrollment/lớp.
+5. Không cho một lớp thuộc hai nhóm có khoảng hiệu lực chồng nhau; hai nhóm khác
+   nhau không được có lịch dạy chồng giờ trong khoảng hiệu lực giao nhau.
+
 ## BR-03. Buổi học và thời gian
 1. Lưu riêng giờ dự kiến và giờ thực tế.
 2. Giờ thực tế có thể muộn hơn, sớm hơn hoặc kéo dài hơn lịch dự kiến.

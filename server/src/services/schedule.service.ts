@@ -18,10 +18,12 @@ import type {
   BulkTemporaryRescheduleRequest,
 } from "@teacher/shared";
 import { parseOccurrenceKey } from "../domain/schedule-projection";
+import { parseCombinedOccurrenceKey } from "../domain/combined-class-group-projection";
 import { AppError } from "../errors/app-error";
 import { ScheduleRepository } from "../repositories/schedule.repository";
 import { addDays, todayInHoChiMinh, weekdayIso } from "../utils/date";
 import { LessonService } from "./lesson.service";
+import { CombinedClassGroupService } from "./combined-class-group.service";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -31,6 +33,7 @@ export class ScheduleService {
   constructor(
     private readonly repository: ScheduleRepository,
     private readonly lessons: LessonService,
+    private readonly combinedGroups?: CombinedClassGroupService,
   ) {}
 
   async occurrences(input: ScheduleOccurrenceQuery) {
@@ -52,9 +55,29 @@ export class ScheduleService {
   }
 
   async createDraft(key: string, actorUserId?: number): Promise<CreateOccurrenceDraftResult> {
+    if (parseCombinedOccurrenceKey(key)) {
+      if (!this.combinedGroups)
+        throw new AppError(500, "COMBINED_GROUP_NOT_CONFIGURED", "Chưa cấu hình nhóm học ghép.");
+      const occurrence = await this.requireOccurrence(key);
+      const created = await this.combinedGroups.createOccurrenceDraft(key, actorUserId);
+      const conflicts = await this.repository.detectConflicts(
+        occurrence.occurrenceDate,
+        occurrence.scheduledStartTime,
+        occurrence.scheduledEndTime,
+        occurrence.originalKey,
+      );
+      return {
+        occurrenceKey: key,
+        lessonId: created.primaryLessonId,
+        combinedTeachingOccurrenceId: created.occurrenceId,
+        wizardPath: created.wizardPath,
+        idempotent: created.idempotent,
+        conflicts,
+      };
+    }
     const occurrence = await this.requireOccurrence(key);
     if (occurrence.state === "RECORDED" && occurrence.linkedLessonId)
-      return { occurrenceKey: key, lessonId: occurrence.linkedLessonId,
+      return { occurrenceKey: key, lessonId: occurrence.linkedLessonId, combinedTeachingOccurrenceId: null,
         wizardPath: `/admin/lessons/${occurrence.linkedLessonId}/edit`, idempotent: true, conflicts: occurrence.conflicts };
     if (occurrence.state !== "UNRECORDED")
       throw new AppError(409, "OCCURRENCE_ALREADY_RESOLVED", "Occurrence đã được nghỉ hoặc đổi lịch.");
@@ -68,7 +91,7 @@ export class ScheduleService {
       scheduledEndTime: occurrence.scheduledEndTime,
       lessonType: "REGULAR",
     }, occurrence.key, actorUserId);
-    return { occurrenceKey: key, lessonId: created.lesson.id,
+    return { occurrenceKey: key, lessonId: created.lesson.id, combinedTeachingOccurrenceId: null,
       wizardPath: `/admin/lessons/${created.lesson.id}/edit`, idempotent: created.idempotent, conflicts };
   }
 
@@ -79,7 +102,8 @@ export class ScheduleService {
   async checkConflicts(input: ScheduleConflictCheckRequest) {
     this.validateDate(input.date, "Ngày kiểm tra");
     this.validateTimeRange(input.startTime, input.endTime);
-    if (input.excludedOccurrenceKey && !parseOccurrenceKey(input.excludedOccurrenceKey))
+    if (input.excludedOccurrenceKey && !parseOccurrenceKey(input.excludedOccurrenceKey) &&
+        !parseCombinedOccurrenceKey(input.excludedOccurrenceKey))
       throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Mã occurrence loại trừ không hợp lệ.");
     if (input.excludedLessonId != null) this.validateId(input.excludedLessonId);
     return this.repository.detectConflicts(
@@ -149,6 +173,18 @@ export class ScheduleService {
 
   async skip(key: string, input: SkipOccurrenceRequest, actorUserId?: number): Promise<ScheduleExceptionResult> {
     this.validateReason(input.reason, input.note);
+    if (parseCombinedOccurrenceKey(key)) {
+      if (!this.combinedGroups)
+        throw new AppError(500, "COMBINED_GROUP_NOT_CONFIGURED", "Chưa cấu hình nhóm học ghép.");
+      const result = await this.combinedGroups.skipOccurrence(key, input, actorUserId);
+      return {
+        occurrenceKey: key,
+        exceptionId: result.id,
+        type: "SKIPPED",
+        idempotent: result.idempotent,
+        conflicts: [],
+      };
+    }
     const occurrence = await this.requireOccurrence(key);
     if (occurrence.state === "RECORDED")
       throw new AppError(409, "OCCURRENCE_RECORDED", "Occurrence đã có lesson và không thể đánh dấu nghỉ.");
@@ -160,6 +196,25 @@ export class ScheduleService {
     this.validateReason(input.reason, input.note);
     this.validateDate(input.replacementDate, "Ngày thay thế");
     this.validateTimeRange(input.replacementStartTime, input.replacementEndTime);
+    if (parseCombinedOccurrenceKey(key)) {
+      if (!this.combinedGroups)
+        throw new AppError(500, "COMBINED_GROUP_NOT_CONFIGURED", "Chưa cấu hình nhóm học ghép.");
+      const occurrence = await this.requireOriginalOccurrence(key);
+      const conflicts = await this.repository.detectConflicts(
+        input.replacementDate,
+        input.replacementStartTime,
+        input.replacementEndTime,
+        occurrence.originalKey,
+      );
+      const result = await this.combinedGroups.rescheduleOccurrence(key, input, actorUserId);
+      return {
+        occurrenceKey: key,
+        exceptionId: result.id,
+        type: "RESCHEDULED",
+        idempotent: result.idempotent,
+        conflicts,
+      };
+    }
     const occurrence = await this.requireOriginalOccurrence(key);
     if (occurrence.state === "RECORDED")
       throw new AppError(409, "OCCURRENCE_RECORDED", "Occurrence đã có lesson và không thể đổi lịch.");
@@ -274,7 +329,8 @@ export class ScheduleService {
   }
 
   private async requireOccurrence(key: string) {
-    if (!parseOccurrenceKey(key)) throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Mã occurrence không hợp lệ.");
+    if (!parseOccurrenceKey(key) && !parseCombinedOccurrenceKey(key))
+      throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Mã occurrence không hợp lệ.");
     const occurrence = await this.repository.resolveOccurrence(key);
     if (!occurrence) throw new AppError(404, "OCCURRENCE_NOT_FOUND", "Không tìm thấy occurrence dự kiến.");
     return occurrence;
@@ -282,12 +338,16 @@ export class ScheduleService {
 
   private async requireOriginalOccurrence(key: string) {
     const parsed = parseOccurrenceKey(key);
-    if (!parsed || parsed.replacement) throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Mã occurrence gốc không hợp lệ.");
+    const combined = parseCombinedOccurrenceKey(key);
+    if ((!parsed && !combined) || parsed?.replacement || combined?.replacement)
+      throw new AppError(400, "INVALID_OCCURRENCE_KEY", "Mã occurrence gốc không hợp lệ.");
     return this.requireOccurrence(key);
   }
 
   private validateKeys(keys: string[]): string[] {
-    if (!Array.isArray(keys) || keys.length < 1 || keys.length > 50 || new Set(keys).size !== keys.length || keys.some((key) => !parseOccurrenceKey(key)))
+    if (!Array.isArray(keys) || keys.length < 1 || keys.length > 50 ||
+        new Set(keys).size !== keys.length ||
+        keys.some((key) => !parseOccurrenceKey(key) && !parseCombinedOccurrenceKey(key)))
       throw new AppError(400, "VALIDATION_ERROR", "Danh sách occurrence phải có 1–50 khóa hợp lệ và không trùng.");
     return keys;
   }

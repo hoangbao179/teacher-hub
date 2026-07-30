@@ -98,6 +98,11 @@ export function expandRecurringSchedules(
         skipReason: null,
         makeupRequired: true,
         replacementCancelled: false,
+        combinedGroupId: null,
+        combinedGroupName: null,
+        combinedGroupScheduleId: null,
+        memberClasses: [],
+        combinedTeachingOccurrenceId: null,
       });
     }
   }
