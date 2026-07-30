@@ -19,7 +19,7 @@ jobs:
     name: Build and publish immutable images
     runs-on: ubuntu-24.04
     env:
-      GHCR_OWNER: ${{ vars.GHCR_OWNER || github.repository_owner }}
+      GHCR_OWNER: ${{ secrets.GHCR_OWNER || github.repository_owner }}
     permissions:
       contents: read
       packages: write
@@ -77,7 +77,20 @@ jobs:
       - name: Copy deployment files and deploy
         shell: bash
         env:
+          GHCR_OWNER: ${{ secrets.GHCR_OWNER || github.repository_owner }}
           IMAGE_TAG: ${{ inputs.source_sha }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GOOGLE_DRIVE_ENABLED: ${{ secrets.GOOGLE_DRIVE_ENABLED }}
+          GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
+          GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
+          GOOGLE_DRIVE_REFRESH_TOKEN: ${{ secrets.GOOGLE_DRIVE_REFRESH_TOKEN }}
+          GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
+          GOOGLE_SHEET_SYNC_ENABLED: ${{ secrets.GOOGLE_SHEET_SYNC_ENABLED }}
+          PIXABAY_ENABLED: ${{ secrets.PIXABAY_ENABLED }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          REPORT_VIETINBANK_ACCOUNT_NUMBER: ${{ secrets.REPORT_VIETINBANK_ACCOUNT_NUMBER }}
           PROD_HOST: ${{ secrets.PROD_HOST }}
           PROD_PORT: ${{ secrets.PROD_PORT }}
           PROD_USER: ${{ secrets.PROD_USER }}
@@ -85,12 +98,66 @@ jobs:
           PROD_SSH_KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
         run: |
           set -Eeuo pipefail
-          for required_name in PROD_HOST PROD_PORT PROD_USER PROD_SSH_PRIVATE_KEY PROD_SSH_KNOWN_HOSTS; do
+
+          required_names=(
+            GHCR_OWNER
+            MYSQL_ROOT_PASSWORD
+            DB_PASSWORD
+            JWT_SECRET
+            PROD_HOST
+            PROD_PORT
+            PROD_USER
+            PROD_SSH_PRIVATE_KEY
+            PROD_SSH_KNOWN_HOSTS
+          )
+          missing_required=0
+          for required_name in "${required_names[@]}"; do
             if [[ -z "${!required_name:-}" ]]; then
-              echo "Missing required production SSH secret: $required_name"
-              exit 1
+              echo "Missing required secret: $required_name"
+              missing_required=1
             fi
           done
+          if (( missing_required != 0 )); then
+            exit 1
+          fi
+
+          boolean_names=(GOOGLE_DRIVE_ENABLED GOOGLE_SHEET_SYNC_ENABLED PIXABAY_ENABLED)
+          for boolean_name in "${boolean_names[@]}"; do
+            normalized_value="${!boolean_name,,}"
+            if [[ "$normalized_value" != "true" && "$normalized_value" != "false" ]]; then
+              echo "$boolean_name must be true or false."
+              exit 1
+            fi
+            printf -v "$boolean_name" '%s' "$normalized_value"
+          done
+
+          conditional_required_names=()
+          if [[ "$GOOGLE_DRIVE_ENABLED" == "true" ]]; then
+            conditional_required_names+=(
+              GOOGLE_DRIVE_CLIENT_ID
+              GOOGLE_DRIVE_CLIENT_SECRET
+              GOOGLE_DRIVE_REFRESH_TOKEN
+              GOOGLE_DRIVE_ROOT_FOLDER_ID
+            )
+          fi
+          if [[ "$PIXABAY_ENABLED" == "true" ]]; then
+            conditional_required_names+=(PIXABAY_API_KEY)
+          fi
+          missing_conditional=0
+          for required_name in "${conditional_required_names[@]}"; do
+            if [[ -z "${!required_name:-}" ]]; then
+              echo "Missing required secret: $required_name"
+              missing_conditional=1
+            fi
+          done
+          if (( missing_conditional != 0 )); then
+            exit 1
+          fi
+          if [[ "$GOOGLE_SHEET_SYNC_ENABLED" == "true" && "$GOOGLE_DRIVE_ENABLED" != "true" ]]; then
+            echo "GOOGLE_SHEET_SYNC_ENABLED requires GOOGLE_DRIVE_ENABLED."
+            exit 1
+          fi
+
           if [[ ! "$PROD_PORT" =~ ^[0-9]{1,5}$ ]] || (( PROD_PORT < 1 || PROD_PORT > 65535 )); then
             echo "PROD_PORT must be a valid TCP port."
             exit 1
@@ -99,10 +166,34 @@ jobs:
             echo "Deployment image tag must be a full Git commit SHA."
             exit 1
           fi
+
+          runtime_names=(
+            GHCR_OWNER
+            MYSQL_ROOT_PASSWORD
+            DB_PASSWORD
+            JWT_SECRET
+            GOOGLE_DRIVE_ENABLED
+            GOOGLE_DRIVE_CLIENT_ID
+            GOOGLE_DRIVE_CLIENT_SECRET
+            GOOGLE_DRIVE_REFRESH_TOKEN
+            GOOGLE_DRIVE_ROOT_FOLDER_ID
+            GOOGLE_SHEET_SYNC_ENABLED
+            PIXABAY_ENABLED
+            PIXABAY_API_KEY
+            REPORT_VIETINBANK_ACCOUNT_NUMBER
+          )
+          for runtime_name in "${runtime_names[@]}"; do
+            if [[ "${!runtime_name:-}" == *$'\r'* || "${!runtime_name:-}" == *$'\n'* ]]; then
+              echo "$runtime_name must not contain CR or LF characters."
+              exit 1
+            fi
+          done
+
           install -m 700 -d "$HOME/.ssh"
           key_file="$HOME/.ssh/teacher-hub-production"
           known_hosts_file="$HOME/.ssh/teacher-hub-known-hosts"
-          trap 'rm -f "$key_file" "$known_hosts_file"' EXIT
+          production_env="$(mktemp "$RUNNER_TEMP/teacher-hub-production.XXXXXX.env")"
+          trap 'rm -f "$key_file" "$known_hosts_file" "$production_env"' EXIT
           printf '%s\n' "$PROD_SSH_PRIVATE_KEY" | tr -d '\r' > "$key_file"
           printf '%s\n' "$PROD_SSH_KNOWN_HOSTS" | tr -d '\r' > "$known_hosts_file"
           chmod 600 "$key_file" "$known_hosts_file"
@@ -116,6 +207,34 @@ jobs:
             -o "UserKnownHostsFile=$known_hosts_file"
           )
           ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" 'mkdir -p /opt/teacher-hub'
+
+          previous_image_tag="$(
+            ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \
+              "if [ -f /opt/teacher-hub/.env ]; then awk -F= '\$1 == \"IMAGE_TAG\" { sub(/^[^=]*=/, \"\"); print; exit }' /opt/teacher-hub/.env; fi"
+          )"
+          if [[ -n "$previous_image_tag" && ! "$previous_image_tag" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Existing IMAGE_TAG must be empty or a full Git commit SHA."
+            exit 1
+          fi
+
+          printf '%s\n' \
+            "GHCR_OWNER=$GHCR_OWNER" \
+            "IMAGE_TAG=$previous_image_tag" \
+            "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD" \
+            "DB_PASSWORD=$DB_PASSWORD" \
+            "JWT_SECRET=$JWT_SECRET" \
+            "GOOGLE_DRIVE_ENABLED=$GOOGLE_DRIVE_ENABLED" \
+            "GOOGLE_DRIVE_CLIENT_ID=$GOOGLE_DRIVE_CLIENT_ID" \
+            "GOOGLE_DRIVE_CLIENT_SECRET=$GOOGLE_DRIVE_CLIENT_SECRET" \
+            "GOOGLE_DRIVE_REFRESH_TOKEN=$GOOGLE_DRIVE_REFRESH_TOKEN" \
+            "GOOGLE_DRIVE_ROOT_FOLDER_ID=$GOOGLE_DRIVE_ROOT_FOLDER_ID" \
+            "GOOGLE_SHEET_SYNC_ENABLED=$GOOGLE_SHEET_SYNC_ENABLED" \
+            "PIXABAY_ENABLED=$PIXABAY_ENABLED" \
+            "PIXABAY_API_KEY=$PIXABAY_API_KEY" \
+            "PUBLIC_APP_ORIGIN=https://tienganhcovy.com" \
+            "REPORT_VIETINBANK_ACCOUNT_NUMBER=$REPORT_VIETINBANK_ACCOUNT_NUMBER" \
+            > "$production_env"
+
           scp \
             -i "$key_file" \
             -P "$PROD_PORT" \
@@ -125,7 +244,18 @@ jobs:
             -o "UserKnownHostsFile=$known_hosts_file" \
             docker-compose.deploy.yml Caddyfile scripts/deploy-production.sh \
             "$PROD_USER@$PROD_HOST:/opt/teacher-hub/"
+          ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \
+            'install -m 600 /dev/null /opt/teacher-hub/.env.next'
+          scp \
+            -i "$key_file" \
+            -P "$PROD_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$known_hosts_file" \
+            "$production_env" \
+            "$PROD_USER@$PROD_HOST:/opt/teacher-hub/.env.next"
           # IMAGE_TAG is deliberately expanded locally after the full-SHA validation above.
           # shellcheck disable=SC2029
           ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \
-            "cd /opt/teacher-hub && chmod 700 deploy-production.sh && ./deploy-production.sh '$IMAGE_TAG'"
+            "cd /opt/teacher-hub && chmod 600 .env.next && mv -f .env.next .env && chmod 700 deploy-production.sh && ./deploy-production.sh '$IMAGE_TAG'"

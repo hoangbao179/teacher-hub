@@ -1,30 +1,49 @@
 # Production deployment
 
 Production chạy trên một VPS Ubuntu bằng bốn container: Caddy → Web/Nginx → API →
-MySQL. GitHub Actions kiểm tra source, build hai image, đẩy lên GHCR và SSH vào VPS để
-chạy script triển khai. VPS không cần source, Node.js hoặc npm; chỉ nhận
+MySQL. GitHub Actions kiểm tra source, build hai image, đẩy lên GHCR, sinh runtime
+`.env` từ GitHub Repository Secrets rồi SSH vào VPS để chạy script triển khai. VPS
+không cần source, Node.js hoặc npm; mỗi lần deploy chỉ nhận `.env` mới,
 `docker-compose.deploy.yml`, `Caddyfile` và `deploy-production.sh`.
 
 ## GitHub configuration
 
-Tạo environment `production`. Tạo đúng các repository/environment secrets sau:
+Tạo environment `production`. Tạo các Repository Secrets bắt buộc sau:
 
+- `GHCR_OWNER`: tên owner GitHub viết thường; workflow fallback về owner của repository
+  nếu secret này rỗng.
+- `MYSQL_ROOT_PASSWORD`
+- `DB_PASSWORD`
+- `JWT_SECRET`
 - `PROD_HOST`
 - `PROD_PORT`
 - `PROD_USER`
 - `PROD_SSH_PRIVATE_KEY`
 - `PROD_SSH_KNOWN_HOSTS`
 
+Ba feature flag sau cũng bắt buộc và chỉ nhận `true` hoặc `false` (không phân biệt hoa
+thường):
+
+- `GOOGLE_DRIVE_ENABLED`
+- `GOOGLE_SHEET_SYNC_ENABLED`
+- `PIXABAY_ENABLED`
+
+Khi `GOOGLE_DRIVE_ENABLED=true`, phải có thêm `GOOGLE_DRIVE_CLIENT_ID`,
+`GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN` và
+`GOOGLE_DRIVE_ROOT_FOLDER_ID`. `GOOGLE_SHEET_SYNC_ENABLED=true` yêu cầu Google Drive
+cũng được bật. Khi `PIXABAY_ENABLED=true`, phải có `PIXABAY_API_KEY`.
+
+`REPORT_VIETINBANK_ACCOUNT_NUMBER` là optional và sẽ được ghi rỗng vào runtime `.env`
+nếu không khai báo. `VITE_GOOGLE_MAPS_EMBED_API_KEY` chỉ dùng làm build arg của Web
+image, không được ghi vào runtime `.env`.
+
 `PROD_SSH_KNOWN_HOSTS` phải là dòng host key đã đối chiếu fingerprint qua console hoặc
 kênh tin cậy. Workflow bật `StrictHostKeyChecking=yes` và không gọi `ssh-keyscan`.
-
-Tạo repository/environment variable sau:
-
-- `GHCR_OWNER`: tên owner GitHub viết thường.
 
 Workflow cố định `VITE_API_BASE_URL` rỗng để browser gọi cùng origin. Text Homepage, SEO,
 site URL, Zalo, Facebook và đường dẫn media nằm trong `client/src/content/publicHome.ts`.
 Không đưa DB password, JWT hoặc deployment secret vào GitHub Variables hay build args.
+Không ghi giá trị secret thật vào tài liệu hoặc repository.
 
 Ảnh local nằm trong `client/public/images` và được đóng gói vào Docker Web image. Muốn thay
 ảnh, thay file trong thư mục này, cập nhật đường dẫn/alt/focal trong source nếu cần, commit
@@ -52,12 +71,11 @@ rồi deploy để build Web image mới.
    unset GHCR_READ_TOKEN
    ```
 
-6. Copy `.env.deploy.example` thành `/opt/teacher-hub/.env`, đặt mode `600` và điền cấu
-   hình thật. File này chỉ tồn tại trên VPS:
-
-   ```bash
-   install -m 600 .env.deploy.example /opt/teacher-hub/.env
-   ```
+6. Chuyển chính xác các giá trị production hiện tại của `MYSQL_ROOT_PASSWORD`,
+   `DB_PASSWORD` và `JWT_SECRET` từ VPS sang GitHub Repository Secrets. Không đổi các
+   giá trị này trong lúc chuyển nguồn cấu hình, nếu không database/API hiện tại có thể
+   ngừng hoạt động. Từ lần deploy tiếp theo, workflow tự sinh `/opt/teacher-hub/.env`;
+   người vận hành không còn nhập hoặc sửa các biến runtime này thủ công trên VPS.
 
 7. Tạo DNS Cloudflare: bản ghi apex trỏ tới VPS và `www` trỏ về apex. Đặt SSL/TLS mode
    `Full (strict)`. Caddy tự xin/gia hạn certificate; không copy certificate vào repo.
@@ -74,7 +92,8 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 ## Server `.env`
 
-Các biến trong `/opt/teacher-hub/.env` được giữ tối thiểu:
+Các biến trong `/opt/teacher-hub/.env` được giữ tối thiểu và được sinh lại từ GitHub
+Repository Secrets ở mỗi lần deploy:
 
 - Image/runtime: `GHCR_OWNER`, `IMAGE_TAG`.
 - Database secrets: `MYSQL_ROOT_PASSWORD`, `DB_PASSWORD`.
@@ -83,19 +102,21 @@ Các biến trong `/opt/teacher-hub/.env` được giữ tối thiểu:
   chỉ đặt trong runtime `.env`, không commit giá trị thật.
 - Google runtime (khi bật V16C): `GOOGLE_DRIVE_ENABLED` và OAuth/root-folder values
   theo `docs/deployment/google-drive.md`.
-- Vocabulary V20 khi enable: `VOCABULARY_IMAGE_PROVIDER_ENABLED`,
-  `PIXABAY_API_KEY` và đường dẫn media cố định
-  `/app/data/vocabulary-media`. Key chỉ ở runtime server; không đưa vào Web image.
+- Vocabulary V20 khi enable: `PIXABAY_ENABLED` và `PIXABAY_API_KEY`. Đường dẫn media
+  `/app/data/vocabulary-media` được cố định trong Compose. Key chỉ ở runtime server;
+  không đưa vào Web image.
 
-`IMAGE_TAG` để rỗng ở bootstrap đầu tiên; workflow sẽ ghi full commit SHA trước khi Compose
-chạy. Database name/user, CORS production, timezone, JWT lifetime, password policy,
-rate-limit và healthcheck URL được cố định trong source hoặc Compose. Không đưa password,
-token, IP hoặc JWT vào GitHub Variables, workflow log hay repository.
+Workflow đọc `IMAGE_TAG` cũ trên VPS và ghi tag đó vào file env mới trước khi thay file
+theo kiểu nguyên tử. Script deploy sau đó mới đổi sang full SHA mới; nếu deploy lỗi, tag
+cũ vẫn sẵn sàng để rollback. Lần bootstrap đầu tiên có thể để tag rỗng. Database
+name/user, CORS production, timezone, JWT lifetime, password policy, rate-limit và
+healthcheck URL được cố định trong source hoặc Compose. Không đưa password, token, IP
+hoặc JWT vào GitHub Variables, workflow log hay repository.
 
 Server `.env` chỉ chứa runtime/deployment config và secret như image tag, CORS,
 healthcheck, database và JWT. Không đặt text Homepage hoặc đường dẫn ảnh vào file này.
-OAuth secret/refresh token Google chỉ nằm trong file runtime mode `600`, không đưa vào
-image, build args, GitHub Variables hoặc log deploy.
+OAuth secret/refresh token Google chỉ nằm trong GitHub Repository Secrets và file runtime
+mode `600`, không đưa vào image, build args, GitHub Variables hoặc log deploy.
 
 ## Vocabulary media V20 (IMPLEMENTED)
 
@@ -122,7 +143,8 @@ assignment snapshot tham chiếu. Media ID immutable; deploy/rollback image khô
 được ghi đè bytes của media cũ.
 
 Với database mới hoàn toàn, tạo admin một lần sau deploy bằng biến môi trường tạm, không
-lưu password bootstrap trong `.env` hoặc shell history:
+lưu `BOOTSTRAP_ADMIN_PASSWORD` trong GitHub Repository Secrets dùng cho deploy, runtime
+`.env` hoặc shell history. Workflow không tự chạy bootstrap admin:
 
 ```bash
 cd /opt/teacher-hub
@@ -140,8 +162,11 @@ Push vào `main` hoặc chạy `workflow_dispatch` sẽ:
 
 1. chạy `npm ci` và `npm run check:full` với MySQL test có tên thống nhất;
 2. build API/Web trên runner, push tag full commit SHA và tag tiện ích `latest`;
-3. copy ba deployment file vào `/opt/teacher-hub` qua SSH host key đã pin;
-4. khóa deploy bằng `flock`, ghi SHA mới an toàn, khởi động/kiểm tra MySQL;
+3. đọc `IMAGE_TAG` cũ, sinh runtime env từ Repository Secrets, copy thành `.env.next`,
+   đặt mode `600` rồi `mv` nguyên tử thành `/opt/teacher-hub/.env`; đồng thời copy ba
+   deployment file qua SSH host key đã pin;
+4. gọi script với SHA mới; script khóa deploy bằng `flock`, ghi SHA mới an toàn và khởi
+   động/kiểm tra MySQL;
 5. tạo và kiểm tra backup nén trước migration; sau khi V20 enable, recovery set
    bắt buộc gồm cả MySQL và `vocabulary-media` theo tài liệu backup;
 6. pull đúng SHA, chạy `node dist/db/migrate.js` đúng một lần bằng one-off API container;
