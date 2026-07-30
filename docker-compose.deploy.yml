@@ -22,6 +22,7 @@ services:
       - --innodb-buffer-pool-size=192M
       - --max-connections=30
       - --performance-schema=OFF
+      - --log-bin-trust-function-creators=1
     volumes:
       - mysql-data:/var/lib/mysql
     networks:
