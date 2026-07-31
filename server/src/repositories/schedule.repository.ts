@@ -38,6 +38,8 @@ import { AppError } from "../errors/app-error";
 import { addDays, weekdayIso } from "../utils/date";
 import { AuditRepository } from "./audit.repository";
 
+type PersistedTeacherBusySlotInput = TeacherBusySlotInput & { title: string };
+
 interface ExceptionWriteResult {
   id: number;
   idempotent: boolean;
@@ -513,7 +515,7 @@ export class ScheduleRepository {
     return Number(rows[0]?.total ?? 0);
   }
 
-  async createBusySlot(input: TeacherBusySlotInput, actorUserId?: number): Promise<number> {
+  async createBusySlot(input: PersistedTeacherBusySlotInput, actorUserId?: number): Promise<number> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -529,7 +531,7 @@ export class ScheduleRepository {
     finally { connection.release(); }
   }
 
-  async updateBusySlot(id: number, input: TeacherBusySlotInput, actorUserId?: number): Promise<boolean> {
+  async updateBusySlot(id: number, input: PersistedTeacherBusySlotInput, actorUserId?: number): Promise<boolean> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -947,7 +949,7 @@ function mapBusySlot(row: RowDataPacket, schedules: BusySlotWeeklyScheduleInput[
     effectiveTo: row.effective_to_text ?? null, location: row.location == null ? null : String(row.location),
     note: row.note == null ? null : String(row.note), conflicts: [] };
 }
-function busyValues(input: TeacherBusySlotInput, actorUserId?: number): Array<string | number | null> {
+function busyValues(input: PersistedTeacherBusySlotInput, actorUserId?: number): Array<string | number | null> {
   return [input.slotType, input.slotType === "EXTERNAL_CLASS" ? input.organizationType ?? null : null,
     input.slotType === "EXTERNAL_CLASS" ? input.organizationName?.trim() || null : null,
     input.title.trim(), input.recurrenceType, null,

@@ -19,6 +19,7 @@ import type {
 } from "@teacher/shared";
 import { parseOccurrenceKey } from "../domain/schedule-projection";
 import { parseCombinedOccurrenceKey } from "../domain/combined-class-group-projection";
+import { buildTeacherBusySlotTitle } from "../domain/teacher-busy-slot-title";
 import { AppError } from "../errors/app-error";
 import { ScheduleRepository } from "../repositories/schedule.repository";
 import { addDays, todayInHoChiMinh, weekdayIso } from "../utils/date";
@@ -271,17 +272,24 @@ export class ScheduleService {
 
   async createBusySlot(input: TeacherBusySlotInput, actorUserId?: number): Promise<TeacherBusySlotMutationResult> {
     this.validateBusySlot(input);
-    const conflicts = await this.busyConflicts(input);
-    const id = await this.repository.createBusySlot(input, actorUserId);
+    const prepared = { ...input, title: buildTeacherBusySlotTitle(input) };
+    const conflicts = await this.busyConflicts(prepared);
+    const id = await this.repository.createBusySlot(prepared, actorUserId);
     const slot = await this.repository.findBusySlot(id);
     return { slot: { ...slot!, conflicts }, conflicts };
   }
 
   async updateBusySlot(id: number, input: TeacherBusySlotInput, actorUserId?: number): Promise<TeacherBusySlotMutationResult> {
     this.validateId(id);
+    const current = await this.repository.findBusySlot(id);
+    if (!current) throw new AppError(404, "BUSY_SLOT_NOT_FOUND", "Không tìm thấy lịch bận.");
     this.validateBusySlot(input);
-    const conflicts = (await this.busyConflicts(input)).filter((warning) => warning.kind !== "BUSY_SLOT" || warning.id !== id);
-    if (!(await this.repository.updateBusySlot(id, input, actorUserId)))
+    const title = Object.prototype.hasOwnProperty.call(input, "title")
+      ? buildTeacherBusySlotTitle(input)
+      : current.title;
+    const prepared = { ...input, title };
+    const conflicts = (await this.busyConflicts(prepared)).filter((warning) => warning.kind !== "BUSY_SLOT" || warning.id !== id);
+    if (!(await this.repository.updateBusySlot(id, prepared, actorUserId)))
       throw new AppError(404, "BUSY_SLOT_NOT_FOUND", "Không tìm thấy lịch bận.");
     const slot = await this.repository.findBusySlot(id);
     return { slot: { ...slot!, conflicts }, conflicts };
@@ -381,8 +389,8 @@ export class ScheduleService {
     } else if (input.organizationType != null || input.organizationName != null) {
       throw new AppError(400, "VALIDATION_ERROR", "Chỉ lịch dạy ngoài mới có thông tin đơn vị.");
     }
-    if (!input.title?.trim() || input.title.trim().length > 160)
-      throw new AppError(400, "VALIDATION_ERROR", "Tiêu đề lịch bận là bắt buộc và tối đa 160 ký tự.");
+    if (input.title?.trim() && input.title.trim().length > 160)
+      throw new AppError(400, "VALIDATION_ERROR", "Tiêu đề lịch bận tối đa 160 ký tự.");
     if (input.recurrenceType === "ONCE") {
       if (!input.specificDate || raw.dayOfWeek != null || raw.schedules != null || raw.effectiveFrom != null || raw.effectiveTo != null)
         throw new AppError(400, "VALIDATION_ERROR", "Lịch bận một lần cần ngày cụ thể và không có hiệu lực tuần.");

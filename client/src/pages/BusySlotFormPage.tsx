@@ -61,7 +61,7 @@ export function BusySlotFormPage() {
   }, [slotId, today]);
 
   function payload(): TeacherBusySlotInput {
-    const identity = { slotType, title,
+    const identity = { slotType, title: title.trim() ? title : slotId ? "" : undefined,
       organizationType: slotType === "EXTERNAL_CLASS" ? organizationType : undefined,
       organizationName: slotType === "EXTERNAL_CLASS" ? organizationName : undefined };
     return recurrenceType === "ONCE" ? {
@@ -77,7 +77,7 @@ export function BusySlotFormPage() {
     setBusy(true); setError(""); setSuccess("");
     try {
       const result = slotId ? await scheduleApi.updateBusySlot(slotId, payload()) : await scheduleApi.createBusySlot(payload());
-      setWarnings(result.conflicts); setSuccess(slotId ? "Đã cập nhật lịch." : "Đã tạo lịch.");
+      setTitle(result.slot.title); setWarnings(result.conflicts); setSuccess(slotId ? "Đã cập nhật lịch." : "Đã tạo lịch.");
     } catch (value) { setError((value as Error).message); }
     finally { setBusy(false); }
   }
@@ -93,7 +93,7 @@ export function BusySlotFormPage() {
   if (loading) return <LoadingState />;
   const scheduleKeys = schedules.map((item) => `${item.dayOfWeek}:${item.startTime}`);
   const schedulesValid = schedules.length > 0 && schedules.every((item) => item.startTime && item.endTime > item.startTime) && new Set(scheduleKeys).size === scheduleKeys.length;
-  const valid = title.trim() && (slotType !== "EXTERNAL_CLASS" || organizationName.trim()) &&
+  const valid = (slotType !== "EXTERNAL_CLASS" || organizationName.trim()) &&
     (recurrenceType === "ONCE" ? specificDate && startTime && endTime > startTime : schedulesValid && effectiveFrom && (!effectiveTo || effectiveTo >= effectiveFrom));
   return <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="busy-slot-form" data-form-width="bounded">
     <PageHeader title={slotId ? "Sửa lịch" : slotType === "EXTERNAL_CLASS" ? "Thêm lịch dạy ngoài" : "Thêm lịch bận"} subtitle="Lịch này chỉ dùng để hiển thị và cảnh báo trùng, không tạo học sinh, điểm danh hoặc học phí." />
@@ -112,7 +112,13 @@ export function BusySlotFormPage() {
         </TextField>
         <TextField required label="Tên trường/trung tâm" value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} />
       </>}
-      <TextField required label={slotType === "EXTERNAL_CLASS" ? "Tên lớp" : "Tiêu đề lịch"} value={title} onChange={(event) => setTitle(event.target.value)} />
+      <TextField
+        label={slotType === "EXTERNAL_CLASS" ? "Tên lớp (tùy chọn)" : "Tiêu đề lịch (tùy chọn)"}
+        placeholder={slotType === "EXTERNAL_CLASS" ? "Ví dụ: Lớp Mầm 5 tuổi" : undefined}
+        helperText="Để trống, hệ thống sẽ tự đặt tên theo trường và lịch học."
+        value={title}
+        onChange={(event) => setTitle(event.target.value)}
+      />
       <RadioGroup row value={recurrenceType} onChange={(event) => setRecurrenceType(event.target.value as BusySlotRecurrenceType)}>
         <FormControlLabel value="ONCE" control={<Radio />} label="Một lần" />
         <FormControlLabel value="WEEKLY" control={<Radio />} label="Hằng tuần" />

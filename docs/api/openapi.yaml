@@ -1925,12 +1925,12 @@ components:
                   alreadyReplaced: {type: boolean}
     TeacherBusySlotInput:
       type: object
-      required: [slotType, title, recurrenceType]
+      required: [slotType, recurrenceType]
       properties:
         slotType: {type: string, enum: [EXTERNAL_CLASS, PERSONAL, OTHER]}
         organizationType: {type: string, enum: [SCHOOL, CENTER], nullable: true, description: Bắt buộc khi slotType là EXTERNAL_CLASS}
         organizationName: {type: string, maxLength: 160, nullable: true, description: Bắt buộc khi slotType là EXTERNAL_CLASS}
-        title: {type: string, maxLength: 160}
+        title: {type: string, maxLength: 160, nullable: true, description: Tạo mới sẽ tự sinh khi bỏ trống/null/chỉ có khoảng trắng; PATCH không gửi field thì giữ tên cũ, gửi field rỗng/null thì sinh lại}
         recurrenceType: {type: string, enum: [ONCE, WEEKLY]}
         specificDate: {type: string, format: date, nullable: true}
         startTime: {type: string, nullable: true, description: Chỉ dùng cho ONCE}
@@ -1966,9 +1966,10 @@ components:
       allOf:
         - {$ref: '#/components/schemas/TeacherBusySlotInput'}
         - type: object
-          required: [id, schedules, conflicts]
+          required: [id, title, schedules, conflicts]
           properties:
             id: {type: integer, format: int64}
+            title: {type: string, maxLength: 160}
             specificDate: {type: string, format: date, nullable: true}
             effectiveFrom: {type: string, format: date, nullable: true}
             effectiveTo: {type: string, format: date, nullable: true}

@@ -216,7 +216,7 @@ interface TeacherBusySlotBaseInput {
   slotType: TeacherBusySlotType;
   organizationType?: ExternalOrganizationType;
   organizationName?: string;
-  title: string;
+  title?: string | null;
   location?: string;
   note?: string;
 }
