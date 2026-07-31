@@ -14,6 +14,7 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Box,
+  ButtonBase,
   Container,
   Drawer,
   List,
@@ -89,13 +90,17 @@ export function AdminLayout() {
         sx={{ bgcolor: "rgba(255,255,255,.96)", backdropFilter: "blur(10px)", borderBottom: 1, borderColor: "divider", boxShadow: "0 2px 10px rgba(15, 23, 42, 0.035)", zIndex: (theme) => theme.zIndex.drawer + 1 }}
       >
         <Toolbar sx={{ minHeight: `${uiTokens.navigationHeight}px !important`, px: { xs: 1.75, md: 3 } }}>
-          <Stack direction="row" spacing={1.1} sx={{ alignItems: "center", flexGrow: 1, minWidth: 0 }}>
+          <ButtonBase
+            aria-label="Về Hôm nay"
+            onClick={() => navigate("/admin")}
+            sx={{ alignItems: "center", justifyContent: "flex-start", gap: 1.1, flexGrow: 1, minWidth: 0, borderRadius: 1.5, textAlign: "left" }}
+          >
             <Box sx={{ display: "grid", placeItems: "center", width: { xs: 36, md: 40 }, height: { xs: 36, md: 40 }, flexShrink: 0, borderRadius: { xs: 1.5, md: 1.75 }, color: "common.white", background: "linear-gradient(145deg, #25b9ad, #0f8f83)", boxShadow: "0 7px 16px rgba(20,184,166,.2)" }}><School sx={{ fontSize: { xs: 21, md: 23 } }} /></Box>
             <Stack spacing={0} sx={{ minWidth: 0 }}>
               <Typography variant="subtitle1" noWrap sx={{ fontWeight: 700 }}>Lớp học cô Vy</Typography>
               <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", md: "block" }, lineHeight: 1.1 }}>Tiếng Anh lớp 1–9</Typography>
             </Stack>
-          </Stack>
+          </ButtonBase>
           <Box sx={{ display: { xs: "none", md: "block" }, mr: 1.25, px: 1.5, py: 0.75, borderRadius: 999, bgcolor: uiTokens.colors.subtleSurface, color: "primary.dark", fontSize: 12, fontWeight: 600 }}>{displayDashboardDate(todayInHoChiMinh())}</Box>
           <IconButton aria-label="Đăng xuất" onClick={() => void auth.logout().then(() => navigate("/admin/login"))}>
             <Logout />
