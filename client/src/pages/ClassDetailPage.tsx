@@ -13,32 +13,39 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Snackbar,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { ClassDetail, StudentListItem, TemporaryReschedulePreview, TuitionMode, Weekday } from "@teacher/shared";
-import { api } from "../api/client";
+import { ApiError, api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, ErrorState, MobileCard, PageHeader, ProgressCount, StatusBadge } from "../components/UiKit";
 import { scheduleApi } from "../api/schedule";
+import { getEnrollmentCandidates } from "../features/class-enrollment";
 import { formatClassSchedule, formatClassScheduleItem } from "../utils/classSchedule";
 import { addDays, todayInHoChiMinh } from "../utils/date";
 export function ClassDetailPage() {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const [item, setItem] = useState<ClassDetail | null>(null);
   const [error, setError] = useState("");
   const [students, setStudents] = useState<StudentListItem[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [studentId, setStudentId] = useState("");
+  const [enrollmentError, setEnrollmentError] = useState("");
   const [tuitionMode, setTuitionMode] = useState<TuitionMode>("CLASS_DEFAULT");
   const [customPrice, setCustomPrice] = useState("");
   const [joinedAt, setJoinedAt] = useState(new Date().toISOString().slice(0, 10));
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(() => (location.state as { success?: string } | null)?.success ?? "");
+  const enrollmentSubmitLock = useRef(false);
+  const classRequestSequence = useRef(0);
+  const successRoute = useRef(`${location.pathname}${location.search}`);
   const today = todayInHoChiMinh();
   const [statusActionName, setStatusActionName] = useState<"pause" | "resume" | "close" | null>(null);
   const [statusEffectiveDate, setStatusEffectiveDate] = useState(today);
@@ -50,17 +57,55 @@ export function ClassDetailPage() {
   const [temporaryReason, setTemporaryReason] = useState("");
   const [temporaryNote, setTemporaryNote] = useState("");
   const [temporaryPreview, setTemporaryPreview] = useState<TemporaryReschedulePreview | null>(null);
-  const load = useCallback(() => api<ClassDetail>(`/api/classes/${id}`).then(setItem).catch((e: Error) => setError(e.message)), [id]);
+  const loadClass = useCallback(async () => {
+    const requestSequence = ++classRequestSequence.current;
+    const nextItem = await api<ClassDetail>(`/api/classes/${id}`);
+    if (requestSequence === classRequestSequence.current) setItem(nextItem);
+    return nextItem;
+  }, [id]);
+  const loadStudents = useCallback(async () => {
+    const nextStudents = await api<StudentListItem[]>("/api/students");
+    setStudents(nextStudents);
+    return nextStudents;
+  }, []);
+  const refreshEnrollmentData = useCallback(async () => {
+    await Promise.all([loadClass(), loadStudents()]);
+  }, [loadClass, loadStudents]);
   useEffect(() => {
-    load();
-    api<StudentListItem[]>("/api/students").then(setStudents).catch(() => undefined);
-  }, [load]);
+    let active = true;
+    const requestSequence = ++classRequestSequence.current;
+    void Promise.all([
+      api<ClassDetail>(`/api/classes/${id}`),
+      api<StudentListItem[]>("/api/students"),
+    ])
+      .then(([nextItem, nextStudents]) => {
+        if (!active) return;
+        if (requestSequence === classRequestSequence.current) setItem(nextItem);
+        setStudents(nextStudents);
+        setError("");
+      })
+      .catch((loadError: unknown) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : "Không tải được dữ liệu lớp.");
+      });
+    return () => { active = false; };
+  }, [id]);
+  useEffect(() => {
+    const route = `${location.pathname}${location.search}`;
+    if (successRoute.current !== route) {
+      successRoute.current = route;
+      setSuccess("");
+    }
+  }, [location.pathname, location.search]);
+  useEffect(() => {
+    if (!(location.state as { success?: string } | null)?.success) return;
+    void navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+  }, [location.pathname, location.search, location.state, navigate]);
   const statusAction = async () => {
     const action = statusActionName;
     if (!action) return;
     setError("");
     setSuccess(""); setBusy(true);
-    try { await api(`/api/classes/${id}/${action}`, { method: "POST", body: JSON.stringify({ effectiveDate: statusEffectiveDate, reason: statusReason || undefined }) }); await load(); setStatusActionName(null); setSuccess(action === "pause" ? "Đã tạm dừng lớp theo ngày hiệu lực." : action === "resume" ? "Đã mở lại lớp theo ngày hiệu lực." : "Đã đóng lớp và giữ lịch sử."); }
+    try { await api(`/api/classes/${id}/${action}`, { method: "POST", body: JSON.stringify({ effectiveDate: statusEffectiveDate, reason: statusReason || undefined }) }); await loadClass(); setStatusActionName(null); setSuccess(action === "pause" ? "Đã tạm dừng lớp theo ngày hiệu lực." : action === "resume" ? "Đã mở lại lớp theo ngày hiệu lực." : "Đã đóng lớp và giữ lịch sử."); }
     catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi trạng thái."); }
     finally { setBusy(false); }
   };
@@ -80,22 +125,50 @@ export function ClassDetailPage() {
     setTemporaryOpen(false); setTemporaryPreview(null); setSuccess("Đã đổi lịch tạm thời bằng schedule exceptions; lịch gốc không thay đổi.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể áp dụng đổi lịch."); } finally { setBusy(false); } };
   const enroll = async () => {
+    if (!studentId || enrollmentSubmitLock.current) return;
+    enrollmentSubmitLock.current = true;
+    let enrollmentCreated = false;
     setError("");
+    setEnrollmentError("");
     setBusy(true); setSuccess(""); try {
       await api(`/api/classes/${id}/enrollments`, { method: "POST", body: JSON.stringify({
         studentId: Number(studentId), joinedAt, tuitionMode,
         customPackagePrice: tuitionMode === "CUSTOM" ? Number(customPrice) : undefined,
       }) });
-      setDialogOpen(false); setStudentId(""); await load(); setSuccess("Đã ghi danh học sinh.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Không thể ghi danh."); }
-    finally { setBusy(false); }
+      enrollmentCreated = true;
+      setDialogOpen(false);
+      setStudentId("");
+      await refreshEnrollmentData();
+      setSuccess("Đã ghi danh học sinh.");
+    } catch (e) {
+      if (enrollmentCreated) {
+        setError("Đã ghi danh nhưng chưa đồng bộ được danh sách. Vui lòng kiểm tra kết nối và thử lại.");
+      } else {
+        if (e instanceof ApiError && e.status === 409 && e.code === "STUDENT_ACTIVE_ENROLLMENT") {
+          try { await refreshEnrollmentData(); } catch { /* Keep the enrollment conflict as the actionable error. */ }
+        }
+        setEnrollmentError(e instanceof Error ? e.message : "Không thể ghi danh. Vui lòng thử lại.");
+      }
+    } finally {
+      enrollmentSubmitLock.current = false;
+      setBusy(false);
+    }
   };
+  const closeEnrollmentDialog = () => {
+    if (busy) return;
+    setDialogOpen(false);
+    setStudentId("");
+    setEnrollmentError("");
+  };
+  const enrollmentCandidates = getEnrollmentCandidates(students);
+  const selectedUnavailableStudent = studentId && !enrollmentCandidates.some((student) => String(student.id) === studentId)
+    ? students.find((student) => String(student.id) === studentId)
+    : undefined;
   if (!item && !error) return <LoadingState />;
-  if (!item) return <ErrorState message={error || "Không tải được lớp."} onRetry={() => { setError(""); void load(); }} />;
+  if (!item) return <ErrorState message={error || "Không tải được lớp."} onRetry={() => { setError(""); void loadClass(); }} />;
   return (
     <Stack spacing={2} sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
       {error && <Alert severity="error">{error}</Alert>}
-      {success && <Alert severity="success">{success}</Alert>}
       <PageHeader title={item!.name} action={<StatusBadge status={item!.status} />} />
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
         <Button component={Link} to={`/admin/lessons/new?classId=${item!.id}`} variant="contained" disabled={item!.status === "CLOSED"}>
@@ -117,7 +190,7 @@ export function ClassDetailPage() {
             {formatClassSchedule(item!.schedules)}
           </Typography>
       </MobileCard>
-      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography variant="h6">Học sinh</Typography><Button variant="contained" disabled={busy || item!.status !== "ACTIVE" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => setDialogOpen(true)}>Ghi danh</Button></Stack>
+      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography variant="h6">Học sinh</Typography><Button variant="contained" disabled={busy || item!.status !== "ACTIVE" || (item!.type === "ONE_TO_ONE" && item!.activeStudentCount >= 1)} onClick={() => { setEnrollmentError(""); setDialogOpen(true); }}>Ghi danh</Button></Stack>
       {item!.students.map((student) => (
         <Card
           key={student.enrollmentId}
@@ -142,15 +215,17 @@ export function ClassDetailPage() {
           </CardContent>
         </Card>
       ))}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
+      <Dialog open={dialogOpen} onClose={closeEnrollmentDialog} fullWidth maxWidth="xs">
         <DialogTitle>Ghi danh học sinh</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+          {enrollmentError && <Alert severity="error">{enrollmentError}</Alert>}
           <FormControl required><InputLabel>Học sinh</InputLabel><Select label="Học sinh" value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-            {students.filter((x) => !x.enrollmentId && x.status === "ACTIVE").map((x) => <MenuItem value={String(x.id)} key={x.id}>{x.fullName}</MenuItem>)}
+            {selectedUnavailableStudent && <MenuItem value={studentId} sx={{ display: "none" }} aria-hidden>{selectedUnavailableStudent.fullName}</MenuItem>}
+            {enrollmentCandidates.map((x) => <MenuItem value={String(x.id)} key={x.id}>{x.fullName}</MenuItem>)}
           </Select></FormControl>
           <TextField type="date" label="Ngày vào học" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           <FormControl><InputLabel>Học phí</InputLabel><Select label="Học phí" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Theo giá lớp</MenuItem><MenuItem value="CUSTOM">Giá riêng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
           {tuitionMode === "CUSTOM" && <TextField required type="number" label="Giá riêng / 8 buổi" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} />}
-        </Stack></DialogContent><DialogActions><Button onClick={() => setDialogOpen(false)}>Hủy</Button><Button variant="contained" disabled={!studentId || busy} onClick={enroll}>{busy ? "Đang ghi danh…" : "Ghi danh"}</Button></DialogActions>
+        </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={closeEnrollmentDialog}>Hủy</Button><Button variant="contained" disabled={!studentId || busy} onClick={() => void enroll()}>{busy ? "Đang ghi danh…" : "Ghi danh"}</Button></DialogActions>
       </Dialog>
       <Dialog open={Boolean(statusActionName)} onClose={() => !busy && setStatusActionName(null)} fullWidth maxWidth="xs">
         <DialogTitle>{statusActionName === "pause" ? "Tạm dừng lớp" : statusActionName === "resume" ? "Mở lại lớp" : "Đóng lớp"}</DialogTitle>
@@ -174,6 +249,16 @@ export function ClassDetailPage() {
           {temporaryPreview && <Stack spacing={1}>{temporaryPreview.items.map((preview) => <Alert key={preview.originalOccurrenceKey} severity={!preview.eligible ? "error" : preview.conflicts.length ? "warning" : "success"}>{preview.originalDate} {preview.originalStartTime} → {preview.replacementDate} {preview.replacementStartTime}{preview.conflicts.length ? ` · ${preview.conflicts.length} cảnh báo trùng` : ""}</Alert>)}</Stack>}
         </Stack></DialogContent><DialogActions><Button onClick={() => setTemporaryOpen(false)}>Hủy</Button>{temporaryPreview ? <Button variant="contained" disabled={busy || !temporaryPreview.canApply} onClick={() => void applyTemporary()}>{busy ? "Đang áp dụng…" : temporaryPreview.conflictCount ? "Xác nhận dù trùng" : "Áp dụng"}</Button> : <Button variant="contained" disabled={busy || !temporaryReason.trim() || !Object.values(temporaryMappings).some((value) => value.selected)} onClick={() => void previewTemporary()}>{busy ? "Đang xem…" : "Xem trước"}</Button>}</DialogActions>
       </Dialog>
+      <Snackbar
+        open={Boolean(success)}
+        autoHideDuration={2500}
+        onClose={(_event, reason) => { if (reason !== "clickaway") setSuccess(""); }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setSuccess("")} sx={{ width: "100%" }}>
+          {success}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }
