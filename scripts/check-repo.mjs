@@ -148,6 +148,8 @@ if (!nginx.includes("location ^~ /admin/") || !nginx.includes("try_files $uri /i
   failures.push("Nginx admin SPA fallback is missing");
 if (!nginx.includes("location = /hoc") || !nginx.includes("location ^~ /hoc/") || !nginx.includes("try_files $uri $uri/ /index.html;"))
   failures.push("Nginx public learning SPA fallback is missing");
+if (!nginx.includes("location = /sach") || !nginx.includes("location ^~ /sach/") || !nginx.includes("https://online.flipbuilder.com"))
+  failures.push("Nginx public book library fallback or FlipBuilder CSP is missing");
 const clientPackage = JSON.parse(read("client/package.json"));
 if (!clientPackage.scripts?.["build:production"]?.includes("vite build --mode production")) failures.push("Production client build does not use Vite production mode");
 if (!read("Dockerfile.web").includes("build:production")) failures.push("Web image bypasses production marketing validation");

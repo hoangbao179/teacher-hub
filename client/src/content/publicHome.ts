@@ -86,6 +86,13 @@ export const publicHomeContent = {
     actionLabel: "Vào học ngay",
     path: "/hoc",
   },
+  bookLibrary: {
+    eyebrow: "TỦ SÁCH TƯƠNG TÁC",
+    heading: "Global Success lớp 1–9 có bài nghe",
+    description: "Chọn đúng sách theo lớp, lật trang và nghe bài ngay trong sách.",
+    actionLabel: "Mở Tủ sách",
+    path: "/sach",
+  },
   trustItems: [
     { id: "experience", label: "5 năm đồng hành cùng học sinh", detail: "Kiên nhẫn và sát năng lực" },
     { id: "vstep", label: "VSTEP 8.5/10 · C1", detail: "Năng lực tiếng Anh" },

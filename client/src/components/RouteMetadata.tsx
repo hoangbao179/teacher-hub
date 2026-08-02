@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { publicHomeContent, publicHomeStructuredData } from "../content/publicHome";
 import { learningRouteMetadata } from "../features/learning/seo/learningMetadata";
+import { bookRouteMetadata } from "../features/books/seo/bookMetadata";
 
 function setMeta(name: string, value: string, property = false) {
   const attribute = property ? "property" : "name";
@@ -44,6 +45,20 @@ export function RouteMetadata() {
 
     if (pathname === "/hoc" || pathname.startsWith("/hoc/")) {
       const metadata = learningRouteMetadata(pathname);
+      document.title = metadata.title;
+      setMeta("description", metadata.description);
+      setMeta("robots", metadata.robots);
+      setCanonical(metadata.canonical);
+      setMeta("og:title", metadata.title, true);
+      setMeta("og:description", metadata.description, true);
+      setMeta("og:url", metadata.canonical ?? `${publicHomeContent.siteUrl}${pathname}`, true);
+      setMeta("og:type", "website", true);
+      structuredData?.remove();
+      return;
+    }
+
+    if (pathname === "/sach" || pathname.startsWith("/sach/")) {
+      const metadata = bookRouteMetadata(pathname);
       document.title = metadata.title;
       setMeta("description", metadata.description);
       setMeta("robots", metadata.robots);

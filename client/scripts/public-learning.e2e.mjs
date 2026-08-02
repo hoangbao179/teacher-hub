@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { chromium } from "@playwright/test";
 import { learningUnits } from "../src/features/learning/content/vocabularyCatalog.ts";
+import { productionSitemapPathnames } from "../src/features/learning/seo/learningSitemap.ts";
 import { createQuizQuestions, quizItemOrder } from "../src/features/learning/quiz/quizQuestions.ts";
 
 const root = path.resolve(import.meta.dirname, "../..");
@@ -61,7 +62,7 @@ try {
   }
   const sitemap = await (await fetch(`${origin}/sitemap.xml`)).text();
   const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  assert(sitemapUrls.length === 154, `Production sitemap must contain 154 URLs, received ${sitemapUrls.length}`);
+  assert(sitemapUrls.length === productionSitemapPathnames.length, `Production sitemap must contain ${productionSitemapPathnames.length} catalog-derived URLs, received ${sitemapUrls.length}`);
   assert(new Set(sitemapUrls).size === sitemapUrls.length, "Production sitemap contains duplicate URLs");
   assert(sitemapUrls.includes(`https://tienganhcovy.com/hoc/${grade1FirstUnit.levelSlug}/${grade1FirstUnit.slug}`), "Sitemap is missing representative grade 1 Unit");
   assert(sitemapUrls.includes(`https://tienganhcovy.com/hoc/${grade9LastUnit.levelSlug}/${grade9LastUnit.slug}`), "Sitemap is missing representative grade 9 Unit");

@@ -1,4 +1,5 @@
 import { stableLearningPathnames } from "./learningMetadata.ts";
+import { stableBookPathnames } from "../../books/seo/bookMetadata.ts";
 
 const SITE_URL = "https://tienganhcovy.com";
 
@@ -9,7 +10,7 @@ const escapeXml = (value: string) => value
   .replaceAll('"', "&quot;")
   .replaceAll("'", "&apos;");
 
-export const productionSitemapPathnames = ["/", ...stableLearningPathnames] as const;
+export const productionSitemapPathnames = ["/", ...stableLearningPathnames, ...stableBookPathnames] as const;
 
 export function generateProductionSitemapXml(pathnames: readonly string[] = productionSitemapPathnames): string {
   const uniquePathnames = [...new Set(pathnames)];

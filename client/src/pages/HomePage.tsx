@@ -191,6 +191,7 @@ export function HomePage() {
             <Box data-testid="header-logo" component="img" src={content.media.headerMark} alt="" width="32" height="32" sx={{ width: { xs: 28, sm: 32 }, height: { xs: 28, sm: 32 }, flexShrink: 0 }} />
             <Typography data-testid="header-brand" component="span" variant="subtitle1" sx={{ ml: { xs: 0.25, sm: 0.5 }, minWidth: 0, flexGrow: 1, fontWeight: 800, fontSize: { xs: 14, sm: 15 }, whiteSpace: "nowrap", overflow: "visible", textOverflow: "clip" }}>{content.headerBrandName}</Typography>
             <Button data-testid="header-contact" component="a" href="#contact" size="small" sx={headerLinkSx}>Liên hệ</Button>
+            <Button data-testid="header-books" component={Link} to="/sach" size="small" aria-label="Tủ sách" startIcon={<MenuBook />} sx={{ ...headerLinkSx, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } } }}><Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Tủ sách</Box></Button>
             <Button data-testid="header-admin" component={Link} to="/admin/login" size="small" color="inherit" sx={headerLinkSx}>Quản trị</Button>
           </Toolbar>
         </Container>
@@ -273,6 +274,14 @@ export function HomePage() {
                   <Typography color="text.secondary" sx={{ mt: 0.75 }}>{content.learning.description}</Typography>
                 </Box>
                 <Button component={Link} to={content.learning.path} variant="contained" endIcon={<ArrowForward />} sx={{ minHeight: 48, minWidth: { sm: 156 }, borderRadius: 3 }}>{content.learning.actionLabel}</Button>
+              </Box>
+              <Box data-testid="homepage-book-library-cta" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0,1fr) auto" }, gap: 2.5, alignItems: "center", mt: 2, p: { xs: 2.5, sm: 3.5 }, border: "1px solid #bcded9", borderRadius: 3, background: "linear-gradient(135deg,#e7faf5 0%,#eaf7ff 58%,#fff6d9 100%)", boxShadow: "0 10px 24px rgba(24,126,119,.07)" }}>
+                <Box>
+                  <Typography variant="overline" sx={{ color: "#087a72", fontWeight: 800 }}>{content.bookLibrary.eyebrow}</Typography>
+                  <Typography component="h2" variant="h4" sx={{ mt: 0.75 }}>{content.bookLibrary.heading}</Typography>
+                  <Typography color="text.secondary" sx={{ mt: 0.75 }}>{content.bookLibrary.description}</Typography>
+                </Box>
+                <Button component={Link} to={content.bookLibrary.path} variant="contained" endIcon={<MenuBook />} sx={{ minHeight: 48, minWidth: { sm: 156 }, borderRadius: 3, bgcolor: "#159f98", "&:hover": { bgcolor: "#0c817b" } }}>{content.bookLibrary.actionLabel}</Button>
               </Box>
             </Box>
           </Container>

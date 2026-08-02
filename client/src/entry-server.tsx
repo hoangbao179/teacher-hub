@@ -7,6 +7,9 @@ import { LearningHubPage } from "./features/learning/pages/LearningHubPage";
 import { LearningLevelPage } from "./features/learning/pages/LearningLevelPage";
 import { LearningUnitPage } from "./features/learning/pages/LearningUnitPage";
 import { learningRouteMetadata, stableLearningPathnames } from "./features/learning/seo/learningMetadata";
+import { BookLibraryPage } from "./features/books/pages/BookLibraryPage";
+import { BookPreviewPage } from "./features/books/pages/BookPreviewPage";
+import { bookRouteMetadata, stableBookPathnames } from "./features/books/seo/bookMetadata";
 export { generateProductionSitemapXml, productionSitemapPathnames } from "./features/learning/seo/learningSitemap";
 import { theme } from "./theme";
 
@@ -36,6 +39,8 @@ export const stableLearningRoutes = [
   ...stableLearningPathnames,
 ].map((pathname) => ({ pathname, metadata: learningRouteMetadata(pathname) }));
 
+export const stableBookRoutes = [...stableBookPathnames].map((pathname) => ({ pathname, metadata: bookRouteMetadata(pathname) }));
+
 export function renderLearningRoute(pathname: string) {
   return renderToString(
     <ThemeProvider theme={theme}>
@@ -52,3 +57,17 @@ export function renderLearningRoute(pathname: string) {
 }
 
 export function renderLearningHubPage() { return renderLearningRoute("/hoc"); }
+
+export function renderBookRoute(pathname: string) {
+  return renderToString(
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <MemoryRouter initialEntries={[pathname]}>
+        <Routes>
+          <Route path="/sach" element={<BookLibraryPage />} />
+          <Route path="/sach/global-success/:bookSlug" element={<BookPreviewPage />} />
+        </Routes>
+      </MemoryRouter>
+    </ThemeProvider>,
+  );
+}

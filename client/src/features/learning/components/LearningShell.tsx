@@ -1,4 +1,4 @@
-import { AutoStories, HomeOutlined } from "@mui/icons-material";
+import { AutoStories, HomeOutlined, MenuBookOutlined } from "@mui/icons-material";
 import { AppBar, Box, Button, Container, Stack, Toolbar, Typography } from "@mui/material";
 import type { PropsWithChildren } from "react";
 import { Link } from "react-router-dom";
@@ -11,6 +11,9 @@ export function LearningShell({ children }: PropsWithChildren) {
           <Toolbar disableGutters sx={{ minHeight: "60px !important", gap: 1 }}>
             <Box aria-hidden="true" sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: 2.5, bgcolor: "#7455d9", color: "white" }}><AutoStories fontSize="small" /></Box>
             <Typography component={Link} to="/hoc" color="inherit" sx={{ flex: 1, minWidth: 0, minHeight: 44, display: "flex", alignItems: "center", textDecoration: "none", fontSize: { xs: 14, sm: 16 }, fontWeight: 800, whiteSpace: "nowrap" }}>Lớp tiếng Anh cô Vy</Typography>
+            <Button component={Link} to="/sach" color="inherit" aria-label="Tủ sách" startIcon={<MenuBookOutlined />} sx={{ minWidth: 44, minHeight: "44px !important", px: { xs: 1, sm: 1.5 }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.75 } } }}>
+              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Tủ sách</Box>
+            </Button>
             <Button component={Link} to="/" color="inherit" startIcon={<HomeOutlined />} sx={{ minWidth: 44, minHeight: "44px !important", px: { xs: 1, sm: 1.5 }, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.75 } } }}>
               <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Trang chủ</Box>
             </Button>

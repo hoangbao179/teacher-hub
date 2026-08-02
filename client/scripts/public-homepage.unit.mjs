@@ -59,5 +59,5 @@ test("optional Maps key is passed only through the frontend build pipeline", () 
 });
 
 test("production CSP permits the Google Maps embed iframe", () => {
-  assert.match(nginxConfig, /frame-src https:\/\/www\.youtube-nocookie\.com https:\/\/www\.google\.com;/);
+  assert.match(nginxConfig, /frame-src https:\/\/www\.youtube-nocookie\.com https:\/\/www\.google\.com https:\/\/online\.flipbuilder\.com;/);
 });

@@ -7,6 +7,13 @@ Global Success public learning release are PASS.
 The release-candidate artifact is not a production approval; real operator
 configuration is still required. **Independent full-system review: NOT STARTED.**
 
+V21B-PUBLIC-GLOBAL-SUCCESS-INTERACTIVE-BOOK-LIBRARY: **PASS LOCAL on 02/08/2026**.
+Public routes `/sach` và 13 trang sách đã có catalog tĩnh, bìa minh họa local,
+FlipBuilder allowlist, metadata/prerender/sitemap, CSP/Nginx direct-route và navigation
+Homepage/Góc học. Targeted unit, client typecheck/lint, production build và desktop/mobile
+book-library E2E đã PASS. Việc nghe hotspot và fullscreen trên thiết bị mobile thật vẫn là
+release check thủ công vì viewer/audio thuộc nguồn FlipBuilder bên ngoài.
+
 ADMIN-UI-VISUAL-REFRESH: **IMPLEMENTED – PENDING FINAL VISUAL REVIEW** on 29/07/2026.
 Admin theme/layout/shared surfaces and Dashboard are implemented with local assets;
 responsive screenshots cover 1440×900, 1366×768, 390×844 and 360×800. No route, API,
