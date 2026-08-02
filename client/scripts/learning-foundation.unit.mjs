@@ -7,7 +7,8 @@ import { audioStrategy, playPronunciation, stopPronunciation } from "../src/feat
 import { LEARNING_SETTINGS_STORAGE_KEY, getPronunciationRate, readLearningSettings, writeLearningSettings } from "../src/features/learning/storage/learningSettingsStorage.ts";
 import { createListenQuestion, seededRandom } from "../src/features/learning/listen/listenQuestions.ts";
 import { createQuizQuestions, quizItemOrder, scoreQuiz, seededQuizRandom } from "../src/features/learning/quiz/quizQuestions.ts";
-import { learningRouteMetadata } from "../src/features/learning/seo/learningMetadata.ts";
+import { learningRouteMetadata, stableLearningPathnames } from "../src/features/learning/seo/learningMetadata.ts";
+import { stableBookPathnames } from "../src/features/books/seo/bookMetadata.ts";
 import { generateProductionSitemapXml, productionSitemapPathnames } from "../src/features/learning/seo/learningSitemap.ts";
 
 class MemoryStorage {
@@ -274,7 +275,7 @@ test("learning metadata indexes stable pages and noindexes temporary quiz state"
 });
 
 test("production sitemap is catalog-derived, unique and excludes action or retired routes", () => {
-  assert.equal(productionSitemapPathnames.length, 154);
+  assert.equal(productionSitemapPathnames.length, 1 + stableLearningPathnames.length + stableBookPathnames.length);
   assert.equal(new Set(productionSitemapPathnames).size, productionSitemapPathnames.length);
   const sitemap = generateProductionSitemapXml();
   assert.ok(sitemap.includes("https://tienganhcovy.com/hoc/lop-1/lop-1-unit-01-in-the-school-playground"));
