@@ -236,7 +236,7 @@ try {
   await cdp.eval("location.assign('http://127.0.0.1:5174/admin')");
   await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "mobile dashboard restore");
 
-  await cdp.clickText("Lớp học"); await cdp.wait("location.pathname==='/admin/classes' && document.body.innerText.includes('Thêm lớp')", "classes"); await cdp.screenshot("class-list-390"); await cdp.clickText("Thêm lớp");
+  await cdp.clickLabel("Lớp học"); await cdp.wait("location.pathname==='/admin/classes' && document.body.innerText.includes('Thêm lớp')", "classes"); await cdp.screenshot("class-list-390"); await cdp.clickText("Thêm lớp");
   await cdp.wait("location.pathname==='/admin/classes/new' && document.body.innerText.includes('Tên lớp')", "class form");
   const classDefaults = await cdp.eval(`(() => {
     const valueFor = (needle) => { const label=[...document.querySelectorAll('label')].find((item)=>item.textContent.includes(needle)); return label ? document.getElementById(label.htmlFor)?.value : undefined; };
