@@ -88,7 +88,7 @@ export const publicHomeContent = {
   },
   bookLibrary: {
     eyebrow: "TỦ SÁCH TƯƠNG TÁC",
-    heading: "Global Success lớp 1–9 có bài nghe",
+    heading: "Tủ sách Tiếng Anh theo lớp",
     description: "Chọn đúng sách theo lớp, lật trang và nghe bài ngay trong sách.",
     actionLabel: "Mở Tủ sách",
     path: "/sach",

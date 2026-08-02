@@ -42,6 +42,21 @@ export const publicBookCatalog: readonly PublicBook[] = [
 
 export const enabledPublicBooks = publicBookCatalog.filter((item) => item.enabled);
 
+export interface PublicBookSeries {
+  slug: string;
+  name: string;
+}
+
+export function publicBookSeries(books: readonly PublicBook[]): readonly PublicBookSeries[] {
+  const uniqueSeries = new Map<string, PublicBookSeries>();
+  for (const book of books) {
+    if (!uniqueSeries.has(book.seriesSlug)) uniqueSeries.set(book.seriesSlug, { slug: book.seriesSlug, name: book.seriesName });
+  }
+  return [...uniqueSeries.values()];
+}
+
+export const enabledPublicBookSeries = publicBookSeries(enabledPublicBooks);
+
 export function isAllowedBookPreviewUrl(value: string): boolean {
   try {
     const url = new URL(value);

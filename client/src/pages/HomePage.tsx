@@ -19,7 +19,6 @@ import {
   WorkspacePremiumOutlined,
 } from "@mui/icons-material";
 import {
-  AppBar,
   Box,
   Button,
   Card,
@@ -28,13 +27,13 @@ import {
   Container,
   IconButton,
   Stack,
-  Toolbar,
   Typography,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { PublicHeader } from "../components/PublicHeader";
 import { publicHomeContent as content } from "../content/publicHome";
 
 function youtubeId(url: string): string | null {
@@ -112,18 +111,6 @@ const testimonialTone = [
   { background: "linear-gradient(145deg, #edf7ff, #f7fbff)", border: "#c8e1f5", accent: "#347aaa" },
   { background: "linear-gradient(145deg, #f2edff, #fbf9ff)", border: "#d9cef7", accent: "#7655c8" },
 ] as const;
-const headerLinkSx = {
-  whiteSpace: "nowrap",
-  flexShrink: 0,
-  minWidth: 0,
-  "@media (max-width:599.95px)": {
-    minHeight: "unset",
-    px: 0.75,
-    py: 0,
-    fontSize: 13,
-    lineHeight: 1.4,
-  },
-} as const;
 const actionButtonSx = {
   minHeight: 48,
   minWidth: 0,
@@ -185,17 +172,7 @@ export function HomePage() {
         "& p, & blockquote": { textWrap: "pretty" },
       }}
     >
-      <AppBar component="header" position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Container maxWidth="lg">
-          <Toolbar disableGutters sx={{ minHeight: "56px !important", gap: { xs: 0.25, sm: 0.5 } }}>
-            <Box data-testid="header-logo" component="img" src={content.media.headerMark} alt="" width="32" height="32" sx={{ width: { xs: 28, sm: 32 }, height: { xs: 28, sm: 32 }, flexShrink: 0 }} />
-            <Typography data-testid="header-brand" component="span" variant="subtitle1" sx={{ ml: { xs: 0.25, sm: 0.5 }, minWidth: 0, flexGrow: 1, fontWeight: 800, fontSize: { xs: 14, sm: 15 }, whiteSpace: "nowrap", overflow: "visible", textOverflow: "clip" }}>{content.headerBrandName}</Typography>
-            <Button data-testid="header-contact" component="a" href="#contact" size="small" sx={headerLinkSx}>Liên hệ</Button>
-            <Button data-testid="header-books" component={Link} to="/sach" size="small" aria-label="Tủ sách" startIcon={<MenuBook />} sx={{ ...headerLinkSx, "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } } }}><Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Tủ sách</Box></Button>
-            <Button data-testid="header-admin" component={Link} to="/admin/login" size="small" color="inherit" sx={headerLinkSx}>Quản trị</Button>
-          </Toolbar>
-        </Container>
-      </AppBar>
+      <PublicHeader active="home" showHomepageLinks />
 
       <Box component="main">
         <Box sx={{ background: "linear-gradient(135deg, #f7f0ff 0%, #edf8ff 54%, #effaf4 100%)" }}>

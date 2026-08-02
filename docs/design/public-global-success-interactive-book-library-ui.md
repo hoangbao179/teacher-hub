@@ -1,4 +1,4 @@
-# UI/UX — Tủ sách Global Success tương tác có audio
+# UI/UX — Tủ sách tiếng Anh tương tác có audio
 
 ## 1. Định hướng
 
@@ -10,12 +10,12 @@
 
 ## 2. Header
 
-Không refactor toàn bộ public header trong V21B.
+Header công khai dùng chung trên Homepage, Góc học và Tủ sách.
 
-- `HomePage.tsx`: thêm `Tủ sách`; trên xs có thể dùng icon + `aria-label`, trên sm+ hiển thị chữ.
-- `LearningShell.tsx`: thêm shortcut Tủ sách, mobile ẩn label.
-- `BookShell`: có shortcut Góc học và Trang chủ.
-- Kiểm tra 360 px không tràn; không đổi flow Liên hệ/Quản trị.
+- Desktop giữ logo, thương hiệu và label điều hướng rõ ràng.
+- Mobile ẩn tên thương hiệu dài; logo link về Trang chủ, `Góc học` và `Tủ sách`
+  luôn có label, touch target tối thiểu 44 px và active state rõ.
+- `Liên hệ` và `Quản trị` giữ cơ chế Homepage hiện tại, không chen vào mobile nav chính.
 
 ## 3. Homepage CTA
 
@@ -23,7 +23,7 @@ Bổ sung card nhỏ cạnh hoặc ngay sau card Góc học:
 
 ```text
 TỦ SÁCH TƯƠNG TÁC
-Global Success lớp 1–9
+Tủ sách Tiếng Anh theo lớp
 Lật trang và nghe bài ngay trong sách
 [Mở tủ sách]
 ```
@@ -35,15 +35,17 @@ Không đưa 13 card sách lên Homepage.
 ### Hero
 
 ```text
-TỦ SÁCH CÔ VY
-Chọn sách Global Success theo lớp
-Lật trang và bấm nút loa để nghe trực tiếp trong sách.
+TỦ SÁCH TIẾNG ANH
+Tủ sách Tiếng Anh theo lớp
+Chọn lớp, mở sách và bấm biểu tượng loa để nghe bài trực tiếp.
 ```
 
 ### Bộ lọc
 
-- Chỉ có `Tất cả`, `1`…`9`.
-- Không hiển thị `Bộ sách`.
+- Bộ lọc lớp có `Tất cả`, `1`…`9`.
+- Danh sách bộ sách sinh động từ catalog enabled. Chỉ hiển thị bộ lọc bộ sách
+  khi có ít nhất hai series; khi chỉ có một series thì tự ẩn.
+- Bộ lọc `grade` và `series` kết hợp qua query parameter.
 - Query `?grade=3` được hỗ trợ để chia sẻ.
 - Khi chọn lớp 3–6, hiển thị hai card Tập 1/Tập 2.
 
@@ -65,7 +67,13 @@ Card gồm:
 - CTA `Mở sách`;
 - icon Zalo nhỏ.
 
-Desktop: tối đa 2 card trong một grade group. Mobile: 1 card/hàng.
+Khi chọn `Tất cả`, desktop rộng dùng grid hai panel lớp trên một hàng; tablet/mobile
+dùng một panel trên một hàng. Panel cao theo nội dung, không stretch. Khi chọn riêng
+một lớp, panel dùng toàn bộ chiều rộng phù hợp; lớp có hai tập hiển thị hai card cạnh
+nhau trên desktop và một cột trên mobile.
+
+Card dùng layout ngang gọn, ảnh bìa `object-fit: contain` và chỉ có một CTA chính
+`Mở sách`. Không lặp CTA Zalo hoặc icon mở ngoài trên từng card.
 
 ## 5. Trang xem sách
 
@@ -82,17 +90,13 @@ Desktop: tối đa 2 card trong một grade group. Mobile: 1 card/hàng.
 - Mobile cao khoảng 70–76dvh.
 - Nền viewer tối để trang sách nổi bật.
 - Iframe không bị card padding quá dày trên mobile.
-- Có CTA ngoài iframe: fullscreen, mở tab mới, Zalo.
+- Không đặt CTA thường bên dưới iframe; dùng các điều khiển có sẵn của FlipBuilder.
+- Nút mở tab mới chỉ xuất hiện như phương án dự phòng trong cảnh báo tải chậm.
 
-### Mobile action bar
+### Mobile actions
 
-Cố định dưới đáy:
-
-```text
-[Toàn màn hình] [Hỏi mua]
-```
-
-Tính `env(safe-area-inset-bottom)` và không che footer.
+Không dùng action bar fixed hoặc CTA riêng dưới iframe trên mobile để tránh lặp
+điều khiển của FlipBuilder và không che nội dung/footer.
 
 ## 6. Trạng thái
 

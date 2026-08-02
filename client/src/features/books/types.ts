@@ -7,8 +7,8 @@ export interface PublicBook {
   shortTitle: string;
   grade: BookGrade;
   volume: 1 | 2 | null;
-  seriesSlug: "global-success";
-  seriesName: "Global Success";
+  seriesSlug: string;
+  seriesName: string;
   coverUrl: string;
   previewUrl: string;
   sourceHost: "online.flipbuilder.com";

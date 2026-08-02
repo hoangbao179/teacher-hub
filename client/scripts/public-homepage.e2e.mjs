@@ -187,13 +187,16 @@ try {
   assert(await testimonialHeading.isHidden(), "Desktop testimonial heading must remain hidden on mobile");
   assert(await page.getByText("Vuốt để xem thêm", { exact: false }).count() === 0, "Testimonial swipe hint remains");
   const header = page.locator("header");
-  await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).waitFor();
+  await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).waitFor({ state: "attached" });
+  assert(await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).isHidden(), "Mobile header brand text must be hidden");
   assert(await header.locator('img[src="/favicon.svg"]').count() === 1, "Header must contain one small brand mark");
   assert(await header.locator('img[src="/logo-covy.svg"]').count() === 0, "Stacked wordmark must not appear in the Header");
-  assert(await header.getByRole("link").count() === 2, "Header must contain only Contact and Admin links");
-  await header.getByRole("link", { name: "Liên hệ", exact: true }).waitFor();
-  await header.getByRole("link", { name: "Quản trị", exact: true }).waitFor();
-  assert(await page.getByRole("link", { name: "Quản trị", exact: true }).count() === 1, "Admin link must exist only once in the Header");
+  await header.getByRole("link", { name: "Trang chủ", exact: true }).first().waitFor();
+  await header.getByRole("link", { name: "Góc học", exact: true }).waitFor();
+  await header.getByRole("link", { name: "Tủ sách", exact: true }).waitFor();
+  assert(await header.getByRole("link", { name: "Liên hệ", exact: true }).isHidden(), "Contact must stay outside the public mobile navigation");
+  assert(await header.getByRole("link", { name: "Quản trị", exact: true }).isHidden(), "Admin must stay outside the public mobile navigation");
+  assert(await page.getByTestId("header-admin").count() === 1, "Admin link must exist only once in the Header");
   assert(await page.getByRole("heading", { level: 2, name: "Video học tiếng Anh tham khảo", exact: true }).count() === 0, "Old video heading remains");
 
   const hero = page.locator("section").filter({ has: page.locator("#hero-heading") }).first();
@@ -291,6 +294,7 @@ try {
     await page.setViewportSize(viewport);
     assert(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1, `Public 404 horizontal overflow at ${viewport.width}px`);
   }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(origin, { waitUntil: "networkidle" });
 
   await header.getByRole("link", { name: "Liên hệ", exact: true }).click();
@@ -329,11 +333,15 @@ try {
       const header = document.querySelector("header");
       const logo = document.querySelector('[data-testid="header-logo"]');
       const brand = document.querySelector('[data-testid="header-brand"]');
-      const links = [
+      const linkCandidates = [
+        document.querySelector('[data-testid="header-home"]'),
+        document.querySelector('[data-testid="header-learning"]'),
+        document.querySelector('[data-testid="header-books"]'),
         document.querySelector('[data-testid="header-contact"]'),
         document.querySelector('[data-testid="header-admin"]'),
       ].filter(Boolean);
-      const items = [logo, brand, ...links].filter(Boolean).map((item) => item.getBoundingClientRect());
+      const links = linkCandidates.filter((item) => item.getBoundingClientRect().width > 0);
+      const items = [logo, brand, ...links].filter((item) => item && item.getBoundingClientRect().width > 0).map((item) => item.getBoundingClientRect());
       const brandOccurrences = (header?.textContent?.match(/Lớp tiếng Anh cô Vy/g) ?? []).length;
       const brandStyle = brand ? window.getComputedStyle(brand) : null;
       return {
@@ -346,6 +354,7 @@ try {
         brandScrollWidth: brand?.scrollWidth ?? Number.POSITIVE_INFINITY,
         brandClientWidth: brand?.clientWidth ?? 0,
         brandTextOverflow: brandStyle?.textOverflow ?? "",
+        brandDisplay: brandStyle?.display ?? "",
         linkMetrics: links.map((link) => {
           const style = window.getComputedStyle(link);
           return {
@@ -366,9 +375,13 @@ try {
     assert(metrics.linkMetrics.every((link) => link.whiteSpace === "nowrap"), `Header link wraps at ${viewport.width}px`);
     if (viewport.width <= 430) {
       assert(Math.abs(metrics.logoWidth - 28) <= 1, `Mobile header logo must be 28px at ${viewport.width}px`);
-      assert(metrics.linkMetrics.every((link) => link.height <= link.lineHeight * 1.25), `Mobile header link is taller than one line at ${viewport.width}px`);
+      assert(metrics.brandDisplay === "none", `Mobile header brand text remains at ${viewport.width}px`);
+      assert(metrics.linkMetrics.every((link) => link.height >= 44), `Mobile header touch target is too short at ${viewport.width}px`);
+      assert(await page.getByTestId("header-learning").getByText("Góc học", { exact: true }).isVisible(), `Mobile Góc học label is missing at ${viewport.width}px`);
+      assert(await page.getByTestId("header-books").getByText("Tủ sách", { exact: true }).isVisible(), `Mobile Tủ sách label is missing at ${viewport.width}px`);
     } else {
       assert(Math.abs(metrics.logoWidth - 32) <= 1, `Header logo must remain 32px at ${viewport.width}px`);
+      assert(metrics.brandDisplay !== "none", `Desktop header brand is hidden at ${viewport.width}px`);
     }
     const homepageLayout = await page.evaluate(() => {
       const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
