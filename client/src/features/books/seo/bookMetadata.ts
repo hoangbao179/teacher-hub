@@ -11,22 +11,22 @@ export interface BookRouteMetadata {
 
 export const stableBookPathnames = [
   "/sach",
-  ...enabledPublicBooks.map((book) => `/sach/global-success/${book.slug}`),
+  ...enabledPublicBooks.map((book) => `/sach/${book.seriesSlug}/${book.slug}`),
 ] as const;
 
 export function bookRouteMetadata(pathname: string): BookRouteMetadata {
   if (pathname === "/sach") {
     return {
-      title: "Tủ sách Tiếng Anh Global Success lớp 1–9 | Tiếng Anh cô Vy",
-      description: "Chọn sách Tiếng Anh Global Success lớp 1–9, lật trang và nghe bài trực tiếp trong sách cùng cô Vy.",
+      title: "Tủ sách Tiếng Anh lớp 1–9 | Tiếng Anh cô Vy",
+      description: "Đọc sách học sinh và tài liệu giáo viên Tiếng Anh theo lớp từ nguồn chính thức Nhà xuất bản Giáo dục Việt Nam.",
       robots: "index,follow,max-image-preview:large",
       canonical: `${publicHomeContent.siteUrl}/sach`,
       valid: true,
     };
   }
 
-  const match = pathname.match(/^\/sach\/global-success\/([^/]+)$/);
-  const book = match ? findPublicBook(match[1]) : undefined;
+  const match = pathname.match(/^\/sach\/([^/]+)\/([^/]+)(\/nghe)?$/);
+  const book = match ? findPublicBook(match[1], match[2]) : undefined;
   if (!book) {
     return {
       title: `Không tìm thấy sách | ${publicHomeContent.brandName}`,
@@ -36,11 +36,28 @@ export function bookRouteMetadata(pathname: string): BookRouteMetadata {
     };
   }
 
+  if (match?.[3] === "/nghe") {
+    if (!book.interactiveAudioUrl || book.bookType !== "STUDENT_BOOK") {
+      return {
+        title: `Không tìm thấy bản nghe | ${publicHomeContent.brandName}`,
+        description: "Bản nghe tương tác này chưa có trong Tủ sách cô Vy.",
+        robots: "noindex,follow",
+        valid: false,
+      };
+    }
+    return {
+      title: `Nghe tương tác ${book.shortTitle} | Tiếng Anh cô Vy`,
+      description: `Mở bản nghe tương tác bên ngoài cho ${book.title}.`,
+      robots: "noindex,follow",
+      valid: true,
+    };
+  }
+
   return {
-    title: `${book.shortTitle} Global Success có audio | Tiếng Anh cô Vy`,
-    description: `Xem ${book.title}, lật trang, phóng to và nhấn biểu tượng loa để nghe bài trực tiếp trong sách.`,
+    title: `${book.shortTitle} | Tiếng Anh cô Vy`,
+    description: `Đọc ${book.title} từ nguồn chính thức Nhà xuất bản Giáo dục Việt Nam.`,
     robots: "index,follow,max-image-preview:large",
-    canonical: `${publicHomeContent.siteUrl}/sach/global-success/${book.slug}`,
+    canonical: `${publicHomeContent.siteUrl}/sach/${book.seriesSlug}/${book.slug}`,
     valid: true,
   };
 }

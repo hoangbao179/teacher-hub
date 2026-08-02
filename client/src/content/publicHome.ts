@@ -87,9 +87,9 @@ export const publicHomeContent = {
     path: "/hoc",
   },
   bookLibrary: {
-    eyebrow: "TỦ SÁCH TƯƠNG TÁC",
-    heading: "Tủ sách Tiếng Anh theo lớp",
-    description: "Chọn đúng sách theo lớp, lật trang và nghe bài ngay trong sách.",
+    eyebrow: "TỦ SÁCH TIẾNG ANH",
+    heading: "Sách học sinh và tài liệu giáo viên",
+    description: "Đọc sách Tiếng Anh theo lớp từ nguồn chính thức của Nhà xuất bản Giáo dục Việt Nam.",
     actionLabel: "Mở Tủ sách",
     path: "/sach",
   },

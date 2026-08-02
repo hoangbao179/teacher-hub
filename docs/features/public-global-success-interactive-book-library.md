@@ -1,170 +1,70 @@
-# Tủ sách công khai Global Success có audio — V21B
+# Official English Book Library
 
-## 1. Mục tiêu
+## Mục tiêu và phạm vi
 
-Bổ sung tủ sách công khai tại `tienganhcovy.com` để học sinh, phụ huynh và cô giáo có thể:
+Tủ sách công khai tại `/sach` giúp học sinh đọc SGK và giáo viên đọc SGV Tiếng
+Anh lớp 1–9 từ nguồn chính thức của Nhà xuất bản Giáo dục Việt Nam (NXBGD).
+FlipBuilder chỉ là nguồn phụ cho bản nghe tương tác của những SGK đã được xác
+minh.
 
-- chọn nhanh sách theo lớp;
-- phân biệt Tập 1/Tập 2 ở lớp 3–6;
-- xem sách bằng FlipBuilder ngay trong website;
-- lật trang, phóng to, toàn màn hình và bấm nút loa để nghe;
-- liên hệ cô Vy qua Zalo;
-- sử dụng không cần đăng nhập trên desktop và mobile.
+Feature dùng catalog và page manifest tĩnh ở frontend; không có database, API,
+Admin CRUD, runtime scraping, proxy hoặc rehost PDF/audio/ảnh trang sách.
 
-## 2. Phạm vi V21B
+## Nguồn và data model
 
-### Có triển khai
+- `officialDetailUrl` và `officialViewerUrl`: chỉ `https://taphuan.nxbgd.vn/tap-huan/`.
+- `officialPageManifestUrl`: JSON local dưới `/book-pages/`; mỗi URL ảnh đã xác
+  minh dùng `https://cdn3.olm.vn/upload/taphuan/`.
+- `interactiveAudioUrl`: tùy chọn, chỉ dành cho `STUDENT_BOOK`, chỉ
+  `https://online.flipbuilder.com/sdtta/`.
+- `bookType`: `STUDENT_BOOK`, `TEACHER_BOOK`, hoặc `WORKBOOK` cho giai đoạn sau.
+- NXBGD không được mô tả là nguồn audio; FlipBuilder không được mô tả là nguồn
+  chính thức của nhà xuất bản.
 
-- 1 bộ sách `Global Success`;
-- lớp 1–9;
-- 13 sách học sinh;
-- catalog tĩnh trong frontend;
-- `/sach` và `/sach/global-success/:bookSlug`;
-- iframe FlipBuilder;
-- audio capability hiển thị rõ trên UI;
-- fallback mở tab mới;
-- SEO, sitemap, prerender và direct-route Nginx;
-- bìa minh họa local;
-- Zalo CTA lấy từ `publicHomeContent.contact.zaloUrl`.
+Catalog đã xác minh gồm 13 SGK và 8 SGV. Lớp 6 chưa có link mang nhãn SGV trên
+trang chi tiết NXBGD nên không tạo record suy đoán. Không đưa SBT vào phạm vi.
 
-### Không triển khai
-
-- database/migration/API/Admin CRUD;
-- upload PDF;
-- PDF.js hoặc tự dựng page flip;
-- tải/copy audio về VPS;
-- giới hạn trang theo tài khoản học sinh;
-- giỏ hàng, giá, đơn hàng, thanh toán;
-- bộ lọc bộ sách khi chỉ có Global Success.
-
-## 3. Catalog chuẩn
-
-| Lớp | Tập | Slug | Mã FlipBuilder |
-|---:|---:|---|---|
-| 1 | – | `tieng-anh-1` | `rhkc` |
-| 2 | – | `tieng-anh-2` | `swxe` |
-| 3 | 1 | `tieng-anh-3-tap-1` | `jreh` |
-| 3 | 2 | `tieng-anh-3-tap-2` | `boce` |
-| 4 | 1 | `tieng-anh-4-tap-1` | `nhxm` |
-| 4 | 2 | `tieng-anh-4-tap-2` | `hdnt` |
-| 5 | 1 | `tieng-anh-5-tap-1` | `yqgr` |
-| 5 | 2 | `tieng-anh-5-tap-2` | `fwzo` |
-| 6 | 1 | `tieng-anh-6-tap-1` | `xyup` |
-| 6 | 2 | `tieng-anh-6-tap-2` | `gupl` |
-| 7 | – | `tieng-anh-7` | `izpd` |
-| 8 | – | `tieng-anh-8` | `dnxb` |
-| 9 | – | `tieng-anh-9` | `gqmy` |
-
-Nguồn đầy đủ nằm tại `docs/operations/global-success-book-source-register.md`.
-
-## 4. Luồng người dùng
-
-```text
-Homepage / menu
-→ /sach
-→ chọn lớp
-→ chọn Tập nếu lớp có hai tập
-→ /sach/global-success/:bookSlug
-→ nhúng viewer FlipBuilder
-→ bấm nút loa trong trang sách để nghe
-```
-
-Không tạo wizard. Bộ lọc lớp và danh sách sách nằm trên cùng một trang.
-
-## 5. Mô hình dữ liệu
-
-```ts
-export type PublicBook = {
-  id: string;
-  slug: string;
-  title: string;
-  grade: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-  volume?: 1 | 2;
-  seriesSlug: "global-success";
-  seriesName: "Global Success";
-  bookType: "STUDENT_BOOK";
-  viewerKind: "FLIPBUILDER";
-  previewUrl: string;
-  coverUrl: string;
-  capabilities: {
-    pageFlip: true;
-    zoom: true;
-    fullscreen: true;
-    audio: true;
-  };
-  audioVerification: "CONFIRMED_BY_PRODUCT_OWNER";
-  enabled: boolean;
-  displayOrder: number;
-};
-```
-
-## 6. Routing
+## Routing
 
 ```text
 /sach
-/sach/global-success/tieng-anh-1
-/sach/global-success/tieng-anh-3-tap-1
-/sach/global-success/tieng-anh-3-tap-2
-...
-/sach/global-success/tieng-anh-9
+/sach/:seriesSlug/:bookSlug
+/sach/:seriesSlug/:bookSlug/nghe
 ```
 
-Không dùng `:grade` vì một lớp có thể có nhiều tập.
+Route đọc là route chính, indexable, dùng NXBGD. Route `/nghe` chỉ tồn tại khi
+SGK có `interactiveAudioUrl`, đặt `noindex,follow`, không prerender và không nằm
+trong sitemap.
 
-## 7. Viewer
+## Viewer
 
-Iframe tối thiểu:
+Viewer đọc chính dùng `OfficialBookReader` và StPageFlip: dưới 900 px hoặc khi
+container không đủ rộng hiển thị một trang; desktop đủ rộng hiển thị bìa đơn rồi
+các spread trái–phải liên tiếp. Manifest page là source of truth duy nhất cho
+toolbar và query `?page=`; engine chỉ cập nhật trang sau khi lật hoàn tất.
 
-```tsx
-<iframe
-  title={`Xem ${book.title}`}
-  src={book.previewUrl}
-  loading="lazy"
-  referrerPolicy="strict-origin-when-cross-origin"
-  allow="autoplay; fullscreen"
-  allowFullScreen
-/>
-```
+Ở zoom 100%, swipe/kéo góc và nút điều hướng dùng hiệu ứng lật. Zoom 100–250% dùng
+lớp ảnh riêng với native scroll và khóa gesture lật; đổi trang hoặc `Vừa trang`
+đưa zoom về 100% và reset scroll. Toàn bộ page node cần cho engine vẫn tồn tại,
+nhưng chỉ spread hiện tại và các trang lân cận được gắn URL ảnh để tránh tải cả
+cuốn lúc mở. Lỗi khởi tạo engine fallback về reader ảnh đơn, không dùng iframe.
 
-### Quy tắc
+Manifest được thu thập một lần khi triển khai; trình duyệt người dùng không scrape
+NXBGD. Ảnh vẫn tải trực tiếp từ CDN chính thức, không lưu trên VPS. Nếu manifest
+thiếu/lỗi hoặc ảnh không tải được, UI không dùng iframe mà hiện fallback mở nguồn
+NXBGD ở tab mới.
 
-- Chỉ cho URL từ `https://online.flipbuilder.com/sdtta/`.
-- Không dùng `dangerouslySetInnerHTML`.
-- Không thêm `sandbox` ở V21B nếu chưa test đầy đủ; sandbox có thể làm hỏng JS/audio/fullscreen của viewer.
-- Không đọc hoặc điều khiển DOM bên trong iframe do cross-origin.
-- Có timer UI khoảng 8 giây; sau đó hiện thêm CTA `Mở ở tab mới`, nhưng không kết luận iframe lỗi chỉ dựa trên cross-origin.
-- Parent CTA fullscreen có thể fullscreen wrapper; viewer vẫn có fullscreen riêng bên trong.
+Viewer FlipBuilder nằm riêng trong `InteractiveAudioViewer`, giữ autoplay,
+fullscreen, cảnh báo tải chậm, fallback tab mới và sandbox không cấp quyền top
+navigation. Không truy cập DOM cross-origin, inject CSS, xóa `.clickToRead`, khóa
+xoay màn hình hoặc proxy nội dung.
 
-## 8. Audio
+## SEO và vận hành
 
-- Audio nằm trong viewer FlipBuilder, không do Teacher Hub host.
-- UI ngoài iframe chỉ ghi `Có bài nghe`.
-- Không tạo player audio riêng.
-- Không cố map track theo trang.
-- `allow="autoplay"` giúp viewer sử dụng audio; âm thanh vẫn nên bắt đầu sau thao tác người dùng.
+`/sach`, toàn bộ SGK và SGV được prerender và đưa vào sitemap từ catalog. Copy
+SEO của route đọc không mặc định quảng bá audio. CSP public allowlist
+`cdn3.olm.vn` cho ảnh; frame-src NXBGD/FlipBuilder cùng YouTube và Google vẫn giữ
+theo domain cụ thể.
 
-## 9. Hiệu năng
-
-- `/sach` không tạo 13 iframe.
-- Chỉ trang chi tiết tạo một iframe.
-- Cover dùng asset local, kích thước hợp lý, cache immutable.
-- Lazy-load trang chi tiết.
-- Không proxy viewer qua backend.
-
-## 10. SEO
-
-- `/sach`: indexable, canonical riêng.
-- 13 route sách: indexable, title/description/canonical riêng.
-- Metadata dùng catalog làm source of truth.
-- Prerender `/sach` và 13 route sách.
-- Sitemap tổng = homepage + learning routes + book routes.
-- Không tạo Product schema, giá, rating hoặc inventory giả.
-
-## 11. Dependency ngoài hệ thống
-
-Các link `sdtta` có thể thay đổi hoặc bị gỡ. Release phải có:
-
-- CTA `Mở ở tab mới`;
-- trang trạng thái thân thiện khi source disabled;
-- catalog `enabled` để tắt một cuốn mà không sửa UI logic;
-- checklist kiểm tra link định kỳ trước deploy.
+Nguồn chi tiết và quyết định deduplicate nằm tại
+`docs/operations/global-success-book-source-register.md`.

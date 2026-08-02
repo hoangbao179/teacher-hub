@@ -1,34 +1,51 @@
-# Global Success book source register
+# Official English Book Library source register
 
-> Trạng thái tại 2026-08-02. URL đã được kiểm tra truy cập. Audio được chủ dự án xác nhận thủ công trên từng sách.
+Trạng thái xác minh: 2026-08-02. `NXBGD_OFFICIAL_READER` là nguồn đọc chính;
+`FLIPBUILDER_INTERACTIVE_AUDIO` chỉ là nguồn nghe phụ của SGK. NXBGD không có
+audio và FlipBuilder không được tuyên bố là nguồn chính thức của nhà xuất bản.
+Đã xác minh 21 manifest với tổng cộng 3.442 URL ảnh trang chính thức.
 
-| Lớp | Tập | Tiêu đề nguồn | Viewer URL | Audio | Enabled |
-|---:|---:|---|---|---|---|
-| 1 | – | LOP 1 MACMILLIAN 2021 SB | `https://online.flipbuilder.com/sdtta/rhkc/` | Confirmed by product owner | Yes |
-| 2 | – | SGK LOP 2_MACMILLAN SB | `https://online.flipbuilder.com/sdtta/swxe/` | Confirmed by product owner | Yes |
-| 3 | 1 | SUCCESS TiENG Anh 3 - TAP 1 SH | `https://online.flipbuilder.com/sdtta/jreh/` | Confirmed by product owner | Yes |
-| 3 | 2 | SHS SUCCESS Tieng Anh 3 - tap 2 | `https://online.flipbuilder.com/sdtta/boce/` | Confirmed by product owner | Yes |
-| 4 | 1 | sgk lop 4 success global tap 1 NEW | `https://online.flipbuilder.com/sdtta/nhxm/` | Confirmed by product owner | Yes |
-| 4 | 2 | sgk success global 4 tap 2 | `https://online.flipbuilder.com/sdtta/hdnt/` | Confirmed by product owner | Yes |
-| 5 | 1 | Global success 5 hs tap 1 | `https://online.flipbuilder.com/sdtta/yqgr/` | Confirmed by product owner | Yes |
-| 5 | 2 | Global success 5 hs tap 2 | `https://online.flipbuilder.com/sdtta/fwzo/` | Confirmed by product owner | Yes |
-| 6 | 1 | shs-tieng-anh-6-tap-1-Global-Success | `https://online.flipbuilder.com/sdtta/xyup/` | Confirmed by product owner | Yes |
-| 6 | 2 | shs-tieng-anh-6-tap-2-Global-Success | `https://online.flipbuilder.com/sdtta/gupl/` | Confirmed by product owner | Yes |
-| 7 | – | GLOBAL 7 SB_Neat | `https://online.flipbuilder.com/sdtta/izpd/` | Confirmed by product owner | Yes |
-| 8 | – | success 8 SH itool | `https://online.flipbuilder.com/sdtta/dnxb/` | Confirmed by product owner | Yes |
-| 9 | – | Global success 9 hs | `https://online.flipbuilder.com/sdtta/gqmy/` | Confirmed by product owner | Yes |
+| grade | volume | bookType | title | officialDetailUrl | officialViewerUrl | officialViewerMode | officialPageManifestUrl | pageCount | manifestVerifiedAt | manifestStatus | interactiveAudioUrl | verifiedAt | enabled | note |
+|---:|---:|---|---|---|---|---|---|---:|---|---|---|---|---|---|
+| 1 | – | STUDENT_BOOK | Tiếng Anh 1 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-1-global.953746322` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgk-tieng-anh-1-global-success.4914061146` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-1.json` | 78 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/rhkc/` | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER + FLIPBUILDER_INTERACTIVE_AUDIO |
+| 2 | – | STUDENT_BOOK | Tiếng Anh 2 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-2-global-success.953747559` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/tieng-anh-2-global-success.4914084740` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-2.json` | 78 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/swxe/` | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER + FLIPBUILDER_INTERACTIVE_AUDIO |
+| 3 | 1 | STUDENT_BOOK | Tiếng Anh 3 — Global Success — Tập 1 | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-3-tap-1-global-success-939799810.939799810` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/shs-tieng-anh-3-tap-1-global-success.4537411435` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-3-tap-1.json` | 82 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/jreh/` | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER + FLIPBUILDER_INTERACTIVE_AUDIO |
+| 3 | 2 | STUDENT_BOOK | Tiếng Anh 3 — Global Success — Tập 2 | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-3-tap-2-global-success-940033537.940033537` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgk-tieng-anh-3-tap-2-global-success.4914101275` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-3-tap-2.json` | 78 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/boce/` | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER + FLIPBUILDER_INTERACTIVE_AUDIO |
+| 4 | 1 | STUDENT_BOOK | Tiếng Anh 4 — Global Success — Tập 1 | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-4-global-success-tap-mot-939702978.939702978` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgk-tieng-anh-4-global-success-tap-mot.4914111660` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-4-tap-1.json` | 83 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/nhxm/` | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER + FLIPBUILDER_INTERACTIVE_AUDIO |
+| 4 | 2 | STUDENT_BOOK | Tiếng Anh 4 — Global Success — Tập 2 | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-4-global-success-tap-hai-939706466.939706466` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgk-tieng-anh-4-global-success-tap-hai.4914832178` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-4-tap-2.json` | 79 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/hdnt/` | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER + FLIPBUILDER_INTERACTIVE_AUDIO |
+| 5 | 1 | STUDENT_BOOK | Tiếng Anh 5 — Global Success — Tập 1 | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-5-global-success-tap-mot-940008529.940008529` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgk-tieng-anh-5-global-success-tap-mot.4914842460` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-5-tap-1.json` | 83 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/yqgr/` | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER + FLIPBUILDER_INTERACTIVE_AUDIO |
+| 5 | 2 | STUDENT_BOOK | Tiếng Anh 5 — Global Success — Tập 2 | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-5-global-success-tap-hai-939704277.939704277` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgk-tieng-anh-5-global-success-tap-hai.4914843136` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-5-tap-2.json` | 79 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/fwzo/` | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER + FLIPBUILDER_INTERACTIVE_AUDIO |
+| 6 | 1 | STUDENT_BOOK | Tiếng Anh 6 — Global Success — Tập 1 | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-6-tap-1-global-success-939897970.939897970` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/shs-tieng-anh-6-tap-1-global-success.4537971287` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-6-tap-1.json` | 74 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/xyup/` | 2026-08-02 | Yes | Link SGK trùng loại khác đã bỏ khỏi catalog |
+| 6 | 2 | STUDENT_BOOK | Tiếng Anh 6 — Global Success — Tập 2 | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-6-tap-2-global-success-939862160.939862160` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/shs-tieng-anh-6-tap-2-global-success.4537817335` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-6-tap-2.json` | 74 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/gupl/` | 2026-08-02 | Yes | Link SGK trùng loại khác đã bỏ khỏi catalog |
+| 7 | – | STUDENT_BOOK | Tiếng Anh 7 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-7-global-success-940166686.940166686` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/shs-tieng-anh-7-global-success.4539950416` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-7.json` | 142 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/izpd/` | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER + FLIPBUILDER_INTERACTIVE_AUDIO |
+| 8 | – | STUDENT_BOOK | Tiếng Anh 8 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-8-global-success-939880560.939880560` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/shs-tieng-anh-8-global-success.4537898429` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-8.json` | 141 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/dnxb/` | 2026-08-02 | Yes | Bỏ SBT và link SGK trùng loại |
+| 9 | – | STUDENT_BOOK | Tiếng Anh 9 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-9-global-success-940174594.940174594` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/shs-tieng-anh-9-global-success.4539971365` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-9.json` | 142 | 2026-08-02 | VERIFIED | `https://online.flipbuilder.com/sdtta/gqmy/` | 2026-08-02 | Yes | Bỏ SBT và link SGK trùng loại |
+| 1 | – | TEACHER_BOOK | Sách giáo viên Tiếng Anh 1 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-1-global.953746322` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgv-tieng-anh-1-global-success.4914064272` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-1-sach-giao-vien.json` | 167 | 2026-08-02 | VERIFIED | – | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER; NXBGD không có audio |
+| 2 | – | TEACHER_BOOK | Sách giáo viên Tiếng Anh 2 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-2-global-success.953747559` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgv-tieng-anh-1-global-success.4914087132` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-2-sach-giao-vien.json` | 150 | 2026-08-02 | VERIFIED | – | 2026-08-02 | Yes | Slug nguồn ghi lớp 1 nhưng title/viewer là SGV lớp 2 |
+| 3 | – | TEACHER_BOOK | Sách giáo viên Tiếng Anh 3 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-3-tap-1-global-success-939799810.939799810` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgv-tieng-anh-3-global-success.4914826734` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-3-sach-giao-vien.json` | 314 | 2026-08-02 | VERIFIED | – | 2026-08-02 | Yes | Chỉ giữ một SGV; trang tập 2 trỏ URL khác cùng title |
+| 4 | – | TEACHER_BOOK | Sách giáo viên Tiếng Anh 4 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-4-global-success-tap-mot-939702978.939702978` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgv-tieng-anh-4-global-success.4915421999` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-4-sach-giao-vien.json` | 330 | 2026-08-02 | VERIFIED | – | 2026-08-02 | Yes | Chỉ giữ một SGV; trang tập 2 trỏ URL khác cùng title |
+| 5 | – | TEACHER_BOOK | Sách giáo viên Tiếng Anh 5 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-5-global-success-tap-mot-940008529.940008529` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgv-tieng-anh-5-global-success.4915599987` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-5-sach-giao-vien.json` | 370 | 2026-08-02 | VERIFIED | – | 2026-08-02 | Yes | Chỉ giữ một SGV; trang tập 2 trỏ URL khác cùng title |
+| 7 | – | TEACHER_BOOK | Sách giáo viên Tiếng Anh 7 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-7-global-success-940166686.940166686` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgv-tieng-anh-7-global-success.4920457641` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-7-sach-giao-vien.json` | 278 | 2026-08-02 | VERIFIED | – | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER; NXBGD không có audio |
+| 8 | – | TEACHER_BOOK | Sách giáo viên Tiếng Anh 8 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-8-global-success-939880560.939880560` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgv-tieng-anh-8-global-success.4923606952` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-8-sach-giao-vien.json` | 278 | 2026-08-02 | VERIFIED | – | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER; NXBGD không có audio |
+| 9 | – | TEACHER_BOOK | Sách giáo viên Tiếng Anh 9 — Global Success | `https://taphuan.nxbgd.vn/tap-huan/chi-tiet-sach/tieng-anh-9-global-success-940174594.940174594` | `https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgv-tieng-anh-9-global-success.4923774109` | PAGE_IMAGES | `/book-pages/global-success/tieng-anh-9-sach-giao-vien.json` | 342 | 2026-08-02 | VERIFIED | – | 2026-08-02 | Yes | NXBGD_OFFICIAL_READER; NXBGD không có audio |
+
+## Thiếu nguồn và deduplicate
+
+- Không tìm thấy link mang nhãn SGV lớp 6 trên hai trang chi tiết chính thức.
+- Lớp 3–5 có một SGV theo lớp nhưng trang Tập 1/Tập 2 sinh URL khác nhau cùng
+  title; catalog giữ một record để không nhân đôi tài liệu end user.
+- Lớp 6, 8 và 9 có nhiều link mang nhãn SGK; catalog giữ một bản SGK theo cấu
+  trúc 13 cuốn đã xác minh, không đưa SBT vào.
 
 ## Quy tắc vận hành
 
-- Không đổi URL sang website chia sẻ PDF khác.
-- Không tải file PDF/audio từ các URL này về VPS.
-- Trước mỗi release lớn, mở ít nhất một trang và thử nút nghe của từng URL.
-- Nếu URL chết, đặt `enabled: false` hoặc thay bằng URL đã được chủ dự án duyệt.
-- Không cho Admin hoặc query string nhập URL iframe tùy ý.
-- Dependency ngoài hệ thống: tài khoản `sdtta` có thể đổi/xóa nội dung mà Teacher Hub không kiểm soát.
-
-## Phân loại bằng chứng
-
-- `LINK_REACHABLE`: kiểm tra URL/trang tiêu đề qua web ngày 2026-08-02.
-- `AUDIO_CONFIRMED_BY_PRODUCT_OWNER`: chủ dự án đã mở và xác nhận có nút nghe.
-- Không tuyên bố đây là nguồn chính thức của nhà xuất bản nếu chưa có giấy tờ/xác nhận riêng.
+- Không scrape NXBGD ở runtime; không tải hoặc lưu PDF, ảnh trang sách hay audio
+  trên VPS.
+- Deduplicate URL trước, sau đó đối chiếu grade/bookType/title khi NXBGD sinh URL
+  khác cho cùng một tài liệu.
+- Manifest chỉ lưu URL ảnh đã lấy từ DOM/source chính thức; không suy đoán pattern
+  timestamp và không scrape ở runtime.
+- Nếu manifest thiếu/lỗi hoặc CDN không còn hợp lệ, đổi đúng record sang
+  `EXTERNAL`; không quay lại iframe và không proxy qua backend.
+- Trước release, kiểm tra link và khả năng nghe của từng
+  `FLIPBUILDER_INTERACTIVE_AUDIO` còn enabled.

@@ -1,14 +1,13 @@
-import { HeadphonesOutlined } from "@mui/icons-material";
 import { Box, Breadcrumbs, Chip, Container, Link as MuiLink, Stack, Typography } from "@mui/material";
 import { Link, useParams } from "react-router-dom";
 import { BookShell } from "../components/BookShell";
-import { BookViewer } from "../components/BookViewer";
+import { OfficialBookViewer } from "../components/OfficialBookViewer";
 import { findPublicBook } from "../content/publicBookCatalog";
 import { BookNotFoundContent } from "./BookNotFoundPage";
 
 export function BookPreviewPage() {
-  const { bookSlug = "" } = useParams();
-  const book = findPublicBook(bookSlug);
+  const { seriesSlug = "", bookSlug = "" } = useParams();
+  const book = findPublicBook(seriesSlug, bookSlug);
   if (!book) return <BookShell><BookNotFoundContent /></BookShell>;
 
   return (
@@ -16,7 +15,7 @@ export function BookPreviewPage() {
       <Container component="main" maxWidth="lg" sx={{ py: { xs: 2.5, sm: 3.5 } }}>
         <Breadcrumbs aria-label="Đường dẫn Tủ sách" sx={{ mb: { xs: 1.5, sm: 2 }, fontSize: 13 }}>
           <MuiLink component={Link} to="/sach" underline="hover" color="inherit">Tủ sách</MuiLink>
-          <MuiLink component={Link} to={`/sach?grade=${book.grade}`} underline="hover" color="inherit">Lớp {book.grade}</MuiLink>
+          <MuiLink component={Link} to={`/sach?grade=${book.grade}&type=${book.bookType === "TEACHER_BOOK" ? "teacher" : "student"}`} underline="hover" color="inherit">Lớp {book.grade}</MuiLink>
           {book.volume && <Typography color="text.secondary" sx={{ fontSize: 13 }}>Tập {book.volume}</Typography>}
         </Breadcrumbs>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "76px minmax(0,1fr)", sm: "112px minmax(0,1fr)" }, gap: { xs: 1.5, sm: 2.5 }, alignItems: "start", mb: { xs: 1.5, sm: 2 } }}>
@@ -27,13 +26,14 @@ export function BookPreviewPage() {
             <Stack direction="row" useFlexGap sx={{ mt: 1, flexWrap: "wrap", gap: 0.625 }}>
               <Chip size="small" label={`Lớp ${book.grade}`} />
               {book.volume && <Chip size="small" label={`Tập ${book.volume}`} />}
-              <Chip size="small" icon={<HeadphonesOutlined />} label="Có bài nghe tương tác" sx={{ bgcolor: "#fff1df", color: "#a64b09", fontWeight: 700 }} />
+              <Chip size="small" label={book.bookType === "TEACHER_BOOK" ? "Tài liệu giáo viên" : "Sách học sinh"} />
+              <Chip size="small" label="Nguồn chính thức NXBGD" sx={{ bgcolor: "#e1f7f1", color: "#087a72", fontWeight: 700 }} />
             </Stack>
-            <Typography color="text.secondary" sx={{ mt: 1.25, display: { xs: "none", sm: "block" } }}>Nhấn biểu tượng loa ngay trên trang sách để nghe. Viewer còn hỗ trợ lật trang, phóng to và toàn màn hình.</Typography>
+            <Typography color="text.secondary" sx={{ mt: 1.25, display: { xs: "none", sm: "block" } }}>Đọc phiên bản sách điện tử từ Nhà xuất bản Giáo dục Việt Nam.</Typography>
           </Box>
         </Box>
-        <Typography color="text.secondary" sx={{ mb: 1.5, display: { xs: "block", sm: "none" }, fontSize: 14 }}>Nhấn biểu tượng loa trong sách để nghe.</Typography>
-        <BookViewer book={book} />
+        <Typography color="text.secondary" sx={{ mb: 1.5, display: { xs: "block", sm: "none" }, fontSize: 14 }}>Đọc phiên bản sách điện tử từ Nhà xuất bản Giáo dục Việt Nam.</Typography>
+        <OfficialBookViewer book={book} />
       </Container>
     </BookShell>
   );

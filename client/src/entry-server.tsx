@@ -65,7 +65,7 @@ export function renderBookRoute(pathname: string) {
       <MemoryRouter initialEntries={[pathname]}>
         <Routes>
           <Route path="/sach" element={<BookLibraryPage />} />
-          <Route path="/sach/global-success/:bookSlug" element={<BookPreviewPage />} />
+          <Route path="/sach/:seriesSlug/:bookSlug" element={<BookPreviewPage />} />
         </Routes>
       </MemoryRouter>
     </ThemeProvider>,

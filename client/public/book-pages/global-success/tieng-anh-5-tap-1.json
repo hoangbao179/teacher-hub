@@ -1,0 +1,421 @@
+{
+  "bookId": "gs-5-1",
+  "sourceViewerUrl": "https://taphuan.nxbgd.vn/tap-huan/doc-sach/sgk-tieng-anh-5-global-success-tap-mot.4914842460",
+  "pages": [
+    {
+      "index": 1,
+      "label": "B?a",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-1-1779760817754.png"
+    },
+    {
+      "index": 2,
+      "label": "1",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-2-1779760818044.png"
+    },
+    {
+      "index": 3,
+      "label": "2",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-3-1779760818441.png"
+    },
+    {
+      "index": 4,
+      "label": "3",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-4-1779760818761.png"
+    },
+    {
+      "index": 5,
+      "label": "4",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-5-1779760819294.png"
+    },
+    {
+      "index": 6,
+      "label": "5",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-6-1779760819945.png"
+    },
+    {
+      "index": 7,
+      "label": "6",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-7-1779760820273.png"
+    },
+    {
+      "index": 8,
+      "label": "7",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-8-1779760820610.png"
+    },
+    {
+      "index": 9,
+      "label": "8",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-9-1779760820944.png"
+    },
+    {
+      "index": 10,
+      "label": "9",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-10-1779760821277.png"
+    },
+    {
+      "index": 11,
+      "label": "10",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-11-1779760821590.png"
+    },
+    {
+      "index": 12,
+      "label": "11",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-12-1779760821942.png"
+    },
+    {
+      "index": 13,
+      "label": "12",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-13-1779760822278.png"
+    },
+    {
+      "index": 14,
+      "label": "13",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-14-1779760822621.png"
+    },
+    {
+      "index": 15,
+      "label": "14",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-15-1779760822947.png"
+    },
+    {
+      "index": 16,
+      "label": "15",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-16-1779760823265.png"
+    },
+    {
+      "index": 17,
+      "label": "16",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-17-1779760823586.png"
+    },
+    {
+      "index": 18,
+      "label": "17",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-18-1779760823913.png"
+    },
+    {
+      "index": 19,
+      "label": "18",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-19-1779760824208.png"
+    },
+    {
+      "index": 20,
+      "label": "19",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-20-1779760824550.png"
+    },
+    {
+      "index": 21,
+      "label": "20",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-21-1779760824890.png"
+    },
+    {
+      "index": 22,
+      "label": "21",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-22-1779760825244.png"
+    },
+    {
+      "index": 23,
+      "label": "22",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-23-1779760825551.png"
+    },
+    {
+      "index": 24,
+      "label": "23",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-24-1779760825889.png"
+    },
+    {
+      "index": 25,
+      "label": "24",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-25-1779760826232.png"
+    },
+    {
+      "index": 26,
+      "label": "25",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-26-1779760826586.png"
+    },
+    {
+      "index": 27,
+      "label": "26",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-27-1779760826928.png"
+    },
+    {
+      "index": 28,
+      "label": "27",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-28-1779760827447.png"
+    },
+    {
+      "index": 29,
+      "label": "28",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-29-1779760827797.png"
+    },
+    {
+      "index": 30,
+      "label": "29",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-30-1779760828166.png"
+    },
+    {
+      "index": 31,
+      "label": "30",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-31-1779760828485.png"
+    },
+    {
+      "index": 32,
+      "label": "31",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-32-1779760828884.png"
+    },
+    {
+      "index": 33,
+      "label": "32",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-33-1779760829218.png"
+    },
+    {
+      "index": 34,
+      "label": "33",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-34-1779760829559.png"
+    },
+    {
+      "index": 35,
+      "label": "34",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-35-1779760829891.png"
+    },
+    {
+      "index": 36,
+      "label": "35",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-36-1779760830244.png"
+    },
+    {
+      "index": 37,
+      "label": "36",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-37-1779760830623.png"
+    },
+    {
+      "index": 38,
+      "label": "37",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-38-1779760830958.png"
+    },
+    {
+      "index": 39,
+      "label": "38",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-39-1779760831278.png"
+    },
+    {
+      "index": 40,
+      "label": "39",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-40-1779760831585.png"
+    },
+    {
+      "index": 41,
+      "label": "40",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-41-1779760831881.png"
+    },
+    {
+      "index": 42,
+      "label": "41",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-42-1779760832179.png"
+    },
+    {
+      "index": 43,
+      "label": "42",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-43-1779760832483.png"
+    },
+    {
+      "index": 44,
+      "label": "43",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-44-1779760832943.png"
+    },
+    {
+      "index": 45,
+      "label": "44",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-45-1779760833236.png"
+    },
+    {
+      "index": 46,
+      "label": "45",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-46-1779760833580.png"
+    },
+    {
+      "index": 47,
+      "label": "46",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-47-1779760833952.png"
+    },
+    {
+      "index": 48,
+      "label": "47",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-48-1779760834291.png"
+    },
+    {
+      "index": 49,
+      "label": "48",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-49-1779760834637.png"
+    },
+    {
+      "index": 50,
+      "label": "49",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-50-1779760834953.png"
+    },
+    {
+      "index": 51,
+      "label": "50",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-51-1779760835283.png"
+    },
+    {
+      "index": 52,
+      "label": "51",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-52-1779760835628.png"
+    },
+    {
+      "index": 53,
+      "label": "52",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-53-1779760835936.png"
+    },
+    {
+      "index": 54,
+      "label": "53",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-54-1779760836275.png"
+    },
+    {
+      "index": 55,
+      "label": "54",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-55-1779760836556.png"
+    },
+    {
+      "index": 56,
+      "label": "55",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-56-1779760836939.png"
+    },
+    {
+      "index": 57,
+      "label": "56",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-57-1779760837253.png"
+    },
+    {
+      "index": 58,
+      "label": "57",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-58-1779760837817.png"
+    },
+    {
+      "index": 59,
+      "label": "58",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-59-1779760838148.png"
+    },
+    {
+      "index": 60,
+      "label": "59",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-60-1779760838499.png"
+    },
+    {
+      "index": 61,
+      "label": "60",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-61-1779760838845.png"
+    },
+    {
+      "index": 62,
+      "label": "61",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-62-1779760839166.png"
+    },
+    {
+      "index": 63,
+      "label": "62",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-63-1779760839486.png"
+    },
+    {
+      "index": 64,
+      "label": "63",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-64-1779760839820.png"
+    },
+    {
+      "index": 65,
+      "label": "64",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-65-1779760840164.png"
+    },
+    {
+      "index": 66,
+      "label": "65",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-66-1779760840492.png"
+    },
+    {
+      "index": 67,
+      "label": "66",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-67-1779760840812.png"
+    },
+    {
+      "index": 68,
+      "label": "67",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-68-1779760841121.png"
+    },
+    {
+      "index": 69,
+      "label": "68",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-69-1779760841860.png"
+    },
+    {
+      "index": 70,
+      "label": "69",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-70-1779760842252.png"
+    },
+    {
+      "index": 71,
+      "label": "70",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-71-1779760842625.png"
+    },
+    {
+      "index": 72,
+      "label": "71",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-72-1779760842996.png"
+    },
+    {
+      "index": 73,
+      "label": "72",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-73-1779760843332.png"
+    },
+    {
+      "index": 74,
+      "label": "73",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-74-1779760843665.png"
+    },
+    {
+      "index": 75,
+      "label": "74",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-75-1779760843999.png"
+    },
+    {
+      "index": 76,
+      "label": "75",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-76-1779760844307.png"
+    },
+    {
+      "index": 77,
+      "label": "76",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-77-1779760844605.png"
+    },
+    {
+      "index": 78,
+      "label": "77",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-78-1779760844901.png"
+    },
+    {
+      "index": 79,
+      "label": "78",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-79-1779760845223.png"
+    },
+    {
+      "index": 80,
+      "label": "79",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-80-1779760845553.png"
+    },
+    {
+      "index": 81,
+      "label": "80",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-81-1779760845865.png"
+    },
+    {
+      "index": 82,
+      "label": "81",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-82-1779760846158.png"
+    },
+    {
+      "index": 83,
+      "label": "B?a sau",
+      "imageUrl": "https://cdn3.olm.vn/upload/taphuan/2026/0526/4914842460-page-83-1779760846477.png"
+    }
+  ]
+}

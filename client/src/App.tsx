@@ -50,6 +50,7 @@ const PlayGamePage = lazy(() => import("./features/vocabulary-games/pages/PlayGa
 const PlayResultPage = lazy(() => import("./features/vocabulary-games/pages/PlayResultPage").then((module) => ({ default: module.PlayResultPage })));
 const BookLibraryPage = lazy(() => import("./features/books/pages/BookLibraryPage").then((module) => ({ default: module.BookLibraryPage })));
 const BookPreviewPage = lazy(() => import("./features/books/pages/BookPreviewPage").then((module) => ({ default: module.BookPreviewPage })));
+const InteractiveAudioPage = lazy(() => import("./features/books/pages/InteractiveAudioPage").then((module) => ({ default: module.InteractiveAudioPage })));
 const BookNotFoundPage = lazy(() => import("./features/books/pages/BookNotFoundPage").then((module) => ({ default: module.BookNotFoundPage })));
 function AdminAuthBoundary() {
   return <AuthProvider><Outlet /></AuthProvider>;
@@ -85,7 +86,8 @@ export function App() {
       <Route path="/hoc/:levelSlug/:unitSlug/review" element={<LearningReviewPage />} />
       <Route path="/hoc/*" element={<LearningNotFoundPage />} />
       <Route path="/sach" element={<BookLibraryPage />} />
-      <Route path="/sach/global-success/:bookSlug" element={<BookPreviewPage />} />
+      <Route path="/sach/:seriesSlug/:bookSlug/nghe" element={<InteractiveAudioPage />} />
+      <Route path="/sach/:seriesSlug/:bookSlug" element={<BookPreviewPage />} />
       <Route path="/sach/*" element={<BookNotFoundPage />} />
       <Route path="/play/:publicCode" element={<PlayStartPage />} />
       <Route path="/play/session/:sessionToken" element={<PlayGamePage />} />
