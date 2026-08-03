@@ -6,9 +6,11 @@ readonly ENV_FILE="$APP_DIR/.env"
 readonly COMPOSE_FILE="$APP_DIR/docker-compose.deploy.yml"
 readonly BACKUP_DIR="$APP_DIR/backups"
 readonly BACKUP_RETENTION_DAYS=14
+readonly MIN_FREE_DISK_KIB=1048576
+readonly MIN_FREE_INODES=10000
 readonly NEW_IMAGE_TAG="${1:-}"
 
-for required_command in docker flock awk gzip curl mktemp install find; do
+for required_command in docker flock awk gzip curl mktemp install find df cp; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
     echo "Missing required deployment command: $required_command"
     exit 2
@@ -19,8 +21,19 @@ if [[ ! "$NEW_IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]]; then
   echo "Image tag must be a full 40-character Git commit SHA."
   exit 2
 fi
+
+if [[ ! -f "$APP_DIR/deploy-env.sh" ]]; then
+  echo "Missing $APP_DIR/deploy-env.sh."
+  exit 2
+fi
+# shellcheck source=deploy-env.sh
+source "$APP_DIR/deploy-env.sh"
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE. Create it from .env.deploy.example on the VPS."
+  exit 2
+fi
+if ! deploy_validate_env_file "$ENV_FILE"; then
+  echo "The active deployment env is invalid; deployment was not started."
   exit 2
 fi
 if [[ ! -f "$COMPOSE_FILE" || ! -f "$APP_DIR/Caddyfile" ]]; then
@@ -39,23 +52,19 @@ compose() {
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
 }
 
-read_env_value() {
-  local key="$1"
-  awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, ""); print; exit }' "$ENV_FILE"
-}
-
-set_image_tag() {
-  local tag="$1"
-  local temporary
-  temporary="$(mktemp "$APP_DIR/.env.tmp.XXXXXX")"
-  awk -v tag="$tag" '
-    BEGIN { updated = 0 }
-    /^IMAGE_TAG=/ { print "IMAGE_TAG=" tag; updated = 1; next }
-    { print }
-    END { if (!updated) print "IMAGE_TAG=" tag }
-  ' "$ENV_FILE" > "$temporary"
-  chmod --reference="$ENV_FILE" "$temporary"
-  mv -f "$temporary" "$ENV_FILE"
+check_storage_headroom() {
+  local free_disk_kib free_inodes
+  free_disk_kib="$(df -Pk "$APP_DIR" | awk 'NR == 2 { print $4 }')"
+  free_inodes="$(df -Pi "$APP_DIR" | awk 'NR == 2 { print $4 }')"
+  if [[ ! "$free_disk_kib" =~ ^[0-9]+$ || ! "$free_inodes" =~ ^[0-9]+$ ]]; then
+    echo "Could not determine deployment filesystem capacity."
+    return 1
+  fi
+  if (( free_disk_kib < MIN_FREE_DISK_KIB || free_inodes < MIN_FREE_INODES )); then
+    echo "Insufficient deployment storage headroom: ${free_disk_kib} KiB and ${free_inodes} inodes free."
+    echo "At least ${MIN_FREE_DISK_KIB} KiB and ${MIN_FREE_INODES} inodes are required before deployment."
+    return 1
+  fi
 }
 
 wait_for_healthy() {
@@ -91,7 +100,9 @@ wait_for_readiness() {
   return 1
 }
 
-previous_tag="$(read_env_value IMAGE_TAG)"
+check_storage_headroom
+
+previous_tag="$(deploy_read_env_value "$ENV_FILE" IMAGE_TAG)"
 if [[ -n "$previous_tag" && ! "$previous_tag" =~ ^[0-9a-f]{40}$ ]]; then
   echo "Existing IMAGE_TAG is not an immutable full commit SHA."
   exit 2
@@ -99,18 +110,32 @@ fi
 
 deployment_changed=0
 temporary_backup=""
+rollback_env="$(mktemp "$APP_DIR/.env.rollback.XXXXXX")"
+if ! cp --preserve=mode "$ENV_FILE" "$rollback_env"; then
+  rm -f "$rollback_env"
+  echo "Could not create the deployment env rollback snapshot."
+  exit 1
+fi
 rollback() {
   local exit_code="$1"
   local line="$2"
+  local env_restored=0
   trap - ERR
   set +e
   if [[ -n "$temporary_backup" ]]; then
     rm -f "$temporary_backup"
   fi
   echo "Deployment failed at line $line. The database will not be rolled back automatically."
-  if [[ "$deployment_changed" == "1" && -n "$previous_tag" ]]; then
+  if [[ -n "$rollback_env" && -f "$rollback_env" ]]; then
+    if mv -f "$rollback_env" "$ENV_FILE"; then
+      rollback_env=""
+      env_restored=1
+    else
+      echo "Could not restore the deployment env snapshot; skipping automatic image rollback."
+    fi
+  fi
+  if [[ "$deployment_changed" == "1" && -n "$previous_tag" && "$env_restored" == "1" ]]; then
     echo "Rolling application images back to the previous immutable tag."
-    set_image_tag "$previous_tag"
     compose pull api web
     compose up -d --remove-orphans
     wait_for_healthy api 30
@@ -122,7 +147,7 @@ rollback() {
 }
 trap 'rollback "$?" "$LINENO"' ERR
 
-set_image_tag "$NEW_IMAGE_TAG"
+deploy_set_image_tag "$ENV_FILE" "$NEW_IMAGE_TAG"
 deployment_changed=1
 
 compose config --quiet
@@ -172,5 +197,7 @@ wait_for_readiness
 
 find "$BACKUP_DIR" -type f -name 'pre-migrate-*.sql.gz' -mtime "+$BACKUP_RETENTION_DAYS" -delete
 docker image prune --force >/dev/null
+rm -f "$rollback_env"
+rollback_env=""
 trap - ERR
 echo "Production deployment completed for image tag $NEW_IMAGE_TAG."

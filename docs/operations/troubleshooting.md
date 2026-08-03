@@ -13,6 +13,10 @@
 - Sai ngày/giờ: host/container `TZ=Asia/Ho_Chi_Minh`, MySQL `+07:00`; dữ liệu ngày học là DATE.
 - Excel lỗi: giữ request ID, student/filter và log; không gửi workbook chứa dữ liệu phụ huynh công khai.
 - Migration lỗi: dừng deploy, không sửa migration cũ, kiểm tra backup và log request/startup đã khử secret.
+- Deploy báo `No space left on device`: không ghi lại `.env`; kiểm tra `df -h`, `df -i`
+  và `docker system df`, giải phóng đúng log/backup/image không còn cần, rồi chạy
+  `./deploy-env.sh validate .env`. Nếu validation lỗi, phục hồi secret từ GitHub
+  Repository Secrets qua workflow sau khi đã có dung lượng; không in `.env` ra log.
 - Google Sheet còn **Đang chờ đồng bộ**: kiểm tra cả `GOOGLE_DRIVE_ENABLED` và
   `GOOGLE_SHEET_SYNC_ENABLED`, worker log và `next_attempt_at`; không xóa outbox.
 - **Đang thử lại** là lỗi tạm thời (network/429/5xx). **Đồng bộ lỗi** là event

@@ -4,7 +4,7 @@ Production chạy trên một VPS Ubuntu bằng bốn container: Caddy → Web/N
 MySQL. GitHub Actions kiểm tra source, build hai image, đẩy lên GHCR, sinh runtime
 `.env` từ GitHub Repository Secrets rồi SSH vào VPS để chạy script triển khai. VPS
 không cần source, Node.js hoặc npm; mỗi lần deploy chỉ nhận `.env` mới,
-`docker-compose.deploy.yml`, `Caddyfile` và `deploy-production.sh`.
+`docker-compose.deploy.yml`, `Caddyfile`, `deploy-production.sh` và `deploy-env.sh`.
 
 ## GitHub configuration
 
@@ -109,9 +109,12 @@ Repository Secrets ở mỗi lần deploy:
   `/app/data/vocabulary-media` được cố định trong Compose. Key chỉ ở runtime server;
   không đưa vào Web image.
 
-Workflow đọc `IMAGE_TAG` cũ trên VPS và ghi tag đó vào file env mới trước khi thay file
-theo kiểu nguyên tử. Script deploy sau đó mới đổi sang full SHA mới; nếu deploy lỗi, tag
-cũ vẫn sẵn sàng để rollback. Lần bootstrap đầu tiên có thể để tag rỗng. Database
+Workflow đọc `IMAGE_TAG` cũ trên VPS và ghi tag đó vào file env mới. File `.env.next`
+phải qua kiểm tra đủ key bắt buộc, giá trị bắt buộc không rỗng, boolean hợp lệ và tag
+đúng định dạng trước khi được thay nguyên tử thành file active. Script deploy sau đó mới
+đổi sang full SHA mới; trước khi đổi, script yêu cầu tối thiểu 1 GiB trống và 10.000 inode
+trống, đồng thời giữ một snapshot env đầy đủ để rollback bằng phép `mv`. Lần bootstrap
+đầu tiên có thể để tag rỗng. Database
 name/user, CORS production, timezone, JWT lifetime, password policy, rate-limit và
 healthcheck URL được cố định trong source hoặc Compose. Không đưa password, token, IP
 hoặc JWT vào GitHub Variables, workflow log hay repository.
@@ -174,18 +177,20 @@ Push vào `main` chỉ gọi production deploy sau khi cả ba job bắt buộc 
    và tag tiện ích `latest`;
 2. job `deploy` chờ đủ hai image;
 3. đọc `IMAGE_TAG` cũ, sinh runtime env từ Repository Secrets, copy thành `.env.next`,
-   đặt mode `600` rồi `mv` nguyên tử thành `/opt/teacher-hub/.env`; đồng thời copy ba
-   deployment file qua SSH host key đã pin;
-4. gọi script với SHA mới; script khóa deploy bằng `flock`, ghi SHA mới an toàn và khởi
-   động/kiểm tra MySQL;
+   xác thực nội dung, đặt mode `600` rồi `mv` nguyên tử thành `/opt/teacher-hub/.env`;
+   đồng thời copy Compose, Caddyfile và hai deployment script qua SSH host key đã pin;
+4. gọi script với SHA mới; script khóa deploy bằng `flock`, kiểm tra disk/inode headroom,
+   snapshot env, ghi SHA mới an toàn và khởi động/kiểm tra MySQL;
 5. tạo và kiểm tra backup nén trước migration; sau khi V20 enable, recovery set
    bắt buộc gồm cả MySQL và `vocabulary-media` theo tài liệu backup;
 6. pull đúng SHA, chạy `node dist/db/migrate.js` đúng một lần bằng one-off API container;
 7. restart stack, kiểm tra health container và public `/ready`;
 8. giữ backup pre-migration 14 ngày và prune dangling image sau khi thành công.
 
-Nếu có lỗi sau khi đổi tag, script đưa API/Web về full SHA trước đó và trả exit code khác
-0. Script không tự rollback database hoặc media. Nếu migration không tương thích ngược,
+Nếu có lỗi sau khi đổi tag, script khôi phục nguyên snapshot env rồi đưa API/Web về full
+SHA trước đó và trả exit code khác 0. Nếu thao tác ghi file tạm thất bại (kể cả
+`ENOSPC`), file env active không bị thay bằng nội dung dở dang. Script không tự rollback
+database hoặc media. Nếu migration không tương thích ngược,
 dừng ghi, restore cả recovery set vào database/volume cô lập, kiểm tra rồi mới chuyển
 dịch vụ theo quy trình phục hồi. Lần deploy đầu không có image cũ nên không thể rollback
 image tự động.
@@ -198,6 +203,12 @@ docker compose --env-file .env -f docker-compose.deploy.yml ps
 docker compose --env-file .env -f docker-compose.deploy.yml logs --tail=100 api web caddy
 curl --fail https://tienganhcovy.com/ready
 ```
+
+Nếu deploy dừng vì thiếu dung lượng, không sửa hoặc tạo lại `.env` trước khi giải phóng
+dung lượng. Kiểm tra `df -h /opt/teacher-hub`, `df -i /opt/teacher-hub` và
+`docker system df`; chỉ xóa log/backup/image đã xác nhận không còn cần. Sau đó xác thực
+`.env` còn đủ key bằng `./deploy-env.sh validate .env`, kiểm tra stack hiện tại rồi mới
+chạy lại workflow. Không in nội dung `.env` ra log hoặc terminal chia sẻ.
 
 Chỉ Caddy publish TCP 80/443 và UDP 443. MySQL, API và Web không publish port. Nginx
 trong Web tiếp tục là điểm proxy duy nhất cho `/api`, `/health` và `/ready`; Caddy chỉ

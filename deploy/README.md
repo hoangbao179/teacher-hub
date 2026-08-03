@@ -6,6 +6,7 @@ Production dùng image GHCR và các file ở root:
 - `Caddyfile`
 - `.env.deploy.example`
 - `scripts/deploy-production.sh`
+- `scripts/deploy-env.sh`
 - `.github/workflows/deploy.yml`
 
 VPS không build source và không cài Node.js/npm. Hướng dẫn bootstrap, GitHub

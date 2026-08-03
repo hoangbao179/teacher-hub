@@ -26,7 +26,10 @@ Mỗi deploy tạo backup trước khi chạy forward-only migration. Khi V20 me
 enable, backup pre-deploy phải tạo một recovery set nhất quán gồm MySQL dump,
 archive media volume và manifest/checksum trong lúc khóa mutation media ngắn.
 Migration chạy đúng một lần trong one-off API container. Rollback tự động chỉ đưa
-image về SHA trước, không rollback database/media. Chi tiết vận hành ở
+image về SHA trước, không rollback database/media. Deployment fail-closed khi env mới
+không đầy đủ hoặc filesystem còn dưới 1 GiB/10.000 inode; snapshot env được khôi phục
+nguyên tử trước khi rollback image để lỗi hết dung lượng không làm mất runtime secrets.
+Chi tiết vận hành ở
 `docs/operations/production.md` và `docs/operations/backup-and-restore.md`.
 
 V20E bổ sung `npm run backup:recovery-set -- <new-directory>` để khóa mutation,

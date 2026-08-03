@@ -272,7 +272,7 @@ jobs:
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             -o "UserKnownHostsFile=$known_hosts_file" \
-            docker-compose.deploy.yml Caddyfile scripts/deploy-production.sh \
+            docker-compose.deploy.yml Caddyfile scripts/deploy-production.sh scripts/deploy-env.sh \
             "$PROD_USER@$PROD_HOST:/opt/teacher-hub/"
           ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \
             'install -m 600 /dev/null /opt/teacher-hub/.env.next'
@@ -288,4 +288,4 @@ jobs:
           # IMAGE_TAG is deliberately expanded locally after the full-SHA validation above.
           # shellcheck disable=SC2029
           ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \
-            "cd /opt/teacher-hub && chmod 600 .env.next && mv -f .env.next .env && chmod 700 deploy-production.sh && ./deploy-production.sh '$IMAGE_TAG'"
+            "cd /opt/teacher-hub && chmod 600 .env.next && chmod 700 deploy-production.sh deploy-env.sh && ./deploy-env.sh validate .env.next && mv -f .env.next .env && ./deploy-production.sh '$IMAGE_TAG'"
