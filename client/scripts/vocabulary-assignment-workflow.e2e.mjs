@@ -5,13 +5,16 @@ import path from "node:path";
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "vocabulary-assignment-workflow", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4122;
 const webPort = 5202;
 const origin = `http://127.0.0.1:${webPort}`;
-const artifactDir = path.join(root, ".agent-reports", "V20F-VOCABULARY-STABILIZATION");
+const artifactDir = artifactPolicy.runDir;
 const targetedSourceSmoke = process.env.TARGETED_SOURCE_SMOKE === "1";
 const password = "v20c-e2e-password-123";
 const testEnv = {
@@ -131,6 +134,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
 
   for (const viewport of targetedSourceSmoke ? [
     { width: 390, height: 844 },
@@ -238,7 +242,9 @@ try {
     await context.close();
   }
   console.log(`${targetedSourceSmoke ? "Vocabulary source smoke" : "V20F assignment E2E"} PASS; screenshots: ${artifactDir}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   for (const child of children.reverse()) child.kill();
 }

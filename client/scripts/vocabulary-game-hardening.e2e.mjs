@@ -5,8 +5,11 @@ import path from "node:path";
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "vocabulary-game-hardening", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4124;
 const webPort = 5204;
@@ -129,6 +132,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const page = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
   let startRequests = 0;
   let answerRequests = 0;
@@ -228,7 +232,9 @@ try {
   assert(firstResult.passScore === 80 && firstResult.passed === true, "Result passScore/passed is incorrect");
   assert(JSON.stringify(firstResult) === JSON.stringify(reloadedResult), "Idempotent completion snapshot changed");
   console.log("VOCABULARY-GAME-HARDENING student E2E PASS");
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   await db?.end().catch(() => undefined);
   await browser?.close().catch(() => undefined);
   for (const child of children.reverse()) child.kill();

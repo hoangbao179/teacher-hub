@@ -34,4 +34,4 @@ presentation cho phép.
 
 V20F giữ nguyên hierarchy của wireframe nhưng bổ sung ba nguồn từ trong wizard,
 empty state có hành động, preview chi tiết và trạng thái game/media. Screenshot runtime
-được lưu trong `.agent-reports/V20F-VOCABULARY-STABILIZATION/`, không thay ảnh wireframe.
+chỉ được lưu tạm trong `.artifacts/<task-id>/<run-id>/`, không thay ảnh wireframe.

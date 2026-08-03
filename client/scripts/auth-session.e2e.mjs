@@ -4,8 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "auth-session", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4108;
 const webPort = 5188;
@@ -13,7 +16,7 @@ const origin = `http://127.0.0.1:${webPort}`;
 const username = "covy";
 const bootstrapE2ePassword = "auth-e2e-password-123";
 const password = "v12c42";
-const artifactDir = path.join(root, ".agent-reports", "v1-2-admin");
+const artifactDir = artifactPolicy.runDir;
 const testEnv = {
   ...process.env,
   NODE_ENV: "test",
@@ -105,6 +108,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   const page = await context.newPage();
 
@@ -245,7 +249,9 @@ try {
   assert(await page.evaluate(() => document.documentElement.scrollHeight > document.documentElement.clientHeight), "Login cannot scroll in a short viewport");
 
   console.log(`V12C auth-session and rate-limit E2E passed; screenshots: ${artifactDir}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   for (const child of children.reverse()) {
     try { child.kill(); } catch { /* already stopped */ }

@@ -5,9 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 import ExcelJS from "exceljs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "legacy-import", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
 const apiPort = 4116;
 const webPort = 5196;
@@ -108,6 +111,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(`${origin}/admin/login`);
@@ -154,7 +158,9 @@ try {
   await page.getByRole("link", { name: "Về chi tiết học sinh" }).click();
   await page.waitForURL(`**/admin/students/${student.id}`);
   console.log("Legacy preview, row resolution and Apply E2E passed at 360–430 px.");
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   for (const child of children.reverse()) { try { child.kill(); } catch { /* already stopped */ } }
   fs.rmSync(workbookPath, { force: true });

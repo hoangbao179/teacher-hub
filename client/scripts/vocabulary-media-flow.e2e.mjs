@@ -5,8 +5,11 @@ import path from "node:path";
 import { URL } from "node:url";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "vocabulary-media-flow", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4132;
 const webPort = 5232;
@@ -110,6 +113,7 @@ try {
 
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await context.addInitScript((token) => localStorage.setItem("teacher-token", token), login.token);
   const page = await context.newPage();
@@ -187,7 +191,7 @@ try {
   await openBulk();
   modal = page.locator('[data-testid="vocabulary-bulk-image-suggestions"]');
   await modal.getByRole("button", { name: "Áp dụng 4 ảnh" }).waitFor({ timeout: 15_000 });
-  const screenshotDir = path.join(root, "test-results");
+  const screenshotDir = artifactPolicy.runDir;
   fs.mkdirSync(screenshotDir, { recursive: true });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     "bulk dialog overflows at 390x844");
@@ -261,7 +265,9 @@ try {
   await modal.getByRole("button", { name: "Hủy", exact: true }).click();
   console.log("Vocabulary media targeted browser flow PASS (390x844, 1366x768)");
   await context.close();
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   if (loginToken) {
     for (const id of createdIds) {

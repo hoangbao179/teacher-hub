@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { assertRuleSelfTests, rawPasswordPersistenceReason } from "./package-rules.mjs";
+import { assertRuleSelfTests, rawPasswordPersistenceReason, sensitiveTextReason } from "./package-rules.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const failures = [];
@@ -23,9 +23,9 @@ const listFiles = (...directories) => {
 };
 
 const required = [
-  "docs/implementation/roadmap.md", "docs/implementation/status.md",
-  "docs/implementation/tasks/M1.1-architecture-stabilization.md",
-  "docs/implementation/acceptance/M1.1.md",
+  "docs/README.md", "docs/implementation/status.md",
+  "docs/operations/production.md", "docs/operations/backup-and-restore.md",
+  "docs/operations/release-checklist.md",
   "docs/features/public-homepage.md", "docs/features/authentication.md",
   "docs/features/admin-ui.md", "docs/user-guide/teacher-guide.md",
   "docs/design/ui-guidelines.md", "docs/wireframes/README.md",
@@ -62,18 +62,55 @@ for (const line of openapi.split(/\r?\n/)) {
 for (const route of sourceRoutes) if (!documented.has(route)) failures.push(`OpenAPI missing source route: ${route}`);
 for (const route of documented) if (!sourceRoutes.has(route)) failures.push(`OpenAPI route does not exist in source: ${route}`);
 
-const tracked = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
-for (const file of tracked) {
+const gitFiles = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" })
+  .split(/\r?\n/).filter(Boolean).map((file) => file.replaceAll("\\", "/"));
+const tracked = gitFiles("ls-files").filter((file) => fs.existsSync(path.join(root, file)));
+const staged = gitFiles("diff", "--cached", "--name-only", "--diff-filter=ACMR");
+const repositoryFiles = [...new Set([...tracked, ...staged])];
+const repositoryFileSet = new Set(repositoryFiles.map((file) => file.toLowerCase()));
+const binaryThreshold = 5_000_000;
+const approvedImagePath = (file) => /^(docs\/(?:wireframes|ui-baselines)|client\/(?:public|src\/assets))\//i.test(file);
+const approvedLargeBinaryPath = (file) => approvedImagePath(file)
+  || /^server\/src\/.*\/fixtures\//i.test(file)
+  || /^docs\/reference\//i.test(file);
+
+for (const file of repositoryFiles) {
   const normalized = file.replaceAll("\\", "/");
-  if (/(^|\/)(dist|coverage|\.vite)\//.test(normalized)) failures.push(`Generated artifact is tracked: ${normalized}`);
+  const lower = normalized.toLowerCase();
+  if (/(^|\/)(dist|coverage|\.vite|playwright-report|test-results|\.artifacts|\.agent-reports)(\/|$)/i.test(normalized))
+    failures.push(`Generated artifact is tracked or staged: ${normalized}`);
+  if (/(^|\/)(\.private-data|private-data|release|backups|database-dumps)(\/|$)/i.test(normalized))
+    failures.push(`Private/generated directory is tracked or staged: ${normalized}`);
   const basename = path.posix.basename(normalized);
   if (/^\.env(?:\.|$)/i.test(basename) && !/^\.env(?:\.[^.]+)?\.example$/i.test(basename) && basename !== ".env.example")
-    failures.push(`Real environment file is tracked: ${normalized}`);
+    failures.push(`Real environment file is tracked or staged: ${normalized}`);
   if (/\.(xlsx?|xlsm|xlsb)$/i.test(normalized) && !/^server\/src\/.*\/fixtures\//i.test(normalized))
-    failures.push(`Private workbook is tracked outside approved fixtures: ${normalized}`);
+    failures.push(`Private workbook is tracked or staged outside approved fixtures: ${normalized}`);
+  if (/\.(?:log|tmp)$/i.test(normalized)) failures.push(`Log or temporary file is tracked or staged: ${normalized}`);
+  if (/\.(?:zip|tar|tar\.gz|tgz)$/i.test(normalized)) failures.push(`Archive is tracked or staged: ${normalized}`);
   if (/#U[0-9A-F]{4}/i.test(normalized)) failures.push(`Malformed encoded filename is tracked: ${normalized}`);
-  if (/\.(png|jpe?g)$/i.test(normalized) && !/^(docs\/wireframes|client\/public)\//i.test(normalized))
-    failures.push(`Generated screenshot/image is tracked outside approved source assets: ${normalized}`);
+  if (/\.(png|jpe?g|webp|gif)$/i.test(normalized) && !approvedImagePath(normalized))
+    failures.push(`Screenshot/image is tracked or staged outside approved source assets: ${normalized}`);
+
+  const absolute = path.join(root, normalized);
+  if (!fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) continue;
+  const size = fs.statSync(absolute).size;
+  if (size > binaryThreshold && !approvedLargeBinaryPath(normalized))
+    failures.push(`Large binary exceeds ${binaryThreshold} bytes outside allowlist: ${normalized}`);
+  if (basename !== "package-lock.json" && normalized !== "scripts/package-rules.mjs" && size <= 2_000_000) {
+    const buffer = fs.readFileSync(absolute);
+    if (!buffer.includes(0)) {
+      const sensitiveReason = sensitiveTextReason(buffer.toString("utf8"));
+      if (sensitiveReason) failures.push(`Likely sensitive content (${sensitiveReason}) in ${normalized}`);
+    }
+  }
+}
+
+for (const file of repositoryFiles) {
+  const match = file.toLowerCase().match(/^(.*)-(implementation|verification)\.md$/);
+  if (!match) continue;
+  const counterpart = `${match[1]}-${match[2] === "implementation" ? "verification" : "implementation"}.md`;
+  if (repositoryFileSet.has(counterpart)) failures.push(`Legacy implementation/verification report pair is tracked or staged: ${file}`);
 }
 
 const clientFiles = listFiles("client/src");
@@ -98,7 +135,7 @@ for (const file of clientFiles) {
     failures.push(`Stale visible branding/content in ${file}`);
 }
 
-const currentDocumentationFiles = listFiles("docs/product-spec", "docs/features", "docs/user-guide", "docs/design", "docs/deployment", "docs/security")
+const currentDocumentationFiles = listFiles("docs/product-spec", "docs/features", "docs/user-guide", "docs/design", "docs/operations", "docs/security", "docs/bug-notes")
   .filter((file) => file.endsWith(".md"));
 currentDocumentationFiles.push("README.md", "AGENTS.md", "docs/README.md", "docs/wireframes/README.md", "docs/wireframes/v2-branding/README.md");
 const staleVisiblePatterns = [
@@ -153,12 +190,6 @@ if (!nginx.includes("location = /sach") || !nginx.includes("location ^~ /sach/")
 const clientPackage = JSON.parse(read("client/package.json"));
 if (!clientPackage.scripts?.["build:production"]?.includes("vite build --mode production")) failures.push("Production client build does not use Vite production mode");
 if (!read("Dockerfile.web").includes("build:production")) failures.push("Web image bypasses production marketing validation");
-
-const status = fs.existsSync(path.join(root, "docs/implementation/status.md")) ? read("docs/implementation/status.md") : "";
-if (/Final verdict:\s*PASS|## Status\s+PASS/i.test(status)) {
-  const report = path.join(root, ".agent-reports/M1.1-verification.md");
-  if (!fs.existsSync(report) || !/^PASS$/m.test(fs.readFileSync(report, "utf8"))) failures.push("Status claims PASS without a PASS verification report");
-}
 
 if (failures.length) {
   console.error(failures.map((item) => `- ${item}`).join("\n"));

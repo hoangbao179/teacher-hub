@@ -4,8 +4,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "class-enrollment-flow", {});
+let artifactRunPassed = false;
 const clientRoot = path.join(root, "client");
 const origin = "http://127.0.0.1:5194";
 const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
@@ -289,11 +292,14 @@ try {
   web.stderr.on("data", (chunk) => process.stderr.write(chunk));
   await waitUrl(origin);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
 
   await runViewport({ width: 1366, height: 768 });
   await runViewport({ width: 390, height: 844 });
   process.stdout.write("Class enrollment flow E2E PASS at 1366x768 and 390x844.\n");
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   if (web && !web.killed) web.kill();
 }

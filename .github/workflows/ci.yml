@@ -88,6 +88,7 @@ jobs:
       DB_NAME: teacher_hub_test
       JWT_SECRET: ci-only-secret-with-at-least-32-characters
       CHROME_PATH: /usr/bin/google-chrome
+      SCREENSHOT_MODE: failure
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -104,9 +105,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: smoke-verification-reports
-          path: .agent-reports/
+          name: smoke-failure-artifacts
+          path: .artifacts/
           if-no-files-found: ignore
+          retention-days: 7
 
   deploy-production:
     name: Publish and deploy production

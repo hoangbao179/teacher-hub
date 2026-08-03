@@ -1,270 +1,51 @@
 # Implementation status
 
-## Current milestone
+File này chỉ mô tả trạng thái hiện hành của hệ thống. Lịch sử milestone, command và
+evidence từng lần kiểm thử được giữ trong Git history.
 
-M1–M6, V1.1, all V1.2 checkpoints V12A–V12E, V13–V15, V16A–V16B, V17, V18A–V18D và
-Global Success public learning release are PASS.
-The release-candidate artifact is not a production approval; real operator
-configuration is still required. **Independent full-system review: NOT STARTED.**
+## Runtime và phạm vi
 
-V21B-PUBLIC-GLOBAL-SUCCESS-INTERACTIVE-BOOK-LIBRARY: **PASS LOCAL on 02/08/2026**.
-Public routes `/sach` và 13 trang sách đã có catalog tĩnh, bìa minh họa local,
-FlipBuilder allowlist, metadata/prerender/sitemap, CSP/Nginx direct-route và navigation
-Homepage/Góc học. Targeted unit, client typecheck/lint, production build và desktop/mobile
-book-library E2E đã PASS. Việc nghe hotspot và fullscreen trên thiết bị mobile thật vẫn là
-release check thủ công vì viewer/audio thuộc nguồn FlipBuilder bên ngoài.
+- Monorepo chạy Node.js 24/npm 12 với React/Vite/MUI ở client, Express/MySQL ở
+  server và shared contracts qua `@teacher/shared`.
+- V1 vận hành cho một giáo viên/admin. Học sinh và phụ huynh không có tài khoản.
+- Source of truth chi tiết nằm trong `docs/product-spec/`, `docs/features/`,
+  `docs/decisions/` và `docs/api/openapi.yaml`.
 
-ADMIN-UI-VISUAL-REFRESH: **IMPLEMENTED – PENDING FINAL VISUAL REVIEW** on 29/07/2026.
-Admin theme/layout/shared surfaces and Dashboard are implemented with local assets;
-responsive screenshots cover 1440×900, 1366×768, 390×844 and 360×800. No route, API,
-contract or business behavior changed. Final `npm run check:full`: PASS.
+## Chức năng hiện hành
 
-OPTIONAL-CLASS-TUITION: **PASS on 30/07/2026**. Giá gói lớp là tùy chọn; bỏ
-trống lưu `0`, buổi `PRESENT` vẫn giữ lịch sử nhưng không tạo phân bổ/chu kỳ học
-phí cho đến khi có giá lớp dương. Migration `0025` và full regression đã PASS.
+- Quản lý lớp, học sinh, enrollment, khoảng hiệu lực và lịch sử bất biến.
+- Lịch tuần, lịch bận, đối soát occurrence, đổi lịch, nghỉ, học bù, lớp học ghép và
+  ghi nhận buổi học theo transaction.
+- Học phí gói 8 buổi, giá lớp tùy chọn, thu trước, settlement đợt dở dang, chuyển
+  lớp và biên giới `PAID` bất biến.
+- Dashboard, lịch tuần, lesson wizard, tuition management và Excel report cho giáo
+  viên trên desktop/mobile.
+- Homepage công khai, Góc học, flashcard/quiz và thư viện sách Global Success với
+  prerender/SEO hiện hành.
+- Vocabulary topic/set/media, assignment, public game, result/mastery/review và
+  Google Sheet tab ôn từ vựng.
+- Legacy Excel preview/apply có reconciliation theo nhóm và transaction MySQL.
+- Google Drive/Sheets dùng DB làm nguồn chuẩn, outbox sau commit và regenerate có
+  giới hạn vùng hệ thống quản lý.
+- CI chạy quality, integration và E2E smoke; nightly/manual workflow chạy full
+  regression. Production deploy dùng image full commit SHA qua GHCR và VPS.
 
-V19A-PUBLIC-HOMEPAGE-SINGLE-LOCATION-GOOGLE-MAPS: PASS on 25/07/2026. Homepage
-now presents one canonical location, optional Google Maps Embed with a no-key
-fallback, synchronized JSON-LD and responsive evidence in `.agent-reports`.
+## Trạng thái phát hành
 
-V20A-VOCABULARY-FOUNDATION: **PASS on 26/07/2026**. Shared contract, migration
-`0016`, 20-topic catalog, protected set/topic API và responsive admin UI đã được
-triển khai. V20B-VOCABULARY-MEDIA-EDITOR đã triển khai migration `0017`, Pixabay
-provider/fake, cache 24 giờ, secure WebP import, persistent media volume,
-same-origin delivery và responsive picker/bulk review; **PASS on 26/07/2026**.
-ARASAAC-VOCABULARY-MEDIA đã chuyển nguồn mặc định của minh họa sang ARASAAC, giữ
-Pixabay tùy chọn cho ảnh thật và harden resolver/import/save/assignment media;
-**PASS targeted + integration on 30/07/2026**, không cần migration mới.
-Vocabulary Media Hardening: **PASS on 27/07/2026** với queue 429 có cursor,
-provider-wide cooldown, upload Sharp, lifecycle/reconciliation/metrics và public
-immutable delivery không còn limiter 60 request/phút/IP.
-V20C-VOCABULARY-ASSIGNMENTS: **PASS on 26/07/2026**. Đã có draft/publish/close,
-snapshot item/activity/recipient, token SHA-256, QR, ba audience và wizard responsive.
-V20D-VOCABULARY-GAMES: **PASS on 26/07/2026**. Đã có public access/session hash-only,
-seeded attempt snapshot, server grading/idempotency/adaptive retry, game UI mobile-first
-và kết quả sao/sticker. V20E analytics/review đã **IMPLEMENTED — RELEASE GATES
-PENDING**; chưa PASS vì còn cần operator duyệt provider/content và chạy restore drill
-trên VPS mục tiêu.
+- Source hiện tại là release candidate đã qua các targeted/full local gates được
+  ghi trong Git history; đây không phải phê duyệt production.
+- Production vẫn cần operator cấu hình secrets, DNS, OAuth/provider, chạy backup và
+  restore drill trên hạ tầng đích, đo tài nguyên với dữ liệu đại diện và duyệt nội
+  dung/media công khai.
+- Admin visual refresh đã triển khai; visual target được duyệt nằm trong
+  `docs/wireframes/admin-ui-refresh/`.
+- Vocabulary result/review đã triển khai nhưng chỉ được enable production sau khi
+  hoàn tất provider/content review và restore drill MySQL + media.
+- Thư viện sách phụ thuộc viewer/audio FlipBuilder; hotspot/fullscreen cần kiểm tra
+  thủ công trên thiết bị mobile thật trước release.
 
-V20F-VOCABULARY-STABILIZATION: **PASS LOCAL on 26/07/2026**. Wizard empty/topic,
-media fallback, queue/scoring, per-item analytics, memory/missing-letter/flashcard,
-age-based result và Google tab `Ôn từ vựng` đã được ổn định; migration `0021`/`0022`
-và full local regression đã đạt. Live Pixabay/Google smoke vẫn phụ thuộc credential;
-restore drill VPS vẫn là release gate của V20E.
+## Giới hạn hiện hành
 
-VOCABULARY-GAME-HARDENING: **IMPLEMENTED — TARGETED CHECKS PASS on 27/07/2026**. Compatibility matrix,
-per-activity publish dry-run, item-level adaptive/scoring, runtime passScore,
-self-assessment migration `0023`, session recovery, wizard/result/audio fallback và
-incremental vocabulary sheet upsert đã được kiểm tra bằng targeted unit/MySQL integration
-và student hardening E2E. Full repository gate và live Google smoke không chạy theo phạm vi;
-approved audio asset được defer vì assignment snapshot chưa có audio source.
-
-## Status
-
-M1.1: PASS. M2A: PASS. M2B: PASS. M2C: PASS. M3: PASS on 20/07/2026. M2A evidence is in
-`.agent-reports/M2A-lesson-domain-implementation.md` and
-`.agent-reports/M2A-lesson-domain-verification.md`; M2B evidence is in the
-matching `.agent-reports/M2B-lesson-api-*.md` files; M2C evidence is in the
-matching `.agent-reports/M2C-lesson-ui-*.md` files.
-M3 evidence is in the matching
-`.agent-reports/M3-chronological-recalculation-*.md` files.
-M4A: PASS on 20/07/2026. Evidence is in
-`.agent-reports/M4A-tuition-api-implementation.md` and
-`.agent-reports/M4A-tuition-api-verification.md`.
-M4B: PASS on 20/07/2026. Evidence is in
-`.agent-reports/M4B-tuition-ui-implementation.md` and
-`.agent-reports/M4B-tuition-ui-verification.md`.
-M5A: PASS on 20/07/2026. Evidence is in
-`.agent-reports/M5A-schedule-reconciliation-api-implementation.md` and
-`.agent-reports/M5A-schedule-reconciliation-api-verification.md`.
-M5B: PASS on 20/07/2026. Evidence is in
-`.agent-reports/M5B-dashboard-schedule-ui-implementation.md` and
-`.agent-reports/M5B-dashboard-schedule-ui-verification.md`.
-M6A: PASS on 21/07/2026. Evidence is in
-`.agent-reports/M6A-public-homepage-implementation.md` and
-`.agent-reports/M6A-public-homepage-verification.md`.
-M6B: PASS on 21/07/2026. Evidence is in
-`.agent-reports/M6B-excel-export-implementation.md` and
-`.agent-reports/M6B-excel-export-verification.md`.
-M6C: PASS on 21/07/2026. Evidence is in
-`.agent-reports/M6C-ui-accessibility-performance-implementation.md` and
-`.agent-reports/M6C-ui-accessibility-performance-verification.md`.
-M6D: PASS on 21/07/2026. Evidence is in
-`.agent-reports/M6D-production-readiness-implementation.md` and
-`.agent-reports/M6D-production-readiness-verification.md`.
-UIA: PASS on 21/07/2026. Evidence is in
-`.agent-reports/UIA-implementation.md` and
-`.agent-reports/UIA-verification.md`.
-UIB: PASS on 21/07/2026. Evidence is in
-`.agent-reports/UIB-implementation.md`,
-`.agent-reports/UIB-verification.md` and
-`.agent-reports/UIB-visual-review.md`.
-UIC: PASS on 21/07/2026. Evidence is in
-`.agent-reports/UIC-implementation.md` and
-`.agent-reports/UIC-verification.md`.
-UID: PASS on 21/07/2026. Evidence is in
-`.agent-reports/UID-implementation.md` and
-`.agent-reports/UID-verification.md`.
-V11A: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V11A-implementation.md` and `.agent-reports/V11A-verification.md`.
-V11B: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V11B-implementation.md` and `.agent-reports/V11B-verification.md`.
-V11C: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V11C-implementation.md` and `.agent-reports/V11C-verification.md`.
-V11D: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V11D-implementation.md` and `.agent-reports/V11D-verification.md`.
-V11E: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V11E-implementation.md` and `.agent-reports/V11E-verification.md`.
-V12A: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V12A-implementation.md` and `.agent-reports/V12A-verification.md`.
-V12B: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V12B-implementation.md` and `.agent-reports/V12B-verification.md`.
-V12C: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V12C-implementation.md` and `.agent-reports/V12C-verification.md`.
-V12D: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V12D-implementation.md` and `.agent-reports/V12D-verification.md`.
-V12E: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V12E-implementation.md` and `.agent-reports/V12E-verification.md`.
-V13: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V13-implementation.md` and `.agent-reports/V13-verification.md`.
-V14: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V14-implementation.md` and `.agent-reports/V14-verification.md`.
-V17-PRODUCTION-CICD: PASS on 21/07/2026. Evidence is in
-`.agent-reports/V17-PRODUCTION-CICD-implementation.md` and
-`.agent-reports/V17-PRODUCTION-CICD-verification.md`.
-V18A-PUBLIC-LEARNING-FOUNDATION: PASS on 24/07/2026. Evidence is in
-`.agent-reports/V18A-PUBLIC-LEARNING-FOUNDATION-implementation.md` and
-`.agent-reports/V18A-PUBLIC-LEARNING-FOUNDATION-verification.md`.
-V18B-PUBLIC-LEARNING-FLASHCARDS: PASS on 24/07/2026. Evidence is in
-`.agent-reports/V18B-PUBLIC-LEARNING-FLASHCARDS-implementation.md` and
-`.agent-reports/V18B-PUBLIC-LEARNING-FLASHCARDS-verification.md`.
-V18C-V18D-COMPLETE-PUBLIC-LEARNING-EXPERIENCE: PASS on 24/07/2026. Evidence is in
-`.agent-reports/V18C-V18D-COMPLETE-PUBLIC-LEARNING-EXPERIENCE-implementation.md`
-and `.agent-reports/V18C-V18D-COMPLETE-PUBLIC-LEARNING-EXPERIENCE-verification.md`.
-RELEASE-GLOBAL-SUCCESS-PUBLIC-LEARNING: PASS on 25/07/2026. Public catalog now
-serves preschool and grades 1–9 with 142 Units; production prerenders 154 public
-pages and generates its 154-URL sitemap directly from the catalog. Grammar remains
-draft and the independently authored starter content requires ongoing teacher review.
-V20A-VOCABULARY-FOUNDATION: PASS on 26/07/2026. Evidence is in
-`.agent-reports/V20A-VOCABULARY-FOUNDATION-implementation.md`,
-`.agent-reports/V20A-VOCABULARY-FOUNDATION-verification.md` and the responsive
-screenshots folder with the same milestone name.
-V20C-VOCABULARY-ASSIGNMENTS: PASS on 26/07/2026. Evidence is in
-`.agent-reports/V20C-VOCABULARY-ASSIGNMENTS-implementation.md` và
-`.agent-reports/V20C-VOCABULARY-ASSIGNMENTS-verification.md`.
-V20D-VOCABULARY-GAMES: PASS on 26/07/2026. Evidence is in
-`.agent-reports/V20D-VOCABULARY-GAMES-implementation.md`,
-`.agent-reports/V20D-VOCABULARY-GAMES-verification.md` và thư mục screenshot cùng tên.
-V20E-VOCABULARY-RESULTS-RELEASE: IMPLEMENTED on 26/07/2026, RELEASE GATES PENDING.
-Results/mastery/review draft, accessibility/security hardening, recovery-set tooling,
-observability và full regression đã hoàn tất. Chưa có verdict PASS cho đến khi
-operator/giáo viên duyệt Pixabay/seed content và restore drill MySQL + media thành
-công trên VPS mục tiêu.
-V20F-VOCABULARY-STABILIZATION: PASS LOCAL on 26/07/2026. Evidence nằm trong hai
-report V20F và thư mục screenshot cùng tên tại `.agent-reports/`; external credential
-smoke không được giả lập thành production approval.
-
-## Scope boundary
-
-M2A–M3 establish historical domain/contracts, transactional lesson APIs, mobile
-wizard and chronological mutable-cycle recalculation with immutable PAID boundary.
-Tuition query/payment APIs and enrollment-ending `INCOMPLETE` behavior are M4A.
-Tuition-management UI and mobile payment flow are M4B.
-M5A adds deterministic projected occurrences, exceptions, canonical draft
-creation, busy slots, conflict warnings and per-item bulk reconciliation.
-M5B adds real Dashboard aggregates/today schedule, mobile reconciliation,
-weekly calendar, busy-slot management and makeup entry points. M6A adds the
-public marketing Homepage, content configuration, SEO, lazy media and public
-mobile/accessibility/performance coverage. M6B adds authenticated canonical
-per-student Excel reporting, export audit and safe browser download.
-M6C standardizes the mobile design system, Vietnamese terminology, accessibility
-states, protected/public navigation and responsive UI regression coverage.
-M6D adds production configuration validation, operational security/lifecycle,
-Docker/CI, backup/restore and release documentation.
-V13 completes the responsive public Homepage, compact mobile management flows,
-plain-language admin labels, stable class accents and verified local auth/port
-operations without changing business contracts.
-V14 adds historical lesson/name snapshots, effective-dated class/enrollment
-activity, versioned recurring schedules, source-linked subset makeup lessons,
-atomic temporary rescheduling and shared conflict warnings while preserving
-existing tuition and PAID-boundary rules.
-V18A adds the isolated public `/hoc` learning shell, static validated vocabulary
-catalog, versioned local progress, level/Unit foundation and Homepage CTA without
-adding backend API, database, CMS or student authentication.
-V18B adds Unit overview, flashcards, pronunciation fallback, deterministic listen
-practice and backward-compatible per-Unit progress without changing the public
-catalog key or introducing backend state.
-V18C–V18D complete deterministic quiz, persisted result/review, safe progress
-migration, stable-route SEO/prerender and full responsive/accessibility regression
-coverage without adding backend state or student identity.
-
-## Known limitations
-
-- Auto-sync lesson/tuition và sharing tự động vẫn thuộc V16D–V16E. V16C đã
-  implement provider/template/UI nhưng còn chờ OAuth và smoke với account Google test.
-- Desktop drag/drop calendar is outside V1; the approved mobile week list is complete.
-- Production GitHub Variables, SSH secrets, server `.env`, DNS and GHCR read login must
-  be configured by the operator before the first production deployment.
-- V20A–V20D và V20F local đã PASS. V20E đã triển khai analytics/review/recovery-set tooling và
-  regression; production enable còn chờ operator duyệt Pixabay/seed content và
-  restore drill MySQL + media trên VPS mục tiêu.
-
-## V17-PRODUCTION-CICD
-
-GitHub Actions chạy song song quality, integration và production smoke trên mỗi push;
-full regression chuyển sang nightly/manual. Sau ba gate, API/Web được build song song,
-push full-SHA/latest GHCR tags rồi deploy đúng full SHA vào `/opt/teacher-hub`. Production Compose runs
-MySQL, API, Web and Caddy within low-resource limits; deploy performs pre-migration
-backup, one migration, readiness checks and image-only rollback without exposing
-MySQL/API/Web ports or storing production secrets in the repository.
-
-## V16A
-
-Đã triển khai preview workbook lịch sử theo từng học sinh: parser hai sheet,
-chuẩn hóa ngày thiếu năm, đối soát lesson/học phí, chia năm học và mô phỏng gói
-8 buổi. Endpoint chỉ đọc file tạm đã xác thực, không tạo lesson/class/enrollment/tuition.
-
-## V16B–V16E
-
-- V16B-LEGACY-IMPORT-APPLY: **PASS on 26/07/2026** — review/apply atomic vào
-  MySQL, matching lesson, attendance riêng, cycle theo student qua enrollment,
-  idempotency/audit và không gọi Google. Evidence nằm trong hai report V16B tại
-  `.agent-reports/`.
-- V16B-LEGACY-IMPORT-HARDENING: **PASS on 29/07/2026** — parser header động,
-  reconciliation reserve exact, grouped decisions và cycle plan giữ nguyên member
-  từ Preview tới Apply; bổ sung workbook single-context, learning-only non-billable,
-  issue-specific bulk, suggested resolution và parser time có trailing delimiter;
-  regression fixtures hoàn toàn ẩn danh.
-- V16C-STUDENT-GOOGLE-SHEET: **IMPLEMENTED — MANUAL GOOGLE SMOKE PENDING** — OAuth,
-  provider/template, mapping, fake-provider tests và Student Detail đã có; chưa thể
-  verdict PASS khi môi trường chưa có credential Google test.
-- V16D-LESSON-GOOGLE-SHEET-SYNC: **IMPLEMENTED — VERIFICATION PENDING** —
-  general/student-specific comments, quick attendance, transactional outbox,
-  worker lesson sync và admin resync/status; chưa sync tuition và chưa có verdict
-  PASS trước smoke Google thật.
-- HARDEN-V16C-V16D-BEFORE-GOOGLE-OAUTH: **PASS on 26/07/2026** —
-  thu hẹp OAuth, attendance rule chính thức, snapshot/cycle window, stale-create
-  recovery, Google error classification và regenerate safety; không gọi Google thật.
-- V16E-TUITION-SHEET-AND-PARENT-SHARING: **PLANNED** — tuition presentation và
-  parent Viewer sharing.
-
-Source of truth thiết kế là `docs/features/student-parent-tracking.md`. Credential
-Google test/production chưa được xác minh; V16E chưa có tuition auto-sync hoặc
-automatic sharing.
-
-## V15
-
-Đã triển khai replacement cancellation, entitlement học bù, bulk reschedule,
-conflict/lịch bận, thu trước, settlement đợt dở, chuyển lớp và contact Homepage.
-
-## SUPPORT-EXTERNAL-TEACHING-SCHEDULES
-
-TeacherBusySlot đã phân loại lịch dạy ngoài, cá nhân và khác. Lịch trường/trung
-tâm hiển thị trên Calendar/Dashboard và cảnh báo trùng nhưng không tham gia Class,
-occurrence chưa ghi nhận, enrollment, lesson, attendance hoặc tuition.
-
-## SUPPORT-MULTIPLE-EXTERNAL-CLASS-SCHEDULES
-
-Một TeacherBusySlot tuần quản lý nhiều khung giờ con trong một transaction. Dữ
-liệu tuần cũ được backfill; Calendar/Dashboard bung đủ occurrence và Calendar dùng
-menu “Thêm lịch” với hierarchy mobile/desktop rõ ràng.
+Xem [`known-limitations.md`](known-limitations.md) và các mục “quyết định còn mở”
+trong feature doc liên quan. Không suy diễn các gate vận hành chưa hoàn tất thành
+lỗi chức năng hoặc bằng chứng production.

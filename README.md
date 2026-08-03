@@ -83,8 +83,8 @@ npm run db:backup -- ./backups/pre-deploy.sql
 npm run db:restore -- ./backups/pre-deploy.sql --confirm
 ```
 
-Hướng dẫn đầy đủ: `docs/deployment/local-development.md`,
-`docs/deployment/production.md` và `docs/deployment/backup-and-restore.md`.
+Hướng dẫn đầy đủ: `docs/operations/local-development.md`,
+`docs/operations/production.md` và `docs/operations/backup-and-restore.md`.
 Source package loại `.git`, env thật, dependency/build local, report/screenshot,
 dump/backup và workbook riêng tư. Manifest trong archive ghi base commit và cho biết
 snapshot có chứa working-tree changes hay không.
@@ -102,4 +102,4 @@ Base đã có:
 - Docker/CI/docs/rules cho Cursor và Codex.
 
 Repository đang ở giai đoạn release candidate V1, chưa phải phê duyệt production.
-Xem `docs/implementation/release-checklist.md` và báo cáo M6.
+Xem `docs/operations/release-checklist.md`.

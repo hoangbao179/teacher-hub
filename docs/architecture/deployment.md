@@ -27,7 +27,7 @@ enable, backup pre-deploy phải tạo một recovery set nhất quán gồm MyS
 archive media volume và manifest/checksum trong lúc khóa mutation media ngắn.
 Migration chạy đúng một lần trong one-off API container. Rollback tự động chỉ đưa
 image về SHA trước, không rollback database/media. Chi tiết vận hành ở
-`docs/deployment/production.md` và `docs/deployment/backup-and-restore.md`.
+`docs/operations/production.md` và `docs/operations/backup-and-restore.md`.
 
 V20E bổ sung `npm run backup:recovery-set -- <new-directory>` để khóa mutation,
 tạo SQL dump + `vocabulary-media.tar` và manifest SHA-256; dùng

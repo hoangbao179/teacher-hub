@@ -1325,29 +1325,10 @@ Hệ thống tạo assignment draft mới, không tự publish.
 - CMS nhiều giáo viên.
 - upload ảnh thủ công.
 
-## 21. Milestone V20
+## 21. Functional coverage
 
-Mỗi checkpoint có task và acceptance riêng:
-
-- [V20A task](../implementation/tasks/V20A-VOCABULARY-FOUNDATION.md) /
-  [acceptance](../implementation/acceptance/V20A-VOCABULARY-FOUNDATION.md):
-  schema, contracts, topic catalog và vocabulary set CRUD.
-- [V20B task](../implementation/tasks/V20B-VOCABULARY-MEDIA-EDITOR.md) /
-  [acceptance](../implementation/acceptance/V20B-VOCABULARY-MEDIA-EDITOR.md):
-  Pixabay provider/cache, media storage và image picker/editor.
-- [V20C task](../implementation/tasks/V20C-VOCABULARY-ASSIGNMENTS.md) /
-  [acceptance](../implementation/acceptance/V20C-VOCABULARY-ASSIGNMENTS.md):
-  assignment draft/publish snapshot, recipients, wizard và link/QR.
-- [V20D task](../implementation/tasks/V20D-VOCABULARY-GAMES.md) /
-  [acceptance](../implementation/acceptance/V20D-VOCABULARY-GAMES.md):
-  public access, attempt/question/answer, game shell và MVP mechanics.
-- [V20E task](../implementation/tasks/V20E-VOCABULARY-RESULTS-RELEASE.md) /
-  [acceptance](../implementation/acceptance/V20E-VOCABULARY-RESULTS-RELEASE.md):
-  aggregation/review, accessibility, security, performance, deployment,
-  backup/restore và full regression.
-- [V20F task](../implementation/tasks/V20F-VOCABULARY-STABILIZATION.md) /
-  [acceptance](../implementation/acceptance/V20F-VOCABULARY-STABILIZATION.md):
-  stabilization wizard/media/game analytics, Google vocabulary sync và regression.
+Các mục dưới đây mô tả phạm vi hiện hành và acceptance theo feature; lịch sử chia
+checkpoint nằm trong Git, không cần task/verification report riêng.
 
 ### V20A — Foundation
 

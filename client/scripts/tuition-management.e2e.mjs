@@ -5,10 +5,13 @@ import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 import ExcelJS from "exceljs";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const artifactDir = path.join(os.tmpdir(), "teacher-hub-m6c-ui-audit");
+const artifactPolicy = createArtifactPolicy(root, "tuition-management", {});
+let artifactRunPassed = false;
+const artifactDir = artifactPolicy.runDir;
 fs.mkdirSync(artifactDir, { recursive: true });
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
 const testEnv = {
@@ -90,6 +93,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto("http://127.0.0.1:5176/admin/login");
@@ -269,7 +273,9 @@ try {
     await noHorizontalScroll(page);
   }
   console.log(`Playwright tuition E2E passed; screenshot: ${path.join(artifactDir, "tuition-paid-390.png")}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   for (const child of children.reverse()) { try { child.kill(); } catch { /* already stopped */ } }
   await new Promise((resolve) => setTimeout(resolve, 500));

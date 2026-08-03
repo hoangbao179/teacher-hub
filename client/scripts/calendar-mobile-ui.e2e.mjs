@@ -3,11 +3,14 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "calendar-mobile-ui", {});
+let artifactRunPassed = false;
 const clientRoot = path.join(root, "client");
 const origin = "http://127.0.0.1:5191";
-const screenshotDir = path.join(root, "screenshots");
+const screenshotDir = artifactPolicy.runDir;
 const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 let web;
 let browser;
@@ -144,6 +147,7 @@ try {
   await waitUrl(origin);
 
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const currentWeek = weekStart(todayInHoChiMinh());
   const populatedWeek = addDays(currentWeek, -7);
   const occurrenceRequests = [];
@@ -361,7 +365,9 @@ try {
   await loginContext.close();
   await context.close();
   process.stdout.write(`Calendar/reconciliation/login mobile UI smoke PASS. Screenshots: ${screenshotDir}\n`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   if (web && !web.killed) web.kill();
 }

@@ -4,13 +4,16 @@ import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "mobile-navigation", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4109;
 const webPort = 5189;
 const origin = `http://127.0.0.1:${webPort}`;
-const artifactDir = path.join(root, ".agent-reports", "v1-2-admin");
+const artifactDir = artifactPolicy.runDir;
 const testEnv = {
   ...process.env,
   NODE_ENV: "test",
@@ -275,6 +278,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 3,
@@ -476,7 +480,9 @@ try {
   assert(await desktopPage.locator('[data-testid="student-navigation-icon"]').count() >= 1, "Student navigation does not render the person icon");
   await desktopContext.close();
   console.log(`V11C mobile-navigation E2E passed at all seven target viewports; screenshots: ${artifactDir}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   for (const child of children.reverse()) {
     try { child.kill(); } catch { /* already stopped */ }

@@ -1,0 +1,35 @@
+# Local development
+
+Yêu cầu Node 24.18.x, npm 12.x, MySQL 8 và timezone `Asia/Ho_Chi_Minh`.
+Sao chép `server/.env.example`/`client/.env.example`, tạo database utf8mb4,
+chạy `npm ci`, `npm run db:migrate`, `npm run db:bootstrap-admin`, tùy chọn
+`npm run db:seed:dev`, rồi `npm run dev`. Lệnh `npm run dev` không tự chạy
+bootstrap: sửa `.env` một mình không đổi mật khẩu trong database.
+
+Mật khẩu admin V1 có mức tối thiểu cố định là 6 ký tự. Username cố định là `covy`.
+Để áp dụng credential bootstrap, sửa `BOOTSTRAP_ADMIN_PASSWORD`, chủ động chạy
+`npm run db:bootstrap-admin`, rồi kiểm
+tra thông báo `Admin ready: covy`. Để chỉ đổi mật khẩu của admin hiện hữu,
+chạy `npm run admin:reset-password`; terminal sẽ ẩn mật khẩu và yêu cầu nhập lại
+cho username cố định.
+Automation deployment có thể truyền đủ `ADMIN_RESET_PASSWORD` và
+`ADMIN_RESET_PASSWORD_CONFIRMATION`; command không in
+secret và không chấp nhận bộ biến thiếu.
+
+Limiter đăng nhập development cố định 60 giây/20 lần sai; restart tiến trình API
+là cách đơn giản để xóa state in-memory khi phát triển. Nếu cổng web 5173 bị chiếm,
+Vite sẽ dừng thay vì tự đổi
+cổng. Trên Windows, tìm và dừng đúng tiến trình bằng:
+
+```bat
+netstat -ano | findstr :5173
+taskkill /PID <PID> /F
+```
+
+Seed chỉ chứa tên/số điện thoại giả, idempotent và bị từ chối khi
+`NODE_ENV=production`. `db:reset:dev` là lệnh phá hủy dữ liệu dev và không được
+dùng với database cần giữ. Trước checkpoint dùng `npm run check:fast`; trước
+release dùng `npm run check:full` với MySQL đang chạy.
+
+Google Drive mặc định tắt. Xem `docs/operations/google-drive.md` để tạo OAuth client,
+authorize local và chạy smoke opt-in; không dùng credential production trong test CI.

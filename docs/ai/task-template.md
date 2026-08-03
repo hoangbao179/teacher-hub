@@ -1,22 +1,30 @@
-# AI task template
+# AI task worksheet
 
-## Goal
+Không commit file tạo từ mẫu này cho Level 1. Với Level 2/3, chỉ tạo change report
+khi thỏa rule trong `AGENTS.md`.
 
-## In scope
+## Goal and scope
 
-## Out of scope
+- Goal:
+- In scope:
+- Out of scope:
+- Required feature/spec/ADR:
 
-## Required reading
+## Initial classification
 
-- `AGENTS.md`
-- feature doc:
-- business rules:
-- shared contracts:
+- Level:
+- Trigger/reason:
+- Expected verification:
+- Documentation expected:
 
-## Acceptance criteria
+## Final review
 
-## Files likely affected
+- Final level after diff:
+- Escalated because:
+- Mandatory checks complete:
+- Long-lived documentation updated:
+- Temporary artifacts only under `.artifacts/`:
+- No private/generated files staged:
 
-## Verification commands
-
-## Documentation updates
+Final response/PR dùng đúng template trong `AGENTS.md`; không tạo implementation và
+verification report riêng.

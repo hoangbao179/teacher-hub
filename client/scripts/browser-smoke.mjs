@@ -5,8 +5,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
+import { createArtifactPolicy, finalizeArtifactDirectory } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "browser-smoke");
 dotenv.config({ path: path.join(root, "server/.env") });
 const nativeTestDatabase = `${process.env.DB_NAME ?? "teacher_hub"}_test`;
 const testEnv = {
@@ -17,8 +19,9 @@ const testEnv = {
 };
 const children = [];
 let chromeProfile;
-const artifactDir = path.join(os.tmpdir(), "teacher-hub-m6c-ui-audit");
-fs.mkdirSync(artifactDir, { recursive: true });
+let cdp;
+let artifactRunPassed = false;
+const artifactDir = artifactPolicy.runDir;
 
 function run(command, args, cwd = root, env = testEnv) {
   const useWindowsCommand = ["npm", "npx"].includes(command) && process.platform === "win32";
@@ -93,7 +96,9 @@ class Cdp {
     const ok = await this.eval(`(() => { const el=document.querySelector('[aria-label=${JSON.stringify(label)}]'); if(!el || el.disabled) return false; el.click(); return true; })()`);
     if (!ok) throw new Error(`Accessible control not found: ${label}`);
   }
-  async screenshot(name) {
+  async screenshot(name, force = false) {
+    if (!force && artifactPolicy.mode !== "review") return;
+    artifactPolicy.ensure();
     const { data } = await this.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
     fs.writeFileSync(path.join(artifactDir, `${name}.png`), Buffer.from(data, "base64"));
   }
@@ -128,7 +133,7 @@ try {
   start(chrome, ["--headless=new", "--no-first-run", "--disable-gpu", "--remote-debugging-port=9223", `--user-data-dir=${chromeProfile}`, "about:blank"], root, testEnv);
   await waitUrl("http://127.0.0.1:9223/json/version");
   const target = await fetch("http://127.0.0.1:9223/json/new?http://127.0.0.1:5174/admin/login", { method: "PUT" }).then((response) => response.json());
-  const cdp = new Cdp(target.webSocketDebuggerUrl); await cdp.open();
+  cdp = new Cdp(target.webSocketDebuggerUrl); await cdp.open();
   await cdp.wait("document.body && document.body.innerText.includes('Đăng nhập')", "login page");
   await cdp.screenshot("admin-login-390");
   await cdp.setInput("Tên đăng nhập", "covy"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");
@@ -294,9 +299,15 @@ try {
   await cdp.wait("document.body.innerText.includes('Tạm dừng') && document.body.innerText.includes('Mở lại')", "persisted class pause after relogin");
   const overflow = await cdp.eval("document.documentElement.scrollWidth-document.documentElement.clientWidth");
   if (overflow > 1) throw new Error(`Horizontal page overflow: ${overflow}px`);
+  artifactRunPassed = true;
   console.log(`Browser smoke passed: core CRUD, persistence, protected 404 and logout/login; screenshots: ${artifactDir}`);
   cdp.socket.close();
 } finally {
+  if (!artifactRunPassed && artifactPolicy.mode !== "off" && cdp?.socket?.readyState === WebSocket.OPEN) {
+    try { await cdp.screenshot("failure", true); } catch { /* Keep the original test error. */ }
+    cdp.socket.close();
+  }
+  finalizeArtifactDirectory(artifactPolicy, artifactRunPassed);
   for (const child of children.reverse()) { try { child.kill(); } catch { /* already stopped */ } }
   await new Promise((resolve) => setTimeout(resolve, 1000));
   if (chromeProfile && fs.existsSync(chromeProfile)) {

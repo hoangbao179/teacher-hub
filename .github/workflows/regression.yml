@@ -37,6 +37,7 @@ jobs:
       DB_NAME: teacher_hub_test
       JWT_SECRET: regression-only-secret-with-at-least-32-characters
       CHROME_PATH: /usr/bin/google-chrome
+      SCREENSHOT_MODE: failure
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -50,6 +51,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: full-regression-reports
-          path: .agent-reports/
+          name: full-regression-failure-artifacts
+          path: .artifacts/
           if-no-files-found: ignore
+          retention-days: 7

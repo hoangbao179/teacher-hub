@@ -4,14 +4,17 @@ import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "vocabulary-foundation", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4120;
 const webPort = 5200;
 const origin = `http://127.0.0.1:${webPort}`;
-const artifactDir = path.join(root, ".agent-reports", "V20A-VOCABULARY-FOUNDATION");
-const mediaArtifactDir = path.join(root, ".agent-reports", "V20F-VOCABULARY-STABILIZATION");
+const artifactDir = artifactPolicy.runDir;
+const mediaArtifactDir = artifactPolicy.runDir;
 const password = "vocabulary-e2e-password-123";
 const testEnv = {
   ...process.env,
@@ -125,6 +128,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
 
   for (const viewport of [
     { width: 360, height: 800, suffix: "mobile" },
@@ -249,7 +253,9 @@ try {
 
   await api(`/api/vocabulary/sets/${createdId}/archive`, { method: "POST", headers: auth, body: "{}" });
   console.log(`Vocabulary V20A/V20B E2E PASS; screenshots: ${artifactDir}, ${mediaArtifactDir}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   for (const child of children.reverse()) child.kill();
 }

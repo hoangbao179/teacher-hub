@@ -4,8 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "student-google-sheet", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
 const apiPort = 4117; const webPort = 5197; const origin = `http://127.0.0.1:${webPort}`;
 const testEnv = { ...process.env, NODE_ENV: "test", DB_HOST: process.env.DB_HOST ?? "127.0.0.1", DB_PORT: process.env.DB_PORT ?? "3306",
@@ -53,6 +56,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ["clipboard-read", "clipboard-write"] });
   const page = await context.newPage(); await page.goto(`${origin}/admin/login`);
   await page.getByLabel("Tên đăng nhập").fill("covy"); await page.locator('input[name="password"]').fill(testEnv.BOOTSTRAP_ADMIN_PASSWORD);
@@ -97,7 +101,9 @@ try {
   await page.getByText("Đã xếp hàng đồng bộ lại 1 buổi học.").waitFor();
   for (const width of [360, 375, 390, 393, 400, 412, 430]) await noOverflow(page, width);
   console.log("Student Google Sheet create/retry/resync-pending E2E passed at 360–430 px.");
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close(); for (const child of children.reverse()) { try { child.kill(); } catch { /* stopped */ } }
   await new Promise((resolve) => setTimeout(resolve, 500));
 }

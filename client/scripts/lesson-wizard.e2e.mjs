@@ -1,13 +1,15 @@
 /* global process, fetch, setTimeout, console, document, localStorage, URL, getComputedStyle */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const artifactDir = path.join(os.tmpdir(), "teacher-hub-m6c-ui-audit");
+const artifactPolicy = createArtifactPolicy(root, "lesson-wizard", {});
+let artifactRunPassed = false;
+const artifactDir = artifactPolicy.runDir;
 fs.mkdirSync(artifactDir, { recursive: true });
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
 const testEnv = {
@@ -84,6 +86,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto("http://127.0.0.1:5175/admin/login");
@@ -254,7 +257,9 @@ try {
   const conflictPersisted = await api(`/api/lessons/${conflictDraft.id}`, token);
   if (conflictPersisted.status !== "DRAFT") throw new Error("Paid conflict did not roll lesson back to DRAFT");
   console.log(`Playwright lesson E2E passed at 390x844; screenshot: ${path.join(artifactDir, "lesson-confirmation-390.png")}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   for (const child of children.reverse()) { try { child.kill(); } catch { /* already stopped */ } }
   await new Promise((resolve) => setTimeout(resolve, 500));

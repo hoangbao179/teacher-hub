@@ -1,18 +1,19 @@
 /* global process, fetch, setTimeout, document, localStorage, sessionStorage, window, URL, console, getComputedStyle */
 import { spawn } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 import { learningUnits } from "../src/features/learning/content/vocabularyCatalog.ts";
 import { productionSitemapPathnames } from "../src/features/learning/seo/learningSitemap.ts";
 import { createQuizQuestions, quizItemOrder } from "../src/features/learning/quiz/quizQuestions.ts";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "public-learning", {});
+let artifactRunPassed = false;
 const clientRoot = path.join(root, "client");
 const port = 5186;
 const origin = `http://127.0.0.1:${port}`;
-const screenshotDir = fs.mkdtempSync(path.join(os.tmpdir(), "covy-learning-v18cd-"));
+const screenshotDir = artifactPolicy.runDir;
 const viewports = [
   { width: 360, height: 800 }, { width: 375, height: 812 }, { width: 390, height: 844 },
   { width: 400, height: 930 }, { width: 412, height: 915 }, { width: 430, height: 932 }, { width: 768, height: 1024 }, { width: 1440, height: 900 },
@@ -71,6 +72,7 @@ try {
 
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext();
   await context.addInitScript(() => {
     window.__learningSpeechRates = [];
@@ -414,7 +416,9 @@ try {
 
   assert(apiRequests.length === 0, `Public learning made API requests: ${apiRequests.join(", ")}`);
   console.log(`Public learning E2E passed; temporary screenshots: ${screenshotDir}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   if (child) child.kill();
   await new Promise((resolve) => setTimeout(resolve, 300));

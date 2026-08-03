@@ -6,14 +6,17 @@ import path from "node:path";
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "vocabulary-game-engine", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4123;
 const webPort = 5203;
 const origin = `http://127.0.0.1:${webPort}`;
 const apiOrigin = `http://127.0.0.1:${apiPort}`;
-const artifactDir = path.join(root, ".agent-reports", "V20F-VOCABULARY-STABILIZATION");
+const artifactDir = artifactPolicy.runDir;
 const password = "v20d-e2e-password-123";
 const testEnv = {
   ...process.env,
@@ -175,6 +178,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(shareUrl, { waitUntil: "networkidle" });
@@ -359,7 +363,9 @@ try {
   await reconnect.close();
   await context.close();
   console.log(`V20F vocabulary game E2E PASS; screenshots: ${artifactDir}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (db) await db.end();
   if (browser) await browser.close();
   for (const child of children.reverse()) child.kill();

@@ -3,12 +3,15 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "public-homepage", process.env.HOMEPAGE_SCREENSHOT_DIR ? { output: process.env.HOMEPAGE_SCREENSHOT_DIR, defaultMode: "review" } : {});
+let artifactRunPassed = false;
 const clientRoot = path.join(root, "client");
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
-const screenshotDir = process.env.HOMEPAGE_SCREENSHOT_DIR;
+const screenshotDir = artifactPolicy.runDir;
 const screenshotWidths = new Set([360, 400, 430, 768, 1440]);
 const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến THCS";
 const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
@@ -41,7 +44,7 @@ const expectedTestimonials = [
 let child;
 let browser;
 
-if (screenshotDir) fs.mkdirSync(screenshotDir, { recursive: true });
+if (artifactPolicy.mode === "review") artifactPolicy.ensure();
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -118,6 +121,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "no-preference" });
   const page = await context.newPage();
   await page.route("https://i.ytimg.com/**", (route) => route.fulfill({
@@ -523,7 +527,7 @@ try {
       assert(sliderMetrics.contactWidth >= 1147 && sliderMetrics.contactWidth <= 1152, `Desktop contact width is not approximately 1152px: ${sliderMetrics.contactWidth}px`);
       assert(sliderMetrics.contactCenterOffset <= 1, `Desktop contact is not centered: ${sliderMetrics.contactCenterOffset}px`);
     }
-    if (screenshotDir && screenshotWidths.has(viewport.width)) {
+    if (artifactPolicy.mode === "review" && screenshotWidths.has(viewport.width)) {
       await page.screenshot({ path: path.join(screenshotDir, `homepage-${viewport.width}x${viewport.height}.png`), fullPage: true });
       if (viewport.width === 360 || viewport.width === 400) await page.locator("#hero").screenshot({ path: path.join(screenshotDir, `hero-${viewport.width}.png`) });
       if (viewport.width === 400) {
@@ -534,9 +538,11 @@ try {
   }
 
   await context.close();
-  if (screenshotDir) console.log(`Homepage screenshots saved to ${screenshotDir}`);
+  if (artifactPolicy.mode === "review") console.log(`Homepage screenshots saved to ${screenshotDir}`);
   console.log("Public Homepage local SEO E2E passed");
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   if (child) child.kill();
   await new Promise((resolve) => setTimeout(resolve, 300));

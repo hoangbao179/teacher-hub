@@ -6,14 +6,17 @@ import path from "node:path";
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "vocabulary-results-release", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4124;
 const webPort = 5204;
 const origin = `http://127.0.0.1:${webPort}`;
 const apiOrigin = `http://127.0.0.1:${apiPort}`;
-const artifacts = path.join(root, ".agent-reports", "V20F-VOCABULARY-STABILIZATION");
+const artifacts = artifactPolicy.runDir;
 const password = "v20e-e2e-password-123";
 const env = {
   ...process.env,
@@ -176,6 +179,7 @@ try {
   const authToken = loginPayload.data.token;
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await context.addInitScript((token) => sessionStorage.setItem("teacher-token", token), authToken);
   const page = await context.newPage();
@@ -229,7 +233,9 @@ try {
     await responsive.close();
   }
   console.log(`V20E result/review responsive E2E PASS; screenshots: ${artifacts}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (db) await db.end();
   if (browser) await browser.close();
   for (const child of children.reverse()) child.kill();

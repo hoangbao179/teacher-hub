@@ -2,8 +2,11 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "busy-slot-optional-title", {});
+let artifactRunPassed = false;
 const clientRoot = path.join(root, "client");
 const origin = "http://127.0.0.1:5193";
 const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
@@ -63,6 +66,7 @@ try {
   await waitUrl(origin);
 
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   await context.addInitScript(() => localStorage.setItem("teacher-token", "busy-slot-ui-token"));
   await context.route("**/api/auth/me", (route) => route.fulfill({
@@ -132,7 +136,9 @@ try {
   const formWidth = await page.getByTestId("busy-slot-form").evaluate((element) => element.getBoundingClientRect().width);
   assert(formWidth < 1366, "Desktop form should preserve its bounded layout");
   console.log("Busy-slot optional-title UI checks passed");
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   await browser?.close();
   web?.kill();
 }

@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const clientRoot = path.join(root, "client");
@@ -12,7 +13,12 @@ const option = (name, fallback) => {
   const index = process.argv.indexOf(`--${name}`);
   return index >= 0 ? process.argv[index + 1] : fallback;
 };
-const output = path.resolve(root, option("output", ".agent-reports/ui-capture"));
+const configuredOutput = option("output", undefined);
+const artifactPolicy = createArtifactPolicy(root, "manual-ui-review", {
+  defaultMode: "review",
+  output: configuredOutput,
+});
+const output = artifactPolicy.runDir;
 const requestedScreens = new Set(option("screens", "all").split(","));
 const viewports = option("viewports", "390x844,1440x900").split(",").map((entry) => {
   const [width, height] = entry.split("x").map(Number);
@@ -39,6 +45,7 @@ const testEnv = {
 };
 const children = [];
 let browser;
+let artifactRunPassed = false;
 
 function run(command, args, cwd) {
   const result = spawnSync(command, args, { cwd, env: testEnv, stdio: "inherit", shell: false });
@@ -82,7 +89,7 @@ function wants(name) {
 }
 
 try {
-  fs.mkdirSync(output, { recursive: true });
+  if (artifactPolicy.mode === "review") artifactPolicy.ensure();
   run(process.execPath, ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
   runNpm(["run", "db:migrate"], path.join(root, "server"));
   runNpm(["run", "db:bootstrap-admin"], path.join(root, "server"));
@@ -95,6 +102,7 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: viewports[0], reducedMotion: "reduce" });
   const page = await context.newPage();
   await page.route("https://i.ytimg.com/**", (route) => route.fulfill({ status: 200, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360"><rect width="100%" height="100%" fill="#ded7f8"/></svg>' }));
@@ -154,8 +162,11 @@ try {
       console.log(`Captured ${filename} (overflow ${metrics.overflow}px)`);
     }
   }
-  fs.writeFileSync(path.join(output, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  if (artifactPolicy.mode === "review")
+    fs.writeFileSync(path.join(output, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   for (const child of children.reverse()) child.kill();
   await new Promise((resolve) => setTimeout(resolve, 500));

@@ -1,16 +1,17 @@
 /* global process, fetch, setTimeout, document, window, console, URL, Touch, TouchEvent */
 import { spawn } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 import { stableBookPathnames } from "../src/features/books/seo/bookMetadata.ts";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "public-books", {});
+let artifactRunPassed = false;
 const clientRoot = path.join(root, "client");
 const port = 5191;
 const origin = `http://127.0.0.1:${port}`;
-const screenshotDir = fs.mkdtempSync(path.join(os.tmpdir(), "covy-official-books-"));
+const screenshotDir = artifactPolicy.runDir;
 let child;
 let browser;
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
@@ -60,6 +61,7 @@ try {
 
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext();
   let officialImageRequestCount = 0;
   await context.route("https://cdn3.olm.vn/**", async (route) => {
@@ -103,7 +105,8 @@ try {
   await assertNoOverflow(page, "Teacher grade 3 library 390");
   await screenshot(page, "library-teacher-grade-3-390.png");
 
-  await context.tracing.start({ screenshots: true, snapshots: true });
+  if (artifactPolicy.mode === "review")
+    await context.tracing.start({ screenshots: true, snapshots: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${origin}/sach/global-success/tieng-anh-3-tap-1`, { waitUntil: "networkidle" });
   const officialViewer = page.getByTestId("official-page-image-viewer");
@@ -221,7 +224,8 @@ try {
   await waitForReaderPage(page, 4);
   assert(new URL(page.url()).searchParams.get("page") === "4", "Tablet resize lost the current page");
   await assertNoOverflow(page, "Reader 768");
-  await context.tracing.stop({ path: path.join(screenshotDir, "reader-flip-trace.zip") });
+  if (artifactPolicy.mode === "review")
+    await context.tracing.stop({ path: path.join(screenshotDir, "reader-flip-trace.zip") });
 
   await page.goto(`${origin}/sach/global-success/tieng-anh-3-sach-giao-vien`, { waitUntil: "networkidle" });
   assert(await page.getByTestId("official-page-image-viewer").isVisible(), "Teacher reader does not use the official page image viewer");
@@ -255,7 +259,9 @@ try {
   }
 
   console.log(`Public books E2E passed; temporary screenshots: ${screenshotDir}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   if (browser) await browser.close();
   if (child) child.kill();
   await new Promise((resolve) => setTimeout(resolve, 300));

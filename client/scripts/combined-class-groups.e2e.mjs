@@ -1,16 +1,18 @@
 /* global process, fetch, setTimeout, console, document, window */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+const artifactPolicy = createArtifactPolicy(root, "combined-class-groups", {});
+let artifactRunPassed = false;
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
 const apiOrigin = "http://127.0.0.1:4110";
 const webOrigin = "http://127.0.0.1:5176";
-const artifactDir = path.join(os.tmpdir(), "teacher-hub-combined-groups");
+const artifactDir = artifactPolicy.runDir;
 fs.mkdirSync(artifactDir, { recursive: true });
 const env = {
   ...process.env,
@@ -115,6 +117,7 @@ try {
 
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   browser = await chromium.launch({ headless: true, executablePath: fs.existsSync(chrome) ? chrome : undefined });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(`${webOrigin}/admin/login`);
@@ -165,7 +168,9 @@ try {
     throw new Error(`Sticky action is obscured by mobile navigation: ${bottomSpacing}`);
 
   console.log(`Combined class group smoke passed; screenshots: ${artifactDir}`);
+  artifactRunPassed = true;
 } finally {
+  await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);
   await browser?.close();
   for (const child of children) child.kill();
 }

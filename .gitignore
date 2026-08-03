@@ -16,8 +16,8 @@ playwright-report/
 test-results/
 screenshots/
 **/screenshots/
-.agent-reports/**/*.png
-.agent-reports/**/manifest.json
+.agent-reports/
+.artifacts/
 *.xlsx
 *.xls
 !server/src/**/fixtures/*.xlsx
