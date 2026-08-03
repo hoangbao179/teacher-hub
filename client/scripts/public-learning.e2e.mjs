@@ -318,8 +318,14 @@ try {
     await page.goto(`${origin}/hoc/mam-non/con-vat-dang-yeu/flashcards`, { waitUntil: "networkidle" });
     const flashcardWidth = await page.getByRole("group", { name: /Flashcard từ/ }).evaluate((element) => element.getBoundingClientRect().width);
     assert(flashcardWidth <= 820, `Desktop flashcard is wider than 820px at ${viewport.width}px`);
-    const headerTitleWhiteSpace = await page.getByRole("link", { name: "Lớp tiếng Anh cô Vy" }).evaluate((element) => getComputedStyle(element).whiteSpace);
-    assert(headerTitleWhiteSpace === "nowrap", `Learning header wraps at ${viewport.width}px`);
+    const headerBrand = page.getByTestId("header-brand");
+    if (viewport.width < 600) {
+      assert(await headerBrand.isHidden(), `Learning header brand must stay hidden at ${viewport.width}px`);
+    } else {
+      assert(await headerBrand.isVisible(), `Learning header brand is missing at ${viewport.width}px`);
+      const headerTitleWhiteSpace = await headerBrand.evaluate((element) => getComputedStyle(element).whiteSpace);
+      assert(headerTitleWhiteSpace === "nowrap", `Learning header wraps at ${viewport.width}px`);
+    }
     if (viewport.width <= 430) {
       const actionButtons = page.getByTestId("flashcard-action-bar").getByRole("button");
       const actionRects = await actionButtons.evaluateAll((elements) => elements.map((element) => {
