@@ -111,9 +111,10 @@ Repository Secrets ở mỗi lần deploy:
 
 Workflow đọc `IMAGE_TAG` cũ trên VPS và ghi tag đó vào file env mới. File `.env.next`
 phải qua kiểm tra đủ key bắt buộc, giá trị bắt buộc không rỗng, boolean hợp lệ và tag
-đúng định dạng trước khi được thay nguyên tử thành file active. Script deploy sau đó mới
-đổi sang full SHA mới; trước khi đổi, script yêu cầu tối thiểu 1 GiB trống và 10.000 inode
-trống, đồng thời giữ một snapshot env đầy đủ để rollback bằng phép `mv`. Lần bootstrap
+đúng định dạng trước khi được thay nguyên tử thành file active. Trước khi kiểm tra
+headroom, script xóa các tag SHA API/Web cũ nhưng luôn giữ SHA đang active, rồi yêu cầu
+tối thiểu 1 GiB trống và 10.000 inode trống. Script sau đó mới đổi sang full SHA mới và
+giữ một snapshot env đầy đủ để rollback bằng phép `mv`. Lần bootstrap
 đầu tiên có thể để tag rỗng. Database
 name/user, CORS production, timezone, JWT lifetime, password policy, rate-limit và
 healthcheck URL được cố định trong source hoặc Compose. Không đưa password, token, IP
@@ -179,13 +180,21 @@ Push vào `main` chỉ gọi production deploy sau khi cả ba job bắt buộc 
 3. đọc `IMAGE_TAG` cũ, sinh runtime env từ Repository Secrets, copy thành `.env.next`,
    xác thực nội dung, đặt mode `600` rồi `mv` nguyên tử thành `/opt/teacher-hub/.env`;
    đồng thời copy Compose, Caddyfile và hai deployment script qua SSH host key đã pin;
-4. gọi script với SHA mới; script khóa deploy bằng `flock`, kiểm tra disk/inode headroom,
-   snapshot env, ghi SHA mới an toàn và khởi động/kiểm tra MySQL;
+4. gọi script với SHA mới; script khóa deploy bằng `flock`, dọn các application SHA cũ
+   nhưng giữ image active, kiểm tra disk/inode headroom, snapshot env, ghi SHA mới an
+   toàn và khởi động/kiểm tra MySQL;
 5. tạo và kiểm tra backup nén trước migration; sau khi V20 enable, recovery set
    bắt buộc gồm cả MySQL và `vocabulary-media` theo tài liệu backup;
 6. pull đúng SHA, chạy `node dist/db/migrate.js` đúng một lần bằng one-off API container;
 7. restart stack, kiểm tra health container và public `/ready`;
-8. giữ backup pre-migration 14 ngày và prune dangling image sau khi thành công.
+8. sau readiness, giữ backup pre-migration 14 ngày; với mỗi repository API/Web chỉ giữ
+   SHA vừa deploy và SHA active ngay trước đó để rollback, rồi prune dangling image.
+
+Image retention chỉ xử lý chính xác hai repository
+`ghcr.io/<GHCR_OWNER>/teacher-hub-api` và `teacher-hub-web`, chỉ xóa tag full SHA và
+không dùng `--force`. Tag `latest`, image hệ thống khác và image còn được container tham
+chiếu không bị cưỡng chế xóa. Nếu maintenance sau readiness lỗi, workflow trả exit code
+`4` nhưng không rollback ứng dụng đang healthy; operator phải xử lý cleanup rồi chạy lại.
 
 Nếu có lỗi sau khi đổi tag, script khôi phục nguyên snapshot env rồi đưa API/Web về full
 SHA trước đó và trả exit code khác 0. Nếu thao tác ghi file tạm thất bại (kể cả
@@ -201,6 +210,8 @@ image tự động.
 cd /opt/teacher-hub
 docker compose --env-file .env -f docker-compose.deploy.yml ps
 docker compose --env-file .env -f docker-compose.deploy.yml logs --tail=100 api web caddy
+docker image ls "ghcr.io/$(awk -F= '$1 == \"GHCR_OWNER\" { print $2; exit }' .env)/teacher-hub-api"
+docker image ls "ghcr.io/$(awk -F= '$1 == \"GHCR_OWNER\" { print $2; exit }' .env)/teacher-hub-web"
 curl --fail https://tienganhcovy.com/ready
 ```
 
@@ -208,7 +219,10 @@ Nếu deploy dừng vì thiếu dung lượng, không sửa hoặc tạo lại `
 dung lượng. Kiểm tra `df -h /opt/teacher-hub`, `df -i /opt/teacher-hub` và
 `docker system df`; chỉ xóa log/backup/image đã xác nhận không còn cần. Sau đó xác thực
 `.env` còn đủ key bằng `./deploy-env.sh validate .env`, kiểm tra stack hiện tại rồi mới
-chạy lại workflow. Không in nội dung `.env` ra log hoặc terminal chia sẻ.
+chạy lại workflow. Nếu VPS đã kín đến mức không copy được deployment script mới, cần
+operator xóa thủ công image SHA cũ không còn được container dùng một lần; các deploy sau
+đó sẽ tự giữ tối đa hai thế hệ application image. Không in nội dung `.env` ra log hoặc
+terminal chia sẻ.
 
 Chỉ Caddy publish TCP 80/443 và UDP 443. MySQL, API và Web không publish port. Nginx
 trong Web tiếp tục là điểm proxy duy nhất cho `/api`, `/health` và `/ready`; Caddy chỉ

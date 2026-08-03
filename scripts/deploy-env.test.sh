@@ -56,4 +56,19 @@ if [[ "$(deploy_read_env_value "$env_file" IMAGE_TAG)" != "222222222222222222222
   exit 1
 fi
 
+repository="ghcr.io/teacher/teacher-hub-api"
+current_tag="2222222222222222222222222222222222222222"
+rollback_tag="1111111111111111111111111111111111111111"
+removable_refs="$(printf '%s\n' \
+  "$repository:$current_tag" \
+  "$repository:$rollback_tag" \
+  "$repository:3333333333333333333333333333333333333333" \
+  "$repository:latest" \
+  "ghcr.io/another/teacher-hub-api:4444444444444444444444444444444444444444" \
+  | deploy_list_removable_image_refs "$repository" "$current_tag" "$rollback_tag")"
+if [[ "$removable_refs" != "$repository:3333333333333333333333333333333333333333" ]]; then
+  echo "Image retention did not select exactly the obsolete scoped SHA tag."
+  exit 1
+fi
+
 echo "Deployment env regression tests passed."

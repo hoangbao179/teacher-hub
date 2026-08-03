@@ -30,7 +30,8 @@ evidence từng lần kiểm thử được giữ trong Git history.
 - CI chạy quality, integration, E2E smoke và regression cho thao tác env deploy;
   nightly/manual workflow chạy full regression. Production deploy dùng image full
   commit SHA qua GHCR và VPS, xác thực env, kiểm tra storage headroom và giữ snapshot
-  env nguyên tử cho image rollback.
+  env nguyên tử cho image rollback; VPS tự giữ image API/Web hiện tại và đúng một thế hệ
+  rollback thay vì tích lũy mọi tag SHA.
 
 ## Trạng thái phát hành
 

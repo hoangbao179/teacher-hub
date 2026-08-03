@@ -45,6 +45,12 @@ deploy_validate_env_file() {
     fi
   done
 
+  value="$(deploy_read_env_value "$env_file" GHCR_OWNER)" || return 1
+  if [[ ! "$value" =~ ^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$ ]]; then
+    echo "Deployment GHCR_OWNER must be a lowercase GitHub owner name."
+    return 1
+  fi
+
   value="$(deploy_read_env_value "$env_file" IMAGE_TAG)" || return 1
   if [[ -n "$value" && ! "$value" =~ ^[0-9a-f]{40}$ ]]; then
     echo "Deployment IMAGE_TAG must be empty or a full 40-character Git commit SHA."
@@ -57,6 +63,27 @@ deploy_validate_env_file() {
       echo "Deployment env value must be true or false: $required_key"
       return 1
     fi
+  done
+}
+
+deploy_list_removable_image_refs() {
+  local repository="$1"
+  local current_tag="$2"
+  local rollback_tag="$3"
+  local reference tag
+
+  while IFS= read -r reference; do
+    if [[ "$reference" != "$repository:"* ]]; then
+      continue
+    fi
+    tag="${reference#"$repository:"}"
+    if [[ ! "$tag" =~ ^[0-9a-f]{40}$ ]]; then
+      continue
+    fi
+    if [[ "$tag" == "$current_tag" || ( -n "$rollback_tag" && "$tag" == "$rollback_tag" ) ]]; then
+      continue
+    fi
+    printf '%s\n' "$reference"
   done
 }
 

@@ -29,6 +29,10 @@ Migration chạy đúng một lần trong one-off API container. Rollback tự �
 image về SHA trước, không rollback database/media. Deployment fail-closed khi env mới
 không đầy đủ hoặc filesystem còn dưới 1 GiB/10.000 inode; snapshot env được khôi phục
 nguyên tử trước khi rollback image để lỗi hết dung lượng không làm mất runtime secrets.
+Local image retention xóa các application SHA cũ trước pull nhưng giữ SHA active; sau
+readiness giữ đúng SHA mới và một SHA rollback cho từng image API/Web. Cleanup giới hạn
+theo repository, không force image còn được container tham chiếu và không tác động MySQL,
+Caddy hay image ngoài ứng dụng.
 Chi tiết vận hành ở
 `docs/operations/production.md` và `docs/operations/backup-and-restore.md`.
 

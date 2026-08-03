@@ -17,6 +17,8 @@
   và `docker system df`, giải phóng đúng log/backup/image không còn cần, rồi chạy
   `./deploy-env.sh validate .env`. Nếu validation lỗi, phục hồi secret từ GitHub
   Repository Secrets qua workflow sau khi đã có dung lượng; không in `.env` ra log.
+  Workflow mới tự giữ SHA active trước pull và giữ thêm một SHA rollback sau readiness,
+  nhưng VPS đã đầy đến mức không copy được script vẫn cần cleanup thủ công một lần.
 - Google Sheet còn **Đang chờ đồng bộ**: kiểm tra cả `GOOGLE_DRIVE_ENABLED` và
   `GOOGLE_SHEET_SYNC_ENABLED`, worker log và `next_attempt_at`; không xóa outbox.
 - **Đang thử lại** là lỗi tạm thời (network/429/5xx). **Đồng bộ lỗi** là event

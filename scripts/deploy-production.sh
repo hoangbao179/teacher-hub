@@ -100,13 +100,51 @@ wait_for_readiness() {
   return 1
 }
 
-check_storage_headroom
+prune_application_images() {
+  local current_tag="$1"
+  local rollback_tag="$2"
+  local owner component repository image_refs removable_refs reference
+  local failed=0
+  owner="$(deploy_read_env_value "$ENV_FILE" GHCR_OWNER)" || return 1
+
+  for component in api web; do
+    repository="ghcr.io/$owner/teacher-hub-$component"
+    if ! image_refs="$(docker image ls --format '{{.Repository}}:{{.Tag}}' "$repository")"; then
+      echo "Could not list local images for $repository."
+      failed=1
+      continue
+    fi
+    removable_refs="$(deploy_list_removable_image_refs "$repository" "$current_tag" "$rollback_tag" <<< "$image_refs")"
+    while IFS= read -r reference; do
+      if [[ -z "$reference" ]]; then
+        continue
+      fi
+      echo "Removing obsolete application image $reference."
+      if ! docker image rm "$reference"; then
+        echo "Could not remove $reference; Docker may still have a container referencing it."
+        failed=1
+      fi
+    done <<< "$removable_refs"
+  done
+
+  return "$failed"
+}
 
 previous_tag="$(deploy_read_env_value "$ENV_FILE" IMAGE_TAG)"
 if [[ -n "$previous_tag" && ! "$previous_tag" =~ ^[0-9a-f]{40}$ ]]; then
   echo "Existing IMAGE_TAG is not an immutable full commit SHA."
   exit 2
 fi
+
+# Before pulling, retain only the currently active application SHA. This makes room
+# for the new pair while guaranteeing that a failed deploy can restore the active pair.
+if ! prune_application_images "$previous_tag" ""; then
+  echo "Pre-deploy image cleanup was incomplete; storage headroom will decide whether deployment may continue."
+fi
+if ! docker image prune --force >/dev/null; then
+  echo "Dangling-image cleanup failed; storage headroom will decide whether deployment may continue."
+fi
+check_storage_headroom
 
 deployment_changed=0
 temporary_backup=""
@@ -195,9 +233,31 @@ wait_for_healthy web 60
 wait_for_healthy caddy 30
 wait_for_readiness
 
-find "$BACKUP_DIR" -type f -name 'pre-migrate-*.sql.gz' -mtime "+$BACKUP_RETENTION_DAYS" -delete
-docker image prune --force >/dev/null
-rm -f "$rollback_env"
-rollback_env=""
+# Readiness commits the application deployment. Maintenance failures after this point
+# must be visible to CI, but must never roll a healthy deployment back.
 trap - ERR
+maintenance_failed=0
+if ! rm -f "$rollback_env"; then
+  echo "Could not remove the deployment env rollback snapshot."
+  maintenance_failed=1
+else
+  rollback_env=""
+fi
+if ! find "$BACKUP_DIR" -type f -name 'pre-migrate-*.sql.gz' -mtime "+$BACKUP_RETENTION_DAYS" -delete; then
+  echo "Could not apply pre-migration backup retention."
+  maintenance_failed=1
+fi
+# Keep the new SHA and exactly one local rollback generation for API and Web.
+if ! prune_application_images "$NEW_IMAGE_TAG" "$previous_tag"; then
+  echo "Post-deploy application image retention was incomplete."
+  maintenance_failed=1
+fi
+if ! docker image prune --force >/dev/null; then
+  echo "Post-deploy dangling-image cleanup failed."
+  maintenance_failed=1
+fi
+if [[ "$maintenance_failed" == "1" ]]; then
+  echo "Production is ready, but post-deploy maintenance failed."
+  exit 4
+fi
 echo "Production deployment completed for image tag $NEW_IMAGE_TAG."

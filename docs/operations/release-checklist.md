@@ -20,7 +20,8 @@ phải lặp lại cho release/environment hiện tại.
 - [ ] GitHub Secrets, OAuth/provider flags và first-admin rotation được kiểm tra
   ngoài log.
 - [ ] Backup pre-deploy và checksum hợp lệ; restore drill gần nhất đã được review.
-- [ ] Docker images đúng full commit SHA; MySQL/API/Web/Caddy healthy.
+- [ ] Docker images đúng full commit SHA; MySQL/API/Web/Caddy healthy; local API/Web
+  chỉ còn SHA hiện tại và tối đa một SHA rollback.
 - [ ] HTTPS, firewall, persistent volumes, log rotation và retention đã xác minh.
 - [ ] Với vocabulary media: recovery set gồm cả MySQL và `vocabulary-media`.
 - [ ] Query plan, RAM/IO/disk và tốc độ tăng volume đã đo trên dữ liệu đại diện.
