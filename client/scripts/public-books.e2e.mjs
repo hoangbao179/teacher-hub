@@ -46,6 +46,31 @@ async function assertNoOverflow(page, label) {
   assert(overflow.scrollWidth <= overflow.clientWidth, `${label} overflows horizontally: ${JSON.stringify(overflow)}`);
 }
 
+async function assertCompactLibraryFooter(page, label) {
+  const layout = await page.evaluate(() => {
+    const shell = document.querySelector('[data-testid="book-shell"]');
+    const main = shell?.querySelector(":scope > main");
+    const footer = shell?.querySelector(":scope > footer");
+    if (!shell || !main || !footer) return null;
+    const shellStyle = window.getComputedStyle(shell);
+    const mainStyle = window.getComputedStyle(main);
+    const footerStyle = window.getComputedStyle(footer);
+    return {
+      shellDisplay: shellStyle.display,
+      shellDirection: shellStyle.flexDirection,
+      shellMinHeight: shellStyle.minHeight,
+      mainFlexGrow: mainStyle.flexGrow,
+      footerFlexGrow: footerStyle.flexGrow,
+      footerFlexShrink: footerStyle.flexShrink,
+      footerHeight: footer.getBoundingClientRect().height,
+    };
+  });
+  assert(layout, `${label} shell layout is missing`);
+  assert(layout.shellDisplay === "flex" && layout.shellDirection === "column", `${label} shell is not a flex column: ${JSON.stringify(layout)}`);
+  assert(layout.mainFlexGrow === "1", `${label} main does not own remaining space: ${JSON.stringify(layout)}`);
+  assert(layout.footerFlexGrow === "0" && layout.footerFlexShrink === "0" && layout.footerHeight < 80, `${label} footer stretches: ${JSON.stringify(layout)}`);
+}
+
 try {
   child = spawn(process.execPath, [path.join(root, "node_modules/vite/bin/vite.js"), "preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], { cwd: clientRoot, env: process.env, stdio: ["ignore", "pipe", "pipe"] });
   child.stdout.on("data", (chunk) => process.stdout.write(chunk));
@@ -63,13 +88,58 @@ try {
   browser = await chromium.launch({ headless: true, executablePath: chrome });
   installPlaywrightArtifactPolicy(browser, artifactPolicy);
   const context = await browser.newContext();
+  await context.addInitScript(() => {
+    window.__pageTurnSoundStarts = 0;
+    class FakeAudioNode {
+      connect(node) { return node; }
+    }
+    class FakeAudioContext {
+      state = "running";
+      sampleRate = 8000;
+      currentTime = 0;
+      destination = new FakeAudioNode();
+      createBuffer(_channels, length) { return { getChannelData: () => new Float32Array(length) }; }
+      createBufferSource() {
+        const node = new FakeAudioNode();
+        node.start = () => {
+          window.__pageTurnSoundStarts += 1;
+          window.setTimeout(() => node.onended?.(), 0);
+        };
+        return node;
+      }
+      createBiquadFilter() {
+        const node = new FakeAudioNode();
+        node.frequency = { setValueAtTime() {}, exponentialRampToValueAtTime() {} };
+        node.Q = { value: 0 };
+        return node;
+      }
+      createGain() {
+        const node = new FakeAudioNode();
+        node.gain = { setValueAtTime() {}, exponentialRampToValueAtTime() {} };
+        return node;
+      }
+      resume() { return Promise.resolve(); }
+      close() { return Promise.resolve(); }
+    }
+    Object.defineProperty(window, "AudioContext", { configurable: true, value: FakeAudioContext });
+  });
   let officialImageRequestCount = 0;
+  let officialManifestRequestCount = 0;
+  context.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/book-pages/")) officialManifestRequestCount += 1;
+  });
   await context.route("https://cdn3.olm.vn/**", async (route) => {
     officialImageRequestCount += 1;
     return route.fulfill({ status: 200, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900"><rect width="600" height="900" fill="#eaf9ff"/><rect x="40" y="40" width="520" height="820" rx="24" fill="#fff" stroke="#159f98" stroke-width="8"/><text x="300" y="440" text-anchor="middle" font-size="42" fill="#152337">NXBGD</text><text x="300" y="500" text-anchor="middle" font-size="28" fill="#087a72">Trang sách kiểm thử</text></svg>' });
   });
-  await context.route("https://online.flipbuilder.com/**", async (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>Interactive audio test viewer</title><main>Interactive audio viewer</main>" }));
+  await context.route("https://online.flipbuilder.com/**", async (route) => route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: '<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#263445;color:#fff;font:20px sans-serif;display:grid;place-items:center;height:100vh}.spread{display:flex;gap:12px;width:88%;height:80%}.page{flex:1;background:#fff;color:#172238;display:grid;place-items:center;border-radius:4px}button{position:fixed;bottom:24px;min-height:44px}</style><main class="spread"><section class="page">Trang giữa bên trái</section><section class="page">Trang giữa bên phải</section></main><button aria-label="Phát bài nghe">▶ Bài nghe</button>' }));
   const page = await context.newPage();
+  const pageErrors = [];
+  const hydrationWarnings = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (/hydration|did not match/i.test(message.text())) hydrationWarnings.push(message.text());
+  });
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${origin}/sach`, { waitUntil: "networkidle" });
@@ -78,22 +148,50 @@ try {
   assert(await page.locator('[data-testid^="book-card-"]').count() === 13, "Default library must show 13 student books");
   assert(await page.locator("iframe").count() === 0, "Library must not create an iframe");
   assert(await page.getByText(/tất cả sách.*(?:audio|bài nghe)/i).count() === 0, "Library still claims all books have audio");
+  assert(await page.getByRole("heading", { name: "Chọn sách" }).count() === 0, "Redundant library heading is still visible");
+  assert(await page.getByText("Chọn loại tài liệu và lớp để tìm nhanh hơn.", { exact: true }).count() === 0, "Redundant library instructions are still visible");
+  assert(await page.getByRole("link", { name: "Mở sách", exact: true }).count() === 13, "Student cards do not expose one consistent main CTA");
+  assert(await page.getByRole("link", { name: "Nghe bài tương tác" }).count() === 0, "Library still links the compatibility audio route");
   await assertNoOverflow(page, "Student library 1440");
   await screenshot(page, "library-student-1440.png");
 
+  await page.goto(`${origin}/sach?grade=1`, { waitUntil: "networkidle" });
+  assert(await page.locator('[data-testid^="book-card-"]').count() === 1, "Grade 1 student filter does not show one card");
+  await assertCompactLibraryFooter(page, "Student grade 1 desktop");
+  await screenshot(page, "library-grade-1-1440.png");
+  await page.goto(`${origin}/sach?grade=1&type=student`, { waitUntil: "networkidle" });
+  await assertCompactLibraryFooter(page, "Explicit student grade 1 desktop");
+
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${origin}/sach?grade=1`, { waitUntil: "networkidle" });
+  await assertCompactLibraryFooter(page, "Student grade 1 mobile");
+  await screenshot(page, "library-grade-1-390.png");
   await page.goto(`${origin}/sach`, { waitUntil: "networkidle" });
   await assertNoOverflow(page, "Student library 390");
+  const mobileHeroBox = await page.getByTestId("book-library-hero").boundingBox();
+  assert(mobileHeroBox && mobileHeroBox.height < 210, `Mobile library hero is still too tall: ${mobileHeroBox?.height}`);
+  const mobileTypeFilterBox = await page.getByTestId("book-type-filter").boundingBox();
+  assert(mobileTypeFilterBox && mobileTypeFilterBox.width >= 350, `Mobile book type filter does not use the available width: ${mobileTypeFilterBox?.width}`);
+  assert(await page.getByTestId("grade-scroll-hint").getByText("Vuốt để xem thêm →", { exact: true }).isVisible(), "Mobile grade scroller has no discoverability hint");
+  const gradeFilterDimensions = await page.getByTestId("book-grade-filter").evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth, overflowX: window.getComputedStyle(element).overflowX }));
+  assert(gradeFilterDimensions.scrollWidth > gradeFilterDimensions.clientWidth && gradeFilterDimensions.overflowX === "auto", `Mobile grade filter is not a single horizontal scroller: ${JSON.stringify(gradeFilterDimensions)}`);
+  const firstMobileCard = page.locator('[data-testid^="book-card-"]').first();
+  const firstMobileCardBox = await firstMobileCard.boundingBox();
+  const firstMobileCtaBox = await firstMobileCard.getByRole("link", { name: "Mở sách", exact: true }).boundingBox();
+  assert(firstMobileCardBox && firstMobileCtaBox && firstMobileCtaBox.width >= firstMobileCardBox.width - 24, `Mobile card CTA does not span the card content width: ${JSON.stringify({ card: firstMobileCardBox?.width, cta: firstMobileCtaBox?.width })}`);
+  assert(!(await firstMobileCard.getByTestId("book-description").isVisible()), "Redundant card description is still visible on mobile");
   await screenshot(page, "library-student-390.png");
 
   await page.getByRole("button", { name: "Lớp 3" }).click();
   assert(await page.getByTestId("book-group-3").locator("article").count() === 2, "Grade 3 students must show two volumes");
-  assert(await page.getByTestId("book-group-3").getByRole("link", { name: "Nghe bài tương tác" }).count() === 2, "Verified student audio CTAs are missing");
+  assert(await page.getByTestId("book-group-3").getByRole("link", { name: "Mở sách", exact: true }).count() === 2, "Student cards do not use the main reading route");
+  assert(await page.getByTestId("book-group-3").getByRole("link", { name: "Nghe bài tương tác" }).count() === 0, "Student cards still expose audio CTAs");
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${origin}/sach?type=teacher`, { waitUntil: "networkidle" });
   assert(await page.getByRole("button", { name: "Tài liệu giáo viên", exact: true }).getAttribute("aria-pressed") === "true", "Teacher filter is not active from query");
   assert(await page.locator('[data-testid^="book-card-"]').count() === 8, "Teacher library must show eight verified books");
+  assert(await page.getByRole("link", { name: "Mở tài liệu", exact: true }).count() === 8, "Teacher cards do not expose one consistent main CTA");
   assert(await page.getByRole("link", { name: "Nghe bài tương tác" }).count() === 0, "Teacher cards expose audio CTA");
   await assertNoOverflow(page, "Teacher library 1440");
   await screenshot(page, "library-teacher-1440.png");
@@ -105,6 +203,10 @@ try {
   await assertNoOverflow(page, "Teacher grade 3 library 390");
   await screenshot(page, "library-teacher-grade-3-390.png");
 
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${origin}/sach?grade=1&type=teacher`, { waitUntil: "networkidle" });
+  await assertCompactLibraryFooter(page, "Teacher grade 1 desktop");
+
   if (artifactPolicy.mode === "review")
     await context.tracing.start({ screenshots: true, snapshots: true });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -114,14 +216,22 @@ try {
   const pageFlip = page.getByTestId("responsive-page-flip");
   await pageFlip.waitFor();
   await page.waitForFunction(() => document.querySelector('[data-testid="responsive-page-flip"]')?.getAttribute("data-reader-mode") === "single");
+  assert(await page.locator("header").count() === 0, "Reader route still mounts the public header");
+  assert(await page.getByRole("button", { name: "Tắt âm thanh lật trang" }).count() === 1, "NXBGD reader sound toggle is missing");
+  assert(await page.evaluate(() => window.__pageTurnSoundStarts) === 0, "Page-turn sound played during reader mount");
   assert(officialImageRequestCount < 30, `Reader eagerly loaded too many page images on open: ${officialImageRequestCount}`);
   assert(await officialViewer.locator("iframe").count() === 0, "Official reader still uses an iframe");
   assert(await pageFlip.locator('[data-manifest-page]').count() === 82, "Flipbook page nodes are missing");
   assert(await pageFlip.locator("img").count() > 0 && await pageFlip.locator('img:not([draggable="false"])').count() === 0, "Loaded flipbook images remain draggable");
   assert(await pageFlip.getAttribute("data-reader-mode") === "single", "390px reader is not in single-page mode");
   assert(await pageFlip.getAttribute("data-flip-gestures") === "enabled", "Mobile flip gestures are disabled at 100%");
-  assert(await page.getByText("Nguồn chính thức NXBGD", { exact: true }).isVisible(), "Official source badge is missing");
   assert(await page.getByText(/bài nghe|nhấn biểu tượng loa/i).count() === 0, "Official reader shows audio copy");
+  assert(await page.locator('img[alt^="Bìa minh họa"]').count() === 0, "Reader still shows the large cover block");
+  assert(await page.locator("footer").count() === 0, "Reader mode still renders the public footer");
+  const mobileReaderHeader = await page.getByTestId("book-reader-header").boundingBox();
+  const mobileOfficialBox = await officialViewer.boundingBox();
+  assert(mobileReaderHeader && mobileOfficialBox && mobileOfficialBox.y - (mobileReaderHeader.y + mobileReaderHeader.height) < 12, "Mobile reader is separated from its compact header");
+  assert(mobileOfficialBox.width >= 380, `Mobile reader is too narrow: ${mobileOfficialBox.width}`);
   let dimensions = await pageScroll.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth, scrollLeft: element.scrollLeft }));
   assert(dimensions.scrollWidth === dimensions.clientWidth && dimensions.scrollLeft === 0, "Mobile fit-width is horizontally scrollable at 100%");
   await assertNoOverflow(page, "Reader 390 at 100%");
@@ -143,6 +253,18 @@ try {
   });
   await waitForReaderPage(page, 2);
   assert(new URL(page.url()).searchParams.get("page") === "2", "Mobile swipe did not update query to page 2");
+  await page.waitForFunction(() => window.__pageTurnSoundStarts === 1);
+  await page.getByRole("button", { name: "Tắt âm thanh lật trang" }).click();
+  assert(await page.evaluate(() => window.localStorage.getItem("teacher-hub.book-page-sound.enabled")) === "false", "Muted page-turn preference was not stored");
+  await page.getByRole("button", { name: "Trang sau" }).click();
+  await waitForReaderPage(page, 3);
+  assert(await page.evaluate(() => window.__pageTurnSoundStarts) === 1, "Muted page flip played a sound");
+  await page.getByRole("button", { name: "Bật âm thanh lật trang" }).click();
+  assert(await page.evaluate(() => window.localStorage.getItem("teacher-hub.book-page-sound.enabled")) === "true", "Enabled page-turn preference was not stored");
+  await page.waitForTimeout(220);
+  await page.getByRole("button", { name: "Trang sau" }).click();
+  await waitForReaderPage(page, 4);
+  await page.waitForFunction(() => window.__pageTurnSoundStarts === 2);
   await screenshot(page, "reader-mobile-after-swipe.png");
 
   await page.getByRole("button", { name: "Phóng to" }).click();
@@ -160,7 +282,7 @@ try {
   await page.mouse.move(zoomBox.x + 30, zoomBox.y + Math.min(200, zoomBox.height / 2), { steps: 8 });
   await page.mouse.up();
   await page.waitForTimeout(750);
-  assert(await page.getByRole("spinbutton", { name: "Số trang" }).inputValue() === "2", "Swipe changed page while zoom was active");
+  assert(await page.getByRole("spinbutton", { name: "Số trang" }).inputValue() === "4", "Swipe changed page while zoom was active");
 
   await page.getByRole("button", { name: "Vừa trang", exact: true }).click();
   await page.waitForTimeout(150);
@@ -173,65 +295,89 @@ try {
   await page.getByRole("button", { name: "Phóng to" }).click();
   await pageScroll.evaluate((element) => { element.scrollLeft = 60; element.scrollTop = 60; });
   await page.getByRole("button", { name: "Trang sau" }).click();
-  await waitForReaderPage(page, 3);
-  assert(new URL(page.url()).searchParams.get("page") === "3", "Next page did not update the route query");
+  await waitForReaderPage(page, 5);
+  assert(new URL(page.url()).searchParams.get("page") === "5", "Next page did not update the route query");
   assert(await page.getByTestId("official-page-zoom").getByText("100%", { exact: true }).isVisible(), "Page change did not reset zoom");
   const resetPosition = await pageScroll.evaluate((element) => ({ left: element.scrollLeft, top: element.scrollTop }));
   assert(resetPosition.left === 0 && resetPosition.top === 0, "Page change did not reset scroll position");
 
-  await page.goto(`${origin}/sach/global-success/tieng-anh-3-tap-1?page=10`, { waitUntil: "networkidle" });
+  await page.goto(`${origin}/sach/global-success/tieng-anh-3-tap-1?page=10&series=global-success`, { waitUntil: "networkidle" });
   await waitForReaderPage(page, 10);
   assert(await pageFlip.getAttribute("data-reader-mode") === "single", "Mobile URL page reader changed mode");
   assert(await page.getByText("10 / 82", { exact: true }).isVisible(), "Mobile URL page 10 label is wrong");
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.waitForFunction(() => document.querySelector('[data-testid="responsive-page-flip"]')?.getAttribute("data-reader-mode") === "double");
-  await waitForReaderPage(page, 10);
-  assert(new URL(page.url()).searchParams.get("page") === "10", "Resize lost the current query page");
-  assert(await page.getByText("10–11 / 82", { exact: true }).isVisible(), "Desktop spread label after resize is wrong");
-
-  await page.goto(`${origin}/sach/global-success/tieng-anh-3-tap-1`, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => document.querySelector('[data-testid="responsive-page-flip"]')?.getAttribute("data-reader-mode") === "double");
-  const visibleCoverPages = pageFlip.locator('.stf__item[data-manifest-page]:visible');
-  assert(await visibleCoverPages.count() === 1, "Desktop cover is not shown alone");
-  assert(await visibleCoverPages.first().getAttribute("data-manifest-page") === "1", "Desktop starts on the wrong cover page");
-  const desktopFlipBox = await pageFlip.locator(".stf__parent").boundingBox();
-  const desktopReaderBox = await pageFlip.boundingBox();
-  assert(desktopFlipBox && desktopReaderBox && desktopFlipBox.width < desktopReaderBox.width, "Desktop book is stretched across the whole viewer");
-  await screenshot(page, "reader-desktop-cover.png");
-
-  await page.getByRole("button", { name: "Trang sau" }).click();
-  await page.waitForTimeout(160);
-  const animationShadow = pageFlip.locator(".stf__hardShadow");
-  assert((await animationShadow.getAttribute("style"))?.includes("display: block"), "Page-flip animation shadow did not appear");
-  await screenshot(page, "reader-desktop-mid-flip.png");
-  await waitForReaderPage(page, 2);
-  const visibleSpreadPages = pageFlip.locator('.stf__item[data-manifest-page]:visible');
-  assert(await visibleSpreadPages.count() === 2, "Desktop does not show a two-page spread after the cover");
-  assert((await visibleSpreadPages.evaluateAll((elements) => elements.map((element) => element.getAttribute("data-manifest-page")).sort())).join(",") === "2,3", "Desktop spread duplicated or skipped a page");
-  assert(await page.getByText("2–3 / 82", { exact: true }).isVisible(), "Desktop spread label is wrong");
-  await screenshot(page, "reader-desktop-spread.png");
-
-  await page.getByRole("button", { name: "Trang sau" }).click();
-  await waitForReaderPage(page, 4);
-  await page.keyboard.press("ArrowLeft");
-  await waitForReaderPage(page, 2);
-  await page.keyboard.press("ArrowRight");
-  await waitForReaderPage(page, 4);
-  await screenshot(page, "reader-desktop-after-flip.png");
-
+  const backUrl = new URL(await page.getByRole("link", { name: "Quay lại Tủ sách" }).getAttribute("href"), origin);
+  assert(backUrl.pathname === "/sach" && backUrl.searchParams.get("grade") === "3" && backUrl.searchParams.get("type") === "student" && backUrl.searchParams.get("series") === "global-success" && !backUrl.searchParams.has("page"), "Reader back link did not preserve the library filters");
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.waitForFunction(() => document.querySelector('[data-testid="responsive-page-flip"]')?.getAttribute("data-reader-mode") === "single");
-  await waitForReaderPage(page, 4);
-  assert(new URL(page.url()).searchParams.get("page") === "4", "Tablet resize lost the current page");
+  await waitForReaderPage(page, 10);
+  assert(new URL(page.url()).searchParams.get("page") === "10", "Official reader resize lost the current page");
   await assertNoOverflow(page, "Reader 768");
+  await screenshot(page, "reader-student-tablet-768.png");
+
+  const requestsBeforeInteractive = officialImageRequestCount;
+  const manifestsBeforeInteractive = officialManifestRequestCount;
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${origin}/sach/global-success/tieng-anh-3-tap-1`, { waitUntil: "networkidle" });
+  const interactiveViewer = page.getByTestId("interactive-audio-viewer");
+  const interactiveFrame = interactiveViewer.locator("iframe");
+  await interactiveFrame.waitFor();
+  assert(await page.locator("header").count() === 0, "Desktop reader still mounts the public header");
+  assert(await page.getByRole("button", { name: /âm thanh lật trang/i }).count() === 0, "FlipBuilder renders the NXBGD page-turn sound control");
+  assert(await page.getByTestId("official-page-image-viewer").count() === 0, "Desktop mounted the official viewer beside FlipBuilder");
+  assert(officialImageRequestCount === requestsBeforeInteractive, "Desktop fetched the NXBGD manifest or page images before FlipBuilder");
+  assert(officialManifestRequestCount === manifestsBeforeInteractive, "Desktop fetched the NXBGD manifest before FlipBuilder");
+  assert(await interactiveFrame.getAttribute("allow") === "autoplay; fullscreen", "Desktop FlipBuilder permissions are missing");
+  assert(!((await interactiveFrame.getAttribute("sandbox")) ?? "").includes("allow-top-navigation"), "Desktop FlipBuilder can navigate the parent tab");
+  assert(await interactiveFrame.contentFrame().getByRole("button", { name: "Phát bài nghe" }).isVisible(), "Interactive audio control is unavailable");
+  const desktopViewerBox = await interactiveViewer.boundingBox();
+  assert(desktopViewerBox && desktopViewerBox.width >= 1380, `Desktop reader is too narrow: ${desktopViewerBox?.width}`);
+  assert(desktopViewerBox && desktopViewerBox.y < 70, `Desktop reader starts too low: ${desktopViewerBox?.y}`);
+  assert(await page.locator("footer").count() === 0, "Desktop reader mode still renders the public footer");
+  const desktopPageHeight = await page.evaluate(() => ({ viewport: window.innerHeight, document: document.documentElement.scrollHeight }));
+  assert(desktopPageHeight.document <= desktopPageHeight.viewport + 1, `Desktop reader adds unnecessary page scroll: ${JSON.stringify(desktopPageHeight)}`);
+  await assertNoOverflow(page, "Student reader 1440");
+  await page.setViewportSize({ width: 1439, height: 900 });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(150);
+  await screenshot(page, "reader-student-desktop-1440.png");
+
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await interactiveFrame.waitFor();
+  const laptopFrameBox = await interactiveFrame.boundingBox();
+  assert(laptopFrameBox && laptopFrameBox.height >= 630, `Laptop iframe does not use the height freed by removing the public header: ${laptopFrameBox?.height}`);
+  await assertNoOverflow(page, "Student reader 1280x720");
+  await screenshot(page, "reader-student-laptop-1280.png");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByTestId("official-page-image-viewer").waitFor();
+  assert(await page.locator("iframe").count() === 0, "Resize kept the desktop iframe mounted on mobile");
+  await screenshot(page, "reader-student-mobile-390-after-resize.png");
   if (artifactPolicy.mode === "review")
     await context.tracing.stop({ path: path.join(screenshotDir, "reader-flip-trace.zip") });
 
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${origin}/sach/global-success/tieng-anh-3-sach-giao-vien`, { waitUntil: "networkidle" });
   assert(await page.getByTestId("official-page-image-viewer").isVisible(), "Teacher reader does not use the official page image viewer");
   assert(await page.locator("iframe").count() === 0, "Teacher official reader still uses an iframe");
+  assert(await page.locator("header").count() === 0, "Teacher reader still mounts the public header");
+  assert(await page.getByRole("button", { name: "Tắt âm thanh lật trang" }).count() === 1, "Teacher NXBGD reader lacks the page-turn UI sound control");
   assert(await page.getByRole("link", { name: "Nghe bài tương tác" }).count() === 0, "Teacher reader exposes audio CTA");
   assert(await page.getByText(/bài nghe|nhấn biểu tượng loa/i).count() === 0, "Teacher reader shows audio copy");
+  const soundsBeforeTeacherFlip = await page.evaluate(() => window.__pageTurnSoundStarts);
+  await page.getByRole("button", { name: "Trang sau" }).click();
+  await waitForReaderPage(page, 2);
+  await page.waitForFunction((expected) => window.__pageTurnSoundStarts === expected, soundsBeforeTeacherFlip + 1);
+  assert(await page.getByText("2–3 / 314", { exact: true }).isVisible(), "Teacher desktop reader does not show a two-page spread");
+  await assertNoOverflow(page, "Teacher reader 1440");
+  await screenshot(page, "reader-teacher-desktop-1440.png");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${origin}/sach/global-success/tieng-anh-3-sach-giao-vien`, { waitUntil: "networkidle" });
+  assert(await page.getByTestId("official-page-image-viewer").isVisible(), "Teacher mobile reader does not use NXBGD");
+  assert(await page.locator("iframe").count() === 0, "Teacher mobile reader mounted FlipBuilder");
+  assert(await page.getByRole("button", { name: /âm thanh lật trang/i }).count() === 1, "Teacher mobile reader lacks the page-turn sound control");
+  await assertNoOverflow(page, "Teacher reader 390");
+  await screenshot(page, "reader-teacher-mobile-390.png");
 
   await context.route(`**/book-pages/global-success/tieng-anh-9-sach-giao-vien.json`, async (route) => route.fulfill({ status: 500, body: "manifest unavailable" }));
   await page.goto(`${origin}/sach/global-success/tieng-anh-9-sach-giao-vien`, { waitUntil: "networkidle" });
@@ -241,11 +387,13 @@ try {
 
   await page.goto(`${origin}/sach/global-success/tieng-anh-3-tap-1/nghe`, { waitUntil: "networkidle" });
   const iframe = page.locator("iframe");
+  assert(await page.locator("header").count() === 0, "Compatibility audio route still mounts the public header");
+  assert(await page.getByTestId("book-reader-header").isVisible(), "Compatibility audio route lacks the compact reader header");
   assert(await iframe.getAttribute("src") === "https://online.flipbuilder.com/sdtta/jreh/", "Audio route does not use FlipBuilder source");
   assert(await iframe.getAttribute("allow") === "autoplay; fullscreen", "Audio viewer permissions are missing");
   const sandbox = (await iframe.getAttribute("sandbox"))?.split(" ") ?? [];
   assert(!sandbox.some((permission) => permission.startsWith("allow-top-navigation")), "Audio sandbox permits top navigation");
-  assert(await page.getByText("Đây là bản nghe tương tác được mở từ viewer bên ngoài.", { exact: false }).isVisible(), "Audio source explanation is missing");
+  assert(await page.getByText("Đây là bản nghe tương tác được mở từ viewer bên ngoài.", { exact: false }).count() === 0, "Compatibility route still renders the large audio introduction");
   assert(await page.getByRole("button", { name: "Mở chế độ đọc", exact: true }).count() === 0, "Removed fullscreen/orientation workaround remains");
   await screenshot(page, "interactive-audio-1440.png");
 
@@ -258,6 +406,8 @@ try {
     await assertNoOverflow(page, `Library ${viewport.width}`);
   }
 
+  assert(pageErrors.length === 0, `Reader emitted page errors: ${JSON.stringify(pageErrors)}`);
+  assert(hydrationWarnings.length === 0, `Reader emitted hydration warnings: ${JSON.stringify(hydrationWarnings)}`);
   console.log(`Public books E2E passed; temporary screenshots: ${screenshotDir}`);
   artifactRunPassed = true;
 } finally {

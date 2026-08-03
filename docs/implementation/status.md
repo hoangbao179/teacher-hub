@@ -21,7 +21,11 @@ evidence từng lần kiểm thử được giữ trong Git history.
 - Dashboard, lịch tuần, lesson wizard, tuition management và Excel report cho giáo
   viên trên desktop/mobile.
 - Homepage công khai, Góc học, flashcard/quiz và thư viện sách Global Success với
-  prerender/SEO hiện hành.
+  prerender/SEO hiện hành; trên mobile thư viện dùng hero gọn, bộ lọc lớp cuộn ngang
+  nội bộ và CTA card toàn chiều rộng. Card dùng một hành động mở sách, reader riêng không có
+  public header/footer, SGK có audio dùng FlipBuilder trên desktop và NXBGD trên
+  mobile, còn SGV luôn dùng NXBGD. NXBGD có âm thanh lật trang UI tùy chọn nhưng
+  không có audio bài học.
 - Vocabulary topic/set/media, assignment, public game, result/mastery/review và
   Google Sheet tab ôn từ vựng.
 - Legacy Excel preview/apply có reconciliation theo nhóm và transaction MySQL.
@@ -44,8 +48,8 @@ evidence từng lần kiểm thử được giữ trong Git history.
   `docs/wireframes/admin-ui-refresh/`.
 - Vocabulary result/review đã triển khai nhưng chỉ được enable production sau khi
   hoàn tất provider/content review và restore drill MySQL + media.
-- Thư viện sách phụ thuộc viewer/audio FlipBuilder; hotspot/fullscreen cần kiểm tra
-  thủ công trên thiết bị mobile thật trước release.
+- Bản nghe chuyên biệt và chế độ đọc SGK desktop phụ thuộc FlipBuilder;
+  hotspot/audio/fullscreen cần kiểm tra thủ công trên thiết bị thật trước release.
 
 ## Giới hạn hiện hành
 

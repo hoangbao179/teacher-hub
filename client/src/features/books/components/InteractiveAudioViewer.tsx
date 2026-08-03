@@ -34,13 +34,13 @@ export function InteractiveAudioViewer({ book }: { book: PublicBook }) {
   }
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1}>
       {isSlow && !isLoaded && (
         <Alert severity="info" action={<Button component="a" href={source} target="_blank" rel="noopener noreferrer">Mở ở tab mới</Button>}>
           Bản nghe có thể đang tải chậm. Em có thể tiếp tục chờ hoặc mở ở tab mới.
         </Alert>
       )}
-      <Box data-testid="interactive-audio-viewer" sx={{ bgcolor: "#152337", borderRadius: { xs: 2.5, md: 3.5 }, overflow: "hidden", p: { xs: 0.75, sm: 1.5 }, minWidth: 0 }}>
+      <Box data-testid="interactive-audio-viewer" sx={{ bgcolor: "#152337", borderRadius: { xs: 1.5, md: 2 }, overflow: "hidden", p: { xs: 0.5, md: 0.75 }, minWidth: 0 }}>
         <Box
           component="iframe"
           title={`Nghe tương tác ${book.title}`}
@@ -51,7 +51,7 @@ export function InteractiveAudioViewer({ book }: { book: PublicBook }) {
           allowFullScreen
           sandbox={iframeSandbox}
           onLoad={() => setLoadState({ source, isLoaded: true, isSlow: false })}
-          sx={{ display: "block", width: "100%", height: { xs: "72dvh", md: "80vh" }, minHeight: { xs: 500, md: 620 }, border: 0, borderRadius: 1.5, bgcolor: "#fffdf5" }}
+          sx={{ display: "block", width: "100%", height: { xs: "calc(100dvh - 64px)", md: "clamp(500px, calc(100dvh - 80px), 1000px)" }, minHeight: 0, border: 0, borderRadius: 1, bgcolor: "#fffdf5" }}
         />
       </Box>
     </Stack>

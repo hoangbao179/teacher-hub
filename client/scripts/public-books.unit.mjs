@@ -16,6 +16,8 @@ import {
   publicBooksForType,
 } from "../src/features/books/content/publicBookCatalog.ts";
 import { validateOfficialPageManifest } from "../src/features/books/content/officialPageManifest.ts";
+import { selectBookViewer } from "../src/features/books/components/bookViewerSelection.ts";
+import { BOOK_PAGE_SOUND_STORAGE_KEY, createPageTurnSoundController, readPageTurnSoundPreference } from "../src/features/books/components/bookPageSound.ts";
 import {
   buildFlipPages,
   currentSpreadLabel,
@@ -33,6 +35,9 @@ const clientRoot = path.resolve(import.meta.dirname, "..");
 const officialViewerSource = fs.readFileSync(path.join(clientRoot, "src/features/books/components/OfficialBookViewer.tsx"), "utf8");
 const officialBookReaderSource = fs.readFileSync(path.join(clientRoot, "src/features/books/components/OfficialBookReader.tsx"), "utf8");
 const audioViewerSource = fs.readFileSync(path.join(clientRoot, "src/features/books/components/InteractiveAudioViewer.tsx"), "utf8");
+const bookPreviewSource = fs.readFileSync(path.join(clientRoot, "src/features/books/pages/BookPreviewPage.tsx"), "utf8");
+const bookReaderHeaderSource = fs.readFileSync(path.join(clientRoot, "src/features/books/components/BookReaderHeader.tsx"), "utf8");
+const bookCardSource = fs.readFileSync(path.join(clientRoot, "src/features/books/components/BookCard.tsx"), "utf8");
 const librarySource = fs.readFileSync(path.join(clientRoot, "src/features/books/pages/BookLibraryPage.tsx"), "utf8");
 const nginxSource = fs.readFileSync(path.join(clientRoot, "../deploy/nginx.conf"), "utf8");
 
@@ -190,4 +195,75 @@ test("interactive audio viewer remains isolated from the official reader", () =>
   assert.match(nginxSource, /frame-src https:\/\/www\.youtube-nocookie\.com https:\/\/www\.google\.com https:\/\/taphuan\.nxbgd\.vn https:\/\/online\.flipbuilder\.com;/);
   assert.match(nginxSource, /location = \/sach[\s\S]*?location \^~ \/sach\//);
   assert.doesNotMatch(nginxSource, /frame-src\s+(?:\*|https:)\s*;/);
+});
+
+test("responsive viewer selection only enables valid student audio on desktop", () => {
+  const validAudio = "https://online.flipbuilder.com/sdtta/example/";
+  for (const isDesktop of [false, true]) {
+    assert.equal(selectBookViewer({ bookType: "STUDENT_BOOK", isDesktop }), "OFFICIAL");
+    assert.equal(selectBookViewer({ bookType: "TEACHER_BOOK", interactiveAudioUrl: validAudio, isDesktop }), "OFFICIAL");
+    assert.equal(selectBookViewer({ bookType: "WORKBOOK", interactiveAudioUrl: validAudio, isDesktop }), "OFFICIAL");
+  }
+  assert.equal(selectBookViewer({ bookType: "STUDENT_BOOK", interactiveAudioUrl: validAudio, isDesktop: false }), "OFFICIAL");
+  assert.equal(selectBookViewer({ bookType: "STUDENT_BOOK", interactiveAudioUrl: validAudio, isDesktop: true }), "INTERACTIVE");
+  assert.equal(selectBookViewer({ bookType: "STUDENT_BOOK", interactiveAudioUrl: "https://evil.example/sdtta/example/", isDesktop: true }), "OFFICIAL");
+});
+
+test("main reading route uses the compact responsive reader layout", () => {
+  assert.match(bookPreviewSource, /ResponsiveBookViewer/);
+  assert.match(bookPreviewSource, /readerMode/);
+  assert.match(bookPreviewSource, /BookReaderHeader/);
+  assert.match(bookReaderHeaderSource, /component="h1"/);
+  assert.match(bookPreviewSource, /maxWidth: "1680px"/);
+  assert.doesNotMatch(bookPreviewSource, /Breadcrumbs|coverUrl|<Chip|phiên bản sách điện tử/i);
+});
+
+test("book cards expose one main reading action without an audio route", () => {
+  assert.match(bookCardSource, /Mở sách/);
+  assert.match(bookCardSource, /Mở tài liệu/);
+  assert.match(bookCardSource, /gridTemplateAreas: \{ xs: '[^']*action action/);
+  assert.match(librarySource, /data-testid="book-grade-filter"/);
+  assert.match(librarySource, /overflowX: \{ xs: "auto"/);
+  assert.doesNotMatch(bookCardSource, /Nghe bài tương tác|\/nghe|Headphones/);
+  assert.doesNotMatch(librarySource, /Chọn sách|Chọn loại tài liệu và lớp để tìm nhanh hơn/);
+});
+
+test("page-turn sound only runs once after an enabled user flip", async () => {
+  const values = new Map();
+  const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+  let calls = 0;
+  let primes = 0;
+  let timestamp = 1000;
+  const controller = createPageTurnSoundController({ storage, now: () => timestamp, primeEffect: () => { primes += 1; }, playEffect: async () => { calls += 1; } });
+  assert.equal(calls, 0, "controller construction must stay silent");
+  assert.equal(primes, 0, "controller construction must not initialize Web Audio");
+  assert.equal(controller.prime(), true);
+  assert.equal(primes, 1);
+  assert.equal(calls, 0, "priming user audio must stay silent");
+  assert.equal(await controller.playAfterFlip(false), false, "resize/query synchronization must stay silent");
+  assert.equal(await controller.playAfterFlip(true), true);
+  assert.equal(await controller.playAfterFlip(true), false, "debounce must suppress duplicate flip events");
+  assert.equal(calls, 1);
+  timestamp += 201;
+  assert.equal(await controller.playAfterFlip(true), true);
+  assert.equal(calls, 2);
+  controller.setEnabled(false);
+  assert.equal(values.get(BOOK_PAGE_SOUND_STORAGE_KEY), "false");
+  assert.equal(controller.prime(), false, "muted sound must not initialize Web Audio");
+  assert.equal(controller.supported, true, "mute must not be treated as a Web Audio failure");
+  timestamp += 201;
+  assert.equal(await controller.playAfterFlip(true), false, "muted flips must stay silent");
+  assert.equal(calls, 2);
+  assert.equal(readPageTurnSoundPreference(storage), false);
+});
+
+test("page-turn sound failure disables itself without rejecting", async () => {
+  const values = new Map();
+  const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+  const controller = createPageTurnSoundController({ storage, playEffect: async () => { throw new Error("blocked"); } });
+  assert.equal(await controller.playAfterFlip(true), false);
+  assert.equal(controller.enabled, false);
+  assert.equal(controller.supported, false);
+  assert.equal(values.get(BOOK_PAGE_SOUND_STORAGE_KEY), "false");
+  assert.doesNotMatch(audioViewerSource, /bookPageSound|âm thanh lật trang/i);
 });

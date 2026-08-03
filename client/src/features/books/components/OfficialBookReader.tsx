@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import type { OfficialPageManifest } from "../content/officialPageManifest.ts";
 import type { PublicBook } from "../types.ts";
 import { BookReaderToolbar } from "./BookReaderToolbar.tsx";
+import { createPageTurnSoundController, readPageTurnSoundPreference, type PageTurnSoundController } from "./bookPageSound.ts";
 import { currentSpreadLabel, initialManifestPage, isFlipGestureEnabled, manifestPagesInSpread, type BookReaderMode } from "./bookFlipPages.ts";
 import { OfficialSourceLink } from "./OfficialSourceLink.tsx";
 import { ResponsivePageFlip, type ResponsivePageFlipHandle } from "./ResponsivePageFlip.tsx";
@@ -26,12 +27,28 @@ export function OfficialBookReader({ book, manifest }: { book: PublicBook; manif
   const [mode, setMode] = useState<BookReaderMode>("single");
   const [busy, setBusy] = useState(false);
   const [engineFailed, setEngineFailed] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => readPageTurnSoundPreference());
+  const [soundAvailable, setSoundAvailable] = useState(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pageFlipRef = useRef<ResponsivePageFlipHandle | null>(null);
+  const soundIntentAtRef = useRef(0);
+  const soundControllerRef = useRef<PageTurnSoundController | null>(null);
+  if (soundControllerRef.current === null) soundControllerRef.current = createPageTurnSoundController({ enabled: soundEnabled });
   const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const spreadPages = useMemo(() => manifestPagesInSpread(currentPage, manifest.pages.length, mode), [currentPage, manifest.pages.length, mode]);
   const canPrevious = currentPage > 1;
   const canNext = (spreadPages.at(-1) ?? currentPage) < manifest.pages.length;
+
+  const armPageTurnSound = useCallback(() => {
+    const controller = soundControllerRef.current;
+    controller?.prime();
+    if (controller && !controller.supported) {
+      setSoundEnabled(false);
+      setSoundAvailable(false);
+      return;
+    }
+    soundIntentAtRef.current = controller?.enabled ? Date.now() : 0;
+  }, []);
 
   const resetViewport = useCallback(() => {
     setZoom(MIN_ZOOM);
@@ -58,17 +75,19 @@ export function OfficialBookReader({ book, manifest }: { book: PublicBook; manif
 
   const goPrevious = useCallback(() => {
     if (busy || !canPrevious) return;
+    armPageTurnSound();
     const target = mode === "double" && currentPage > 2 ? Math.max(1, currentPage - 2) : currentPage - 1;
     if (engineFailed) commitPage(target);
     else runAfterReset(() => pageFlipRef.current?.flipPrevious() ?? false, target);
-  }, [busy, canPrevious, commitPage, currentPage, engineFailed, mode, runAfterReset]);
+  }, [armPageTurnSound, busy, canPrevious, commitPage, currentPage, engineFailed, mode, runAfterReset]);
 
   const goNext = useCallback(() => {
     if (busy || !canNext) return;
+    armPageTurnSound();
     const target = mode === "double" && currentPage > 1 ? Math.min(manifest.pages.length, currentPage + 2) : currentPage + 1;
     if (engineFailed) commitPage(target);
     else runAfterReset(() => pageFlipRef.current?.flipNext() ?? false, target);
-  }, [busy, canNext, commitPage, currentPage, engineFailed, manifest.pages.length, mode, runAfterReset]);
+  }, [armPageTurnSound, busy, canNext, commitPage, currentPage, engineFailed, manifest.pages.length, mode, runAfterReset]);
 
   const submitPageInput = useCallback(() => {
     const parsed = Number(pageInput);
@@ -93,11 +112,36 @@ export function OfficialBookReader({ book, manifest }: { book: PublicBook; manif
   }, []);
 
   const handleModeChange = useCallback((nextMode: BookReaderMode) => {
+    soundIntentAtRef.current = 0;
     setMode((currentMode) => {
       if (currentMode !== nextMode) resetViewport();
       return nextMode;
     });
   }, [resetViewport]);
+
+  const handleFlipComplete = useCallback((nextPage: number) => {
+    const userInitiated = soundIntentAtRef.current > 0 && Date.now() - soundIntentAtRef.current < 4000;
+    soundIntentAtRef.current = 0;
+    const changedPage = nextPage !== currentPage;
+    commitPage(nextPage);
+    if (!changedPage) return;
+    const controller = soundControllerRef.current;
+    if (!controller) return;
+    void controller.playAfterFlip(userInitiated).then(() => {
+      if (!controller.supported) {
+        setSoundEnabled(false);
+        setSoundAvailable(false);
+      }
+    });
+  }, [commitPage, currentPage]);
+
+  const togglePageTurnSound = useCallback(() => {
+    const controller = soundControllerRef.current;
+    if (!controller) return;
+    const nextEnabled = !soundEnabled;
+    controller.setEnabled(nextEnabled);
+    setSoundEnabled(controller.enabled);
+  }, [soundEnabled]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -122,7 +166,16 @@ export function OfficialBookReader({ book, manifest }: { book: PublicBook; manif
   const gesturesEnabled = isFlipGestureEnabled(zoom) && !engineFailed;
 
   return (
-    <Box data-testid="official-page-image-viewer" sx={{ border: "1px solid #d5e1e6", borderRadius: { xs: 2.5, md: 3.5 }, bgcolor: "#eef4f6", overflow: "clip" }}>
+    <Box
+      data-testid="official-page-image-viewer"
+      onPointerDownCapture={(event) => {
+        if ((event.target as Element).closest(".stf__block")) armPageTurnSound();
+      }}
+      onTouchStartCapture={(event) => {
+        if ((event.target as Element).closest(".stf__block")) armPageTurnSound();
+      }}
+      sx={{ border: "1px solid #d5e1e6", borderRadius: { xs: 1.5, md: 2 }, bgcolor: "#eef4f6", overflow: "clip" }}
+    >
       <BookReaderToolbar
         pageCount={manifest.pages.length}
         pageInput={pageInput}
@@ -131,6 +184,8 @@ export function OfficialBookReader({ book, manifest }: { book: PublicBook; manif
         busy={busy}
         canPrevious={canPrevious}
         canNext={canNext}
+        soundEnabled={soundEnabled}
+        soundAvailable={soundAvailable}
         sourceUrl={book.officialViewerUrl}
         onPageInput={setPageInput}
         onPageInputSubmit={submitPageInput}
@@ -138,6 +193,7 @@ export function OfficialBookReader({ book, manifest }: { book: PublicBook; manif
         onNext={goNext}
         onZoom={changeZoom}
         onResetZoom={resetViewport}
+        onToggleSound={togglePageTurnSound}
       />
 
       <Box
@@ -154,7 +210,7 @@ export function OfficialBookReader({ book, manifest }: { book: PublicBook; manif
               pages={manifest.pages}
               gesturesEnabled={gesturesEnabled}
               reducedMotion={reducedMotion}
-              onFlipComplete={commitPage}
+              onFlipComplete={handleFlipComplete}
               onModeChange={handleModeChange}
               onBusyChange={setBusy}
               onEngineError={() => { setBusy(false); setEngineFailed(true); }}

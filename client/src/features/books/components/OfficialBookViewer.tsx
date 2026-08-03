@@ -53,7 +53,7 @@ export function OfficialBookViewer({ book }: { book: PublicBook }) {
     return <OfficialSourceFallback book={book} message="Dữ liệu trang sách chưa tải được. Em có thể mở nguồn chính thức để tiếp tục đọc." />;
   }
   if (!currentState.manifest) {
-    return <Stack data-testid="official-page-loading" spacing={1} sx={{ p: 1 }}><Skeleton variant="rounded" height={52} /><Skeleton variant="rounded" height={560} /></Stack>;
+    return <Stack data-testid="official-page-loading" spacing={1} sx={{ p: 0.5 }}><Skeleton variant="rounded" height={48} /><Skeleton variant="rounded" sx={{ height: { xs: 180, sm: 280, md: 360 } }} /></Stack>;
   }
 
   return <OfficialBookReader key={book.id} book={book} manifest={currentState.manifest} />;
