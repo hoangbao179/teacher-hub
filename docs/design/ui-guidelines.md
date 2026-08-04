@@ -12,7 +12,8 @@
 
 Review bắt buộc ở 360, 375, 390, 393, 400, 412 và 430 px, cộng tablet và desktop.
 Mobile là ưu tiên: cards/lists thay bảng rộng, touch target tối thiểu 44 px, sticky
-action không che nội dung. Desktop dùng sidebar khi đủ rộng.
+action không che nội dung. Admin chỉ dùng sidebar từ 1200 px; tablet dùng layout
+full-width và bottom navigation.
 Homepage dùng section padding khoảng 32–40 px trên mobile và 48–56 px trên desktop.
 Homepage bắt đầu bằng section giới thiệu responsive, không có hero chuyển cảnh.
 
@@ -26,6 +27,8 @@ không quá nặng; hierarchy phải rõ khi zoom và trên màn hình hẹp.
 
 - Trong Admin, teal là primary action, active navigation, focus accent và progress;
   không dùng purple/violet cho các vai trò này.
+- Public Learning, Books và Play cùng dùng teal đậm `#0F766E` cho primary action,
+  `#0B625C` cho hover, `#14B8A6` cho accent và các surface pastel dùng chung.
 - Mint, sky blue và peach dùng cho grouping/metric/class type của Admin.
 - Warm yellow/orange báo cần chú ý hoặc paused/payment due.
 - Coral chỉ là accent nhỏ; green dùng cho success/active/paid.

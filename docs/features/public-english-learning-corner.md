@@ -80,7 +80,8 @@ Các mục ngoài MVP chỉ được triển khai bằng feature/ADR riêng.
 ## 4. Nguyên tắc tích hợp
 
 - `/` tiếp tục là Homepage marketing.
-- Homepage chỉ thêm một CTA hoặc section gọn, không thiết kế lại toàn bộ trang.
+- Homepage đặt feature card `/hoc` trong hero, cạnh card `/sach`, và không lặp lại
+  thành section CTA phía dưới.
 - Không khôi phục slide/carousel Homepage.
 - Footer Homepage phải giữ nguyên chính xác:
 
@@ -133,14 +134,11 @@ Quy tắc:
 
 ## 7. Màn hình và hành vi
 
-### 7.1 Homepage CTA
+### 7.1 Homepage feature card
 
-Nội dung gợi ý:
-
-- eyebrow: `GÓC HỌC MIỄN PHÍ`;
-- heading: `Học tiếng Anh vui hơn cùng cô Vy`;
-- mô tả ngắn về flashcard và luyện tập theo lớp;
-- CTA: `Bắt đầu học`.
+Card dùng nhãn `Góc học`, mô tả `Học từ vựng miễn phí`, icon học tập và toàn bộ
+bề mặt là link tới `/hoc`. Card có focus-visible, touch target phù hợp và tắt
+transition không thiết yếu khi người dùng bật reduced motion.
 
 Không dùng số liệu người học, rating hoặc claim chưa được xác minh.
 
@@ -249,8 +247,9 @@ mầm non đến lớp 9. Thiết kế không được quá em bé đối với 
 
 ### 8.2 Ngôn ngữ hình ảnh
 
-- màu chính: lavender/purple;
-- màu phụ: sky blue, mint, warm yellow, coral, soft pink;
+- màu action chính: teal đậm `#0F766E`, hover `#0B625C`;
+- surface dùng sky blue, mint, warm yellow và coral pastel; tím không còn là
+  primary action;
 - card bo góc khoảng 20–24 px;
 - border pastel và shadow mềm;
 - icon minh họa: sao, trăng, mây, cầu vồng, sách, bút chì, bảng chữ cái, sparkle;
@@ -265,7 +264,7 @@ mầm non đến lớp 9. Thiết kế không được quá em bé đối với 
 |---|---|---|
 | Mầm non–lớp 2 | vàng, hồng, sky blue | nhiều hình khối mềm, icon lớn |
 | Lớp 3–5 | mint, blue, orange | sách/bút chì, card sinh động |
-| Lớp 6–9 | purple, indigo, teal | gọn hơn, ít nhân vật hơn |
+| Lớp 6–9 | coral, peach, teal | gọn hơn, ít nhân vật hơn |
 
 Đây là accent, không phải ba theme độc lập.
 

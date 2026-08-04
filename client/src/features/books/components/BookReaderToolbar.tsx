@@ -52,12 +52,12 @@ export function BookReaderToolbar({
         <Typography aria-label={`Trang ${pageLabel}`} sx={{ minWidth: { xs: 72, md: 92 }, px: 1, py: 0.75, borderRadius: 2, bgcolor: "#e5f7f3", color: "#075f5a", textAlign: "center", fontSize: 13.5, fontWeight: 800 }}>{pageLabel}</Typography>
         <IconButton aria-label="Trang sau" disabled={busy || !canNext} onClick={onNext} sx={{ minWidth: 44, minHeight: 44, color: "#087a72", "&:hover": { bgcolor: "#dff5f0" } }}><NavigateNext /></IconButton>
       </Stack>
-      <Stack direction="row" spacing={0.375} sx={{ alignItems: "center", justifyContent: { xs: "space-between", sm: "flex-end" }, p: 0.375, border: "1px solid rgba(113,65,161,.13)", borderRadius: 2.5, bgcolor: "rgba(255,255,255,.72)" }}>
+      <Stack direction="row" spacing={0.375} sx={{ alignItems: "center", justifyContent: { xs: "space-between", sm: "flex-end" }, p: 0.375, border: "1px solid rgba(15,118,110,.13)", borderRadius: 2.5, bgcolor: "rgba(255,255,255,.72)" }}>
         <IconButton aria-label="Thu nhỏ" disabled={zoom <= 1} onClick={() => onZoom(zoom - 0.25)} sx={{ minWidth: 44, minHeight: 44, color: "#087a72", "&:hover": { bgcolor: "#dff5f0" } }}><Remove /></IconButton>
         <Typography data-testid="official-page-zoom" sx={{ minWidth: 52, px: 0.75, py: 0.75, borderRadius: 2, bgcolor: "#e5f7f3", color: "#075f5a", textAlign: "center", fontSize: 13.5, fontWeight: 800 }}>{Math.round(zoom * 100)}%</Typography>
-        <Button onClick={onResetZoom} variant="contained" sx={{ minHeight: 44, px: { xs: 1.5, sm: 2 }, whiteSpace: "nowrap", borderRadius: 2.25, bgcolor: "#7047eb", boxShadow: "0 4px 10px rgba(112,71,235,.18)", "&:hover": { bgcolor: "#5c35d5" } }}>Vừa trang</Button>
+        <Button onClick={onResetZoom} variant="contained" sx={{ minHeight: 44, px: { xs: 1.5, sm: 2 }, whiteSpace: "nowrap", borderRadius: 2.25 }}>Vừa trang</Button>
         <IconButton aria-label="Phóng to" disabled={zoom >= 2.5} onClick={() => onZoom(zoom + 0.25)} sx={{ minWidth: 44, minHeight: 44, color: "#087a72", "&:hover": { bgcolor: "#dff5f0" } }}><Add /></IconButton>
-        <IconButton aria-label={soundEnabled ? "Tắt âm thanh lật trang" : "Bật âm thanh lật trang"} title={soundEnabled ? "Tắt âm thanh lật trang" : "Bật âm thanh lật trang"} disabled={!soundAvailable} onClick={onToggleSound} sx={{ minWidth: 44, minHeight: 44, color: soundEnabled ? "#7047eb" : "#667684", bgcolor: soundEnabled ? "#eee9ff" : "transparent", "&:hover": { bgcolor: soundEnabled ? "#e2d9ff" : "#eef2f4" } }}>
+        <IconButton aria-label={soundEnabled ? "Tắt âm thanh lật trang" : "Bật âm thanh lật trang"} title={soundEnabled ? "Tắt âm thanh lật trang" : "Bật âm thanh lật trang"} disabled={!soundAvailable} onClick={onToggleSound} sx={{ minWidth: 44, minHeight: 44, color: soundEnabled ? "primary.main" : "#667684", bgcolor: soundEnabled ? "#ddf7f1" : "transparent", "&:hover": { bgcolor: soundEnabled ? "#c8eee6" : "#eef2f4" } }}>
           {soundEnabled ? <VolumeUpOutlined /> : <VolumeOffOutlined />}
         </IconButton>
         <OfficialSourceLink href={sourceUrl} />

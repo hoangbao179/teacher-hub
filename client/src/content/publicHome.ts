@@ -80,6 +80,8 @@ export const publicHomeContent = {
     description: "Đồng hành cùng học sinh từ nền tảng đến luyện thi, theo hình thức 1–1 hoặc lớp nhóm.",
   },
   learning: {
+    shortLabel: "Góc học",
+    shortDescription: "Học từ vựng miễn phí",
     eyebrow: "GÓC TỰ HỌC",
     heading: "Luyện từ vựng miễn phí cùng cô Vy",
     description: "Chọn lớp, học theo từng Unit và luyện nghe với tốc độ phù hợp.",
@@ -87,6 +89,8 @@ export const publicHomeContent = {
     path: "/hoc",
   },
   bookLibrary: {
+    shortLabel: "Tủ sách",
+    shortDescription: "Sách Tiếng Anh lớp 1–9",
     eyebrow: "TỦ SÁCH TIẾNG ANH",
     heading: "Sách học sinh và tài liệu giáo viên",
     description: "Đọc sách Tiếng Anh theo lớp từ nguồn chính thức của Nhà xuất bản Giáo dục Việt Nam.",

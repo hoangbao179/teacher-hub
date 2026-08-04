@@ -12,7 +12,7 @@ const clientRoot = path.join(root, "client");
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
 const screenshotDir = artifactPolicy.runDir;
-const screenshotWidths = new Set([360, 400, 430, 768, 1440]);
+const screenshotWidths = new Set([390, 1440]);
 const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến THCS";
 const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
 const expectedAddress = "101 Kiệt 245 Bùi Thị Xuân, Phường Thủy Xuân, TP. Huế";
@@ -77,10 +77,10 @@ try {
     expectedAddress,
     "Cơ sở duy nhất",
     "Có nhận dạy tại nhà học sinh trong khu vực Huế.",
-    "GÓC TỰ HỌC",
-    "Luyện từ vựng miễn phí cùng cô Vy",
-    "Chọn lớp, học theo từng Unit và luyện nghe với tốc độ phù hợp.",
-    "Vào học ngay",
+    "Góc học",
+    "Học từ vựng miễn phí",
+    "Tủ sách",
+    "Sách Tiếng Anh lớp 1–9",
     ...expectedTrustItems,
     "Mẹ bé M.",
     "Mẹ bé N.",
@@ -195,25 +195,22 @@ try {
   assert(await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).isHidden(), "Mobile header brand text must be hidden");
   assert(await header.locator('img[src="/favicon.svg"]').count() === 1, "Header must contain one small brand mark");
   assert(await header.locator('img[src="/logo-covy.svg"]').count() === 0, "Stacked wordmark must not appear in the Header");
-  await header.getByRole("link", { name: "Trang chủ", exact: true }).first().waitFor();
-  await header.getByRole("link", { name: "Góc học", exact: true }).waitFor();
-  await header.getByRole("link", { name: "Tủ sách", exact: true }).waitFor();
-  assert(await header.getByRole("link", { name: "Liên hệ", exact: true }).isHidden(), "Contact must stay outside the public mobile navigation");
-  assert(await header.getByRole("link", { name: "Quản trị", exact: true }).isHidden(), "Admin must stay outside the public mobile navigation");
+  assert(await page.getByTestId("header-home").count() === 0, "Redundant Home button remains in the Header");
+  assert(await header.getByRole("link", { name: "Góc học", exact: true }).count() === 0, "Learning link must stay out of the Homepage Header");
+  assert(await header.getByRole("link", { name: "Tủ sách", exact: true }).count() === 0, "Books link must stay out of the Homepage Header");
+  assert(await header.getByRole("link", { name: "Liên hệ", exact: true }).isVisible(), "Mobile Contact link is missing");
+  assert(await header.getByRole("link", { name: "Quản trị", exact: true }).isVisible(), "Mobile Admin text link is missing");
   assert(await page.getByTestId("header-admin").count() === 1, "Admin link must exist only once in the Header");
   assert(await page.getByRole("heading", { level: 2, name: "Video học tiếng Anh tham khảo", exact: true }).count() === 0, "Old video heading remains");
 
   const hero = page.locator("section").filter({ has: page.locator("#hero-heading") }).first();
-  assert(await hero.getByRole("link").count() === 0, "Hero must not contain a CTA");
-  assert(await hero.locator('a[href="/hoc"]').count() === 0, "Hero must not contain a learning CTA");
+  assert(await hero.getByRole("link").count() === 2, "Hero must contain exactly two feature links");
+  assert(await hero.locator('a[href="/hoc"]').count() === 1, "Hero learning link is missing or duplicated");
+  assert(await hero.locator('a[href="/sach"]').count() === 1, "Hero books link is missing or duplicated");
   assert(await hero.locator('a[href="/kiem-tra-trinh-do"]').count() === 0, "Forbidden placement-test CTA exists");
 
-  const learningSection = page.getByTestId("homepage-learning-cta");
-  await learningSection.getByText("GÓC TỰ HỌC", { exact: true }).waitFor();
-  await learningSection.getByRole("heading", { level: 2, name: "Luyện từ vựng miễn phí cùng cô Vy", exact: true }).waitFor();
-  await learningSection.getByText("Chọn lớp, học theo từng Unit và luyện nghe với tốc độ phù hợp.", { exact: true }).waitFor();
-  const learningLink = learningSection.getByRole("link", { name: "Vào học ngay", exact: true });
-  assert(await learningLink.getAttribute("href") === "/hoc", "Learning section CTA is incorrect");
+  assert(await page.getByTestId("homepage-learning-cta").count() === 0, "Duplicate learning CTA block remains");
+  assert(await page.getByTestId("homepage-book-library-cta").count() === 0, "Duplicate books CTA block remains");
   assert(await page.locator('main a[href="/hoc"]').count() === 1, "Homepage must contain one prominent /hoc CTA");
 
   const links = await page.locator('[data-testid="contact-actions"] a').evaluateAll((items) => items.map((item) => ({
@@ -338,9 +335,6 @@ try {
       const logo = document.querySelector('[data-testid="header-logo"]');
       const brand = document.querySelector('[data-testid="header-brand"]');
       const linkCandidates = [
-        document.querySelector('[data-testid="header-home"]'),
-        document.querySelector('[data-testid="header-learning"]'),
-        document.querySelector('[data-testid="header-books"]'),
         document.querySelector('[data-testid="header-contact"]'),
         document.querySelector('[data-testid="header-admin"]'),
       ].filter(Boolean);
@@ -348,6 +342,7 @@ try {
       const items = [logo, brand, ...links].filter((item) => item && item.getBoundingClientRect().width > 0).map((item) => item.getBoundingClientRect());
       const brandOccurrences = (header?.textContent?.match(/Lớp tiếng Anh cô Vy/g) ?? []).length;
       const brandStyle = brand ? window.getComputedStyle(brand) : null;
+      const linkStyles = links.map((link) => window.getComputedStyle(link));
       return {
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         headerHeight: header?.getBoundingClientRect().height ?? 0,
@@ -359,6 +354,10 @@ try {
         brandClientWidth: brand?.clientWidth ?? 0,
         brandTextOverflow: brandStyle?.textOverflow ?? "",
         brandDisplay: brandStyle?.display ?? "",
+        brandColor: brandStyle?.color ?? "",
+        brandBackgroundColor: brandStyle?.backgroundColor ?? "",
+        linkColors: linkStyles.map((style) => style.color),
+        linkBackgroundColors: linkStyles.map((style) => style.backgroundColor),
         linkMetrics: links.map((link) => {
           const style = window.getComputedStyle(link);
           return {
@@ -377,15 +376,31 @@ try {
     assert(metrics.brandScrollWidth <= metrics.brandClientWidth, `Header brand is truncated at ${viewport.width}px`);
     assert(metrics.brandTextOverflow !== "ellipsis", `Header brand uses ellipsis at ${viewport.width}px`);
     assert(metrics.linkMetrics.every((link) => link.whiteSpace === "nowrap"), `Header link wraps at ${viewport.width}px`);
+    assert(new Set(metrics.linkColors).size === 1, `Contact and Admin colors differ at ${viewport.width}px`);
+    assert(metrics.linkBackgroundColors.every((color) => color === "rgba(0, 0, 0, 0)"), `Header text link has a background at ${viewport.width}px`);
     if (viewport.width <= 430) {
       assert(Math.abs(metrics.logoWidth - 28) <= 1, `Mobile header logo must be 28px at ${viewport.width}px`);
       assert(metrics.brandDisplay === "none", `Mobile header brand text remains at ${viewport.width}px`);
       assert(metrics.linkMetrics.every((link) => link.height >= 44), `Mobile header touch target is too short at ${viewport.width}px`);
-      assert(await page.getByTestId("header-learning").getByText("Góc học", { exact: true }).isVisible(), `Mobile Góc học label is missing at ${viewport.width}px`);
-      assert(await page.getByTestId("header-books").getByText("Tủ sách", { exact: true }).isVisible(), `Mobile Tủ sách label is missing at ${viewport.width}px`);
+      assert(await page.getByTestId("header-contact").isVisible(), `Mobile Contact link is missing at ${viewport.width}px`);
+      assert(await page.getByTestId("header-admin").isVisible(), `Mobile Admin text link is missing at ${viewport.width}px`);
     } else {
       assert(Math.abs(metrics.logoWidth - 32) <= 1, `Header logo must remain 32px at ${viewport.width}px`);
       assert(metrics.brandDisplay !== "none", `Desktop header brand is hidden at ${viewport.width}px`);
+    }
+    if (viewport.width === 1440) {
+      const brand = page.getByTestId("header-brand");
+      const brandBox = await brand.boundingBox();
+      assert(brandBox, "Header brand has no clickable bounds");
+      await page.mouse.move(brandBox.x + brandBox.width / 2, brandBox.y + brandBox.height / 2);
+      await page.mouse.down();
+      const pressedBrandStyle = await brand.evaluate((element) => {
+        const style = window.getComputedStyle(element);
+        return { color: style.color, backgroundColor: style.backgroundColor };
+      });
+      await page.mouse.up();
+      assert(pressedBrandStyle.color === metrics.brandColor, "Header brand color changes while pressed");
+      assert(pressedBrandStyle.backgroundColor === metrics.brandBackgroundColor, "Header brand background changes while pressed");
     }
     const homepageLayout = await page.evaluate(() => {
       const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
@@ -531,7 +546,7 @@ try {
       await page.screenshot({ path: path.join(screenshotDir, `homepage-${viewport.width}x${viewport.height}.png`), fullPage: true });
       if (viewport.width === 360 || viewport.width === 400) await page.locator("#hero").screenshot({ path: path.join(screenshotDir, `hero-${viewport.width}.png`) });
       if (viewport.width === 400) {
-        await learningSection.screenshot({ path: path.join(screenshotDir, "learning-mobile-400.png") });
+        await page.getByTestId("homepage-hero-features").screenshot({ path: path.join(screenshotDir, "hero-features-mobile-400.png") });
         await locationSection.screenshot({ path: path.join(screenshotDir, "location-mobile-400.png") });
       }
     }

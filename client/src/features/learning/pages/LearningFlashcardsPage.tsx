@@ -76,7 +76,7 @@ export function LearningFlashcardsPage() {
       <Container maxWidth="md" sx={{ py: { xs: 2, sm: 4 } }}>
         <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", gap: 1 }}>
           <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}`} color="inherit" startIcon={<ArrowBack />} sx={{ minHeight: "44px !important" }}>{unit.title}</Button>
-          <Typography aria-label={`Thẻ ${index + 1} trên ${unit.vocabulary.length}`} sx={{ flexShrink: 0, fontWeight: 800, color: "#6541c7" }}>{index + 1} / {unit.vocabulary.length}</Typography>
+          <Typography aria-label={`Thẻ ${index + 1} trên ${unit.vocabulary.length}`} sx={{ flexShrink: 0, fontWeight: 800, color: "primary.main" }}>{index + 1} / {unit.vocabulary.length}</Typography>
         </Stack>
         <LinearProgress variant="determinate" value={((index + 1) / unit.vocabulary.length) * 100} aria-label={`Tiến độ flashcard ${index + 1} trên ${unit.vocabulary.length}`} sx={{ mt: 1, height: 9, borderRadius: 8, bgcolor: "#e7e0f0", "& .MuiLinearProgress-bar": { bgcolor: level.accent, borderRadius: 8 } }} />
 
@@ -96,8 +96,8 @@ export function LearningFlashcardsPage() {
           <VocabularyIllustration image={item.image} word={item.word} sx={{ width: imageSize, height: imageSize, mt: 2, display: "grid", placeItems: "center", borderRadius: "28px", bgcolor: level.group === "EARLY" ? "#fff2c9" : "#eef7ff", fontSize: level.group === "EARLY" ? { xs: 72, sm: 88 } : { xs: 60, sm: 74 } }} />
           <Typography component="h1" sx={{ mt: 2, fontSize: { xs: 34, sm: 44 }, lineHeight: 1.1, fontWeight: 800 }}>{item.word}</Typography>
           <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 16 }}>{item.phonetic}</Typography>
-          <Typography sx={{ mt: 1.5, color: "#523a9d", fontSize: { xs: 19, sm: 22 }, fontWeight: 800 }}>{item.vietnameseMeaning}</Typography>
-          {item.example && <Typography sx={{ mt: 1.25, p: 1.25, borderRadius: 2.5, bgcolor: "#f7f3ff", fontSize: 14.5 }}>Ví dụ: {item.example}</Typography>}
+          <Typography sx={{ mt: 1.5, color: "primary.main", fontSize: { xs: 19, sm: 22 }, fontWeight: 800 }}>{item.vietnameseMeaning}</Typography>
+          {item.example && <Typography sx={{ mt: 1.25, p: 1.25, borderRadius: 2.5, bgcolor: "#eaf8f3", fontSize: 14.5 }}>Ví dụ: {item.example}</Typography>}
           <Box sx={{ width: "100%", mt: 2, display: "flex", justifyContent: "center" }}><PronunciationRateControl value={rateMode} onChange={(value) => { setAudioMessage(""); setRateMode(value); }} /></Box>
           <Tooltip title={strategy === "UNAVAILABLE" ? "Trình duyệt này không hỗ trợ phát âm" : ""}>
             <span><Button onClick={play} disabled={strategy === "UNAVAILABLE"} variant="outlined" startIcon={<Headphones />} aria-label={`Nghe phát âm từ ${item.word}`} sx={{ mt: 1.25, minHeight: "46px !important", borderRadius: 3 }}>Nghe từ</Button></span>
@@ -113,7 +113,7 @@ export function LearningFlashcardsPage() {
             gap: { xs: 1, sm: 1.25 },
             position: { xs: "sticky", sm: "static" }, bottom: 0, zIndex: 2,
             p: { xs: "10px 0 calc(10px + env(safe-area-inset-bottom, 0px))", sm: 0 },
-            bgcolor: { xs: "rgba(251,249,255,.96)", sm: "transparent" },
+            bgcolor: { xs: "rgba(245,251,250,.96)", sm: "transparent" },
             "& .MuiButton-root": { minWidth: 0, minHeight: "48px !important" },
             "& .MuiButton-startIcon": { flexShrink: 0 },
             "@media (max-width:390px)": {
@@ -125,7 +125,7 @@ export function LearningFlashcardsPage() {
           <Button onClick={() => move(-1)} disabled={index === 0} variant="outlined" aria-label="Thẻ trước"><ArrowBack /></Button>
           <Button className="flashcard-state-action" onClick={() => mark("REVIEW")} variant={review ? "contained" : "outlined"} color="warning" startIcon={<Replay />} sx={{ whiteSpace: "nowrap" }}>Cần ôn</Button>
           <Button className="flashcard-state-action" onClick={() => mark("REMEMBERED")} variant={remembered ? "contained" : "outlined"} color="success" startIcon={<CheckCircle />} sx={{ whiteSpace: "nowrap" }}>Đã nhớ</Button>
-          <Button onClick={() => move(1)} disabled={index === unit.vocabulary.length - 1} variant="contained" aria-label="Thẻ tiếp theo" sx={{ bgcolor: "#7455d9" }}><ArrowForward /></Button>
+          <Button onClick={() => move(1)} disabled={index === unit.vocabulary.length - 1} variant="contained" aria-label="Thẻ tiếp theo"><ArrowForward /></Button>
         </Box>
         <Typography color="text.secondary" sx={{ display: { xs: "none", md: "block" }, mt: 1.5, textAlign: "center", fontSize: 13 }}>Dùng phím ← → để chuyển thẻ</Typography>
       </Container>

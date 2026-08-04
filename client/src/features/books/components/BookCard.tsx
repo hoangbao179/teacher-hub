@@ -14,7 +14,7 @@ export function BookCard({ book }: { book: PublicBook }) {
           <Chip size="small" label={book.seriesName} sx={{ maxWidth: "100%", bgcolor: "#e1f7f1", color: "#087a72", fontWeight: 700 }} />
           <Chip size="small" label={`Lớp ${book.grade}`} sx={{ bgcolor: "#f2f5f7", color: "#536273", fontWeight: 700 }} />
           {book.volume && <Chip size="small" label={`Tập ${book.volume}`} sx={{ bgcolor: "#eaf4ff", color: "#326da4", fontWeight: 700 }} />}
-          <Chip size="small" label={bookTypeLabel} sx={{ bgcolor: isTeacherBook ? "#f3ebff" : "#fff8dc", color: isTeacherBook ? "#7141a1" : "#7d6200", fontWeight: 700 }} />
+          <Chip size="small" label={bookTypeLabel} sx={{ bgcolor: isTeacherBook ? "#eaf5ff" : "#fff8dc", color: isTeacherBook ? "#236b91" : "#7d6200", fontWeight: 700 }} />
         </Stack>
         <Box>
           <Typography component="h3" sx={{ fontWeight: 800, fontSize: { xs: 15, sm: 17 }, lineHeight: 1.35 }}>{book.title}</Typography>

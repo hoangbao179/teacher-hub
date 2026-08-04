@@ -85,7 +85,7 @@ class Cdp {
     if (!ok) throw new Error(`Input not found: ${label}`);
   }
   async clickText(text) {
-    const ok = await this.eval(`(() => { const el=[...document.querySelectorAll('button,a,[role=button]')].find(x=>x.textContent.trim().includes(${JSON.stringify(text)}) && !x.disabled); if(!el) return false; el.click(); return true; })()`);
+    const ok = await this.eval(`(() => { const el=[...document.querySelectorAll('button,a,[role=button],[role=menuitem]')].find(x=>x.textContent.trim().includes(${JSON.stringify(text)}) && !x.disabled); if(!el) return false; el.click(); return true; })()`);
     if (!ok) throw new Error(`Clickable text not found: ${text}`);
   }
   async clickDialogText(text) {
@@ -288,7 +288,7 @@ try {
   await cdp.eval(`location.assign(${JSON.stringify(`http://127.0.0.1:5174${classPath}`)})`); await cdp.wait("document.body.innerText.includes('Tạm dừng')", "class action");
   await cdp.clickText("Tạm dừng"); await cdp.wait("document.querySelector('[role=dialog]') && document.body.innerText.includes('Ngày hiệu lực')", "class pause dialog");
   await cdp.clickDialogText("Xác nhận"); await cdp.wait("document.body.innerText.includes('Đã tạm dừng lớp')", "class pause success");
-  await cdp.clickLabel("Đăng xuất"); await cdp.wait("location.pathname==='/admin/login' && !localStorage.getItem('teacher-token')", "logout");
+  await cdp.clickLabel("Mở menu tài khoản"); await cdp.wait("!!document.querySelector('[role=menu]')", "account menu"); await cdp.clickText("Đăng xuất"); await cdp.wait("location.pathname==='/admin/login' && !localStorage.getItem('teacher-token')", "logout");
   await cdp.wait("document.body.innerText.includes('Đăng nhập') && !!document.querySelector('input[type=password]')", "login form after logout");
   await cdp.setInput("Tên đăng nhập", "covy"); await cdp.setInput("Mật khẩu", "smoke-password-123"); await cdp.clickText("Đăng nhập");
   await cdp.wait("location.pathname.startsWith('/admin') && location.pathname!=='/admin/login' && !!localStorage.getItem('teacher-token')", "login after logout");

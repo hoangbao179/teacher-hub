@@ -143,6 +143,9 @@ try {
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${origin}/sach`, { waitUntil: "networkidle" });
+  assert(await page.getByTestId("header-books").getAttribute("aria-current") === "page", "Books header section is not active");
+  assert(await page.getByTestId("header-learning").getAttribute("href") === "/hoc", "Books header cannot switch to learning");
+  assert(await page.getByTestId("header-admin").getAttribute("href") === "/admin/login", "Books header has no Admin route");
   assert(await page.getByRole("heading", { name: "Sách học sinh và tài liệu giáo viên", level: 1 }).isVisible(), "New library hero is missing");
   assert(await page.getByRole("button", { name: "Sách học sinh", exact: true }).getAttribute("aria-pressed") === "true", "Student books must be selected by default");
   assert(await page.locator('[data-testid^="book-card-"]').count() === 13, "Default library must show 13 student books");

@@ -56,7 +56,7 @@ export function LearningQuizPage() {
         <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}`} color="inherit" startIcon={<ArrowBack />} sx={{ minHeight: "44px !important" }}>{unit.title}</Button>
         <Box sx={{ maxWidth: 780, mx: "auto", mt: 2 }}>
           <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontWeight: 800 }}>Câu {questionIndex + 1} / {questions.length}</Typography><Typography color="text.secondary" sx={{ fontSize: 14 }}>Điểm được tính sau khi hoàn thành</Typography></Stack>
-          <LinearProgress variant="determinate" value={((questionIndex + 1) / questions.length) * 100} aria-label={`Câu ${questionIndex + 1} trên ${questions.length}`} aria-valuemin={1} aria-valuemax={questions.length} aria-valuenow={questionIndex + 1} sx={{ mt: 1, height: 10, borderRadius: 8, bgcolor: "#e8e2f0", "& .MuiLinearProgress-bar": { bgcolor: "#7455d9", borderRadius: 8 } }} />
+          <LinearProgress variant="determinate" value={((questionIndex + 1) / questions.length) * 100} aria-label={`Câu ${questionIndex + 1} trên ${questions.length}`} aria-valuemin={1} aria-valuemax={questions.length} aria-valuenow={questionIndex + 1} sx={{ mt: 1, height: 10, borderRadius: 8, "& .MuiLinearProgress-bar": { borderRadius: 8 } }} />
           <Card variant="outlined" sx={{ mt: 2.5, p: { xs: 2.25, sm: 4 }, borderRadius: "24px", borderColor: "#dcd0f5", boxShadow: "0 16px 36px rgba(70,52,120,.1)" }}>
             <Typography color="text.secondary" sx={{ fontWeight: 700 }}>{question.direction === "WORD_TO_MEANING" ? "Từ này có nghĩa là gì?" : "Từ tiếng Anh nào đúng với nghĩa này?"}</Typography>
             <Typography component="h1" sx={{ mt: 1, mb: 3, fontSize: { xs: 30, sm: 40 }, fontWeight: 800, color: "#5135a6" }}>{question.prompt}</Typography>
@@ -65,14 +65,14 @@ export function LearningQuizPage() {
                 const isSelected = selected === option;
                 const isCorrect = graded !== null && option === question.correctValue;
                 const isWrong = graded === false && isSelected;
-                return <Button key={option} role="radio" aria-checked={isSelected} onClick={() => graded === null && setSelected(option)} disabled={graded !== null} startIcon={<Radio checked={isSelected} />} sx={{ justifyContent: "flex-start", minHeight: "52px !important", px: 2, border: "2px solid", borderColor: isCorrect ? "#58a985" : isWrong ? "#e77b6c" : isSelected ? "#7455d9" : "#e2dcf0", color: "#27223b", bgcolor: isCorrect ? "#e4f7ee" : isWrong ? "#fff0ec" : isSelected ? "#f3efff" : "white", borderRadius: 3, textTransform: "none", "&.Mui-disabled": { color: "#27223b", opacity: 1 }, "&:hover": { bgcolor: "#f7f3ff" } }} aria-label={`Lựa chọn: ${option}`}>{option}</Button>;
+                return <Button key={option} role="radio" aria-checked={isSelected} onClick={() => graded === null && setSelected(option)} disabled={graded !== null} startIcon={<Radio checked={isSelected} />} sx={{ justifyContent: "flex-start", minHeight: "52px !important", px: 2, border: "2px solid", borderColor: isCorrect ? "#58a985" : isWrong ? "#e77b6c" : isSelected ? "primary.main" : "divider", color: "text.primary", bgcolor: isCorrect ? "#e4f7ee" : isWrong ? "#fff0ec" : isSelected ? "#eaf5ff" : "white", borderRadius: 3, textTransform: "none", "&.Mui-disabled": { color: "text.primary", opacity: 1 }, "&:hover": { bgcolor: "#eaf8f3" } }} aria-label={`Lựa chọn: ${option}`}>{option}</Button>;
               })}
             </Stack>
             <Box aria-live="polite" aria-atomic="true" sx={{ minHeight: 70, mt: 2 }}>
               {graded !== null && <Alert severity={graded ? "success" : "info"} icon={graded ? <CheckCircleOutlined /> : undefined} sx={{ bgcolor: graded ? "#e4f7ee" : "#fff0ec", color: "#3b3047", "& .MuiAlert-icon": { color: graded ? "#33805e" : "#c45d4e" } }}>{graded ? "Chính xác — tuyệt lắm!" : `Chưa đúng lần này. Đáp án là “${question.correctValue}”.`}</Alert>}
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 1, justifyContent: "flex-end" }}>
-              {graded === null ? <Button variant="contained" onClick={checkAnswer} disabled={!selected} startIcon={<CheckCircleOutlined />} sx={{ minHeight: "50px !important", borderRadius: 3, bgcolor: "#7455d9" }}>Kiểm tra</Button> : <Button variant="contained" onClick={next} endIcon={<NavigateNext />} sx={{ minHeight: "50px !important", borderRadius: 3, bgcolor: "#7455d9" }}>{questionIndex === questions.length - 1 ? "Xem kết quả" : "Câu tiếp theo"}</Button>}
+              {graded === null ? <Button variant="contained" onClick={checkAnswer} disabled={!selected} startIcon={<CheckCircleOutlined />} sx={{ minHeight: "50px !important", borderRadius: 3 }}>Kiểm tra</Button> : <Button variant="contained" onClick={next} endIcon={<NavigateNext />} sx={{ minHeight: "50px !important", borderRadius: 3 }}>{questionIndex === questions.length - 1 ? "Xem kết quả" : "Câu tiếp theo"}</Button>}
             </Stack>
           </Card>
         </Box>

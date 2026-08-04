@@ -121,6 +121,27 @@ const actionButtonSx = {
   "& .MuiButton-startIcon, & .MuiButton-endIcon": { flexShrink: 0 },
 } as const;
 
+const heroFeatureCardSx = {
+  minWidth: 0,
+  minHeight: 88,
+  p: { xs: 1.25, sm: 1.5 },
+  display: "grid",
+  gridTemplateColumns: "36px minmax(0,1fr) 20px",
+  alignItems: "center",
+  gap: { xs: 0.75, sm: 1 },
+  color: "text.primary",
+  textDecoration: "none",
+  border: "1px solid",
+  borderColor: "#d5e5e3",
+  borderRadius: 3,
+  bgcolor: "rgba(255,255,255,.78)",
+  boxShadow: "0 5px 14px rgba(35,70,86,.05)",
+  transition: "transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease",
+  "&:hover": { transform: "translateY(-2px)", borderColor: "#8fcfc6", boxShadow: "0 8px 18px rgba(35,70,86,.09)" },
+  "&:focus-visible": { outline: "3px solid #14b8a6", outlineOffset: 2 },
+  "@media (prefers-reduced-motion: reduce)": { transition: "none", "&:hover": { transform: "none" } },
+} as const;
+
 const trustIcons = {
   experience: SchoolOutlined,
   vstep: WorkspacePremiumOutlined,
@@ -183,6 +204,18 @@ export function HomePage() {
                   <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>{content.hero.eyebrow}</Typography>
                   <Typography id="hero-heading" component="h1" variant="h3" sx={{ mt: 1, fontWeight: 800, fontSize: { xs: "2rem", md: "3rem" } }}>{content.hero.heading}</Typography>
                   <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 650, fontSize: { md: "1.08rem" } }}>{content.hero.description}</Typography>
+                  <Box data-testid="homepage-hero-features" sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: { xs: 1, sm: 1.25 }, mt: 2.5, maxWidth: 650 }}>
+                    <Box component={Link} to={content.learning.path} data-testid="homepage-hero-learning" sx={{ ...heroFeatureCardSx, bgcolor: "rgba(234,245,255,.84)" }}>
+                      <Box aria-hidden="true" sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: 2, bgcolor: "#dcefff", color: "#236b91" }}><SchoolOutlined fontSize="small" /></Box>
+                      <Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800, fontSize: { xs: 13.5, sm: 15 } }}>{content.learning.shortLabel}</Typography><Typography color="text.secondary" sx={{ mt: 0.2, fontSize: { xs: 11, sm: 12.5 }, lineHeight: 1.35 }}>{content.learning.shortDescription}</Typography></Box>
+                      <ArrowForward aria-hidden="true" sx={{ fontSize: 19, color: "#0f766e" }} />
+                    </Box>
+                    <Box component={Link} to={content.bookLibrary.path} data-testid="homepage-hero-books" sx={{ ...heroFeatureCardSx, bgcolor: "rgba(234,248,243,.88)" }}>
+                      <Box aria-hidden="true" sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: 2, bgcolor: "#ddf7f1", color: "#0f766e" }}><MenuBook fontSize="small" /></Box>
+                      <Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 800, fontSize: { xs: 13.5, sm: 15 } }}>{content.bookLibrary.shortLabel}</Typography><Typography color="text.secondary" sx={{ mt: 0.2, fontSize: { xs: 11, sm: 12.5 }, lineHeight: 1.35 }}>{content.bookLibrary.shortDescription}</Typography></Box>
+                      <ArrowForward aria-hidden="true" sx={{ fontSize: 19, color: "#0f766e" }} />
+                    </Box>
+                  </Box>
                 </Box>
                 <Box component="picture" data-testid="homepage-hero-photo" sx={{ gridArea: "photo", mt: { xs: 3, md: 0 } }}>
                   {content.media.teacherPhotoSources.map((source) => <source key={source.type} srcSet={source.srcSet} type={source.type} />)}
@@ -240,29 +273,6 @@ export function HomePage() {
             </Box>
           </Box>
         </Container>
-
-        <Box sx={{ bgcolor: "#f8f4ff" }}>
-          <Container maxWidth="lg">
-            <Box component="section" aria-labelledby="free-learning-heading" data-testid="homepage-learning-cta" sx={{ py: { xs: 4, sm: 5 } }}>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0,1fr) auto" }, gap: 2.5, alignItems: "center", p: { xs: 2.5, sm: 3.5 }, border: "1px solid #d9cdf3", borderRadius: 3, background: "linear-gradient(135deg,#f1ebff 0%,#eaf7ff 55%,#fff3d8 100%)", boxShadow: "0 10px 24px rgba(57,42,94,.07)" }}>
-                <Box>
-                  <Typography variant="overline" color="primary">{content.learning.eyebrow}</Typography>
-                  <Typography id="free-learning-heading" component="h2" variant="h4" sx={{ mt: 0.75 }}>{content.learning.heading}</Typography>
-                  <Typography color="text.secondary" sx={{ mt: 0.75 }}>{content.learning.description}</Typography>
-                </Box>
-                <Button component={Link} to={content.learning.path} variant="contained" endIcon={<ArrowForward />} sx={{ minHeight: 48, minWidth: { sm: 156 }, borderRadius: 3 }}>{content.learning.actionLabel}</Button>
-              </Box>
-              <Box data-testid="homepage-book-library-cta" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0,1fr) auto" }, gap: 2.5, alignItems: "center", mt: 2, p: { xs: 2.5, sm: 3.5 }, border: "1px solid #bcded9", borderRadius: 3, background: "linear-gradient(135deg,#e7faf5 0%,#eaf7ff 58%,#fff6d9 100%)", boxShadow: "0 10px 24px rgba(24,126,119,.07)" }}>
-                <Box>
-                  <Typography variant="overline" sx={{ color: "#087a72", fontWeight: 800 }}>{content.bookLibrary.eyebrow}</Typography>
-                  <Typography component="h2" variant="h4" sx={{ mt: 0.75 }}>{content.bookLibrary.heading}</Typography>
-                  <Typography color="text.secondary" sx={{ mt: 0.75 }}>{content.bookLibrary.description}</Typography>
-                </Box>
-                <Button component={Link} to={content.bookLibrary.path} variant="contained" endIcon={<MenuBook />} sx={{ minHeight: 48, minWidth: { sm: 156 }, borderRadius: 3, bgcolor: "#159f98", "&:hover": { bgcolor: "#0c817b" } }}>{content.bookLibrary.actionLabel}</Button>
-              </Box>
-            </Box>
-          </Container>
-        </Box>
 
         <Box sx={{ bgcolor: "#faf8ff" }}>
           <Container maxWidth="lg">

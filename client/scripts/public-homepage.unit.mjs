@@ -7,6 +7,7 @@ const clientRoot = path.resolve(import.meta.dirname, "..");
 const root = path.resolve(clientRoot, "..");
 const contentSource = fs.readFileSync(path.join(clientRoot, "src/content/publicHome.ts"), "utf8");
 const homepageSource = fs.readFileSync(path.join(clientRoot, "src/pages/HomePage.tsx"), "utf8");
+const publicHeaderSource = fs.readFileSync(path.join(clientRoot, "src/components/PublicHeader.tsx"), "utf8");
 const indexHtml = fs.readFileSync(path.join(clientRoot, "index.html"), "utf8");
 const envExample = fs.readFileSync(path.join(clientRoot, ".env.example"), "utf8");
 const webDockerfile = fs.readFileSync(path.join(root, "Dockerfile.web"), "utf8");
@@ -20,6 +21,17 @@ function bootstrapStructuredData() {
   assert.ok(match, "Bootstrap Homepage JSON-LD is missing");
   return JSON.parse(match[1]);
 }
+
+test("public navigation and Homepage hero expose the new entry points without duplicate CTA blocks", () => {
+  assert.doesNotMatch(publicHeaderSource, /data-testid="header-home"/);
+  assert.doesNotMatch(publicHeaderSource, /header-about|AccountCircleOutlined|header-admin-mobile/);
+  assert.match(publicHeaderSource, /disableRipple component="a" href="#contact"/);
+  assert.match(publicHeaderSource, /disableRipple component=\{Link\} to="\/admin\/login"/);
+  assert.match(homepageSource, /data-testid="homepage-hero-learning"/);
+  assert.match(homepageSource, /data-testid="homepage-hero-books"/);
+  assert.doesNotMatch(homepageSource, /data-testid="homepage-learning-cta"/);
+  assert.doesNotMatch(homepageSource, /data-testid="homepage-book-library-cta"/);
+});
 
 test("Homepage Maps constants are canonical and use HTTPS", () => {
   assert.ok(placeUrl.length > 0);

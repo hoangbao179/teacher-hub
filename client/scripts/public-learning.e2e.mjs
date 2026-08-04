@@ -97,11 +97,15 @@ try {
 
   await page.goto(`${origin}/`, { waitUntil: "networkidle" });
   assert(await page.getByText("2026 — từ người hâm mộ cô Vy, with love ❤️", { exact: true }).isVisible(), "Homepage footer changed");
-  await page.getByTestId("homepage-learning-cta").getByRole("link", { name: "Vào học ngay" }).click();
+  await page.getByTestId("homepage-hero-learning").click();
   await page.waitForURL(`${origin}/hoc`);
   const hubHeading = page.getByRole("heading", { name: "Góc học tiếng Anh miễn phí cùng cô Vy", level: 1 });
   await hubHeading.waitFor();
   assert(await hubHeading.isVisible(), "Homepage CTA did not open /hoc");
+  assert(await page.getByTestId("header-learning").getAttribute("aria-current") === "page", "Learning header section is not active");
+  assert(await page.getByTestId("header-books").getAttribute("href") === "/sach", "Learning header cannot switch to books");
+  assert(await page.getByTestId("header-admin").getAttribute("href") === "/admin/login", "Learning header has no Admin text route");
+  assert((await page.getByTestId("header-admin").innerText()).trim() === "Quản trị", "Learning header must show Admin as text");
   assert(apiRequests.length === 0, `Learning flow called Admin API: ${apiRequests.join(", ")}`);
 
   const levelGroups = page.locator('[data-testid^="level-group-"]');

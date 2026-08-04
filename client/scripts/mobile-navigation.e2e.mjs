@@ -304,6 +304,28 @@ try {
   await page.locator('[data-testid="dashboard-page"]').waitFor();
   await page.getByRole("heading", { level: 1, name: "Xin chào, cô Vy 👋" }).waitFor();
 
+  await page.getByTestId("account-menu-button").click();
+  for (const label of ["Kho từ vựng", "Bài tập từ vựng", "Tài khoản", "Đăng xuất"]) {
+    assert(await page.getByRole("menuitem", { name: label, exact: true }).isVisible(), `Account menu is missing ${label}`);
+  }
+  await page.waitForTimeout(250);
+  if (artifactPolicy.mode === "review") await page.screenshot({ path: path.join(artifactDir, "account-menu-390x844.png"), fullPage: false });
+  await page.keyboard.press("Escape");
+  assert(await page.getByRole("menu").count() === 0 || await page.getByRole("menu").isHidden(), "Escape did not close the account menu");
+
+  for (const viewport of [{ width: 768, height: 1024 }, { width: 1024, height: 768 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto(`${origin}/admin`, { waitUntil: "networkidle" });
+    await page.getByTestId("admin-layout").waitFor();
+    const shell = await page.evaluate(() => ({
+      mobile: document.querySelector('[data-testid="mobile-navigation"]') ? getComputedStyle(document.querySelector('[data-testid="mobile-navigation"]')).display : "missing",
+      desktop: document.querySelector('[data-testid="desktop-navigation"]') ? getComputedStyle(document.querySelector('[data-testid="desktop-navigation"]')).display : "missing",
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }));
+    assert(shell.mobile !== "none" && shell.desktop === "none" && shell.overflow <= 1, `Tablet navigation breakpoint failed at ${viewport.width}px: ${JSON.stringify(shell)}`);
+    if (artifactPolicy.mode === "review" && viewport.width === 1024) await page.screenshot({ path: path.join(artifactDir, "today-1024x768.png"), fullPage: false });
+  }
+
   for (const viewport of navigationRegressionViewports) {
     await page.setViewportSize(viewport);
     await page.goto(`${origin}/admin`, { waitUntil: "networkidle" });
@@ -453,6 +475,13 @@ try {
   const desktopPage = await desktopContext.newPage();
   await desktopPage.goto(`${origin}/admin`, { waitUntil: "networkidle" });
   await desktopPage.locator('[data-testid="desktop-navigation"]').waitFor({ state: "attached" });
+  await desktopPage.setViewportSize({ width: 1200, height: 900 });
+  const wideShell = await desktopPage.evaluate(() => ({
+    mobile: getComputedStyle(document.querySelector('[data-testid="mobile-navigation"]')).display,
+    desktop: getComputedStyle(document.querySelector('[data-testid="desktop-navigation"]')).display,
+  }));
+  assert(wideShell.mobile === "none" && wideShell.desktop !== "none", `Desktop navigation breakpoint failed at 1200px: ${JSON.stringify(wideShell)}`);
+  await desktopPage.setViewportSize({ width: 1440, height: 900 });
   for (const tab of tabs) {
     if (new URL(desktopPage.url()).pathname !== tab.path) {
       await desktopPage.locator('[data-testid="desktop-navigation"] .MuiListItemButton-root', { hasText: tab.label }).click();
@@ -462,7 +491,7 @@ try {
     await desktopPage.locator('[data-testid="mobile-navigation"]').waitFor({ state: "attached" });
     const shell = await desktopPage.evaluate(() => ({
       innerWidth: window.innerWidth,
-      desktopMedia: window.matchMedia("(min-width: 768px)").matches,
+      desktopMedia: window.matchMedia("(min-width: 1200px)").matches,
       mobile: getComputedStyle(document.querySelector('[data-testid="mobile-navigation"]')).display,
       desktop: getComputedStyle(document.querySelector('[data-testid="desktop-navigation"]')).display,
       brand: document.body.innerText.includes("Lớp học cô Vy"),

@@ -30,14 +30,14 @@ export function PronunciationRateControl({ value, onChange }: PronunciationRateC
         aria-pressed={value === "SLOW"}
         onClick={() => onChange("SLOW")}
         variant={value === "SLOW" ? "contained" : "outlined"}
-        sx={{ minWidth: 0, minHeight: "44px !important", px: 1, borderRadius: 2.5, whiteSpace: "nowrap", fontSize: { xs: 13, sm: 14 }, bgcolor: value === "SLOW" ? "#5d46b5" : undefined }}
+        sx={{ minWidth: 0, minHeight: "44px !important", px: 1, borderRadius: 2.5, whiteSpace: "nowrap", fontSize: { xs: 13, sm: 14 }, bgcolor: value === "SLOW" ? "primary.main" : undefined }}
       >Chậm 0.6x</Button>
       <Button
         type="button"
         aria-pressed={value === "NORMAL"}
         onClick={() => onChange("NORMAL")}
         variant={value === "NORMAL" ? "contained" : "outlined"}
-        sx={{ minWidth: 0, minHeight: "44px !important", px: 1, borderRadius: 2.5, whiteSpace: "nowrap", fontSize: { xs: 13, sm: 14 }, bgcolor: value === "NORMAL" ? "#5d46b5" : undefined }}
+        sx={{ minWidth: 0, minHeight: "44px !important", px: 1, borderRadius: 2.5, whiteSpace: "nowrap", fontSize: { xs: 13, sm: 14 }, bgcolor: value === "NORMAL" ? "primary.main" : undefined }}
       >Bình thường</Button>
     </Box>
   </Box>;

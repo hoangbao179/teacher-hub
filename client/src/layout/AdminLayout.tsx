@@ -8,6 +8,8 @@ import {
   School,
   Translate,
   Assignment,
+  AccountCircle,
+  MenuBook,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -25,8 +27,12 @@ import {
   Toolbar,
   Typography,
   IconButton,
+  Divider,
+  Menu,
+  MenuItem,
   ThemeProvider,
 } from "@mui/material";
+import { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { adminTheme, uiTokens } from "../theme";
@@ -43,6 +49,7 @@ const desktopNav = [
   ...nav,
   ["/admin/vocabulary", <Translate key="vocabulary" />, "Kho từ vựng"],
   ["/admin/assignments", <Assignment key="assignments" />, "Bài tập từ vựng"],
+  ["/admin/account", <AccountCircle key="account" />, "Tài khoản"],
 ] as const;
 
 function shouldUseAdminSafeArea() {
@@ -62,6 +69,10 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const auth = useAuth();
+  const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
+  const closeAccountMenu = () => setAccountAnchor(null);
+  const openAccountRoute = (path: string) => { closeAccountMenu(); navigate(path); };
+  const logout = () => { closeAccountMenu(); void auth.logout().then(() => navigate("/admin/login")); };
   const directIndex = nav.findIndex(([path]) =>
       path === "/admin"
         ? location.pathname === "/admin"
@@ -77,11 +88,11 @@ export function AdminLayout() {
     <ThemeProvider theme={adminTheme}>
     <Box data-testid="admin-layout" sx={{
       "--admin-safe-bottom": adminSafeBottom,
-      minHeight: { xs: "100svh", md: "100dvh" },
+      minHeight: { xs: "100svh", lg: "100dvh" },
       minWidth: 0,
       overflowX: "clip",
       bgcolor: "background.default",
-      pb: { xs: `calc(${uiTokens.navigationHeight}px + var(--admin-safe-bottom) + 16px)`, md: 0 },
+      pb: { xs: `calc(${uiTokens.navigationHeight}px + var(--admin-safe-bottom) + 16px)`, lg: 0 },
     }}>
       <AppBar
         position="fixed"
@@ -89,29 +100,36 @@ export function AdminLayout() {
         elevation={0}
         sx={{ bgcolor: "rgba(255,255,255,.96)", backdropFilter: "blur(10px)", borderBottom: 1, borderColor: "divider", boxShadow: "0 2px 10px rgba(15, 23, 42, 0.035)", zIndex: (theme) => theme.zIndex.drawer + 1 }}
       >
-        <Toolbar sx={{ minHeight: `${uiTokens.navigationHeight}px !important`, px: { xs: 1.75, md: 3 } }}>
+        <Toolbar sx={{ minHeight: `${uiTokens.navigationHeight}px !important`, px: { xs: 1.75, lg: 3 } }}>
           <ButtonBase
             aria-label="Về Hôm nay"
             onClick={() => navigate("/admin")}
             sx={{ alignItems: "center", justifyContent: "flex-start", gap: 1.1, flexGrow: 1, minWidth: 0, borderRadius: 1.5, textAlign: "left" }}
           >
-            <Box sx={{ display: "grid", placeItems: "center", width: { xs: 36, md: 40 }, height: { xs: 36, md: 40 }, flexShrink: 0, borderRadius: { xs: 1.5, md: 1.75 }, color: "common.white", background: "linear-gradient(145deg, #25b9ad, #0f8f83)", boxShadow: "0 7px 16px rgba(20,184,166,.2)" }}><School sx={{ fontSize: { xs: 21, md: 23 } }} /></Box>
+            <Box sx={{ display: "grid", placeItems: "center", width: { xs: 36, lg: 40 }, height: { xs: 36, lg: 40 }, flexShrink: 0, borderRadius: { xs: 1.5, lg: 1.75 }, color: "common.white", background: "linear-gradient(145deg, #14b8a6, #0f766e)", boxShadow: "0 7px 16px rgba(15,118,110,.2)" }}><School sx={{ fontSize: { xs: 21, lg: 23 } }} /></Box>
             <Stack spacing={0} sx={{ minWidth: 0 }}>
               <Typography variant="subtitle1" noWrap sx={{ fontWeight: 700 }}>Lớp học cô Vy</Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", md: "block" }, lineHeight: 1.1 }}>Tiếng Anh lớp 1–9</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", lg: "block" }, lineHeight: 1.1 }}>Tiếng Anh lớp 1–9</Typography>
             </Stack>
           </ButtonBase>
-          <Box sx={{ display: { xs: "none", md: "block" }, mr: 1.25, px: 1.5, py: 0.75, borderRadius: 999, bgcolor: uiTokens.colors.subtleSurface, color: "primary.dark", fontSize: 12, fontWeight: 600 }}>{displayDashboardDate(todayInHoChiMinh())}</Box>
-          <IconButton aria-label="Đăng xuất" onClick={() => void auth.logout().then(() => navigate("/admin/login"))}>
-            <Logout />
+          <Box sx={{ display: { xs: "none", lg: "block" }, mr: 1.25, px: 1.5, py: 0.75, borderRadius: 999, bgcolor: uiTokens.colors.subtleSurface, color: "primary.dark", fontSize: 12, fontWeight: 600 }}>{displayDashboardDate(todayInHoChiMinh())}</Box>
+          <IconButton data-testid="account-menu-button" aria-label="Mở menu tài khoản" aria-controls={accountAnchor ? "admin-account-menu" : undefined} aria-haspopup="menu" aria-expanded={accountAnchor ? "true" : undefined} onClick={(event) => setAccountAnchor(event.currentTarget)}>
+            <AccountCircle />
           </IconButton>
+          <Menu id="admin-account-menu" anchorEl={accountAnchor} open={Boolean(accountAnchor)} onClose={closeAccountMenu} slotProps={{ paper: { sx: { minWidth: 230, mt: 0.75 } } }}>
+            <MenuItem onClick={() => openAccountRoute("/admin/vocabulary")}><Translate fontSize="small" sx={{ mr: 1.25 }} /><ListItemText>Kho từ vựng</ListItemText></MenuItem>
+            <MenuItem onClick={() => openAccountRoute("/admin/assignments")}><MenuBook fontSize="small" sx={{ mr: 1.25 }} /><ListItemText>Bài tập từ vựng</ListItemText></MenuItem>
+            <MenuItem onClick={() => openAccountRoute("/admin/account")}><AccountCircle fontSize="small" sx={{ mr: 1.25 }} /><ListItemText>Tài khoản</ListItemText></MenuItem>
+            <Divider />
+            <MenuItem onClick={logout}><Logout fontSize="small" sx={{ mr: 1.25 }} /><ListItemText>Đăng xuất</ListItemText></MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
       <Drawer
         variant="permanent"
         data-testid="desktop-navigation"
         sx={{
-          display: { xs: "none", md: "block" },
+          display: { xs: "none", lg: "block" },
           width: uiTokens.desktopNavigationWidth,
           flexShrink: 0,
           "& .MuiDrawer-paper": {
@@ -126,7 +144,7 @@ export function AdminLayout() {
           },
         }}
       >
-        <List component="nav" aria-label="Điều hướng quản trị trên máy tính" sx={{ p: 0 }}>
+        <List component="nav" aria-label="Điều hướng quản trị trên máy tính" sx={{ p: 0, pb: 23, height: "100%", overflowY: "auto" }}>
           {desktopNav.map(([path, icon, label], index) => <ListItemButton
             key={path}
             selected={desktopCurrent === index}
@@ -142,12 +160,12 @@ export function AdminLayout() {
           <Box component="img" src="/assets/admin-ui/sidebar-english-learning.webp" alt="" aria-hidden="true" sx={{ position: "absolute", width: "100%", height: 280, left: 0, bottom: -77, objectFit: "contain", objectPosition: "center" }} />
         </Box>
       </Drawer>
-      <Box sx={{ ml: { md: `${uiTokens.desktopNavigationWidth}px` }, pt: `${uiTokens.navigationHeight}px`, minWidth: 0 }}>
+      <Box sx={{ ml: { lg: `${uiTokens.desktopNavigationWidth}px` }, pt: `${uiTokens.navigationHeight}px`, minWidth: 0 }}>
         <Container
           component="main"
           maxWidth={false}
           data-testid="admin-content"
-          sx={{ width: "100%", maxWidth: `${uiTokens.contentWidth}px`, mx: "auto", px: { xs: 1.5, sm: 3, md: 3.5 }, py: { xs: 1.5, md: 3 }, minWidth: 0 }}
+          sx={{ width: "100%", maxWidth: `${uiTokens.contentWidth}px`, mx: "auto", px: { xs: 1.5, sm: 3, lg: 3.5 }, py: { xs: 1.5, lg: 3 }, minWidth: 0 }}
         >
           <Outlet />
         </Container>
@@ -155,7 +173,7 @@ export function AdminLayout() {
       <Box
         data-testid="mobile-navigation-shell"
         sx={{
-          display: { xs: "flex", md: "none" },
+          display: { xs: "flex", lg: "none" },
           flexDirection: "column",
           position: "fixed",
           bottom: 0,
@@ -197,7 +215,7 @@ export function AdminLayout() {
           value={current}
           onChange={(_e, value) => navigate(nav[value][0])}
           sx={{
-            display: { xs: "flex", md: "none" },
+            display: { xs: "flex", lg: "none" },
             flex: "0 0 auto",
             width: "100%",
             height: `${uiTokens.navigationHeight}px`,

@@ -17,6 +17,10 @@ enum.
 
 ## Card
 
+Tủ sách dùng chung public learning theme: primary/action/tab active là teal đậm
+`#0F766E`; sky, mint, yellow và coral chỉ làm surface/badge phụ. Hai loại sách
+được phân biệt thêm bằng icon, label và badge, không dùng tím hoặc chỉ dùng màu.
+
 - SGK: badge bộ sách, lớp, tập, `Sách học sinh`; CTA chính `Đọc sách`; CTA phụ
   `Nghe bài tương tác` chỉ khi catalog có `interactiveAudioUrl`.
 - SGV: badge bộ sách, lớp, `Tài liệu giáo viên`; chỉ có CTA `Đọc tài liệu`.

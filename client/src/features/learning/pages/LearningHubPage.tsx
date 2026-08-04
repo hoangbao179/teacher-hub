@@ -37,14 +37,14 @@ export function LearningHubPage() {
   return (
     <LearningShell>
       <Box component="main">
-        <Box sx={{ background: "linear-gradient(135deg, #eff9ff 0%, #f7f0ff 55%, #fff4f6 100%)", borderBottom: "1px solid #e8dff7" }}>
+        <Box sx={{ background: "linear-gradient(135deg, #eaf5ff 0%, #eaf8f3 55%, #fff6d9 100%)", borderBottom: "1px solid #d5e5e3" }}>
           <Container maxWidth="lg">
             <Box component="section" aria-labelledby="learning-hero-heading" sx={{ minHeight: { md: 300 }, display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.1fr .9fr" }, alignItems: "center", gap: 3, py: { xs: 4, sm: 5, md: 6 }, position: "relative" }}>
               <Box sx={{ maxWidth: 680, position: "relative", zIndex: 1 }}>
                 <Chip label="GÓC HỌC MIỄN PHÍ" sx={{ bgcolor: "#ff7d75", color: "white", fontWeight: 800 }} />
-                <Typography id="learning-hero-heading" component="h1" sx={{ mt: 2, color: "#6541c7", fontSize: { xs: 29, sm: 38, md: 46 }, lineHeight: 1.15, fontWeight: 800, letterSpacing: "-.03em" }}>Góc học tiếng Anh miễn phí cùng cô Vy</Typography>
-                <Typography sx={{ mt: 1.5, color: "#504966", fontSize: { xs: 15, sm: 17 } }}>Học vui mỗi ngày qua những bài từ vựng ngắn, dễ nhớ và phù hợp từng độ tuổi.</Typography>
-                {recent && <Chip component={Link} clickable to={`/hoc/${recent.slug}`} label={`Học tiếp ${recent.name}`} onClick={() => selectLevel(recent.slug)} sx={{ mt: 2.25, minHeight: 44, px: 0.5, bgcolor: "#7455d9", color: "white", fontWeight: 700, "&:hover": { bgcolor: "#6144bf" } }} />}
+                <Typography id="learning-hero-heading" component="h1" sx={{ mt: 2, color: "primary.main", fontSize: { xs: 29, sm: 38, md: 46 }, lineHeight: 1.15, fontWeight: 800, letterSpacing: "-.03em" }}>Góc học tiếng Anh miễn phí cùng cô Vy</Typography>
+                <Typography color="text.secondary" sx={{ mt: 1.5, fontSize: { xs: 15, sm: 17 } }}>Học vui mỗi ngày qua những bài từ vựng ngắn, dễ nhớ và phù hợp từng độ tuổi.</Typography>
+                {recent && <Chip component={Link} clickable to={`/hoc/${recent.slug}`} label={`Học tiếp ${recent.name}`} onClick={() => selectLevel(recent.slug)} sx={{ mt: 2.25, minHeight: 44, px: 0.5, bgcolor: "primary.main", color: "white", fontWeight: 700, "&:hover": { bgcolor: "primary.dark" } }} />}
               </Box>
               <Box aria-hidden="true" sx={{ pointerEvents: "none", position: "relative", minHeight: { xs: 150, md: 210 }, display: "grid", placeItems: "center" }}>
                 <Typography sx={{ fontSize: { xs: 92, sm: 112, md: 138 }, filter: "drop-shadow(0 14px 14px rgba(72,53,126,.15))" }}>📖</Typography>
@@ -64,7 +64,7 @@ export function LearningHubPage() {
             <Stack spacing={3} sx={{ mt: 3.5 }}>
               {groups.map((group) => {
                 const levels = learningLevels.filter((level) => level.group === group.id);
-                return <Box key={group.id} sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: "24px", bgcolor: group.id === "EARLY" ? "#fff8df" : group.id === "PRIMARY" ? "#edfaf5" : "#f3efff", border: "1px solid", borderColor: group.id === "EARLY" ? "#f1dda0" : group.id === "PRIMARY" ? "#bfe7d8" : "#d9cdf3" }}>
+                return <Box key={group.id} sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: "24px", bgcolor: group.id === "EARLY" ? "#fff6d9" : group.id === "PRIMARY" ? "#eaf5ff" : "#fff0e8", border: "1px solid", borderColor: group.id === "EARLY" ? "#f1dda0" : group.id === "PRIMARY" ? "#c9e2f5" : "#f0cfc0" }}>
                   <Typography component="h3" sx={{ fontSize: 17, fontWeight: 800 }}>{group.title}</Typography>
                   <Typography color="text.secondary" sx={{ mt: 0.25, fontSize: 13.5 }}>{group.description}</Typography>
                   <Box data-testid={`level-group-${group.id.toLowerCase()}`} sx={{ display: "grid", gridTemplateColumns: { xs: levels.length === 1 ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))", sm: `repeat(${Math.min(levels.length, 5)}, minmax(0, 1fr))` }, gap: { xs: 1.25, sm: 1.5 }, mt: 2 }}>
@@ -82,7 +82,7 @@ export function LearningHubPage() {
                 [AutoStories, "Học bằng flashcard", "Hình ảnh sinh động, từ và nghĩa rõ ràng.", "#fff1c9"],
                 [Headphones, "Nghe và chọn nghĩa", "Rèn kỹ năng nghe, phản xạ tự nhiên.", "#e8f3ff"],
                 [Replay, "Ôn lại từ sai", "Ghi nhớ những từ chưa chắc để tiến bộ.", "#fdebf3"],
-              ].map(([Icon, title, description, color]) => <Card component="article" key={String(title)} variant="outlined" sx={{ p: 2.5, borderRadius: "22px", bgcolor: String(color), borderColor: "rgba(98,72,160,.16)" }}><Stack direction="row" spacing={2} sx={{ alignItems: "center" }}><Box sx={{ flex: "0 0 52px", height: 52, display: "grid", placeItems: "center", borderRadius: 3, bgcolor: "white", color: "#6541c7" }}><Icon aria-hidden="true" /></Box><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{String(title)}</Typography><Typography color="text.secondary" sx={{ mt: 0.4, fontSize: 13.5 }}>{String(description)}</Typography></Box></Stack></Card>)}
+              ].map(([Icon, title, description, color]) => <Card component="article" key={String(title)} variant="outlined" sx={{ p: 2.5, borderRadius: "22px", bgcolor: String(color), borderColor: "divider" }}><Stack direction="row" spacing={2} sx={{ alignItems: "center" }}><Box sx={{ flex: "0 0 52px", height: 52, display: "grid", placeItems: "center", borderRadius: 3, bgcolor: "white", color: "primary.main" }}><Icon aria-hidden="true" /></Box><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{String(title)}</Typography><Typography color="text.secondary" sx={{ mt: 0.4, fontSize: 13.5 }}>{String(description)}</Typography></Box></Stack></Card>)}
             </Box>
           </Box>
           <Typography component="p" color="text.secondary" sx={{ mt: 3, mx: "auto", maxWidth: 720, textAlign: "center", fontSize: 12.5, lineHeight: 1.6 }}>

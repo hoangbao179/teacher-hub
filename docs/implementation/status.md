@@ -26,6 +26,9 @@ evidence từng lần kiểm thử được giữ trong Git history.
   public header/footer, SGK có audio dùng FlipBuilder trên desktop và NXBGD trên
   mobile, còn SGV luôn dùng NXBGD. NXBGD có âm thanh lật trang UI tùy chọn nhưng
   không có audio bài học.
+- Homepage đặt entry Góc học/Tủ sách trong hero; header public luôn có đường vào
+  quản trị và `/hoc`–`/sach` dùng chung palette teal/pastel. Admin dùng sidebar từ
+  1200 px, bottom navigation dưới breakpoint này và menu tài khoản cho các route phụ.
 - Vocabulary topic/set/media, assignment, public game, result/mastery/review và
   Google Sheet tab ôn từ vựng.
 - Legacy Excel preview/apply có reconciliation theo nhóm và transaction MySQL.

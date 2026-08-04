@@ -65,6 +65,11 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+async function logoutThroughAccountMenu(page) {
+  await page.getByRole("button", { name: "Mở menu tài khoản" }).click();
+  await page.getByRole("menuitem", { name: "Đăng xuất", exact: true }).click();
+}
+
 async function assertNoPasswordPersisted(page, context) {
   const webStorage = await page.evaluate(() => ({
     local: Object.entries(localStorage),
@@ -157,7 +162,7 @@ try {
   await page.waitForURL(`${origin}/admin`);
   await page.locator('[data-testid="dashboard-page"]').waitFor();
 
-  await page.getByRole("button", { name: "Đăng xuất" }).click();
+  await logoutThroughAccountMenu(page);
   await page.waitForURL(`${origin}/admin/login`);
   storage = await page.evaluate(() => ({
     localToken: localStorage.getItem("teacher-token"),
@@ -192,7 +197,7 @@ try {
   assert(await freshPage.getByLabel("Tên đăng nhập").inputValue() === "", "Session-only username leaked into a fresh browsing session");
   await freshPage.close();
 
-  await page.getByRole("button", { name: "Đăng xuất" }).click();
+  await logoutThroughAccountMenu(page);
   await page.waitForURL(`${origin}/admin/login`);
   await page.evaluate(() => {
     localStorage.setItem("teacher-token", "invalid-local-token");
@@ -230,7 +235,7 @@ try {
   await page.waitForURL(`${origin}/admin`);
   await page.locator('[data-testid="dashboard-page"]').waitFor();
   await assertNoPasswordPersisted(page, context);
-  await page.getByRole("button", { name: "Đăng xuất" }).click();
+  await logoutThroughAccountMenu(page);
   await page.waitForURL(`${origin}/admin/login`);
 
   for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }]) {

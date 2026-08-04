@@ -8,6 +8,8 @@ không gọi API quản trị và không công khai học phí.
 - `client/src/content/publicHome.ts` là source of truth cho nội dung, liên hệ,
   địa điểm, chương trình và đường dẫn media của Homepage.
 - Homepage có đúng một H1: `Cô Vy dạy tiếng Anh tại Huế`.
+- Hero có hai feature card duy nhất dẫn tới `/hoc` và `/sach`; không lặp lại hai
+  CTA này thành section lớn phía dưới.
 - Nội dung công khai gồm hero, hồ sơ giáo viên, ba nhóm chương trình, phương pháp,
   hình thức và địa điểm học, video tham khảo, phản hồi phụ huynh và liên hệ.
 - Ba nhóm chương trình gồm tiếng Anh nền tảng, tiếng Anh THCS và luyện thi theo
@@ -42,6 +44,11 @@ là SPA. Nginx gửi `X-Robots-Tag: noindex, nofollow, noarchive` cho `/admin` v
 Trang giữ heading tuần tự, landmark, focus-visible, touch target phù hợp, ảnh
 responsive có kích thước cố định và không có page-level horizontal scroll tại
 các viewport 360–430 px.
+
+Header dùng logo/brand làm đường về `/`, không render nút `Trang chủ` riêng và
+không đổi màu/nền brand khi tương tác. Homepage chỉ có hai text link `Liên hệ` và
+`Quản trị` ở mọi viewport. Header `/hoc` và `/sach` có section switcher cùng text
+link `Quản trị`; chỉ section active được dùng nền nhấn mạnh.
 
 Footer công khai giữ nguyên:
 `2026 — từ người hâm mộ cô Vy, with love ❤️`. Link quản trị chỉ nằm ở header.

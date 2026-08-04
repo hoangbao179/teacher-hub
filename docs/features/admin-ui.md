@@ -28,8 +28,11 @@ và gate `npm run check:full` đã PASS. Chi tiết triển khai và khác biệ
   tablet và desktop 1440 px.
 - Mobile có năm mục bottom navigation một dòng: Hôm nay, Lịch, Lớp học, Học phí,
   Học sinh; có safe-area và sticky actions luôn nằm phía trên navigation.
-- Desktop chuyển sang sidebar cố định ở breakpoint phù hợp; nội dung không dùng
-  bảng rộng cho thao tác cốt lõi.
+- Sidebar cố định chỉ xuất hiện từ `lg` (1200 px); dưới `lg` nội dung full-width
+  và bottom navigation năm mục tiếp tục hoạt động.
+- Menu tài khoản trên top bar mở được bằng chuột hoặc bàn phím, cung cấp Kho từ
+  vựng, Bài tập từ vựng, Tài khoản và Đăng xuất. Ba route phụ không được nhồi vào
+  bottom navigation.
 
 ## Phân cấp màu và minh họa
 

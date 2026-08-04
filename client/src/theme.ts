@@ -21,8 +21,8 @@ export const uiTokens = {
   contentWidth: 1160,
   formWidth: 620,
   colors: {
-    primary: "#14b8a6",
-    primaryHover: "#0f8f83",
+    primary: "#0f766e",
+    primaryHover: "#0b625c",
     primaryStrong: "#0f766e",
     primarySurface: "#ddf7f1",
     canvas: "#f3f9f7",
@@ -62,6 +62,22 @@ export const uiTokens = {
     supporting: { fontSize: 13, lineHeight: 1.5, fontWeight: 400 },
     button: { fontSize: 14, lineHeight: 1.4, fontWeight: 600 },
   },
+} as const;
+
+export const publicUiTokens = {
+  primary: "#0F766E",
+  primaryHover: "#0B625C",
+  accent: "#14B8A6",
+  primarySurface: "#DDF7F1",
+  background: "#F5FBFA",
+  surface: "#FFFFFF",
+  textPrimary: "#142840",
+  textSecondary: "#5C7188",
+  border: "#D5E5E3",
+  sky: "#EAF5FF",
+  mint: "#EAF8F3",
+  yellow: "#FFF6D9",
+  coral: "#FFF0E8",
 } as const;
 
 export const theme = createTheme({
@@ -358,6 +374,33 @@ export const adminTheme = createTheme(theme, {
     },
     MuiAlert: {
       styleOverrides: { root: { borderRadius: uiTokens.radius } },
+    },
+  },
+});
+
+export const publicLearningTheme = createTheme(theme, {
+  palette: {
+    primary: { main: publicUiTokens.primary, dark: publicUiTokens.primaryHover, light: publicUiTokens.primarySurface, contrastText: "#ffffff" },
+    background: { default: publicUiTokens.background, paper: publicUiTokens.surface },
+    divider: publicUiTokens.border,
+    text: { primary: publicUiTokens.textPrimary, secondary: publicUiTokens.textSecondary },
+  },
+  components: {
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          "&:focus-visible": { outline: `3px solid ${publicUiTokens.accent}`, outlineOffset: 2 },
+          "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        containedPrimary: { "&:hover": { backgroundColor: publicUiTokens.primaryHover } },
+      },
+    },
+    MuiLinearProgress: {
+      styleOverrides: { root: { backgroundColor: publicUiTokens.primarySurface }, bar: { backgroundColor: publicUiTokens.primary } },
     },
   },
 });

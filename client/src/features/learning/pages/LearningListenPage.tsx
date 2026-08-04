@@ -45,7 +45,7 @@ export function LearningListenPage() {
       <Container maxWidth="md" sx={{ py: { xs: 2, sm: 4 } }}>
         <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", gap: 1 }}>
           <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}`} color="inherit" startIcon={<ArrowBack />} sx={{ minHeight: "44px !important" }}>{unit.title}</Button>
-          <Typography sx={{ flexShrink: 0, fontWeight: 800, color: "#6541c7" }}>{index + 1} / {unit.vocabulary.length}</Typography>
+          <Typography sx={{ flexShrink: 0, fontWeight: 800, color: "primary.main" }}>{index + 1} / {unit.vocabulary.length}</Typography>
         </Stack>
         <LinearProgress variant="determinate" value={((index + 1) / unit.vocabulary.length) * 100} aria-label={`Câu nghe ${index + 1} trên ${unit.vocabulary.length}`} sx={{ mt: 1, height: 9, borderRadius: 8, bgcolor: "#e7e0f0", "& .MuiLinearProgress-bar": { bgcolor: level.accent, borderRadius: 8 } }} />
 
@@ -53,10 +53,10 @@ export function LearningListenPage() {
           <Stack sx={{ alignItems: "center", textAlign: "center" }}>
             <Typography variant="overline" sx={{ color: level.accent }}>NGHE VÀ CHỌN NGHĨA</Typography>
             <Typography component="h1" sx={{ mt: 0.75, fontSize: { xs: 25, sm: 32 }, fontWeight: 800 }}>Con nghe thấy từ nào?</Typography>
-            <Box aria-hidden="true" sx={{ mt: 2, width: { xs: 100, sm: 120 }, height: { xs: 100, sm: 120 }, display: "grid", placeItems: "center", borderRadius: "32px", bgcolor: "#f0eaff", color: "#7455d9" }}><Headphones sx={{ fontSize: { xs: 52, sm: 64 } }} /></Box>
+            <Box aria-hidden="true" sx={{ mt: 2, width: { xs: 100, sm: 120 }, height: { xs: 100, sm: 120 }, display: "grid", placeItems: "center", borderRadius: "32px", bgcolor: "#ddf7f1", color: "primary.main" }}><Headphones sx={{ fontSize: { xs: 52, sm: 64 } }} /></Box>
             <Box sx={{ width: "100%", mt: 2, display: "flex", justifyContent: "center" }}><PronunciationRateControl value={rateMode} onChange={(value) => { setAudioMessage(""); setRateMode(value); }} /></Box>
             <Tooltip title={strategy === "UNAVAILABLE" ? "Trình duyệt này không hỗ trợ audio hoặc phát âm" : ""}>
-              <span><Button onClick={play} disabled={strategy === "UNAVAILABLE"} variant="contained" startIcon={audioMessage ? <Replay /> : <Headphones />} aria-label={audioMessage ? "Nghe lại từ" : "Phát từ cần nghe"} sx={{ mt: 1.25, minHeight: "48px !important", bgcolor: "#7455d9", borderRadius: 3 }}>{audioMessage ? "Nghe lại" : "Phát từ"}</Button></span>
+              <span><Button onClick={play} disabled={strategy === "UNAVAILABLE"} variant="contained" startIcon={audioMessage ? <Replay /> : <Headphones />} aria-label={audioMessage ? "Nghe lại từ" : "Phát từ cần nghe"} sx={{ mt: 1.25, minHeight: "48px !important", borderRadius: 3 }}>{audioMessage ? "Nghe lại" : "Phát từ"}</Button></span>
             </Tooltip>
             <Typography aria-live="polite" sx={{ minHeight: 23, mt: 0.75, color: "text.secondary", fontSize: 13 }}>{strategy === "UNAVAILABLE" ? "Trình duyệt này chưa phát được từ. Câu này không tính điểm." : audioMessage}</Typography>
           </Stack>
@@ -74,7 +74,7 @@ export function LearningListenPage() {
           </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 1, alignItems: { sm: "center" }, justifyContent: "space-between" }}>
             <Typography color="text.secondary" sx={{ fontSize: 13 }}>Trên thiết bị này: {unitProgress.listenCorrect}/{unitProgress.listenTotal} câu đúng</Typography>
-            <Button onClick={next} disabled={!answered} variant="contained" endIcon={<ArrowBack sx={{ transform: "rotate(180deg)" }} />} sx={{ minHeight: "48px !important", bgcolor: "#7455d9", borderRadius: 3 }}>Tiếp theo</Button>
+            <Button onClick={next} disabled={!answered} variant="contained" endIcon={<ArrowBack sx={{ transform: "rotate(180deg)" }} />} sx={{ minHeight: "48px !important", borderRadius: 3 }}>Tiếp theo</Button>
           </Stack>
         </Card>
       </Container>

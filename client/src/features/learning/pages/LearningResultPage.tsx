@@ -15,7 +15,7 @@ export function LearningResultPage() {
   if (!level || !unit) return <LearningNotFoundPage />;
   const progress = unitProgressFor(readLearningProgress(), unit);
   const attempt = progress.quizAttempts.at(-1);
-  if (!attempt) return <LearningShell><Container component="main" maxWidth="sm" sx={{ py: { xs: 5, sm: 8 } }}><Alert severity="info" sx={{ borderRadius: 3 }}>Chưa có kết quả nào cho Unit này. Con hãy hoàn thành bài luyện tập trước nhé.</Alert><Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/quiz`} variant="contained" sx={{ mt: 2, minHeight: "48px !important", bgcolor: "#7455d9" }}>Bắt đầu luyện tập</Button></Container></LearningShell>;
+  if (!attempt) return <LearningShell><Container component="main" maxWidth="sm" sx={{ py: { xs: 5, sm: 8 } }}><Alert severity="info" sx={{ borderRadius: 3 }}>Chưa có kết quả nào cho Unit này. Con hãy hoàn thành bài luyện tập trước nhé.</Alert><Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/quiz`} variant="contained" sx={{ mt: 2, minHeight: "48px !important" }}>Bắt đầu luyện tập</Button></Container></LearningShell>;
   const wrongItems = attempt.wrongItemIds.flatMap((id) => unit.vocabulary.find((item) => item.id === id) ?? []);
   const retry = () => restartQuiz(unit);
   return <LearningShell>
@@ -31,7 +31,7 @@ export function LearningResultPage() {
           <Divider sx={{ my: 3 }} />
           <Box sx={{ textAlign: "left" }}><Typography component="h2" sx={{ fontSize: 20, fontWeight: 800 }}>Từ cần ôn</Typography>{wrongItems.length ? <Stack spacing={1} sx={{ mt: 1.5 }}>{wrongItems.map((item) => <Box key={item.id} sx={{ p: 1.5, borderRadius: 3, bgcolor: "#fff7f4", border: "1px solid #ffd6cd" }}><Typography sx={{ fontWeight: 800 }}>{item.word} <Typography component="span" color="text.secondary" sx={{ fontWeight: 400 }}>· {item.vietnameseMeaning}</Typography></Typography></Box>)}</Stack> : <Alert severity="success" sx={{ mt: 1.5 }}>Không có từ sai — một lượt học thật tuyệt!</Alert>}</Box>
           <Stack spacing={1.25} sx={{ mt: 3 }}>
-            {wrongItems.length > 0 && <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/review`} variant="contained" startIcon={<AutoStories />} sx={{ minHeight: "50px !important", bgcolor: "#7455d9", borderRadius: 3 }}>Ôn lại từ sai</Button>}
+            {wrongItems.length > 0 && <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/review`} variant="contained" startIcon={<AutoStories />} sx={{ minHeight: "50px !important", borderRadius: 3 }}>Ôn lại từ sai</Button>}
             <Button component={Link} onClick={retry} to={`/hoc/${level.slug}/${unit.slug}/quiz`} variant="outlined" startIcon={<Replay />} sx={{ minHeight: "48px !important", borderRadius: 3 }}>Luyện lại Unit</Button>
             <Button component={Link} to={`/hoc/${level.slug}`} color="inherit">Chọn Unit khác</Button>
           </Stack>

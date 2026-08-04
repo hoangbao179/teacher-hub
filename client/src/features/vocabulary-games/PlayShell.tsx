@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react";
-import { Box, Container, LinearProgress, Stack, Typography } from "@mui/material";
+import { Box, Container, LinearProgress, Stack, ThemeProvider, Typography } from "@mui/material";
+import { publicLearningTheme } from "../../theme";
 
 export function PlayShell({
   children,
@@ -7,10 +8,10 @@ export function PlayShell({
   progressLabel,
 }: PropsWithChildren<{ progress?: number; progressLabel?: string }>) {
   return (
-    <Box sx={{
+    <ThemeProvider theme={publicLearningTheme}><Box sx={{
       minHeight: "100dvh",
       overflowX: "hidden",
-      background: "linear-gradient(160deg,#fff8df 0%,#e7f7ff 48%,#f3edff 100%)",
+      background: "linear-gradient(160deg,#fff6d9 0%,#eaf5ff 48%,#eaf8f3 100%)",
       pb: "max(24px,env(safe-area-inset-bottom))",
     }}>
       <Box component="header" sx={{ py: 1.5, px: 2 }}>
@@ -38,6 +39,6 @@ export function PlayShell({
       <Container component="main" maxWidth="sm" sx={{ pt: { xs: 2, sm: 4 } }}>
         {children}
       </Container>
-    </Box>
+    </Box></ThemeProvider>
   );
 }

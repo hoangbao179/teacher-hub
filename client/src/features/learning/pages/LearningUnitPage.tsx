@@ -34,16 +34,16 @@ export function LearningUnitPage() {
             <Typography aria-hidden="true" sx={{ display: { xs: "none", sm: "block" }, fontSize: 54 }}>{level.mascot}</Typography>
           </Stack>
 
-          <Box sx={{ mt: 3, p: 2, borderRadius: "18px", bgcolor: "#f7f3ff" }}>
+          <Box sx={{ mt: 3, p: 2, borderRadius: "18px", bgcolor: "#eaf8f3" }}>
             <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontWeight: 800 }}>Tiến độ Flashcard</Typography>{unitProgress.flashcardCompletedAt && <Chip icon={<Star />} label="Đã hoàn thành" sx={{ bgcolor: "#fff1bc", color: "#674c00" }} />}</Stack>
             <LinearProgress variant="determinate" value={percent} aria-label={`Đã xem ${viewed} trên ${unit.vocabulary.length} từ`} sx={{ mt: 1.5, height: 10, borderRadius: 8, bgcolor: "#e8e2f0", "& .MuiLinearProgress-bar": { bgcolor: level.accent, borderRadius: 8 } }} />
             <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 13 }}>{viewed}/{unit.vocabulary.length} từ đã xem · {unitProgress.rememberedItemIds.length} đã nhớ · {unitProgress.reviewItemIds.length} cần ôn</Typography>
           </Box>
 
           <Stack spacing={1.25} sx={{ mt: 3 }}>
-            <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/flashcards`} variant="contained" size="large" startIcon={<AutoStories />} sx={{ minHeight: "50px !important", bgcolor: "#7455d9", borderRadius: 3 }}>Học bằng Flashcard</Button>
+            <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/flashcards`} variant="contained" size="large" startIcon={<AutoStories />} sx={{ minHeight: "50px !important", borderRadius: 3 }}>Học bằng Flashcard</Button>
             <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/listen`} variant="outlined" size="large" startIcon={<Headphones />} sx={{ minHeight: "50px !important", borderRadius: 3 }}>Nghe và chọn nghĩa</Button>
-            <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/quiz`} variant="outlined" size="large" startIcon={<Quiz />} sx={{ minHeight: "50px !important", borderRadius: 3, borderColor: "#7455d9", color: "#5c3fbd" }}>{unitProgress.activeQuiz ? "Tiếp tục luyện tập" : "Luyện tập chọn nghĩa"}</Button>
+            <Button component={Link} to={`/hoc/${level.slug}/${unit.slug}/quiz`} variant="outlined" size="large" startIcon={<Quiz />} sx={{ minHeight: "50px !important", borderRadius: 3 }}>{unitProgress.activeQuiz ? "Tiếp tục luyện tập" : "Luyện tập chọn nghĩa"}</Button>
             <Button onClick={() => setConfirmReset(true)} color="inherit" startIcon={<DeleteOutlined />} sx={{ alignSelf: "center", mt: 1 }}>Xóa tiến độ Unit này</Button>
           </Stack>
         </Card>

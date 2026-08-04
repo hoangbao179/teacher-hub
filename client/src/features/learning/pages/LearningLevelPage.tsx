@@ -28,7 +28,7 @@ export function LearningLevelPage() {
   return (
     <LearningShell>
       <Box component="main">
-        <Box sx={{ background: `linear-gradient(145deg, #edf9ff 0%, ${level.accent}24 62%, #f2edff 100%)`, borderBottom: "1px solid #e3d9f4" }}>
+        <Box sx={{ background: `linear-gradient(145deg, #eaf5ff 0%, ${level.accent}24 62%, #eaf8f3 100%)`, borderBottom: "1px solid #d5e5e3" }}>
           <Container maxWidth="lg" sx={{ py: { xs: 2.5, sm: 4 } }}>
             <Stack component="nav" aria-label="Breadcrumb" direction="row" spacing={0.5} sx={{ mb: 2, alignItems: "center" }}>
               <Typography component={Link} to="/hoc" color="inherit" sx={{ minHeight: 44, display: "inline-flex", alignItems: "center", gap: 0.5, textDecoration: "none", fontSize: 13.5, fontWeight: 700 }}><ArrowBack fontSize="small" /> Góc học</Typography>
