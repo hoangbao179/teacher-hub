@@ -36,7 +36,8 @@ import { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { adminTheme, uiTokens } from "../theme";
-import { displayDashboardDate, todayInHoChiMinh } from "../utils/date";
+import { displayDashboardDate } from "../utils/date";
+import { useHoChiMinhToday } from "../hooks/useHoChiMinhToday";
 
 const nav = [
   ["/admin", <Home key="home" />, "Hôm nay"],
@@ -66,6 +67,7 @@ const adminSafeBottom = shouldUseAdminSafeArea()
   : "0px";
 
 export function AdminLayout() {
+  const today = useHoChiMinhToday();
   const navigate = useNavigate();
   const location = useLocation();
   const auth = useAuth();
@@ -112,7 +114,7 @@ export function AdminLayout() {
               <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", lg: "block" }, lineHeight: 1.1 }}>Tiếng Anh lớp 1–9</Typography>
             </Stack>
           </ButtonBase>
-          <Box sx={{ display: { xs: "none", lg: "block" }, mr: 1.25, px: 1.5, py: 0.75, borderRadius: 999, bgcolor: uiTokens.colors.subtleSurface, color: "primary.dark", fontSize: 12, fontWeight: 600 }}>{displayDashboardDate(todayInHoChiMinh())}</Box>
+          <Box sx={{ display: { xs: "none", lg: "block" }, mr: 1.25, px: 1.5, py: 0.75, borderRadius: 999, bgcolor: uiTokens.colors.subtleSurface, color: "primary.dark", fontSize: 12, fontWeight: 600 }}>{displayDashboardDate(today)}</Box>
           <IconButton data-testid="account-menu-button" aria-label="Mở menu tài khoản" aria-controls={accountAnchor ? "admin-account-menu" : undefined} aria-haspopup="menu" aria-expanded={accountAnchor ? "true" : undefined} onClick={(event) => setAccountAnchor(event.currentTarget)}>
             <AccountCircle />
           </IconButton>

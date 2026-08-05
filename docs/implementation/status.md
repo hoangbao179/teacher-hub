@@ -34,7 +34,8 @@ evidence từng lần kiểm thử được giữ trong Git history.
 - Legacy Excel preview/apply có reconciliation theo nhóm và transaction MySQL.
 - Google Drive/Sheets dùng DB làm nguồn chuẩn, outbox sau commit và regenerate có
   giới hạn vùng hệ thống quản lý.
-- CI chạy quality, integration, E2E smoke và regression cho thao tác env deploy;
+- CI chạy quality, integration, E2E smoke, schedule regression bắt buộc trước deploy
+  và regression cho thao tác env deploy;
   nightly/manual workflow chạy full regression. Production deploy dùng image full
   commit SHA qua GHCR và VPS, xác thực env, kiểm tra storage headroom và giữ snapshot
   env nguyên tử cho image rollback; VPS tự giữ image API/Web hiện tại và đúng một thế hệ

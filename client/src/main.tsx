@@ -8,6 +8,7 @@ import "@fontsource/be-vietnam-pro/800.css";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { theme } from "./theme";
 const root = document.getElementById("root")!;
 if (root.dataset.prerendered === "true") root.replaceChildren();
@@ -17,7 +18,9 @@ ReactDOM.createRoot(root).render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <BrowserRouter>
-        <App />
+        <AppErrorBoundary>
+          <App />
+        </AppErrorBoundary>
       </BrowserRouter>
     </ThemeProvider>
   </React.StrictMode>,

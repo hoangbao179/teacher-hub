@@ -18,14 +18,15 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { ClassListItem, ReconciliationState, ScheduleConflictWarning, ScheduleOccurrence } from "@teacher/shared";
 import { api } from "../api/client";
 import { scheduleApi } from "../api/schedule";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingCards } from "../components/LoadingCards";
-import { addDays, displayDate, todayInHoChiMinh } from "../utils/date";
+import { addDays, displayDate } from "../utils/date";
+import { useHoChiMinhToday } from "../hooks/useHoChiMinhToday";
 
 const labels: Record<ReconciliationState, string> = {
   UNRECORDED: "Chưa ghi nhận", RECORDED: "Đã ghi nhận", SKIPPED: "Nghỉ", RESCHEDULED: "Đã đổi lịch",
@@ -69,14 +70,18 @@ function ReconciliationFilterFields({ values, classes, onChange }: {
 export function ReconciliationPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const today = todayInHoChiMinh();
-  const [from, setFrom] = useState(params.get("from") ?? addDays(today, -14));
-  const [to, setTo] = useState(params.get("to") ?? today);
+  const today = useHoChiMinhToday();
+  const [fromOverride, setFromOverride] = useState<string | null>(() => params.get("from"));
+  const [toOverride, setToOverride] = useState<string | null>(() => params.get("to"));
+  const from = fromOverride ?? addDays(today, -14);
+  const to = toOverride ?? today;
   const [classId, setClassId] = useState(Number(params.get("classId") ?? 0));
   const [state, setState] = useState<ReconciliationState | "ALL">((params.get("state") as ReconciliationState) ?? "UNRECORDED");
   const [filterOpen, setFilterOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<ReconciliationFilters>({ from, to, classId, state });
-  const [items, setItems] = useState<ScheduleOccurrence[] | null>(null);
+  const queryKey = `${from}|${to}|${classId}|${state}`;
+  const [itemsSnapshot, setItemsSnapshot] = useState<{ queryKey: string; items: ScheduleOccurrence[] } | null>(null);
+  const items = itemsSnapshot?.queryKey === queryKey ? itemsSnapshot.items : null;
   const [classes, setClasses] = useState<ClassListItem[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -89,7 +94,7 @@ export function ReconciliationPage() {
   const [makeupRequired, setMakeupRequired] = useState(true);
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [rescheduleItem, setRescheduleItem] = useState<ScheduleOccurrence | null>(null);
-  const [replacementDate, setReplacementDate] = useState(today);
+  const [replacementDate, setReplacementDate] = useState("");
   const [replacementStart, setReplacementStart] = useState("18:00");
   const [replacementEnd, setReplacementEnd] = useState("19:30");
   const [rescheduleReason, setRescheduleReason] = useState("");
@@ -97,12 +102,21 @@ export function ReconciliationPage() {
   const [warnings, setWarnings] = useState<ScheduleConflictWarning[]>([]);
 
   useEffect(() => { api<ClassListItem[]>("/api/classes").then(setClasses).catch(() => setClasses([])); }, []);
-  const load = useCallback(() => {
-    scheduleApi.occurrences({ from, to, classId: classId || undefined, state: state === "ALL" ? undefined : state, lookbackDays: 60 })
-      .then((values) => { setItems(values); setSelected((old) => old.filter((key) => values.some((item) => item.key === key && item.state === "UNRECORDED"))); })
-      .catch((value: Error) => { setItems([]); setError(value.message); });
-  }, [classId, from, state, to]);
-  useEffect(load, [load, reload]);
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    scheduleApi.occurrences(
+      { from, to, classId: classId || undefined, state: state === "ALL" ? undefined : state, lookbackDays: 60 },
+      { signal: controller.signal },
+    )
+      .then((values) => {
+        if (!active) return;
+        setItemsSnapshot({ queryKey, items: values });
+        setSelected((old) => old.filter((key) => values.some((item) => item.key === key && item.state === "UNRECORDED")));
+      })
+      .catch((value: Error) => { if (active) { setItemsSnapshot({ queryKey, items: [] }); setError(value.message); } });
+    return () => { active = false; controller.abort(); };
+  }, [classId, from, queryKey, reload, state, to]);
 
   const selectable = useMemo(() => items?.filter((item) => item.state === "UNRECORDED") ?? [], [items]);
   const allSelected = selectable.length > 0 && selectable.every((item) => selected.includes(item.key));
@@ -116,8 +130,10 @@ export function ReconciliationPage() {
   function applyFilters(next: ReconciliationFilters) {
     setFilterOpen(false);
     if (next.from === from && next.to === to && next.classId === classId && next.state === state) return;
-    setItems(null); setError("");
-    setFrom(next.from); setTo(next.to); setClassId(next.classId); setState(next.state);
+    setItemsSnapshot(null); setError("");
+    if (next.from !== from) setFromOverride(next.from);
+    if (next.to !== to) setToOverride(next.to);
+    setClassId(next.classId); setState(next.state);
   }
 
   function openFilters() {
@@ -184,7 +200,7 @@ export function ReconciliationPage() {
     <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page" data-form-width="bounded">
       <Typography component="h1" variant="h5">Xác nhận lịch dạy</Typography>
       <Typography color="text.secondary">Kiểm tra các buổi theo lịch và chọn Đã dạy, Nghỉ hoặc Đổi lịch. Học phí chỉ thay đổi sau khi hoàn tất ghi nhận.</Typography>
-      {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setItems(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
+      {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setItemsSnapshot(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
       {warnings.length > 0 && <Alert severity="warning" onClose={() => setWarnings([])} data-testid="schedule-conflict-warning">
         Có {warnings.length} xung đột lịch; thao tác vẫn được lưu. {warnings.map((item) => `${item.title} ${item.startTime}–${item.endTime}`).join("; ")}

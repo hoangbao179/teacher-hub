@@ -26,6 +26,7 @@
     "test:media-recovery": "node scripts/vocabulary-media-recovery-smoke.mjs",
     "test:e2e": "npm run test:e2e:full",
     "test:e2e:smoke": "npm -w client run test:e2e:smoke",
+    "test:e2e:schedule": "npm -w client run test:e2e:schedule",
     "test:e2e:full": "npm -w client run test:e2e:full",
     "test:artifacts": "npm -w client run test:artifacts",
     "db:migrate": "npm -w server run db:migrate",

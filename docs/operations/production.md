@@ -166,13 +166,15 @@ unset BOOTSTRAP_ADMIN_PASSWORD
 
 ## Luồng CI, deploy và rollback
 
-Mỗi push và pull request chạy ba job độc lập: `quality` (`check:ci`, không cần MySQL),
-`integration` và `e2e-smoke`. Smoke giữ các luồng public Homepage, đăng nhập, API/UI cơ
-bản, mobile navigation và vocabulary media. Push mới trên cùng branch hủy CI cũ chưa
-hoàn tất. Full integration + toàn bộ E2E vẫn chạy qua workflow `full-regression` lúc
+Mỗi push và pull request chạy bốn job độc lập: `quality` (`check:ci`, không cần MySQL),
+`integration`, `e2e-smoke` và `schedule-regression`. Smoke giữ các luồng public Homepage,
+đăng nhập, API/UI cơ bản, mobile navigation và vocabulary media. Schedule regression
+giữ rollover nửa đêm, Calendar mobile và một flow schedule/backend thật trên database
+`teacher_hub_test`; artifact chỉ upload khi lỗi và job có timeout 20 phút. Push mới trên
+cùng branch hủy CI cũ chưa hoàn tất. Full integration + toàn bộ E2E vẫn chạy qua workflow `full-regression` lúc
 02:30 hằng ngày theo giờ Việt Nam hoặc khi chạy thủ công; workflow này không deploy.
 
-Push vào `main` chỉ gọi production deploy sau khi cả ba job bắt buộc thành công:
+Push vào `main` chỉ gọi production deploy sau khi cả bốn job bắt buộc thành công:
 
 1. `publish-api` và `publish-web` build song song trên runner, push tag full commit SHA
    và tag tiện ích `latest`;

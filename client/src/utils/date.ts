@@ -1,9 +1,17 @@
-export function todayInHoChiMinh(): string {
+const HO_CHI_MINH_UTC_OFFSET = "+07:00";
+
+export function todayInHoChiMinh(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(new Date());
+  }).formatToParts(now);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+export function millisecondsUntilNextHoChiMinhDay(now: Date = new Date(), bufferMs = 1_000): number {
+  const nextDate = addDays(todayInHoChiMinh(now), 1);
+  const nextMidnight = new Date(`${nextDate}T00:00:00${HO_CHI_MINH_UTC_OFFSET}`).getTime();
+  return Math.max(0, nextMidnight - now.getTime() + bufferMs);
 }
 
 export function addDays(date: string, days: number): string {

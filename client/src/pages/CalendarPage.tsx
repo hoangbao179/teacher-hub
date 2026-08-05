@@ -5,9 +5,10 @@ import { Link } from "react-router-dom";
 import type { ReconciliationState, ScheduleConflictWarning, WeekScheduleResponse } from "@teacher/shared";
 import { scheduleApi } from "../api/schedule";
 import { LoadingCards } from "../components/LoadingCards";
-import { addDays, displayDate, todayInHoChiMinh, weekStart } from "../utils/date";
+import { addDays, displayDate, weekStart } from "../utils/date";
 import { PageHeader, visibleStatusLabel } from "../components/UiKit";
 import { classColor } from "../utils/classColor";
+import { useHoChiMinhToday } from "../hooks/useHoChiMinhToday";
 
 type CalendarEntry = {
   key: string; date: string; startTime: string; endTime: string; title: string;
@@ -114,15 +115,25 @@ function WeeklyScheduleEmptyState({ currentWeek, onAdd }: {
 }
 
 export function CalendarPage() {
-  const currentWeekStart = weekStart(todayInHoChiMinh());
-  const [from, setFrom] = useState(currentWeekStart);
-  const [data, setData] = useState<WeekScheduleResponse | null>(null);
-  const [error, setError] = useState("");
+  const today = useHoChiMinhToday();
+  const currentWeekStart = weekStart(today);
+  const [selectedWeekStart, setSelectedWeekStart] = useState(currentWeekStart);
+  const [followsCurrentWeek, setFollowsCurrentWeek] = useState(true);
+  const from = followsCurrentWeek ? currentWeekStart : selectedWeekStart;
+  const [snapshot, setSnapshot] = useState<{ from: string; data: WeekScheduleResponse } | null>(null);
+  const [requestError, setRequestError] = useState<{ from: string; message: string } | null>(null);
+  const data = snapshot?.from === from ? snapshot.data : null;
+  const error = requestError?.from === from ? requestError.message : "";
   const [reload, setReload] = useState(0);
   const [conflicts, setConflicts] = useState<ScheduleConflictWarning[]>([]);
   const [addMenuAnchor, setAddMenuAnchor] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    scheduleApi.week(from).then(setData).catch((value: Error) => setError(value.message));
+    const controller = new AbortController();
+    let active = true;
+    scheduleApi.week(from, { signal: controller.signal })
+      .then((value) => { if (active) { setSnapshot({ from, data: value }); setRequestError(null); } })
+      .catch((value: Error) => { if (active) setRequestError({ from, message: value.message }); });
+    return () => { active = false; controller.abort(); };
   }, [from, reload]);
 
   const entries = useMemo(() => {
@@ -167,9 +178,10 @@ export function CalendarPage() {
   }, [entries]);
   const isCurrentWeek = from === currentWeekStart;
   const changeWeek = (value: string) => {
-    setData(null);
-    setError("");
-    setFrom(value);
+    setSnapshot(null);
+    setRequestError(null);
+    setSelectedWeekStart(value);
+    setFollowsCurrentWeek(value === currentWeekStart);
   };
 
   return <Stack spacing={{ xs: 1.75, md: 2 }} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="weekly-calendar">
@@ -188,7 +200,7 @@ export function CalendarPage() {
         <Button startIcon={<Add />} variant="outlined" onClick={(event) => setAddMenuAnchor(event.currentTarget)} sx={{ "& .MuiButton-startIcon > *": { fontSize: 19 } }}>Thêm lịch</Button>
       </Box>
     </Box>
-    {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
+    {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setSnapshot(null); setRequestError(null); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     {!data && !error && <LoadingCards />}
     <Stack direction={{ xs: "column", sm: "row" }} useFlexGap sx={{ alignItems: { xs: "stretch", sm: "center" }, justifyContent: "space-between", gap: { xs: 0.5, sm: 1.5 } }}>
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", justifyContent: "space-between", minWidth: 0 }}>

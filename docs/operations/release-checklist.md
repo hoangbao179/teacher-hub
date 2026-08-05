@@ -7,6 +7,8 @@ phải lặp lại cho release/environment hiện tại.
 
 - [ ] Revision/tag đã được review và working tree sạch.
 - [ ] Mandatory checks theo task level và release scope đã PASS.
+- [ ] Gate `schedule-regression` đã PASS, gồm rollover nửa đêm, Calendar mobile và
+  flow schedule/backend trên database test; production deploy không được bỏ qua gate này.
 - [ ] `npm run check:repo` không phát hiện artifact, private data hoặc source không
   hợp lệ.
 - [ ] Nếu phát hành source package: `npm run package:source` và

@@ -6,22 +6,31 @@ import type { DashboardResponse } from "@teacher/shared";
 import { api } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingCards } from "../components/LoadingCards";
-import { displayDashboardDate, todayInHoChiMinh } from "../utils/date";
+import { displayDashboardDate } from "../utils/date";
+import { useHoChiMinhToday } from "../hooks/useHoChiMinhToday";
 import { visibleStatusLabel } from "../components/UiKit";
 import { useAuth } from "../auth/AuthContext";
 import { uiTokens } from "../theme";
 import { classColor } from "../utils/classColor";
 
-interface TodayItem { key: string; classId?: number; external?: boolean; title: string; time: string; label: string; href: string }
+interface TodayItem { key: string; classId?: number; external?: boolean; combined?: boolean; title: string; time: string; label: string; href: string }
 
 export function DashboardPage() {
   const auth = useAuth();
-  const [data, setData] = useState<DashboardResponse | null>(null);
-  const [error, setError] = useState("");
+  const today = useHoChiMinhToday();
+  const [snapshot, setSnapshot] = useState<{ day: string; data: DashboardResponse } | null>(null);
+  const [requestError, setRequestError] = useState<{ day: string; message: string } | null>(null);
   const [reload, setReload] = useState(0);
+  const data = snapshot?.day === today ? snapshot.data : null;
+  const error = requestError?.day === today ? requestError.message : "";
   useEffect(() => {
-    api<DashboardResponse>("/api/dashboard").then(setData).catch((value: Error) => setError(value.message));
-  }, [reload]);
+    const controller = new AbortController();
+    let active = true;
+    api<DashboardResponse>("/api/dashboard", { signal: controller.signal })
+      .then((value) => { if (active) setSnapshot({ day: today, data: value }); })
+      .catch((value: Error) => { if (active) setRequestError({ day: today, message: value.message }); });
+    return () => { active = false; controller.abort(); };
+  }, [reload, today]);
   const todayItems = useMemo(() => {
     if (!data) return [];
     const values: TodayItem[] = [];
@@ -29,8 +38,13 @@ export function DashboardPage() {
     for (const item of data.todaySchedule.occurrences) values.push({
       key: `occurrence-${item.key}`, classId: item.classId, title: item.className,
       time: `${item.scheduledStartTime}–${item.scheduledEndTime}`,
-      label: item.state === "UNRECORDED" ? (item.projectionSource === "RESCHEDULED" ? "Lịch thay thế" : "Dự kiến") : item.state === "RECORDED" ? `Buổi học · ${visibleStatusLabel(item.linkedLessonStatus ?? "DRAFT")}` : item.state === "SKIPPED" ? "Nghỉ" : "Đổi lịch",
-      href: item.linkedLessonId ? `/admin/lessons/${item.linkedLessonId}/edit` : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
+      combined: Boolean(item.combinedGroupId),
+      label: `${item.combinedGroupId ? "Học ghép · " : ""}${item.state === "UNRECORDED" ? (item.projectionSource === "RESCHEDULED" ? "Lịch thay thế" : "Dự kiến") : item.state === "RECORDED" ? `Buổi học · ${visibleStatusLabel(item.linkedLessonStatus ?? "DRAFT")}` : item.state === "SKIPPED" ? "Nghỉ" : "Đổi lịch"}`,
+      href: item.combinedTeachingOccurrenceId
+        ? `/admin/combined-class-groups/occurrences/${item.combinedTeachingOccurrenceId}`
+        : item.linkedLessonId
+          ? `/admin/lessons/${item.linkedLessonId}/edit`
+          : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
     });
     for (const item of data.todaySchedule.lessons.filter((lesson) => !linked.has(lesson.id))) values.push({
       key: `lesson-${item.id}`, classId: item.classId, title: item.className, time: `${item.startTime}–${item.endTime}`,
@@ -50,14 +64,14 @@ export function DashboardPage() {
   return <Stack spacing={{ xs: 1.5, md: 2.1 }} sx={{ minWidth: 0, overflowX: "clip" }} data-testid="dashboard-page">
     <Box component="section" sx={{ position: "relative", minHeight: { xs: 134, md: 146 }, overflow: "hidden", p: { xs: 2, md: 3 }, pr: { xs: "36%", md: "36%" }, display: "flex", flexDirection: "column", justifyContent: "center", border: `1px solid ${uiTokens.colors.border}`, borderRadius: { xs: 2.5, md: uiTokens.bannerRadius / 8 }, background: "linear-gradient(110deg, #ffffff 0%, #f3fffb 54%, #e3f7f3 100%)", boxShadow: uiTokens.shadows.card }}>
       <Typography component="h1" variant="h5" sx={{ position: "relative", zIndex: 1, fontSize: { md: 26 }, letterSpacing: "-.02em" }}>{`Xin chào, ${greetingName} 👋`}</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ position: "relative", zIndex: 1, mt: 0.5 }}>{displayDashboardDate(todayInHoChiMinh())}</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ position: "relative", zIndex: 1, mt: 0.5 }}>{displayDashboardDate(today)}</Typography>
       <Stack direction="row" spacing={0.75} sx={{ position: "relative", zIndex: 1, alignItems: "center", mt: 1.25, color: "primary.dark", minWidth: 0 }}>
         <Box aria-hidden="true" sx={{ width: 8, height: 8, flexShrink: 0, borderRadius: "50%", bgcolor: "#42bd85", boxShadow: "0 0 0 5px #dff6eb" }} />
         <Typography variant="caption" sx={{ fontSize: { xs: 10.5, sm: 11.5, md: 12.5 }, fontWeight: 600, whiteSpace: "nowrap" }}>Hôm nay có {todayItems.length} sự kiện trong lịch</Typography>
       </Stack>
       <Box component="img" src="/assets/admin-ui/teacher-dashboard-hero.webp" alt="" aria-hidden="true" sx={{ position: "absolute", right: { xs: -12, md: 4 }, bottom: { xs: -6, md: -28 }, width: { xs: "42%", md: "36%" }, maxWidth: { xs: 154, md: 330 }, height: { xs: 124, md: 188 }, objectFit: "contain", objectPosition: "center bottom", pointerEvents: "none" }} />
     </Box>
-    {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setData(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
+    {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setSnapshot(null); setRequestError(null); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
     <Grid container spacing={{ xs: 1, md: 1.5 }}>
       <Grid size={{ xs: 12, md: 4 }}><Card component={Link} to="/admin/tuition?status=PAYMENT_DUE" sx={{ position: "relative", display: "block", width: "100%", height: "100%", overflow: "hidden", bgcolor: uiTokens.colors.peach, borderColor: uiTokens.colors.peachBorder, color: "text.primary", textDecoration: "none", "&::after": { content: '""', position: "absolute", width: 74, height: 74, right: -24, bottom: -30, borderRadius: "50%", bgcolor: "rgba(255,255,255,.45)" }, "&:hover": { borderColor: "#eebd8c", boxShadow: uiTokens.shadows.raised } }} data-testid="dashboard-tuition-card"><CardContent sx={{ height: "100%" }}>
         <Stack direction="row" spacing={1.5} sx={{ position: "relative", zIndex: 1, alignItems: "center", height: "100%" }}><Box sx={{ display: "grid", placeItems: "center", width: 44, height: 44, flexShrink: 0, borderRadius: 1.75, bgcolor: "#ffddba", color: "#d96516" }}><Payments sx={{ fontSize: 23 }} /></Box><Stack spacing={0.25} sx={{ minWidth: 0, flexGrow: 1 }}><Typography variant="h6" sx={{ fontSize: { xs: 15, md: 16 } }}>{data?.paymentDueCount ?? 0} khoản học phí cần thu</Typography>
@@ -89,7 +103,7 @@ export function DashboardPage() {
           {data && todayItems.length === 0 && <EmptyState message="Hôm nay chưa có lớp, buổi học hoặc lịch bận." />}
           <Box data-testid="dashboard-events" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 1 }}>
             {todayItems.map((item) => { const tone = classColor(item.classId ?? item.key); const [startTime, endTime] = item.time.split("–"); return <Card key={item.key} variant="outlined" component={Link} to={item.href} sx={{ gridColumn: { md: "1 / -1" }, textDecoration: "none", color: "inherit", bgcolor: "#fbfefd", boxShadow: "none", "&:hover": { borderColor: "#bfe1da", boxShadow: "0 4px 12px rgba(15,23,42,.05)" } }} data-testid="dashboard-today-event"><CardContent sx={{ py: 1.25, px: { xs: 1.25, sm: 1.5 }, "&:last-child": { pb: 1.25 } }}>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "58px 4px minmax(0, 1fr)", sm: "72px 5px minmax(0, 1fr) auto" }, gap: { xs: 1, sm: 1.5 }, alignItems: "center" }}><Stack spacing={0.25} sx={{ textAlign: "center" }}><Typography variant="subtitle2" sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{startTime}</Typography><Typography variant="caption" color="text.secondary">đến {endTime}</Typography></Stack><Box aria-hidden="true" sx={{ width: "100%", height: 46, borderRadius: 999, bgcolor: item.external ? "secondary.main" : tone.accent }} /><Stack sx={{ minWidth: 0 }}><Typography variant="subtitle2" sx={{ overflowWrap: "anywhere" }}>{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.external ? "Lịch dạy ngoài" : "Buổi học theo lịch lớp"}</Typography></Stack><Typography variant="caption" sx={{ gridColumn: { xs: 3, sm: "auto" }, justifySelf: "start", px: 1, py: 0.5, borderRadius: 999, bgcolor: item.external ? uiTokens.colors.coralSurface : tone.soft, color: item.external ? "#b94d5c" : tone.text, fontWeight: 700, whiteSpace: "nowrap" }}>{item.label}</Typography></Box>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "58px 4px minmax(0, 1fr)", sm: "72px 5px minmax(0, 1fr) auto" }, gap: { xs: 1, sm: 1.5 }, alignItems: "center" }}><Stack spacing={0.25} sx={{ textAlign: "center" }}><Typography variant="subtitle2" sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{startTime}</Typography><Typography variant="caption" color="text.secondary">đến {endTime}</Typography></Stack><Box aria-hidden="true" sx={{ width: "100%", height: 46, borderRadius: 999, bgcolor: item.external ? "secondary.main" : tone.accent }} /><Stack sx={{ minWidth: 0 }}><Typography variant="subtitle2" sx={{ overflowWrap: "anywhere" }}>{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.external ? "Lịch dạy ngoài" : item.combined ? "Ca học ghép" : "Buổi học theo lịch lớp"}</Typography></Stack><Typography variant="caption" sx={{ gridColumn: { xs: 3, sm: "auto" }, justifySelf: "start", px: 1, py: 0.5, borderRadius: 999, bgcolor: item.external ? uiTokens.colors.coralSurface : tone.soft, color: item.external ? "#b94d5c" : tone.text, fontWeight: 700, whiteSpace: "nowrap" }}>{item.label}</Typography></Box>
             </CardContent></Card>; })}
           </Box>
         </CardContent>

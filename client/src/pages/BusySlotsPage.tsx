@@ -7,12 +7,13 @@ import { scheduleApi } from "../api/schedule";
 import { LoadingCards } from "../components/LoadingCards";
 import { EmptyState } from "../components/EmptyState";
 import { ConfirmationDialog, PageHeader } from "../components/UiKit";
-import { displayDate, todayInHoChiMinh } from "../utils/date";
+import { displayDate } from "../utils/date";
+import { useHoChiMinhToday } from "../hooks/useHoChiMinhToday";
 
 const weekday = ["", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ nhật"];
 
 export function BusySlotsPage() {
-  const today = todayInHoChiMinh();
+  const today = useHoChiMinhToday();
   const [items, setItems] = useState<TeacherBusySlot[] | null>(null);
   const [error, setError] = useState("");
   const [pending, setPending] = useState<{ slot: TeacherBusySlot; action: "END" | "DELETE" } | null>(null);

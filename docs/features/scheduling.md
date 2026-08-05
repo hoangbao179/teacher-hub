@@ -47,6 +47,18 @@ API lịch tuần trả cả occurrence đã đối soát, lesson độc lập (
 busy occurrence đã bung theo ngày. Dashboard dùng cùng projection cho lịch hôm
 nay; UI mobile chi tiết nằm trong `daily-operations.md`.
 
+Client theo dõi ngày hiện tại tại `Asia/Ho_Chi_Minh` bằng một timeout tới ngay sau
+00:00 và kiểm tra lại khi tab visible, cửa sổ focus hoặc page resume. Khi ngày đổi,
+Dashboard ẩn snapshot cũ rồi tải lại toàn bộ response; Calendar chỉ chuyển tuần nếu
+người dùng vẫn chọn chế độ bám tuần hiện tại; Reconciliation chỉ dịch các biên ngày
+mặc định chưa được người dùng sửa. Response từ request cũ không được ghi đè state
+sau khi query ngày/tuần đã đổi.
+
+Occurrence học ghép đã có `combinedTeachingOccurrenceId` luôn mở occurrence cha;
+`linkedLessonId` của lesson con không được dùng làm đích từ Dashboard hoặc Calendar.
+Occurrence nhóm chưa tạo draft tiếp tục mở Reconciliation để tạo occurrence cha theo
+canonical flow.
+
 V15 cho phép một request đổi tạm subset 1–7 lịch tuần, tối đa 45 ngày/30
 occurrences. Preview kiểm tra cả database và xung đột giữa các mapping; apply là
 all-or-nothing. Lịch thay thế có thể tiếp tục nghỉ nhưng exception gốc vẫn là

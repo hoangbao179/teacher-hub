@@ -28,12 +28,12 @@ const json = (method: string, body?: unknown): RequestInit => ({
 });
 
 export const scheduleApi = {
-  occurrences(query: { from: string; to: string; classId?: number; state?: ReconciliationState; lookbackDays?: number }) {
+  occurrences(query: { from: string; to: string; classId?: number; state?: ReconciliationState; lookbackDays?: number }, options: RequestInit = {}) {
     const params = new URLSearchParams({ from: query.from, to: query.to });
     if (query.classId) params.set("classId", String(query.classId));
     if (query.state) params.set("state", query.state);
     if (query.lookbackDays) params.set("lookbackDays", String(query.lookbackDays));
-    return api<ScheduleOccurrence[]>(`/api/schedule/occurrences?${params}`);
+    return api<ScheduleOccurrence[]>(`/api/schedule/occurrences?${params}`, options);
   },
   createDraft(key: string) {
     return api<CreateOccurrenceDraftResult>(`/api/schedule/occurrences/${encodeURIComponent(key)}/create-draft`, json("POST"));
@@ -65,8 +65,8 @@ export const scheduleApi = {
   bulkSkip(input: BulkSkipOccurrenceRequest) {
     return api<BulkOccurrenceItemResult[]>("/api/schedule/occurrences/bulk-skip", json("POST", input));
   },
-  week(from: string) {
-    return api<WeekScheduleResponse>(`/api/schedule/week?from=${encodeURIComponent(from)}`);
+  week(from: string, options: RequestInit = {}) {
+    return api<WeekScheduleResponse>(`/api/schedule/week?from=${encodeURIComponent(from)}`, options);
   },
   busySlots(from?: string, to?: string) {
     const params = new URLSearchParams();

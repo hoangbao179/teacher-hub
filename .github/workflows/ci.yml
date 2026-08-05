@@ -111,6 +111,51 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  schedule-regression:
+    name: Schedule regression gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: teacher_hub_test
+          TZ: Asia/Ho_Chi_Minh
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -prootpass --silent"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      NODE_ENV: test
+      TZ: Asia/Ho_Chi_Minh
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: rootpass
+      DB_NAME: teacher_hub_test
+      JWT_SECRET: ci-only-secret-with-at-least-32-characters
+      CHROME_PATH: /usr/bin/google-chrome
+      SCREENSHOT_MODE: failure
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm install -g npm@12.0.1
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npm run test:e2e:schedule
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: schedule-regression-failure-artifacts
+          path: .artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+
   deploy-production:
     name: Publish and deploy production
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
@@ -118,6 +163,7 @@ jobs:
       - quality
       - integration
       - e2e-smoke
+      - schedule-regression
     permissions:
       contents: read
       packages: write
