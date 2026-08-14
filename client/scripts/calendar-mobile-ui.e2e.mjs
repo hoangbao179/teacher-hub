@@ -63,7 +63,7 @@ async function assertNoHorizontalScroll(page, viewport) {
 
 function weekPayload(from, populatedWeek) {
   const lessons = from === populatedWeek
-    ? Array.from({ length: 10 }, (_, index) => ({
+    ? Array.from({ length: 9 }, (_, index) => ({
       id: index + 1,
       sourceKey: null,
       classId: (index % 3) + 1,
@@ -86,7 +86,13 @@ function weekPayload(from, populatedWeek) {
     data: {
       from,
       to: addDays(from, 6),
-      occurrences: [],
+      occurrences: from === populatedWeek ? [{
+        ...reconciliationPayload(from, 0, null)[0],
+        combinedGroupId: null,
+        combinedGroupName: null,
+        memberClasses: [],
+        combinedTeachingOccurrenceId: null,
+      }] : [],
       lessons,
       busyOccurrences,
       classSchedules: [],
@@ -141,29 +147,27 @@ function reconciliationPayload(from, classId, state) {
   }).filter((item) => (!classId || item.classId === classId) && (!state || item.state === state));
 }
 
-try {
-  fs.mkdirSync(screenshotDir, { recursive: true });
-  if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
-  web = spawn(
-    process.execPath,
-    [path.join(root, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1", "--port", "5191", "--strictPort"],
-    { cwd: clientRoot, stdio: ["ignore", "pipe", "pipe"] },
-  );
-  web.stdout.on("data", (chunk) => process.stdout.write(chunk));
-  web.stderr.on("data", (chunk) => process.stderr.write(chunk));
-  await waitUrl(origin);
-
-  browser = await chromium.launch({ headless: true, executablePath: chrome });
-  installPlaywrightArtifactPolicy(browser, artifactPolicy);
-  const currentWeek = weekStart(todayInHoChiMinh());
-  const populatedWeek = addDays(currentWeek, -7);
-  const occurrenceRequests = [];
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+async function installUiMocks(context, currentWeek, populatedWeek, occurrenceRequests = []) {
   await context.addInitScript(() => localStorage.setItem("teacher-token", "calendar-ui-smoke-token"));
   await context.route("**/api/auth/me", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ data: { id: 1, username: "covy", displayName: "Cô Vy", role: "TEACHER" } }),
+  }));
+  await context.route("**/api/dashboard", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ data: {
+      paymentDueCount: 1,
+      totalUnpaidAmount: 800000,
+      accumulatingStudentCount: 4,
+      paidCycleCount: 2,
+      unrecordedCount: 2,
+      outstandingMakeupStudentCount: 0,
+      openIncompleteCycleCount: 0,
+      recentUnrecordedSessions: [],
+      todaySchedule: weekPayload(currentWeek, populatedWeek).data,
+    } }),
   }));
   await context.route("**/api/schedule/week?from=*", (route) => {
     const from = new URL(route.request().url()).searchParams.get("from");
@@ -196,6 +200,27 @@ try {
       body: JSON.stringify({ data: reconciliationPayload(query.from, query.classId, query.state) }),
     });
   });
+}
+
+try {
+  fs.mkdirSync(screenshotDir, { recursive: true });
+  if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
+  web = spawn(
+    process.execPath,
+    [path.join(root, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1", "--port", "5191", "--strictPort"],
+    { cwd: clientRoot, stdio: ["ignore", "pipe", "pipe"] },
+  );
+  web.stdout.on("data", (chunk) => process.stdout.write(chunk));
+  web.stderr.on("data", (chunk) => process.stderr.write(chunk));
+  await waitUrl(origin);
+
+  browser = await chromium.launch({ headless: true, executablePath: chrome });
+  installPlaywrightArtifactPolicy(browser, artifactPolicy);
+  const currentWeek = weekStart(todayInHoChiMinh());
+  const populatedWeek = addDays(currentWeek, -7);
+  const occurrenceRequests = [];
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+  await installUiMocks(context, currentWeek, populatedWeek, occurrenceRequests);
   const page = await context.newPage();
   await page.goto(`${origin}/admin/calendar`, { waitUntil: "networkidle" });
 
@@ -218,7 +243,7 @@ try {
     `Week navigator is not balanced: ${JSON.stringify({ previousWeekBox, weekRangeBox, nextWeekBox, leftGap, rightGap })}`,
   );
   await page.getByRole("heading", { name: "Lịch dự kiến tuần này" }).waitFor();
-  await page.getByText("0 buổi dạy", { exact: true }).waitFor();
+  await page.getByText("0 sự kiện", { exact: true }).waitFor();
   await page.getByText("Tuần này chưa có lịch dự kiến", { exact: true }).waitFor();
 
   const reconciliationHref = await page.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).getAttribute("href");
@@ -238,7 +263,7 @@ try {
   await page.getByLabel("Tuần trước").click();
   await page.getByRole("button", { name: "Về tuần hiện tại" }).waitFor();
   await page.getByRole("heading", { name: "Lịch dự kiến", exact: true }).waitFor();
-  await page.getByText("13 buổi dạy", { exact: true }).waitFor();
+  await page.getByText("13 sự kiện", { exact: true }).waitFor();
   assert(await page.getByTestId("calendar-event").count() === 13, "Rendered event count and badge diverged");
   for (const kind of ["Lớp riêng", "Trường", "Trung tâm", "Cá nhân"]) {
     await page.getByText(kind, { exact: true }).first().waitFor();
@@ -374,7 +399,81 @@ try {
   await loginPage.screenshot({ path: path.join(screenshotDir, "login-mobile-390x844.png") });
   await loginContext.close();
   await context.close();
-  process.stdout.write(`Calendar/reconciliation/login mobile UI smoke PASS. Screenshots: ${screenshotDir}\n`);
+
+  const desktopContext = await browser.newContext({ viewport: { width: 1366, height: 768 }, reducedMotion: "reduce" });
+  await installUiMocks(desktopContext, currentWeek, populatedWeek);
+  const desktopPage = await desktopContext.newPage();
+  await desktopPage.goto(`${origin}/admin`, { waitUntil: "networkidle" });
+  await desktopPage.getByRole("link", { name: "Buổi học ngoài lịch", exact: true }).waitFor();
+  assert(await desktopPage.getByRole("link", { name: "Ghi nhận buổi học", exact: true }).count() === 0, "Dashboard still exposes the ambiguous manual lesson wording");
+  await assertNoHorizontalScroll(desktopPage, { width: 1366, height: 768 });
+  await desktopPage.screenshot({ path: path.join(screenshotDir, "dashboard-desktop-1366x768.png") });
+
+  await desktopPage.goto(`${origin}/admin/calendar`, { waitUntil: "networkidle" });
+  await desktopPage.getByLabel("Tuần trước").click();
+  await desktopPage.getByText("13 sự kiện", { exact: true }).waitFor();
+  assert(await desktopPage.getByTestId("calendar-event").filter({ hasText: "Lớp 3A" }).first().getAttribute("href") === "/admin/classes/1", "Unrecorded Calendar occurrence still opens the advanced reconciliation flow");
+  const [desktopNavigator, desktopAdd] = await Promise.all([
+    desktopPage.getByTestId("week-navigator").boundingBox(),
+    desktopPage.getByTestId("calendar-quick-actions").getByRole("button", { name: "Thêm", exact: true }).boundingBox(),
+  ]);
+  assert(desktopNavigator && desktopAdd && Math.abs((desktopNavigator.y + desktopNavigator.height / 2) - (desktopAdd.y + desktopAdd.height / 2)) <= 2, `Calendar toolbar is not aligned at 1366px: ${JSON.stringify({ desktopNavigator, desktopAdd })}`);
+  const dayLayout = await desktopPage.getByTestId("calendar-day").evaluateAll((days) => days.map((day) => {
+    const dayBox = day.getBoundingClientRect();
+    const events = day.querySelector('[data-testid="calendar-day-events"]')?.getBoundingClientRect();
+    return { y: dayBox.y, height: dayBox.height, eventBottomGap: events ? dayBox.bottom - events.bottom : 999 };
+  }));
+  assert(dayLayout.every((day, index) => day.eventBottomGap <= 12 && (index === 0 || day.y >= dayLayout[index - 1].y + dayLayout[index - 1].height)), `Calendar day rows contain artificial grid whitespace: ${JSON.stringify(dayLayout)}`);
+  await assertNoHorizontalScroll(desktopPage, { width: 1366, height: 768 });
+  await desktopPage.screenshot({ path: path.join(screenshotDir, "calendar-desktop-1366x768.png") });
+
+  await desktopPage.goto(`${origin}/admin/reconciliation?from=${populatedWeek}&to=${addDays(populatedWeek, 6)}&state=ALL`, { waitUntil: "networkidle" });
+  await desktopPage.getByTestId("occurrence-card").first().waitFor();
+  const [operationBox, firstFilter, lastFilter, occurrenceBoxes] = await Promise.all([
+    desktopPage.getByTestId("reconciliation-page").boundingBox(),
+    desktopPage.getByTestId("reconciliation-filter-card").getByLabel("Từ ngày").boundingBox(),
+    desktopPage.getByTestId("reconciliation-filter-card").getByLabel("Trạng thái").boundingBox(),
+    desktopPage.getByTestId("occurrence-card").evaluateAll((cards) => cards.slice(0, 2).map((card) => card.getBoundingClientRect().toJSON())),
+  ]);
+  assert(operationBox && operationBox.width >= 1000, `Reconciliation is still form-width at 1366px: ${JSON.stringify(operationBox)}`);
+  assert(firstFilter && lastFilter && Math.abs(firstFilter.y - lastFilter.y) <= 2, `Desktop reconciliation filters are not on one row: ${JSON.stringify({ firstFilter, lastFilter })}`);
+  assert(occurrenceBoxes.length === 2 && Math.abs(occurrenceBoxes[0].y - occurrenceBoxes[1].y) <= 2, `Desktop reconciliation cards are not using two columns: ${JSON.stringify(occurrenceBoxes)}`);
+  await assertNoHorizontalScroll(desktopPage, { width: 1366, height: 768 });
+  await desktopPage.screenshot({ path: path.join(screenshotDir, "reconciliation-desktop-1366x768.png") });
+
+  const desktopLoginContext = await browser.newContext({ viewport: { width: 1366, height: 768 }, reducedMotion: "reduce" });
+  const desktopLoginPage = await desktopLoginContext.newPage();
+  await desktopLoginPage.goto(`${origin}/admin/login`, { waitUntil: "networkidle" });
+  const [loginPanel, loginHero, loginOverflow] = await Promise.all([
+    desktopLoginPage.getByTestId("login-panel").boundingBox(),
+    desktopLoginPage.getByTestId("login-panel").locator("img").evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, height: rect.height, naturalWidth: element.naturalWidth };
+    }),
+    desktopLoginPage.evaluate(() => document.documentElement.scrollHeight - window.innerHeight),
+  ]);
+  assert(loginPanel && loginPanel.width >= 880 && loginPanel.width <= 980 && loginHero.width >= 300 && loginHero.height >= 200 && loginHero.naturalWidth > 0, `Desktop login split panel is incorrect: ${JSON.stringify({ loginPanel, loginHero })}`);
+  assert(loginOverflow <= 1, `Desktop login scrolls unexpectedly by ${loginOverflow}px`);
+  await desktopLoginPage.screenshot({ path: path.join(screenshotDir, "login-desktop-1366x768.png") });
+  await desktopLoginContext.close();
+
+  for (const viewport of [{ width: 1920, height: 1080 }, { width: 2560, height: 1440 }]) {
+    await desktopPage.setViewportSize(viewport);
+    await desktopPage.goto(`${origin}/admin/calendar`, { waitUntil: "networkidle" });
+    await desktopPage.getByLabel("Tuần trước").click();
+    await desktopPage.getByText("13 sự kiện", { exact: true }).waitFor();
+    const wideContent = await desktopPage.getByTestId("admin-content").boundingBox();
+    assert(wideContent && wideContent.width > 1160 && wideContent.width <= 1360, `Calendar wide width is incorrect at ${viewport.width}px: ${JSON.stringify(wideContent)}`);
+    await assertNoHorizontalScroll(desktopPage, viewport);
+    await desktopPage.screenshot({ path: path.join(screenshotDir, `calendar-desktop-${viewport.width}x${viewport.height}.png`) });
+    await desktopPage.goto(`${origin}/admin/reconciliation?from=${populatedWeek}&to=${addDays(populatedWeek, 6)}&state=ALL`, { waitUntil: "networkidle" });
+    const boundedOperation = await desktopPage.getByTestId("reconciliation-page").boundingBox();
+    assert(boundedOperation && boundedOperation.width >= 1000 && boundedOperation.width <= 1080, `Reconciliation operation width is incorrect at ${viewport.width}px: ${JSON.stringify(boundedOperation)}`);
+    await assertNoHorizontalScroll(desktopPage, viewport);
+    await desktopPage.screenshot({ path: path.join(screenshotDir, `reconciliation-desktop-${viewport.width}x${viewport.height}.png`) });
+  }
+  await desktopContext.close();
+  process.stdout.write(`Admin calendar/reconciliation/login/dashboard responsive UI smoke PASS. Screenshots: ${screenshotDir}\n`);
   artifactRunPassed = true;
 } finally {
   await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);

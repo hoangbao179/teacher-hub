@@ -26,11 +26,14 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   lực, chuyển lớp, tạm dừng/ngừng học và lịch sử bất biến.
 - **Schedule**: Calendar hiển thị chung lớp riêng, lịch trường/trung tâm, lịch cá
   nhân, lịch đổi và học bù. Lịch trường/trung tâm chỉ là busy slot, không tạo học
-  sinh, attendance hoặc học phí.
+  sinh, attendance hoặc học phí. Desktop Calendar dùng từng ngày một hàng và card
+  sự kiện responsive; occurrence chưa ghi mở thông tin lớp thay vì tự chuyển vào
+  Reconciliation.
 - **Lesson recording**: Dashboard `Hôm nay` là happy path. Với buổi thường chưa ghi,
   nút **Ghi buổi** tạo draft rồi mở Simple Mode một màn; học sinh mặc định có mặt,
   cô chỉ đánh dấu em nghỉ nếu có, nhập nội dung/nhận xét tùy chọn và chọn **Lưu &
-  hoàn tất**. Full lesson wizard vẫn tồn tại cho chỉnh sửa đầy đủ.
+  hoàn tất**. Manual flow vẫn tồn tại dưới nhãn **Buổi học ngoài lịch** và full
+  lesson wizard vẫn tồn tại cho chỉnh sửa đầy đủ.
 - **Học phí**: gói đúng 8 buổi, giá lớp/giá riêng/miễn phí, thu trước, xử lý đợt dở,
   chuyển lớp và biên `PAID` bất biến tiếp tục hoạt động trên desktop/mobile.
 - **Google Sheet học sinh/phụ huynh**: Teacher Hub database là nguồn chuẩn; lesson
@@ -50,7 +53,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 ### ADVANCED — có nhưng không nằm happy path
 
 - **Reconciliation**: dùng cho lịch cũ, buổi chưa xử lý và ngoại lệ; không còn là
-  bước bắt buộc trước khi ghi buổi thường hằng ngày.
+  bước bắt buộc trước khi ghi buổi thường hằng ngày. Trên desktop đây là màn vận
+  hành rộng vừa, có bộ lọc một hàng và danh sách occurrence hai cột khi đủ chỗ.
 - **Học bù và đổi lịch**: tạo học bù, đổi một buổi hoặc đổi lịch tạm thời vẫn giữ
   business rule, preview conflict và lịch sử nguồn.
 - **Combined class**: nhóm lớp học ghép và combined teaching occurrence vẫn dùng

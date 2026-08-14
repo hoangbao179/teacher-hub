@@ -20,6 +20,9 @@ export const uiTokens = {
   desktopNavigationWidth: 232,
   contentWidth: 1160,
   formWidth: 620,
+  detailWidth: 920,
+  operationWidth: 1080,
+  wideWidth: 1360,
   colors: {
     primary: "#0f766e",
     primaryHover: "#0b625c",
@@ -200,6 +203,9 @@ export const theme = createTheme({
           "--admin-nav-height": `${uiTokens.navigationHeight}px`,
           "--app-content-width": `${uiTokens.contentWidth}px`,
           "--app-form-width": `${uiTokens.formWidth}px`,
+          "--app-detail-width": `${uiTokens.detailWidth}px`,
+          "--app-operation-width": `${uiTokens.operationWidth}px`,
+          "--app-wide-width": `${uiTokens.wideWidth}px`,
         },
         html: { scrollBehavior: "smooth", scrollPaddingTop: "72px" },
         body: { overflowWrap: "break-word" },
@@ -229,6 +235,12 @@ export const adminTheme = createTheme(theme, {
     text: { primary: uiTokens.colors.textPrimary, secondary: uiTokens.colors.textSecondary },
   },
   shape: { borderRadius: uiTokens.radius },
+  typography: {
+    h5: {
+      ...uiTokens.typography.pageTitle,
+      "@media (min-width:1200px)": { fontSize: 25, lineHeight: 1.25 },
+    },
+  },
   shadows: [
     "none",
     uiTokens.shadows.card,

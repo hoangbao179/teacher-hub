@@ -81,6 +81,7 @@ export function AdminLayout() {
   const desktopCurrent = desktopNav.findIndex(([path]) =>
     path === "/admin" ? location.pathname === "/admin" : location.pathname.startsWith(path),
   );
+  const contentWidth = location.pathname === "/admin/calendar" ? uiTokens.wideWidth : uiTokens.contentWidth;
   return (
     <ThemeProvider theme={adminTheme}>
     <Box data-testid="admin-layout" sx={{
@@ -164,7 +165,8 @@ export function AdminLayout() {
           component="main"
           maxWidth={false}
           data-testid="admin-content"
-          sx={{ width: "100%", maxWidth: `${uiTokens.contentWidth}px`, mx: "auto", px: { xs: 1.5, sm: 3, lg: 3.5 }, py: { xs: 1.5, lg: 3 }, minWidth: 0 }}
+          data-content-size={location.pathname === "/admin/calendar" ? "wide" : "content"}
+          sx={{ width: "100%", maxWidth: `${contentWidth}px`, mx: "auto", px: { xs: 1.5, sm: 3, lg: 3.5 }, py: { xs: 1.5, lg: 3 }, minWidth: 0 }}
         >
           <Outlet />
         </Container>

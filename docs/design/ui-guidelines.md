@@ -14,14 +14,20 @@ Review bắt buộc ở 360, 375, 390, 393, 400, 412 và 430 px, cộng tablet v
 Mobile là ưu tiên: cards/lists thay bảng rộng, touch target tối thiểu 44 px, sticky
 action không che nội dung. Admin chỉ dùng sidebar từ 1200 px; tablet dùng layout
 full-width và bottom navigation.
+Admin desktop phân loại chiều rộng theo mục đích thay vì kéo mọi màn hình cùng cỡ:
+FORM khoảng 620 px, DETAIL khoảng 920 px, OPERATION khoảng 1080 px, CONTENT khoảng
+1160 px và WIDE tối đa 1360 px. Form nhập liệu giữ hẹp; màn vận hành nhiều bộ lọc
+hoặc thao tác dùng OPERATION; Calendar có thể dùng WIDE. Baseline desktop ưu tiên
+1366×768, sau đó 1920×1080 và 2560×1440.
 Homepage dùng section padding khoảng 32–40 px trên mobile và 48–56 px trên desktop.
 Homepage bắt đầu bằng section giới thiệu responsive, không có hero chuyển cảnh.
 
 ## Typography
 
 Ứng dụng tải Be Vietnam Pro có glyph tiếng Việt. Body chủ yếu 14–15 px, section
-title 17–18 px, page title 20–22 px. Admin ưu tiên weight 400–800 và tránh 900 để
-không quá nặng; hierarchy phải rõ khi zoom và trên màn hình hẹp.
+title 17–18 px, page title 20–22 px trên mobile và 24–26 px trên desktop. Admin ưu
+tiên weight 400–800 và tránh 900 để không quá nặng; hierarchy phải rõ khi zoom và
+trên màn hình hẹp.
 
 ## Colors
 

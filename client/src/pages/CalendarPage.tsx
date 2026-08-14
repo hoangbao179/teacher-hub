@@ -161,7 +161,7 @@ export function CalendarPage() {
         ? `/admin/combined-class-groups/occurrences/${item.combinedTeachingOccurrenceId}`
         : item.linkedLessonId
           ? `/admin/lessons/${item.linkedLessonId}/edit`
-          : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
+          : `/admin/classes/${item.classId}`,
       warnings: item.conflicts,
       combined: Boolean(item.combinedGroupId),
       kind: "PRIVATE_CLASS",
@@ -207,11 +207,11 @@ export function CalendarPage() {
       <MenuItem component={Link} to={`/admin/lessons/new?date=${from}`} onClick={() => setAddMenuAnchor(null)}>Buổi học ngoài lịch / ghi thủ công</MenuItem>
       <MenuItem component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`} onClick={() => setAddMenuAnchor(null)}>Buổi học bù</MenuItem>
     </Menu>
-    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", xl: "minmax(360px, 1fr) auto" }, alignItems: { xl: "center" }, gap: { xs: 1.5, md: 2 }, p: { md: 1.5 }, border: { md: 1 }, borderColor: { md: "divider" }, borderRadius: { md: 2.5 }, bgcolor: { md: "background.paper" }, boxShadow: { md: "0 4px 16px rgba(36,29,62,.04)" } }}>
-      <Box sx={{ width: "100%", maxWidth: { md: 520, xl: "none" } }}>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(420px, 520px) auto" }, alignItems: { lg: "center" }, justifyContent: { lg: "space-between" }, gap: { xs: 1.5, md: 2 }, p: { md: 1.5 }, border: { md: 1 }, borderColor: { md: "divider" }, borderRadius: { md: 2.5 }, bgcolor: { md: "background.paper" }, boxShadow: { md: "0 4px 16px rgba(36,29,62,.04)" } }}>
+      <Box sx={{ width: "100%", maxWidth: 520 }}>
         <WeekNavigator from={from} currentWeekStart={currentWeekStart} onChange={changeWeek} />
       </Box>
-      <Box data-testid="calendar-quick-actions" sx={{ display: "flex", justifyContent: { xs: "stretch", md: "flex-start", xl: "flex-end" } }}>
+      <Box data-testid="calendar-quick-actions" sx={{ display: "flex", justifyContent: { xs: "stretch", md: "flex-start", lg: "flex-end" } }}>
         <Button startIcon={<Add />} variant="contained" onClick={(event) => setAddMenuAnchor(event.currentTarget)} sx={{ width: { xs: "100%", sm: "auto" }, minHeight: 44, "& .MuiButton-startIcon > *": { fontSize: 20 } }}>Thêm</Button>
       </Box>
     </Box>
@@ -220,24 +220,26 @@ export function CalendarPage() {
     <Stack direction={{ xs: "column", sm: "row" }} useFlexGap sx={{ alignItems: { xs: "stretch", sm: "center" }, justifyContent: "space-between", gap: { xs: 0.5, sm: 1.5 } }}>
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", justifyContent: "space-between", minWidth: 0 }}>
         <Typography component="h2" variant="h6">{isCurrentWeek ? "Lịch dự kiến tuần này" : "Lịch dự kiến"}</Typography>
-        <Chip size="small" label={data ? `${entries.length} buổi dạy` : "Đang tải"} color="primary" variant="outlined" sx={{ flexShrink: 0 }} />
+        <Chip size="small" label={data ? `${entries.length} sự kiện` : "Đang tải"} color="primary" variant="outlined" sx={{ flexShrink: 0 }} />
       </Stack>
       <Button startIcon={<FactCheckOutlined />} variant="text" component={Link} to={`/admin/reconciliation?from=${from}&to=${addDays(from, 6)}&state=ALL`} sx={{ alignSelf: { xs: "flex-start", sm: "center" }, px: { xs: 0.5, sm: 1 } }}>Kiểm tra lịch tuần</Button>
     </Stack>
     {data && grouped.length === 0 && <WeeklyScheduleEmptyState currentWeek={isCurrentWeek} onAdd={(event) => setAddMenuAnchor(event.currentTarget)} />}
-    <Box data-testid="calendar-day-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 2, alignItems: "start" }}>
-    {grouped.map(([date, items]) => <Stack key={date} spacing={1} data-testid="calendar-day">
-      <Typography variant="h6" sx={{ mt: 1 }}>{displayDate(date)}</Typography>
+    <Box data-testid="calendar-day-grid" sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: { xs: 2, lg: 1.25 }, alignItems: "start" }}>
+    {grouped.map(([date, items]) => <Box key={date} data-testid="calendar-day" sx={{ display: { xs: "block", lg: "grid" }, gridTemplateColumns: { lg: "148px minmax(0, 1fr)" }, gap: { lg: 1.5 }, alignItems: "start", py: { lg: 1.25 }, borderTop: { lg: 1 }, borderColor: { lg: "divider" } }}>
+      <Typography variant="h6" sx={{ mt: { xs: 1, lg: 0 }, mb: { xs: 1, lg: 0 }, pt: { lg: 0.75 } }}>{displayDate(date)}</Typography>
+      <Box data-testid="calendar-day-events" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(auto-fill, minmax(min(260px, 100%), 1fr))" }, gap: 1 }}>
       {items.map((item) => {
         const kindMeta = entryKindMeta[item.kind];
         const KindIcon = kindMeta.icon;
         return <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: kindMeta.borderColor }} data-testid="calendar-event">
-        <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction={{ xs: "column", sm: item.combined ? "column" : "row" }} spacing={1} sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: item.combined ? "flex-start" : "center" } }}>
+        <CardContent sx={{ p: { xs: 1.5, lg: 1.25 }, "&:last-child": { pb: { xs: 1.5, lg: 1.25 } } }}><Stack spacing={0.75} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
           <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}{item.detail ? ` · ${item.detail}` : ""}</Typography></Stack>
           <Stack direction="row" spacing={0.5} useFlexGap sx={{ alignItems: "center", flexWrap: "wrap" }}>{Boolean(item.warnings?.length) && <IconButton size="small" color="warning" aria-label={`Xem ${item.warnings!.length} cảnh báo trùng lịch`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setConflicts(item.warnings!); }}><WarningAmber fontSize="small" /></IconButton>}<Chip size="small" icon={<KindIcon />} label={kindMeta.label} sx={{ bgcolor: kindMeta.backgroundColor, color: kindMeta.textColor, "& .MuiChip-icon": { color: "inherit" } }} /><Chip size="small" color={item.color} variant="outlined" label={item.subtitle} /></Stack>
         </Stack></CardContent>
       </Card>})}
-    </Stack>)}
+      </Box>
+    </Box>)}
     </Box>
     <Dialog open={conflicts.length > 0} onClose={() => setConflicts([])} fullWidth maxWidth="xs"><DialogTitle>Chi tiết trùng lịch</DialogTitle><DialogContent><Stack spacing={1.5}>
       {conflicts.map((warning, index) => <Alert key={`${warning.kind}-${warning.id ?? warning.occurrenceKey}-${index}`} severity="warning">

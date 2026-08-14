@@ -464,7 +464,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${origin}/admin`);
   for (const action of [
-    { label: "Ghi nhận buổi học", path: "/admin/lessons/new" },
+    { label: "Buổi học ngoài lịch", path: "/admin/lessons/new" },
     { label: "Buổi học bù", path: "/admin/lessons/new?type=MAKEUP" },
     { label: "Thêm lịch dạy ngoài", path: "/admin/busy-slots/new?type=EXTERNAL_CLASS" },
   ]) {

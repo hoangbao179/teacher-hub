@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, document, localStorage, sessionStorage, indexedDB */
+/* global process, fetch, setTimeout, console, document, localStorage, sessionStorage, indexedDB, window */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -126,7 +126,10 @@ try {
 
   await page.goto(`${origin}/admin/login`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { level: 1, name: "Chào mừng cô Vy trở lại" }).waitFor();
-  await page.getByText("Tiếng Anh lớp 1–9", { exact: true }).waitFor();
+  assert(await page.getByText("Tiếng Anh lớp 1–9", { exact: true }).evaluateAll((elements) => elements.some((element) => {
+    const style = window.getComputedStyle(element);
+    return style.display !== "none" && style.visibility !== "hidden";
+  })), "Login brand subtitle is not visible");
   await page.getByRole("heading", { level: 2, name: "Đăng nhập", exact: true }).waitFor();
   await page.getByText("Không sử dụng trên thiết bị dùng chung.", { exact: true }).waitFor();
   assert(await page.getByLabel("Tên đăng nhập").getAttribute("autocomplete") === "username", "Username autocomplete is not username");

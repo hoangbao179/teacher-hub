@@ -32,6 +32,7 @@
     "test:e2e:books": "node scripts/public-books.e2e.mjs",
     "test:e2e:homepage": "node scripts/public-homepage.e2e.mjs",
     "test:e2e:calendar-mobile": "node scripts/calendar-mobile-ui.e2e.mjs",
+    "test:e2e:admin-ui": "node scripts/calendar-mobile-ui.e2e.mjs",
     "test:e2e:calendar-midnight": "node scripts/calendar-midnight.e2e.mjs",
     "test:e2e:busy-slot-title": "node scripts/busy-slot-optional-title.e2e.mjs",
     "test:e2e:combined-groups": "node scripts/combined-class-groups.e2e.mjs",

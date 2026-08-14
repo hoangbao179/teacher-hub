@@ -161,14 +161,18 @@ try {
     || await page.getByRole("button", { name: "Cho 0 buổi nghỉ" }).count())
     throw new Error("Reconciliation still renders zero-count bulk actions");
   await page.setViewportSize({ width: 1440, height: 900 });
-  const [filterBox, bulkBox, occurrenceBox] = await Promise.all([
+  const [filterBox, bulkBox, occurrenceBox, secondOccurrenceBox] = await Promise.all([
     page.getByTestId("reconciliation-filter-card").boundingBox(),
     page.getByTestId("reconciliation-bulk-card").boundingBox(),
     page.getByTestId("occurrence-card").first().boundingBox(),
+    page.getByTestId("occurrence-card").nth(1).boundingBox(),
   ]);
-  if (!filterBox || !bulkBox || !occurrenceBox || [bulkBox, occurrenceBox].some((box) =>
-    Math.abs(box.x - filterBox.x) > 1 || Math.abs(box.width - filterBox.width) > 1))
-    throw new Error(`Reconciliation desktop column is not aligned: ${JSON.stringify({ filterBox, bulkBox, occurrenceBox })}`);
+  const expectedCardWidth = filterBox ? (filterBox.width - 12) / 2 : 0;
+  if (!filterBox || !bulkBox || !occurrenceBox || !secondOccurrenceBox
+    || Math.abs(bulkBox.x - filterBox.x) > 1 || Math.abs(bulkBox.width - filterBox.width) > 1
+    || Math.abs(occurrenceBox.x - filterBox.x) > 1 || Math.abs(occurrenceBox.width - expectedCardWidth) > 1
+    || Math.abs(secondOccurrenceBox.y - occurrenceBox.y) > 1 || secondOccurrenceBox.x <= occurrenceBox.x)
+    throw new Error(`Reconciliation desktop operation grid is not aligned: ${JSON.stringify({ filterBox, bulkBox, occurrenceBox, secondOccurrenceBox })}`);
   await page.setViewportSize({ width: 390, height: 844 });
 
   const taughtCard = page.getByTestId("occurrence-card").filter({ hasText: "08:00–09:00" });
@@ -321,7 +325,7 @@ try {
   if (!addBox || addBox.height < 44 || await quickActions.getByRole("button").count() !== 1 || await quickActions.getByRole("link").count() !== 0)
     throw new Error(`Calendar mobile primary action is incorrect: ${JSON.stringify(addBox)}`);
   await page.getByRole("heading", { name: "Lịch dự kiến tuần này" }).waitFor();
-  await page.getByText(`${await page.getByTestId("calendar-event").count()} buổi dạy`, { exact: true }).waitFor();
+  await page.getByText(`${await page.getByTestId("calendar-event").count()} sự kiện`, { exact: true }).waitFor();
   await page.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).waitFor();
   await quickActions.getByRole("button", { name: "Thêm", exact: true }).click();
   await page.getByRole("menuitem", { name: "Lịch dạy tại trường/trung tâm" }).waitFor();

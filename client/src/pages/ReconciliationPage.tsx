@@ -53,18 +53,16 @@ function ReconciliationFilterFields({ values, classes, onChange }: {
   classes: ClassListItem[];
   onChange: (next: ReconciliationFilters) => void;
 }) {
-  return <Stack spacing={1.5}>
-    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+  return <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1 }}>
       <TextField required fullWidth type="date" label="Từ ngày" value={values.from} onChange={(event) => onChange({ ...values, from: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
       <TextField required fullWidth type="date" label="Đến ngày" value={values.to} onChange={(event) => onChange({ ...values, to: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
-    </Stack>
     <TextField select fullWidth label="Lớp" value={values.classId && classes.some((item) => item.id === values.classId) ? values.classId : 0} onChange={(event) => onChange({ ...values, classId: Number(event.target.value) })}>
       <MenuItem value={0}>Tất cả lớp</MenuItem>{classes.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
     </TextField>
     <TextField select fullWidth label="Trạng thái" value={values.state} onChange={(event) => onChange({ ...values, state: event.target.value as ReconciliationState | "ALL" })}>
       <MenuItem value="ALL">Tất cả</MenuItem>{Object.entries(labels).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
     </TextField>
-  </Stack>;
+  </Box>;
 }
 
 export function ReconciliationPage() {
@@ -197,7 +195,7 @@ export function ReconciliationPage() {
   }
 
   return (
-    <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page" data-form-width="bounded">
+    <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ width: "100%", maxWidth: "var(--app-operation-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="reconciliation-page" data-content-size="operation">
       <Typography component="h1" variant="h5">Xác nhận lịch dạy</Typography>
       <Typography color="text.secondary">Kiểm tra các buổi theo lịch và chọn Đã dạy, Nghỉ hoặc Đổi lịch. Học phí chỉ thay đổi sau khi hoàn tất ghi nhận.</Typography>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setItemsSnapshot(null); setError(""); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
@@ -233,7 +231,7 @@ export function ReconciliationPage() {
 
       {!items && <LoadingCards />}
       {items?.length === 0 && !error && <EmptyState message="Không có buổi dự kiến phù hợp trong khoảng đã chọn." />}
-      <Box data-testid="reconciliation-card-grid" sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: { xs: 1.25, sm: 1.5 }, alignItems: "start", pb: { xs: selected.length ? 9 : 0, sm: 0 } }}>
+      <Box data-testid="reconciliation-card-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 1.25, sm: 1.5 }, alignItems: "start", pb: { xs: selected.length ? 9 : 0, sm: 0 } }}>
       {items?.map((item) => {
         const replacement = item.projectionSource === "RESCHEDULED";
         return <Card key={item.key} id={`occurrence-${item.key}`} data-testid="occurrence-card" variant="outlined"><CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}><Stack spacing={1}>
@@ -250,12 +248,12 @@ export function ReconciliationPage() {
           </Stack>
           {item.conflicts.length > 0 && <Alert severity="warning" sx={{ py: 0.25 }}>{conflictLabel(item.conflicts.length)}</Alert>}
           {item.state === "SKIPPED" && item.skipReason && <Typography variant="body2" color="text.secondary">Lý do: {item.skipReason}</Typography>}
-          {item.state === "UNRECORDED" && <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+          {item.state === "UNRECORDED" && <Box sx={{ display: "grid", gridTemplateColumns: { xs: "auto repeat(3, max-content)", lg: "auto repeat(3, minmax(0, 1fr))" }, alignItems: "center", gap: 0.5 }}>
             <Checkbox aria-label={`Chọn ${item.className} ${item.occurrenceDate}`} checked={selected.includes(item.key)} onChange={() => toggle(item.key)} />
             <Button size="small" variant="contained" disabled={Boolean(busyKey)} onClick={() => void createDraft(item)}>{busyKey === item.key ? "Đang tạo…" : "Đã dạy"}</Button>
             <Button size="small" color="error" variant="outlined" disabled={Boolean(busyKey)} onClick={() => { setMakeupRequired(true); setSkipDialog({ keys: [item.key], bulk: false }); }}>Nghỉ</Button>
             {!replacement && <Button size="small" variant="outlined" disabled={Boolean(busyKey)} onClick={() => openReschedule(item)}>Đổi lịch</Button>}
-          </Stack>}
+          </Box>}
           {item.combinedTeachingOccurrenceId && <Button size="small" variant="outlined" onClick={() => navigate(`/admin/combined-class-groups/occurrences/${item.combinedTeachingOccurrenceId}`)}>
             {item.state === "RECORDED" ? "Xem ca học ghép" : "Tiếp tục ghi nhận nhóm"}
           </Button>}

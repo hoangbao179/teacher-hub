@@ -154,12 +154,11 @@ async function dashboardRolloverScenario() {
   await page.getByText("Lịch ngày cũ", { exact: true }).waitFor();
   const initialRequests = requests;
 
-  const undraftedHref = await page.getByTestId("dashboard-today-event").filter({ hasText: "Nhóm 3A + 3B" }).getAttribute("href");
-  const draftedHref = await page.getByTestId("dashboard-today-event").filter({ hasText: "Nhóm 6A + 6B" }).getAttribute("href");
-  const regularHref = await page.getByTestId("dashboard-today-event").filter({ hasText: "Lịch ngày cũ" }).getAttribute("href");
+  const undraftedHref = await page.getByTestId("dashboard-today-event").filter({ hasText: "Nhóm 3A + 3B" }).getByRole("link", { name: "Xem", exact: true }).getAttribute("href");
+  const draftedHref = await page.getByTestId("dashboard-today-event").filter({ hasText: "Nhóm 6A + 6B" }).getByRole("link", { name: "Xem", exact: true }).getAttribute("href");
   assert(undraftedHref === "/admin/reconciliation?from=2026-08-05&to=2026-08-05&state=ALL", `Undrafted combined group link is wrong: ${undraftedHref}`);
   assert(draftedHref === "/admin/combined-class-groups/occurrences/91", `Drafted combined group link is wrong: ${draftedHref}`);
-  assert(regularHref === "/admin/lessons/401/edit", `Regular lesson link changed: ${regularHref}`);
+  await page.getByTestId("dashboard-today-event").filter({ hasText: "Lịch ngày cũ" }).getByRole("button", { name: "Tiếp tục ghi", exact: true }).waitFor();
   await page.getByTestId("dashboard-today-event").filter({ hasText: "Nhóm 6A + 6B" }).getByText("Ca học ghép", { exact: true }).waitFor();
 
   rolledOver = true;
@@ -200,8 +199,10 @@ async function calendarRolloverScenario(keepCustomWeek) {
   await page.getByTestId("week-date-range").getByText(`${shortDate(mondayWeek)} – ${shortDate(addDays(mondayWeek, 6))}`, { exact: true }).waitFor();
   await page.getByText("Tuần này", { exact: true }).waitFor();
   assert(weekRequests.at(-1) === mondayWeek, `Calendar requested the wrong rollover week: ${weekRequests.join(", ")}`);
-  assert(await page.getByRole("link", { name: "Ghi nhận buổi học", exact: true }).getAttribute("href") === `/admin/lessons/new?date=${mondayWeek}`, "Primary calendar action kept the old week");
-  assert(await page.getByRole("link", { name: "Buổi học bù", exact: true }).getAttribute("href") === `/admin/lessons/new?type=MAKEUP&date=${mondayWeek}`, "Makeup action kept the old week");
+  await page.getByTestId("calendar-quick-actions").getByRole("button", { name: "Thêm", exact: true }).click();
+  assert(await page.getByRole("menuitem", { name: "Buổi học ngoài lịch / ghi thủ công", exact: true }).getAttribute("href") === `/admin/lessons/new?date=${mondayWeek}`, "Manual calendar action kept the old week");
+  assert(await page.getByRole("menuitem", { name: "Buổi học bù", exact: true }).getAttribute("href") === `/admin/lessons/new?type=MAKEUP&date=${mondayWeek}`, "Makeup action kept the old week");
+  await page.keyboard.press("Escape");
   assert(await page.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).getAttribute("href") === `/admin/reconciliation?from=${mondayWeek}&to=${addDays(mondayWeek, 6)}&state=ALL`, "Reconciliation action kept the old week");
   for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 412, height: 915 }]) {
     await page.setViewportSize(viewport);

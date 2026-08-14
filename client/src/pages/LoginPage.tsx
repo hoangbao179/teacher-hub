@@ -98,19 +98,28 @@ export function LoginPage() {
       <Typography aria-hidden="true" sx={{ position: "absolute", top: { xs: 76, sm: "16%" }, right: { xs: 14, sm: "8%" }, color: "rgba(15,143,131,.2)", fontWeight: 800, letterSpacing: ".08em", fontSize: { xs: 18, sm: 24 } }}>ABC</Typography>
       <AutoStories aria-hidden="true" sx={{ position: "absolute", left: { xs: 12, sm: "8%" }, top: { xs: "70%", sm: "62%" }, color: "rgba(24,145,103,.18)", fontSize: { xs: 30, sm: 42 }, transform: "rotate(-8deg)" }} />
       <StarOutlined aria-hidden="true" sx={{ position: "absolute", right: { xs: 18, sm: "12%" }, bottom: { xs: 26, sm: "18%" }, color: "rgba(234,151,27,.2)", fontSize: 34 }} />
-      <Stack sx={{ position: "relative", width: "100%", maxWidth: 460, minHeight: { xs: "auto", sm: "calc(100svh - 40px)" }, mx: "auto", justifyContent: { xs: "flex-start", sm: "center" } }}>
+      <Stack sx={{ position: "relative", width: "100%", maxWidth: { xs: 460, lg: 960 }, minHeight: { xs: "auto", sm: "calc(100svh - 40px)" }, mx: "auto", justifyContent: { xs: "flex-start", sm: "center" } }}>
         <Button component={Link} to="/" startIcon={<ArrowBack />} color="inherit" sx={{ alignSelf: "flex-start", mb: { xs: 1, sm: 2 } }}>
           Về trang chủ
         </Button>
-        <Paper component="form" aria-labelledby="login-title" onSubmit={submit} elevation={3} sx={{ p: { xs: 2.25, sm: 3.5 }, width: "100%", border: "1px solid", borderColor: "rgba(20,184,166,.17)", borderRadius: 3 }}>
-          <Stack spacing={0.75} sx={{ alignItems: "center", textAlign: "center" }}>
-            <Box sx={{ display: "grid", placeItems: "center", width: 48, height: 48, borderRadius: 2.25, color: "primary.dark", bgcolor: uiTokens.colors.primarySurface }}>
-              <School aria-hidden="true" sx={{ fontSize: 27 }} />
-            </Box>
-            <Typography variant="overline" color="primary">LỚP HỌC CÔ VY</Typography>
-            <Typography id="login-title" component="h1" variant="h5">Chào mừng cô Vy trở lại</Typography>
-            <Typography color="text.secondary" sx={{ fontWeight: 600 }}>Tiếng Anh lớp 1–9</Typography>
-          </Stack>
+        <Paper component="form" aria-labelledby="login-title" onSubmit={submit} elevation={3} data-testid="login-panel" sx={{ display: { lg: "grid" }, gridTemplateColumns: { lg: "minmax(0, 1.05fr) minmax(400px, .95fr)" }, width: "100%", overflow: "hidden", border: "1px solid", borderColor: "rgba(20,184,166,.17)", borderRadius: 3 }}>
+          <Box sx={{ display: { xs: "none", lg: "flex" }, minWidth: 0, p: 3.5, flexDirection: "column", justifyContent: "space-between", bgcolor: "#eaf8f4", background: "linear-gradient(155deg, #e4f7f1 0%, #edf7ff 100%)", borderRight: 1, borderColor: "divider" }}>
+            <Stack spacing={0.5}>
+              <Typography variant="overline" color="primary">LỚP HỌC CÔ VY</Typography>
+              <Typography component="p" variant="h4" sx={{ color: "primary.dark" }}>Tiếng Anh lớp 1–9</Typography>
+              <Typography variant="body2" color="text.secondary">Ghi buổi học · Theo dõi học phí · Đồng bộ sổ phụ huynh</Typography>
+            </Stack>
+            <Box component="img" src="/assets/admin-ui/teacher-dashboard-hero.webp" alt="" aria-hidden="true" sx={{ width: "100%", height: 270, mt: 1, objectFit: "contain", objectPosition: "center bottom" }} />
+          </Box>
+          <Box sx={{ p: { xs: 2.25, sm: 3.5, lg: 4 }, alignSelf: "center", minWidth: 0 }}>
+            <Stack spacing={0.75} sx={{ alignItems: { xs: "center", lg: "flex-start" }, textAlign: { xs: "center", lg: "left" } }}>
+              <Box sx={{ display: "grid", placeItems: "center", width: 48, height: 48, borderRadius: 2.25, color: "primary.dark", bgcolor: uiTokens.colors.primarySurface }}>
+                <School aria-hidden="true" sx={{ fontSize: 27 }} />
+              </Box>
+              <Typography variant="overline" color="primary" sx={{ display: { lg: "none" } }}>LỚP HỌC CÔ VY</Typography>
+              <Typography id="login-title" component="h1" variant="h5">Chào mừng cô Vy trở lại</Typography>
+              <Typography color="text.secondary" sx={{ display: { lg: "none" }, fontWeight: 600 }}>Tiếng Anh lớp 1–9</Typography>
+            </Stack>
 
           <Typography component="h2" variant="subtitle1" sx={{ mt: 2 }}>Đăng nhập</Typography>
           {blockedSeconds > 0 && (
@@ -170,6 +179,7 @@ export function LoginPage() {
           <Button fullWidth type="submit" variant="contained" size="large" disabled={loading || blockedSeconds > 0} sx={{ mt: 2 }}>
             {loading ? "Đang đăng nhập…" : "Đăng nhập"}
           </Button>
+          </Box>
         </Paper>
       </Stack>
     </Box>
