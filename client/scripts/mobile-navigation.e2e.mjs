@@ -308,10 +308,24 @@ try {
   for (const label of ["Kho từ vựng", "Bài tập từ vựng", "Tài khoản", "Đăng xuất"]) {
     assert(await page.getByRole("menuitem", { name: label, exact: true }).isVisible(), `Account menu is missing ${label}`);
   }
+  const accountMenuItems = await page.getByRole("menuitem").allTextContents();
+  assert(JSON.stringify(accountMenuItems) === JSON.stringify(["Tài khoản", "Kho từ vựng", "Bài tập từ vựng", "Đăng xuất"]), `Unexpected account menu order: ${accountMenuItems.join(" | ")}`);
+  assert(await page.getByText("Công cụ học tập", { exact: true }).isVisible(), "Account menu is missing the learning-tools group");
   await page.waitForTimeout(250);
   if (artifactPolicy.mode === "review") await page.screenshot({ path: path.join(artifactDir, "account-menu-390x844.png"), fullPage: false });
-  await page.keyboard.press("Escape");
-  assert(await page.getByRole("menu").count() === 0 || await page.getByRole("menu").isHidden(), "Escape did not close the account menu");
+  await page.getByRole("menuitem", { name: "Tài khoản", exact: true }).click();
+  await page.waitForURL(`${origin}/admin/account`);
+  const accountPage = page.getByTestId("account-page");
+  await accountPage.getByRole("heading", { level: 1, name: "Tài khoản" }).waitFor();
+  await accountPage.getByText("Cô Vy", { exact: true }).waitFor();
+  await accountPage.getByText("Tên đăng nhập: covy", { exact: true }).waitFor();
+  await accountPage.getByText("Đang đăng nhập", { exact: true }).waitFor();
+  await accountPage.getByRole("button", { name: "Đăng xuất", exact: true }).waitFor();
+  await accountPage.getByText("Cài đặt tài khoản đang được hoàn thiện", { exact: true }).waitFor();
+  const accountText = await accountPage.innerText();
+  assert(!accountText.includes("Bản xem trước") && !accountText.includes("Sắp mở") && !accountText.includes("ẩn khỏi điều hướng"), "Account page still exposes prototype copy");
+  assert(await page.locator('[data-testid="mobile-navigation"] .MuiBottomNavigationAction-root').count() === 5, "Account route changed the five-item mobile navigation");
+  await page.goto(`${origin}/admin`, { waitUntil: "networkidle" });
 
   for (const viewport of [{ width: 768, height: 1024 }, { width: 1024, height: 768 }]) {
     await page.setViewportSize(viewport);
@@ -481,6 +495,9 @@ try {
     desktop: getComputedStyle(document.querySelector('[data-testid="desktop-navigation"]')).display,
   }));
   assert(wideShell.mobile === "none" && wideShell.desktop !== "none", `Desktop navigation breakpoint failed at 1200px: ${JSON.stringify(wideShell)}`);
+  assert(await desktopPage.locator('[data-testid="desktop-navigation"] .MuiListItemButton-root').count() === 5, "Desktop navigation does not contain exactly five primary items");
+  const desktopNavText = await desktopPage.getByTestId("desktop-navigation").innerText();
+  assert(!desktopNavText.includes("Kho từ vựng") && !desktopNavText.includes("Bài tập từ vựng") && !desktopNavText.includes("Tài khoản"), "Secondary routes leaked into desktop primary navigation");
   await desktopPage.setViewportSize({ width: 1440, height: 900 });
   for (const tab of tabs) {
     if (new URL(desktopPage.url()).pathname !== tab.path) {
@@ -507,6 +524,11 @@ try {
   }
 
   assert(await desktopPage.locator('[data-testid="student-navigation-icon"]').count() >= 1, "Student navigation does not render the person icon");
+  await desktopPage.getByTestId("account-menu-button").click();
+  await desktopPage.getByRole("menuitem", { name: "Tài khoản", exact: true }).click();
+  await desktopPage.waitForURL(`${origin}/admin/account`);
+  await desktopPage.getByTestId("account-page").waitFor();
+  assert(await desktopPage.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1, "Account page overflows at desktop width");
   await desktopContext.close();
   console.log(`V11C mobile-navigation E2E passed at all seven target viewports; screenshots: ${artifactDir}`);
   artifactRunPassed = true;

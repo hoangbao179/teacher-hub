@@ -30,7 +30,8 @@ evidence từng lần kiểm thử được giữ trong Git history.
   không có audio bài học.
 - Homepage đặt entry Góc học/Tủ sách trong hero; header public luôn có đường vào
   quản trị và `/hoc`–`/sach` dùng chung palette teal/pastel. Admin dùng sidebar từ
-  1200 px, bottom navigation dưới breakpoint này và menu tài khoản cho các route phụ.
+  1200 px, bottom navigation dưới breakpoint này; cả hai cùng ưu tiên năm khu vực
+  hằng ngày. Account, Kho từ vựng và Bài tập từ vựng nằm trong menu avatar.
 - Vocabulary topic/set/media, assignment, public game, result/mastery/review và
   Google Sheet tab ôn từ vựng.
 - Legacy Excel preview/apply có reconciliation theo nhóm và transaction MySQL.

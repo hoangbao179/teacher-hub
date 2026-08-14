@@ -29,10 +29,14 @@ và gate `npm run check:full` đã PASS. Chi tiết triển khai và khác biệ
 - Mobile có năm mục bottom navigation một dòng: Hôm nay, Lịch, Lớp học, Học phí,
   Học sinh; có safe-area và sticky actions luôn nằm phía trên navigation.
 - Sidebar cố định chỉ xuất hiện từ `lg` (1200 px); dưới `lg` nội dung full-width
-  và bottom navigation năm mục tiếp tục hoạt động.
-- Menu tài khoản trên top bar mở được bằng chuột hoặc bàn phím, cung cấp Kho từ
-  vựng, Bài tập từ vựng, Tài khoản và Đăng xuất. Ba route phụ không được nhồi vào
-  bottom navigation.
+  và bottom navigation năm mục tiếp tục hoạt động. Sidebar và bottom navigation
+  cùng chỉ có Hôm nay, Lịch, Lớp học, Học phí và Học sinh.
+- Menu tài khoản trên top bar mở được bằng chuột hoặc bàn phím, xếp Tài khoản trước,
+  tiếp theo là nhóm Công cụ học tập gồm Kho từ vựng/Bài tập từ vựng, cuối cùng là
+  Đăng xuất. Các route phụ không nằm trong navigation cấp 1.
+- AccountPage chỉ hiển thị tên, username, trạng thái đăng nhập và đăng xuất đang
+  hoạt động. Card cài đặt là thông báo không tương tác; không dựng action giả cho
+  đổi mật khẩu hoặc thông tin tài khoản chưa triển khai.
 
 ## Phân cấp màu và minh họa
 

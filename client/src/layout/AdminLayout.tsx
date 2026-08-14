@@ -7,7 +7,6 @@ import {
   Logout,
   School,
   Translate,
-  Assignment,
   AccountCircle,
   MenuBook,
 } from "@mui/icons-material";
@@ -23,6 +22,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  ListSubheader,
   Stack,
   Toolbar,
   Typography,
@@ -46,12 +46,7 @@ const nav = [
   ["/admin/tuition", <Payments key="tuition" />, "Học phí"],
   ["/admin/students", <Person key="students" data-testid="student-navigation-icon" />, "Học sinh"],
 ] as const;
-const desktopNav = [
-  ...nav,
-  ["/admin/vocabulary", <Translate key="vocabulary" />, "Kho từ vựng"],
-  ["/admin/assignments", <Assignment key="assignments" />, "Bài tập từ vựng"],
-  ["/admin/account", <AccountCircle key="account" />, "Tài khoản"],
-] as const;
+const desktopNav = nav;
 
 function shouldUseAdminSafeArea() {
   if (typeof navigator === "undefined") return false;
@@ -119,9 +114,11 @@ export function AdminLayout() {
             <AccountCircle />
           </IconButton>
           <Menu id="admin-account-menu" anchorEl={accountAnchor} open={Boolean(accountAnchor)} onClose={closeAccountMenu} slotProps={{ paper: { sx: { minWidth: 230, mt: 0.75 } } }}>
+            <MenuItem onClick={() => openAccountRoute("/admin/account")}><AccountCircle fontSize="small" sx={{ mr: 1.25 }} /><ListItemText>Tài khoản</ListItemText></MenuItem>
+            <Divider />
+            <ListSubheader disableSticky sx={{ lineHeight: "32px", color: "text.secondary", bgcolor: "transparent" }}>Công cụ học tập</ListSubheader>
             <MenuItem onClick={() => openAccountRoute("/admin/vocabulary")}><Translate fontSize="small" sx={{ mr: 1.25 }} /><ListItemText>Kho từ vựng</ListItemText></MenuItem>
             <MenuItem onClick={() => openAccountRoute("/admin/assignments")}><MenuBook fontSize="small" sx={{ mr: 1.25 }} /><ListItemText>Bài tập từ vựng</ListItemText></MenuItem>
-            <MenuItem onClick={() => openAccountRoute("/admin/account")}><AccountCircle fontSize="small" sx={{ mr: 1.25 }} /><ListItemText>Tài khoản</ListItemText></MenuItem>
             <Divider />
             <MenuItem onClick={logout}><Logout fontSize="small" sx={{ mr: 1.25 }} /><ListItemText>Đăng xuất</ListItemText></MenuItem>
           </Menu>

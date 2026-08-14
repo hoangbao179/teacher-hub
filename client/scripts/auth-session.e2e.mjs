@@ -70,6 +70,13 @@ async function logoutThroughAccountMenu(page) {
   await page.getByRole("menuitem", { name: "Đăng xuất", exact: true }).click();
 }
 
+async function logoutThroughAccountPage(page) {
+  await page.getByRole("button", { name: "Mở menu tài khoản" }).click();
+  await page.getByRole("menuitem", { name: "Tài khoản", exact: true }).click();
+  await page.waitForURL(`${origin}/admin/account`);
+  await page.getByTestId("account-page").getByRole("button", { name: "Đăng xuất", exact: true }).click();
+}
+
 async function assertNoPasswordPersisted(page, context) {
   const webStorage = await page.evaluate(() => ({
     local: Object.entries(localStorage),
@@ -162,7 +169,7 @@ try {
   await page.waitForURL(`${origin}/admin`);
   await page.locator('[data-testid="dashboard-page"]').waitFor();
 
-  await logoutThroughAccountMenu(page);
+  await logoutThroughAccountPage(page);
   await page.waitForURL(`${origin}/admin/login`);
   storage = await page.evaluate(() => ({
     localToken: localStorage.getItem("teacher-token"),
