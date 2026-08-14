@@ -25,7 +25,9 @@ evidence từng lần kiểm thử được giữ trong Git history.
   mặt chính chỉ giữ menu “Thêm”, còn tạo thủ công, học bù và đối soát tuần vẫn truy
   cập được như công cụ phụ. Tuition management và Excel report tiếp tục hoạt động
   trên desktop/mobile.
-- Homepage công khai, Góc học, flashcard/quiz và thư viện sách Global Success với
+- Homepage công khai chỉ quảng bá dịch vụ Tiếng Anh lớp 1–9 tại Huế; catalog Mầm
+  non tiếp tục tồn tại riêng trong Góc học miễn phí. Góc học, flashcard/quiz và thư
+  viện sách Global Success với
   prerender/SEO hiện hành; trên mobile thư viện dùng hero gọn, bộ lọc lớp cuộn ngang
   nội bộ và CTA card toàn chiều rộng. Card dùng một hành động mở sách, reader riêng không có
   public header/footer, SGK có audio dùng FlipBuilder trên desktop và NXBGD trên

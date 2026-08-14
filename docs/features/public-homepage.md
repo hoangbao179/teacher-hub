@@ -7,6 +7,9 @@ không gọi API quản trị và không công khai học phí.
 
 - `client/src/content/publicHome.ts` là source of truth cho nội dung, liên hệ,
   địa điểm, chương trình và đường dẫn media của Homepage.
+- Homepage marketing chỉ giới thiệu dịch vụ dạy học sinh lớp 1–9, gồm tiểu học và
+  THCS; cô Vy không nhận dạy mầm non. Catalog Mầm non trong Góc học là nội dung tự
+  học miễn phí riêng và không được dùng để suy ra phạm vi dịch vụ giảng dạy.
 - Homepage có đúng một H1: `Cô Vy dạy tiếng Anh tại Huế`.
 - Hero có hai feature card duy nhất dẫn tới `/hoc` và `/sach`; không lặp lại hai
   CTA này thành section lớn phía dưới.
@@ -34,8 +37,9 @@ không gọi API quản trị và không công khai học phí.
 
 Metadata public, canonical, Open Graph, Twitter và JSON-LD `@graph` có sẵn trong
 `client/index.html`. Graph chỉ gồm `WebSite`, `LocalBusiness` và `Person`, không
-có review/rating. `RouteMetadata` chỉ chuyển metadata sang `noindex` cho route
-admin sau khi SPA chạy.
+có review/rating. Title, description và `LocalBusiness.description` cùng mô tả
+dịch vụ Tiếng Anh lớp 1–9 tại Huế, không quảng bá dịch vụ mầm non. `RouteMetadata`
+chỉ chuyển metadata sang `noindex` cho route admin sau khi SPA chạy.
 
 Build client prerender riêng route `/` vào `client/dist/index.html`; admin vẫn
 là SPA. Nginx gửi `X-Robots-Tag: noindex, nofollow, noarchive` cho `/admin` và

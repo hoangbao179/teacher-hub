@@ -72,12 +72,12 @@ export const publicHomeContent = {
   brandName: "Lớp tiếng Anh cô Vy",
   headerBrandName: "Lớp tiếng Anh cô Vy",
   subject: "Tiếng Anh",
-  levels: "Mầm non, tiểu học và THCS",
+  levels: "Tiểu học và THCS · Lớp 1–9",
   location: "Huế",
   hero: {
     eyebrow: "TIẾNG ANH LỚP 1–9 · HUẾ",
     heading: "Cô Vy dạy tiếng Anh tại Huế",
-    description: "Đồng hành cùng học sinh từ nền tảng đến luyện thi, theo hình thức 1–1 hoặc lớp nhóm.",
+    description: "Đồng hành cùng học sinh lớp 1–9 từ nền tảng đến luyện thi, theo hình thức 1–1 hoặc lớp nhóm.",
   },
   learning: {
     shortLabel: "Góc học",
@@ -167,8 +167,8 @@ export const publicHomeContent = {
   programs: [
     {
       title: "Tiếng Anh nền tảng",
-      summary: "Mầm non và tiểu học lớp 1–5. Phát âm, từ vựng, mẫu câu và giao tiếp cơ bản.",
-      topics: ["Mầm non và lớp 1–5", "Học 1–1 hoặc lớp nhóm"],
+      summary: "Dành cho học sinh tiểu học lớp 1–5. Phát âm, từ vựng, mẫu câu và giao tiếp cơ bản.",
+      topics: ["Tiếng Anh lớp 1–5", "Học 1–1 hoặc lớp nhóm"],
       accent: "mint",
     },
     {
@@ -198,8 +198,8 @@ export const publicHomeContent = {
   ] satisfies PublicVideo[],
   testimonials: verifiedParentTestimonials,
   seo: {
-    title: "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến THCS",
-    description: "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.",
+    title: "Lớp tiếng Anh cô Vy tại Huế | Tiếng Anh lớp 1–9",
+    description: "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh lớp 1–9, từ tiểu học đến THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.",
   },
   footer: {
     copy: "2026 — từ người hâm mộ cô Vy, with love ❤️",
@@ -224,7 +224,7 @@ export const publicHomeStructuredData = {
       url: `${siteUrl}/`,
       logo: `${siteUrl}/logo-covy.svg`,
       image: `${siteUrl}/images/covy-image-v2-1200.jpg`,
-      description: "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.",
+      description: "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh lớp 1–9, từ tiểu học đến THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.",
       areaServed: {
         "@type": "City",
         name: "Huế",

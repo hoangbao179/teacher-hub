@@ -13,8 +13,8 @@ const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
 const screenshotDir = artifactPolicy.runDir;
 const screenshotWidths = new Set([390, 1440]);
-const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Mầm non đến THCS";
-const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh mầm non, tiểu học và THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
+const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Tiếng Anh lớp 1–9";
+const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh lớp 1–9, từ tiểu học đến THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
 const expectedAddress = "101 Kiệt 245 Bùi Thị Xuân, Phường Thủy Xuân, TP. Huế";
 const googleMapsPlaceUrl = "https://www.google.com/maps/place/L%E1%BB%9Bp+ti%E1%BA%BFng+Anh+c%C3%B4+Vy/@16.4485604,107.5651109,693m/data=!3m1!1e3!4m14!1m7!3m6!1s0x3141a6afd96e3cb5:0xe354465f8ab597f0!2zMTAxIEtp4buHdCAyNDUgQsO5aSBUaOG7iyBYdcOibiwgVGjhu6d5IFh1w6JuLCBIdeG6vywgVmnhu4d0IE5hbQ!3b1!8m2!3d16.4484853!4d107.5649369!3m5!1s0x236f2c65f8d9d355:0x4759212f0d82a749!8m2!3d16.4484035!4d107.5651237!16s%2Fg%2F11zh28qgsd?entry=ttu&g_ep=EgoyMDI2MDcyMi4wIKXMDSoASAFQAw%3D%3D";
 const googleMapsDirectionsUrl = "https://www.google.com/maps/dir/?api=1&destination=16.4484035%2C107.5651237";
@@ -74,6 +74,8 @@ try {
   for (const sourceCopy of [
     "<h1",
     "Cô Vy dạy tiếng Anh tại Huế",
+    "Đồng hành cùng học sinh lớp 1–9 từ nền tảng đến luyện thi, theo hình thức 1–1 hoặc lớp nhóm.",
+    "Dành cho học sinh tiểu học lớp 1–5. Phát âm, từ vựng, mẫu câu và giao tiếp cơ bản.",
     expectedAddress,
     "Cơ sở duy nhất",
     "Có nhận dạy tại nhà học sinh trong khu vực Huế.",
@@ -89,6 +91,7 @@ try {
     "application/ld+json",
     "LocalBusiness",
   ]) assert(sourceHtml.includes(sourceCopy), `Prerendered HTML is missing: ${sourceCopy}`);
+  assert(!/mầm non/i.test(sourceHtml), "Homepage marketing still claims preschool teaching");
   assert((sourceHtml.match(/<h1\b/g) ?? []).length === 1, "Prerendered Homepage must contain exactly one H1");
   assert(sourceHtml.includes("Cô Vy đồng hành cùng học sinh theo năng lực, tập trung xây nền tảng chắc, củng cố phần còn yếu và giúp các em tự tin hơn khi sử dụng tiếng Anh."), "Condensed teacher introduction is missing");
   for (const testimonial of expectedTestimonials) {
@@ -252,8 +255,10 @@ try {
   for (const type of ["WebSite", "LocalBusiness", "Person"]) assert(graph.some((item) => item["@type"] === type), `${type} structured data is missing`);
   assert(!graph.some((item) => item.review || item.aggregateRating), "Review or rating structured data must not be present");
   assert(!JSON.stringify(graph).includes('"telephone"'), "Structured data still contains telephone semantics");
-  const website = graph.find((item) => item["@type"] === "WebSite");
   const business = graph.find((item) => item["@type"] === "LocalBusiness");
+  assert(business?.description === expectedDescription, "LocalBusiness description does not match the grade 1–9 service scope");
+  assert(!/mầm non/i.test(JSON.stringify(metadata)), "Homepage metadata still claims preschool teaching");
+  const website = graph.find((item) => item["@type"] === "WebSite");
   assert(website.name === "Lớp tiếng Anh cô Vy", "WebSite name is incorrect");
   assert(business.name === "Lớp tiếng Anh cô Vy", "LocalBusiness name is incorrect");
   assert(business.address.streetAddress === "101 Kiệt 245 Bùi Thị Xuân", "LocalBusiness address is incorrect");

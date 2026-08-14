@@ -56,6 +56,22 @@ test("bootstrap JSON-LD stays synchronized with Homepage location content", () =
   assert.equal(business.telephone, undefined);
 });
 
+test("Homepage marketing and SEO describe only the grade 1–9 teaching service", () => {
+  const expectedTitle = "Lớp tiếng Anh cô Vy tại Huế | Tiếng Anh lớp 1–9";
+  const expectedDescription = "Lớp tiếng Anh cô Vy tại Huế dành cho học sinh lớp 1–9, từ tiểu học đến THCS. Có lớp 1–1, lớp nhóm, luyện thi và nhận dạy tại nhà học sinh.";
+  const business = bootstrapStructuredData()["@graph"].find((item) => item["@type"] === "LocalBusiness");
+
+  assert.match(contentSource, /levels: "Tiểu học và THCS · Lớp 1–9"/);
+  assert.match(contentSource, /Dành cho học sinh tiểu học lớp 1–5/);
+  assert.ok(indexHtml.includes(`<title>${expectedTitle}</title>`));
+  assert.ok(indexHtml.includes(`property="og:title" content="${expectedTitle}"`));
+  assert.ok(indexHtml.includes(`name="twitter:title" content="${expectedTitle}"`));
+  assert.ok(indexHtml.includes(`name="description" content="${expectedDescription}"`));
+  assert.equal(business.description, expectedDescription);
+  assert.doesNotMatch(contentSource, /mầm non/i);
+  assert.doesNotMatch(indexHtml, /mầm non/i);
+});
+
 test("Homepage has one bootstrap JSON-LD script and conditional key-mode rendering", () => {
   assert.equal((indexHtml.match(/id="public-home-structured-data"/g) ?? []).length, 1);
   assert.match(homepageSource, /const mapsEmbedApiKey = import\.meta\.env\.VITE_GOOGLE_MAPS_EMBED_API_KEY\?\.trim\(\);/);
