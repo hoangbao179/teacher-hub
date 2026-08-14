@@ -317,29 +317,24 @@ try {
   }
   await page.setViewportSize({ width: 390, height: 844 });
   const quickActions = page.getByTestId("calendar-quick-actions");
-  const [primaryBox, makeupBox, addBox] = await Promise.all([
-    quickActions.getByRole("link", { name: "Ghi nhận buổi học", exact: true }).boundingBox(),
-    quickActions.getByRole("link", { name: "Buổi học bù", exact: true }).boundingBox(),
-    quickActions.getByRole("button", { name: "Thêm lịch", exact: true }).boundingBox(),
-  ]);
-  const primaryGap = makeupBox && primaryBox ? makeupBox.y - primaryBox.y - primaryBox.height : 0;
-  const secondaryGap = addBox && makeupBox ? addBox.x - makeupBox.x - makeupBox.width : 0;
-  if (![primaryBox, makeupBox, addBox].every(Boolean) || primaryBox.width < makeupBox.width + addBox.width
-    || Math.abs(makeupBox.y - addBox.y) > 1 || !(primaryBox.y < makeupBox.y)
-    || primaryGap < 9 || secondaryGap < 11)
-    throw new Error(`Calendar mobile hierarchy is incorrect: ${JSON.stringify({ primaryBox, makeupBox, addBox })}`);
+  const addBox = await quickActions.getByRole("button", { name: "Thêm", exact: true }).boundingBox();
+  if (!addBox || addBox.height < 44 || await quickActions.getByRole("button").count() !== 1 || await quickActions.getByRole("link").count() !== 0)
+    throw new Error(`Calendar mobile primary action is incorrect: ${JSON.stringify(addBox)}`);
   await page.getByRole("heading", { name: "Lịch dự kiến tuần này" }).waitFor();
   await page.getByText(`${await page.getByTestId("calendar-event").count()} buổi dạy`, { exact: true }).waitFor();
   await page.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).waitFor();
-  await page.getByRole("button", { name: "Thêm lịch", exact: true }).first().click();
+  await quickActions.getByRole("button", { name: "Thêm", exact: true }).click();
   await page.getByRole("menuitem", { name: "Lịch dạy tại trường/trung tâm" }).waitFor();
   await page.getByRole("menuitem", { name: "Lịch bận cá nhân" }).waitFor();
+  const manualHref = await page.getByRole("menuitem", { name: "Buổi học ngoài lịch / ghi thủ công" }).getAttribute("href");
+  const makeupHref = await page.getByRole("menuitem", { name: "Buổi học bù" }).getAttribute("href");
+  if (manualHref !== `/admin/lessons/new?date=${weekBefore}` || makeupHref !== `/admin/lessons/new?type=MAKEUP&date=${weekBefore}`)
+    throw new Error(`Calendar add menu lost advanced lesson routes: ${JSON.stringify({ manualHref, makeupHref, weekBefore })}`);
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 1440, height: 900 });
-  const desktopActionBoxes = await Promise.all(["Ghi nhận buổi học", "Buổi học bù"].map((name) => quickActions.getByRole("link", { name, exact: true }).boundingBox()));
-  desktopActionBoxes.push(await quickActions.getByRole("button", { name: "Thêm lịch", exact: true }).boundingBox());
-  if (!desktopActionBoxes.every(Boolean) || desktopActionBoxes.some((box) => Math.abs(box.y - desktopActionBoxes[0].y) > 1) || desktopActionBoxes.reduce((total, box) => total + box.width, 0) > 800)
-    throw new Error(`Calendar quick actions are not compact at 1440px: ${JSON.stringify(desktopActionBoxes)}`);
+  const desktopAddBox = await quickActions.getByRole("button", { name: "Thêm", exact: true }).boundingBox();
+  if (!desktopAddBox || desktopAddBox.width > 180 || desktopAddBox.height < 44)
+    throw new Error(`Calendar quick action is not compact at 1440px: ${JSON.stringify(desktopAddBox)}`);
   await page.setViewportSize({ width: 390, height: 844 });
   const screenshot = path.join(artifactDir, "weekly-calendar-390x844.png");
 

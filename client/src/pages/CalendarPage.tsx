@@ -1,5 +1,5 @@
-import { Add, CalendarMonth, CheckCircleOutlined, ChevronLeft, ChevronRight, FactCheckOutlined, Restore, WarningAmber } from "@mui/icons-material";
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogContent, DialogTitle, IconButton, Menu, MenuItem, Stack, Typography } from "@mui/material";
+import { Add, BusinessOutlined, CalendarMonth, ChevronLeft, ChevronRight, EventOutlined, FactCheckOutlined, PersonOutlined, SchoolOutlined, WarningAmber } from "@mui/icons-material";
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogContent, DialogTitle, Divider, IconButton, Menu, MenuItem, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import type { ReconciliationState, ScheduleConflictWarning, WeekScheduleResponse } from "@teacher/shared";
@@ -7,17 +7,26 @@ import { scheduleApi } from "../api/schedule";
 import { LoadingCards } from "../components/LoadingCards";
 import { addDays, displayDate, weekStart } from "../utils/date";
 import { PageHeader, visibleStatusLabel } from "../components/UiKit";
-import { classColor } from "../utils/classColor";
 import { useHoChiMinhToday } from "../hooks/useHoChiMinhToday";
+
+type CalendarEntryKind = "PRIVATE_CLASS" | "SCHOOL" | "CENTER" | "PERSONAL" | "OTHER";
 
 type CalendarEntry = {
   key: string; date: string; startTime: string; endTime: string; title: string;
   subtitle: string; color: "default" | "primary" | "secondary" | "success" | "warning" | "error" | "info";
   detail?: string;
-  classId?: number;
   href?: string;
   warnings?: ScheduleConflictWarning[];
   combined?: boolean;
+  kind: CalendarEntryKind;
+};
+
+const entryKindMeta: Record<CalendarEntryKind, { label: string; icon: typeof EventOutlined; borderColor: string; backgroundColor: string; textColor: string }> = {
+  PRIVATE_CLASS: { label: "Lớp riêng", icon: EventOutlined, borderColor: "primary.main", backgroundColor: "rgba(15, 118, 110, 0.10)", textColor: "primary.dark" },
+  SCHOOL: { label: "Trường", icon: SchoolOutlined, borderColor: "info.main", backgroundColor: "rgba(2, 136, 209, 0.10)", textColor: "info.dark" },
+  CENTER: { label: "Trung tâm", icon: BusinessOutlined, borderColor: "info.dark", backgroundColor: "rgba(2, 136, 209, 0.06)", textColor: "info.dark" },
+  PERSONAL: { label: "Cá nhân", icon: PersonOutlined, borderColor: "text.secondary", backgroundColor: "rgba(79, 70, 97, 0.08)", textColor: "text.secondary" },
+  OTHER: { label: "Khác", icon: CalendarMonth, borderColor: "text.disabled", backgroundColor: "rgba(79, 70, 97, 0.05)", textColor: "text.secondary" },
 };
 
 const stateLabel: Record<ReconciliationState, string> = {
@@ -110,7 +119,7 @@ function WeeklyScheduleEmptyState({ currentWeek, onAdd }: {
     <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 320, mx: "auto", mt: 0.5 }}>
       Thêm lịch trước để dễ theo dõi buổi học và lịch bận.
     </Typography>
-    <Button variant="outlined" startIcon={<Add />} onClick={onAdd} sx={{ mt: 1.5 }}>Thêm lịch</Button>
+    <Button variant="outlined" startIcon={<Add />} onClick={onAdd} sx={{ mt: 1.5, minHeight: 44 }}>Thêm</Button>
   </Box>;
 }
 
@@ -141,7 +150,7 @@ export function CalendarPage() {
     const values: CalendarEntry[] = [];
     const linkedLessonIds = new Set(data.occurrences.map((item) => item.linkedLessonId).filter((id): id is number => id != null));
     for (const item of data.occurrences) values.push({
-      key: `occurrence-${item.key}`, classId: item.classId, date: item.occurrenceDate, startTime: item.scheduledStartTime,
+      key: `occurrence-${item.key}`, date: item.occurrenceDate, startTime: item.scheduledStartTime,
       endTime: item.scheduledEndTime, title: item.className,
       subtitle: item.combinedGroupId
         ? `Học ghép · ${item.memberClasses.length} lớp · ${item.projectionSource === "RESCHEDULED" && item.state === "UNRECORDED" ? "Lịch thay thế" : stateLabel[item.state]}`
@@ -155,19 +164,24 @@ export function CalendarPage() {
           : `/admin/reconciliation?from=${item.occurrenceDate}&to=${item.occurrenceDate}&state=ALL`,
       warnings: item.conflicts,
       combined: Boolean(item.combinedGroupId),
+      kind: "PRIVATE_CLASS",
     });
     for (const item of data.lessons.filter((lesson) => !linkedLessonIds.has(lesson.id))) values.push({
-      key: `lesson-${item.id}`, classId: item.classId, date: item.date, startTime: item.startTime, endTime: item.endTime,
+      key: `lesson-${item.id}`, date: item.date, startTime: item.startTime, endTime: item.endTime,
       title: item.className, subtitle: `${visibleStatusLabel(item.lessonType)} · ${visibleStatusLabel(item.status)}`,
       color: item.status === "COMPLETED" ? "success" : item.status === "DRAFT" ? "primary" : "default",
       href: `/admin/lessons/${item.id}/edit`,
+      kind: "PRIVATE_CLASS",
     });
     for (const item of data.busyOccurrences) values.push({
       key: `busy-${item.id}-${item.scheduleId ?? "once"}-${item.date}`, date: item.date, startTime: item.startTime, endTime: item.endTime,
       title: item.title,
-      subtitle: item.slotType === "EXTERNAL_CLASS" ? (item.organizationType === "SCHOOL" ? "Trường" : "Trung tâm") : item.slotType === "PERSONAL" ? "Cá nhân" : "Khác",
-      detail: [item.organizationName, item.location].filter(Boolean).join(" · "), color: item.slotType === "EXTERNAL_CLASS" ? "secondary" : "error",
+      subtitle: item.slotType === "EXTERNAL_CLASS" ? "Lịch dạy ngoài" : "Lịch bận",
+      detail: [item.organizationName, item.location].filter(Boolean).join(" · "), color: "default",
       href: `/admin/busy-slots/${item.id}/edit`,
+      kind: item.slotType === "EXTERNAL_CLASS"
+        ? item.organizationType === "SCHOOL" ? "SCHOOL" : "CENTER"
+        : item.slotType === "PERSONAL" ? "PERSONAL" : "OTHER",
     });
     return values.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.key.localeCompare(b.key));
   }, [data]);
@@ -189,15 +203,16 @@ export function CalendarPage() {
     <Menu anchorEl={addMenuAnchor} open={Boolean(addMenuAnchor)} onClose={() => setAddMenuAnchor(null)}>
       <MenuItem component={Link} to="/admin/busy-slots/new?type=EXTERNAL_CLASS" onClick={() => setAddMenuAnchor(null)}>Lịch dạy tại trường/trung tâm</MenuItem>
       <MenuItem component={Link} to="/admin/busy-slots/new" onClick={() => setAddMenuAnchor(null)}>Lịch bận cá nhân</MenuItem>
+      <Divider />
+      <MenuItem component={Link} to={`/admin/lessons/new?date=${from}`} onClick={() => setAddMenuAnchor(null)}>Buổi học ngoài lịch / ghi thủ công</MenuItem>
+      <MenuItem component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`} onClick={() => setAddMenuAnchor(null)}>Buổi học bù</MenuItem>
     </Menu>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", xl: "minmax(360px, 1fr) auto" }, alignItems: { xl: "center" }, gap: { xs: 1.5, md: 2 }, p: { md: 1.5 }, border: { md: 1 }, borderColor: { md: "divider" }, borderRadius: { md: 2.5 }, bgcolor: { md: "background.paper" }, boxShadow: { md: "0 4px 16px rgba(36,29,62,.04)" } }}>
       <Box sx={{ width: "100%", maxWidth: { md: 520, xl: "none" } }}>
         <WeekNavigator from={from} currentWeekStart={currentWeekStart} onChange={changeWeek} />
       </Box>
-      <Box data-testid="calendar-quick-actions" sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(3, max-content)" }, columnGap: { xs: 1.5, md: 1 }, rowGap: { xs: 1.25, md: 1 }, justifyContent: { xs: "stretch", md: "start", xl: "end" } }}>
-        <Button startIcon={<CheckCircleOutlined />} variant="contained" component={Link} to={`/admin/lessons/new?date=${from}`} sx={{ gridColumn: { xs: "1 / -1", md: "auto" }, minHeight: { xs: 48, md: 44 }, "& .MuiButton-startIcon > *": { fontSize: 19 } }}>Ghi nhận buổi học</Button>
-        <Button startIcon={<Restore />} variant="outlined" component={Link} to={`/admin/lessons/new?type=MAKEUP&date=${from}`} sx={{ "& .MuiButton-startIcon > *": { fontSize: 19 } }}>Buổi học bù</Button>
-        <Button startIcon={<Add />} variant="outlined" onClick={(event) => setAddMenuAnchor(event.currentTarget)} sx={{ "& .MuiButton-startIcon > *": { fontSize: 19 } }}>Thêm lịch</Button>
+      <Box data-testid="calendar-quick-actions" sx={{ display: "flex", justifyContent: { xs: "stretch", md: "flex-start", xl: "flex-end" } }}>
+        <Button startIcon={<Add />} variant="contained" onClick={(event) => setAddMenuAnchor(event.currentTarget)} sx={{ width: { xs: "100%", sm: "auto" }, minHeight: 44, "& .MuiButton-startIcon > *": { fontSize: 20 } }}>Thêm</Button>
       </Box>
     </Box>
     {error && <Alert severity="error" action={<Button color="inherit" onClick={() => { setSnapshot(null); setRequestError(null); setReload((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
@@ -213,12 +228,15 @@ export function CalendarPage() {
     <Box data-testid="calendar-day-grid" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 2, alignItems: "start" }}>
     {grouped.map(([date, items]) => <Stack key={date} spacing={1} data-testid="calendar-day">
       <Typography variant="h6" sx={{ mt: 1 }}>{displayDate(date)}</Typography>
-      {items.map((item) => <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: item.classId ? classColor(item.classId).accent : `${item.color}.main` }} data-testid="calendar-event">
-        <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction={item.combined ? "column" : "row"} spacing={1} sx={{ justifyContent: "space-between", alignItems: item.combined ? "flex-start" : "center" }}>
+      {items.map((item) => {
+        const kindMeta = entryKindMeta[item.kind];
+        const KindIcon = kindMeta.icon;
+        return <Card key={item.key} variant="outlined" component={item.href ? Link : "div"} to={item.href} sx={{ textDecoration: "none", color: "inherit", borderLeft: 5, borderLeftColor: kindMeta.borderColor }} data-testid="calendar-event">
+        <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}><Stack direction={{ xs: "column", sm: item.combined ? "column" : "row" }} spacing={1} sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: item.combined ? "flex-start" : "center" } }}>
           <Stack sx={{ minWidth: 0 }}><Typography variant="subtitle1">{item.title}</Typography><Typography variant="body2" color="text.secondary">{item.startTime}–{item.endTime}{item.detail ? ` · ${item.detail}` : ""}</Typography></Stack>
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>{Boolean(item.warnings?.length) && <IconButton size="small" color="warning" aria-label={`Xem ${item.warnings!.length} cảnh báo trùng lịch`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setConflicts(item.warnings!); }}><WarningAmber fontSize="small" /></IconButton>}<Chip size="small" color={item.color} label={item.subtitle} /></Stack>
+          <Stack direction="row" spacing={0.5} useFlexGap sx={{ alignItems: "center", flexWrap: "wrap" }}>{Boolean(item.warnings?.length) && <IconButton size="small" color="warning" aria-label={`Xem ${item.warnings!.length} cảnh báo trùng lịch`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setConflicts(item.warnings!); }}><WarningAmber fontSize="small" /></IconButton>}<Chip size="small" icon={<KindIcon />} label={kindMeta.label} sx={{ bgcolor: kindMeta.backgroundColor, color: kindMeta.textColor, "& .MuiChip-icon": { color: "inherit" } }} /><Chip size="small" color={item.color} variant="outlined" label={item.subtitle} /></Stack>
         </Stack></CardContent>
-      </Card>)}
+      </Card>})}
     </Stack>)}
     </Box>
     <Dialog open={conflicts.length > 0} onClose={() => setConflicts([])} fullWidth maxWidth="xs"><DialogTitle>Chi tiết trùng lịch</DialogTitle><DialogContent><Stack spacing={1.5}>

@@ -20,8 +20,11 @@ evidence từng lần kiểm thử được giữ trong Git history.
   lớp và biên giới `PAID` bất biến.
 - Dashboard `Hôm nay` cho phép tạo/tiếp tục draft lịch thường bằng Simple Mode một
   màn và hoàn tất bằng một thao tác; lesson wizard bốn bước vẫn xử lý tạo thủ công,
-  học bù, học thêm, học ghép và chỉnh sửa nâng cao. Lịch tuần, reconciliation,
-  tuition management và Excel report tiếp tục hoạt động trên desktop/mobile.
+  học bù, học thêm, học ghép và chỉnh sửa nâng cao. Calendar gom lớp riêng, lịch
+  trường/trung tâm, lịch cá nhân, đổi lịch và học bù trên timeline có nhãn rõ; bề
+  mặt chính chỉ giữ menu “Thêm”, còn tạo thủ công, học bù và đối soát tuần vẫn truy
+  cập được như công cụ phụ. Tuition management và Excel report tiếp tục hoạt động
+  trên desktop/mobile.
 - Homepage công khai, Góc học, flashcard/quiz và thư viện sách Global Success với
   prerender/SEO hiện hành; trên mobile thư viện dùng hero gọn, bộ lọc lớp cuộn ngang
   nội bộ và CTA card toàn chiều rộng. Card dùng một hành động mở sách, reader riêng không có

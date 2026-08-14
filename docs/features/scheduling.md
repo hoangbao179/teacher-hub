@@ -47,6 +47,13 @@ API lịch tuần trả cả occurrence đã đối soát, lesson độc lập (
 busy occurrence đã bung theo ngày. Dashboard dùng cùng projection cho lịch hôm
 nay; UI mobile chi tiết nằm trong `daily-operations.md`.
 
+Calendar Simple Mode tiếp tục gom lớp riêng, lịch trường, lịch trung tâm, lịch cá
+nhân, buổi đổi lịch và học bù trên cùng timeline, đồng thời gắn nhãn loại lịch rõ
+ràng. Bề mặt chính chỉ có action “Thêm”; lịch ngoài, buổi ghi thủ công và học bù
+nằm trong menu này. Đối soát tuần vẫn truy cập được bằng action phụ. Việc ghi buổi
+hằng ngày bắt đầu từ Dashboard; lịch trường/trung tâm vẫn chỉ là busy slot có thể
+xem/sửa và không tạo attendance, tuition hay student.
+
 Client theo dõi ngày hiện tại tại `Asia/Ho_Chi_Minh` bằng một timeout tới ngay sau
 00:00 và kiểm tra lại khi tab visible, cửa sổ focus hoặc page resume. Khi ngày đổi,
 Dashboard ẩn snapshot cũ rồi tải lại toàn bộ response; Calendar chỉ chuyển tuần nếu

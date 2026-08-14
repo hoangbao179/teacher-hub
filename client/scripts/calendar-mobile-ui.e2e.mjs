@@ -75,13 +75,20 @@ function weekPayload(from, populatedWeek) {
       lessonType: index % 3 === 1 ? "MAKEUP" : "REGULAR",
     }))
     : [];
+  const busyOccurrences = from === populatedWeek
+    ? [
+      { id: 101, scheduleId: null, slotType: "EXTERNAL_CLASS", organizationType: "SCHOOL", organizationName: "Trường Nguyễn Huệ", title: "Dạy tại trường", date: addDays(from, 1), startTime: "07:00", endTime: "08:00", location: "Huế" },
+      { id: 102, scheduleId: null, slotType: "EXTERNAL_CLASS", organizationType: "CENTER", organizationName: "Trung tâm Anh ngữ", title: "Dạy tại trung tâm", date: addDays(from, 2), startTime: "18:00", endTime: "19:00", location: "Huế" },
+      { id: 103, scheduleId: null, slotType: "PERSONAL", organizationType: null, organizationName: null, title: "Lịch cá nhân", date: addDays(from, 3), startTime: "12:00", endTime: "13:00", location: null },
+    ]
+    : [];
   return {
     data: {
       from,
       to: addDays(from, 6),
       occurrences: [],
       lessons,
-      busyOccurrences: [],
+      busyOccurrences,
       classSchedules: [],
       busySlots: [],
     },
@@ -214,16 +221,16 @@ try {
   await page.getByText("0 buổi dạy", { exact: true }).waitFor();
   await page.getByText("Tuần này chưa có lịch dự kiến", { exact: true }).waitFor();
 
-  const currentHref = await page.getByRole("link", { name: "Ghi nhận buổi học", exact: true }).getAttribute("href");
-  const makeupHref = await page.getByRole("link", { name: "Buổi học bù", exact: true }).getAttribute("href");
   const reconciliationHref = await page.getByRole("link", { name: "Kiểm tra lịch tuần", exact: true }).getAttribute("href");
-  assert(currentHref === `/admin/lessons/new?date=${currentWeek}`, `Primary action changed: ${currentHref}`);
-  assert(makeupHref === `/admin/lessons/new?type=MAKEUP&date=${currentWeek}`, `Makeup action changed: ${makeupHref}`);
   assert(reconciliationHref === `/admin/reconciliation?from=${currentWeek}&to=${addDays(currentWeek, 6)}&state=ALL`, `Reconciliation action changed: ${reconciliationHref}`);
 
-  await page.getByTestId("weekly-calendar-empty-state").getByRole("button", { name: "Thêm lịch", exact: true }).click();
+  await page.getByTestId("weekly-calendar-empty-state").getByRole("button", { name: "Thêm", exact: true }).click();
   await page.getByRole("menuitem", { name: "Lịch dạy tại trường/trung tâm" }).waitFor();
   await page.getByRole("menuitem", { name: "Lịch bận cá nhân" }).waitFor();
+  const currentHref = await page.getByRole("menuitem", { name: "Buổi học ngoài lịch / ghi thủ công" }).getAttribute("href");
+  const makeupHref = await page.getByRole("menuitem", { name: "Buổi học bù" }).getAttribute("href");
+  assert(currentHref === `/admin/lessons/new?date=${currentWeek}`, `Manual lesson action changed: ${currentHref}`);
+  assert(makeupHref === `/admin/lessons/new?type=MAKEUP&date=${currentWeek}`, `Makeup action changed: ${makeupHref}`);
   await page.keyboard.press("Escape");
   await page.mouse.click(2, 2);
   await page.screenshot({ path: path.join(screenshotDir, "calendar-mobile-empty-390x844.png") });
@@ -231,8 +238,11 @@ try {
   await page.getByLabel("Tuần trước").click();
   await page.getByRole("button", { name: "Về tuần hiện tại" }).waitFor();
   await page.getByRole("heading", { name: "Lịch dự kiến", exact: true }).waitFor();
-  await page.getByText("10 buổi dạy", { exact: true }).waitFor();
-  assert(await page.getByTestId("calendar-event").count() === 10, "Rendered event count and badge diverged");
+  await page.getByText("13 buổi dạy", { exact: true }).waitFor();
+  assert(await page.getByTestId("calendar-event").count() === 13, "Rendered event count and badge diverged");
+  for (const kind of ["Lớp riêng", "Trường", "Trung tâm", "Cá nhân"]) {
+    await page.getByText(kind, { exact: true }).first().waitFor();
+  }
   for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }, { width: 412, height: 915 }]) {
     await assertNoHorizontalScroll(page, viewport);
   }
