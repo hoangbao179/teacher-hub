@@ -31,7 +31,7 @@ const issueLabels: Record<LegacyImportIssueCode, string> = {
   NEAR_LESSON_MATCH: "Có lesson gần giống", LESSON_CONTENT_CONFLICT: "Nội dung lesson đang khác",
   TIME_MAPPING_REQUIRED: "Cần xác nhận cách hiểu khung giờ",
   TUITION_DATE_CORRECTION: "Ngày học phí có khả năng nhập nhầm",
-  TUITION_ONLY_GROUP: "Nhóm buổi chỉ có trong sheet Học phí",
+  TUITION_ONLY_GROUP: "Buổi đã có học phí nhưng chưa có nhận xét",
   PAYMENT_BLOCK_REVIEW_REQUIRED: "Trạng thái học phí của block cần xác nhận",
 };
 const skipLabels: Record<LegacyImportSkipReason, string> = {
@@ -128,7 +128,7 @@ export function LegacyImportPage() {
         next.push({ ...base, action: "CONFIRM_PAYMENT", resolvedValue: draft.payment });
       else if (issueCode === "TUITION_ONLY_GROUP") {
         const group = preview?.minimalLessonGroups.find((item) => item.id === row.normalizedValues.groupId);
-        if (!group) { setError("Không tìm thấy nhóm lesson tối giản trong preview."); return null; }
+        if (!group) { setError("Không tìm thấy nhóm buổi học trong bản xem trước."); return null; }
         next.push({ ...base, action: "CREATE_MINIMAL_LEGACY_LESSONS", resolvedValue: {
           groupId: group.id, tuitionSourceRows: group.tuitionSourceRows } });
       }
@@ -199,6 +199,7 @@ export function LegacyImportPage() {
       skipped: statuses.filter((item) => item === "SKIPPED").length };
   })();
   const unresolved = summary.review + summary.blocked;
+  const tuitionOnlyLessonCount = preview?.minimalLessonGroups.reduce((total, group) => total + group.lessonCount, 0) ?? 0;
   const visiblePeriods = periods.flatMap((period, index) => {
     const row = (preview?.rows ?? []).find((item) => item.rowType === "ACADEMIC_PERIOD" && item.sourceRow === index + 1);
     return row && isLegacyImportRowVisible(row, onlyNeedsReview, decisions) ? [{ period, index, row }] : [];
@@ -249,7 +250,8 @@ export function LegacyImportPage() {
         <Typography variant="h6">Tổng hợp kiểm tra</Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", sm: "repeat(5,minmax(0,1fr))" }, gap: 1 }}>
           {[["Buổi lịch sử", preview.summary.totalLessons], ["Đợt đã thanh toán", preview.summary.paidCycleCount],
-            ["Buổi học thêm miễn phí", preview.summary.freeLessonCount], ["Đợt hiện tại", `${preview.summary.currentCycleProgress}/8`],
+            ["Buổi ghi rõ FREE", preview.summary.freeLessonCount], ["Chờ bổ sung nhận xét", tuitionOnlyLessonCount],
+            ["Đợt hiện tại", `${preview.summary.currentCycleProgress}/8`],
             ["Cần xử lý", summary.review], ["Bị chặn", summary.blocked], ["Đã xử lý", summary.resolved],
             ["Bỏ qua", summary.skipped]]
             .map(([label, value]) => <Box key={label} sx={{ p: 1.25, bgcolor: "background.default", borderRadius: 1.5, minWidth: 0 }}>
@@ -260,7 +262,7 @@ export function LegacyImportPage() {
         {preview.tuitionCycles.filter((cycle) => cycle.paymentState === "PAID_CLEAR").map((cycle) =>
           <Typography key={cycle.cycleNumber} variant="body2">Đợt {cycle.cycleNumber}: Đã thu · Không rõ ngày</Typography>)}
         {preview.summary.freeLessonCount > 0 && <Alert severity="info">
-          Hệ thống nhận diện {preview.summary.freeLessonCount} buổi học thêm sau đợt đã thanh toán và sẽ lưu là miễn phí.
+          Có {preview.summary.freeLessonCount} buổi được workbook ghi rõ FREE; các buổi này không tính học phí.
         </Alert>}
       </Stack></CardContent></Card>
 
@@ -341,8 +343,9 @@ export function LegacyImportPage() {
                 label={status === "VALID" ? "Hợp lệ" : status === "RESOLVED" ? "Đã xử lý" : status === "SKIPPED" ? "Đã bỏ qua" : status === "BLOCKED" ? "Bị chặn" : "Cần xử lý"} sx={{ alignSelf: "flex-start" }} />
             </Stack>
             <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap" }}>{row.issueCodes.map((issue) => <Chip key={issue} size="small" variant="outlined" label={issueLabels[issue]} />)}</Stack>
-            {row.rowType === "TUITION_GROUP" && row.normalizedValues.requiresPaidCyclePreservation === true &&
-              <Alert severity="info">Các buổi này chỉ có trong sheet Học phí và thuộc chu kỳ đã thanh toán. Hệ thống sẽ tạo lesson tối giản để giữ đủ 8 buổi.</Alert>}
+            {row.rowType === "TUITION_GROUP" && <Alert severity="info">
+              Có {String(row.rawValues.affectedLessonCount)} buổi được ghi trong sheet Học phí nhưng chưa xuất hiện ở Quá trình học tập. Hệ thống sẽ tạo buổi học với ngày, giờ và học phí; nội dung, bài tập và nhận xét để trống.
+            </Alert>}
             <Box component="details"><Typography component="summary" variant="body2" sx={{ cursor: "pointer" }}>Xem chi tiết</Typography>
               <Stack spacing={0.5} sx={{ mt: 1 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>Giá trị trong workbook: {JSON.stringify(row.rawValues)}</Typography>
@@ -393,7 +396,7 @@ export function LegacyImportPage() {
               {draft.skipReason === "OTHER" && <TextField label="Lý do khác" value={draft.otherReason} onChange={(event) => setDraft(row, { otherReason: event.target.value })} />}
             </Box>}<Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button variant="contained" onClick={() => resolveRow(row)}>{row.rowType === "TUITION_GROUP"
-                ? `Tạo ${String(row.rawValues.affectedLessonCount)} lesson tối giản` : "Xác nhận dòng này"}</Button>
+                ? `Tạo ${String(row.rawValues.affectedLessonCount)} buổi học` : "Xác nhận dòng này"}</Button>
               {equivalentCount > 1 && <Button variant="outlined" onClick={() => resolveRow(row, true)}>Áp dụng cho {equivalentCount} dòng cùng trường hợp</Button>}
               {row.supportedActions.includes("SKIP") && <Button color="inherit" onClick={() => skipRow(row)}>Bỏ qua dòng</Button>}
             </Stack></>}

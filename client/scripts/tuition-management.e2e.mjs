@@ -167,6 +167,7 @@ try {
 
   await page.goto(`http://127.0.0.1:5176/admin/students/${dueStudent.id}`);
   await page.getByRole("heading", { name: dueStudentName }).waitFor();
+  await page.getByText("Công cụ nâng cao", { exact: true }).click();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Xuất báo cáo Excel" }).click();
   const download = await downloadPromise;
@@ -238,6 +239,7 @@ try {
   await noHorizontalScroll(page);
 
   await page.goto(`http://127.0.0.1:5176/admin/students/${dueStudent.id}`);
+  await page.getByText("Công cụ nâng cao", { exact: true }).click();
   await page.getByRole("button", { name: "Thu học phí trước" }).click();
   await page.getByLabel("Phương thức").click(); await page.getByRole("option", { name: "Chuyển khoản" }).click();
   await page.getByRole("button", { name: "Xác nhận thu trước" }).click();

@@ -101,6 +101,7 @@ async function makeWorkbook(studentName) {
 try {
   run("node", ["scripts/prepare-test-db.cjs"], path.join(root, "server"));
   run("npm", ["run", "db:migrate"], path.join(root, "server"));
+  run("npm", ["run", "db:reset:dev"], path.join(root, "server"));
   run("npm", ["run", "db:bootstrap-admin"], path.join(root, "server"));
   run("npm", ["run", "db:seed:dev"], path.join(root, "server"));
   start([path.join(root, "node_modules/tsx/dist/cli.mjs"), "src/index.ts"], path.join(root, "server"));
@@ -129,18 +130,20 @@ try {
   const student = { id: (await response.json()).data.id, fullName };
   await makeWorkbook(student.fullName);
   await page.goto(`${origin}/admin/students/${student.id}`);
+  await page.getByText("Công cụ nâng cao", { exact: true }).click();
   await page.getByRole("link", { name: "Import lịch sử" }).click();
   await page.waitForURL(`**/admin/students/${student.id}/legacy-import`);
   const studentNav = page.getByTestId("mobile-navigation").getByRole("button", { name: "Học sinh" });
   if (!(await studentNav.getAttribute("class"))?.includes("Mui-selected")) throw new Error("Student navigation is not active on legacy import route");
   await page.locator('input[type="file"]').setInputFiles({ name: "Synthetic Grade 9.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: fs.readFileSync(workbookPath) });
   await page.getByRole("heading", { name: "Tổng hợp kiểm tra" }).waitFor();
-  await page.getByText("2 buổi học thêm sau đợt đã thanh toán").waitFor();
+  await page.getByText("Buổi ghi rõ FREE").waitFor();
+  await page.getByText("Chờ bổ sung nhận xét").waitFor();
   await page.getByText("Đợt 1: Đã thu · Không rõ ngày").waitFor();
   if (await page.getByText("Sự kiện thanh toán cần xác nhận").count()) throw new Error("Clear PAID block created a payment review card");
-  await page.getByText("Các buổi này chỉ có trong sheet Học phí và thuộc chu kỳ đã thanh toán.", { exact: false }).waitFor();
+  await page.getByText("được ghi trong sheet Học phí nhưng chưa xuất hiện ở Quá trình học tập", { exact: false }).waitFor();
   if (await page.getByRole("button", { name: "Bỏ qua dòng" }).count()) throw new Error("Paid tuition-only group can still be skipped");
-  await page.getByRole("button", { name: "Tạo 1 lesson tối giản" }).click();
+  await page.getByRole("button", { name: "Tạo 1 buổi học" }).click();
   if (await page.getByLabel("Khối").count() !== 1) throw new Error("Workbook was split into multiple automatic grade periods");
   if (!(await page.getByLabel("Khối").textContent())?.includes("Lớp 9")) throw new Error("Workbook Grade 9 context was not proposed");
   await page.getByLabel("Chỉ xem mục cần xử lý").check();

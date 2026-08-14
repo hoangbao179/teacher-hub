@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { URL } from "node:url";
 import test from "node:test";
 import {
   getEquivalentImportRows,
@@ -87,4 +89,12 @@ test("only-needs-review filter hides resolved lesson and time-mapping cards", ()
   assert.equal(isLegacyImportRowVisible(lesson, true, decisions), false);
   assert.equal(isLegacyImportRowVisible(mapping, true, decisions), false);
   assert.equal(isLegacyImportRowVisible(mapping, false, decisions), true);
+});
+
+test("tuition-only review copy describes valid lessons awaiting comments", async () => {
+  const source = await readFile(new URL("../src/pages/LegacyImportPage.tsx", import.meta.url), "utf8");
+  assert.match(source, /Buổi đã có học phí nhưng chưa có nhận xét/);
+  assert.match(source, /Tạo \$\{String\(row\.rawValues\.affectedLessonCount\)\} buổi học/);
+  assert.doesNotMatch(source, /sau đợt đã thanh toán và sẽ lưu là miễn phí/);
+  assert.doesNotMatch(source, /lesson tối giản/);
 });

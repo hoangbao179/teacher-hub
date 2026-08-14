@@ -21,6 +21,7 @@ const monthNames: Record<string, number> = {
 };
 
 function iso(year: number, month: number, day: number): string | null {
+  if (year < 2000 || year > 2100) return null;
   const value = new Date(Date.UTC(year, month - 1, day));
   if (value.getUTCFullYear() !== year || value.getUTCMonth() !== month - 1 || value.getUTCDate() !== day) return null;
   return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;

@@ -20,6 +20,7 @@ function periodId(date: string): string {
 
 interface AnalyzedTime { start: string; end: string; needsConfirmation: boolean }
 interface TuitionTime { start: string | null; end: string | null; mappingId: string | null }
+interface LocalTimeSuggestion { start: string; end: string; contextKey: string }
 
 function clock(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
@@ -36,9 +37,8 @@ export function normalizeLegacyTime(value: string | null): string | null {
 
 function analyzedLessonTime(value: string | null): AnalyzedTime | null {
   if (!value) return null;
-  const match = normalizeLegacyTime(value)?.match(/^(\d{1,2})(?:h(\d{1,2})?|[:.](\d{1,2}))\s*(am|pm)?\s*-\s*(\d{1,2})(?:h(\d{1,2})?|[:.](\d{1,2}))\s*(am|pm)?$/i);
+  const match = normalizeLegacyTime(value)?.match(/^(\d{1,2})(?:(?:h(\d{1,2})?)|[:.](\d{1,2}))?\s*(am|pm)?\s*-\s*(\d{1,2})(?:(?:h(\d{1,2})?)|[:.](\d{1,2}))?\s*(am|pm)?$/i);
   if (!match) return null;
-  if ((match[2]?.length === 1 && match[2] !== "0") || (match[6]?.length === 1 && match[6] !== "0")) return null;
   let startHour = Number(match[1]);
   const startMinute = Number(match[2] ?? match[3] ?? 0);
   let endHour = Number(match[5]);
@@ -46,6 +46,7 @@ function analyzedLessonTime(value: string | null): AnalyzedTime | null {
   const startMeridiem = match[4]?.toLowerCase();
   const endMeridiem = match[8]?.toLowerCase();
   if (startHour > 23 || endHour > 23 || startMinute > 59 || endMinute > 59) return null;
+  if (startMeridiem && startHour > 12 || endMeridiem && endHour > 12) return null;
   if (startMeridiem) startHour = startHour % 12 + (startMeridiem === "pm" ? 12 : 0);
   if (endMeridiem) endHour = endHour % 12 + (endMeridiem === "pm" ? 12 : 0);
   const needsConfirmation = !startMeridiem && !endMeridiem && startHour >= 1 && startHour <= 7;
@@ -53,7 +54,8 @@ function analyzedLessonTime(value: string | null): AnalyzedTime | null {
     startHour += 12;
     if (endHour >= 1 && endHour <= 11) endHour += 12;
   }
-  if (endHour * 60 + endMinute <= startHour * 60 + startMinute) return null;
+  const durationMinutes = endHour * 60 + endMinute - startHour * 60 - startMinute;
+  if (durationMinutes <= 0 || durationMinutes > 6 * 60) return null;
   return { start: clock(startHour, startMinute), end: clock(endHour, endMinute), needsConfirmation };
 }
 
@@ -110,30 +112,50 @@ export class LegacyReconciliationEngine {
     const timeMappings: LegacyTimeMappingPreview[] = [];
     const mappingByKey = new Map<string, LegacyTimeMappingPreview>();
     const timeByTuitionRow = new Map<number, TuitionTime>();
-    const validTimesByPeriod = new Map<string, Array<{ start: string; end: string }>>();
+    const validTimeRows: Array<{ sourceRow: number; date: string; blockId: string; start: string; end: string }> = [];
     for (const row of parsed.tuitionRows) {
       const analyzed = analyzedLessonTime(row.time);
       if (!analyzed) continue;
-      const item = { start: analyzed.start, end: analyzed.end };
-      const period = periodId(effectiveDate(row));
-      validTimesByPeriod.set(period, [...(validTimesByPeriod.get(period) ?? []), item]);
+      validTimeRows.push({ sourceRow: row.sourceRow, date: effectiveDate(row), blockId: row.blockId,
+        start: analyzed.start, end: analyzed.end });
     }
-    const dominantTime = (date: string): { start: string; end: string } | null => {
-      const counts = new Map<string, number>();
-      for (const time of validTimesByPeriod.get(periodId(date)) ?? []) {
-        const value = `${time.start}|${time.end}`;
-        counts.set(value, (counts.get(value) ?? 0) + 1);
+    const chooseLocalTime = (
+      before: typeof validTimeRows[number] | undefined,
+      after: typeof validTimeRows[number] | undefined,
+      targetDate: string,
+      contextPrefix: string,
+    ): LocalTimeSuggestion | null => {
+      const beforeDistance = before ? Math.abs(daysBetween(targetDate, before.date)) : Infinity;
+      const afterDistance = after ? Math.abs(daysBetween(after.date, targetDate)) : Infinity;
+      if (before && after) {
+        if (before.start === after.start && before.end === after.end && beforeDistance <= 31 && afterDistance <= 31) {
+          return { start: before.start, end: before.end,
+            contextKey: `${contextPrefix}:${before.sourceRow}-${after.sourceRow}` };
+        }
+        return null;
       }
-      const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-      if (!ranked[0] || (ranked[1] && ranked[1][1] === ranked[0][1])) return null;
-      const [start, end] = ranked[0][0].split("|");
-      return { start, end };
+      const nearest = beforeDistance <= afterDistance ? before : after;
+      const distance = Math.min(beforeDistance, afterDistance);
+      return nearest && distance <= 14 ? { start: nearest.start, end: nearest.end,
+        contextKey: `${contextPrefix}:${nearest.sourceRow}` } : null;
     };
-    const ensureMapping = (row: ParsedLegacyTuitionRow, proposed: { start: string; end: string } | null,
-      reason: LegacyTimeMappingPreview["reason"]): string => {
+    const localTimeForTuition = (row: ParsedLegacyTuitionRow): LocalTimeSuggestion | null => {
+      const candidates = validTimeRows.filter((item) => item.blockId === row.blockId && item.sourceRow !== row.sourceRow);
+      const before = candidates.filter((item) => item.sourceRow < row.sourceRow).at(-1);
+      const after = candidates.find((item) => item.sourceRow > row.sourceRow);
+      return chooseLocalTime(before, after, effectiveDate(row), `tuition:${row.blockId}`);
+    };
+    const localTimeForDate = (date: string): LocalTimeSuggestion | null => {
+      const ordered = [...validTimeRows].sort((left, right) => left.date.localeCompare(right.date) || left.sourceRow - right.sourceRow);
+      const before = ordered.filter((item) => item.date <= date).at(-1);
+      const after = ordered.find((item) => item.date >= date);
+      return chooseLocalTime(before, after, date, `learning:${date}`);
+    };
+    const ensureMapping = (row: ParsedLegacyTuitionRow, proposed: LocalTimeSuggestion | AnalyzedTime | null,
+      reason: LegacyTimeMappingPreview["reason"], contextKey: string): string => {
       const normalizedRaw = normalizeLegacyTime(row.time) ?? "";
       const rawKey = reason === "TYPO_SUGGESTION" ? normalizedRaw.toLocaleLowerCase("vi") : "";
-      const groupKey = `${periodId(effectiveDate(row))}\u0000${proposed?.start ?? ""}\u0000${proposed?.end ?? ""}\u0000${reason}\u0000${rawKey}`;
+      const groupKey = `${contextKey}\u0000${proposed?.start ?? ""}\u0000${proposed?.end ?? ""}\u0000${reason}\u0000${rawKey}`;
       const existing = mappingByKey.get(groupKey);
       if (existing) {
         const raw = normalizeLegacyTime(row.time) ?? "";
@@ -154,12 +176,13 @@ export class LegacyReconciliationEngine {
     for (const row of parsed.tuitionRows) {
       const analyzed = analyzedLessonTime(row.time);
       if (analyzed) {
-        const mappingId = analyzed.needsConfirmation ? ensureMapping(row, analyzed, "AMBIGUOUS_12H") : null;
+        const mappingId = analyzed.needsConfirmation ? ensureMapping(row, analyzed, "AMBIGUOUS_12H",
+          `ambiguous:${row.blockId}:${normalizeLegacyTime(row.time)?.toLocaleLowerCase("vi") ?? ""}`) : null;
         timeByTuitionRow.set(row.sourceRow, { start: analyzed.start, end: analyzed.end, mappingId });
       } else {
-        const proposed = dominantTime(effectiveDate(row));
+        const proposed = localTimeForTuition(row);
         timeByTuitionRow.set(row.sourceRow, { start: proposed?.start ?? null, end: proposed?.end ?? null,
-          mappingId: ensureMapping(row, proposed, "TYPO_SUGGESTION") });
+          mappingId: ensureMapping(row, proposed, "TYPO_SUGGESTION", proposed?.contextKey ?? `unresolved:${row.blockId}:${row.sourceRow}`) });
       }
     }
 
@@ -243,13 +266,11 @@ export class LegacyReconciliationEngine {
       };
     });
 
-    // Learning-only rows without time are grouped by academic period instead of becoming one blocked card per row.
+    // Learning-only rows without time only share a confirmation when their nearby anchors are equivalent.
     for (const lesson of lessons.filter((item) => !item.scheduledStartTime && !item.timeMappingId && item.normalizedDate)) {
-      const proposed = dominantTime(lesson.normalizedDate!);
-      const groupKey = `${periodId(lesson.normalizedDate!)}\u0000${proposed?.start ?? ""}\u0000${proposed?.end ?? ""}\u0000TYPO_SUGGESTION\u0000`;
-      let mapping = timeMappings.find((item) => item.reason === "AMBIGUOUS_12H" &&
-        item.periodId === periodId(lesson.normalizedDate!) && item.proposedStartTime === (proposed?.start ?? null) &&
-        item.proposedEndTime === (proposed?.end ?? null)) ?? mappingByKey.get(groupKey);
+      const proposed = localTimeForDate(lesson.normalizedDate!);
+      const groupKey = `${proposed?.contextKey ?? `unresolved-learning:${lesson.sourceRow}`}\u0000${proposed?.start ?? ""}\u0000${proposed?.end ?? ""}\u0000TYPO_SUGGESTION\u0000`;
+      let mapping = mappingByKey.get(groupKey);
       if (!mapping) {
         mapping = { id: `learning-time-${periodId(lesson.normalizedDate!).slice(7)}-${lesson.sourceRow}`,
           periodId: periodId(lesson.normalizedDate!), rawValues: [], proposedStartTime: proposed?.start ?? null,
@@ -271,7 +292,7 @@ export class LegacyReconciliationEngine {
     const matchByTuitionRow = new Map(lessons.filter((lesson) => lesson.matchedTuitionSourceRow != null)
       .map((lesson) => [lesson.matchedTuitionSourceRow!, lesson.sourceRow]));
     const clearPaidBlockIds = new Set(parsed.tuitionBlocks.filter((block) => {
-      if (block.paidMarkerSourceRow == null || block.paidCandidateSourceRows.length !== 8) return false;
+      if (block.paidMarkerSourceRow == null || block.unpaidMarkerSourceRow != null || block.paidCandidateSourceRows.length !== 8) return false;
       return block.paidCandidateSourceRows.every((sourceRow) => {
         const tuition = parsed.tuitionRows.find((item) => item.sourceRow === sourceRow);
         const lesson = lessons.find((item) => item.matchedTuitionSourceRow === sourceRow);
@@ -280,22 +301,15 @@ export class LegacyReconciliationEngine {
           (lesson?.normalizedDate && lesson.attendanceStatus === "PRESENT" || time?.mappingId || time?.start && time?.end));
       });
     }).map((block) => block.id));
-    const clearPostPaidRows = new Set(parsed.tuitionBlocks.filter((block) => clearPaidBlockIds.has(block.id))
-      .flatMap((block) => block.postPaidSourceRows));
-    for (const lesson of lessons) if (lesson.matchedTuitionSourceRow && clearPostPaidRows.has(lesson.matchedTuitionSourceRow)) {
-      lesson.attendanceStatus = "FREE"; lesson.billingType = "NONE";
-    }
-
     const tuitionRows: LegacyTuitionRowPreview[] = parsed.tuitionRows.map((row) => ({
       id: `tuition-${row.sourceRow}`, date: row.date, suggestedDate: dateCorrections.get(row.sourceRow) ?? null,
       time: row.time, paidMarker: row.paidMarker, offMarker: row.offMarker, kind: row.kind,
       sourceSheet: "Học phí", sourceRow: row.sourceRow,
       reconciliationStatus: usedTuition.has(row.sourceRow) ? "MATCHED" : "TUITION_ONLY_NEEDS_REVIEW",
       matchedLearningSourceRow: matchByTuitionRow.get(row.sourceRow) ?? null,
-      blockId: row.blockId, postPaidFree: clearPostPaidRows.has(row.sourceRow),
+      blockId: row.blockId, postPaidFree: false,
     }));
-    const unmatchedBillable = tuitionRows.filter((row) => row.kind === "BILLABLE" && row.reconciliationStatus !== "MATCHED" &&
-      !row.postPaidFree);
+    const unmatchedBillable = tuitionRows.filter((row) => row.kind === "BILLABLE" && row.reconciliationStatus !== "MATCHED");
     const minimalLessonGroups: LegacyMinimalLessonGroupPreview[] = unmatchedBillable.length ? [{
       id: "tuition-only-billable", tuitionSourceRows: unmatchedBillable.map((row) => row.sourceRow),
       lessonCount: unmatchedBillable.length,
@@ -309,16 +323,17 @@ export class LegacyReconciliationEngine {
     for (const block of parsed.tuitionBlocks) {
       const billableRows = block.tuitionSourceRows.filter((sourceRow) => {
         const row = parsed.tuitionRows.find((item) => item.sourceRow === sourceRow);
-        return row?.kind === "BILLABLE" && !clearPostPaidRows.has(sourceRow);
+        return row?.kind === "BILLABLE";
       });
-      const cycleRows = clearPaidBlockIds.has(block.id) ? block.paidCandidateSourceRows : billableRows;
+      const cycleRows = billableRows;
+      const conflictingPaymentMarkers = block.paidMarkerSourceRow != null && block.unpaidMarkerSourceRow != null;
       for (let offset = 0; offset < cycleRows.length; offset += 8) {
         const sourceRows = cycleRows.slice(offset, offset + 8);
         const lessonSourceRows = sourceRows.map((sourceRow) => matchByTuitionRow.get(sourceRow)).filter((row): row is number => Boolean(row));
         const tuitionOnlyRows = sourceRows.filter((sourceRow) => !matchByTuitionRow.has(sourceRow));
         const paidClear = offset === 0 && sourceRows.length === 8 && clearPaidBlockIds.has(block.id);
-        const needsReview = sourceRows.length === 8 && block.paidMarkerSourceRow == null ||
-          block.paidMarkerSourceRow != null && !clearPaidBlockIds.has(block.id);
+        const needsReview = conflictingPaymentMarkers || block.paidMarkerSourceRow != null && !clearPaidBlockIds.has(block.id) ||
+          sourceRows.length === 8 && block.paidMarkerSourceRow == null && block.unpaidMarkerSourceRow == null;
         const paymentState = paidClear ? "PAID_CLEAR" as const : needsReview ? "NEEDS_REVIEW" as const : "UNPAID" as const;
         const dates = sourceRows.map((sourceRow) => effectiveDate(parsed.tuitionRows.find((row) => row.sourceRow === sourceRow)!));
         tuitionCycles.push({ cycleNumber: tuitionCycles.length + 1, blockId: block.id, tuitionSourceRows: sourceRows,
@@ -327,12 +342,12 @@ export class LegacyReconciliationEngine {
         tuitionCyclePlans.push({ blockId: block.id, lessonSourceRows, tuitionSourceRows: tuitionOnlyRows,
           attendanceKind: "BILLABLE", paymentState });
       }
-      if (block.paidMarkerSourceRow != null && !clearPaidBlockIds.has(block.id)) paymentEvents.push({
-        id: `payment-${block.id}`, date: null, sourceRow: block.paidMarkerSourceRow,
+      if (conflictingPaymentMarkers || block.paidMarkerSourceRow != null && !clearPaidBlockIds.has(block.id)) paymentEvents.push({
+        id: `payment-${block.id}`, date: null, sourceRow: block.paidMarkerSourceRow ?? block.unpaidMarkerSourceRow!,
         recommendedResolution: "UNDETERMINED", resolutionOptions: ["EXCLUDE_FINANCE"], requiresReview: true,
         blockId: block.id, kind: "INCOMPLETE_PAID_BLOCK", billableCount: billableRows.length,
       });
-      else if (block.paidMarkerSourceRow == null && billableRows.length >= 8) paymentEvents.push({
+      else if (block.paidMarkerSourceRow == null && block.unpaidMarkerSourceRow == null && billableRows.length >= 8) paymentEvents.push({
         id: `payment-${block.id}`, date: null, sourceRow: block.sourceEndRow,
         recommendedResolution: "UNDETERMINED", resolutionOptions: ["PAID_UNDATED", "UNPAID", "EXCLUDE_FINANCE"],
         requiresReview: true, blockId: block.id, kind: "MISSING_PAYMENT_STATUS", billableCount: 8,

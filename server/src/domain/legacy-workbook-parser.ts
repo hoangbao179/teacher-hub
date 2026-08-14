@@ -35,9 +35,9 @@ export interface ParsedLegacyTuitionBlock {
   sourceStartRow: number;
   sourceEndRow: number;
   paidMarkerSourceRow: number | null;
+  unpaidMarkerSourceRow: number | null;
   tuitionSourceRows: number[];
   paidCandidateSourceRows: number[];
-  postPaidSourceRows: number[];
 }
 
 export interface ParsedLegacyWorkbook {
@@ -115,15 +115,19 @@ export class LegacyWorkbookParser {
       const nextHeader = headerRows[blockIndex + 1] ?? tuition.rowCount + 1;
       let sourceEndRow = nextHeader - 1;
       for (let rowNumber = headerRow + 1; rowNumber < nextHeader; rowNumber += 1) {
-        if (key(plainText(tuition.getRow(rowNumber).getCell(1))) === "TOTAL") { sourceEndRow = rowNumber; break; }
+        if (key(plainText(tuition.getRow(rowNumber).getCell(1))).startsWith("TOTAL")) { sourceEndRow = rowNumber; break; }
       }
       const id = `tuition-block-${headerRow}`;
       let paidMarkerSourceRow: number | null = null;
+      let unpaidMarkerSourceRow: number | null = null;
       const blockRows: ParsedLegacyTuitionRow[] = [];
       for (let rowNumber = headerRow + 1; rowNumber <= sourceEndRow; rowNumber += 1) {
         const row = tuition.getRow(rowNumber);
-        const paidMarker = /\bPAID\b/i.test(Array.from({ length: 7 }, (_, column) => plainText(row.getCell(column + 1))).join(" "));
+        const markerText = Array.from({ length: 7 }, (_, column) => plainText(row.getCell(column + 1))).join(" ");
+        const paidMarker = /\bPAID\b/i.test(markerText);
+        const unpaidMarker = /\bUNPAID\b/i.test(markerText);
         if (paidMarker && paidMarkerSourceRow == null) paidMarkerSourceRow = rowNumber;
+        if (unpaidMarker && unpaidMarkerSourceRow == null) unpaidMarkerSourceRow = rowNumber;
         const dateCell = row.getCell(3);
         const date = this.dates.normalizeFullDate(dateCell.value, plainText(dateCell));
         if (!date) continue;
@@ -138,11 +142,9 @@ export class LegacyWorkbookParser {
       const paidCandidateSourceRows = paidMarkerSourceRow == null ? []
         : blockRows.filter((row) => row.sourceRow <= paidMarkerSourceRow! && row.kind === "BILLABLE")
           .map((row) => row.sourceRow);
-      const postPaidSourceRows = paidMarkerSourceRow == null ? []
-        : tuitionSourceRows.filter((row) => row > paidMarkerSourceRow!);
       tuitionRows.push(...blockRows);
-      tuitionBlocks.push({ id, sourceStartRow: headerRow, sourceEndRow, paidMarkerSourceRow,
-        tuitionSourceRows, paidCandidateSourceRows, postPaidSourceRows });
+      tuitionBlocks.push({ id, sourceStartRow: headerRow, sourceEndRow, paidMarkerSourceRow, unpaidMarkerSourceRow,
+        tuitionSourceRows, paidCandidateSourceRows });
       if (paidMarkerSourceRow != null) paymentEvents.push({ sourceRow: paidMarkerSourceRow, date: null });
     }
 

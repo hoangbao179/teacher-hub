@@ -48,6 +48,11 @@ export class LegacyImportPreview {
     const fromDate = dates[0];
     const toDate = dates.at(-1);
     const gradeLevel = gradeFromWorkbookName(file.name);
+    const currentClass = classes.find((item) => item.id === student.classId);
+    const defaultClassMapping = currentClass
+      ? { type: "CURRENT_CLASS" as const, classId: currentClass.id, className: currentClass.name }
+      : { type: "CREATE_CLOSED_CLASS" as const, proposedName: gradeLevel
+        ? `Lớp lịch sử Grade ${gradeLevel}` : "Lớp lịch sử từ workbook" };
     const academicPeriods: LegacyAcademicPeriodPreview[] = fromDate && toDate ? [{
       id: "period-workbook",
       fromDate,
@@ -55,8 +60,7 @@ export class LegacyImportPreview {
       schoolYear: fromDate.slice(0, 4) === toDate.slice(0, 4)
         ? fromDate.slice(0, 4) : `${fromDate.slice(0, 4)}-${toDate.slice(0, 4)}`,
       gradeLevel,
-      proposedClassMapping: { type: "CREATE_CLOSED_CLASS", proposedName: gradeLevel
-        ? `Lớp lịch sử Grade ${gradeLevel}` : "Lớp lịch sử từ workbook" },
+      proposedClassMapping: defaultClassMapping,
       lessonCount: result.lessons.length + result.minimalLessonGroups.reduce((total, group) => total + group.lessonCount, 0),
     }] : [];
     const classCandidates: LegacyClassCandidate[] = classes.map((item) => ({
@@ -80,8 +84,7 @@ export class LegacyImportPreview {
           homework: lesson.homework, studentNote: lesson.note, timeMappingId: lesson.timeMappingId,
           countsForTuition: lesson.billingType === "BILLABLE",
           ...(lesson.reconciliationStatus === "LEARNING_ONLY_PRESENT" || lesson.reconciliationStatus === "LEARNING_ONLY_ABSENT"
-            ? { reconciliationNote: "Không có dữ liệu học phí đối chiếu" } : {}),
-          ...(lesson.attendanceStatus === "FREE" ? { legacyReason: "LEGACY_POST_PAID_FREE" } : {}) },
+            ? { reconciliationNote: "Không có dữ liệu học phí đối chiếu" } : {}) },
         issueCodes, status: lifecycleStatus(issueCodes), supportedActions,
         ...(lesson.suggestedDate && issueCodes.includes("DATE_CORRECTION") ? { suggestedResolution: {
           sourceSheet: lesson.sourceSheet, sourceRow: lesson.sourceRow, issueCode: "DATE_CORRECTION" as const,

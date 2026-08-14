@@ -233,9 +233,9 @@ export interface LegacyTuitionBlockPreview {
   sourceStartRow: number;
   sourceEndRow: number;
   paidMarkerSourceRow: number | null;
+  unpaidMarkerSourceRow: number | null;
   tuitionSourceRows: number[];
   paidCandidateSourceRows: number[];
-  postPaidSourceRows: number[];
 }
 
 export interface LegacyTimeMappingPreview {

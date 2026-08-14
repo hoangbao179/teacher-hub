@@ -161,8 +161,7 @@ export class LegacyImportRepository {
       const counts: ApplyCounts = { lessons: 0, matchedLessons: 0, attendances: 0, classes: 0, enrollments: 0, cycles: 0 };
       const periods = this.periodRuntimes(input.preview, input.rows);
       const lessonRows = input.rows.filter((row) => row.rowType === "LESSON" && row.status !== "SKIPPED");
-      const acceptedDates = [...lessonRows.map((row) => String(row.normalizedValues.date ?? "")),
-        ...input.preview.minimalLessonGroups.flatMap((group) => [group.fromDate, group.toDate])];
+      const acceptedDates = this.appliedDates(input.preview, input.rows);
       for (const period of periods)
         if (acceptedDates.some((date) => period.fromDate <= date && (period.toDate == null || period.toDate >= date)))
           await this.ensurePeriodClass(connection, period, input.actorUserId, counts);
@@ -216,18 +215,40 @@ export class LegacyImportRepository {
   }
 
   private periodRuntimes(preview: LegacyImportPreview, rows: ResolvedLegacyImportRow[]): PeriodRuntime[] {
+    const appliedDates = this.appliedDates(preview, rows);
     return preview.academicPeriods.map((period, index) => {
       const row = rows.find((item) => item.rowType === "ACADEMIC_PERIOD" && item.sourceRow === index + 1);
       const decision = row?.decisions.find((item): item is LegacyAcademicPeriodDecision => item.action === "MAP_ACADEMIC_PERIOD");
       if (!decision) throw new AppError(409, "LEGACY_ROWS_UNRESOLVED", `Giai đoạn ${period.schoolYear} chưa được map.`);
       if (decision.resolvedValue.periodId !== period.id)
         throw new AppError(400, "LEGACY_DECISIONS_INVALID", "Mã giai đoạn không khớp preview.");
-      const dates = preview.lessons.map((lesson) => lesson.normalizedDate).filter((date): date is string =>
-        Boolean(date && period.fromDate <= date && (period.toDate == null || period.toDate >= date))).sort();
-      return { id: period.id, fromDate: period.fromDate, toDate: period.toDate,
+      const ownsEntireWorkbook = preview.academicPeriods.length === 1;
+      const dates = (ownsEntireWorkbook ? appliedDates : appliedDates.filter((date) =>
+        period.fromDate <= date && (period.toDate == null || period.toDate >= date))).sort();
+      const runtimeFromDate = ownsEntireWorkbook && dates[0] && dates[0] < period.fromDate ? dates[0] : period.fromDate;
+      const runtimeToDate = ownsEntireWorkbook && period.toDate != null && dates.at(-1) && dates.at(-1)! > period.toDate
+        ? dates.at(-1)! : period.toDate;
+      return { id: period.id, fromDate: runtimeFromDate, toDate: runtimeToDate,
         dataFromDate: dates[0] ?? period.fromDate, dataToDate: dates.at(-1) ?? period.toDate ?? period.fromDate,
         mapping: decision.resolvedValue.classMapping, gradeLevel: decision.resolvedValue.gradeLevel };
     });
+  }
+
+  private appliedDates(preview: LegacyImportPreview, rows: ResolvedLegacyImportRow[]): string[] {
+    const lessonDates = rows.filter((row) => row.rowType === "LESSON" && row.status !== "SKIPPED")
+      .map((row) => String(row.normalizedValues.date ?? "")).filter(Boolean);
+    const correctedTuitionDates = new Map(rows.filter((row) => row.rowType === "TUITION" && row.status !== "SKIPPED")
+      .map((row) => [row.sourceRow, String(row.normalizedValues.date ?? "")]));
+    const minimalDates = rows.filter((row) => row.rowType === "TUITION_GROUP" && row.status !== "SKIPPED")
+      .flatMap((row) => {
+        const decision = row.decisions.find((item) => item.action === "CREATE_MINIMAL_LEGACY_LESSONS");
+        if (!decision) return [];
+        return decision.resolvedValue.tuitionSourceRows.map((sourceRow) => {
+          const tuition = preview.tuitionRows.find((item) => item.sourceRow === sourceRow);
+          return correctedTuitionDates.get(sourceRow) || tuition?.suggestedDate || tuition?.date || "";
+        }).filter(Boolean);
+      });
+    return [...new Set([...lessonDates, ...minimalDates])].sort();
   }
 
   private async ensurePeriodClass(
@@ -476,6 +497,11 @@ export class LegacyImportRepository {
     const [active] = await connection.query<RowDataPacket[]>(
       "SELECT id FROM class_enrollments WHERE student_id=? AND status='ACTIVE' LIMIT 1", [studentId]);
     const claimed = new Set<number>();
+    const skippedTuitionRows = new Set(rows.filter((row) => row.rowType === "TUITION_GROUP" && row.status === "SKIPPED")
+      .flatMap((row) => {
+        const groupId = String(row.normalizedValues.groupId ?? "");
+        return preview.minimalLessonGroups.find((group) => group.id === groupId)?.tuitionSourceRows ?? [];
+      }));
     let createdCount = 0;
     for (const plan of preview.tuitionCyclePlans) {
       const payment = paymentByBlock.get(plan.blockId);
@@ -499,7 +525,8 @@ export class LegacyImportRepository {
       }
       const sourceKeys = [...plan.lessonSourceRows
         .filter((sourceRow) => !rows.some((row) => row.rowType === "LESSON" && row.sourceRow === sourceRow && row.status === "SKIPPED"))
-        .map((row) => `LESSON:${row}`), ...plan.tuitionSourceRows.map((row) => `TUITION:${row}`)];
+        .map((row) => `LESSON:${row}`), ...plan.tuitionSourceRows.filter((row) => !skippedTuitionRows.has(row))
+          .map((row) => `TUITION:${row}`)];
       if (!sourceKeys.length) continue;
       const ids = sourceKeys.map((key) => attendanceBySource.get(key));
       if (ids.some((id) => !id))

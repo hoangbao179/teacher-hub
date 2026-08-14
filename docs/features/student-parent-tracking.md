@@ -267,6 +267,23 @@ import theo attendance thể hiện trong workbook dù thiếu dòng đối chi�
 trường hợp này không tạo `ATTENDANCE_AMBIGUOUS`, không tự gán `FREE` và không tạo
 cycle/khoản nợ. Có thể giữ note audit “Không có dữ liệu học phí đối chiếu”.
 
+Hai sheet không bắt buộc cập nhật đồng thời. Dòng billable chỉ có trong `Học phí`
+được gom thành một nhóm xác nhận `CREATE_MINIMAL_LEGACY_LESSONS`; khi xác nhận, hệ
+thống tạo lesson `PRESENT + BILLABLE` với ngày/giờ và để trống nội dung, bài tập,
+nhận xét. Nếu bỏ qua nhóm thì không tạo lesson, không đưa attendance vào cycle và
+không kéo dài class/enrollment/policy runtime.
+
+`FREE` chỉ được tạo từ marker `FREE` explicit trên chính dòng. Marker `PAID` sau đúng
+tám dòng billable chốt cycle đầu thành `PAID`; mọi dòng billable phía sau vẫn tham gia
+cycle kế tiếp ở trạng thái chưa thu. `TOTAL HOURS` được nhận như `TOTAL`; `UNPAID`
+explicit không cần xác nhận lại, còn block có cả `PAID` và `UNPAID` phải review.
+
+Time parser nhận phút một chữ số như phút thực (`h5` = `:05`), giờ thiếu phút như
+`20-22h`, và dấu câu cuối. Dạng 12 giờ vẫn cần confirmation. Gợi ý giờ thiếu chỉ dựa
+trên dòng hợp lệ gần trước/sau trong cùng ngữ cảnh; hai phía khác nhau, quá xa, raw
+mơ hồ hoặc duration trên sáu giờ thì không tự đề xuất/lưu. Năm ngoài 2000–2100 bị
+chặn thay vì tự sửa.
+
 Exact match ưu tiên khóa `(classId, lesson date, scheduled start, scheduled end)`.
 Content, homework hoặc comment không phải khóa chính. Near match không tự merge;
 preview yêu cầu user chọn dùng lesson hiện hữu hay tạo lesson lịch sử mới.
@@ -293,6 +310,9 @@ Khi nhiều file student lần lượt mô tả cùng group lesson:
 | `PRESENT` | Billable và tăng sequence. |
 | `ABSENT` | Có lịch sử, không billable. |
 | `FREE` | Có lịch sử, không billable. |
+| 8 billable → `PAID` → billable tiếp theo | Tám buổi đầu là cycle `PAID`; các buổi sau bắt đầu cycle `UNPAID`, không đổi thành `FREE`. |
+| Chỉ có trong `Học phí` | Xác nhận một lần theo nhóm để tạo lesson thiếu nhận xét, hoặc skip nếu nhóm không thuộc cycle đã thu. |
+| `TOTAL HOURS \| UNPAID` | Kết thúc block và ghi nhận explicit chưa thu, không hỏi lại nếu không có conflict. |
 | Đủ 8 billable | Cycle đạt `PAYMENT_DUE` hoặc trạng thái payment đã xác nhận. |
 | Cycle dở | Giữ đúng tiến độ theo student. |
 | Đã thu | Chỉ tạo `PAID` khi evidence/resolution đã được review; giữ bất biến sau apply. |
