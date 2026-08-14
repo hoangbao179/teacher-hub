@@ -35,8 +35,10 @@ evidence từng lần kiểm thử được giữ trong Git history.
   quản trị và `/hoc`–`/sach` dùng chung palette teal/pastel. Admin dùng sidebar từ
   1200 px, bottom navigation dưới breakpoint này; cả hai cùng ưu tiên năm khu vực
   hằng ngày. Account, Kho từ vựng và Bài tập từ vựng nằm trong menu avatar.
-- Vocabulary topic/set/media, assignment, public game, result/mastery/review và
-  Google Sheet tab ôn từ vựng.
+- Vocabulary topic/set/media, assignment draft, result/mastery/review và Google
+  Sheet tab ôn từ vựng. Public Vocabulary Game đang tạm đóng bằng client availability
+  constant; route cũ trả màn thân thiện có noindex, còn source engine, API, schema và
+  dữ liệu được giữ nguyên để bật lại sau.
 - Legacy Excel preview/apply có reconciliation theo nhóm và transaction MySQL.
 - Google Drive/Sheets dùng DB làm nguồn chuẩn, outbox sau commit và regenerate có
   giới hạn vùng hệ thống quản lý. Student Detail ưu tiên trạng thái đồng bộ thân

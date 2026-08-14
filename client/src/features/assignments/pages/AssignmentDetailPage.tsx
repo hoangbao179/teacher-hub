@@ -39,6 +39,7 @@ import {
   PageHeader,
   StickyActionBar,
 } from "../../../components/UiKit";
+import { VOCABULARY_GAMES_ENABLED } from "../../../config/featureAvailability";
 import {
   audienceLabels,
   formatDateTime,
@@ -174,11 +175,15 @@ export function AssignmentDetailPage() {
           <Typography variant="body2" color="text.secondary">
             Mở từ {formatDateTime(assignment.availableFrom)} · Hạn {formatDateTime(assignment.dueAt)}
           </Typography>
-          {assignment.publicCode && <Typography variant="body2">Mã công khai: <strong>{assignment.publicCode}</strong></Typography>}
+          {VOCABULARY_GAMES_ENABLED && assignment.publicCode && <Typography variant="body2">Mã công khai: <strong>{assignment.publicCode}</strong></Typography>}
         </Stack>
       </CardContent></Card>
 
-      {assignment.status !== "DRAFT" && (
+      {assignment.status !== "DRAFT" && !VOCABULARY_GAMES_ENABLED && (
+        <Alert severity="info">Trò chơi đang được hoàn thiện</Alert>
+      )}
+
+      {assignment.status !== "DRAFT" && VOCABULARY_GAMES_ENABLED && (
         <Card variant="outlined"><CardContent>
           <Stack spacing={1.5}>
             <Typography component="h2" variant="h6">Liên kết chia sẻ</Typography>

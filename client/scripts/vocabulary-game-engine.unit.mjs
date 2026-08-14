@@ -12,6 +12,21 @@ const question = read("src/features/vocabulary-games/GameQuestion.tsx");
 const answerSubmission = read("src/features/vocabulary-games/answerSubmission.ts");
 const start = read("src/features/vocabulary-games/pages/PlayStartPage.tsx");
 const game = read("src/features/vocabulary-games/pages/PlayGamePage.tsx");
+const availability = read("src/config/featureAvailability.ts");
+const unavailable = read("src/features/vocabulary-games/pages/VocabularyGamesUnavailablePage.tsx");
+const assignmentDetail = read("src/features/assignments/pages/AssignmentDetailPage.tsx");
+const assignmentWizard = read("src/features/assignments/pages/AssignmentWizardPage.tsx");
+
+test("vocabulary games are explicitly TEMP_DISABLED without removing routes or engine source", () => {
+  assert.match(availability, /VOCABULARY_GAMES_ENABLED: boolean = false/);
+  assert.match(app, /VOCABULARY_GAMES_ENABLED \? <PlayStartPage \/> : <VocabularyGamesUnavailablePage \/>/);
+  assert.match(app, /VOCABULARY_GAMES_ENABLED \? <PlayGamePage \/> : <VocabularyGamesUnavailablePage \/>/);
+  assert.match(unavailable, /Trò chơi đang được hoàn thiện/);
+  assert.match(unavailable, /Con có thể tiếp tục học ở Góc học/);
+  assert.match(unavailable, /to="\/hoc"/);
+  assert.match(assignmentDetail, /assignment\.status !== "DRAFT" && VOCABULARY_GAMES_ENABLED/);
+  assert.match(assignmentWizard, /VOCABULARY_GAMES_ENABLED[\s\S]*Giao bài/);
+});
 
 test("student game routes stay outside the authenticated AdminLayout", () => {
   const playIndex = app.indexOf('<Route path="/play/:publicCode"');

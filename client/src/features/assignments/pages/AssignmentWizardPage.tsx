@@ -73,6 +73,7 @@ import {
   PageHeader,
   StickyActionBar,
 } from "../../../components/UiKit";
+import { VOCABULARY_GAMES_ENABLED } from "../../../config/featureAvailability";
 import { learningLevels, publishedUnits } from "../../learning/content/vocabularyCatalog";
 import {
   ageBandLabel,
@@ -391,13 +392,16 @@ export function AssignmentWizardPage() {
       {step === 3 && <ActivitiesStep form={form} warnings={templateResult.warnings} patch={patch} editImages={editImages} />}
       {step === 4 && <SettingsStep form={form} patch={patch} onTitleEdited={() => setTitleEdited(true)} />}
       {step === 5 && <PreviewStep form={form} warnings={previewWarnings} editImages={editImages} />}
+      {step === 5 && !VOCABULARY_GAMES_ENABLED && <Alert severity="info">Trò chơi đang được hoàn thiện</Alert>}
 
       <StickyActionBar>
         {step > 0 && <Button startIcon={<ArrowBack />} disabled={saving} onClick={() => setStep((value) => value - 1)}>Quay lại</Button>}
         <Button startIcon={<Save />} disabled={saving} onClick={() => void save()}>{saving ? "Đang lưu…" : "Lưu nháp"}</Button>
         {step < steps.length - 1
           ? <Button variant="contained" endIcon={<ArrowForward />} disabled={saving} onClick={() => void next()}>Tiếp tục</Button>
-          : <Button variant="contained" startIcon={<Publish />} disabled={saving} onClick={() => setPublishOpen(true)}>Giao bài</Button>}
+          : VOCABULARY_GAMES_ENABLED
+            ? <Button variant="contained" startIcon={<Publish />} disabled={saving} onClick={() => setPublishOpen(true)}>Giao bài</Button>
+            : null}
       </StickyActionBar>
       <ConfirmationDialog
         open={publishOpen}

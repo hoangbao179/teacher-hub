@@ -5,6 +5,7 @@ import { useAuth } from "./auth/AuthContext";
 import { LoadingState } from "./components/LoadingState";
 import { RouteMetadata } from "./components/RouteMetadata";
 import { AuthProvider } from "./auth/AuthContext";
+import { VOCABULARY_GAMES_ENABLED } from "./config/featureAvailability";
 
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })));
 const LoginPage = lazy(() => import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })));
@@ -48,6 +49,7 @@ const AccountPage = lazy(() => import("./pages/AccountPage").then((module) => ({
 const PlayStartPage = lazy(() => import("./features/vocabulary-games/pages/PlayStartPage").then((module) => ({ default: module.PlayStartPage })));
 const PlayGamePage = lazy(() => import("./features/vocabulary-games/pages/PlayGamePage").then((module) => ({ default: module.PlayGamePage })));
 const PlayResultPage = lazy(() => import("./features/vocabulary-games/pages/PlayResultPage").then((module) => ({ default: module.PlayResultPage })));
+const VocabularyGamesUnavailablePage = lazy(() => import("./features/vocabulary-games/pages/VocabularyGamesUnavailablePage").then((module) => ({ default: module.VocabularyGamesUnavailablePage })));
 const BookLibraryPage = lazy(() => import("./features/books/pages/BookLibraryPage").then((module) => ({ default: module.BookLibraryPage })));
 const BookPreviewPage = lazy(() => import("./features/books/pages/BookPreviewPage").then((module) => ({ default: module.BookPreviewPage })));
 const InteractiveAudioPage = lazy(() => import("./features/books/pages/InteractiveAudioPage").then((module) => ({ default: module.InteractiveAudioPage })));
@@ -89,9 +91,9 @@ export function App() {
       <Route path="/sach/:seriesSlug/:bookSlug/nghe" element={<InteractiveAudioPage />} />
       <Route path="/sach/:seriesSlug/:bookSlug" element={<BookPreviewPage />} />
       <Route path="/sach/*" element={<BookNotFoundPage />} />
-      <Route path="/play/:publicCode" element={<PlayStartPage />} />
-      <Route path="/play/session/:sessionToken" element={<PlayGamePage />} />
-      <Route path="/play/session/:sessionToken/result" element={<PlayResultPage />} />
+      <Route path="/play/:publicCode" element={VOCABULARY_GAMES_ENABLED ? <PlayStartPage /> : <VocabularyGamesUnavailablePage />} />
+      <Route path="/play/session/:sessionToken" element={VOCABULARY_GAMES_ENABLED ? <PlayGamePage /> : <VocabularyGamesUnavailablePage />} />
+      <Route path="/play/session/:sessionToken/result" element={VOCABULARY_GAMES_ENABLED ? <PlayResultPage /> : <VocabularyGamesUnavailablePage />} />
       <Route element={<AdminAuthBoundary />}>
         <Route element={<GuestOnly />}>
           <Route path="/admin/login" element={<LoginPage />} />

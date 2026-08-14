@@ -4,6 +4,12 @@
 > Technical name: **Vocabulary Assignments and Games**
 > Primary teacher route family: `/admin/vocabulary/*`, `/admin/assignments/*`
 > Primary student route family: `/play/*`
+
+> Availability (temporary): public Vocabulary Game đang tạm đóng bằng client
+> constant `VOCABULARY_GAMES_ENABLED = false`. Các route `/play/*`, source engine,
+> API và schema vẫn được giữ để bật lại sau; khi tắt, route cũ hiển thị trang thân
+> thiện có `noindex`, không gọi game API. Admin vẫn quản lý từ vựng và bản nháp bài
+> tập nhưng không hiển thị action giao/chia sẻ game.
 > Authentication: **giáo viên đăng nhập; học sinh không cần tài khoản**
 > Responsive priority: **mobile-first 360–430 px; hỗ trợ tablet và desktop**
 > Wireframes:

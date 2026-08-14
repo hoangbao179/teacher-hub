@@ -233,12 +233,11 @@ try {
     await page.getByText("XEM TRƯỚC", { exact: true }).waitFor();
     await audit(page, viewport.width < 600);
     await page.screenshot({ path: path.join(artifactDir, `preview-${viewport.width}x${viewport.height}.png`) });
-    await page.getByRole("button", { name: "Giao bài" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Giao bài" }).click();
-    await page.locator('[data-testid="assignment-detail-page"]').waitFor();
-    await page.getByAltText("Mã QR liên kết mở").waitFor();
+    await page.getByText("Trò chơi đang được hoàn thiện", { exact: true }).waitFor();
+    assert(await page.getByRole("button", { name: "Giao bài", exact: true }).count() === 0, "TEMP_DISABLED wizard still exposes the publish CTA");
+    assert(await page.getByText("Liên kết chia sẻ", { exact: true }).count() === 0, "TEMP_DISABLED wizard exposes sharing UI");
     await audit(page, viewport.width < 600);
-    await page.screenshot({ path: path.join(artifactDir, `published-${viewport.width}x${viewport.height}.png`) });
+    await page.screenshot({ path: path.join(artifactDir, `temp-disabled-preview-${viewport.width}x${viewport.height}.png`) });
     await context.close();
   }
   console.log(`${targetedSourceSmoke ? "Vocabulary source smoke" : "V20F assignment E2E"} PASS; screenshots: ${artifactDir}`);

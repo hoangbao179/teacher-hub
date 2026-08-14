@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { publicHomeContent, publicHomeStructuredData } from "../content/publicHome";
 import { learningRouteMetadata } from "../features/learning/seo/learningMetadata";
 import { bookRouteMetadata } from "../features/books/seo/bookMetadata";
+import { VOCABULARY_GAMES_ENABLED } from "../config/featureAvailability";
 
 function setMeta(name: string, value: string, property = false) {
   const attribute = property ? "property" : "name";
@@ -72,8 +73,12 @@ export function RouteMetadata() {
     }
 
     if (pathname.startsWith("/play/")) {
-      document.title = `Bài tập từ vựng | ${publicHomeContent.brandName}`;
-      setMeta("description", "Không gian chơi từ vựng riêng dành cho học sinh của lớp cô Vy.");
+      document.title = VOCABULARY_GAMES_ENABLED
+        ? `Bài tập từ vựng | ${publicHomeContent.brandName}`
+        : `Trò chơi đang được hoàn thiện | ${publicHomeContent.brandName}`;
+      setMeta("description", VOCABULARY_GAMES_ENABLED
+        ? "Không gian chơi từ vựng riêng dành cho học sinh của lớp cô Vy."
+        : "Con có thể tiếp tục học từ vựng ở Góc học cùng cô Vy.");
       setMeta("robots", "noindex,nofollow,noarchive");
       setMeta("referrer", "no-referrer");
       setCanonical(undefined);
