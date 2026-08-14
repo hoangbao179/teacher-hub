@@ -55,6 +55,14 @@ async function noHorizontalScroll(page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (overflow > 1) throw new Error(`Horizontal page overflow: ${overflow}px`);
 }
+function todayInHoChiMinh() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+function weekdayIso(date) {
+  const day = new Date(`${date}T00:00:00Z`).getUTCDay(); return day || 7;
+}
 async function api(pathname, token) {
   const response = await fetch(`http://127.0.0.1:4101${pathname}`, { headers: { Authorization: `Bearer ${token}` } });
   if (!response.ok) throw new Error(`API ${pathname} failed ${response.status}`);
@@ -99,6 +107,86 @@ try {
   const classes = await api("/api/classes", token);
   const group = classes.find((item) => item.name === "DEV - Tiếng Anh lớp 6 nhóm nhỏ");
   if (!group) throw new Error("Seeded group class not found");
+
+  const quickToday = todayInHoChiMinh();
+  const quickSuffix = Date.now();
+  const quickClassName = `Simple Mode ${quickSuffix}`;
+  const quickClass = await apiMutation("/api/classes", token, "POST", {
+    name: quickClassName, type: "GROUP", defaultPackagePrice: 2_000_000,
+    defaultDurationMinutes: 60, startDate: "2026-01-01", schedules: [
+      { dayOfWeek: weekdayIso(quickToday), startTime: "09:00", endTime: "10:00" },
+      { dayOfWeek: weekdayIso(quickToday), startTime: "11:00", endTime: "12:00" },
+    ],
+  });
+  const quickStudents = [];
+  for (const [name, tuitionMode] of [["Simple An", "CLASS_DEFAULT"], ["Simple Bình", "CLASS_DEFAULT"], ["Simple Chi", "FREE"]]) {
+    const student = await apiMutation("/api/students", token, "POST", { fullName: `${name} ${quickSuffix}` });
+    const enrollment = await apiMutation(`/api/classes/${quickClass.id}/enrollments`, token, "POST", {
+      studentId: student.id, joinedAt: "2026-01-01", tuitionMode,
+    });
+    quickStudents.push({ name: `${name} ${quickSuffix}`, enrollmentId: enrollment.id, tuitionMode });
+  }
+  const externalTitle = `Lịch trường Simple ${quickSuffix}`;
+  await apiMutation("/api/teacher-busy-slots", token, "POST", {
+    slotType: "EXTERNAL_CLASS", organizationType: "SCHOOL", organizationName: "Trường mẫu",
+    title: externalTitle, recurrenceType: "ONCE", specificDate: quickToday, startTime: "13:00", endTime: "14:00",
+  });
+
+  await page.goto("http://127.0.0.1:5175/admin");
+  await page.getByTestId("dashboard-unrecorded-card").getByText(/buổi chưa ghi/).waitFor();
+  const externalCard = page.getByTestId("dashboard-today-event").filter({ hasText: externalTitle });
+  await externalCard.waitFor();
+  if (await externalCard.getByRole("button").count()) throw new Error("External school event exposed a lesson CTA");
+  const firstQuickCard = page.getByTestId("dashboard-today-event").filter({ hasText: quickClassName }).filter({ hasText: "09:00" });
+  await firstQuickCard.getByRole("button", { name: "Ghi buổi" }).click();
+  await page.waitForURL("**/admin/lessons/*/edit?mode=quick");
+  await page.locator('[data-testid="lesson-wizard"][data-lesson-mode="quick"]').waitFor();
+  const firstQuickId = Number(new URL(page.url()).pathname.split("/")[3]);
+  for (const student of quickStudents) await page.getByText(student.name, { exact: true }).waitFor();
+  const firstQuickDraft = await api(`/api/lessons/${firstQuickId}`, token);
+  for (const student of quickStudents) {
+    const expected = student.tuitionMode === "FREE" ? "FREE" : "PRESENT";
+    const card = page.locator(".MuiCard-root").filter({ hasText: student.name });
+    const label = expected === "FREE" ? "Có mặt · miễn phí" : "Có mặt";
+    if ((await card.getByRole("button", { name: label, exact: true }).getAttribute("aria-pressed")) !== "true")
+      throw new Error(`Simple Mode did not default ${student.name} to ${expected}`);
+  }
+  if (firstQuickDraft.status !== "DRAFT" || firstQuickDraft.sourceOccurrenceKey == null) throw new Error("Simple Mode did not reuse the scheduled draft");
+  await page.getByRole("link", { name: "Chỉnh sửa đầy đủ" }).click();
+  await page.waitForURL(`**/admin/lessons/${firstQuickId}/edit`);
+  await page.getByText("Thông tin", { exact: true }).first().waitFor();
+  if (page.url().includes("mode=quick")) throw new Error("Full editor kept the quick-mode query");
+  await page.goto("http://127.0.0.1:5175/admin");
+  const continuedCard = page.getByTestId("dashboard-today-event").filter({ hasText: quickClassName }).filter({ hasText: "09:00" });
+  await continuedCard.getByRole("button", { name: "Tiếp tục ghi" }).click();
+  await page.waitForURL(`**/admin/lessons/${firstQuickId}/edit?mode=quick`);
+  await page.locator('[data-testid="lesson-wizard"][data-lesson-mode="quick"]').waitFor();
+  await page.getByLabel("Nội dung buổi học (tùy chọn)").fill("Simple Mode: cả lớp có mặt");
+  await page.getByRole("button", { name: "Lưu & hoàn tất" }).click();
+  await page.getByTestId("lesson-success").waitFor();
+  await page.getByRole("link", { name: "Về Hôm nay" }).waitFor();
+  const firstCompleted = await api(`/api/lessons/${firstQuickId}`, token);
+  if (firstCompleted.status !== "COMPLETED" || firstCompleted.content !== "Simple Mode: cả lớp có mặt"
+    || firstCompleted.participants.some((item) => item.attendance?.status !== (item.tuitionMode === "FREE" ? "FREE" : "PRESENT")))
+    throw new Error("Simple Mode did not complete default attendance/content correctly");
+
+  await page.getByRole("link", { name: "Về Hôm nay" }).click();
+  const completedCard = page.getByTestId("dashboard-today-event").filter({ hasText: quickClassName }).filter({ hasText: "09:00" });
+  await completedCard.getByText("Đã hoàn thành", { exact: false }).waitFor();
+  if (await completedCard.getByRole("button", { name: "Ghi buổi" }).count()) throw new Error("Completed occurrence exposed a new draft action");
+  const secondQuickCard = page.getByTestId("dashboard-today-event").filter({ hasText: quickClassName }).filter({ hasText: "11:00" });
+  await secondQuickCard.getByRole("button", { name: "Ghi buổi" }).click();
+  await page.waitForURL("**/admin/lessons/*/edit?mode=quick");
+  const secondQuickId = Number(new URL(page.url()).pathname.split("/")[3]);
+  const absentCard = page.locator(".MuiCard-root").filter({ hasText: quickStudents[1].name });
+  await absentCard.getByRole("button", { name: "Nghỉ", exact: true }).click();
+  await page.getByLabel("Nội dung buổi học (tùy chọn)").fill("Simple Mode: một học sinh nghỉ");
+  await page.getByRole("button", { name: "Lưu & hoàn tất" }).click();
+  await page.getByTestId("lesson-success").waitFor();
+  const secondCompleted = await api(`/api/lessons/${secondQuickId}`, token);
+  const absentParticipant = secondCompleted.participants.find((item) => item.enrollmentId === quickStudents[1].enrollmentId);
+  if (secondCompleted.status !== "COMPLETED" || absentParticipant?.attendance?.status !== "ABSENT")
+    throw new Error("Simple Mode did not persist an absent student");
 
   await page.goto(`http://127.0.0.1:5175/admin/lessons/new?classId=${group.id}`);
   await page.getByText("Thông tin", { exact: true }).first().waitFor();
@@ -190,8 +278,9 @@ try {
     await continueDespiteConflict.click();
     await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
   }
-  await page.getByRole("button", { name: "Thêm nhận xét riêng" }).first().click();
-  await page.getByLabel("Nhận xét riêng (tùy chọn)").first().waitFor();
+  const makeupStudentCard = page.locator(".MuiCard-root").filter({ hasText: "Học sinh Mẫu Một" });
+  await makeupStudentCard.getByRole("button", { name: "Thêm nhận xét riêng" }).click();
+  await makeupStudentCard.getByLabel("Nhận xét riêng (tùy chọn)").waitFor();
   if (await page.getByText("Học sinh Mẫu Ba", { exact: true }).count()) throw new Error("Non-selected makeup student appeared in attendance");
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
   await page.getByLabel("Nội dung buổi học").fill("Makeup content");

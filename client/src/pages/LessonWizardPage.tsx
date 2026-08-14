@@ -73,6 +73,7 @@ export function LessonWizardPage() {
   const { id } = useParams();
   const lessonId = id ? Number(id) : null;
   const [params] = useSearchParams();
+  const quickRequested = params.get("mode") === "quick";
   const location = useLocation();
   const sourceKey = params.get("source");
   const navigate = useNavigate();
@@ -110,6 +111,9 @@ export function LessonWizardPage() {
   const [conflictsConfirmed, setConflictsConfirmed] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [quickEligibility, setQuickEligibility] = useState<{ sourceKey: string; eligible: boolean } | null>(null);
+  const [quickCustomizationOpen, setQuickCustomizationOpen] = useState(false);
+  const [completedFromQuick, setCompletedFromQuick] = useState(false);
 
   useEffect(() => {
     lessonApi.listClasses().then(setClasses).catch((value: Error) => setError(value.message));
@@ -131,6 +135,21 @@ export function LessonWizardPage() {
       else if (detail.participants.length) setStep(1);
     }).catch((value: Error) => setError(value.message)).finally(() => setLoading(false));
   }, [lessonId]);
+
+  const quickCandidate = Boolean(quickRequested && lesson?.status === "DRAFT" && lesson.lessonType === "REGULAR" && lesson.sourceOccurrenceKey);
+
+  useEffect(() => {
+    if (!quickCandidate || !lesson?.sourceOccurrenceKey) return;
+    const controller = new AbortController();
+    scheduleApi.occurrences({ from: lesson.sessionDate, to: lesson.sessionDate }, { signal: controller.signal }).then((items) => {
+      const occurrence = items.find((item) => item.key === lesson.sourceOccurrenceKey);
+      if (occurrence?.conflicts.length) setScheduleWarnings(occurrence.conflicts);
+      setQuickEligibility({ sourceKey: lesson.sourceOccurrenceKey!, eligible: Boolean(occurrence && !occurrence.combinedGroupId && occurrence.linkedLessonId === lesson.id) });
+    }).catch((value: Error) => {
+      if (value.name !== "AbortError") { setError(value.message); setQuickEligibility({ sourceKey: lesson.sourceOccurrenceKey!, eligible: false }); }
+    });
+    return () => controller.abort();
+  }, [lesson, quickCandidate]);
 
   useEffect(() => {
     const effectiveSourceKey = sourceKey ?? lesson?.makeupSource?.occurrenceKey;
@@ -303,6 +322,10 @@ export function LessonWizardPage() {
 
   async function complete() {
     if (!lesson) return;
+    if (!actualDuration) { setError("Giờ kết thúc thực tế phải sau giờ bắt đầu."); return; }
+    if (!participants.length || participants.some((item) => !attendances[item.enrollmentId]?.status)) {
+      setError("Hãy chọn Có mặt hoặc Nghỉ cho mỗi học sinh."); return;
+    }
     setBusy(true); setError(""); setConflict("");
     try {
       const result = await lessonApi.complete(lesson.id, {
@@ -313,6 +336,7 @@ export function LessonWizardPage() {
           studentNote: attendances[item.enrollmentId].studentNote || undefined,
         })),
       });
+      setCompletedFromQuick(quickCandidate && quickEligibility?.sourceKey === lesson.sourceOccurrenceKey && quickEligibility.eligible);
       setCompletion(result); setLesson({ ...lesson, ...result.lesson, status: "COMPLETED" }); setDirty(false);
     } catch (value) { handleError(value); }
     finally { setBusy(false); }
@@ -330,7 +354,73 @@ export function LessonWizardPage() {
   }
 
   if (loading) return <LoadingState />;
-  if (completion) return <CompletionState result={completion} />;
+  let quickEligibilityCurrent: boolean | null = null;
+  if (quickCandidate && quickEligibility && quickEligibility.sourceKey === lesson?.sourceOccurrenceKey)
+    quickEligibilityCurrent = quickEligibility.eligible;
+  if (quickCandidate && quickEligibilityCurrent == null) return <LoadingState />;
+  if (completion) return <CompletionState result={completion} quick={completedFromQuick} />;
+
+  if (quickCandidate && quickEligibilityCurrent) return (
+    <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="lesson-wizard" data-lesson-mode="quick" data-form-width="bounded">
+      <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
+        <Typography component="h1" variant="h5">Ghi buổi học</Typography>
+        <Button component={Link} to={`/admin/lessons/${lesson?.id}/edit`} size="small" sx={{ minHeight: 44 }}>Chỉnh sửa đầy đủ</Button>
+      </Stack>
+      {error && <Alert severity="error">{error}</Alert>}
+      {conflict && <Alert severity="warning"><strong>Xung đột:</strong> {conflict} Hãy tải lại buổi học.</Alert>}
+      {scheduleWarnings.length > 0 && <Alert severity="warning" data-testid="lesson-conflict-warning">
+        Lịch này có {scheduleWarnings.length} cảnh báo trùng giờ: {scheduleWarnings.map((item) => `${item.title} ${item.startTime}–${item.endTime}`).join("; ")}
+      </Alert>}
+
+      <Card variant="outlined"><CardContent><Stack spacing={0.75}>
+        <Typography component="h2" variant="h6">{lesson?.className}</Typography>
+        <Typography color="text.secondary">{sessionDate} · {scheduledStart}–{scheduledEnd}</Typography>
+      </Stack></CardContent></Card>
+
+      <Stack spacing={1.25}>
+        <Typography component="h2" variant="h6">Học sinh</Typography>
+        {participants.map((participant) => {
+          const free = participant.tuitionMode === "FREE";
+          return <Card key={participant.participantId} variant="outlined"><CardContent>
+            <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
+              <Typography variant="subtitle1">{participant.studentName}</Typography>
+              {free && <Chip size="small" label="Miễn phí" />}
+            </Stack>
+            <ToggleButtonGroup exclusive fullWidth value={attendances[participant.enrollmentId]?.status ?? (free ? "FREE" : "PRESENT")} onChange={(_event, value: AttendanceStatus | null) => {
+              if (!value) return;
+              setAttendances((current) => ({ ...current, [participant.enrollmentId]: { ...(current[participant.enrollmentId] ?? { studentNote: "" }), status: value } })); markDirty();
+            }} sx={{ mt: 1, gap: 0.75, "& .MuiToggleButton-root": { minHeight: 44, flex: 1, border: 1, borderColor: "divider", borderRadius: "8px !important" } }}>
+              <ToggleButton value={free ? "FREE" : "PRESENT"} color="success">{free ? "Có mặt · miễn phí" : "Có mặt"}</ToggleButton>
+              <ToggleButton value="ABSENT" color="error">Nghỉ</ToggleButton>
+            </ToggleButtonGroup>
+            {!expandedNotes.has(participant.enrollmentId) ? <Button size="small" sx={{ mt: 1, minHeight: 44 }} onClick={() => setExpandedNotes((current) => new Set(current).add(participant.enrollmentId))}>Thêm nhận xét riêng</Button> : <TextField fullWidth size="small" multiline minRows={2} sx={{ mt: 1 }} label="Nhận xét riêng (tùy chọn)" value={attendances[participant.enrollmentId]?.studentNote ?? ""} onChange={(event) => {
+              setAttendances((current) => ({ ...current, [participant.enrollmentId]: { status: current[participant.enrollmentId]?.status ?? (free ? "FREE" : "PRESENT"), studentNote: event.target.value.slice(0, 1000) } })); markDirty();
+            }} />}
+          </CardContent></Card>;
+        })}
+      </Stack>
+
+      <Stack spacing={1.5}>
+        <TextField multiline minRows={3} label="Nội dung buổi học (tùy chọn)" value={content} onChange={(event) => { setContent(event.target.value.slice(0, 2000)); markDirty(); }} />
+        <TextField multiline minRows={2} label="Bài tập về nhà (tùy chọn)" value={homework} onChange={(event) => { setHomework(event.target.value.slice(0, 2000)); markDirty(); }} />
+        <TextField multiline minRows={2} label="Nhận xét chung (tùy chọn)" value={generalComment} onChange={(event) => { setGeneralComment(event.target.value.slice(0, 1000)); markDirty(); }} />
+      </Stack>
+
+      <Button variant="text" onClick={() => setQuickCustomizationOpen((value) => !value)} sx={{ minHeight: 44, alignSelf: "flex-start" }}>{quickCustomizationOpen ? "Ẩn tùy chỉnh" : "Tùy chỉnh thêm"}</Button>
+      {quickCustomizationOpen && <Card variant="outlined"><CardContent><Stack spacing={1.5}>
+        <Typography component="h2" variant="subtitle1">Thời gian và ghi chú</Typography>
+        <Stack direction="row" spacing={1}>
+          <TextField fullWidth required type="time" label="Bắt đầu thực tế" value={actualStart} onChange={(event) => { setActualStart(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField fullWidth required type="time" label="Kết thúc thực tế" value={actualEnd} onChange={(event) => { setActualEnd(event.target.value); markDirty(); }} slotProps={{ inputLabel: { shrink: true } }} />
+        </Stack>
+        <TextField multiline minRows={2} label="Ghi chú nội bộ (tùy chọn)" value={note} onChange={(event) => { setNote(event.target.value.slice(0, 1000)); markDirty(); }} helperText="Không hiển thị cho phụ huynh" />
+      </Stack></CardContent></Card>}
+
+      <Box data-testid="sticky-action-bar" data-wizard-action sx={{ position: "sticky", bottom: { xs: "calc(var(--admin-nav-height) + var(--admin-safe-bottom) + 8px)", md: 16 }, zIndex: 10, bgcolor: "background.default", py: 1, mt: 1, borderTop: 1, borderColor: "divider" }}>
+        <Button fullWidth variant="contained" disabled={busy || !participants.length} onClick={() => void complete()} sx={{ minHeight: { xs: 52, md: 44 } }}>{busy ? "Đang lưu…" : "Lưu & hoàn tất"}</Button>
+      </Box>
+    </Stack>
+  );
 
   return (
     <Stack spacing={2} sx={{ width: "100%", maxWidth: "var(--app-form-width)", mx: "auto", minWidth: 0, overflowX: "clip" }} data-testid="lesson-wizard" data-form-width="bounded">
@@ -477,22 +567,22 @@ function Summary({ label, value }: { label: string; value: string }) {
   </Stack>;
 }
 
-function CompletionState({ result }: { result: CompleteLessonResult }) {
+function CompletionState({ result, quick = false }: { result: CompleteLessonResult; quick?: boolean }) {
   return <Stack spacing={2} data-testid="lesson-success">
-    <Alert severity="success"><strong>Đã lưu buổi học thành công.</strong> Thời lượng {result.actualDurationMinutes} phút không thay đổi số buổi tính phí.</Alert>
+    <Alert severity="success"><strong>Đã lưu buổi học.</strong>{!quick && ` Thời lượng ${result.actualDurationMinutes} phút không thay đổi số buổi tính phí.`}</Alert>
     <Card><CardContent><Stack spacing={1}>
       <Typography variant="h6">{result.lesson.className}</Typography>
       <Typography>{result.lesson.sessionDate} · {result.lesson.actualStartTime}–{result.lesson.actualEndTime}</Typography>
       <Typography>Có mặt {result.presentCount} · Nghỉ {result.absentCount} · Miễn phí {result.freeCount}</Typography>
     </Stack></CardContent></Card>
-    <Typography component="h2" variant="h6">Tác động tiến độ</Typography>
+    {!quick && <><Typography component="h2" variant="h6">Tác động tiến độ</Typography>
     {result.tuitionImpacts.map((item) => <Card key={item.enrollmentId} variant="outlined"><CardContent>
       <Stack direction="row" sx={{ justifyContent: "space-between" }}><Typography variant="subtitle1">{item.studentName}</Typography><Typography>{item.previousProgress ?? "—"} → {item.newProgress ?? "—"}/8</Typography></Stack>
       {item.becamePaymentDue && <Chip sx={{ mt: 1 }} color="warning" label="Đã đạt 8/8 · Cần thu" />}
-    </CardContent></Card>)}
+    </CardContent></Card>)}</>}
     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} data-wizard-action>
-      <Button component={Link} to="/admin" variant="contained" fullWidth>Về Dashboard</Button>
-      <Button component={Link} to={`/admin/lessons/${result.lessonId}/edit`} variant="outlined" fullWidth>Xem chi tiết buổi học</Button>
+      <Button component={Link} to="/admin" variant="contained" fullWidth sx={{ minHeight: 44 }}>{quick ? "Về Hôm nay" : "Về Dashboard"}</Button>
+      <Button component={Link} to={`/admin/lessons/${result.lessonId}/edit`} variant="outlined" fullWidth sx={{ minHeight: 44 }}>Xem chi tiết buổi học</Button>
     </Stack>
   </Stack>;
 }

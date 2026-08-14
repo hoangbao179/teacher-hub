@@ -37,6 +37,23 @@ affecting edit recalculates all affected enrollments before commit. A paid item
 or a chronological crossing of the paid boundary returns `PAID_CYCLE_CONFLICT`;
 the wizard shows the conflict and retains persisted data.
 
+### Simple Mode cho buổi học hằng ngày
+
+Dashboard `Hôm nay` là happy path cho occurrence thường: buổi chưa ghi tạo draft
+bằng API schedule hiện hành rồi mở `/admin/lessons/:id/edit?mode=quick`; draft đã
+có được mở lại cùng mode và buổi hoàn thành không tạo draft mới. Lịch dạy ngoài và
+lịch bận chỉ xuất hiện trên timeline. Reconciliation vẫn giữ cho lịch cũ và ngoại lệ.
+
+Quick mode chỉ được bật khi lesson đang là `DRAFT`, loại `REGULAR`, liên kết đúng
+occurrence lịch thường và không thuộc ca học ghép. Tạo thủ công, `MAKEUP`, `EXTRA`,
+combined class và mọi case không chứng minh được điều kiện trên dùng wizard bốn
+bước. Link `Chỉnh sửa đầy đủ` giữ nguyên lesson id và chuyển về wizard đó.
+
+Quick form mặc định paid enrollment là `PRESENT`, enrollment `FREE` là `FREE`, chỉ
+đưa lựa chọn Có mặt/Nghỉ lên bề mặt chính và gửi một request `complete` chứa giờ
+thực tế, attendance, content, homework, nhận xét và note. Backend vẫn là nơi kiểm
+tra validation, conflict, tuition transaction và enqueue Google Sheet outbox.
+
 Giờ thực tế không đổi số buổi. Nhập muộn phải dùng `session_date` để xử lý; feature tái phân bổ khi sửa dữ liệu cũ là milestone riêng.
 
 V14 snapshot cả tên/lớp/môn để metadata hiện tại không đổi lịch sử hiển thị. Hủy
