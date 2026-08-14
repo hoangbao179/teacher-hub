@@ -4,7 +4,15 @@ Tài liệu trong repository mô tả trạng thái hiện hành và các quyế
 lực. Lịch sử triển khai nằm trong Git; không tạo report chỉ để liệt kê file, command
 hoặc PASS/FAIL.
 
-## Thứ tự ưu tiên
+## Current implementation và context lịch sử
+
+[`implementation/status.md`](implementation/status.md) là canonical **CURRENT
+IMPLEMENTATION STATUS**: mô tả hệ thống đang có gì và feature đang ở trạng thái
+nào. ADR, product spec và feature doc cũ có thể giữ historical/design context hoặc
+mô tả đích ban đầu, không mặc nhiên chứng minh feature đang active. Khi tài liệu cũ
+khác implementation hiện tại, phải kiểm tra status và code đang chạy trước khi sửa.
+
+## Thứ tự ưu tiên business/API
 
 1. Business rules trong [`product-spec/`](product-spec/) và ADR accepted trong
    [`decisions/`](decisions/).

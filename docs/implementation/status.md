@@ -1,56 +1,76 @@
 # Implementation status
 
-File này chỉ mô tả trạng thái hiện hành của hệ thống. Lịch sử milestone, command và
-evidence từng lần kiểm thử được giữ trong Git history.
+File này là canonical **CURRENT IMPLEMENTATION STATUS** và chỉ mô tả trạng thái
+hiện hành của hệ thống. Lịch sử milestone, command và evidence từng lần kiểm thử
+được giữ trong Git history.
 
 ## Runtime và phạm vi
 
 - Monorepo chạy Node.js 24/npm 12 với React/Vite/MUI ở client, Express/MySQL ở
   server và shared contracts qua `@teacher/shared`.
 - V1 vận hành cho một giáo viên/admin. Học sinh và phụ huynh không có tài khoản.
-- Source of truth chi tiết nằm trong `docs/product-spec/`, `docs/features/`,
-  `docs/decisions/` và `docs/api/openapi.yaml`.
+- Business rule và thiết kế chi tiết nằm trong `docs/product-spec/`, `docs/features/`,
+  `docs/decisions/` và `docs/api/openapi.yaml`; các tài liệu này có thể giữ context
+  lịch sử nên phải đối chiếu file này và code khi xác định feature hiện đang bật.
 
-## Chức năng hiện hành
+## Phân loại trạng thái feature
 
-- Quản lý lớp, học sinh, enrollment, khoảng hiệu lực và lịch sử bất biến.
-- Lịch tuần, lịch bận, đối soát occurrence, đổi lịch, nghỉ, học bù, lớp học ghép và
-  ghi nhận buổi học theo transaction.
-- Học phí gói 8 buổi, giá lớp tùy chọn, thu trước, settlement đợt dở dang, chuyển
-  lớp và biên giới `PAID` bất biến.
-- Dashboard `Hôm nay` cho phép tạo/tiếp tục draft lịch thường bằng Simple Mode một
-  màn và hoàn tất bằng một thao tác; lesson wizard bốn bước vẫn xử lý tạo thủ công,
-  học bù, học thêm, học ghép và chỉnh sửa nâng cao. Calendar gom lớp riêng, lịch
-  trường/trung tâm, lịch cá nhân, đổi lịch và học bù trên timeline có nhãn rõ; bề
-  mặt chính chỉ giữ menu “Thêm”, còn tạo thủ công, học bù và đối soát tuần vẫn truy
-  cập được như công cụ phụ. Tuition management và Excel report tiếp tục hoạt động
-  trên desktop/mobile.
-- Homepage công khai chỉ quảng bá dịch vụ Tiếng Anh lớp 1–9 tại Huế; catalog Mầm
-  non tiếp tục tồn tại riêng trong Góc học miễn phí. Góc học, flashcard/quiz và thư
-  viện sách Global Success với
-  prerender/SEO hiện hành; trên mobile thư viện dùng hero gọn, bộ lọc lớp cuộn ngang
-  nội bộ và CTA card toàn chiều rộng. Card dùng một hành động mở sách, reader riêng không có
-  public header/footer, SGK có audio dùng FlipBuilder trên desktop và NXBGD trên
-  mobile, còn SGV luôn dùng NXBGD. NXBGD có âm thanh lật trang UI tùy chọn nhưng
-  không có audio bài học.
-- Homepage đặt entry Góc học/Tủ sách trong hero; header public luôn có đường vào
-  quản trị và `/hoc`–`/sach` dùng chung palette teal/pastel. Admin dùng sidebar từ
-  1200 px, bottom navigation dưới breakpoint này; cả hai cùng ưu tiên năm khu vực
-  hằng ngày. Account, Kho từ vựng và Bài tập từ vựng nằm trong menu avatar.
-- Vocabulary topic/set/media, assignment draft, result/mastery/review và Google
-  Sheet tab ôn từ vựng. Public Vocabulary Game đang tạm đóng bằng client availability
-  constant; route cũ trả màn thân thiện có noindex, còn source engine, API, schema và
-  dữ liệu được giữ nguyên để bật lại sau.
-- Legacy Excel preview/apply có reconciliation theo nhóm và transaction MySQL.
-- Google Drive/Sheets dùng DB làm nguồn chuẩn, outbox sau commit và regenerate có
-  giới hạn vùng hệ thống quản lý. Student Detail ưu tiên trạng thái đồng bộ thân
-  thiện và CTA mở sổ phụ huynh; recovery/import nằm trong Công cụ nâng cao.
-- CI chạy quality, integration, E2E smoke, schedule regression bắt buộc trước deploy
-  và regression cho thao tác env deploy;
-  nightly/manual workflow chạy full regression. Production deploy dùng image full
-  commit SHA qua GHCR và VPS, xác thực env, kiểm tra storage headroom và giữ snapshot
-  env nguyên tử cho image rollback; VPS tự giữ image API/Web hiện tại và đúng một thế hệ
-  rollback thay vì tích lũy mọi tag SHA.
+- **ACTIVE**: đang hoạt động và phù hợp để dùng thực tế.
+- **ADVANCED**: đã hoạt động nhưng dành cho ngoại lệ hoặc thao tác không thuộc happy path.
+- **DEVELOPING**: bề mặt liên quan đã có nhưng chức năng còn đang hoàn thiện.
+- **TEMP_DISABLED**: source/domain được giữ nguyên nhưng entry point đang chủ động tắt.
+
+### ACTIVE — dùng thực tế
+
+- **Lớp và học sinh**: quản lý lớp 1–1/lớp nhóm, học sinh, enrollment, khoảng hiệu
+  lực, chuyển lớp, tạm dừng/ngừng học và lịch sử bất biến.
+- **Schedule**: Calendar hiển thị chung lớp riêng, lịch trường/trung tâm, lịch cá
+  nhân, lịch đổi và học bù. Lịch trường/trung tâm chỉ là busy slot, không tạo học
+  sinh, attendance hoặc học phí.
+- **Lesson recording**: Dashboard `Hôm nay` là happy path. Với buổi thường chưa ghi,
+  nút **Ghi buổi** tạo draft rồi mở Simple Mode một màn; học sinh mặc định có mặt,
+  cô chỉ đánh dấu em nghỉ nếu có, nhập nội dung/nhận xét tùy chọn và chọn **Lưu &
+  hoàn tất**. Full lesson wizard vẫn tồn tại cho chỉnh sửa đầy đủ.
+- **Học phí**: gói đúng 8 buổi, giá lớp/giá riêng/miễn phí, thu trước, xử lý đợt dở,
+  chuyển lớp và biên `PAID` bất biến tiếp tục hoạt động trên desktop/mobile.
+- **Google Sheet học sinh/phụ huynh**: Teacher Hub database là nguồn chuẩn; lesson
+  hoàn thành và học phí được đồng bộ sang sổ phụ huynh. Student Detail ưu tiên trạng
+  thái dễ hiểu, CTA mở sổ và sao chép liên kết.
+- **Legacy Import**: import lịch sử theo từng học sinh từ file `.xlsx` tối đa 10 MB
+  với hai sheet chuẩn `Quá trình học tập` và `Học phí`. Luồng preview cho phép xử lý
+  dòng cần xác nhận/bị chặn trước khi apply; apply transactionally, chống import
+  trùng theo student + SHA-256 và không hỗ trợ generic workbook tùy ý.
+- **Public**: Homepage chỉ quảng bá dịch vụ Tiếng Anh lớp 1–9 tại Huế. Catalog Mầm
+  non vẫn tồn tại riêng trong Góc học miễn phí. Góc học, flashcard/quiz, Tủ sách và
+  prerender/SEO đang hoạt động.
+- **Admin shell và vận hành**: desktop có sidebar, mobile có bottom navigation năm
+  mục; Account, Kho từ vựng và Bài tập từ vựng nằm trong menu avatar. CI/deploy,
+  backup và rollback hiện hành được mô tả trong tài liệu operations.
+
+### ADVANCED — có nhưng không nằm happy path
+
+- **Reconciliation**: dùng cho lịch cũ, buổi chưa xử lý và ngoại lệ; không còn là
+  bước bắt buộc trước khi ghi buổi thường hằng ngày.
+- **Học bù và đổi lịch**: tạo học bù, đổi một buổi hoặc đổi lịch tạm thời vẫn giữ
+  business rule, preview conflict và lịch sử nguồn.
+- **Combined class**: nhóm lớp học ghép và combined teaching occurrence vẫn dùng
+  canonical parent flow riêng.
+- **Full lesson wizard**: tạo buổi thủ công, học thêm, học bù, học ghép và chỉnh sửa
+  kỹ thuật vẫn dùng flow đầy đủ.
+- **Google Sheet recovery**: đồng bộ lại, retry creation, tạo lại nội dung Sheet,
+  archive và chi tiết lỗi không bị xóa nhưng nằm trong **Công cụ nâng cao**.
+
+### DEVELOPING
+
+- **Account settings**: trang tài khoản hiện có tên hiển thị, username, trạng thái
+  đăng nhập và đăng xuất. Đổi mật khẩu/cập nhật thông tin trong UI chưa hoàn thiện;
+  trang không hiển thị action giả.
+
+### TEMP_DISABLED
+
+- **Vocabulary public game**: `VOCABULARY_GAMES_ENABLED = false`. Các route `/play/*`
+  hiển thị “Trò chơi đang được hoàn thiện” và dẫn về `/hoc`; action giao/chia sẻ game
+  bị ẩn. Source engine, API, schema và dữ liệu vẫn được giữ để bật lại sau.
 
 ## Trạng thái phát hành
 
@@ -61,8 +81,8 @@ evidence từng lần kiểm thử được giữ trong Git history.
   dung/media công khai.
 - Admin visual refresh đã triển khai; visual target được duyệt nằm trong
   `docs/wireframes/admin-ui-refresh/`.
-- Vocabulary result/review đã triển khai nhưng chỉ được enable production sau khi
-  hoàn tất provider/content review và restore drill MySQL + media.
+- Vocabulary public game/result/review đã có source nhưng đang `TEMP_DISABLED`; chỉ
+  bật lại sau khi hoàn tất provider/content review và restore drill MySQL + media.
 - Bản nghe chuyên biệt và chế độ đọc SGK desktop phụ thuộc FlipBuilder;
   hotspot/audio/fullscreen cần kiểm tra thủ công trên thiết bị thật trước release.
 

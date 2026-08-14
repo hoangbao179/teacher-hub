@@ -14,6 +14,9 @@ sinh từ mầm non/mẫu giáo đến lớp 9. Website vẫn giữ vai trò ch�
 lớp tiếng Anh cô Vy và hỗ trợ phụ huynh liên hệ; khu vực `/hoc/*` là một trải
 nghiệm học độc lập, công khai và không yêu cầu tài khoản.
 
+Phạm vi mầm non ở đây chỉ mô tả catalog tự học miễn phí, không phải dịch vụ giảng
+dạy. Cô Vy chỉ nhận dạy học sinh lớp 1–9 (tiểu học và THCS), không nhận dạy mầm non.
+
 MVP đầu tiên tập trung vào học từ vựng:
 
 - chọn cấp/lớp và Unit hoặc chủ đề;

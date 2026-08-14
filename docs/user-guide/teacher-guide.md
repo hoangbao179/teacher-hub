@@ -1,47 +1,55 @@
 # Hướng dẫn Cô Vy
 
-## Đăng nhập và mật khẩu
+## Đăng nhập
 
-Mở `/admin/login`, nhập username/password rồi chọn **Ghi nhớ đăng nhập** chỉ trên
-thiết bị cá nhân. Khi chọn, ứng dụng lưu JWT và username trong
-localStorage; khi bỏ chọn, JWT nằm trong sessionStorage và username không được giữ.
-Ứng dụng không bao giờ lưu mật khẩu thô. Đề nghị lưu mật khẩu, nếu có, thuộc password
-manager của trình duyệt. Nút góc phải đăng xuất và xóa token ở cả hai nơi.
+Mở `/admin/login`, nhập username và mật khẩu. Chỉ chọn **Ghi nhớ đăng nhập** trên
+thiết bị cá nhân. Có thể mở avatar → **Tài khoản** để xem tên đăng nhập hoặc đăng
+xuất. Đổi mật khẩu và cập nhật thông tin tài khoản trong giao diện đang được hoàn
+thiện; khi cần đổi mật khẩu, nhờ người vận hành hệ thống hỗ trợ.
 
-Để đổi mật khẩu, chạy `npm run admin:reset-password` rồi nhập hai lần mật khẩu được che
-cho username cố định `covy`. Nếu cần áp dụng lại bootstrap credential,
-sửa `BOOTSTRAP_ADMIN_PASSWORD` và chủ động chạy
-`npm run db:bootstrap-admin`; sửa `.env` hoặc chạy `npm run dev` không tự đổi database.
-Mức tối thiểu V1 được cố định là 6 ký tự.
-
-Nếu nhập sai quá nhiều, form hiển thị countdown theo `Retry-After`, giữ nguyên nội
-dung và tự mở lại nút đăng nhập ở 0. Trong development, restart API là cách đơn giản
-để xóa limiter in-memory; không dùng cách này để né bảo vệ ở production.
-
-## Điều hướng và thao tác hằng ngày
+## Ghi buổi hằng ngày
 
 Trên điện thoại, thanh dưới có đúng năm mục **Hôm nay, Lịch, Lớp học, Học phí,
 Học sinh**. Nút thao tác cố định nằm phía trên thanh. Desktop dùng sidebar.
+
+Luồng chính sau mỗi buổi học:
+
+1. **Đăng nhập** và mở **Hôm nay**.
+2. Tìm lớp vừa dạy, chọn **Ghi buổi**. Nếu đã có bản nháp, chọn **Tiếp tục ghi**.
+3. Học sinh được mặc định **Có mặt**; chỉ chuyển sang **Nghỉ** với em vắng mặt.
+   Học sinh miễn phí vẫn hiển thị đúng trạng thái miễn phí và có thể chuyển sang Nghỉ.
+4. Nhập **Nội dung buổi học**, **Bài tập về nhà** hoặc **Nhận xét chung** nếu cần.
+   Nhận xét riêng của từng học sinh nằm dưới nút mở rộng và cũng không bắt buộc.
+5. Chọn **Lưu & hoàn tất**.
+6. Khi hoàn tất, chọn **Về Hôm nay** để tiếp tục hoặc kết thúc công việc.
+
+Teacher Hub là nơi cô nhập buổi học. Hệ thống tự đồng bộ dữ liệu đã hoàn thành sang
+Google Sheet là sổ phụ huynh; trong công việc hằng ngày cô chỉ cần kiểm tra trạng
+thái dễ hiểu và dùng **Mở sổ phụ huynh** khi muốn xem. Không cần thao tác công cụ
+khôi phục kỹ thuật nếu sổ đang hoạt động bình thường.
+
+## Khi cần — quản lý và thao tác nâng cao
 
 1. **Lớp học → Thêm lớp**: môn học mặc định là Tiếng Anh; nhập giá gói 8 buổi,
    thời lượng và lịch lặp theo bốn khu vực rõ ràng của form.
 2. **Học sinh → Thêm học sinh**, mở lớp và ghi danh; dùng search theo tên/tên gọi/lớp,
    sort A–Z/Z–A hoặc lọc trạng thái; chọn Theo giá lớp, Giá riêng
    hoặc Miễn phí theo ngày hiệu lực.
-3. **Ghi nhận buổi học**: chọn lớp/ngày/giờ; dùng **Tất cả có mặt**,
-   **Tất cả nghỉ** hoặc **Xóa lựa chọn**, rồi chỉnh ngoại lệ. Trạng thái gợi ý chưa
-   được lưu cho đến khi xác nhận. Nhận xét chung xuất hiện cho phụ huynh; nhận xét
-   riêng chỉ thuộc đúng học sinh. **Ghi chú nội bộ** không đưa sang Sheet.
-4. **Buổi học bù**: từ occurrence đã Nghỉ, chọn **Tạo buổi học bù** rồi chọn toàn
-   lớp hoặc subset. Học sinh đã được bù cho cùng nguồn sẽ bị khóa. Buổi bù generic
-   không có nguồn vẫn dùng được. Khi nhập muộn, dùng ngày học thật; hệ thống phân
+3. **Chỉnh sửa đầy đủ/tạo buổi thủ công**: từ màn ghi nhanh chọn **Chỉnh sửa đầy đủ**
+   để mở màn chỉnh sửa đầy đủ mà không mất bản nháp. Luồng này dành cho giờ thực tế,
+   ghi chú nội bộ, buổi ngoài lịch, học thêm và các trường hợp không thuộc buổi
+   thường hằng ngày. **Ghi chú nội bộ** không đưa sang Sheet.
+4. **Buổi học bù**: từ buổi dự kiến đã đánh dấu Nghỉ, chọn **Tạo buổi học bù** rồi chọn toàn
+   lớp hoặc một số học sinh. Học sinh đã được bù cho cùng nguồn sẽ bị khóa. Buổi bù
+   không gắn buổi nguồn vẫn dùng được. Khi nhập muộn, dùng ngày học thật; hệ thống phân
    bổ lại theo thời gian nhưng không tự sửa đợt học phí Đã thu.
 5. **Học phí**: theo dõi Chưa đủ 8 buổi/Cần thu/Đã thu/Dở dang và chỉ xác
    nhận thanh toán toàn bộ đúng mức đã chốt. Trên mobile, search nằm ngoài và lớp,
    trạng thái, sắp xếp nằm trong nút **Lọc**. Đợt Đã thu là chỉ đọc.
-6. **Xác nhận lịch dạy/Lịch**: **Nghỉ** xử lý occurrence trước khi có draft;
-   **Hủy bản nháp** giữ lesson/audit và cũng đưa occurrence nguồn về Nghỉ. Cả hai
-   không tạo học phí. Lịch bận và conflict chỉ cảnh báo, không tự nghỉ/đổi lớp.
+6. **Kiểm tra lịch tuần**: dùng cho lịch cũ và ngoại lệ, không phải
+   bước bắt buộc trước khi ghi buổi thường. **Nghỉ** xử lý lịch dự kiến trước khi có draft;
+   **Hủy bản nháp** giữ lịch sử và cũng đưa buổi nguồn về Nghỉ. Cả hai không tạo
+   học phí. Lịch bận và trùng lịch chỉ cảnh báo, không tự nghỉ/đổi lớp.
 7. **Xuất Excel**: mở chi tiết học sinh và chọn **Xuất báo cáo Excel**. Workbook
    chuẩn hóa chứa lịch sử học/học phí/tổng hợp; không dùng làm generic import.
 8. **Import lịch sử Excel**: mở chi tiết đúng học sinh, chọn **Import lịch sử**, tải
@@ -51,22 +59,23 @@ Học sinh**. Nút thao tác cố định nằm phía trên thanh. Desktop dùng
    hỗ trợ, xác nhận một dòng hoặc bulk các dòng cùng trường hợp, ghép/tạo lesson hoặc bỏ qua với lý do. Kiểm tra
    tổng accepted/resolved/skipped rồi chọn **Xác nhận import**. Nếu file đã đổi sau
    preview, hệ thống từ chối và yêu cầu preview lại; import lại cùng file không tạo trùng.
-9. **Sổ theo dõi phụ huynh**: tại chi tiết học sinh, chọn **Tạo sổ theo dõi**.
-   Khi **Đã liên kết**, có thể mở/copy link hoặc tạo lại snapshot từ database.
-   Sheet mặc định Restricted; cô Vy cấp Viewer thủ công trong Google Sheets.
-   **Lưu trữ** không xóa file Google. Card hiển thị trạng thái đồng bộ lesson; khi
-   cần, chọn **Đồng bộ lại** để xếp hàng toàn bộ lịch sử đã hoàn thành. Sheet vẫn
-   Restricted; tab Học phí được đồng bộ cùng lịch sử buổi học và có cùng cấu trúc
-   với file Excel tải xuống.
-10. Tạm dừng/mở lại lớp hoặc ghi danh phải chọn ngày hiệu lực. Khoảng pause không
-   sinh lịch/participant; lịch sử trước pause và dữ liệu nhập muộn vẫn theo ngày
+9. **Sổ phụ huynh**: tại chi tiết học sinh, chọn **Tạo Google Sheet** nếu chưa có;
+   khi sổ hoạt động, dùng **Mở sổ phụ huynh** hoặc **Sao chép liên kết**. Sheet mặc
+   định Restricted nên cô Vy cấp Viewer thủ công trong Google Sheets. Chỉ khi có
+   lỗi mới mở **Công cụ nâng cao** để đồng bộ lại, thử tạo lại, tạo lại nội dung hoặc
+   lưu trữ Sheet; các thao tác này không thuộc luồng hằng ngày.
+10. Tạm dừng/mở lại lớp hoặc ghi danh phải chọn ngày hiệu lực. Khoảng tạm dừng không
+   sinh lịch/danh sách học sinh; lịch sử trước đó và dữ liệu nhập muộn vẫn theo ngày
    học thực tế. Đóng lớp/ngừng học không xóa lịch sử.
 11. **Đổi lịch tạm thời** tại chi tiết lớp: chọn lịch gốc, khoảng ngày, thứ/giờ mới,
-   xem preview và xác nhận conflict. Hết khoảng chọn, lịch tự quay về pattern gốc.
+   xem trước và xác nhận trùng lịch. Hết khoảng chọn, lịch tự quay về lịch gốc.
+12. **Lớp học ghép**: chỉ dùng nhóm lớp học ghép khi thực tế dạy
+    nhiều lớp trong cùng một buổi. Luồng này giữ đúng danh sách học sinh và các buổi
+    liên quan, không thay thế cách ghi buổi thường từ **Hôm nay**.
 
-Tên lớp và học sinh trong buổi cũ là snapshot tại thời điểm tạo; đổi tên hiện tại
-không thay đổi lịch sử. Correction có chủ ý vẫn tuân thủ audit, recalculation và
-biên chu kỳ Đã thu.
+Tên lớp và danh sách học sinh trong buổi cũ được giữ theo thời điểm tạo; đổi tên
+hiện tại không thay đổi lịch sử. Khi cần sửa dữ liệu cũ, dùng đúng luồng nâng cao để
+hệ thống tính lại và vẫn bảo vệ các đợt học phí **Đã thu**.
 
 ## Homepage và liên hệ
 
