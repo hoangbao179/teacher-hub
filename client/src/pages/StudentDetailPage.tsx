@@ -1,4 +1,7 @@
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Button,
   Card,
@@ -16,11 +19,12 @@ import {
   Typography,
   Chip,
   CircularProgress,
+  Divider,
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import type { ClassListItem, IncompleteCycleAction, PaymentMethod, StudentDetail, StudentGoogleSheetState, TuitionMode } from "@teacher/shared";
-import { ContentCopy, Download, Launch, UploadFile } from "@mui/icons-material";
+import { ContentCopy, Download, ExpandMore, Launch, UploadFile } from "@mui/icons-material";
 import { api } from "../api/client";
 import { archiveStudentGoogleSheet, createStudentGoogleSheet, downloadStudentReport, endEnrollment as endEnrollmentApi,
   getStudentGoogleSheet, regenerateStudentGoogleSheet, resyncStudentGoogleSheet, retryStudentGoogleSheet, transferEnrollment } from "../api/students";
@@ -42,6 +46,7 @@ export function StudentDetailPage() {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleState, setGoogleState] = useState<StudentGoogleSheetState | null>(null);
   const [googleConfirm, setGoogleConfirm] = useState<"regenerate" | "resync" | "archive" | null>(null);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
   const [success, setSuccess] = useState(() => (location.state as { success?: string } | null)?.success ?? "");
   const [statusActionName, setStatusActionName] = useState<"pause" | "resume" | null>(null);
   const [statusEffectiveDate, setStatusEffectiveDate] = useState(today);
@@ -150,101 +155,98 @@ export function StudentDetailPage() {
   }).format(new Date(value)) : "—";
   if (!item && !error) return <LoadingState />;
   if (!item) return <Alert severity="error">{error || "Không tải được học sinh."}</Alert>;
+  const activeSheet = googleState?.sheet?.status === "ACTIVE" ? googleState.sheet : null;
+  const googleSyncHasError = Boolean(googleState && (!googleState.syncEnabled || googleState.deadCount > 0 || googleState.retryCount > 0));
+  const googleSyncWaiting = Boolean(googleState && googleState.pendingCount > 0);
   return (
     <Stack spacing={2} sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
       {error && <Alert severity="error">{error}</Alert>}
       {success && <Alert severity="success">{success}</Alert>}
       <PageHeader title={item!.fullName} />
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-        <Button component={Link} to={`/admin/students/${item!.id}/edit`} variant="outlined">Sửa thông tin</Button>
-        <Button startIcon={<Download />} variant="contained" disabled={busy} onClick={exportReport}>
-          {busy ? "Đang tạo báo cáo…" : "Xuất báo cáo Excel"}
-        </Button>
-        <Button component={Link} to={`/admin/students/${item!.id}/legacy-import`} startIcon={<UploadFile />} variant="outlined">
-          Import lịch sử
-        </Button>
-      </Stack>
-      <Card>
-        <CardContent>
-          <Typography>Lớp: {item!.className}</Typography>
-          <Typography>
-            Phụ huynh: {item!.parentName ?? "—"} · {item!.parentPhone ?? "—"}
-          </Typography>
-          <Typography>
-            Học phí:{" "}
-            {item!.tuitionMode === "FREE"
-              ? "Miễn phí"
-              : <><CurrencyDisplay value={item!.effectivePackagePrice} /> / 8 buổi</>}
-          </Typography>
-        </CardContent>
-      </Card>
-      {item!.tuitionMode !== "FREE" && (
-        <Card>
-          <CardContent>
-            <ProgressCount value={item!.currentProgress ?? 0} />
-          </CardContent>
-        </Card>
-      )}
+      <Card data-testid="student-summary-card"><CardContent><Stack spacing={1.5}>
+        <Stack spacing={0.25}>
+          <Typography variant="body2" color="text.secondary">Lớp hiện tại</Typography>
+          <Typography component="h2" variant="h6">{item!.className ?? "Chưa xếp lớp"}</Typography>
+        </Stack>
+        <Divider />
+        {item!.enrollmentId && item!.tuitionMode ? <>
+          <Typography>Học phí: {item!.tuitionMode === "FREE"
+            ? "Miễn phí"
+            : <><CurrencyDisplay value={item!.effectivePackagePrice} /> / 8 buổi</>}</Typography>
+          {item!.tuitionMode !== "FREE" && <ProgressCount value={item!.currentProgress ?? 0} label="Tiến độ học phí" />}
+        </> : <Typography color="text.secondary">Chưa có ghi danh đang học.</Typography>}
+        {(item!.parentName || item!.parentPhone) && <Typography variant="body2" color="text.secondary">
+          Phụ huynh: {[item!.parentName, item!.parentPhone].filter(Boolean).join(" · ")}
+        </Typography>}
+      </Stack></CardContent></Card>
       <Card data-testid="student-google-sheet-card">
         <CardContent><Stack spacing={1.5} sx={{ minWidth: 0 }}>
           <Typography variant="h6">Sổ theo dõi phụ huynh</Typography>
+          <Typography color="text.secondary">Cô Vy ghi buổi học trên Teacher Hub; dữ liệu sẽ được đồng bộ sang sổ phụ huynh.</Typography>
           {!googleState ? <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}><CircularProgress size={20} /><Typography>Đang tải trạng thái…</Typography></Stack>
             : !googleState.sheet ? <>
-              <Typography>Chưa tạo Google Sheet</Typography>
-              <Typography color="text.secondary">{googleState.enabled
-                ? `Google Drive đã sẵn sàng${googleState.ownerLabel ? ` · ${googleState.ownerLabel}` : ""}.`
-                : "Google Drive chưa được bật trên máy chủ."}</Typography>
+              <Typography sx={{ fontWeight: 700 }}>Chưa có sổ phụ huynh</Typography>
+              {!googleState.enabled && <Alert severity="warning">Hiện chưa thể tạo sổ. Vui lòng kiểm tra cấu hình trong Công cụ nâng cao.</Alert>}
               <Button variant="contained" disabled={googleBusy || !googleState.enabled} onClick={() => void mutateGoogle("create")}>
-                {googleBusy ? "Đang tạo…" : "Tạo sổ theo dõi"}
+                {googleBusy ? "Đang tạo…" : "Tạo Google Sheet"}
               </Button>
             </> : googleState.sheet.status === "CREATING" && !googleState.sheet.canRetryGeneration ? <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              <CircularProgress size={20} /><Typography>Đang tạo Google Sheet…</Typography>
+              <CircularProgress size={20} /><Typography>Đang tạo sổ phụ huynh…</Typography>
             </Stack> : googleState.sheet.status === "GENERATION_ERROR" || googleState.sheet.canRetryGeneration ? <>
-              <Chip color="error" label="Tạo chưa thành công" sx={{ alignSelf: "flex-start" }} />
-              <Alert severity="error">{googleState.sheet.lastSyncError ??
-                (googleState.sheet.status === "CREATING" ? "Tiến trình tạo đã quá thời gian chờ. Có thể thử tạo lại an toàn." : "Không thể tạo Google Sheet.")}</Alert>
-              <Button variant="contained" disabled={googleBusy || !googleState.enabled} onClick={() => void mutateGoogle("retry")}>
-                {googleBusy ? "Đang thử lại…" : "Thử tạo lại"}
-              </Button>
-            </> : <>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between", minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>{googleState.sheet.fileName}</Typography>
-                <Chip color="success" label="Đã liên kết" sx={{ alignSelf: "flex-start" }} />
-              </Stack>
-              <Typography color="text.secondary">Lần tạo: {displayDateTime(googleState.sheet.lastGeneratedAt)}</Typography>
-              {!googleState.syncEnabled && <Alert severity="warning">Đồng bộ tự động đang tắt trên máy chủ.</Alert>}
-              {googleState.deadCount > 0 ? <Alert severity="error">
-                Đồng bộ lỗi vĩnh viễn cho {googleState.deadCount} mục. {googleState.lastSyncError ?? ""}
-              </Alert> : googleState.retryCount > 0 ? <Alert severity="warning">
-                Có {googleState.retryCount} mục đang chờ thử lại. {googleState.lastSyncError ?? ""}
-              </Alert> : googleState.pendingCount > 0 ? <Alert severity="info">
-                Đang chờ đồng bộ {googleState.pendingCount} mục…
-              </Alert> : googleState.lastSuccessfulSyncAt
-                ? <Chip color="success" label="Đồng bộ đã cập nhật" sx={{ alignSelf: "flex-start" }} />
-                : <Chip label="Chưa có dữ liệu đồng bộ" sx={{ alignSelf: "flex-start" }} />}
-              <Typography color="text.secondary">Lần đồng bộ thành công: {displayDateTime(googleState.lastSuccessfulSyncAt)}</Typography>
-              <Typography>Quyền chia sẻ: {googleState.sheet.sharingStatus === "RESTRICTED" ? "Giới hạn" : "Đã chia sẻ thủ công"}</Typography>
-              <Alert severity="info">Sheet mặc định ở chế độ giới hạn. Hãy cấp quyền Viewer cho phụ huynh trực tiếp trong Google Sheets.</Alert>
+              <Chip color="error" label="Có lỗi đồng bộ" sx={{ alignSelf: "flex-start" }} />
+              <Alert severity="error">Sổ phụ huynh chưa được tạo thành công. Mở Công cụ nâng cao để thử lại.</Alert>
+            </> : googleState.sheet.status === "ACTIVE" ? <>
+              <Chip color={googleSyncHasError ? "error" : googleSyncWaiting ? "info" : "success"}
+                label={googleSyncHasError ? "Có lỗi đồng bộ" : googleSyncWaiting ? "Đang chờ đồng bộ" : "Đã đồng bộ"} sx={{ alignSelf: "flex-start" }} />
+              {googleSyncHasError && <Alert severity="error">Một số dữ liệu chưa sang được sổ phụ huynh. Cô Vy vẫn có thể tiếp tục ghi buổi học trên Teacher Hub.</Alert>}
+              {googleState.lastSuccessfulSyncAt && <Typography color="text.secondary">Đồng bộ gần nhất: {displayDateTime(googleState.lastSuccessfulSyncAt)}</Typography>}
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap", minWidth: 0 }}>
                 <Button component="a" href={googleState.sheet.webViewUrl ?? undefined} target="_blank" rel="noopener noreferrer"
-                  startIcon={<Launch />} variant="contained" disabled={!googleState.sheet.webViewUrl}>Mở Google Sheet</Button>
-                <Button startIcon={<ContentCopy />} variant="outlined" disabled={!googleState.sheet.webViewUrl} onClick={() => void copyGoogleLink()}>Sao chép liên kết</Button>
-                <Button variant="outlined" disabled={googleBusy} onClick={() => setGoogleConfirm("regenerate")}>Tạo lại nội dung</Button>
-                <Button variant="outlined" disabled={googleBusy || !googleState.syncEnabled}
-                  onClick={() => setGoogleConfirm("resync")}>Đồng bộ lại</Button>
-                <Button color="warning" variant="outlined" disabled={googleBusy} onClick={() => setGoogleConfirm("archive")}>Lưu trữ</Button>
+                  startIcon={<Launch />} variant="contained" disabled={!googleState.sheet.webViewUrl} sx={{ minHeight: 44 }}>Mở sổ phụ huynh</Button>
+                <Button startIcon={<ContentCopy />} variant="outlined" disabled={!googleState.sheet.webViewUrl} onClick={() => void copyGoogleLink()} sx={{ minHeight: 44 }}>Sao chép liên kết</Button>
               </Stack>
+            </> : <>
+              <Typography sx={{ fontWeight: 700 }}>Chưa có sổ phụ huynh</Typography>
+              <Button variant="contained" disabled={googleBusy || !googleState.enabled} onClick={() => void mutateGoogle("create")}>
+                {googleBusy ? "Đang tạo…" : "Tạo Google Sheet"}
+              </Button>
             </>}
         </Stack></CardContent>
       </Card>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
-        {item!.enrollmentStatus === "ACTIVE" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("pause")}>Tạm dừng ghi danh</Button>}
-        {item!.enrollmentStatus === "PAUSED" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("resume")}>Mở lại ghi danh</Button>}
-        <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setTuitionOpen(true)}>Đổi chế độ học phí</Button>
-        {item!.tuitionMode !== "FREE" && <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED" || Boolean(item!.advanceReceipt)} onClick={() => setAdvanceOpen(true)}>Thu học phí trước</Button>}
-        <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => void openTransfer()}>Chuyển lớp</Button>
-        <Button color="error" variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setEndOpen(true)}>Ngừng học</Button>
-      </Stack>
+      <Accordion expanded={advancedExpanded} onChange={(_event, expanded) => setAdvancedExpanded(expanded)} data-testid="student-advanced-tools">
+        <AccordionSummary expandIcon={<ExpandMore />} sx={{ minHeight: 52 }}><Typography sx={{ fontWeight: 700 }}>Công cụ nâng cao</Typography></AccordionSummary>
+        <AccordionDetails><Stack spacing={2}>
+          {googleState?.sheet && <Stack spacing={1.25}>
+            <Typography component="h2" variant="subtitle1">Quản lý sổ phụ huynh</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>{googleState.sheet.fileName}</Typography>
+            {googleState.sheet.lastGeneratedAt && <Typography variant="body2" color="text.secondary">Tạo nội dung gần nhất: {displayDateTime(googleState.sheet.lastGeneratedAt)}</Typography>}
+            {activeSheet && <Typography variant="body2">Quyền chia sẻ: {activeSheet.sharingStatus === "RESTRICTED" ? "Giới hạn" : "Đã chia sẻ thủ công"}</Typography>}
+            {googleState.lastSyncError && <Alert severity="warning">Chi tiết lỗi: {googleState.lastSyncError}</Alert>}
+            {(googleState.pendingCount > 0 || googleState.retryCount > 0 || googleState.deadCount > 0) && <Typography variant="body2" color="text.secondary">
+              Đang chờ: {googleState.pendingCount} · Đang thử lại: {googleState.retryCount} · Cần xử lý: {googleState.deadCount}
+            </Typography>}
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+              {(googleState.sheet.status === "GENERATION_ERROR" || googleState.sheet.canRetryGeneration) && <Button variant="outlined" disabled={googleBusy || !googleState.enabled} onClick={() => void mutateGoogle("retry")}>{googleBusy ? "Đang thử lại…" : "Thử tạo lại"}</Button>}
+              {activeSheet && <><Button variant="outlined" disabled={googleBusy} onClick={() => setGoogleConfirm("regenerate")}>Tạo lại nội dung Sheet</Button>
+                <Button variant="outlined" disabled={googleBusy || !googleState.syncEnabled} onClick={() => setGoogleConfirm("resync")}>Đồng bộ lại</Button>
+                <Button color="warning" variant="outlined" disabled={googleBusy} onClick={() => setGoogleConfirm("archive")}>Lưu trữ sổ</Button></>}
+            </Stack>
+          </Stack>}
+          <Divider />
+          <Typography component="h2" variant="subtitle1">Thông tin và học phí</Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+            <Button component={Link} to={`/admin/students/${item!.id}/edit`} variant="outlined">Sửa thông tin</Button>
+            <Button startIcon={<Download />} variant="outlined" disabled={busy} onClick={exportReport}>{busy ? "Đang tạo báo cáo…" : "Xuất báo cáo Excel"}</Button>
+            <Button component={Link} to={`/admin/students/${item!.id}/legacy-import`} startIcon={<UploadFile />} variant="outlined">Import lịch sử</Button>
+            {item!.enrollmentStatus === "ACTIVE" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("pause")}>Tạm dừng ghi danh</Button>}
+            {item!.enrollmentStatus === "PAUSED" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("resume")}>Mở lại ghi danh</Button>}
+            <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setTuitionOpen(true)}>Đổi chế độ học phí</Button>
+            {item!.tuitionMode !== "FREE" && <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED" || Boolean(item!.advanceReceipt)} onClick={() => setAdvanceOpen(true)}>Thu học phí trước</Button>}
+            <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => void openTransfer()}>Chuyển lớp</Button>
+            <Button color="error" variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setEndOpen(true)}>Ngừng học</Button>
+          </Stack>
+        </Stack></AccordionDetails>
+      </Accordion>
       <Dialog open={tuitionOpen} onClose={() => setTuitionOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Chế độ học phí</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         <FormControl><InputLabel>Chế độ</InputLabel><Select label="Chế độ" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Theo giá lớp</MenuItem><MenuItem value="CUSTOM">Giá riêng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
         {tuitionMode === "CUSTOM" && <TextField type="number" required label="Giá riêng / 8 buổi" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} />}

@@ -26,7 +26,7 @@ một chiều cho phụ huynh.
 | Lesson | `lesson_sessions` có `content`, `homework`, `general_comment` dành cho phụ huynh và `note` nội bộ; `lesson_attendances.student_note` là ghi chú riêng. |
 | Tuition cycle | `tuition_cycles` vẫn dùng `enrollment_id` làm anchor tương thích, nhưng recalculation V16B khóa và nhóm attendance theo student xuyên enrollment. Chỉ `PRESENT` tăng đếm; chuyển lớp cùng giá tiếp tục cycle dở. |
 | Google | V16C tạo Sheet; V16D có transactional outbox và worker cập nhật lesson một chiều. Không dùng permissions API. |
-| Student Detail | Card hiển thị pending/retry/dead, lần sync thành công và cho phép resync qua outbox. |
+| Student Detail | Bề mặt chính hiển thị lớp/học phí và trạng thái sổ bằng ba nhãn thân thiện: Đã đồng bộ, Đang chờ đồng bộ, Có lỗi đồng bộ. Mở sổ và sao chép liên kết là CTA chính; số liệu hàng đợi, lỗi chi tiết và recovery nằm trong Công cụ nâng cao. |
 
 Vì vậy việc giữ cycle dở xuyên enrollment và một Sheet ổn định theo student là
 thay đổi domain **PLANNED**, cần migration/API/runtime riêng trong các task sau;
@@ -68,6 +68,12 @@ tuition sync và sharing tự động vẫn thuộc V16E **PLANNED**.
 - Chỉ thay Sheet khi file lỗi, giáo viên chủ động archive, có yêu cầu riêng tư,
   hoặc một migration thủ công được xác nhận rõ. Thay thế phải giữ audit và trạng
   thái file cũ, không tạo hai Sheet `ACTIVE`.
+
+Student Detail giải thích rõ dữ liệu buổi học được nhập trong Teacher Hub rồi đồng
+bộ một chiều sang sổ phụ huynh. Khi chưa có Sheet, card chỉ mời tạo Google Sheet;
+khi đã ACTIVE, card ưu tiên mở sổ, sao chép liên kết và thời điểm đồng bộ gần nhất.
+Retry creation, regenerate, resync, archive và chi tiết lỗi không bị xóa nhưng chỉ
+hiện trong `Công cụ nâng cao`.
 
 ## 4. Template Google Sheet — IMPLEMENTED V16C
 

@@ -65,20 +65,28 @@ try {
   const created = await fetch(`http://127.0.0.1:${apiPort}/api/students`, { method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ fullName: "Học sinh Google E2E" }) });
   const studentId = (await created.json()).data.id; await page.goto(`${origin}/admin/students/${studentId}`);
-  const card = page.getByTestId("student-google-sheet-card"); await card.getByText("Chưa tạo Google Sheet").waitFor();
-  await card.getByRole("button", { name: "Tạo sổ theo dõi" }).click();
-  await page.getByText("Đang tạo…").waitFor(); await card.getByText("Tạo chưa thành công").waitFor();
-  await card.getByRole("button", { name: "Thử tạo lại" }).click(); await card.getByText("Đã liên kết").waitFor();
-  const open = card.getByRole("link", { name: "Mở Google Sheet" }); const firstUrl = await open.getAttribute("href");
+  const card = page.getByTestId("student-google-sheet-card"); await card.getByText("Chưa có sổ phụ huynh").waitFor();
+  await card.getByText("Cô Vy ghi buổi học trên Teacher Hub; dữ liệu sẽ được đồng bộ sang sổ phụ huynh.").waitFor();
+  if (await page.getByRole("button", { name: "Xuất báo cáo Excel" }).count()) throw new Error("Advanced student actions are visible on the main surface");
+  await card.getByRole("button", { name: "Tạo Google Sheet" }).click();
+  await page.getByText("Đang tạo…").waitFor(); await card.getByText("Có lỗi đồng bộ").waitFor();
+  if (await card.getByRole("button", { name: "Thử tạo lại" }).count()) throw new Error("Creation recovery leaked onto the main Google card");
+  const advanced = page.getByTestId("student-advanced-tools");
+  await advanced.getByText("Công cụ nâng cao").click();
+  await advanced.getByRole("button", { name: "Thử tạo lại" }).click(); await card.getByText("Đã đồng bộ").waitFor();
+  await advanced.getByRole("button", { name: "Lưu trữ sổ" }).waitFor();
+  await advanced.getByRole("link", { name: "Import lịch sử" }).waitFor();
+  const open = card.getByRole("link", { name: "Mở sổ phụ huynh" }); const firstUrl = await open.getAttribute("href");
   if (!firstUrl?.startsWith("https://docs.google.com/spreadsheets/")) throw new Error("Unsafe or missing Google Sheet URL");
   if (await open.getAttribute("rel") !== "noopener noreferrer") throw new Error("External Google Sheet link is missing rel safety");
   await card.getByRole("button", { name: "Sao chép liên kết" }).click(); await page.getByText("Đã sao chép liên kết Google Sheet.").waitFor();
-  await card.getByRole("button", { name: "Tạo lại nội dung" }).click(); const dialog = page.getByRole("dialog", { name: "Tạo lại nội dung Sheet" });
+  await advanced.getByRole("button", { name: "Tạo lại nội dung Sheet" }).click(); const dialog = page.getByRole("dialog", { name: "Tạo lại nội dung Sheet" });
   await dialog.getByRole("button", { name: "Xác nhận" }).click(); await page.getByText("Đã tạo lại nội dung từ dữ liệu Teacher Hub.").waitFor();
   if (await open.getAttribute("href") !== firstUrl) throw new Error("Regenerate changed the spreadsheet URL");
   const suffix = Date.now();
+  const groupName = `Google sync E2E ${suffix}`;
   const group = await apiMutation("/api/classes", token, "POST", {
-    name: `Google sync E2E ${suffix}`, type: "GROUP", defaultPackagePrice: 2_000_000,
+    name: groupName, type: "GROUP", defaultPackagePrice: 2_000_000,
     defaultDurationMinutes: 90, startDate: "2026-07-01", schedules: [],
   });
   const enrollment = await apiMutation(`/api/classes/${group.id}/enrollments`, token, "POST", {
@@ -94,8 +102,13 @@ try {
     attendances: [{ enrollmentId: enrollment.id, status: "PRESENT", studentNote: "Riêng đúng học sinh" }],
   });
   await page.reload();
-  await card.getByText("Đang chờ đồng bộ 1 mục…").waitFor();
-  await card.getByRole("button", { name: "Đồng bộ lại" }).click();
+  await card.getByText("Đang chờ đồng bộ").waitFor();
+  const summary = page.getByTestId("student-summary-card");
+  await summary.getByText(groupName).waitFor();
+  await summary.getByText("Tiến độ học phí 1/8").waitFor();
+  if ((await card.innerText()).match(/outbox|retry|dead|generation/i)) throw new Error("Technical sync terms are visible on the main Google card");
+  await page.getByTestId("student-advanced-tools").getByText("Công cụ nâng cao").click();
+  await page.getByTestId("student-advanced-tools").getByRole("button", { name: "Đồng bộ lại" }).click();
   const resyncDialog = page.getByRole("dialog", { name: "Đồng bộ lại lịch sử" });
   await resyncDialog.getByRole("button", { name: "Xác nhận" }).click();
   await page.getByText("Đã xếp hàng đồng bộ lại 1 buổi học.").waitFor();

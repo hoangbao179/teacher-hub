@@ -35,7 +35,8 @@ evidence từng lần kiểm thử được giữ trong Git history.
   Google Sheet tab ôn từ vựng.
 - Legacy Excel preview/apply có reconciliation theo nhóm và transaction MySQL.
 - Google Drive/Sheets dùng DB làm nguồn chuẩn, outbox sau commit và regenerate có
-  giới hạn vùng hệ thống quản lý.
+  giới hạn vùng hệ thống quản lý. Student Detail ưu tiên trạng thái đồng bộ thân
+  thiện và CTA mở sổ phụ huynh; recovery/import nằm trong Công cụ nâng cao.
 - CI chạy quality, integration, E2E smoke, schedule regression bắt buộc trước deploy
   và regression cho thao tác env deploy;
   nightly/manual workflow chạy full regression. Production deploy dùng image full
