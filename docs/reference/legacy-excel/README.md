@@ -28,10 +28,13 @@ và không tin trực tiếp cột HOURS do Excel có thể tự chuyển thành
 - Marker đã thu có thể đặt ở dòng bên dưới bằng chữ `PAID` tại cột F (file cũ) hoặc
   cột G. `TOTAL` và `TOTAL HOURS` đều kết thúc block nhưng vẫn được scan marker.
   `UNPAID` explicit nghĩa là chưa thu; block có cả `PAID` và `UNPAID` phải review.
-- `PAID` chỉ chốt đúng tám dòng billable phía trước. Dòng billable phía sau vẫn là
-  `PRESENT + BILLABLE` và bắt đầu cycle tiếp theo; chỉ marker `FREE` explicit mới tạo
-  buổi miễn phí.
-- Năm ngoài 2000–2100 bị chặn, không tự sửa typo như `0226` thành `2026`.
+- `PAID` chỉ chốt đúng tám dòng billable phía trước. Nếu block được xác định chắc
+  chắn là `PAID_CLEAR`, dòng thường sau marker đến trước `TOTAL`/`TOTAL HOURS` là
+  buổi `FREE`, vẫn giữ lịch sử nhưng không vào cycle; block tiếp theo trở lại
+  `BILLABLE`. Block `PAID` mơ hồ hoặc conflict không được tự suy luận FREE.
+- Năm ngoài 2000–2100 bị chặn, không tự sửa typo như `0226` thành `2026`. Raw date
+  học phí không hợp lệ vẫn xuất hiện cùng sheet/source row trong Preview và chặn
+  Apply; giáo viên phải sửa file rồi tải lại.
 - Preview ưu tiên lớp hiện tại của học sinh khi lớp đó có trong danh sách lựa chọn;
   nếu không có lớp hiện tại mới fallback sang tạo lớp lịch sử đã đóng.
 - Bulk review dùng equivalence riêng theo issue; backend vẫn validate từng row.

@@ -13,7 +13,7 @@ import { resolveLegacyImportDecisions } from "./legacy-import-decisions";
 import { LegacyImportRepository } from "../repositories/legacy-import.repository";
 
 interface LearningFixture { date: string; absent?: boolean; name?: string }
-interface TuitionFixture { date: string; time?: string; off?: boolean; marker?: string }
+interface TuitionFixture { date: string; rawDate?: string; time?: string; off?: boolean; marker?: string }
 
 async function workbookBytes(
   learningRows: LearningFixture[],
@@ -50,8 +50,8 @@ async function workbookBytes(
     const row = index + 2;
     tuition.getCell(row, 1).value = "Học sinh Mẫu";
     tuition.getCell(row, 2).value = fixture.time ?? tuitionDuration;
-    tuition.getCell(row, 3).value = new Date(`${fixture.date}T00:00:00Z`);
-    tuition.getCell(row, 3).numFmt = "d/m/yyyy";
+    tuition.getCell(row, 3).value = fixture.rawDate ?? new Date(`${fixture.date}T00:00:00Z`);
+    if (!fixture.rawDate) tuition.getCell(row, 3).numFmt = "d/m/yyyy";
     tuition.getCell(row, 4).value = 45_000 + index;
     if (fixture.off) tuition.getCell(row, 5).value = "  off ";
     if (fixture.marker) tuition.getCell(row, 5).value = fixture.marker;
@@ -349,7 +349,7 @@ test("reconciliation covers absence, tuition-only, date suggestions, duplicates 
   });
 });
 
-test("billable rows after PAID start the next unpaid cycle and never become FREE", async () => {
+test("a clear PAID block makes only its post-marker rows FREE until TOTAL", async () => {
   const bytes = await blockedTuitionWorkbookBytes();
   await withWorkbook(bytes, async (path) => {
     const parsed = await new LegacyWorkbookParser().parse(path);
@@ -357,18 +357,65 @@ test("billable rows after PAID start the next unpaid cycle and never become FREE
     assert.deepEqual(parsed.tuitionBlocks[0].paidCandidateSourceRows.length, 8);
     const result = new LegacyReconciliationEngine().reconcile(parsed);
     assert.deepEqual(result.tuitionCycles.map((cycle) => [cycle.itemCount, cycle.paymentState]),
-      [[8, "PAID_CLEAR"], [2, "UNPAID"], [8, "PAID_CLEAR"], [3, "UNPAID"]]);
-    assert.equal(result.lessons.filter((lesson) => lesson.attendanceStatus === "FREE").length, 0);
-    assert.equal(result.lessons.filter((lesson) => lesson.billingType === "BILLABLE").length, 21);
-    assert.equal(result.tuitionRows.filter((row) => row.postPaidFree).length, 0);
+      [[8, "PAID_CLEAR"], [8, "PAID_CLEAR"], [3, "UNPAID"]]);
+    const postPaidLessons = result.lessons.filter((lesson) =>
+      ["2026-03-28", "2026-03-29"].includes(lesson.normalizedDate ?? ""));
+    assert.deepEqual(postPaidLessons.map((lesson) => [lesson.attendanceStatus, lesson.billingType]),
+      [["FREE", "NONE"], ["FREE", "NONE"]]);
+    assert.ok(postPaidLessons.every((lesson) => lesson.content?.startsWith("Nội dung ẩn danh")));
+    assert.equal(result.lessons.filter((lesson) => lesson.billingType === "BILLABLE").length, 19);
+    assert.equal(result.tuitionRows.filter((row) => row.postPaidFree).length, 2);
     assert.ok(result.paymentEvents.every((event) => !event.requiresReview && event.date == null));
     const preview = new LegacyImportPreview().build(previewStudent(), [],
       { name: "fixture.xlsx", size: bytes.length, sha256: "d".repeat(64) }, result);
     assert.equal(preview.summary.paidCycleCount, 2);
-    assert.equal(preview.summary.freeLessonCount, 0);
+    assert.equal(preview.summary.freeLessonCount, 2);
+    assert.equal(preview.summary.postPaidFreeLessonCount, 2);
     assert.equal(preview.summary.currentCycleProgress, 3);
     assert.equal(preview.rows.filter((row) => row.issueCodes.includes("PAYMENT_REVIEW_REQUIRED")).length, 0);
     assert.equal(preview.rows.filter((row) => row.normalizedValues.legacyReason != null).length, 0);
+  });
+});
+
+test("an ambiguous six-row PAID block never infers post-marker FREE", async () => {
+  const dates = Array.from({ length: 8 }, (_, index) => `2026-04-${String(index + 1).padStart(2, "0")}`);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await workbookBytes(dates.map((date) => ({ date })), dates) as never);
+  const tuition = workbook.getWorksheet("Học phí")!;
+  tuition.getCell(7, 6).value = "PAID";
+  tuition.getCell(10, 1).value = "TOTAL HOURS";
+  await withWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), async (path) => {
+    const result = new LegacyReconciliationEngine().reconcile(await new LegacyWorkbookParser().parse(path));
+    assert.equal(result.paymentEvents.length, 1);
+    assert.equal(result.paymentEvents[0].requiresReview, true);
+    assert.equal(result.tuitionRows.filter((row) => row.postPaidFree).length, 0);
+    assert.ok(result.lessons.every((lesson) => lesson.attendanceStatus === "PRESENT"));
+    assert.ok(result.tuitionCycles.every((cycle) => cycle.paymentState === "NEEDS_REVIEW"));
+  });
+});
+
+test("an invalid tuition date stays visible and blocks Apply instead of being dropped", async () => {
+  const bytes = await workbookBytes([{ date: "2026-07-27" }], [
+    { date: "2026-07-26", rawDate: "27/7/0226", time: "17h-18h30" },
+    { date: "2026-07-27", time: "17h-18h30" },
+  ]);
+  await withWorkbook(bytes, async (path) => {
+    const parsed = await new LegacyWorkbookParser().parse(path);
+    assert.deepEqual(parsed.invalidTuitionRows.map((row) => [row.sourceRow, row.rawDate]), [[2, "27/7/0226"]]);
+    assert.equal(parsed.tuitionRows[0].date, "2026-07-27");
+    const result = new LegacyReconciliationEngine().reconcile(parsed);
+    const invalid = result.tuitionRows.find((row) => row.sourceRow === 2)!;
+    assert.equal(invalid.date, null);
+    assert.equal(invalid.rawDate, "27/7/0226");
+    const preview = new LegacyImportPreview().build(previewStudent(), [],
+      { name: "invalid-tuition-date.xlsx", size: bytes.length, sha256: "7".repeat(64) }, result);
+    const invalidRow = preview.rows.find((row) => row.sourceSheet === "Học phí" && row.sourceRow === 2)!;
+    assert.equal(invalidRow.status, "BLOCKED");
+    assert.deepEqual(invalidRow.issueCodes, ["INVALID_TUITION_DATE"]);
+    assert.equal(invalidRow.rawValues.date, "27/7/0226");
+    assert.deepEqual(invalidRow.supportedActions, []);
+    assert.throws(() => resolveLegacyImportDecisions(preview, []),
+      /Sheet Học phí, dòng 2 có ngày không hợp lệ: "27\/7\/0226"\. Hãy sửa file rồi tải lại\./);
   });
 });
 
@@ -674,7 +721,7 @@ test("long-history fixture collapses row noise into grouped decisions and stable
     const result = new LegacyReconciliationEngine().reconcile(parsed);
     assert.equal(result.minimalLessonGroups[0].lessonCount, 6);
     assert.equal(result.tuitionCycles.filter((cycle) => cycle.paymentState === "PAID_CLEAR").length, 7);
-    assert.equal(result.lessons.filter((lesson) => lesson.attendanceStatus === "FREE").length, 0);
+    assert.equal(result.lessons.filter((lesson) => lesson.attendanceStatus === "FREE").length, 2);
     assert.equal(result.tuitionCycles.at(-1)?.itemCount, 3);
     assert.deepEqual(result.tuitionCycles.map((cycle) => cycle.blockId), result.tuitionCyclePlans.map((plan) => plan.blockId));
     const preview = new LegacyImportPreview().build(previewStudent(), [],

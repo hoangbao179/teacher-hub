@@ -310,7 +310,10 @@ Khi nhiều file student lần lượt mô tả cùng group lesson:
 | `PRESENT` | Billable và tăng sequence. |
 | `ABSENT` | Có lịch sử, không billable. |
 | `FREE` | Có lịch sử, không billable. |
-| 8 billable → `PAID` → billable tiếp theo | Tám buổi đầu là cycle `PAID`; các buổi sau bắt đầu cycle `UNPAID`, không đổi thành `FREE`. |
+| 8 billable → `PAID` → dòng thường → `TOTAL` | Tám buổi đầu là cycle `PAID`; dòng thường sau marker trong cùng clean block là `FREE`, vẫn giữ history và không vào cycle. |
+| `TOTAL` → block mới có 3 billable | Kết thúc phạm vi post-paid FREE; block mới tạo cycle `3/8 UNPAID`. |
+| `PAID` mơ hồ hoặc conflict | Giữ payment review; không tự đổi dòng sau marker thành `FREE`. |
+| Raw tuition date không hợp lệ | Giữ source row/raw value trong Preview và chặn Apply đến khi sửa file rồi tải lại. |
 | Chỉ có trong `Học phí` | Xác nhận một lần theo nhóm để tạo lesson thiếu nhận xét, hoặc skip nếu nhóm không thuộc cycle đã thu. |
 | `TOTAL HOURS \| UNPAID` | Kết thúc block và ghi nhận explicit chưa thu, không hỏi lại nếu không có conflict. |
 | Đủ 8 billable | Cycle đạt `PAYMENT_DUE` hoặc trạng thái payment đã xác nhận. |

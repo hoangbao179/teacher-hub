@@ -31,6 +31,9 @@ còn parser chưa phân biệt explicit `UNPAID` hay terminator `TOTAL HOURS`.
 - Giữ field response `postPaidFree` ở trạng thái luôn `false` để tránh breaking API;
   field không còn tham gia attendance, billing, cycle hoặc UI semantics.
 
+Quyết định cuối về `postPaidFree` đã được thay thế bởi follow-up
+`LEGACY-IMPORT-POST-PAID-FREE.md`: field chỉ bật trong phạm vi clean `PAID → TOTAL`.
+
 ## Changes
 
 Parser nhận phút một chữ số, `20-22h`, trailing punctuation, `TOTAL HOURS` và explicit
@@ -45,7 +48,7 @@ billable tiếp theo, explicit FREE, create/skip tuition-only bounds, time forma
 duration guard, invalid year, TOTAL HOURS/UNPAID, current-class default, transaction,
 idempotency và audit.
 
-- Legacy domain/decision tests: 44/44 PASS.
+- Legacy domain/decision tests: 38/38 PASS.
 - Legacy review unit: 7/7 PASS.
 - Server integration: 82/82 PASS, gồm bounds create/skip và cycle sau PAID.
 - Legacy Import E2E: PASS ở viewport 360–430 px.

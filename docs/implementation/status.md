@@ -43,9 +43,10 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   với hai sheet chuẩn `Quá trình học tập` và `Học phí`. Luồng preview cho phép xử lý
   dòng cần xác nhận/bị chặn trước khi apply; apply transactionally, chống import
   trùng theo student + SHA-256 và không hỗ trợ generic workbook tùy ý. Dòng chỉ có
-  học phí được xác nhận theo nhóm để tạo buổi thiếu nhận xét; `FREE` chỉ theo marker
-  explicit, billable sau `PAID` đi vào cycle kế tiếp, và mapping lớp mặc định ưu tiên
-  lớp hiện tại của học sinh.
+  học phí được xác nhận theo nhóm để tạo buổi thiếu nhận xét. Trong clean block có
+  đúng tám billable trước `PAID`, dòng thường sau marker đến trước `TOTAL` được lưu
+  `FREE`; block mơ hồ không tự suy luận. Raw tuition date lỗi còn trong Preview và
+  chặn Apply. Mapping lớp mặc định ưu tiên lớp hiện tại của học sinh.
 - **Public**: Homepage chỉ quảng bá dịch vụ Tiếng Anh lớp 1–9 tại Huế. Catalog Mầm
   non vẫn tồn tại riêng trong Góc học miễn phí. Góc học, flashcard/quiz, Tủ sách và
   prerender/SEO đang hoạt động.

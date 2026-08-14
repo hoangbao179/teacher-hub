@@ -28,6 +28,16 @@ export interface ParsedLegacyTuitionRow {
   blockId: string;
 }
 
+export interface ParsedLegacyInvalidTuitionRow {
+  sourceRow: number;
+  rawDate: string;
+  time: string | null;
+  paidMarker: boolean;
+  offMarker: boolean;
+  kind: LegacyTuitionRowKind;
+  blockId: string;
+}
+
 export interface ParsedLegacyPaymentEvent { sourceRow: number; date: string | null }
 
 export interface ParsedLegacyTuitionBlock {
@@ -43,6 +53,7 @@ export interface ParsedLegacyTuitionBlock {
 export interface ParsedLegacyWorkbook {
   learningRows: ParsedLegacyLearningRow[];
   tuitionRows: ParsedLegacyTuitionRow[];
+  invalidTuitionRows: ParsedLegacyInvalidTuitionRow[];
   paymentEvents: ParsedLegacyPaymentEvent[];
   tuitionBlocks: ParsedLegacyTuitionBlock[];
 }
@@ -106,6 +117,7 @@ export class LegacyWorkbookParser {
     }
 
     const tuitionRows: ParsedLegacyTuitionRow[] = [];
+    const invalidTuitionRows: ParsedLegacyInvalidTuitionRow[] = [];
     const paymentEvents: ParsedLegacyPaymentEvent[] = [];
     const tuitionBlocks: ParsedLegacyTuitionBlock[] = [];
     const headerRows: number[] = [];
@@ -129,12 +141,19 @@ export class LegacyWorkbookParser {
         if (paidMarker && paidMarkerSourceRow == null) paidMarkerSourceRow = rowNumber;
         if (unpaidMarker && unpaidMarkerSourceRow == null) unpaidMarkerSourceRow = rowNumber;
         const dateCell = row.getCell(3);
-        const date = this.dates.normalizeFullDate(dateCell.value, plainText(dateCell));
-        if (!date) continue;
+        const rawDate = plainText(dateCell);
+        const date = this.dates.normalizeFullDate(dateCell.value, rawDate);
         const duration = plainText(row.getCell(2));
         const hoursCell = row.getCell(4);
         const fallbackHours = typeof hoursCell.value === "string" ? plainText(hoursCell) : "";
         const kind = tuitionKind(plainText(row.getCell(5)));
+        if (!date) {
+          const resemblesTuitionEntry = Boolean(rawDate && (plainText(row.getCell(1)) || duration ||
+            fallbackHours || plainText(row.getCell(5))));
+          if (resemblesTuitionEntry) invalidTuitionRows.push({ sourceRow: rowNumber, rawDate,
+            time: nullable(duration || fallbackHours), paidMarker, offMarker: kind === "OFF", kind, blockId: id });
+          continue;
+        }
         blockRows.push({ sourceRow: rowNumber, date, time: nullable(duration || fallbackHours), paidMarker,
           offMarker: kind === "OFF", kind, blockId: id });
       }
@@ -211,6 +230,6 @@ export class LegacyWorkbookParser {
       normalizedDate: normalized[index].normalizedDate,
       dateResolution: normalized[index].resolution,
     }));
-    return { learningRows, tuitionRows, paymentEvents, tuitionBlocks };
+    return { learningRows, tuitionRows, invalidTuitionRows, paymentEvents, tuitionBlocks };
   }
 }

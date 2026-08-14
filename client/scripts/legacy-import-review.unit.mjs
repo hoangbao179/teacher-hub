@@ -95,6 +95,8 @@ test("tuition-only review copy describes valid lessons awaiting comments", async
   const source = await readFile(new URL("../src/pages/LegacyImportPage.tsx", import.meta.url), "utf8");
   assert.match(source, /Buổi đã có học phí nhưng chưa có nhận xét/);
   assert.match(source, /Tạo \$\{String\(row\.rawValues\.affectedLessonCount\)\} buổi học/);
-  assert.doesNotMatch(source, /sau đợt đã thanh toán và sẽ lưu là miễn phí/);
+  assert.match(source, /Miễn học phí sau đợt đã thu/);
+  assert.match(source, /vẫn được lưu trong lịch sử học nhưng không tính vào chu kỳ học phí/);
+  assert.match(source, /Vui lòng sửa ngày trong file Excel rồi tải lại/);
   assert.doesNotMatch(source, /lesson tối giản/);
 });

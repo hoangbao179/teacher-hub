@@ -22,7 +22,8 @@ import {
 } from "../features/legacy-import-review";
 
 const issueLabels: Record<LegacyImportIssueCode, string> = {
-  INVALID_DATE: "Ngày không hợp lệ", INVALID_TIME: "Giờ học chưa hợp lệ",
+  INVALID_DATE: "Ngày không hợp lệ", INVALID_TUITION_DATE: "Ngày học phí không hợp lệ",
+  INVALID_TIME: "Giờ học chưa hợp lệ",
   STUDENT_MISMATCH: "Tên trong file khác học sinh đang chọn",
   ATTENDANCE_AMBIGUOUS: "Trạng thái điểm danh cần xác nhận", DUPLICATE_ROW: "Dòng nghi trùng",
   DATE_CORRECTION: "Ngày học có đề xuất chỉnh", TUITION_ROW_UNMATCHED: "Dòng học phí chưa có lesson",
@@ -250,7 +251,9 @@ export function LegacyImportPage() {
         <Typography variant="h6">Tổng hợp kiểm tra</Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", sm: "repeat(5,minmax(0,1fr))" }, gap: 1 }}>
           {[["Buổi lịch sử", preview.summary.totalLessons], ["Đợt đã thanh toán", preview.summary.paidCycleCount],
-            ["Buổi ghi rõ FREE", preview.summary.freeLessonCount], ["Chờ bổ sung nhận xét", tuitionOnlyLessonCount],
+            ["Buổi miễn học phí", preview.summary.freeLessonCount],
+            ["Miễn học phí sau đợt đã thu", preview.summary.postPaidFreeLessonCount],
+            ["Chờ bổ sung nhận xét", tuitionOnlyLessonCount],
             ["Đợt hiện tại", `${preview.summary.currentCycleProgress}/8`],
             ["Cần xử lý", summary.review], ["Bị chặn", summary.blocked], ["Đã xử lý", summary.resolved],
             ["Bỏ qua", summary.skipped]]
@@ -261,8 +264,8 @@ export function LegacyImportPage() {
         <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>SHA-256: {preview.file.sha256}</Typography>
         {preview.tuitionCycles.filter((cycle) => cycle.paymentState === "PAID_CLEAR").map((cycle) =>
           <Typography key={cycle.cycleNumber} variant="body2">Đợt {cycle.cycleNumber}: Đã thu · Không rõ ngày</Typography>)}
-        {preview.summary.freeLessonCount > 0 && <Alert severity="info">
-          Có {preview.summary.freeLessonCount} buổi được workbook ghi rõ FREE; các buổi này không tính học phí.
+        {preview.summary.postPaidFreeLessonCount > 0 && <Alert severity="info">
+          Có {preview.summary.postPaidFreeLessonCount} buổi miễn học phí sau đợt đã thanh toán. Các buổi này vẫn được lưu trong lịch sử học nhưng không tính vào chu kỳ học phí.
         </Alert>}
       </Stack></CardContent></Card>
 
@@ -346,6 +349,9 @@ export function LegacyImportPage() {
             {row.rowType === "TUITION_GROUP" && <Alert severity="info">
               Có {String(row.rawValues.affectedLessonCount)} buổi được ghi trong sheet Học phí nhưng chưa xuất hiện ở Quá trình học tập. Hệ thống sẽ tạo buổi học với ngày, giờ và học phí; nội dung, bài tập và nhận xét để trống.
             </Alert>}
+            {row.issueCodes.includes("INVALID_TUITION_DATE") && <Alert severity="error">
+              Ngày học phí “{String(row.rawValues.date)}” không hợp lệ. Vui lòng sửa ngày trong file Excel rồi tải lại.
+            </Alert>}
             <Box component="details"><Typography component="summary" variant="body2" sx={{ cursor: "pointer" }}>Xem chi tiết</Typography>
               <Stack spacing={0.5} sx={{ mt: 1 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>Giá trị trong workbook: {JSON.stringify(row.rawValues)}</Typography>
@@ -388,7 +394,7 @@ export function LegacyImportPage() {
               {Object.entries(paymentLabels).filter(([value]) => String(row.normalizedValues.resolutionOptions ?? "").split(",").includes(value))
                 .map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
             </Select></FormControl>}
-            {status !== "VALID" && <><Divider />{row.supportedActions.includes("SKIP") && <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
+            {status !== "VALID" && row.supportedActions.length > 0 && <><Divider />{row.supportedActions.includes("SKIP") && <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
               <FormControl><InputLabel id={`${row.id}-skip`}>Lý do bỏ qua</InputLabel><Select labelId={`${row.id}-skip`} label="Lý do bỏ qua" value={draft.skipReason}
                 onChange={(event) => setDraft(row, { skipReason: event.target.value as LegacyImportSkipReason })}>
                 {Object.entries(skipLabels).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}

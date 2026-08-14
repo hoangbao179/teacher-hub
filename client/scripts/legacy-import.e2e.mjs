@@ -137,7 +137,8 @@ try {
   if (!(await studentNav.getAttribute("class"))?.includes("Mui-selected")) throw new Error("Student navigation is not active on legacy import route");
   await page.locator('input[type="file"]').setInputFiles({ name: "Synthetic Grade 9.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: fs.readFileSync(workbookPath) });
   await page.getByRole("heading", { name: "Tổng hợp kiểm tra" }).waitFor();
-  await page.getByText("Buổi ghi rõ FREE").waitFor();
+  await page.getByText("Miễn học phí sau đợt đã thu").waitFor();
+  await page.getByText("Có 2 buổi miễn học phí sau đợt đã thanh toán", { exact: false }).waitFor();
   await page.getByText("Chờ bổ sung nhận xét").waitFor();
   await page.getByText("Đợt 1: Đã thu · Không rõ ngày").waitFor();
   if (await page.getByText("Sự kiện thanh toán cần xác nhận").count()) throw new Error("Clear PAID block created a payment review card");

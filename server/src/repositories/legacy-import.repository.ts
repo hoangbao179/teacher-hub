@@ -448,7 +448,8 @@ export class LegacyImportRepository {
       if (!group || serialized(group.tuitionSourceRows) !== serialized(decision.resolvedValue.tuitionSourceRows))
         throw new AppError(400, "LEGACY_DECISIONS_INVALID", "Danh sách dòng học phí của nhóm đã thay đổi.");
       for (const sourceRow of group.tuitionSourceRows) {
-        const tuition = input.preview.tuitionRows.find((row) => row.sourceRow === sourceRow && row.kind === "BILLABLE");
+        const tuition = input.preview.tuitionRows.find((row) => row.sourceRow === sourceRow &&
+          (row.kind === "BILLABLE" || row.postPaidFree));
         if (!tuition?.date) throw new AppError(400, "LEGACY_DECISIONS_INVALID", "Dòng học phí tối giản không còn tồn tại.");
         const date = correctedDates.get(sourceRow) || tuition.suggestedDate || tuition.date;
         const mapping = input.preview.timeMappings.find((item) => item.tuitionSourceRows.includes(sourceRow));
@@ -463,14 +464,16 @@ export class LegacyImportRepository {
         const synthetic = {
           id: `tuition-${sourceRow}`, rowType: "LESSON" as const, sourceSheet: "Học phí", sourceRow,
           rawValues: { date: tuition.date, time: tuition.time }, normalizedValues: { date, startTime: start, endTime: end,
-            attendance: "PRESENT", content: null, homework: null, studentNote: null }, issueCodes: [], status: "RESOLVED" as const,
+            attendance: tuition.postPaidFree ? "FREE" : "PRESENT", countsForTuition: !tuition.postPaidFree,
+            content: null, homework: null, studentNote: null }, issueCodes: [], status: "RESOLVED" as const,
           supportedActions: [], decisions: [],
         } satisfies ResolvedLegacyImportRow;
         const lessonPreview: LegacyImportPreview["lessons"][number] = {
           id: synthetic.id, originalDate: tuition.date, normalizedDate: date, scheduledStartTime: start, scheduledEndTime: end,
           dateResolution: "EXACT", suggestedDate: null, teacher: null, studentName: input.preview.student.fullName,
-          nickname: null, content: null, homework: null, classwork: null, note: null, attendanceStatus: "PRESENT",
-          billingType: "BILLABLE", sourceSheet: "Quá trình học tập", sourceRow,
+          nickname: null, content: null, homework: null, classwork: null, note: null,
+          attendanceStatus: tuition.postPaidFree ? "FREE" : "PRESENT",
+          billingType: tuition.postPaidFree ? "NONE" : "BILLABLE", sourceSheet: "Quá trình học tập", sourceRow,
           reconciliationStatus: "MATCHED", matchedTuitionSourceRow: sourceRow, rawTime: tuition.time,
           timeMappingId: mapping?.id ?? null,
         };

@@ -72,6 +72,20 @@ async function tuitionOnlyWorkbook(): Promise<Buffer> {
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+async function invalidTuitionDateWorkbook(): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await validWorkbook() as never);
+  const learning = workbook.getWorksheet("Quá trình học tập")!;
+  learning.getCell("B1").value = "2026-07-27";
+  const tuition = workbook.getWorksheet("Học phí")!;
+  tuition.getCell("C2").value = "27/7/0226";
+  tuition.getCell("A3").value = "Học sinh Preview";
+  tuition.getCell("B3").value = "17h-18h30";
+  tuition.getCell("C3").value = new Date("2026-07-27T00:00:00Z");
+  tuition.getCell("C3").numFmt = "d/m/yyyy";
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
 async function tuitionOnlyBoundsWorkbook(): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await validWorkbook() as never);
@@ -115,7 +129,11 @@ async function paidBlockWithTuitionOnlyWorkbook(): Promise<Buffer> {
     tuition.getCell(index + 2, 3).numFmt = "d/m/yyyy";
   });
   tuition.getCell(10, 6).value = "PAID";
-  tuition.getCell(11, 1).value = "TOTAL";
+  tuition.getCell(11, 1).value = "Học sinh Preview";
+  tuition.getCell(11, 2).value = "18:00-19:30";
+  tuition.getCell(11, 3).value = new Date("2025-06-09T00:00:00Z");
+  tuition.getCell(11, 3).numFmt = "d/m/yyyy";
+  tuition.getCell(12, 1).value = "TOTAL HOURS";
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
@@ -220,6 +238,57 @@ integration("authenticated multipart preview removes temp files and leaves busin
     const wrongMime = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: wrongMimeBody });
     assert.equal(wrongMime.status, 400);
     assert.equal(((await wrongMime.json()) as { error: { code: string } }).error.code, "INVALID_XLSX_TYPE");
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+integration("invalid tuition date remains a blocking preview row and prevents partial Apply", async () => {
+  const data = await fixture();
+  const server = createApp().listen(0);
+  try {
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}/api/students/${data.studentId}/legacy-imports`;
+    const token = jwt.sign({ id: data.actorId, username: "v16a", displayName: "V16A", role: "TEACHER" },
+      config.jwt.secret, { expiresIn: "5m" });
+    const bytes = await invalidTuitionDateWorkbook();
+    const form = () => {
+      const body = new FormData();
+      body.append("file", new Blob([blobPart(bytes)], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }), "invalid-tuition-date.xlsx");
+      return body;
+    };
+    const previewResponse = await fetch(`${base}/preview`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form(),
+    });
+    assert.equal(previewResponse.status, 200);
+    const preview = ((await previewResponse.json()) as { data: {
+      file: { sha256: string };
+      rows: Array<{ sourceSheet: string; sourceRow: number; rowType: string; status: string;
+        rawValues: Record<string, unknown>; issueCodes: string[] }>;
+      academicPeriods: Array<{ id: string }>;
+    } }).data;
+    const invalidRow = preview.rows.find((row) => row.issueCodes.includes("INVALID_TUITION_DATE"))!;
+    assert.deepEqual([invalidRow.sourceSheet, invalidRow.sourceRow, invalidRow.status, invalidRow.rawValues.date],
+      ["Học phí", 2, "BLOCKED", "27/7/0226"]);
+    const periodRow = preview.rows.find((row) => row.rowType === "ACADEMIC_PERIOD")!;
+    const applyBody = form();
+    applyBody.append("previewSha256", preview.file.sha256);
+    applyBody.append("decisions", JSON.stringify([{ sourceSheet: periodRow.sourceSheet, sourceRow: periodRow.sourceRow,
+      issueCode: "ACADEMIC_PERIOD_MAPPING_REQUIRED", action: "MAP_ACADEMIC_PERIOD",
+      resolvedValue: { periodId: preview.academicPeriods[0].id, gradeLevel: 6,
+        classMapping: { type: "EXISTING_CLASS", classId: data.classId, className: "Lớp hiện tại" } } }]));
+    const applied = await fetch(`${base}/apply`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, body: applyBody,
+    });
+    assert.equal(applied.status, 409);
+    const error = (await applied.json()) as { error: { code: string; message: string } };
+    assert.equal(error.error.code, "LEGACY_ROWS_UNRESOLVED");
+    assert.match(error.error.message,
+      /Sheet Học phí, dòng 2 có ngày không hợp lệ: "27\/7\/0226"\. Hãy sửa file rồi tải lại\./);
+    assert.deepEqual(await counts(), { lesson_sessions: 0, classes: 1, class_enrollments: 0, tuition_cycles: 0 });
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
@@ -512,11 +581,13 @@ integration("paid tuition-only rows require minimal lessons and preserve the com
         rawValues: Record<string, unknown>; normalizedValues: Record<string, unknown> }>;
       academicPeriods: Array<{ id: string }>;
       minimalLessonGroups: Array<{ id: string; tuitionSourceRows: number[] }>;
+      summary: { postPaidFreeLessonCount: number };
     } }).data;
     const periodRow = preview.rows.find((row) => row.rowType === "ACADEMIC_PERIOD")!;
     const groupRow = preview.rows.find((row) => row.rowType === "TUITION_GROUP")!;
     const group = preview.minimalLessonGroups[0];
     assert.equal(groupRow.rawValues.paidLessonCount, 1);
+    assert.equal(preview.summary.postPaidFreeLessonCount, 1);
     assert.equal(groupRow.normalizedValues.requiresPaidCyclePreservation, true);
     assert.deepEqual(groupRow.supportedActions, ["CREATE_MINIMAL_LEGACY_LESSONS"]);
     const periodDecision = { sourceSheet: periodRow.sourceSheet, sourceRow: periodRow.sourceRow,
@@ -547,14 +618,19 @@ integration("paid tuition-only rows require minimal lessons and preserve the com
        FROM tuition_cycles c JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=c.id GROUP BY c.id,c.status`);
     assert.deepEqual([cycle[0].status, Number(cycle[0].item_count)], ["PAID", 8]);
     const [minimal] = await pool.query<RowDataPacket[]>(
-      "SELECT COUNT(*) count FROM legacy_import_lesson_links WHERE source_sheet='Học phí'");
-    assert.equal(Number(minimal[0].count), 1);
+      `SELECT la.attendance_status,la.counts_for_tuition,ls.content,ls.homework,la.student_note
+       FROM legacy_import_lesson_links l JOIN lesson_attendances la ON la.id=l.attendance_id
+       JOIN lesson_sessions ls ON ls.id=l.lesson_id WHERE l.source_sheet='Học phí' ORDER BY l.source_row`);
+    assert.equal(minimal.length, 2);
+    assert.deepEqual(minimal.map((item) => [item.attendance_status, Number(item.counts_for_tuition)]),
+      [["PRESENT", 1], ["FREE", 0]]);
+    assert.deepEqual([minimal[1].content, minimal[1].homework, minimal[1].student_note], [null, null, null]);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
 
-integration("clear PAID blocks keep later billable lessons in the next unpaid cycle", async () => {
+integration("clear PAID blocks persist post-marker lessons as FREE only until TOTAL", async () => {
   const data = await fixture();
   const server = createApp().listen(0);
   try {
@@ -569,12 +645,14 @@ integration("clear PAID blocks keep later billable lessons in the next unpaid cy
     const previewResponse = await fetch(`${base}/preview`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: previewBody });
     assert.equal(previewResponse.status, 200);
     const preview = ((await previewResponse.json()) as { data: {
-      file: { sha256: string }; summary: { paidCycleCount: number; freeLessonCount: number; currentCycleProgress: number };
+      file: { sha256: string }; summary: { paidCycleCount: number; freeLessonCount: number;
+        postPaidFreeLessonCount: number; currentCycleProgress: number };
       rows: Array<{ sourceSheet: string; sourceRow: number; rowType: string; issueCodes: string[] }>;
       academicPeriods: Array<{ id: string }>;
       tuitionCyclePlans: Array<{ lessonSourceRows: number[]; tuitionSourceRows: number[] }>;
     } }).data;
-    assert.deepEqual(preview.summary, { ...preview.summary, paidCycleCount: 2, freeLessonCount: 0, currentCycleProgress: 3 });
+    assert.deepEqual(preview.summary, { ...preview.summary, paidCycleCount: 2, freeLessonCount: 2,
+      postPaidFreeLessonCount: 2, currentCycleProgress: 3 });
     assert.equal(preview.rows.filter((row) => row.issueCodes.includes("PAYMENT_REVIEW_REQUIRED")).length, 0);
     const periodRow = preview.rows.find((row) => row.rowType === "ACADEMIC_PERIOD")!;
     const decision = (classId: number) => [{ sourceSheet: periodRow.sourceSheet, sourceRow: periodRow.sourceRow,
@@ -596,13 +674,13 @@ integration("clear PAID blocks keep later billable lessons in the next unpaid cy
     const applied = await apply(data.classId);
     assert.equal(applied.status, 201);
     const result = ((await applied.json()) as { data: { importId: number; importedTuitionCycleCount: number } }).data;
-    assert.equal(result.importedTuitionCycleCount, 4);
+    assert.equal(result.importedTuitionCycleCount, 3);
     const [cycles] = await pool.query<RowDataPacket[]>(
       `SELECT tc.status,tc.paid_at,tc.paid_amount,tc.payment_method,tc.payment_note,COUNT(tcs.id) item_count
        FROM tuition_cycles tc LEFT JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
        GROUP BY tc.id ORDER BY tc.cycle_number`);
     assert.deepEqual(cycles.map((cycle) => [cycle.status, Number(cycle.item_count)]),
-      [["PAID", 8], ["INCOMPLETE", 2], ["PAID", 8], ["INCOMPLETE", 3]]);
+      [["PAID", 8], ["PAID", 8], ["INCOMPLETE", 3]]);
     const [appliedMembers] = await pool.query<RowDataPacket[]>(
       `SELECT tc.cycle_number,GROUP_CONCAT(l.source_row ORDER BY tcs.sequence_number) source_rows
        FROM tuition_cycles tc JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
@@ -618,9 +696,14 @@ integration("clear PAID blocks keep later billable lessons in the next unpaid cy
     }
     const [attendance] = await pool.query<RowDataPacket[]>(
       `SELECT attendance_status,counts_for_tuition,COUNT(*) count
-       FROM lesson_attendances GROUP BY attendance_status,counts_for_tuition`);
+       FROM lesson_attendances GROUP BY attendance_status,counts_for_tuition ORDER BY counts_for_tuition`);
     assert.deepEqual(attendance.map((item) => [item.attendance_status, Number(item.counts_for_tuition), Number(item.count)]),
-      [["PRESENT", 1, 21]]);
+      [["FREE", 0, 2], ["PRESENT", 1, 19]]);
+    const [freeHistory] = await pool.query<RowDataPacket[]>(
+      `SELECT ls.content,la.student_note FROM lesson_attendances la
+       JOIN lesson_sessions ls ON ls.id=la.lesson_session_id WHERE la.attendance_status='FREE' ORDER BY ls.session_date`);
+    assert.equal(freeHistory.length, 2);
+    assert.ok(freeHistory.every((item) => String(item.content).startsWith("Nội dung ẩn danh")));
     const replay = await apply(data.classId);
     assert.equal(replay.status, 200);
     assert.equal(((await replay.json()) as { data: { importId: number; idempotent: boolean } }).data.importId, result.importId);

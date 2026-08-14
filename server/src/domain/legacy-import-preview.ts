@@ -93,15 +93,21 @@ export class LegacyImportPreview {
       };
     });
     const tuitionPreviewRows: LegacyImportRowPreview[] = result.tuitionRows
-      .filter((row) => Boolean(row.suggestedDate))
-      .map((row) => ({
+      .filter((row) => Boolean(row.suggestedDate) || !row.date)
+      .map((row) => row.date ? ({
         id: row.id, rowType: "TUITION", sourceSheet: row.sourceSheet, sourceRow: row.sourceRow,
-        rawValues: { date: row.date, time: row.time, kind: row.kind },
+        rawValues: { date: row.rawDate, time: row.time, kind: row.kind },
         normalizedValues: { date: row.suggestedDate, blockId: row.blockId },
         issueCodes: ["TUITION_DATE_CORRECTION"], status: "NEEDS_REVIEW",
         supportedActions: ["EDIT_ROW"],
         suggestedResolution: { sourceSheet: row.sourceSheet, sourceRow: row.sourceRow,
           issueCode: "TUITION_DATE_CORRECTION", action: "EDIT_ROW", resolvedValue: { date: row.suggestedDate! } },
+      }) : ({
+        id: row.id, rowType: "TUITION", sourceSheet: row.sourceSheet, sourceRow: row.sourceRow,
+        rawValues: { date: row.rawDate, time: row.time, kind: row.kind },
+        normalizedValues: { date: null, blockId: row.blockId },
+        issueCodes: ["INVALID_TUITION_DATE"], status: "BLOCKED",
+        supportedActions: [],
       }));
     const paidClearTuitionRows = new Set(result.tuitionCyclePlans
       .filter((plan) => plan.paymentState === "PAID_CLEAR")
@@ -178,6 +184,7 @@ export class LegacyImportPreview {
         completedCycleCount: result.tuitionCycles.filter((item) => item.state === "COMPLETE").length,
         paidCycleCount: result.tuitionCycles.filter((item) => item.paymentState === "PAID_CLEAR").length,
         freeLessonCount: result.lessons.filter((item) => item.attendanceStatus === "FREE").length,
+        postPaidFreeLessonCount: result.tuitionRows.filter((item) => item.postPaidFree).length,
         currentCycleProgress: [...result.tuitionCycles].reverse().find((item) => item.state === "CURRENT")?.itemCount ?? 0,
         hasAdvancePayment,
         unresolvedIssueCount,

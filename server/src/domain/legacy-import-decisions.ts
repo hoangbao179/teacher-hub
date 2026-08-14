@@ -25,7 +25,7 @@ function invalid(message: string): never {
 function actionAllowedForIssue(issue: LegacyImportIssueCode, action: LegacyImportDecisionAction): boolean {
   if (action === "SKIP") return issue !== "ACADEMIC_PERIOD_MAPPING_REQUIRED";
   const allowed: Record<LegacyImportIssueCode, LegacyImportDecisionAction[]> = {
-    INVALID_DATE: ["EDIT_ROW"], INVALID_TIME: ["EDIT_ROW"], DATE_CORRECTION: ["EDIT_ROW"], STUDENT_MISMATCH: ["CONFIRM_STUDENT"],
+    INVALID_DATE: ["EDIT_ROW"], INVALID_TUITION_DATE: [], INVALID_TIME: ["EDIT_ROW"], DATE_CORRECTION: ["EDIT_ROW"], STUDENT_MISMATCH: ["CONFIRM_STUDENT"],
     ATTENDANCE_AMBIGUOUS: ["SET_ATTENDANCE"], DUPLICATE_ROW: ["CREATE_LESSON", "MATCH_EXISTING_LESSON"],
     TUITION_ROW_UNMATCHED: [], ACADEMIC_PERIOD_MAPPING_REQUIRED: ["MAP_ACADEMIC_PERIOD"],
     PAYMENT_REVIEW_REQUIRED: ["CONFIRM_PAYMENT"], NEAR_LESSON_MATCH: ["MATCH_EXISTING_LESSON", "CREATE_LESSON"],
@@ -124,6 +124,9 @@ export function resolveLegacyImportDecisions(
       .filter((item): item is LegacyImportRowDecision => Boolean(item));
     const skip = rowDecisions.find((item) => item.action === "SKIP");
     if (skip) return { ...row, status: "SKIPPED", decisions: [skip] };
+    if (rowDecisions.length !== row.issueCodes.length && row.issueCodes.includes("INVALID_TUITION_DATE"))
+      throw new AppError(409, "LEGACY_ROWS_UNRESOLVED",
+        `Sheet ${row.sourceSheet}, dòng ${row.sourceRow} có ngày không hợp lệ: "${String(row.rawValues.date ?? "")}". Hãy sửa file rồi tải lại.`);
     if (rowDecisions.length !== row.issueCodes.length)
       throw new AppError(409, "LEGACY_ROWS_UNRESOLVED", `Dòng ${row.sourceRow} vẫn còn vấn đề chưa xử lý.`);
     let normalizedValues = { ...row.normalizedValues };

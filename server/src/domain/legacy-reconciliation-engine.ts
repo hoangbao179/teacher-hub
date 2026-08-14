@@ -292,7 +292,9 @@ export class LegacyReconciliationEngine {
     const matchByTuitionRow = new Map(lessons.filter((lesson) => lesson.matchedTuitionSourceRow != null)
       .map((lesson) => [lesson.matchedTuitionSourceRow!, lesson.sourceRow]));
     const clearPaidBlockIds = new Set(parsed.tuitionBlocks.filter((block) => {
-      if (block.paidMarkerSourceRow == null || block.unpaidMarkerSourceRow != null || block.paidCandidateSourceRows.length !== 8) return false;
+      if (block.paidMarkerSourceRow == null || block.unpaidMarkerSourceRow != null ||
+          block.paidCandidateSourceRows.length !== 8 ||
+          parsed.invalidTuitionRows.some((row) => row.blockId === block.id)) return false;
       return block.paidCandidateSourceRows.every((sourceRow) => {
         const tuition = parsed.tuitionRows.find((item) => item.sourceRow === sourceRow);
         const lesson = lessons.find((item) => item.matchedTuitionSourceRow === sourceRow);
@@ -301,20 +303,39 @@ export class LegacyReconciliationEngine {
           (lesson?.normalizedDate && lesson.attendanceStatus === "PRESENT" || time?.mappingId || time?.start && time?.end));
       });
     }).map((block) => block.id));
-    const tuitionRows: LegacyTuitionRowPreview[] = parsed.tuitionRows.map((row) => ({
-      id: `tuition-${row.sourceRow}`, date: row.date, suggestedDate: dateCorrections.get(row.sourceRow) ?? null,
-      time: row.time, paidMarker: row.paidMarker, offMarker: row.offMarker, kind: row.kind,
-      sourceSheet: "Học phí", sourceRow: row.sourceRow,
+    const postPaidFreeSourceRows = new Set(parsed.tuitionBlocks.filter((block) => clearPaidBlockIds.has(block.id))
+      .flatMap((block) => parsed.tuitionRows.filter((row) => row.blockId === block.id &&
+        row.sourceRow > block.paidMarkerSourceRow! && row.sourceRow <= block.sourceEndRow &&
+        row.kind === "BILLABLE" && !row.paidMarker).map((row) => row.sourceRow)));
+    for (const lesson of lessons) {
+      if (lesson.matchedTuitionSourceRow == null || !postPaidFreeSourceRows.has(lesson.matchedTuitionSourceRow)) continue;
+      lesson.attendanceStatus = "FREE";
+      lesson.billingType = "NONE";
+    }
+    const validTuitionRows: LegacyTuitionRowPreview[] = parsed.tuitionRows.map((row) => ({
+      id: `tuition-${row.sourceRow}`, rawDate: row.date, date: row.date,
+      suggestedDate: dateCorrections.get(row.sourceRow) ?? null,
+      time: row.time, paidMarker: row.paidMarker, offMarker: row.offMarker,
+      kind: postPaidFreeSourceRows.has(row.sourceRow) ? "FREE" : row.kind,
+      sourceSheet: "Học phí" as const, sourceRow: row.sourceRow,
       reconciliationStatus: usedTuition.has(row.sourceRow) ? "MATCHED" : "TUITION_ONLY_NEEDS_REVIEW",
       matchedLearningSourceRow: matchByTuitionRow.get(row.sourceRow) ?? null,
-      blockId: row.blockId, postPaidFree: false,
+      blockId: row.blockId, postPaidFree: postPaidFreeSourceRows.has(row.sourceRow),
     }));
-    const unmatchedBillable = tuitionRows.filter((row) => row.kind === "BILLABLE" && row.reconciliationStatus !== "MATCHED");
-    const minimalLessonGroups: LegacyMinimalLessonGroupPreview[] = unmatchedBillable.length ? [{
-      id: "tuition-only-billable", tuitionSourceRows: unmatchedBillable.map((row) => row.sourceRow),
-      lessonCount: unmatchedBillable.length,
-      fromDate: [...unmatchedBillable].sort((a, b) => a.date!.localeCompare(b.date!))[0].date!,
-      toDate: [...unmatchedBillable].sort((a, b) => a.date!.localeCompare(b.date!)).at(-1)!.date!,
+    const invalidTuitionRows: LegacyTuitionRowPreview[] = parsed.invalidTuitionRows.map((row) => ({
+      id: `tuition-${row.sourceRow}`, rawDate: row.rawDate, date: null, suggestedDate: null,
+      time: row.time, paidMarker: row.paidMarker, offMarker: row.offMarker, kind: row.kind,
+      sourceSheet: "Học phí" as const, sourceRow: row.sourceRow, reconciliationStatus: "UNRESOLVED_DATE" as const,
+      matchedLearningSourceRow: null, blockId: row.blockId, postPaidFree: false,
+    }));
+    const tuitionRows = [...validTuitionRows, ...invalidTuitionRows];
+    const unmatchedTuitionLessons = tuitionRows.filter((row) => row.date &&
+      (row.kind === "BILLABLE" || row.postPaidFree) && row.reconciliationStatus !== "MATCHED");
+    const minimalLessonGroups: LegacyMinimalLessonGroupPreview[] = unmatchedTuitionLessons.length ? [{
+      id: "tuition-only-lessons", tuitionSourceRows: unmatchedTuitionLessons.map((row) => row.sourceRow),
+      lessonCount: unmatchedTuitionLessons.length,
+      fromDate: [...unmatchedTuitionLessons].sort((a, b) => a.date!.localeCompare(b.date!))[0].date!,
+      toDate: [...unmatchedTuitionLessons].sort((a, b) => a.date!.localeCompare(b.date!)).at(-1)!.date!,
     }] : [];
 
     const tuitionCycles: LegacyTuitionCyclePreview[] = [];
@@ -323,7 +344,7 @@ export class LegacyReconciliationEngine {
     for (const block of parsed.tuitionBlocks) {
       const billableRows = block.tuitionSourceRows.filter((sourceRow) => {
         const row = parsed.tuitionRows.find((item) => item.sourceRow === sourceRow);
-        return row?.kind === "BILLABLE";
+        return row?.kind === "BILLABLE" && !postPaidFreeSourceRows.has(sourceRow);
       });
       const cycleRows = billableRows;
       const conflictingPaymentMarkers = block.paidMarkerSourceRow != null && block.unpaidMarkerSourceRow != null;

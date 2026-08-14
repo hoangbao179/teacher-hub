@@ -77,16 +77,20 @@ UI hiển thị ba lựa chọn:
 2. Hai sheet `Quá trình học tập` và `Học phí` có thể cập nhật lệch nhau. Dòng chỉ có
    trong `Học phí` là dữ liệu hợp lệ và chỉ tạo buổi học sau khi giáo viên xác nhận;
    nội dung, bài tập và nhận xét được để trống.
-3. Chỉ marker `FREE` explicit trên chính dòng học phí tạo attendance `FREE`. Vị trí
-   sau marker `PAID` không thay đổi attendance hoặc tính phí của buổi học.
-4. Marker `PAID` sau đúng tám buổi billable chốt cycle đó. Các buổi billable tiếp
-   theo bắt đầu cycle mới ở trạng thái chưa thu. Marker `PAID` không đúng tám buổi
-   vẫn phải review; không suy diễn thanh toán trước hoặc thanh toán một phần.
+3. Marker `FREE` explicit tạo attendance `FREE`. Ngoài ra, khi một block có đúng
+   tám buổi billable trước `PAID` và được xác định `PAID_CLEAR`, các dòng bình thường
+   sau `PAID` đến trước `TOTAL`/`TOTAL HOURS` cũng là `FREE`; lesson vẫn giữ nội dung
+   lịch sử nhưng không tăng cycle học phí.
+4. Marker `PAID` sau đúng tám buổi billable chốt cycle đó. `TOTAL` kết thúc phạm vi
+   post-paid FREE; block tiếp theo bắt đầu cycle billable mới. Marker `PAID` không
+   đúng tám buổi vẫn phải review và không được tự suy luận FREE, thanh toán trước
+   hoặc thanh toán một phần.
 5. Marker `UNPAID` explicit được hiểu là chưa thu. Nếu cùng block có cả `PAID` và
    `UNPAID`, block phải review.
-6. Ngày/giờ không chắc chắn phải bị chặn hoặc yêu cầu xác nhận. Importer không tự
-   sửa năm ngoài 2000–2100, không chấp nhận duration trên sáu giờ và không dùng giờ
-   phổ biến của toàn workbook để lấp dữ liệu thiếu.
+6. Ngày/giờ không chắc chắn phải bị chặn hoặc yêu cầu xác nhận. Dòng học phí có raw
+   date nhưng không normalize được phải còn trong Preview và chặn Apply, không được
+   bỏ im lặng. Importer không tự sửa năm ngoài 2000–2100, không chấp nhận duration
+   trên sáu giờ và không dùng giờ phổ biến của toàn workbook để lấp dữ liệu thiếu.
 7. Khoảng hiệu lực lớp, ghi danh và chính sách học phí chỉ bao phủ các buổi thực sự
    được Apply, gồm ngày đã sửa và nhóm tuition-only được xác nhận; nhóm bị bỏ qua
    không được kéo dài khoảng hiệu lực.

@@ -5,6 +5,7 @@ export type LegacyImportRowStatus = "VALID" | "NEEDS_REVIEW" | "BLOCKED" | "RESO
 
 export type LegacyImportIssueCode =
   | "INVALID_DATE"
+  | "INVALID_TUITION_DATE"
   | "INVALID_TIME"
   | "STUDENT_MISMATCH"
   | "ATTENDANCE_AMBIGUOUS"
@@ -214,6 +215,7 @@ export interface LegacyLearningLessonPreview {
 
 export interface LegacyTuitionRowPreview {
   id: string;
+  rawDate: string;
   date: string | null;
   suggestedDate: string | null;
   time: string | null;
@@ -330,6 +332,7 @@ export interface LegacyImportPreviewSummary {
   completedCycleCount: number;
   paidCycleCount: number;
   freeLessonCount: number;
+  postPaidFreeLessonCount: number;
   currentCycleProgress: number;
   hasAdvancePayment: boolean | null;
   unresolvedIssueCount: number;
