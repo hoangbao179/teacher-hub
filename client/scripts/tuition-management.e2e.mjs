@@ -126,6 +126,23 @@ try {
     await completeLesson(klass.id, incompleteEnrollment.id, `2026-07-${day}`, token);
   await api(`/api/enrollments/${incompleteEnrollment.id}/end`, token, "POST", { endedAt: "2026-07-20", reason: "E2E" });
 
+  const optionalClass = await api("/api/classes", token, "POST", {
+    name: `M4B Optional ${suffix}`, type: "GROUP", defaultPackagePrice: 0,
+    defaultDurationMinutes: 90, startDate: "2026-01-01", schedules: [],
+  });
+  const optionalStudentName = `M4B Chưa cài ${suffix}`;
+  const optionalStudent = await api("/api/students", token, "POST", { fullName: optionalStudentName });
+  const optionalEnrollment = await api(`/api/classes/${optionalClass.id}/enrollments`, token, "POST", {
+    studentId: optionalStudent.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
+  });
+  for (let day = 1; day <= 10; day += 1)
+    await completeLesson(optionalClass.id, optionalEnrollment.id, `2026-06-${String(day).padStart(2, "0")}`, token);
+  const freeStudentName = `M4B Miễn phí ${suffix}`;
+  const freeStudent = await api("/api/students", token, "POST", { fullName: freeStudentName });
+  await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
+    studentId: freeStudent.id, joinedAt: "2026-01-01", tuitionMode: "FREE",
+  });
+
   const beforeCycles = await api(`/api/tuition-cycles?studentId=${dueStudent.id}&pageSize=20`, token);
   const due = beforeCycles.find((item) => item.status === "PAYMENT_DUE");
   const accumulatingBefore = beforeCycles.find((item) => item.status === "ACCUMULATING");
@@ -133,37 +150,51 @@ try {
   const dashboardBeforePayment = await api("/api/dashboard", token);
 
   await page.goto("http://127.0.0.1:5176/admin/tuition");
-  await page.getByRole("heading", { name: "Học phí" }).waitFor();
+  await page.getByRole("heading", { name: "Bảng học phí" }).waitFor();
+  const boardData = await api("/api/tuition/board", token);
+  const dueBoardRow = boardData.rows.find((item) => item.enrollmentId === dueEnrollment.id);
+  const optionalBoardRow = boardData.rows.find((item) => item.enrollmentId === optionalEnrollment.id);
+  const freeBoardRow = boardData.rows.find((item) => item.studentId === freeStudent.id);
+  if (boardData.rows.filter((item) => item.enrollmentId === dueEnrollment.id).length !== 1 ||
+      dueBoardRow?.currentProgress?.attended !== 2 || dueBoardRow?.paymentDueCycleId !== due.id)
+    throw new Error("Board did not aggregate old due + current 2/8 into one enrollment row");
+  if (optionalBoardRow?.tuitionTracking !== "NOT_CONFIGURED" || optionalBoardRow.currentProgress !== null || optionalBoardRow.currentAmount !== null)
+    throw new Error("Optional tuition row was shown as tracked/free or exposed zero values");
+  if (freeBoardRow?.tuitionTracking !== "FREE" || freeBoardRow.currentProgress !== null)
+    throw new Error("Explicit FREE row was not distinct from optional tuition");
+
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await noHorizontalScroll(page);
+    await page.screenshot({ path: path.join(artifactDir, `tuition-board-${viewport.width}.png`), fullPage: false });
+  }
   await page.getByLabel("Tìm học sinh").fill(dueStudentName);
-  await page.getByLabel("Tìm học sinh").press("Enter");
-  const dueCard = page.getByTestId("tuition-cycle-card").filter({ hasText: dueStudentName });
-  await dueCard.waitFor();
-  await dueCard.getByRole("link", { name: "Xem chi tiết" }).click();
-  await page.waitForURL(`**/admin/tuition/${due.id}`);
-  await page.getByTestId("tuition-cycle-item").first().waitFor();
-  const detailItemCount = await page.getByTestId("tuition-cycle-item").count();
-  if (detailItemCount !== 8) throw new Error(`Tuition detail rendered ${detailItemCount} items instead of eight`);
-  await noHorizontalScroll(page);
-  await page.getByRole("link", { name: "Đánh dấu đã thu" }).click();
-  await page.waitForURL(`**/admin/tuition/${due.id}/mark-paid`);
-  if (await page.getByLabel("Số tiền").inputValue() !== String(due.packagePriceSnapshot)) throw new Error("Payment amount did not default to snapshot");
-  await page.getByLabel("Chuyển khoản").check();
+  const dueCard = page.getByTestId("tuition-board-card").filter({ hasText: dueStudentName });
+  await dueCard.getByText("2/8", { exact: true }).waitFor();
+  await dueCard.getByText("Cần thu", { exact: true }).waitFor();
+  await dueCard.getByRole("button", { name: "Đã nhận tiền" }).click();
+  await page.getByRole("dialog", { name: "Đã nhận tiền" }).waitFor();
+  await page.getByLabel("Phương thức").click();
+  await page.getByRole("option", { name: "Chuyển khoản" }).click();
   await page.getByLabel("Ghi chú (tùy chọn)").fill("Thanh toán E2E");
-  await page.getByRole("button", { name: "Xác nhận đã thu" }).click();
-  await page.getByRole("dialog").waitFor();
   await page.route("**/api/tuition-cycles/*/mark-paid", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     await route.continue();
   });
-  const confirm = page.getByTestId("confirm-mark-paid");
+  const confirm = page.getByTestId("confirm-board-payment");
   await confirm.click({ noWaitAfter: true });
-  if (!(await confirm.isDisabled())) throw new Error("Duplicate payment submission was not disabled");
-  await page.waitForURL(`**/admin/tuition/${due.id}`);
-  await page.getByText("Đã ghi nhận thanh toán toàn bộ đợt học phí.").waitFor();
-  await page.reload();
+  if (!(await confirm.isDisabled())) throw new Error("Duplicate board payment submission was not disabled");
+  await page.getByText(`Đã ghi nhận học phí của ${dueStudentName}.`).waitFor();
+  await dueCard.getByText("Đang học", { exact: true }).waitFor();
+  await dueCard.getByText("2/8", { exact: true }).waitFor();
+
+  await page.goto(`http://127.0.0.1:5176/admin/tuition/${due.id}`);
+  await page.getByTestId("tuition-cycle-item").first().waitFor();
+  const detailItemCount = await page.getByTestId("tuition-cycle-item").count();
+  if (detailItemCount !== 8) throw new Error(`Tuition detail rendered ${detailItemCount} items instead of eight`);
+  await noHorizontalScroll(page);
   await page.getByText("Đợt học phí đã thu và đang ở trạng thái chỉ đọc.").waitFor();
   if (await page.getByRole("link", { name: "Đánh dấu đã thu" }).count()) throw new Error("PAID detail still exposed payment action");
-  await page.screenshot({ path: path.join(artifactDir, "tuition-paid-390.png"), fullPage: true });
 
   await page.goto(`http://127.0.0.1:5176/admin/students/${dueStudent.id}`);
   await page.getByRole("heading", { name: dueStudentName }).waitFor();
@@ -217,7 +248,8 @@ try {
   await page.getByRole("button", { name: "Xác nhận" }).click();
   await page.getByText("Đã chốt 1.200.000đ").waitFor();
 
-  await page.goto("http://127.0.0.1:5176/admin/tuition");
+  await page.goto("http://127.0.0.1:5176/admin/tuition/history");
+  await page.getByRole("heading", { name: "Lịch sử học phí" }).waitFor();
   await page.getByRole("button", { name: /^Lọc/ }).click();
   await page.getByTestId("tuition-status-filter").click();
   await page.getByRole("option", { name: "Đang học" }).click();
@@ -274,7 +306,7 @@ try {
     await page.setViewportSize({ width, height: 844 });
     await noHorizontalScroll(page);
   }
-  console.log(`Playwright tuition E2E passed; screenshot: ${path.join(artifactDir, "tuition-paid-390.png")}`);
+  console.log(`Playwright tuition E2E passed; review artifacts: ${artifactDir}`);
   artifactRunPassed = true;
 } finally {
   await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);

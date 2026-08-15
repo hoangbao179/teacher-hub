@@ -52,11 +52,13 @@ function runNpx(args, options = {}) {
 }
 
 try {
+  const testPatterns = process.argv.slice(2);
   run(process.execPath, ["scripts/prepare-test-db.cjs"]);
   run(process.execPath, ["scripts/migration-recovery.integration.cjs"]);
   run(process.execPath, ["scripts/prepare-test-db.cjs"]);
   runNpm(["run", "db:migrate"]);
-  runNpx(["tsx", "--test", "--test-concurrency=1", "src/**/*.integration.test.ts"]);
+  runNpx(["tsx", "--test", "--test-concurrency=1",
+    ...(testPatterns.length ? testPatterns : ["src/**/*.integration.test.ts"])]);
 } catch (error) {
   console.error(error);
   process.exitCode = 1;

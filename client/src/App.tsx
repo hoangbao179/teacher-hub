@@ -19,6 +19,7 @@ const StudentsPage = lazy(() => import("./pages/StudentsPage").then((module) => 
 const StudentDetailPage = lazy(() => import("./pages/StudentDetailPage").then((module) => ({ default: module.StudentDetailPage })));
 const LegacyImportPage = lazy(() => import("./pages/LegacyImportPage").then((module) => ({ default: module.LegacyImportPage })));
 const TuitionPage = lazy(() => import("./pages/TuitionPage").then((module) => ({ default: module.TuitionPage })));
+const TuitionBoardPage = lazy(() => import("./pages/TuitionBoardPage").then((module) => ({ default: module.TuitionBoardPage })));
 const TuitionDetailPage = lazy(() => import("./pages/TuitionDetailPage").then((module) => ({ default: module.TuitionDetailPage })));
 const MarkTuitionPaidPage = lazy(() => import("./pages/MarkTuitionPaidPage").then((module) => ({ default: module.MarkTuitionPaidPage })));
 const CalendarPage = lazy(() => import("./pages/CalendarPage").then((module) => ({ default: module.CalendarPage })));
@@ -116,7 +117,8 @@ export function App() {
           <Route path="/admin/students/:id" element={<StudentDetailPage />} />
           <Route path="/admin/students/:studentId/legacy-import" element={<LegacyImportPage />} />
           <Route path="/admin/students/:id/edit" element={<StudentFormPage />} />
-          <Route path="/admin/tuition" element={<TuitionPage />} />
+          <Route path="/admin/tuition" element={<TuitionBoardPage />} />
+          <Route path="/admin/tuition/history" element={<TuitionPage />} />
           <Route path="/admin/tuition/:cycleId" element={<TuitionDetailPage />} />
           <Route path="/admin/tuition/:cycleId/mark-paid" element={<MarkTuitionPaidPage />} />
           <Route path="/admin/calendar" element={<CalendarPage />} />

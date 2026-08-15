@@ -46,7 +46,7 @@ export function TuitionDetailPage() {
   const visibleItems = item.items.filter((entry) => entry.attendanceStatus === "PRESENT");
   return (
     <Stack spacing={2} data-testid="tuition-detail-page" sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
-      <Button component={Link} to="/admin/tuition" startIcon={<ArrowBack />} sx={{ alignSelf: "flex-start" }}>Học phí</Button>
+      <Button component={Link} to="/admin/tuition/history" startIcon={<ArrowBack />} sx={{ alignSelf: "flex-start" }}>Lịch sử học phí</Button>
       {success && <Alert severity="success">{success}</Alert>}
       <PageHeader title={`${item.studentName} · Đợt học phí ${item.cycleNumber}`} subtitle={item.className} action={<TuitionStatusChip status={item.status} />} />
 

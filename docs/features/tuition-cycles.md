@@ -32,18 +32,33 @@ An identical payment replay returns the persisted result with
 `PAYMENT_CONFLICT` (HTTP 409). Marking one cycle paid never updates a later
 accumulating cycle.
 
-## Mobile management UI
+## Tuition Board
 
-M4B implements `/admin/tuition`, `/admin/tuition/:cycleId` and
-`/admin/tuition/:cycleId/mark-paid`. The list uses four status tabs, server-side
-search/class/sort/pagination and card layouts. Detail renders the exact stored
-item order with scheduled/actual time, duration and lesson type.
+`GET /api/tuition/board` là read-model chỉ đọc cho `/admin/tuition`. Endpoint trả
+đúng một row cho mỗi enrollment `ACTIVE`, đồng thời tổng hợp cycle theo học sinh để
+giữ tiến trình liên tục khi chuyển lớp. Cycle `PAYMENT_DUE` cũ được tách khỏi cycle
+`ACCUMULATING` hiện tại: row có thể vừa hiển thị tiến độ hiện tại `2/8`, vừa trỏ
+`paymentDueCycleId` tới đúng đợt cũ cần thu. Ghi nhận thanh toán vẫn dùng action
+canonical theo cycle; không thay đổi cycle hiện tại.
 
-Only `PAYMENT_DUE` shows the payment action. The payment form defaults to the
-snapshot amount, rejects any different amount, requires a confirmation dialog
-and disables the final action while the request is pending. A successful
-mutation navigates to freshly loaded read-only `PAID` detail; returning to the
-list also refetches server data.
+Trạng thái theo dõi được suy ra ở server từ policy có hiệu lực tại ngày hiện hành:
+`TRACKED` khi giá hiệu lực dương, `NOT_CONFIGURED` khi `CLASS_DEFAULT` có giá 0, và
+`FREE` chỉ khi enrollment policy thực sự là `FREE`. `NOT_CONFIGURED` và `FREE` đều
+không có tiến độ/số tiền trên board và không tạo cycle giả. Khoản cần thu luôn được
+ưu tiên trước các trạng thái trình bày khác; dữ liệu dở dang hoặc thiếu policy an
+toàn được gắn `NEEDS_REVIEW`.
+
+## Management UI
+
+`/admin/tuition` là bảng trạng thái compact: table trên desktop và card ngắn trên
+mobile, với tìm học sinh, lọc lớp và lọc cần thu. `/admin/tuition/history` giữ danh
+sách cycle có bốn trạng thái, search/class/sort/pagination dành cho tra cứu nâng
+cao. `/admin/tuition/:cycleId` vẫn render item theo stored order với thời gian dự
+kiến/thực tế, duration và loại buổi.
+
+Chỉ row có `paymentDueCycleId` mới hiển thị **Đã nhận tiền**. Dialog dùng đúng
+snapshot amount, ngày nhận, phương thức và ghi chú; sau thành công board được tải
+lại. Form thanh toán chi tiết cũ vẫn truy cập được từ lịch sử cycle.
 
 ## Enrollment ending
 

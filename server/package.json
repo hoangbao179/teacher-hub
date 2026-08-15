@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/**/*.test.ts",
     "test:integration": "node scripts/run-integration.cjs",
+    "test:integration:tuition": "node scripts/run-integration.cjs src/services/optional-class-tuition.integration.test.ts src/services/combined-class-group.integration.test.ts",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:bootstrap-admin": "tsx src/db/bootstrap-admin.ts",
     "admin:reset-password": "tsx src/auth/reset-admin-password.ts",

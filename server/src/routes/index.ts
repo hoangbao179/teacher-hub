@@ -225,6 +225,7 @@ export function createRouter(): Router {
     asyncHandler(controllers.lessons.complete),
   );
   router.post("/api/lessons/:id/cancel", asyncHandler(controllers.lessons.cancel));
+  router.get("/api/tuition/board", asyncHandler(controllers.tuition.board));
   router.get("/api/tuition-cycles", asyncHandler(controllers.tuition.list));
   router.get("/api/tuition-cycles/summary", asyncHandler(controllers.tuition.summary));
   router.get(

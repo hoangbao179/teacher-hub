@@ -111,7 +111,7 @@ export function ClassFormPage() {
       {editing && <Alert severity="info">Đổi trạng thái lớp tại trang chi tiết để chọn đúng ngày hiệu lực.</Alert>}
     </FormSection>
     <FormSection title="Học phí" description="Mức học phí cho đúng 8 buổi; có thể để trống nếu chưa muốn theo dõi học phí.">
-      <TextField label="Giá gói 8 buổi (VND)" placeholder="Ví dụ: 2.400.000" value={price} onChange={(event) => setPrice(formatPrice(event.target.value))} onBlur={() => setPrice(formatPrice(price))} helperText="Để trống sẽ lưu 0 VND và không tạo chu kỳ học phí." slotProps={{ htmlInput: { inputMode: "numeric", pattern: "[0-9.]*" } }} />
+      <TextField label="Giá gói 8 buổi (VND)" placeholder="Ví dụ: 2.400.000" value={price} onChange={(event) => setPrice(formatPrice(event.target.value))} onBlur={() => setPrice(formatPrice(price))} helperText="Có thể để trống nếu chưa muốn theo dõi học phí." slotProps={{ htmlInput: { inputMode: "numeric", pattern: "[0-9.]*" } }} />
     </FormSection>
     <FormSection title="Lịch học hằng tuần">
       {editing && <TextField required type="date" label="Áp dụng thay đổi lịch từ" value={scheduleEffectiveDate} onChange={(e) => setScheduleEffectiveDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} helperText="Chỉ dùng khi thêm, sửa hoặc xóa lịch; sửa metadata không tạo version lịch mới." />}

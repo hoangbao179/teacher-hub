@@ -34,8 +34,10 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   cô chỉ đánh dấu em nghỉ nếu có, nhập nội dung/nhận xét tùy chọn và chọn **Lưu &
   hoàn tất**. Manual flow vẫn tồn tại dưới nhãn **Buổi học ngoài lịch** và full
   lesson wizard vẫn tồn tại cho chỉnh sửa đầy đủ.
-- **Học phí**: gói đúng 8 buổi, giá lớp/giá riêng/miễn phí, thu trước, xử lý đợt dở,
-  chuyển lớp và biên `PAID` bất biến tiếp tục hoạt động trên desktop/mobile.
+- **Học phí**: `/admin/tuition` hiển thị một row cho mỗi enrollment đang hoạt động,
+  ưu tiên khoản cần thu và phân biệt rõ đang theo dõi/chưa cấu hình/miễn học phí.
+  Lịch sử cycle ở `/admin/tuition/history`; gói đúng 8 buổi, thu trước, xử lý đợt
+  dở, chuyển lớp và biên `PAID` bất biến tiếp tục hoạt động trên desktop/mobile.
 - **Google Sheet học sinh/phụ huynh**: Teacher Hub database là nguồn chuẩn; lesson
   hoàn thành và học phí được đồng bộ sang sổ phụ huynh. Student Detail ưu tiên trạng
   thái dễ hiểu, CTA mở sổ và sao chép liên kết.

@@ -8,8 +8,13 @@ import type {
   CreateAdvanceReceiptRequest,
   TuitionReceipt,
   SettleIncompleteCycleRequest,
+  TuitionBoard,
 } from "@teacher/shared";
 import { api, apiEnvelope } from "./client";
+
+export function getTuitionBoard(): Promise<TuitionBoard> {
+  return api<TuitionBoard>("/api/tuition/board");
+}
 
 export async function listTuitionCycles(
   query: TuitionCycleListQuery,

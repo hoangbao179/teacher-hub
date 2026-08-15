@@ -10,6 +10,8 @@ import { TuitionService } from "../services/tuition.service";
 
 export class TuitionController {
   constructor(private readonly service: TuitionService) {}
+  board = async (_req: Request, res: Response) =>
+    res.json({ data: await this.service.board() });
   list = async (req: Request, res: Response) => {
     const query: TuitionCycleListQuery = {
       status: text(req.query.status) as TuitionCycleListQuery["status"],

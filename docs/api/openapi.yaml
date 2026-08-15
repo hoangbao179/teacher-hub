@@ -310,6 +310,11 @@ paths:
       responses:
         '200': {description: Trang chu kỳ, content: {application/json: {schema: {$ref: '#/components/schemas/TuitionCycleListEnvelope'}}}}
         '400': {$ref: '#/components/responses/ValidationError'}
+  /api/tuition/board:
+    get:
+      summary: Bảng học phí read-only, một dòng cho mỗi ghi danh đang hoạt động
+      responses:
+        '200': {description: Trạng thái học phí dễ đọc đã tổng hợp từ policy và cycle canonical, content: {application/json: {schema: {$ref: '#/components/schemas/TuitionBoardEnvelope'}}}}
   /api/tuition-cycles/summary:
     get:
       summary: Tổng hợp học phí cho Dashboard; khoảng ngày chỉ áp dụng cho số cycle đã thu
@@ -2159,6 +2164,45 @@ components:
             tuitionImpacts: {type: array, items: {type: object}}
             recalculationConflict: {type: object, nullable: true}
     TuitionCycleStatus: {type: string, enum: [ACCUMULATING, PAYMENT_DUE, PAID, INCOMPLETE, CANCELLED]}
+    TuitionTracking: {type: string, enum: [TRACKED, NOT_CONFIGURED, FREE]}
+    TuitionBoardRow:
+      type: object
+      required: [studentId, studentName, enrollmentId, classId, className, tuitionMode, tuitionTracking, status, currentProgress, currentAmount, currentCycleId, paymentDue, paymentDueCycleId, paymentDueAmount, paymentDueCount, lastPaidAt, hasAdvancePayment, needsReview]
+      properties:
+        studentId: {type: integer, format: int64}
+        studentName: {type: string}
+        studentNickname: {type: string, nullable: true}
+        enrollmentId: {type: integer, format: int64}
+        classId: {type: integer, format: int64}
+        className: {type: string}
+        tuitionMode: {type: string, enum: [CLASS_DEFAULT, CUSTOM, FREE]}
+        tuitionTracking: {$ref: '#/components/schemas/TuitionTracking'}
+        status: {type: string, enum: [PAYMENT_DUE, NEEDS_REVIEW, LEARNING, NOT_CONFIGURED, FREE]}
+        currentProgress:
+          type: object
+          nullable: true
+          properties: {attended: {type: integer, minimum: 0, maximum: 8}, target: {type: integer, enum: [8]}}
+        currentAmount: {type: integer, format: int64, nullable: true}
+        currentCycleId: {type: integer, format: int64, nullable: true}
+        paymentDue: {type: boolean}
+        paymentDueCycleId: {type: integer, format: int64, nullable: true}
+        paymentDueAmount: {type: integer, format: int64, nullable: true}
+        paymentDueCount: {type: integer, minimum: 0}
+        lastPaidAt: {type: string, format: date, nullable: true}
+        hasAdvancePayment: {type: boolean}
+        needsReview: {type: boolean}
+    TuitionBoardEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [rows, paymentDueStudentCount, totalPaymentDueAmount, asOf]
+          properties:
+            rows: {type: array, items: {$ref: '#/components/schemas/TuitionBoardRow'}}
+            paymentDueStudentCount: {type: integer, minimum: 0}
+            totalPaymentDueAmount: {type: integer, format: int64, minimum: 0}
+            asOf: {type: string, format: date}
     TuitionCycleListItem:
       type: object
       required: [id, enrollmentId, cycleNumber, status, studentId, studentName, classId, className, packagePriceSnapshot, itemCount, targetCount, progress]

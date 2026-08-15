@@ -118,7 +118,7 @@ export function TuitionPage() {
 
   return (
     <Stack spacing={2} data-testid="tuition-list-page">
-      <Typography component="h1" variant="h5">Học phí</Typography>
+      <Typography component="h1" variant="h5">Lịch sử học phí</Typography>
       <Box sx={{ display: { xs: "none", md: "block" } }}>
         <Tabs value={status} onChange={(_event, value: VisibleStatus) => updateDesktopStatus(value)} variant="fullWidth" aria-label="Trạng thái học phí">
           {statuses.map((item) => <Tab key={item.value} label={item.label} value={item.value} />)}

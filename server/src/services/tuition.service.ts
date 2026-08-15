@@ -7,6 +7,7 @@ import type {
   TuitionSummaryQuery,
   CreateAdvanceReceiptRequest,
   SettleIncompleteCycleRequest,
+  TuitionBoard,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { decideTuitionPayment } from "../domain/tuition-payment";
@@ -14,6 +15,7 @@ import { AppError } from "../errors/app-error";
 import { AuditRepository } from "../repositories/audit.repository";
 import { TuitionRepository } from "../repositories/tuition.repository";
 import { TuitionPolicyRepository } from "../repositories/tuition-policy.repository";
+import { todayInHoChiMinh } from "../utils/date";
 
 const listStatuses = new Set<TuitionCycleStatus>([
   "ACCUMULATING", "PAYMENT_DUE", "PAID", "INCOMPLETE",
@@ -30,6 +32,10 @@ export class TuitionService {
   list(input: TuitionCycleListQuery) {
     const query = this.normalizeListQuery(input);
     return this.repository.list(query);
+  }
+
+  board(): Promise<TuitionBoard> {
+    return this.repository.board(todayInHoChiMinh());
   }
 
   summary(input: TuitionSummaryQuery) {

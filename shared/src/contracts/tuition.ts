@@ -9,6 +9,37 @@ export type TuitionCycleSort = "OLDEST_DUE" | "NEWEST" | "STUDENT_NAME";
 export type PaymentMethod = "CASH" | "BANK_TRANSFER";
 export type IncompleteSettlementStatus = "OPEN" | "SETTLED" | "WAIVED";
 export type TuitionReceiptStatus = "AVAILABLE" | "ALLOCATED" | "TRANSFERRED" | "REFUNDED" | "VOID";
+export type TuitionTracking = "TRACKED" | "NOT_CONFIGURED" | "FREE";
+export type TuitionBoardStatus = "PAYMENT_DUE" | "NEEDS_REVIEW" | "LEARNING" | "NOT_CONFIGURED" | "FREE";
+
+export interface TuitionBoardRow {
+  studentId: number;
+  studentName: string;
+  studentNickname: string | null;
+  enrollmentId: number;
+  classId: number;
+  className: string;
+  tuitionMode: import("./students.js").TuitionMode;
+  tuitionTracking: TuitionTracking;
+  status: TuitionBoardStatus;
+  currentProgress: { attended: number; target: 8 } | null;
+  currentAmount: number | null;
+  currentCycleId: number | null;
+  paymentDue: boolean;
+  paymentDueCycleId: number | null;
+  paymentDueAmount: number | null;
+  paymentDueCount: number;
+  lastPaidAt: string | null;
+  hasAdvancePayment: boolean;
+  needsReview: boolean;
+}
+
+export interface TuitionBoard {
+  rows: TuitionBoardRow[];
+  paymentDueStudentCount: number;
+  totalPaymentDueAmount: number;
+  asOf: string;
+}
 
 export interface TuitionCycleListQuery {
   status?: Exclude<TuitionCycleStatus, "CANCELLED">;

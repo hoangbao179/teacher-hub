@@ -14,6 +14,8 @@ import type {
   CreateAdvanceReceiptRequest,
   TuitionReceipt,
   SettleIncompleteCycleRequest,
+  TuitionBoard,
+  TuitionBoardRow,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
@@ -235,6 +237,78 @@ export class TuitionRepository {
       [enrollmentId],
     );
     return Number(rows[0]?.progress ?? 0);
+  }
+
+  async board(asOf: string): Promise<TuitionBoard> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `WITH cycle_data AS (
+         SELECT tc.id,tc.enrollment_id,owner.student_id,tc.status,tc.package_price_snapshot,
+           tc.started_at,tc.reached_target_at,tc.paid_at,tc.settlement_status,
+           COUNT(tcs.id) item_count
+         FROM tuition_cycles tc
+         JOIN class_enrollments owner ON owner.id=tc.enrollment_id
+         LEFT JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
+         GROUP BY tc.id,tc.enrollment_id,owner.student_id,tc.status,tc.package_price_snapshot,
+           tc.started_at,tc.reached_target_at,tc.paid_at,tc.settlement_status
+       ), ranked_cycles AS (
+         SELECT cd.*,
+           ROW_NUMBER() OVER (PARTITION BY student_id,status ORDER BY
+             CASE WHEN status='PAYMENT_DUE' THEN reached_target_at END ASC,
+             CASE WHEN status='ACCUMULATING' THEN started_at END DESC,id DESC) status_rank
+         FROM cycle_data cd
+       ), cycle_summary AS (
+         SELECT student_id,
+           SUM(status='PAYMENT_DUE') payment_due_count,
+           COALESCE(SUM(CASE WHEN status='PAYMENT_DUE' THEN package_price_snapshot ELSE 0 END),0) total_due_amount,
+           MAX(CASE WHEN status='PAID' THEN DATE(paid_at) END) last_paid_at,
+           SUM(status='INCOMPLETE' AND settlement_status='OPEN') open_incomplete_count
+         FROM cycle_data GROUP BY student_id
+       ), receipt_summary AS (
+         SELECT owner.student_id,COUNT(*) receipt_count
+         FROM tuition_receipts tr JOIN class_enrollments owner ON owner.id=tr.enrollment_id
+         WHERE tr.status IN ('AVAILABLE','ALLOCATED','TRANSFERRED') GROUP BY owner.student_id
+       )
+       SELECT e.student_id,s.full_name student_name,s.nickname student_nickname,e.id enrollment_id,
+         e.class_id,c.name class_name,COALESCE(ep.tuition_mode,e.tuition_mode) tuition_mode,
+         ep.id enrollment_policy_id,ep.custom_package_price,cp.id class_policy_id,cp.package_price class_price,
+         current_cycle.id current_cycle_id,current_cycle.item_count current_item_count,
+         current_cycle.package_price_snapshot current_cycle_amount,
+         due_cycle.id payment_due_cycle_id,due_cycle.item_count payment_due_item_count,
+         due_cycle.package_price_snapshot payment_due_amount,
+         COALESCE(cs.payment_due_count,0) payment_due_count,COALESCE(cs.total_due_amount,0) total_due_amount,
+         cs.last_paid_at,COALESCE(cs.open_incomplete_count,0) open_incomplete_count,
+         COALESCE(rs.receipt_count,0) receipt_count
+       FROM class_enrollments e
+       JOIN students s ON s.id=e.student_id
+       JOIN classes c ON c.id=e.class_id
+       LEFT JOIN enrollment_tuition_policies ep ON ep.id=(
+         SELECT ep2.id FROM enrollment_tuition_policies ep2
+         WHERE ep2.enrollment_id=e.id AND ep2.effective_from<=?
+           AND (ep2.effective_to IS NULL OR ep2.effective_to>=?)
+         ORDER BY ep2.effective_from DESC,ep2.id DESC LIMIT 1
+       )
+       LEFT JOIN class_tuition_policies cp ON cp.id=(
+         SELECT cp2.id FROM class_tuition_policies cp2
+         WHERE cp2.class_id=e.class_id AND cp2.effective_from<=?
+           AND (cp2.effective_to IS NULL OR cp2.effective_to>=?)
+         ORDER BY cp2.effective_from DESC,cp2.id DESC LIMIT 1
+       )
+       LEFT JOIN ranked_cycles current_cycle ON current_cycle.student_id=e.student_id
+         AND current_cycle.status='ACCUMULATING' AND current_cycle.status_rank=1
+       LEFT JOIN ranked_cycles due_cycle ON due_cycle.student_id=e.student_id
+         AND due_cycle.status='PAYMENT_DUE' AND due_cycle.status_rank=1
+       LEFT JOIN cycle_summary cs ON cs.student_id=e.student_id
+       LEFT JOIN receipt_summary rs ON rs.student_id=e.student_id
+       WHERE e.status='ACTIVE'`,
+      [asOf, asOf, asOf, asOf],
+    );
+    const boardRows = rows.map(mapBoardRow).sort(compareBoardRows);
+    return {
+      rows: boardRows,
+      paymentDueStudentCount: boardRows.filter((row) => row.paymentDue).length,
+      totalPaymentDueAmount: rows.reduce((total, row) => total + Number(row.total_due_amount ?? 0), 0),
+      asOf,
+    };
   }
 
   async list(query: Required<Pick<TuitionCycleListQuery, "page" | "pageSize" | "sort">> & TuitionCycleListQuery): Promise<PageResult<TuitionCycleListItem>> {
@@ -535,6 +609,62 @@ export class TuitionRepository {
         entityId: cycleId, newValues: { source: "ADVANCE_RECEIPT", receiptId: Number(receipt.id), amount: packagePrice } });
     }
   }
+}
+
+function mapBoardRow(row: RowDataPacket): TuitionBoardRow {
+  const tuitionMode = row.tuition_mode as TuitionBoardRow["tuitionMode"];
+  const effectiveAmount = tuitionMode === "CUSTOM"
+    ? numberOrNull(row.custom_package_price)
+    : tuitionMode === "CLASS_DEFAULT" ? numberOrNull(row.class_price) : null;
+  const policyMissing = row.enrollment_policy_id == null ||
+    (tuitionMode === "CLASS_DEFAULT" && row.class_policy_id == null);
+  const tuitionTracking = tuitionMode === "FREE"
+    ? "FREE" as const
+    : effectiveAmount != null && effectiveAmount > 0 ? "TRACKED" as const : "NOT_CONFIGURED" as const;
+  const paymentDue = Number(row.payment_due_count ?? 0) > 0;
+  const needsReview = policyMissing || Number(row.open_incomplete_count ?? 0) > 0;
+  const status = paymentDue
+    ? "PAYMENT_DUE" as const
+    : needsReview ? "NEEDS_REVIEW" as const
+      : tuitionTracking === "TRACKED" ? "LEARNING" as const : tuitionTracking;
+  const currentItemCount = row.current_cycle_id != null
+    ? Number(row.current_item_count ?? 0)
+    : paymentDue ? Number(row.payment_due_item_count ?? 0) : 0;
+  return {
+    studentId: Number(row.student_id),
+    studentName: String(row.student_name),
+    studentNickname: row.student_nickname == null ? null : String(row.student_nickname),
+    enrollmentId: Number(row.enrollment_id),
+    classId: Number(row.class_id),
+    className: String(row.class_name),
+    tuitionMode,
+    tuitionTracking,
+    status,
+    currentProgress: tuitionTracking === "TRACKED" ? { attended: currentItemCount, target: 8 } : null,
+    currentAmount: tuitionTracking === "TRACKED"
+      ? numberOrNull(row.current_cycle_amount) ?? effectiveAmount : null,
+    currentCycleId: row.current_cycle_id == null
+      ? (paymentDue ? Number(row.payment_due_cycle_id) : null) : Number(row.current_cycle_id),
+    paymentDue,
+    paymentDueCycleId: row.payment_due_cycle_id == null ? null : Number(row.payment_due_cycle_id),
+    paymentDueAmount: numberOrNull(row.payment_due_amount),
+    paymentDueCount: Number(row.payment_due_count ?? 0),
+    lastPaidAt: row.last_paid_at == null ? null : String(row.last_paid_at).slice(0, 10),
+    hasAdvancePayment: Number(row.receipt_count ?? 0) > 0,
+    needsReview,
+  };
+}
+
+function compareBoardRows(left: TuitionBoardRow, right: TuitionBoardRow): number {
+  const rank: Record<TuitionBoardRow["status"], number> = {
+    PAYMENT_DUE: 0, NEEDS_REVIEW: 1, LEARNING: 2, NOT_CONFIGURED: 3, FREE: 4,
+  };
+  return rank[left.status] - rank[right.status] ||
+    left.studentName.localeCompare(right.studentName, "vi");
+}
+
+function numberOrNull(value: unknown): number | null {
+  return value == null ? null : Number(value);
 }
 
 function mapListRow(row: RowDataPacket): TuitionCycleListItem {
