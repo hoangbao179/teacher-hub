@@ -163,7 +163,7 @@ try {
   if (freeBoardRow?.tuitionTracking !== "FREE" || freeBoardRow.currentProgress !== null)
     throw new Error("Explicit FREE row was not distinct from optional tuition");
 
-  for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }, { width: 2560, height: 1440 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     await noHorizontalScroll(page);
     await page.screenshot({ path: path.join(artifactDir, `tuition-board-${viewport.width}.png`), fullPage: false });
