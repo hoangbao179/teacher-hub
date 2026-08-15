@@ -312,7 +312,7 @@ paths:
         '400': {$ref: '#/components/responses/ValidationError'}
   /api/tuition/board:
     get:
-      summary: Bảng học phí read-only, một dòng cho mỗi ghi danh đang hoạt động
+      summary: Bảng học phí read-only, một dòng cho mỗi học sinh đang học hoặc còn nghĩa vụ tài chính chưa xử lý
       responses:
         '200': {description: Trạng thái học phí dễ đọc đã tổng hợp từ policy và cycle canonical, content: {application/json: {schema: {$ref: '#/components/schemas/TuitionBoardEnvelope'}}}}
   /api/tuition-cycles/summary:
@@ -2167,12 +2167,13 @@ components:
     TuitionTracking: {type: string, enum: [TRACKED, NOT_CONFIGURED, FREE]}
     TuitionBoardRow:
       type: object
-      required: [studentId, studentName, enrollmentId, classId, className, tuitionMode, tuitionTracking, status, currentProgress, currentAmount, currentCycleId, paymentDue, paymentDueCycleId, paymentDueAmount, paymentDueCount, lastPaidAt, hasAdvancePayment, needsReview]
+      required: [studentId, studentName, enrollmentId, enrollmentStatus, classId, className, tuitionMode, tuitionTracking, status, currentProgress, currentAmount, currentCycleId, paymentDue, paymentDueCycleId, paymentDueAmount, paymentDueCount, totalDueAmount, lastPaidAt, hasAdvancePayment, needsReview, needsReviewCycleId]
       properties:
         studentId: {type: integer, format: int64}
         studentName: {type: string}
         studentNickname: {type: string, nullable: true}
         enrollmentId: {type: integer, format: int64}
+        enrollmentStatus: {type: string, enum: [ACTIVE, PAUSED, ENDED]}
         classId: {type: integer, format: int64}
         className: {type: string}
         tuitionMode: {type: string, enum: [CLASS_DEFAULT, CUSTOM, FREE]}
@@ -2188,9 +2189,11 @@ components:
         paymentDueCycleId: {type: integer, format: int64, nullable: true}
         paymentDueAmount: {type: integer, format: int64, nullable: true}
         paymentDueCount: {type: integer, minimum: 0}
+        totalDueAmount: {type: integer, format: int64, minimum: 0}
         lastPaidAt: {type: string, format: date, nullable: true}
         hasAdvancePayment: {type: boolean}
         needsReview: {type: boolean}
+        needsReviewCycleId: {type: integer, format: int64, nullable: true}
     TuitionBoardEnvelope:
       type: object
       required: [data]

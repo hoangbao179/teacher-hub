@@ -254,8 +254,15 @@ export class TuitionRepository {
          SELECT cd.*,
            ROW_NUMBER() OVER (PARTITION BY student_id,status ORDER BY
              CASE WHEN status='PAYMENT_DUE' THEN reached_target_at END ASC,
-             CASE WHEN status='ACCUMULATING' THEN started_at END DESC,id DESC) status_rank
+             CASE WHEN status='PAYMENT_DUE' THEN id END ASC,
+             CASE WHEN status='ACCUMULATING' THEN started_at END DESC,
+             CASE WHEN status='ACCUMULATING' THEN id END DESC,id DESC) status_rank
          FROM cycle_data cd
+       ), review_cycles AS (
+         SELECT cd.*,
+           ROW_NUMBER() OVER (PARTITION BY student_id ORDER BY started_at ASC,id ASC) review_rank
+         FROM cycle_data cd
+         WHERE status='INCOMPLETE' AND settlement_status='OPEN'
        ), cycle_summary AS (
          SELECT student_id,
            SUM(status='PAYMENT_DUE') payment_due_count,
@@ -267,18 +274,31 @@ export class TuitionRepository {
          SELECT owner.student_id,COUNT(*) receipt_count
          FROM tuition_receipts tr JOIN class_enrollments owner ON owner.id=tr.enrollment_id
          WHERE tr.status IN ('AVAILABLE','ALLOCATED','TRANSFERRED') GROUP BY owner.student_id
+       ), board_enrollments AS (
+         SELECT e.*,
+           ROW_NUMBER() OVER (PARTITION BY e.student_id ORDER BY
+             (e.status='ACTIVE') DESC,(e.status='PAUSED') DESC,e.id DESC) board_rank
+         FROM class_enrollments e
+         WHERE e.status='ACTIVE' OR EXISTS (
+           SELECT 1 FROM cycle_data issue
+           WHERE issue.enrollment_id=e.id AND (
+             issue.status='PAYMENT_DUE' OR
+             (issue.status='INCOMPLETE' AND issue.settlement_status='OPEN')
+           )
+         )
        )
-       SELECT e.student_id,s.full_name student_name,s.nickname student_nickname,e.id enrollment_id,
+       SELECT e.student_id,s.full_name student_name,s.nickname student_nickname,e.id enrollment_id,e.status enrollment_status,
          e.class_id,c.name class_name,COALESCE(ep.tuition_mode,e.tuition_mode) tuition_mode,
          ep.id enrollment_policy_id,ep.custom_package_price,cp.id class_policy_id,cp.package_price class_price,
          current_cycle.id current_cycle_id,current_cycle.item_count current_item_count,
          current_cycle.package_price_snapshot current_cycle_amount,
          due_cycle.id payment_due_cycle_id,due_cycle.item_count payment_due_item_count,
          due_cycle.package_price_snapshot payment_due_amount,
+         review_cycle.id needs_review_cycle_id,
          COALESCE(cs.payment_due_count,0) payment_due_count,COALESCE(cs.total_due_amount,0) total_due_amount,
          cs.last_paid_at,COALESCE(cs.open_incomplete_count,0) open_incomplete_count,
          COALESCE(rs.receipt_count,0) receipt_count
-       FROM class_enrollments e
+       FROM board_enrollments e
        JOIN students s ON s.id=e.student_id
        JOIN classes c ON c.id=e.class_id
        LEFT JOIN enrollment_tuition_policies ep ON ep.id=(
@@ -297,9 +317,11 @@ export class TuitionRepository {
          AND current_cycle.status='ACCUMULATING' AND current_cycle.status_rank=1
        LEFT JOIN ranked_cycles due_cycle ON due_cycle.student_id=e.student_id
          AND due_cycle.status='PAYMENT_DUE' AND due_cycle.status_rank=1
+       LEFT JOIN review_cycles review_cycle ON review_cycle.student_id=e.student_id
+         AND review_cycle.review_rank=1
        LEFT JOIN cycle_summary cs ON cs.student_id=e.student_id
        LEFT JOIN receipt_summary rs ON rs.student_id=e.student_id
-       WHERE e.status='ACTIVE'`,
+       WHERE e.board_rank=1`,
       [asOf, asOf, asOf, asOf],
     );
     const boardRows = rows.map(mapBoardRow).sort(compareBoardRows);
@@ -635,6 +657,7 @@ function mapBoardRow(row: RowDataPacket): TuitionBoardRow {
     studentName: String(row.student_name),
     studentNickname: row.student_nickname == null ? null : String(row.student_nickname),
     enrollmentId: Number(row.enrollment_id),
+    enrollmentStatus: row.enrollment_status as TuitionBoardRow["enrollmentStatus"],
     classId: Number(row.class_id),
     className: String(row.class_name),
     tuitionMode,
@@ -649,9 +672,11 @@ function mapBoardRow(row: RowDataPacket): TuitionBoardRow {
     paymentDueCycleId: row.payment_due_cycle_id == null ? null : Number(row.payment_due_cycle_id),
     paymentDueAmount: numberOrNull(row.payment_due_amount),
     paymentDueCount: Number(row.payment_due_count ?? 0),
+    totalDueAmount: Number(row.total_due_amount ?? 0),
     lastPaidAt: row.last_paid_at == null ? null : String(row.last_paid_at).slice(0, 10),
     hasAdvancePayment: Number(row.receipt_count ?? 0) > 0,
     needsReview,
+    needsReviewCycleId: row.needs_review_cycle_id == null ? null : Number(row.needs_review_cycle_id),
   };
 }
 

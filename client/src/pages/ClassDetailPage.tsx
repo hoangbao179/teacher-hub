@@ -28,6 +28,7 @@ import { scheduleApi } from "../api/schedule";
 import { getEnrollmentCandidates } from "../features/class-enrollment";
 import { formatClassSchedule, formatClassScheduleItem } from "../utils/classSchedule";
 import { addDays, todayInHoChiMinh } from "../utils/date";
+import { hasConfiguredClassTuition } from "../features/class-tuition";
 export function ClassDetailPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -184,7 +185,7 @@ export function ClassDetailPage() {
         {item!.status !== "CLOSED" && <Button disabled={busy} color="error" onClick={() => setStatusActionName("close")}>Đóng lớp</Button>}
       </Stack>
       <MobileCard>
-          <Typography>Giá mặc định: <CurrencyDisplay value={item!.defaultPackagePrice} /> / 8 buổi</Typography>
+          <Typography>Giá mặc định: {hasConfiguredClassTuition(item!.defaultPackagePrice) ? <><CurrencyDisplay value={item!.defaultPackagePrice} /> / 8 buổi</> : "Chưa cài học phí"}</Typography>
           <Typography>
             Lịch:{" "}
             {formatClassSchedule(item!.schedules)}

@@ -11,7 +11,7 @@ import { getTuitionBoard, markTuitionPaid } from "../api/tuition";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
 import { todayInHoChiMinh } from "../utils/date";
-import { filterTuitionBoardRows, tuitionBoardAmount, tuitionBoardProgress, type TuitionBoardScope } from "../features/tuition-board";
+import { filterTuitionBoardRows, tuitionBoardAmount, tuitionBoardDetailCycleId, tuitionBoardMultipleDue, tuitionBoardProgress, type TuitionBoardScope } from "../features/tuition-board";
 
 export function TuitionBoardPage() {
   const [searchParams] = useSearchParams();
@@ -108,9 +108,9 @@ export function TuitionBoardPage() {
               <TableCell align="right">Học phí</TableCell><TableCell>Trạng thái</TableCell><TableCell align="right">Thao tác</TableCell>
             </TableRow></TableHead>
             <TableBody>{rows.map((row) => <TableRow key={row.enrollmentId} hover data-testid="tuition-board-row">
-              <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{row.studentName}</Typography>{row.studentNickname && <Typography variant="caption" color="text.secondary">{row.studentNickname}</Typography>}</TableCell>
+              <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{row.studentName}</Typography>{row.studentNickname && <Typography variant="caption" color="text.secondary">{row.studentNickname}</Typography>}{row.enrollmentStatus !== "ACTIVE" && <InactiveEnrollmentLabel status={row.enrollmentStatus} />}</TableCell>
               <TableCell>{row.className}</TableCell><TableCell align="center">{progress(row)}</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>{amount(row)}</TableCell><TableCell><BoardStatus row={row} /></TableCell>
+              <TableCell align="right"><BoardAmount row={row} /></TableCell><TableCell><BoardStatus row={row} /></TableCell>
               <TableCell align="right"><RowAction row={row} onPayment={openPayment} /></TableCell>
             </TableRow>)}</TableBody>
           </Table>
@@ -118,11 +118,11 @@ export function TuitionBoardPage() {
         <Stack spacing={1} sx={{ display: { xs: "flex", md: "none" } }}>
           {rows.map((row) => <Card key={row.enrollmentId} variant="outlined" data-testid="tuition-board-card"><CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
             <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-              <Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 700 }}>{row.studentName}</Typography><Typography variant="body2" color="text.secondary">{row.className}</Typography></Box>
+              <Box sx={{ minWidth: 0 }}><Typography sx={{ fontWeight: 700 }}>{row.studentName}</Typography><Typography variant="body2" color="text.secondary">{row.className}{row.enrollmentStatus !== "ACTIVE" ? ` · ${inactiveEnrollmentText(row.enrollmentStatus)}` : ""}</Typography></Box>
               <BoardStatus row={row} />
             </Stack>
             <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline", mt: 1 }}>
-              <Typography sx={{ fontWeight: 700 }}>{amount(row)}</Typography><Typography variant="body2" sx={{ fontWeight: 600 }}>{progress(row)}</Typography>
+              <BoardAmount row={row} /><Typography variant="body2" sx={{ fontWeight: 600 }}>{progress(row)}</Typography>
             </Stack>
             {row.paymentDue && row.currentProgress?.attended !== 8 && <Typography variant="caption" color="text.secondary">Đợt trước đã đủ 8 buổi</Typography>}
             <Box sx={{ display: "flex", justifyContent: "flex-end", mt: row.paymentDue ? 1 : 0 }}><RowAction row={row} onPayment={openPayment} /></Box>
@@ -156,9 +156,20 @@ function BoardStatus({ row }: { row: TuitionBoardRow }) {
 }
 function RowAction({ row, onPayment }: { row: TuitionBoardRow; onPayment: (row: TuitionBoardRow) => void }) {
   if (row.paymentDue) return <Button size="small" variant="contained" onClick={() => onPayment(row)} sx={{ minHeight: 44, whiteSpace: "nowrap" }}>Đã nhận tiền</Button>;
-  const cycleId = row.currentCycleId;
+  const cycleId = tuitionBoardDetailCycleId(row);
   if (row.needsReview && cycleId) return <Button component={Link} to={`/admin/tuition/${cycleId}`} size="small">Xem chi tiết</Button>;
   return null;
+}
+function BoardAmount({ row }: { row: TuitionBoardRow }) {
+  const multipleDue = tuitionBoardMultipleDue(row);
+  if (multipleDue) return <Box><Typography variant="body2" sx={{ fontWeight: 700 }}>{multipleDue.label}</Typography><Typography variant="caption" color="text.secondary">Tổng: {money(multipleDue.totalAmount)}</Typography></Box>;
+  return <Typography variant="body2" sx={{ fontWeight: 700 }}>{amount(row)}</Typography>;
+}
+function InactiveEnrollmentLabel({ status }: { status: TuitionBoardRow["enrollmentStatus"] }) {
+  return <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>{inactiveEnrollmentText(status)}</Typography>;
+}
+function inactiveEnrollmentText(status: TuitionBoardRow["enrollmentStatus"]): string {
+  return status === "PAUSED" ? "Tạm nghỉ" : "Đã nghỉ";
 }
 function progress(row: TuitionBoardRow): string { return tuitionBoardProgress(row); }
 function amount(row: TuitionBoardRow): string {

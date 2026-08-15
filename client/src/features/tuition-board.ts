@@ -20,3 +20,12 @@ export function tuitionBoardProgress(row: TuitionBoardRow): string {
 export function tuitionBoardAmount(row: TuitionBoardRow): number | null {
   return row.paymentDue ? row.paymentDueAmount : row.currentAmount;
 }
+
+export function tuitionBoardMultipleDue(row: TuitionBoardRow): { label: string; totalAmount: number } | null {
+  if (row.paymentDueCount <= 1) return null;
+  return { label: `${row.paymentDueCount} khoản cần thu`, totalAmount: row.totalDueAmount };
+}
+
+export function tuitionBoardDetailCycleId(row: TuitionBoardRow): number | null {
+  return row.needsReview ? row.needsReviewCycleId : row.currentCycleId;
+}

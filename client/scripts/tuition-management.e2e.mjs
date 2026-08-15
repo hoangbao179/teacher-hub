@@ -143,18 +143,45 @@ try {
     studentId: freeStudent.id, joinedAt: "2026-01-01", tuitionMode: "FREE",
   });
 
+  const inactiveDueStudentName = `M4B Inactive Due ${suffix}`;
+  const inactiveDueStudent = await api("/api/students", token, "POST", { fullName: inactiveDueStudentName });
+  const inactiveDueEnrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
+    studentId: inactiveDueStudent.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
+  });
+  for (let day = 1; day <= 8; day += 1)
+    await completeLesson(klass.id, inactiveDueEnrollment.id, `2026-05-${String(day).padStart(2, "0")}`, token);
+  await api(`/api/enrollments/${inactiveDueEnrollment.id}/end`, token, "POST", { endedAt: "2026-05-20", reason: "E2E" });
+
+  const multipleDueStudentName = `M4B Multiple Due ${suffix}`;
+  const multipleDueStudent = await api("/api/students", token, "POST", { fullName: multipleDueStudentName });
+  const multipleDueEnrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
+    studentId: multipleDueStudent.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
+  });
+  for (let day = 1; day <= 18; day += 1)
+    await completeLesson(klass.id, multipleDueEnrollment.id, `2026-04-${String(day).padStart(2, "0")}`, token);
+
+  await page.goto("http://127.0.0.1:5176/admin/classes");
+  const optionalClassCard = page.getByTestId("class-card-grid").locator(`a[href="/admin/classes/${optionalClass.id}"]`);
+  await optionalClassCard.getByText("Chưa cài học phí", { exact: true }).waitFor();
+  if (await optionalClassCard.getByText("0đ / 8 buổi", { exact: true }).count())
+    throw new Error("ClassesPage exposed a zero-value tuition package");
+  await optionalClassCard.click();
+  await page.getByText("Giá mặc định: Chưa cài học phí", { exact: true }).waitFor();
+  if (await page.getByText("Giá mặc định: 0đ / 8 buổi", { exact: true }).count())
+    throw new Error("ClassDetailPage exposed a zero-value tuition package");
+
   const beforeCycles = await api(`/api/tuition-cycles?studentId=${dueStudent.id}&pageSize=20`, token);
   const due = beforeCycles.find((item) => item.status === "PAYMENT_DUE");
   const accumulatingBefore = beforeCycles.find((item) => item.status === "ACCUMULATING");
   if (!due || !accumulatingBefore || accumulatingBefore.itemCount !== 2) throw new Error("Expected due 8/8 and accumulating 2/8 cycles");
-  const dashboardBeforePayment = await api("/api/dashboard", token);
-
   await page.goto("http://127.0.0.1:5176/admin/tuition");
   await page.getByRole("heading", { name: "Bảng học phí" }).waitFor();
   const boardData = await api("/api/tuition/board", token);
   const dueBoardRow = boardData.rows.find((item) => item.enrollmentId === dueEnrollment.id);
   const optionalBoardRow = boardData.rows.find((item) => item.enrollmentId === optionalEnrollment.id);
   const freeBoardRow = boardData.rows.find((item) => item.studentId === freeStudent.id);
+  const inactiveDueBoardRow = boardData.rows.find((item) => item.enrollmentId === inactiveDueEnrollment.id);
+  const multipleDueBoardRow = boardData.rows.find((item) => item.enrollmentId === multipleDueEnrollment.id);
   if (boardData.rows.filter((item) => item.enrollmentId === dueEnrollment.id).length !== 1 ||
       dueBoardRow?.currentProgress?.attended !== 2 || dueBoardRow?.paymentDueCycleId !== due.id)
     throw new Error("Board did not aggregate old due + current 2/8 into one enrollment row");
@@ -162,12 +189,34 @@ try {
     throw new Error("Optional tuition row was shown as tracked/free or exposed zero values");
   if (freeBoardRow?.tuitionTracking !== "FREE" || freeBoardRow.currentProgress !== null)
     throw new Error("Explicit FREE row was not distinct from optional tuition");
+  if (inactiveDueBoardRow?.enrollmentStatus !== "ENDED" || inactiveDueBoardRow.status !== "PAYMENT_DUE")
+    throw new Error("Inactive enrollment with a due cycle was missing from the board");
+  if (multipleDueBoardRow?.paymentDueCount !== 2 || multipleDueBoardRow.totalDueAmount !== 4_800_000 ||
+      multipleDueBoardRow.currentProgress?.attended !== 2)
+    throw new Error("Multiple due cycles were not aggregated into one student row");
 
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }, { width: 2560, height: 1440 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     await noHorizontalScroll(page);
     await page.screenshot({ path: path.join(artifactDir, `tuition-board-${viewport.width}.png`), fullPage: false });
   }
+  await page.getByLabel("Tìm học sinh").fill(multipleDueStudentName);
+  const multipleDueCard = page.getByTestId("tuition-board-card").filter({ hasText: multipleDueStudentName });
+  await multipleDueCard.getByText("2 khoản cần thu", { exact: true }).waitFor();
+  await multipleDueCard.getByText("Tổng: 4.800.000đ", { exact: true }).waitFor();
+  await noHorizontalScroll(page);
+  await page.getByLabel("Tìm học sinh").fill(inactiveDueStudentName);
+  const inactiveDueCard = page.getByTestId("tuition-board-card").filter({ hasText: inactiveDueStudentName });
+  await inactiveDueCard.getByText("Đã nghỉ", { exact: false }).waitFor();
+  await inactiveDueCard.getByText("Cần thu", { exact: true }).waitFor();
+  await inactiveDueCard.getByRole("button", { name: "Đã nhận tiền" }).waitFor();
+  await api(`/api/tuition-cycles/${inactiveDueBoardRow.paymentDueCycleId}/mark-paid`, token, "POST", {
+    paidAmount: inactiveDueBoardRow.paymentDueAmount, paidAt: "2026-08-15", paymentMethod: "BANK_TRANSFER",
+  });
+  await page.reload();
+  await page.getByLabel("Tìm học sinh").fill(inactiveDueStudentName);
+  await page.getByText("Không có học sinh phù hợp.", { exact: true }).waitFor();
+  const dashboardBeforePayment = await api("/api/dashboard", token);
   await page.getByLabel("Tìm học sinh").fill(dueStudentName);
   const dueCard = page.getByTestId("tuition-board-card").filter({ hasText: dueStudentName });
   await dueCard.getByText("2/8", { exact: true }).waitFor();

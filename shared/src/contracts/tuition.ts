@@ -17,6 +17,7 @@ export interface TuitionBoardRow {
   studentName: string;
   studentNickname: string | null;
   enrollmentId: number;
+  enrollmentStatus: import("./students.js").EnrollmentStatus;
   classId: number;
   className: string;
   tuitionMode: import("./students.js").TuitionMode;
@@ -29,9 +30,11 @@ export interface TuitionBoardRow {
   paymentDueCycleId: number | null;
   paymentDueAmount: number | null;
   paymentDueCount: number;
+  totalDueAmount: number;
   lastPaidAt: string | null;
   hasAdvancePayment: boolean;
   needsReview: boolean;
+  needsReviewCycleId: number | null;
 }
 
 export interface TuitionBoard {

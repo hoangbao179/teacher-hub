@@ -19,6 +19,7 @@ import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, PageHeader, StatusBadge } from "../components/UiKit";
 import { EmptyState } from "../components/EmptyState";
 import { classColor } from "../utils/classColor";
+import { hasConfiguredClassTuition } from "../features/class-tuition";
 
 type ClassFilter = "MANAGED" | "ACTIVE" | "PAUSED" | "CLOSED" | "ALL";
 
@@ -110,7 +111,7 @@ export function ClassesPage() {
               {item.type === "ONE_TO_ONE" ? "1 kèm 1" : "Lớp nhóm"} ·{" "}
               {item.activeStudentCount} học sinh
             </Typography>
-            <Typography color="primary" sx={{ fontWeight: 700 }}><CurrencyDisplay value={item.defaultPackagePrice} /> / 8 buổi</Typography>
+            <Typography color="primary" sx={{ fontWeight: 700 }}>{hasConfiguredClassTuition(item.defaultPackagePrice) ? <><CurrencyDisplay value={item.defaultPackagePrice} /> / 8 buổi</> : "Chưa cài học phí"}</Typography>
           </CardContent>
         </Card>
       ); })}

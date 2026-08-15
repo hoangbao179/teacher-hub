@@ -35,11 +35,17 @@ accumulating cycle.
 ## Tuition Board
 
 `GET /api/tuition/board` là read-model chỉ đọc cho `/admin/tuition`. Endpoint trả
-đúng một row cho mỗi enrollment `ACTIVE`, đồng thời tổng hợp cycle theo học sinh để
+đúng một row cho mỗi học sinh có enrollment `ACTIVE`; nếu không còn enrollment active,
+row chỉ được giữ khi còn cycle `PAYMENT_DUE` hoặc `INCOMPLETE/OPEN` cần xử lý. Enrollment
+lịch sử đã thu/xử lý xong không xuất hiện trên board. Read model tổng hợp cycle theo học sinh để
 giữ tiến trình liên tục khi chuyển lớp. Cycle `PAYMENT_DUE` cũ được tách khỏi cycle
 `ACCUMULATING` hiện tại: row có thể vừa hiển thị tiến độ hiện tại `2/8`, vừa trỏ
 `paymentDueCycleId` tới đúng đợt cũ cần thu. Ghi nhận thanh toán vẫn dùng action
 canonical theo cycle; không thay đổi cycle hiện tại.
+
+Khi một học sinh có nhiều cycle `PAYMENT_DUE`, row trả `paymentDueCount` và
+`totalDueAmount`, nhưng CTA vẫn trỏ tới cycle cần thu cũ nhất. `needsReviewCycleId`
+trỏ tới cycle `INCOMPLETE/OPEN` cũ nhất chưa xử lý, độc lập với `currentCycleId`.
 
 Trạng thái theo dõi được suy ra ở server từ policy có hiệu lực tại ngày hiện hành:
 `TRACKED` khi giá hiệu lực dương, `NOT_CONFIGURED` khi `CLASS_DEFAULT` có giá 0, và
@@ -56,7 +62,9 @@ sách cycle có bốn trạng thái, search/class/sort/pagination dành cho tra 
 cao. `/admin/tuition/:cycleId` vẫn render item theo stored order với thời gian dự
 kiến/thực tế, duration và loại buổi.
 
-Chỉ row có `paymentDueCycleId` mới hiển thị **Đã nhận tiền**. Dialog dùng đúng
+Chỉ row có `paymentDueCycleId` mới hiển thị **Đã nhận tiền**. Nhiều khoản cần thu được
+hiển thị bằng số khoản và tổng tiền; enrollment không active có nhãn phụ nhẹ nhưng
+trạng thái tài chính vẫn được ưu tiên. Dialog dùng đúng
 snapshot amount, ngày nhận, phương thức và ghi chú; sau thành công board được tải
 lại. Form thanh toán chi tiết cũ vẫn truy cập được từ lịch sử cycle.
 
