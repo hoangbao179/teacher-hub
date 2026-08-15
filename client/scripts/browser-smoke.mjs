@@ -188,7 +188,7 @@ try {
   await cdp.screenshot("dashboard-1440");
   for (const pageAudit of [
     { path: "/admin/calendar", testId: "weekly-calendar", name: "calendar-1440" },
-    { path: "/admin/tuition", testId: "tuition-list-page", name: "tuition-1440" },
+    { path: "/admin/tuition", testId: "tuition-board-page", name: "tuition-1440" },
     { path: "/admin/students", testId: "student-list-page", name: "students-1440" },
     { path: "/admin/account", testId: "account-page", name: "account-1440" },
   ]) {
@@ -224,7 +224,7 @@ try {
   await cdp.send("Page.reload"); await new Promise((resolve) => setTimeout(resolve, 350)); await cdp.wait("location.pathname==='/admin' && !!document.querySelector('[data-testid=dashboard-page]')", "restored mobile dashboard");
   for (const pageAudit of [
     { path: "/admin/calendar", testId: "weekly-calendar", name: "calendar-390" },
-    { path: "/admin/tuition", testId: "tuition-list-page", name: "tuition-390" },
+    { path: "/admin/tuition", testId: "tuition-board-page", name: "tuition-390" },
     { path: "/admin/students", testId: "student-list-page", name: "students-390" },
     { path: "/admin/account", testId: "account-page", name: "account-390" },
   ]) {
