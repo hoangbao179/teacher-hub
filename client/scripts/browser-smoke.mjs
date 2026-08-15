@@ -256,7 +256,9 @@ try {
   await cdp.screenshot("class-form-390");
   await cdp.setInput("Tên lớp", `Browser Smoke ${Date.now()}`); await cdp.clickText("Lưu lớp");
   await cdp.wait("/\\/admin\\/classes\\/\\d+$/.test(location.pathname)", "class detail"); const classPath = await cdp.eval("location.pathname");
-  await cdp.wait("document.body.innerText.includes('0đ')", "zero-price class detail");
+  await cdp.wait("document.body.innerText.includes('Giá mặc định: Chưa cài học phí')", "unconfigured class tuition detail");
+  if (await cdp.eval("document.body.innerText.includes('0đ / 8 buổi')"))
+    throw new Error("Zero-price class detail exposed a zero-value tuition package");
   await cdp.screenshot("class-detail-390");
 
   await cdp.clickText("Học sinh"); await cdp.wait("location.pathname==='/admin/students' && document.body.innerText.includes('Thêm')", "students"); await cdp.screenshot("student-list-390"); await cdp.clickText("Thêm");
