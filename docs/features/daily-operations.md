@@ -10,6 +10,10 @@ or increments tuition.
 supports date/class/state filters, single create-draft/skip/reschedule and
 multi-select draft/skip. “Đã dạy” follows the server-returned lesson wizard path;
 bulk results remain independent and no UI action bulk-completes lessons.
+Occurrence queries clamp the start date to today in Asia/Ho_Chi_Minh minus
+`lookbackDays` (default 14, maximum 60), even when an older explicit range is
+requested. Schedule integration fixtures use a test-scoped fixed Date clock;
+their July–September 2026 dates must not age out as nightly regression runs.
 Trên mobile, filter đã áp dụng được tóm tắt trong một thanh gọn; bốn field chỉnh sửa
 nằm trong bottom sheet và chỉ gọi lại dữ liệu khi chọn **Áp dụng**. Khi chưa chọn
 buổi, màn hình chỉ hiện **Chọn tất cả**; khi có lựa chọn, hai bulk action hiện trong

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { beforeEach } from "node:test";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { pool } from "../db/pool";
 import { CombinedClassGroupRepository } from "../repositories/combined-class-group.repository";
@@ -262,4 +262,10 @@ integration("combined completion rolls back every child when attendance is incom
   const [cycles] = await pool.query<RowDataPacket[]>("SELECT id FROM tuition_cycles");
   assert.equal(attendances.length, 0);
   assert.equal(cycles.length, 0);
+});
+// Keep the July–September fixtures inside the API's rolling 60-day lookback.
+// Mock only Date so MySQL/network timers continue to run normally.
+beforeEach((context) => {
+  assert.ok("mock" in context);
+  context.mock.timers.enable({ apis: ["Date"], now: new Date("2026-09-01T05:00:00Z") });
 });

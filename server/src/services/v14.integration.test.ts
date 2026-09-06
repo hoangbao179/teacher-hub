@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { beforeEach } from "node:test";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { pool } from "../db/pool";
 import { occurrenceKey } from "../domain/schedule-projection";
@@ -311,3 +311,9 @@ integration("V14 versions recurring schedules and preserves linked operational h
 });
 
 test.after(async () => { if (enabled) await pool.end(); });
+// Keep the July–September fixtures inside the API's rolling 60-day lookback.
+// Mock only Date so MySQL/network timers continue to run normally.
+beforeEach((context) => {
+  assert.ok("mock" in context);
+  context.mock.timers.enable({ apis: ["Date"], now: new Date("2026-09-01T05:00:00Z") });
+});
