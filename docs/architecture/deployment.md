@@ -3,7 +3,7 @@
 Production mục tiêu là một VPS 1 core, 1.5 GB RAM, 15 GB SSD. GitHub Actions build API
 và Web song song sau bốn gate quality/integration/smoke/schedule-regression, lưu image trong GHCR rồi triển
 khai full commit SHA; VPS chỉ chạy Docker Engine và Compose. Full regression được giữ
-ở workflow nightly/manual riêng và không deploy.
+ở workflow thủ công riêng và không deploy.
 
 - `caddy`: edge TLS/HTTP3, publish 80/443, khoảng 96 MB.
 - `web`: Nginx static và proxy `/api`, `/health`, `/ready`, khoảng 96 MB.

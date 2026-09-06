@@ -171,8 +171,9 @@ Mỗi push và pull request chạy bốn job độc lập: `quality` (`check:ci`
 đăng nhập, API/UI cơ bản, mobile navigation và vocabulary media. Schedule regression
 giữ rollover nửa đêm, Calendar mobile và một flow schedule/backend thật trên database
 `teacher_hub_test`; artifact chỉ upload khi lỗi và job có timeout 20 phút. Push mới trên
-cùng branch hủy CI cũ chưa hoàn tất. Full integration + toàn bộ E2E vẫn chạy qua workflow `full-regression` lúc
-02:30 hằng ngày theo giờ Việt Nam hoặc khi chạy thủ công; workflow này không deploy.
+cùng branch hủy CI cũ chưa hoàn tất. Full integration + toàn bộ E2E chạy qua workflow
+`full-regression` khi chọn **Run workflow** trong GitHub Actions; không chạy tự động
+hằng đêm. Workflow này không deploy.
 
 Push vào `main` chỉ gọi production deploy sau khi cả bốn job bắt buộc thành công:
 

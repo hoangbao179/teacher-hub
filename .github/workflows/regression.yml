@@ -2,8 +2,6 @@ name: full-regression
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "30 19 * * *"
 
 permissions:
   contents: read
@@ -14,7 +12,7 @@ concurrency:
 
 jobs:
   full-regression:
-    name: Full nightly regression
+    name: Full manual regression
     runs-on: ubuntu-latest
     services:
       mysql:
