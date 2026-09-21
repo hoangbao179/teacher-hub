@@ -149,8 +149,6 @@ export function StudentDetailPage() {
   if (!item && !error) return <LoadingState />;
   if (!item) return <Alert severity="error">{error || "Không tải được học sinh."}</Alert>;
   const activeSheet = googleState?.sheet?.status === "ACTIVE" ? googleState.sheet : null;
-  const googleSyncHasError = Boolean(googleState && (!googleState.syncEnabled || googleState.deadCount > 0 || googleState.retryCount > 0));
-  const googleSyncWaiting = Boolean(googleState && googleState.pendingCount > 0);
   return (
     <Stack spacing={2} sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
       {error && <Alert severity="error">{error}</Alert>}
@@ -189,9 +187,10 @@ export function StudentDetailPage() {
               <Chip color="error" label="Có lỗi đồng bộ" sx={{ alignSelf: "flex-start" }} />
               <Alert severity="error">Sổ phụ huynh chưa được tạo thành công. Mở Công cụ nâng cao để thử lại.</Alert>
             </> : googleState.sheet.status === "ACTIVE" ? <>
-              <Chip color={googleSyncHasError ? "error" : googleSyncWaiting ? "info" : "success"}
-                label={googleSyncHasError ? "Có lỗi đồng bộ" : googleSyncWaiting ? "Đang chờ đồng bộ" : "Đã đồng bộ"} sx={{ alignSelf: "flex-start" }} />
-              {googleSyncHasError && <Alert severity="error">Một số dữ liệu chưa sang được sổ phụ huynh. Cô Vy vẫn có thể tiếp tục ghi buổi học trên Teacher Hub.</Alert>}
+              <Chip color={googleState.syncStatus === "ERROR" ? "error" : googleState.syncStatus === "PENDING" ? "info" : "success"}
+                label={googleState.syncStatus === "ERROR" ? "Đồng bộ lỗi" : googleState.syncStatus === "PENDING" ? "Đang chờ đồng bộ" : "Đã đồng bộ"} sx={{ alignSelf: "flex-start" }} />
+              {googleState.syncStatus === "ERROR" && <Alert severity="error" action={googleState.canRetrySync
+                ? <Button color="inherit" onClick={() => void mutateGoogle("resync")}>Thử lại</Button> : undefined}>Một số dữ liệu chưa sang được sổ theo dõi. Cô Vy vẫn có thể tiếp tục ghi buổi học trên Teacher Hub.</Alert>}
               {googleState.lastSuccessfulSyncAt && <Typography color="text.secondary">Đồng bộ gần nhất: {displayDateTime(googleState.lastSuccessfulSyncAt)}</Typography>}
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap", minWidth: 0 }}>
                 <Button component="a" href={googleState.sheet.webViewUrl ?? undefined} target="_blank" rel="noopener noreferrer"

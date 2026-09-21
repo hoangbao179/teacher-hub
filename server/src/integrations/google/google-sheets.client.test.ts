@@ -5,12 +5,13 @@ import { teacherHubFormattingCleanup, templateSheetReconciliationRequests } from
 test("template reconciliation renames learning history and removes obsolete visible sheets", () => {
   assert.deepEqual(templateSheetReconciliationRequests(
     { "Tổng quan": 1, "Nhật ký học tập": 2, "Học phí": 3, "Ôn từ vựng": 4, _TeacherHub: 5 },
-    ["Quá trình học tập", "Học phí", "_TeacherHub"],
-    ["Tổng quan", "Nhật ký học tập", "Ôn từ vựng"],
-    { "Nhật ký học tập": "Quá trình học tập" },
+    ["Sổ theo dõi học tập", "_TeacherHub"],
+    ["Tổng quan", "Nhật ký học tập", "Quá trình học tập", "Học phí", "Ôn từ vựng"],
+    { "Nhật ký học tập": "Sổ theo dõi học tập", "Quá trình học tập": "Sổ theo dõi học tập" },
   ), [
-    { updateSheetProperties: { properties: { sheetId: 2, title: "Quá trình học tập" }, fields: "title" } },
+    { updateSheetProperties: { properties: { sheetId: 2, title: "Sổ theo dõi học tập" }, fields: "title" } },
     { deleteSheet: { sheetId: 1 } },
+    { deleteSheet: { sheetId: 3 } },
     { deleteSheet: { sheetId: 4 } },
   ]);
 });
@@ -24,6 +25,10 @@ test("regenerate cleanup only removes Teacher Hub formatting and protection", ()
         booleanRule: { condition: { type: "CUSTOM_FORMULA", values: [{ userEnteredValue: "=ISEVEN(ROW())" }] } },
       },
       {
+        ranges: [{ sheetId: 2, startRowIndex: 6, endRowIndex: 20, startColumnIndex: 2, endColumnIndex: 3 }],
+        booleanRule: { condition: { type: "TEXT_EQ", values: [{ userEnteredValue: "Có mặt" }] } },
+      },
+      {
         ranges: [{ sheetId: 2, startRowIndex: 0, endRowIndex: 20, startColumnIndex: 2, endColumnIndex: 3 }],
         booleanRule: { condition: { type: "TEXT_EQ", values: [{ userEnteredValue: "Tùy chỉnh" }] } },
       },
@@ -34,6 +39,7 @@ test("regenerate cleanup only removes Teacher Hub formatting and protection", ()
     ],
   }]);
   assert.deepEqual(cleanup, [
+    { deleteConditionalFormatRule: { sheetId: 2, index: 1 } },
     { deleteConditionalFormatRule: { sheetId: 2, index: 0 } },
     { deleteProtectedRange: { protectedRangeId: 11 } },
   ]);

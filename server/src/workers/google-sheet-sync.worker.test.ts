@@ -64,8 +64,7 @@ test("legacy vocabulary sync events are acknowledged without creating a sheet ro
     get: async () => ({ id: 10, status: "ACTIVE", templateVersion: "2", lastGeneratedAt: null }),
     snapshot: async () => ({
       student: { id: 2, fullName: "Student", currentClass: "3A", currentGrade: "3", currentAcademicYear: "2026" },
-      overview: { currentProgress: 0, attendanceRate: 100, latestLesson: "", tuitionStatus: "", latestComment: "", latestHomework: "", teacher: "Vy" },
-      learning: [], tuition: [], vocabularyAttempts: [row],
+      learning: [], vocabularyAttempts: [row],
     }),
   };
   const settings = { ...resolveGoogleSheetSyncSettings({}), enabled: true };
@@ -76,7 +75,7 @@ test("legacy vocabulary sync events are acknowledged without creating a sheet ro
   assert.equal(succeeded, true);
 });
 
-test("lesson sync refreshes the matching learning row and the tuition snapshot together", async () => {
+test("lesson sync refreshes the matching learning row by stable lesson id", async () => {
   const provider = new FakeGoogleSheetProvider();
   provider.resources.set(10, { spreadsheetId: "sheet-10", name: "Student", webViewUrl: "https://example.test" });
   const event = {
@@ -97,20 +96,11 @@ test("lesson sync refreshes the matching learning row and the tuition snapshot t
     content: "Lesson", homework: "Homework", generalComment: "", studentComment: "Good",
     updatedAt: "2026-07-27T20:00:00+07:00",
   }];
-  const tuition = [{
-    cycleId: 9, cycleNumber: 1, academicYear: "2026–2027", className: "3A",
-    fromDate: "2026-07-27", toDate: "2026-07-27", billableCount: 1, absentCount: 0,
-    totalLessonCount: 1, packagePrice: 2_000_000, status: "ACCUMULATING" as const,
-    paidAt: "", paymentMethod: "" as const, startedAt: "2026-07-27", reachedTargetAt: "",
-    sessions: [{ sequenceNumber: 1, sessionDate: "2026-07-27", scheduledStartTime: "18:00", scheduledEndTime: "19:30" }],
-  }];
   const sheets = {
     get: async () => ({ id: 10, status: "ACTIVE", templateVersion: "5", lastGeneratedAt: null }),
     snapshot: async () => ({
       student: { id: 2, fullName: "Student", currentClass: "3A", currentGrade: "3", currentAcademicYear: "2026" },
-      overview: { currentProgress: 1, attendanceRate: 100, latestLesson: "2026-07-27", tuitionStatus: "Đang tích lũy",
-        latestComment: "Good", latestHomework: "Homework", teacher: "Vy" },
-      learning, tuition, vocabularyAttempts: [],
+      learning, vocabularyAttempts: [],
     }),
   };
   const settings = { ...resolveGoogleSheetSyncSettings({}), enabled: true };
@@ -118,6 +108,5 @@ test("lesson sync refreshes the matching learning row and the tuition snapshot t
 
   assert.equal(await worker.runOnce(), 1);
   assert.deepEqual(provider.learningRows.get("sheet-10:88"), learning[0]);
-  assert.deepEqual(provider.tuitionRows.get("sheet-10"), tuition);
   assert.equal(succeeded, true);
 });

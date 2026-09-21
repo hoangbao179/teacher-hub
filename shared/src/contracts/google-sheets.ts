@@ -28,6 +28,8 @@ export interface StudentGoogleSheetState {
   deadCount: number;
   lastSuccessfulSyncAt: string | null;
   lastSyncError: string | null;
+  syncStatus: "SYNCED" | "PENDING" | "ERROR";
+  canRetrySync: boolean;
 }
 
 export interface CreateStudentGoogleSheetRequest {

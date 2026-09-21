@@ -30,12 +30,17 @@ export class StudentGoogleSheetService {
   async state(studentId: number): Promise<StudentGoogleSheetState> {
     await this.students.detail(studentId);
     const [sheet, summary] = await Promise.all([this.repository.get(studentId), this.sync.summary(studentId)]);
+    const syncStatus = summary.deadCount > 0 || summary.retryCount > 0
+      ? "ERROR" as const
+      : summary.pendingCount > 0 ? "PENDING" as const : "SYNCED" as const;
     return {
       enabled: this.settings.enabled,
       syncEnabled: this.settings.enabled && this.syncSettings.enabled,
       ownerLabel: this.settings.enabled ? this.settings.ownerLabel : null,
       sheet,
       ...summary,
+      syncStatus,
+      canRetrySync: syncStatus === "ERROR" && sheet?.status === "ACTIVE",
     };
   }
 

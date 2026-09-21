@@ -1,45 +1,11 @@
 export interface GoogleLearningRow {
   lessonId: number;
-  lessonType: "REGULAR" | "MAKEUP" | "EXTRA";
-  scheduledStartTime: string;
-  scheduledEndTime: string;
-  academicYear: string;
-  grade: string;
   className: string;
   date: string;
   attendance: "PRESENT" | "ABSENT" | "FREE";
-  billable: boolean;
-  cycleId: number | null;
-  cycleSequence: number | null;
   content: string;
-  homework: string;
   generalComment: string;
   studentComment: string;
-  updatedAt: string;
-}
-
-export interface GoogleTuitionRow {
-  cycleId: number;
-  cycleNumber: number;
-  academicYear: string;
-  className: string;
-  fromDate: string;
-  toDate: string;
-  billableCount: number;
-  absentCount: number;
-  totalLessonCount: number;
-  packagePrice: number;
-  status: "ACCUMULATING" | "PAYMENT_DUE" | "PAID" | "INCOMPLETE";
-  paidAt: string;
-  paymentMethod: "CASH" | "BANK_TRANSFER" | "";
-  startedAt: string;
-  reachedTargetAt: string;
-  sessions: Array<{
-    sequenceNumber: number;
-    sessionDate: string;
-    scheduledStartTime: string;
-    scheduledEndTime: string;
-  }>;
 }
 
 export interface GoogleVocabularyAttemptRow {
@@ -63,10 +29,7 @@ export interface GoogleVocabularyAttemptRow {
 
 export interface StudentGoogleSheetSnapshot {
   student: { id: number; fullName: string; currentClass: string; currentGrade: string; currentAcademicYear: string };
-  overview: { currentProgress: number; attendanceRate: number; latestLesson: string; tuitionStatus: string;
-    latestComment: string; latestHomework: string; teacher: string };
   learning: GoogleLearningRow[];
-  tuition: GoogleTuitionRow[];
   vocabularyAttempts: GoogleVocabularyAttemptRow[];
 }
 
@@ -92,13 +55,7 @@ export interface GoogleSheetProvider {
   syncLesson(
     resource: ManagedSpreadsheet,
     row: GoogleLearningRow | null,
-    overview: StudentGoogleSheetSnapshot["overview"] & {
-      currentClass: string;
-      currentGrade: string;
-      currentAcademicYear: string;
-    },
     lessonId: number,
-    tuition: StudentGoogleSheetSnapshot["tuition"],
     syncedAt: string,
   ): Promise<void>;
   syncVocabularyAttempt(

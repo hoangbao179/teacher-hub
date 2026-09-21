@@ -185,14 +185,11 @@ export function AssignmentResultsPage() {
     ? "Google sync đang tắt"
     : !googleState.sheet || googleState.sheet.status !== "ACTIVE"
       ? "Chưa có Google Sheet"
-      : googleState.deadCount > 0
-        ? "Lỗi đồng bộ"
-        : googleState.retryCount > 0
-          ? "Đang thử lại"
-          : googleState.pendingCount > 0
-            ? "Đang chờ"
-            : googleState.lastSuccessfulSyncAt
-              ? "Đã đồng bộ" : "Đang chờ";
+      : googleState.syncStatus === "ERROR"
+        ? "Đồng bộ lỗi"
+        : googleState.syncStatus === "PENDING"
+          ? "Đang chờ đồng bộ"
+          : "Đã đồng bộ";
 
   if (!summary && !error) return <Typography>Đang tải kết quả…</Typography>;
   return <Stack spacing={2.25} data-testid="assignment-results-page">
@@ -330,13 +327,12 @@ export function AssignmentResultsPage() {
       <DialogContent dividers><Stack spacing={1}>
         {googleState && <Alert severity={
           googleStatus === "Đã đồng bộ" ? "success"
-            : googleStatus === "Lỗi đồng bộ" ? "error" : "info"
+            : googleStatus === "Đồng bộ lỗi" ? "error" : "info"
         } action={
-          googleState.sheet?.status === "ACTIVE"
-            && (googleState.deadCount > 0 || googleState.retryCount > 0)
+          googleState.canRetrySync
             ? <Button color="inherit" onClick={() => void resyncStudentGoogleSheet(detail!.studentId)
               .then(() => getStudentGoogleSheet(detail!.studentId))
-              .then(setGoogleState)}>Đồng bộ lại</Button>
+              .then(setGoogleState)}>Thử lại</Button>
             : undefined
         }>
           Google Sheet: {googleStatus}

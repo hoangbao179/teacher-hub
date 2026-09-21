@@ -176,23 +176,10 @@ export class StudentGoogleSheetRepository {
         TIME_FORMAT(l.scheduled_start_time,'%H:%i') scheduled_start_time,
         TIME_FORMAT(l.scheduled_end_time,'%H:%i') scheduled_end_time,
         COALESCE(l.class_name_snapshot,c.name) class_name,
-        a.attendance_status,a.counts_for_tuition,l.content,l.homework,l.general_comment,a.student_note,l.updated_at,
-        tcs.tuition_cycle_id,tcs.sequence_number
+        a.attendance_status,l.content,l.homework,l.general_comment,a.student_note,l.updated_at
        FROM lesson_attendances a JOIN class_enrollments e ON e.id=a.enrollment_id AND e.student_id=?
        JOIN lesson_sessions l ON l.id=a.lesson_session_id AND l.status='COMPLETED' JOIN classes c ON c.id=l.class_id
-       LEFT JOIN tuition_cycle_sessions tcs ON tcs.attendance_id=a.id
        ORDER BY l.session_date,COALESCE(l.actual_start_time,l.scheduled_start_time),l.id`, [studentId]);
-    const [cycles] = await pool.query<RowDataPacket[]>(
-      `SELECT tc.id,tc.cycle_number,tc.status,tc.started_at,tc.reached_target_at,COALESCE(tc.reached_target_at,
-        (SELECT MAX(l2.session_date) FROM tuition_cycle_sessions t2 JOIN lesson_attendances a2 ON a2.id=t2.attendance_id
-         JOIN lesson_sessions l2 ON l2.id=a2.lesson_session_id WHERE t2.tuition_cycle_id=tc.id)) to_date,
-        tc.package_price_snapshot,tc.paid_at,tc.payment_method,
-        (SELECT COUNT(*) FROM tuition_cycle_sessions items WHERE items.tuition_cycle_id=tc.id) billable_count,
-        COALESCE((SELECT GROUP_CONCAT(DISTINCT COALESCE(l3.class_name_snapshot,c3.name) ORDER BY l3.session_date SEPARATOR ' → ')
-          FROM tuition_cycle_sessions t3 JOIN lesson_attendances a3 ON a3.id=t3.attendance_id JOIN lesson_sessions l3 ON l3.id=a3.lesson_session_id
-          JOIN classes c3 ON c3.id=l3.class_id WHERE t3.tuition_cycle_id=tc.id),c.name) class_names
-       FROM tuition_cycles tc JOIN class_enrollments e ON e.id=tc.enrollment_id AND e.student_id=? JOIN classes c ON c.id=e.class_id
-       WHERE tc.status<>'CANCELLED' ORDER BY tc.started_at,tc.id`, [studentId]);
     const [attemptRows] = await pool.query<RowDataPacket[]>(
       `SELECT a.id,a.attempt_number,a.graded_question_count,
         a.correct_first_try_count,a.final_correct_count,a.score_percent,
@@ -229,36 +216,10 @@ export class StudentGoogleSheetRepository {
       scheduledStartTime: String(row.scheduled_start_time), scheduledEndTime: String(row.scheduled_end_time),
       academicYear: academicYear(String(row.session_date).slice(0, 10)),
       grade: gradeFromClassName(String(row.class_name)), className: String(row.class_name), date: String(row.session_date).slice(0, 10),
-      attendance: row.attendance_status, billable: Boolean(row.counts_for_tuition),
-      cycleId: row.tuition_cycle_id == null ? null : Number(row.tuition_cycle_id),
-      cycleSequence: row.sequence_number == null ? null : Number(row.sequence_number), content: String(row.content ?? ""),
+      attendance: row.attendance_status, content: String(row.content ?? ""),
       homework: String(row.homework ?? ""),
       generalComment: row.attendance_status === "ABSENT" ? "" : String(row.general_comment ?? ""),
       studentComment: String(row.student_note ?? ""), updatedAt: dateTime(row.updated_at)! }));
-    const cycleStartIndexes = cycles.map((cycle) =>
-      learning.findIndex((row) => row.cycleId === Number(cycle.id)));
-    const tuition = cycles.map((cycle, index) => {
-      const startIndex = cycleStartIndexes[index];
-      const nextStartIndex = cycleStartIndexes.slice(index + 1).find((value) => value >= 0) ?? learning.length;
-      const inRange = startIndex >= 0 ? learning.slice(startIndex, nextStartIndex) : [];
-      const sessions = learning
-        .filter((row) => row.cycleId === Number(cycle.id) && row.cycleSequence != null)
-        .sort((left, right) => left.cycleSequence! - right.cycleSequence!)
-        .map((row) => ({
-          sequenceNumber: row.cycleSequence!,
-          sessionDate: row.date,
-          scheduledStartTime: row.scheduledStartTime,
-          scheduledEndTime: row.scheduledEndTime,
-        }));
-      const fromDate = inRange[0]?.date ?? String(cycle.started_at ?? "").slice(0, 10);
-      const toDate = inRange.at(-1)?.date ?? String(cycle.to_date ?? fromDate).slice(0, 10);
-      return { cycleId: Number(cycle.id), cycleNumber: Number(cycle.cycle_number), academicYear: fromDate ? academicYear(fromDate) : "—",
-        className: String(cycle.class_names), fromDate, toDate, billableCount: Number(cycle.billable_count),
-        absentCount: inRange.filter((row) => row.attendance === "ABSENT").length, totalLessonCount: inRange.length,
-        packagePrice: Number(cycle.package_price_snapshot), status: cycle.status, paidAt: String(cycle.paid_at ?? "").slice(0, 10),
-        paymentMethod: cycle.payment_method ?? "", startedAt: String(cycle.started_at ?? "").slice(0, 10),
-        reachedTargetAt: String(cycle.reached_target_at ?? "").slice(0, 10), sessions };
-    });
     const currentClass = String(students[0].class_name ?? "—");
     const ageBandLabels: Record<string, string> = {
       PRESCHOOL_G1: "Mầm non – Lớp 1",
@@ -300,20 +261,9 @@ export class StudentGoogleSheetRepository {
         updatedAt: dateTime(attempt.updated_at)!,
       };
     });
-    const present = learning.filter((row) => row.attendance === "PRESENT" || row.attendance === "FREE").length;
-    const latest = learning.at(-1);
-    const currentCycle = tuition.at(-1);
-    const tuitionStatus = tuition.some((row) => row.status === "PAYMENT_DUE") ? "Cần thu" : tuition.at(-1)?.status === "PAID" ? "Đã thu" : "Đang tích lũy";
     return { student: { id: Number(students[0].id), fullName: String(students[0].full_name), currentClass,
       currentGrade: gradeFromClassName(currentClass), currentAcademicYear: academicYear(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" })) },
-      overview: { currentProgress: currentCycle?.billableCount ?? 0, attendanceRate: learning.length ? Math.round(present * 100 / learning.length) : 0,
-        latestLesson: latest?.date ?? "—", tuitionStatus,
-        latestComment: latest?.attendance === "ABSENT"
-          ? latest?.studentComment ?? ""
-          : latest?.studentComment || latest?.generalComment || "",
-        latestHomework: latest?.homework ?? "", teacher: "Cô Vy" },
       learning,
-      tuition,
       vocabularyAttempts,
     };
   }

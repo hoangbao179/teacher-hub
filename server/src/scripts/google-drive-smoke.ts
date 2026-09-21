@@ -10,13 +10,8 @@ const provider = new GoogleApiSheetProvider(config.googleDrive, config.studentRe
 const recordId = Date.now();
 const fake: StudentGoogleSheetSnapshot = {
   student: { id: 0, fullName: "Học sinh kiểm thử không có thật", currentClass: "Lớp kiểm thử", currentGrade: "Khối 6", currentAcademicYear: "2026–2027" },
-  overview: { currentProgress: 1, attendanceRate: 100, latestLesson: "2026-07-26", tuitionStatus: "Đang tích lũy",
-    latestComment: "Dữ liệu giả", latestHomework: "Bài tập giả", teacher: "Cô Vy" },
-  learning: [{ lessonId: 0, academicYear: "2026–2027", grade: "Khối 6", className: "Lớp kiểm thử", date: "2026-07-26",
-    lessonType: "REGULAR", scheduledStartTime: "18:00", scheduledEndTime: "19:30",
-    attendance: "PRESENT", billable: true, cycleId: null, cycleSequence: 1, content: "Dữ liệu giả", homework: "Dữ liệu giả",
-    generalComment: "", studentComment: "Dữ liệu giả", updatedAt: new Date().toISOString() }],
-  tuition: [],
+  learning: [{ lessonId: 0, className: "Lớp kiểm thử", date: "2026-07-26",
+    attendance: "PRESENT", content: "Dữ liệu giả", generalComment: "", studentComment: "Dữ liệu giả" }],
   vocabularyAttempts: [],
 };
 let spreadsheetId = "";
@@ -29,7 +24,7 @@ try {
   await provider.render(resource, fake, { templateVersion: config.googleDrive.templateVersion, recordId, generatedAt: new Date().toISOString() });
   const recovered = await provider.findByRecordId(recordId);
   if (recovered?.spreadsheetId !== spreadsheetId) throw new Error("Không đọc lại được appProperties của file smoke.");
-  console.log(JSON.stringify({ event: "google_drive_smoke_passed", threeSheetsRendered: true, twoVisibleSheets: true, metadataRecovered: true }));
+  console.log(JSON.stringify({ event: "google_drive_smoke_passed", learningLogRendered: true, metadataRecovered: true }));
 } finally {
   if (spreadsheetId) await provider.trash(spreadsheetId);
 }

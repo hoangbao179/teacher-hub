@@ -97,12 +97,7 @@ export class GoogleSheetSyncWorker {
       const row = event.eventType === "LESSON_REMOVE"
         ? null
         : snapshot.learning.find((item) => item.lessonId === event.lessonId) ?? null;
-      await this.provider.syncLesson(resource, row, {
-        ...snapshot.overview,
-        currentClass: snapshot.student.currentClass,
-        currentGrade: snapshot.student.currentGrade,
-        currentAcademicYear: snapshot.student.currentAcademicYear,
-      }, event.lessonId!, snapshot.tuition, syncedAt);
+      await this.provider.syncLesson(resource, row, event.lessonId!, syncedAt);
       await this.outbox.succeed(event, syncedAt);
     } catch (error) {
       const classified = classifyGoogleError(error);

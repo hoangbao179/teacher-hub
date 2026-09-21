@@ -7,7 +7,6 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
   readonly trashed: string[] = [];
   readonly synced: Array<{ resource: ManagedSpreadsheet; lessonId: number; row: StudentGoogleSheetSnapshot["learning"][number] | null }> = [];
   readonly learningRows = new Map<string, StudentGoogleSheetSnapshot["learning"][number]>();
-  readonly tuitionRows = new Map<string, StudentGoogleSheetSnapshot["tuition"]>();
   readonly vocabularyRows = new Map<string, StudentGoogleSheetSnapshot["vocabularyAttempts"][number]>();
   createCount = 0;
   lastCreateInput: CreateManagedSpreadsheetInput | null = null;
@@ -17,8 +16,8 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
   timeoutAfterCreate = false;
   private readonly template: GoogleSheetTemplateService;
 
-  constructor(vietinBankAccountNumber = "") {
-    this.template = new GoogleSheetTemplateService(vietinBankAccountNumber);
+  constructor(_vietinBankAccountNumber = "") {
+    this.template = new GoogleSheetTemplateService();
   }
 
   async assertReady(): Promise<void> {
@@ -49,29 +48,23 @@ export class FakeGoogleSheetProvider implements GoogleSheetProvider {
     if (this.delayMs) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     this.template.build(snapshot, resource.spreadsheetId,
       {
-        "Quá trình học tập": 2,
-        "Học phí": 3,
+        "Sổ theo dõi học tập": 2,
         _TeacherHub: 5,
       }, metadata);
     this.rendered.push({ resource, snapshot });
     for (const row of snapshot.learning) this.learningRows.set(`${resource.spreadsheetId}:${row.lessonId}`, row);
-    this.tuitionRows.set(resource.spreadsheetId, structuredClone(snapshot.tuition));
   }
   async syncLesson(
     resource: ManagedSpreadsheet,
     row: StudentGoogleSheetSnapshot["learning"][number] | null,
-    _overview: StudentGoogleSheetSnapshot["overview"] & {
-      currentClass: string; currentGrade: string; currentAcademicYear: string;
-    },
     lessonId: number,
-    tuition: StudentGoogleSheetSnapshot["tuition"],
+    _syncedAt: string,
   ): Promise<void> {
     if (this.failure === "NETWORK") throw new Error("network timeout");
     if (this.failure === "AUTH") throw Object.assign(new Error("permission denied"), { code: 403 });
     if (this.delayMs) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     const key = `${resource.spreadsheetId}:${lessonId}`;
     if (row) this.learningRows.set(key, row); else this.learningRows.delete(key);
-    this.tuitionRows.set(resource.spreadsheetId, structuredClone(tuition));
     this.synced.push({ resource, lessonId, row });
   }
   async syncVocabularyAttempt(

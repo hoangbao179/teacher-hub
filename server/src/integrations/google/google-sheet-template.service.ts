@@ -1,19 +1,12 @@
 import type { sheets_v4 } from "googleapis";
-import { studentTuitionSheetHeaders } from "../../domain/student-report";
 import type { StudentGoogleSheetSnapshot } from "./google-integration.types";
 
-const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Nghỉ", FREE: "Miễn phí" } as const;
-const lessonTypeLabels = { REGULAR: "Buổi thường", MAKEUP: "Buổi học bù", EXTRA: "Buổi học thêm" } as const;
-const names = [
-  "Quá trình học tập",
-  "Học phí",
-  "_TeacherHub",
-] as const;
+const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Vắng", FREE: "Có mặt" } as const;
+const names = ["Sổ theo dõi học tập", "_TeacherHub"] as const;
 
 export function googleLearningRowValues(row: StudentGoogleSheetSnapshot["learning"][number]): Array<string | number | boolean> {
-  return [row.lessonId, row.date, safeGoogleCell(row.className), lessonTypeLabels[row.lessonType],
-    row.scheduledStartTime, row.scheduledEndTime, attendanceLabels[row.attendance], safeGoogleCell(row.content),
-    safeGoogleCell(row.homework), safeGoogleCell(row.studentComment)];
+  const comment = row.studentComment || row.generalComment;
+  return [row.lessonId, googleDate(row.date), attendanceLabels[row.attendance], safeGoogleCell(comment), safeGoogleCell(row.content)];
 }
 
 export function safeGoogleCell(value: unknown): string | number | boolean {
@@ -24,49 +17,23 @@ export function safeGoogleCell(value: unknown): string | number | boolean {
 }
 
 function googleDate(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const date = String(value).slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
 }
 
-export function googleTuitionValues(
-  rows: StudentGoogleSheetSnapshot["tuition"],
-  vietinBankAccountNumber: string,
-): Array<Array<string | number | boolean>> {
-  const values: Array<Array<string | number | boolean>> = [[...studentTuitionSheetHeaders]];
-  for (const cycle of [...rows].sort((left, right) =>
-    left.cycleNumber - right.cycleNumber || left.cycleId - right.cycleId)) {
-    const sessions = [...cycle.sessions].sort((left, right) => left.sequenceNumber - right.sequenceNumber);
-    sessions.forEach((session, index) => values.push([
-      index === 0 ? cycle.cycleNumber : "",
-      index === 0 ? googleDate(cycle.startedAt) : "",
-      index === 0 ? googleDate(cycle.reachedTargetAt) : "",
-      googleDate(session.sessionDate),
-      `${session.scheduledStartTime} – ${session.scheduledEndTime}`,
-      index === 0 ? safeGoogleCell(vietinBankAccountNumber) : "",
-    ]));
-  }
-  return values;
-}
-
-export function googleHeaderRequest(sheetId: number, columns: number): sheets_v4.Schema$Request {
-  return { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: columns },
-    cell: { userEnteredFormat: { backgroundColor: { red: 217 / 255, green: 234 / 255, blue: 247 / 255 },
-      textFormat: { foregroundColor: { red: 23 / 255, green: 50 / 255, blue: 77 / 255 }, bold: true },
-      horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE", wrapStrategy: "WRAP" } },
-    fields: "userEnteredFormat" } };
-}
-
-function tableRequests(sheetId: number, columns: number, rows: number): sheets_v4.Schema$Request[] {
-  return [
-    { updateSheetProperties: { properties: { sheetId, gridProperties: { frozenRowCount: 1 } }, fields: "gridProperties.frozenRowCount" } },
-    googleHeaderRequest(sheetId, columns),
-    { clearBasicFilter: { sheetId } },
-    { repeatCell: { range: { sheetId, startRowIndex: 1, endRowIndex: Math.max(rows, 2), startColumnIndex: 0, endColumnIndex: columns },
-      cell: { userEnteredFormat: { verticalAlignment: "TOP", wrapStrategy: "WRAP" } }, fields: "userEnteredFormat(verticalAlignment,wrapStrategy)" } },
-    { addConditionalFormatRule: { index: 0, rule: { ranges: [{ sheetId, startRowIndex: 1, endRowIndex: Math.max(rows, 2), startColumnIndex: 0, endColumnIndex: columns }],
-      booleanRule: { condition: { type: "CUSTOM_FORMULA", values: [{ userEnteredValue: "=ISEVEN(ROW())" }] },
-        format: { backgroundColor: { red: 243 / 255, green: 248 / 255, blue: 252 / 255 } } } } } },
-  ];
+function conditionalAttendanceRequest(
+  sheetId: number,
+  rows: number,
+  label: "Có mặt" | "Vắng",
+): sheets_v4.Schema$Request {
+  const backgroundColor = label === "Có mặt"
+    ? { red: 232 / 255, green: 245 / 255, blue: 233 / 255 }
+    : { red: 255 / 255, green: 235 / 255, blue: 238 / 255 };
+  return { addConditionalFormatRule: { index: 0, rule: {
+    ranges: [{ sheetId, startRowIndex: 6, endRowIndex: Math.max(rows, 7), startColumnIndex: 2, endColumnIndex: 3 }],
+    booleanRule: { condition: { type: "TEXT_EQ", values: [{ userEnteredValue: label }] }, format: { backgroundColor } },
+  } } };
 }
 
 export interface GoogleTemplatePlan {
@@ -77,54 +44,54 @@ export interface GoogleTemplatePlan {
 
 export class GoogleSheetTemplateService {
   readonly sheetNames = [...names];
-  readonly obsoleteSheetNames = ["Tổng quan", "Nhật ký học tập", "Ôn từ vựng"];
-  readonly renamedSheetNames = { "Nhật ký học tập": "Quá trình học tập" };
-
-  constructor(private readonly vietinBankAccountNumber = "") {}
+  readonly obsoleteSheetNames = ["Tổng quan", "Nhật ký học tập", "Quá trình học tập", "Học phí", "Ôn từ vựng"];
+  readonly renamedSheetNames = { "Quá trình học tập": "Sổ theo dõi học tập", "Nhật ký học tập": "Sổ theo dõi học tập" };
 
   build(snapshot: StudentGoogleSheetSnapshot, spreadsheetId: string, ids: Record<string, number>, metadata: {
     templateVersion: string; generatedAt: string; syncedAt?: string | null;
   }): GoogleTemplatePlan {
     for (const name of names) if (ids[name] == null) throw new Error(`Missing template sheet: ${name}`);
-    const learning = [["Teacher Hub Lesson ID", "Ngày học", "Lớp", "Loại buổi", "Giờ dự kiến bắt đầu",
-      "Giờ dự kiến kết thúc", "Trạng thái", "Nội dung buổi học", "Bài tập về nhà", "Nhận xét học sinh"],
-      ...snapshot.learning.map(googleLearningRowValues)];
-    const tuition = googleTuitionValues(snapshot.tuition, this.vietinBankAccountNumber);
-    const technical = [["key", "value"], ["schemaVersion", "1"], ["templateVersion", metadata.templateVersion],
+    const generatedDate = googleDate(metadata.generatedAt);
+    const learning = [
+      ["SỔ THEO DÕI HỌC TẬP", "", "", "", ""],
+      ["Học sinh", safeGoogleCell(snapshot.student.fullName), "", "", ""],
+      ["Lớp", safeGoogleCell(snapshot.student.currentClass), "", "", ""],
+      ["Cập nhật gần nhất", generatedDate, "", "", ""],
+      ["", "", "", "", ""],
+      ["Teacher Hub Lesson ID", "Ngày học", "Điểm danh", "Nhận xét của cô", "Nội dung"],
+      ...snapshot.learning.map(googleLearningRowValues),
+    ];
+    const technical = [["key", "value"], ["schemaVersion", "2"], ["templateVersion", metadata.templateVersion],
       ["studentId", snapshot.student.id], ["spreadsheetId", spreadsheetId], ["lastGeneratedAt", metadata.generatedAt],
       ["lastSyncedAt", metadata.syncedAt ?? ""]];
-    const values: sheets_v4.Schema$ValueRange[] = [
-      { range: "'Quá trình học tập'!A1:J", values: learning },
-      { range: "'Học phí'!A1:F", values: tuition }, { range: "'_TeacherHub'!A1:B100", values: technical },
-    ];
-    const learningId = ids["Quá trình học tập"];
-    const tuitionId = ids["Học phí"];
+    const learningId = ids["Sổ theo dõi học tập"];
     const technicalId = ids._TeacherHub;
     const requests: sheets_v4.Schema$Request[] = [
-      ...tableRequests(learningId, 10, learning.length), ...tableRequests(tuitionId, 6, tuition.length),
-      { repeatCell: { range: { sheetId: tuitionId, startColumnIndex: 6, endColumnIndex: 13 },
-        cell: { userEnteredFormat: {} }, fields: "userEnteredFormat" } },
-      { addConditionalFormatRule: { index: 0, rule: { ranges: [{ sheetId: learningId, startRowIndex: 1, endRowIndex: Math.max(learning.length, 2), startColumnIndex: 6, endColumnIndex: 7 }],
-        booleanRule: { condition: { type: "TEXT_EQ", values: [{ userEnteredValue: "Nghỉ" }] },
-          format: { backgroundColor: { red: 1, green: 0.94, blue: 0.78 } } } } } },
-      { updateDimensionProperties: { range: { sheetId: learningId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
-        properties: { hiddenByUser: true }, fields: "hiddenByUser" } },
-      { updateDimensionProperties: { range: { sheetId: learningId, dimension: "COLUMNS", startIndex: 7, endIndex: 8 },
-        properties: { pixelSize: 300 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId: learningId, dimension: "COLUMNS", startIndex: 9, endIndex: 10 },
-        properties: { pixelSize: 200 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId: tuitionId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
-        properties: { hiddenByUser: false }, fields: "hiddenByUser" } },
-      ...[85, 100, 115, 95, 135, 190].map((pixelSize, index) => ({
-        updateDimensionProperties: {
-          range: { sheetId: tuitionId, dimension: "COLUMNS", startIndex: index, endIndex: index + 1 },
-          properties: { pixelSize }, fields: "pixelSize",
-        },
-      })),
+      { updateSheetProperties: { properties: { sheetId: learningId, gridProperties: { frozenRowCount: 6 } }, fields: "gridProperties.frozenRowCount" } },
+      { mergeCells: { range: { sheetId: learningId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 5 }, mergeType: "MERGE_ALL" } },
+      { repeatCell: { range: { sheetId: learningId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 5 },
+        cell: { userEnteredFormat: { backgroundColor: { red: 41 / 255, green: 98 / 255, blue: 155 / 255 },
+          textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 14 },
+          horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE" } }, fields: "userEnteredFormat" } },
+      { repeatCell: { range: { sheetId: learningId, startRowIndex: 5, endRowIndex: 6, startColumnIndex: 0, endColumnIndex: 5 },
+        cell: { userEnteredFormat: { backgroundColor: { red: 217 / 255, green: 234 / 255, blue: 247 / 255 },
+          textFormat: { bold: true }, horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE", wrapStrategy: "WRAP" } }, fields: "userEnteredFormat" } },
+      { repeatCell: { range: { sheetId: learningId, startRowIndex: 6, endRowIndex: Math.max(learning.length, 7), startColumnIndex: 0, endColumnIndex: 5 },
+        cell: { userEnteredFormat: { verticalAlignment: "TOP", wrapStrategy: "WRAP" } }, fields: "userEnteredFormat(verticalAlignment,wrapStrategy)" } },
+      conditionalAttendanceRequest(learningId, learning.length, "Có mặt"),
+      conditionalAttendanceRequest(learningId, learning.length, "Vắng"),
+      { updateDimensionProperties: { range: { sheetId: learningId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { hiddenByUser: true }, fields: "hiddenByUser" } },
+      ...[95, 105, 240, 280].map((pixelSize, offset) => ({ updateDimensionProperties: {
+        range: { sheetId: learningId, dimension: "COLUMNS" as const, startIndex: offset + 1, endIndex: offset + 2 },
+        properties: { pixelSize }, fields: "pixelSize",
+      } })),
       { updateSheetProperties: { properties: { sheetId: technicalId, hidden: true }, fields: "hidden" } },
-      { addProtectedRange: { protectedRange: { range: { sheetId: technicalId }, description: "Teacher Hub metadata",
-        warningOnly: false } } },
+      { addProtectedRange: { protectedRange: { range: { sheetId: technicalId }, description: "Teacher Hub metadata", warningOnly: false } } },
     ];
-    return { values, clearRanges: ["'Quá trình học tập'!A:N", "'Học phí'!A:M"], requests };
+    return {
+      values: [{ range: "'Sổ theo dõi học tập'!A1:E", values: learning }, { range: "'_TeacherHub'!A1:B100", values: technical }],
+      clearRanges: ["'Sổ theo dõi học tập'!A:E"],
+      requests,
+    };
   }
 }

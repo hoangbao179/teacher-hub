@@ -1,5 +1,4 @@
 import { google, type sheets_v4 } from "googleapis";
-import { googleHeaderRequest } from "./google-sheet-template.service";
 
 type GoogleOAuthClient = InstanceType<typeof google.auth.OAuth2>;
 
@@ -9,6 +8,8 @@ function isTeacherHubConditionalRule(rule: sheets_v4.Schema$ConditionalFormatRul
   const ranges = rule.ranges ?? [];
   if (ranges.length !== 1) return false;
   const range = ranges[0];
+  if (condition?.type === "TEXT_EQ" && (value === "Có mặt" || value === "Vắng"))
+    return range.startRowIndex === 6 && range.startColumnIndex === 2 && range.endColumnIndex === 3;
   if (range.startRowIndex !== 1) return false;
   if (condition?.type === "CUSTOM_FORMULA" && value === "=ISEVEN(ROW())")
     return range.startColumnIndex === 0 && (range.endColumnIndex === 6 || range.endColumnIndex === 10 || range.endColumnIndex === 13 || range.endColumnIndex === 14);
@@ -62,7 +63,7 @@ export class GoogleSheetsClient {
 
   async create(title: string): Promise<string> {
     const response = await this.sheets.spreadsheets.create({ requestBody: { properties: { title }, sheets: [
-      { properties: { title: "Quá trình học tập" } }, { properties: { title: "Học phí" } },
+      { properties: { title: "Sổ theo dõi học tập" } },
       { properties: { title: "_TeacherHub", hidden: true } },
     ] }, fields: "spreadsheetId" });
     if (!response.data.spreadsheetId) throw new Error("Malformed spreadsheet create response");
@@ -105,22 +106,20 @@ export class GoogleSheetsClient {
     spreadsheetId: string,
     lessonId: number,
     row: Array<string | number | boolean> | null,
-    tuitionValues: Array<Array<string | number | boolean>>,
     syncedAt: string,
   ): Promise<void> {
-    const range = "'Quá trình học tập'!A:J";
+    const range = "'Sổ theo dõi học tập'!A6:E";
     const response = await this.sheets.spreadsheets.values.get({ spreadsheetId, range });
     const values = response.data.values ?? [];
     const rowIndex = values.findIndex((candidate, index) => index > 0 && String(candidate[0] ?? "") === String(lessonId));
     const ids = await this.metadata(spreadsheetId);
-    const learningSheetId = ids["Quá trình học tập"];
-    const tuitionSheetId = ids["Học phí"];
-    if (learningSheetId == null || tuitionSheetId == null) throw new Error("Missing managed Google Sheet tab");
+    const learningSheetId = ids["Sổ theo dõi học tập"];
+    if (learningSheetId == null) throw new Error("Missing managed Google Sheet tab");
     if (row) {
       if (rowIndex >= 1) {
         await this.sheets.spreadsheets.values.update({
           spreadsheetId,
-          range: `'Quá trình học tập'!A${rowIndex + 1}:J${rowIndex + 1}`,
+          range: `'Sổ theo dõi học tập'!A${rowIndex + 6}:E${rowIndex + 6}`,
           valueInputOption: "RAW",
           requestBody: { values: [row] },
         });
@@ -137,35 +136,21 @@ export class GoogleSheetsClient {
       await this.sheets.spreadsheets.batchUpdate({
         spreadsheetId,
         requestBody: { requests: [{ deleteDimension: { range: {
-          sheetId: learningSheetId, dimension: "ROWS", startIndex: rowIndex, endIndex: rowIndex + 1,
+          sheetId: learningSheetId, dimension: "ROWS", startIndex: rowIndex + 5, endIndex: rowIndex + 6,
         } } }] },
       });
     }
-    await this.sheets.spreadsheets.values.batchClear({
-      spreadsheetId,
-      requestBody: { ranges: ["'Học phí'!A:M"] },
-    });
     await this.sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,
       requestBody: {
         valueInputOption: "RAW",
-        data: [
-          { range: "'Học phí'!A1:F", values: tuitionValues },
-          { range: "'_TeacherHub'!B7", values: [[syncedAt]] },
-        ],
+        data: [{ range: "'_TeacherHub'!B7", values: [[syncedAt]] }],
       },
     });
     await this.sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: { requests: [
         { clearBasicFilter: { sheetId: learningSheetId } },
-        { clearBasicFilter: { sheetId: tuitionSheetId } },
-        googleHeaderRequest(learningSheetId, 10),
-        googleHeaderRequest(tuitionSheetId, 6),
-        { updateDimensionProperties: {
-          range: { sheetId: tuitionSheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 },
-          properties: { hiddenByUser: false }, fields: "hiddenByUser",
-        } },
       ] },
     });
   }
