@@ -8,6 +8,10 @@ import type {
   CreateAdvanceReceiptRequest,
   SettleIncompleteCycleRequest,
   TuitionBoard,
+  MonthlyTuitionBoard,
+  MonthlyTuitionQuery,
+  MarkMonthlyTuitionPaidRequest,
+  MarkMonthlyTuitionPaidResult,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { decideTuitionPayment } from "../domain/tuition-payment";
@@ -16,6 +20,7 @@ import { AuditRepository } from "../repositories/audit.repository";
 import { TuitionRepository } from "../repositories/tuition.repository";
 import { TuitionPolicyRepository } from "../repositories/tuition-policy.repository";
 import { todayInHoChiMinh } from "../utils/date";
+import { validateTuitionMonth } from "../domain/monthly-tuition";
 
 const listStatuses = new Set<TuitionCycleStatus>([
   "ACCUMULATING", "PAYMENT_DUE", "PAID", "INCOMPLETE",
@@ -28,6 +33,97 @@ export class TuitionService {
     private readonly audit = new AuditRepository(),
     private readonly policies = new TuitionPolicyRepository(),
   ) {}
+
+  monthlyBoard(input: MonthlyTuitionQuery): Promise<MonthlyTuitionBoard> {
+    const { year, month } = validateTuitionMonth(Number(input.year), Number(input.month));
+    if (input.classId != null) this.validateId(input.classId);
+    const search = input.search?.trim();
+    if (search && search.length > 100)
+      throw new AppError(400, "VALIDATION_ERROR", "Từ khóa tìm kiếm tối đa 100 ký tự.");
+    return this.repository.monthlyBoard({
+      year,
+      month,
+      classId: input.classId,
+      search: search || undefined,
+    });
+  }
+
+  async markMonthlyPaid(
+    enrollmentId: number,
+    year: number,
+    month: number,
+    input: MarkMonthlyTuitionPaidRequest,
+    actorUserId?: number,
+  ): Promise<MarkMonthlyTuitionPaidResult> {
+    this.validateId(enrollmentId);
+    validateTuitionMonth(year, month);
+    if (!input || !this.isDate(input.paidAt))
+      throw new AppError(400, "VALIDATION_ERROR", "Ngày thu học phí không hợp lệ.");
+    if (input.amount != null && (!Number.isInteger(input.amount) || input.amount < 0))
+      throw new AppError(400, "VALIDATION_ERROR", "Số tiền phải là số nguyên VND không âm.");
+    if (input.note != null && input.note.length > 1000)
+      throw new AppError(400, "VALIDATION_ERROR", "Ghi chú tối đa 1000 ký tự.");
+    const normalized = {
+      amount: input.amount ?? null,
+      paidAt: input.paidAt,
+      note: input.note?.trim() || null,
+    };
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const existing = await this.repository.lockMonthlyPayment(
+        connection,
+        enrollmentId,
+        year,
+        month,
+      );
+      if (existing) {
+        const same = Number(existing.amount ?? 0) === Number(normalized.amount ?? 0) &&
+          (existing.amount == null) === (normalized.amount == null) &&
+          String(existing.paid_at).slice(0, 10) === normalized.paidAt &&
+          (existing.note == null ? null : String(existing.note)) === normalized.note;
+        if (!same)
+          throw new AppError(
+            409,
+            "MONTHLY_TUITION_PAID_IMMUTABLE",
+            "Học phí tháng đã thu và không thể thay đổi.",
+          );
+        await connection.commit();
+        const payment = await this.findMonthlyRow(enrollmentId, year, month);
+        return { payment, idempotent: true };
+      }
+      const paymentId = await this.repository.createMonthlyPayment(
+        connection,
+        enrollmentId,
+        year,
+        month,
+        normalized,
+      );
+      await this.audit.record(connection, {
+        actorUserId,
+        action: "MONTHLY_TUITION_MARKED_PAID",
+        entityType: "MONTHLY_TUITION",
+        entityId: paymentId,
+        newValues: { enrollmentId, year, month, status: "PAID", ...normalized },
+      });
+      await connection.commit();
+      const payment = await this.findMonthlyRow(enrollmentId, year, month);
+      return { payment, idempotent: false };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  private async findMonthlyRow(enrollmentId: number, year: number, month: number) {
+    const board = await this.repository.monthlyBoard({ year, month });
+    const row = board.rows.find((item) => item.enrollmentId === enrollmentId);
+    if (!row)
+      throw new AppError(404, "MONTHLY_TUITION_NOT_FOUND", "Không tìm thấy học phí tháng.");
+    return row;
+  }
 
   list(input: TuitionCycleListQuery) {
     const query = this.normalizeListQuery(input);
