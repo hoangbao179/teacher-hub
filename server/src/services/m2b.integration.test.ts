@@ -4,7 +4,6 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
 import { LessonRepository } from "../repositories/lesson.repository";
-import { TuitionRepository } from "../repositories/tuition.repository";
 import { LessonService } from "./lesson.service";
 
 const enabled = process.env.RUN_MYSQL_INTEGRATION === "1";
@@ -65,7 +64,7 @@ async function fixture() {
 }
 
 function service() {
-  return new LessonService(new LessonRepository(), new TuitionRepository());
+  return new LessonService(new LessonRepository());
 }
 
 integration("canonical lesson workflow snapshots, persists, completes and audits", async () => {
@@ -79,7 +78,7 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
     data.enrollmentIds.slice(0, 3).sort((a, b) => a - b));
   await lessons.updateAttendances(draft.id, { attendances: [
     { enrollmentId: data.enrollmentIds[0], status: "PRESENT" },
-    { enrollmentId: data.enrollmentIds[1], status: "FREE" },
+    { enrollmentId: data.enrollmentIds[1], status: "PRESENT" },
     { enrollmentId: data.enrollmentIds[2], status: "ABSENT", studentNote: "Có phép" },
   ] });
   await lessons.updateContent(draft.id, { content: "Lesson content", homework: "Homework", note: "General" });
@@ -87,12 +86,12 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
     actualStartTime: "18:05", actualEndTime: "20:05", content: "Lesson content", homework: "Homework",
     attendances: [
       { enrollmentId: data.enrollmentIds[0], status: "PRESENT" },
-      { enrollmentId: data.enrollmentIds[1], status: "FREE" },
+      { enrollmentId: data.enrollmentIds[1], status: "PRESENT" },
       { enrollmentId: data.enrollmentIds[2], status: "ABSENT", studentNote: "Có phép" },
     ],
   });
   assert.equal(result.actualDurationMinutes, 120);
-  assert.equal(result.presentCount, 1); assert.equal(result.absentCount, 1); assert.equal(result.freeCount, 1);
+  assert.equal(result.presentCount, 2); assert.equal(result.absentCount, 1);
   const persisted = await lessons.detail(draft.id);
   assert.equal(persisted.status, "COMPLETED"); assert.equal(persisted.content, "Lesson content");
   assert.ok(result.completedAt);
@@ -101,7 +100,7 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
   const [attendanceRows] = await pool.query<RowDataPacket[]>("SELECT * FROM lesson_attendances WHERE lesson_session_id=?", [draft.id]);
   assert.equal(attendanceRows.length, 3);
   const [cycleItems] = await pool.query<RowDataPacket[]>("SELECT * FROM tuition_cycle_sessions");
-  assert.equal(cycleItems.length, 1);
+  assert.equal(cycleItems.length, 0);
   const replay = await lessons.complete(draft.id, {
     actualStartTime: "18:05", actualEndTime: "20:05",
     attendances: persisted.participants.map((item) => ({ enrollmentId: item.enrollmentId, status: item.attendance!.status })),
@@ -110,10 +109,11 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
   assert.equal(replay.completedAt, result.completedAt);
   assert.equal(replay.lesson.completedAt, result.completedAt);
   const [afterReplay] = await pool.query<RowDataPacket[]>("SELECT * FROM tuition_cycle_sessions");
-  assert.equal(afterReplay.length, 1);
+  assert.equal(afterReplay.length, 0);
   const [audits] = await pool.query<RowDataPacket[]>("SELECT action FROM audit_logs WHERE entity_id=? OR entity_type='TUITION_CYCLE'", [draft.id]);
-  for (const action of ["LESSON_DRAFT_CREATED", "LESSON_ATTENDANCE_UPDATED", "LESSON_UPDATED", "LESSON_COMPLETED", "TUITION_ALLOCATION_RECALCULATED", "TUITION_CYCLE_CREATED"])
+  for (const action of ["LESSON_DRAFT_CREATED", "LESSON_ATTENDANCE_UPDATED", "LESSON_UPDATED", "LESSON_COMPLETED"])
     assert.ok(audits.some((row) => row.action === action), `missing audit ${action}`);
+  assert.equal(audits.some((row) => String(row.action).startsWith("TUITION_")), false);
 
   const makeup = await lessons.create({
     classId: data.classId, sessionDate: "2026-07-10", scheduledStartTime: "20:00",
@@ -127,7 +127,7 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
   assert.equal((await lessons.detail(draft.id)).participants.length, 3);
 });
 
-integration("completion rollback and free-enrollment validation leave draft unchanged", async () => {
+integration("completion accepts PRESENT for a free enrollment without billing it", async () => {
   const data = await fixture();
   const lessons = service();
   const draft = await lessons.create({
@@ -142,15 +142,19 @@ integration("completion rollback and free-enrollment validation leave draft unch
   await assert.rejects(() => lessons.updateAttendances(draft.id, { attendances: [
     { enrollmentId: data.enrollmentIds[3], status: "ABSENT" },
   ] }), (error: unknown) => error instanceof AppError && error.code === "INVALID_PARTICIPANT");
-  await assert.rejects(() => lessons.complete(draft.id, {
+  const completed = await lessons.complete(draft.id, {
     actualStartTime: "18:00", actualEndTime: "19:30", attendances: [
       { enrollmentId: data.enrollmentIds[0], status: "PRESENT" },
       { enrollmentId: data.enrollmentIds[1], status: "PRESENT" },
     ],
-  }), (error: unknown) => error instanceof AppError && error.code === "FREE_ENROLLMENT_BILLABLE");
-  assert.equal((await lessons.detail(draft.id)).status, "DRAFT");
-  const [rows] = await pool.query<RowDataPacket[]>("SELECT * FROM lesson_attendances WHERE lesson_session_id=?", [draft.id]);
-  assert.equal(rows.length, 0);
+  });
+  assert.equal(completed.presentCount, 2);
+  assert.equal((await lessons.detail(draft.id)).status, "COMPLETED");
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT enrollment_id,counts_for_tuition FROM lesson_attendances WHERE lesson_session_id=? ORDER BY enrollment_id",
+    [draft.id],
+  );
+  assert.deepEqual(rows.map((row) => Number(row.counts_for_tuition)), [1, 0]);
 
   const cancelled = await lessons.create({
     classId: data.classId, sessionDate: "2026-07-10", scheduledStartTime: "20:00",
@@ -177,7 +181,7 @@ integration("concurrent completion cannot double-count", async () => {
   const results = await Promise.all([lessons.complete(draft.id, request), lessons.complete(draft.id, request)]);
   assert.equal(results.every((item) => item.lesson.status === "COMPLETED"), true);
   const [rows] = await pool.query<RowDataPacket[]>("SELECT * FROM tuition_cycle_sessions");
-  assert.equal(rows.length, 1);
+  assert.equal(rows.length, 0);
 });
 
 test.after(async () => { if (enabled) await pool.end(); });

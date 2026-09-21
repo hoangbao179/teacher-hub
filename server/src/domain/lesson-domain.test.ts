@@ -4,6 +4,7 @@ import {
   assertNonOverlappingRanges,
   isBillableAttendance,
   isEnrollmentEligible,
+  parseRuntimeAttendanceStatus,
   resolvePolicyPrice,
 } from "./lesson-domain";
 
@@ -41,4 +42,10 @@ test("only present with a positive effective price is billable", () => {
   assert.equal(isBillableAttendance("PRESENT", "FREE", null), false);
   assert.equal(isBillableAttendance("ABSENT", "CUSTOM", 2_000_000), false);
   assert.equal(isBillableAttendance("FREE", "CUSTOM", 2_000_000), false);
+});
+
+test("runtime attendance accepts only present and absent", () => {
+  assert.equal(parseRuntimeAttendanceStatus("PRESENT"), "PRESENT");
+  assert.equal(parseRuntimeAttendanceStatus("ABSENT"), "ABSENT");
+  assert.throws(() => parseRuntimeAttendanceStatus("FREE"), /Trạng thái điểm danh không hợp lệ/);
 });

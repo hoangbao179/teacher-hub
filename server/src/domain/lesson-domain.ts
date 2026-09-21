@@ -1,5 +1,11 @@
 import type { AttendanceStatus, TuitionMode } from "@teacher/shared";
 
+export function parseRuntimeAttendanceStatus(status: string): "PRESENT" | "ABSENT" {
+  if (status !== "PRESENT" && status !== "ABSENT")
+    throw new Error("Trạng thái điểm danh không hợp lệ.");
+  return status;
+}
+
 export interface EffectiveRange {
   effectiveFrom: string;
   effectiveTo: string | null;
@@ -41,7 +47,7 @@ export function resolvePolicyPrice(
 }
 
 export function isBillableAttendance(
-  status: AttendanceStatus,
+  status: AttendanceStatus | "FREE",
   mode: TuitionMode,
   packagePrice: number | null,
 ): boolean {

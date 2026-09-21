@@ -5,7 +5,7 @@ import { LessonService } from "../services/lesson.service";
 import { attendanceCoverageIssue, isCompletionReplay } from "./lesson-domain";
 
 test("actual end before start is a typed validation error", async () => {
-  const service = new LessonService({} as never, {} as never);
+  const service = new LessonService({} as never);
   await assert.rejects(
     () => service.complete(1, {
       actualStartTime: "20:00", actualEndTime: "19:00", attendances: [],

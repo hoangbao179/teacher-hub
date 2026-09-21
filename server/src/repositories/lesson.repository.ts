@@ -16,7 +16,6 @@ import type {
 import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
 import { occurrenceKey, parseOccurrenceKey, replacementOccurrenceKey } from "../domain/schedule-projection";
-import { TuitionPolicyRepository } from "./tuition-policy.repository";
 
 export interface LessonRow extends RowDataPacket {
   id: number;
@@ -93,8 +92,6 @@ const lessonSelect = `
   FROM lesson_sessions l JOIN classes c ON c.id=l.class_id`;
 
 export class LessonRepository {
-  constructor(private readonly policies = new TuitionPolicyRepository()) {}
-
   async create(
     connection: PoolConnection,
     input: CreateLessonRequest,
@@ -137,14 +134,10 @@ export class LessonRepository {
       const [lessons] = await connection.query<LessonRow[]>(`${lessonSelect} WHERE l.id=?`, [lessonId]);
       const lesson = lessons[0];
       if (!lesson) return null;
-      const sessionDate = dateOnly(lesson.session_date);
       const [rows] = await connection.query<RowDataPacket[]>(
         `SELECT p.id participant_id,p.enrollment_id,s.id student_id,
           COALESCE(p.student_name_snapshot,s.full_name) student_name,
-          a.attendance_status,a.student_note,
-          (SELECT COUNT(*) FROM tuition_cycle_sessions tcs
-            JOIN tuition_cycles tc ON tc.id=tcs.tuition_cycle_id
-            WHERE tc.enrollment_id=p.enrollment_id AND tc.status='ACCUMULATING') current_progress
+          e.tuition_mode,a.attendance_status,a.student_note
          FROM lesson_session_participants p
          JOIN class_enrollments e ON e.id=p.enrollment_id
          JOIN students s ON s.id=e.student_id
@@ -152,23 +145,17 @@ export class LessonRepository {
          WHERE p.lesson_session_id=? ORDER BY p.student_name_snapshot,p.id`,
         [lessonId],
       );
-      const participants: LessonParticipantDetail[] = [];
-      for (const row of rows) {
-        const policy = await this.policies.resolve(connection, Number(row.enrollment_id), sessionDate);
-        participants.push({
+      const participants: LessonParticipantDetail[] = rows.map((row) => ({
           participantId: Number(row.participant_id),
           enrollmentId: Number(row.enrollment_id),
           studentId: Number(row.student_id),
           studentName: String(row.student_name),
-          tuitionMode: policy.mode,
-          effectivePackagePrice: policy.packagePrice,
-          currentProgress: policy.mode === "FREE" ? null : Number(row.current_progress ?? 0),
+          tuitionMode: row.tuition_mode,
           attendance: row.attendance_status ? {
-            status: row.attendance_status,
+            status: row.attendance_status === "ABSENT" ? "ABSENT" : "PRESENT",
             studentNote: row.student_note == null ? null : String(row.student_note),
           } : null,
-        });
-      }
+        }));
       return {
         ...mapSummary(lesson),
         content: lesson.content == null ? null : String(lesson.content),
@@ -452,7 +439,7 @@ export class LessonRepository {
     actorUserId?: number,
   ): Promise<void> {
     for (const attendance of attendances) {
-      const fulfilled = attendance.status === "PRESENT" || attendance.status === "FREE";
+      const fulfilled = attendance.status === "PRESENT";
       await connection.execute(
         `UPDATE lesson_makeup_replacements mr
          JOIN lesson_sessions l ON l.id=? AND l.makeup_source_occurrence_key=mr.source_occurrence_key

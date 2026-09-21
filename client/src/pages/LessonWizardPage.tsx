@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Checkbox,
-  Chip,
   Divider,
   Dialog,
   DialogActions,
@@ -64,7 +63,7 @@ function duration(start: string, end: string): number | null {
 
 function attendanceFrom(detail: LessonDetail): AttendanceDraft {
   return Object.fromEntries(detail.participants.map((participant) => [participant.enrollmentId, {
-    status: participant.attendance?.status ?? (participant.tuitionMode === "FREE" ? "FREE" : "PRESENT"),
+    status: participant.attendance?.status ?? "PRESENT",
     studentNote: participant.attendance?.studentNote ?? "",
   }]));
 }
@@ -208,15 +207,13 @@ export function LessonWizardPage() {
   const counts = useMemo(() => ({
     PRESENT: Object.values(attendances).filter((item) => item.status === "PRESENT").length,
     ABSENT: Object.values(attendances).filter((item) => item.status === "ABSENT").length,
-    FREE: Object.values(attendances).filter((item) => item.status === "FREE").length,
   }), [attendances]);
 
   const applyBulkAttendance = (status: AttendanceStatus | null, label: string) => {
     setBulkUndo(attendances);
     setAttendances(Object.fromEntries(participants.map((participant) => {
-      const current = attendances[participant.enrollmentId] ?? { status: participant.tuitionMode === "FREE" ? "FREE" : "PRESENT", studentNote: "" };
-      const nextStatus = status === "PRESENT" && participant.tuitionMode === "FREE" ? "FREE" : status;
-      return [participant.enrollmentId, nextStatus ? { ...current, status: nextStatus } : { ...current, status: undefined }];
+      const current = attendances[participant.enrollmentId] ?? { status: "PRESENT", studentNote: "" };
+      return [participant.enrollmentId, status ? { ...current, status } : { ...current, status: undefined }];
     })) as AttendanceDraft);
     setBulkMessage(`${label}: ${participants.length} học sinh. Chưa lưu.`);
     markDirty();
@@ -380,21 +377,17 @@ export function LessonWizardPage() {
       <Stack spacing={1.25}>
         <Typography component="h2" variant="h6">Học sinh</Typography>
         {participants.map((participant) => {
-          const free = participant.tuitionMode === "FREE";
           return <Card key={participant.participantId} variant="outlined"><CardContent>
-            <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
-              <Typography variant="subtitle1">{participant.studentName}</Typography>
-              {free && <Chip size="small" label="Miễn phí" />}
-            </Stack>
-            <ToggleButtonGroup exclusive fullWidth value={attendances[participant.enrollmentId]?.status ?? (free ? "FREE" : "PRESENT")} onChange={(_event, value: AttendanceStatus | null) => {
+            <Typography variant="subtitle1">{participant.studentName}</Typography>
+            <ToggleButtonGroup exclusive fullWidth value={attendances[participant.enrollmentId]?.status ?? "PRESENT"} onChange={(_event, value: AttendanceStatus | null) => {
               if (!value) return;
               setAttendances((current) => ({ ...current, [participant.enrollmentId]: { ...(current[participant.enrollmentId] ?? { studentNote: "" }), status: value } })); markDirty();
             }} sx={{ mt: 1, gap: 0.75, "& .MuiToggleButton-root": { minHeight: 44, flex: 1, border: 1, borderColor: "divider", borderRadius: "8px !important" } }}>
-              <ToggleButton value={free ? "FREE" : "PRESENT"} color="success">{free ? "Có mặt · miễn phí" : "Có mặt"}</ToggleButton>
+              <ToggleButton value="PRESENT" color="success">Có mặt</ToggleButton>
               <ToggleButton value="ABSENT" color="error">Nghỉ</ToggleButton>
             </ToggleButtonGroup>
             {!expandedNotes.has(participant.enrollmentId) ? <Button size="small" sx={{ mt: 1, minHeight: 44 }} onClick={() => setExpandedNotes((current) => new Set(current).add(participant.enrollmentId))}>Thêm nhận xét riêng</Button> : <TextField fullWidth size="small" multiline minRows={2} sx={{ mt: 1 }} label="Nhận xét riêng (tùy chọn)" value={attendances[participant.enrollmentId]?.studentNote ?? ""} onChange={(event) => {
-              setAttendances((current) => ({ ...current, [participant.enrollmentId]: { status: current[participant.enrollmentId]?.status ?? (free ? "FREE" : "PRESENT"), studentNote: event.target.value.slice(0, 1000) } })); markDirty();
+              setAttendances((current) => ({ ...current, [participant.enrollmentId]: { status: current[participant.enrollmentId]?.status ?? "PRESENT", studentNote: event.target.value.slice(0, 1000) } })); markDirty();
             }} />}
           </CardContent></Card>;
         })}
@@ -479,7 +472,7 @@ export function LessonWizardPage() {
       {step === 1 && <Stack spacing={1.5}>
         {!participants.length && <Alert severity="warning">Không có participant trong snapshot. Quay lại để kiểm tra ngày học hoặc danh sách chọn.</Alert>}
         {!!participants.length && <>
-          <Alert severity="info">Trạng thái ban đầu được gợi ý theo chế độ học phí và chưa được lưu.</Alert>
+          <Alert severity="info">Tất cả học sinh mặc định có mặt. Chỉ đổi những em nghỉ.</Alert>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
             <Button variant="outlined" onClick={() => applyBulkAttendance("PRESENT", "Tất cả có mặt")}>Tất cả có mặt</Button>
             <Button variant="outlined" onClick={() => applyBulkAttendance("ABSENT", "Tất cả nghỉ")}>Tất cả nghỉ</Button>
@@ -487,18 +480,14 @@ export function LessonWizardPage() {
           </Stack>
         </>}
         {participants.map((participant) => <Card key={participant.participantId} variant="outlined"><CardContent>
-          <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
-            <Typography variant="subtitle1">{participant.studentName}</Typography>
-            <Chip size="small" label={participant.tuitionMode === "FREE" ? "Miễn phí toàn phần" : `${participant.currentProgress ?? 0}/8`} />
-          </Stack>
+          <Typography variant="subtitle1">{participant.studentName}</Typography>
           <ToggleButtonGroup exclusive fullWidth size="small" value={attendances[participant.enrollmentId]?.status ?? null} onChange={(_event, value: AttendanceStatus | null) => {
             if (!value) return;
             setAttendances((current) => ({ ...current, [participant.enrollmentId]: { ...(current[participant.enrollmentId] ?? { studentNote: "" }), status: value } })); markDirty();
           }} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5,
             "& .MuiToggleButton-root": { minHeight: 44, px: 0.5, flex: "1 1 calc(50% - 4px)", border: 1, borderColor: "divider", borderRadius: "8px !important" } }}>
-            <ToggleButton value="PRESENT" color="success" disabled={participant.tuitionMode === "FREE"}>Có mặt</ToggleButton>
+            <ToggleButton value="PRESENT" color="success">Có mặt</ToggleButton>
             <ToggleButton value="ABSENT" color="error">Nghỉ</ToggleButton>
-            <ToggleButton value="FREE" color="warning">Miễn phí</ToggleButton>
           </ToggleButtonGroup>
           {!expandedNotes.has(participant.enrollmentId) ? <Button size="small" sx={{ mt: 1 }}
             onClick={() => setExpandedNotes((current) => new Set(current).add(participant.enrollmentId))}>Thêm nhận xét riêng</Button> : <Stack spacing={1} sx={{ mt: 1 }}>
@@ -527,7 +516,7 @@ export function LessonWizardPage() {
         <Summary label="Thời lượng" value={`${actualDuration ?? 0} phút (không đổi số buổi)`} />
         <Summary label="Loại buổi" value={visibleStatusLabel(lessonType)} />
         <Divider />
-        <Summary label="Có mặt / Nghỉ / Miễn phí" value={`${counts.PRESENT} / ${counts.ABSENT} / ${counts.FREE}`} />
+        <Summary label="Có mặt / Nghỉ" value={`${counts.PRESENT} / ${counts.ABSENT}`} />
         <Summary label="Nội dung" value={content || "Chưa nhập"} />
         <Summary label="Bài tập" value={homework || "Chưa nhập"} />
         <Summary label="Nhận xét chung" value={generalComment || "Chưa nhập"} />
@@ -573,13 +562,8 @@ function CompletionState({ result, quick = false }: { result: CompleteLessonResu
     <Card><CardContent><Stack spacing={1}>
       <Typography variant="h6">{result.lesson.className}</Typography>
       <Typography>{result.lesson.sessionDate} · {result.lesson.actualStartTime}–{result.lesson.actualEndTime}</Typography>
-      <Typography>Có mặt {result.presentCount} · Nghỉ {result.absentCount} · Miễn phí {result.freeCount}</Typography>
+      <Typography>Có mặt {result.presentCount} · Nghỉ {result.absentCount}</Typography>
     </Stack></CardContent></Card>
-    {!quick && <><Typography component="h2" variant="h6">Tác động tiến độ</Typography>
-    {result.tuitionImpacts.map((item) => <Card key={item.enrollmentId} variant="outlined"><CardContent>
-      <Stack direction="row" sx={{ justifyContent: "space-between" }}><Typography variant="subtitle1">{item.studentName}</Typography><Typography>{item.previousProgress ?? "—"} → {item.newProgress ?? "—"}/8</Typography></Stack>
-      {item.becamePaymentDue && <Chip sx={{ mt: 1 }} color="warning" label="Đã đạt 8/8 · Cần thu" />}
-    </CardContent></Card>)}</>}
     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} data-wizard-action>
       <Button component={Link} to="/admin" variant="contained" fullWidth sx={{ minHeight: 44 }}>{quick ? "Về Hôm nay" : "Về Dashboard"}</Button>
       <Button component={Link} to={`/admin/lessons/${result.lessonId}/edit`} variant="outlined" fullWidth sx={{ minHeight: 44 }}>Xem chi tiết buổi học</Button>

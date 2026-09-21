@@ -5,7 +5,6 @@ import { pool } from "../db/pool";
 import { CombinedClassGroupRepository } from "../repositories/combined-class-group.repository";
 import { LessonRepository } from "../repositories/lesson.repository";
 import { ScheduleRepository } from "../repositories/schedule.repository";
-import { TuitionRepository } from "../repositories/tuition.repository";
 import { CombinedClassGroupService } from "./combined-class-group.service";
 import { LessonService } from "./lesson.service";
 import { ScheduleService } from "./schedule.service";
@@ -129,7 +128,7 @@ async function fixture() {
 }
 
 function services() {
-  const lessons = new LessonService(new LessonRepository(), new TuitionRepository());
+  const lessons = new LessonService(new LessonRepository());
   const combined = new CombinedClassGroupService(new CombinedClassGroupRepository(), lessons);
   const schedules = new ScheduleService(new ScheduleRepository(), lessons, combined);
   return { lessons, combined, schedules };
@@ -217,13 +216,13 @@ integration("combined group resolves one card and completes child lessons atomic
       status: "PRESENT" as const,
     })),
   }, data.actorId);
-  assert.equal(replayCompletion.lessons.every((item) => item.tuitionImpacts.length === 0), true);
+  assert.equal(replayCompletion.lessons.every((item) => item.attendanceCount > 0), true);
   const [progress] = await pool.query<RowDataPacket[]>(
     `SELECT tc.enrollment_id,COUNT(tcs.id) progress
      FROM tuition_cycles tc JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
      GROUP BY tc.enrollment_id ORDER BY tc.enrollment_id`,
   );
-  assert.deepEqual(progress.map((row) => Number(row.progress)), [1, 1, 1]);
+  assert.deepEqual(progress.map((row) => Number(row.progress)), []);
 });
 
 integration("combined completion rolls back every child when attendance is incomplete", async () => {

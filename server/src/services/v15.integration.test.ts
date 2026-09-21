@@ -35,7 +35,7 @@ async function clean() {
 
 function services() {
   const tuitionRepository = new TuitionRepository();
-  const lessons = new LessonService(new LessonRepository(), tuitionRepository);
+  const lessons = new LessonService(new LessonRepository());
   return { classes: new ClassService(new ClassRepository()), students: new StudentService(new StudentRepository()),
     enrollments: new EnrollmentService(new EnrollmentRepository()), lessons,
     schedules: new ScheduleService(new ScheduleRepository(), lessons), tuition: new TuitionService(tuitionRepository) };
@@ -140,7 +140,7 @@ integration("combined bulk reschedule, replacement skip and subset makeup lifecy
     lessonType: "MAKEUP", selectedEnrollmentIds: [ea], makeupSourceOccurrenceKey: source }));
   await lessons.updateAttendances(second.id, { attendances: [{ enrollmentId: ea, status: "ABSENT" }] });
   assert.equal((await lessons.makeupOptions(source)).participants.find((item) => item.enrollmentId === ea)?.entitlementStatus, "OPEN");
-  await lessons.updateAttendances(second.id, { attendances: [{ enrollmentId: ea, status: "FREE" }] });
+  await lessons.updateAttendances(second.id, { attendances: [{ enrollmentId: ea, status: "PRESENT" }] });
   assert.equal((await lessons.makeupOptions(source)).participants.find((item) => item.enrollmentId === ea)?.entitlementStatus, "FULFILLED");
   const [freeBilling] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) total FROM tuition_cycle_sessions tcs JOIN lesson_attendances a ON a.id=tcs.attendance_id

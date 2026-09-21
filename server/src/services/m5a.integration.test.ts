@@ -8,7 +8,6 @@ import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
 import { LessonRepository } from "../repositories/lesson.repository";
 import { ScheduleRepository } from "../repositories/schedule.repository";
-import { TuitionRepository } from "../repositories/tuition.repository";
 import { LessonService } from "./lesson.service";
 import { ScheduleService } from "./schedule.service";
 
@@ -68,7 +67,7 @@ async function fixture() {
 }
 
 function services() {
-  const lessons = new LessonService(new LessonRepository(), new TuitionRepository());
+  const lessons = new LessonService(new LessonRepository());
   return { lessons, schedules: new ScheduleService(new ScheduleRepository(), lessons) };
 }
 

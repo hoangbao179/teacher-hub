@@ -9,7 +9,6 @@ import { EnrollmentRepository } from "../repositories/enrollment.repository";
 import { LessonRepository } from "../repositories/lesson.repository";
 import { ScheduleRepository } from "../repositories/schedule.repository";
 import { StudentRepository } from "../repositories/student.repository";
-import { TuitionRepository } from "../repositories/tuition.repository";
 import { ClassService } from "./class.service";
 import { EnrollmentService } from "./enrollment.service";
 import { LessonService } from "./lesson.service";
@@ -35,7 +34,7 @@ async function clean() {
 }
 
 function services() {
-  const lessons = new LessonService(new LessonRepository(), new TuitionRepository());
+  const lessons = new LessonService(new LessonRepository());
   return {
     classes: new ClassService(new ClassRepository()),
     students: new StudentService(new StudentRepository()),
@@ -165,7 +164,7 @@ integration("V14 preserves history and enforces pause, cancel, makeup and tempor
   });
   await lessons.complete(freeMakeup.id, {
     actualStartTime: "20:00", actualEndTime: "21:30",
-    attendances: [{ enrollmentId: freeEnrollmentId, status: "FREE" }],
+    attendances: [{ enrollmentId: freeEnrollmentId, status: "PRESENT" }],
   });
   await assert.rejects(() => lessons.create({
     classId, sessionDate: "2026-07-11", scheduledStartTime: "18:00", scheduledEndTime: "19:30",

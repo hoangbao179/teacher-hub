@@ -1,6 +1,6 @@
 export type LessonType = "REGULAR" | "MAKEUP" | "EXTRA";
 export type LessonStatus = "DRAFT" | "COMPLETED" | "CANCELLED";
-export type AttendanceStatus = "PRESENT" | "ABSENT" | "FREE";
+export type AttendanceStatus = "PRESENT" | "ABSENT";
 export type LessonDomainErrorCode =
   | "LESSON_NOT_FOUND"
   | "LESSON_NOT_DRAFT"
@@ -11,7 +11,6 @@ export type LessonDomainErrorCode =
   | "PARTICIPANT_NOT_ELIGIBLE"
   | "MISSING_ATTENDANCE"
   | "DUPLICATE_ATTENDANCE"
-  | "FREE_ENROLLMENT_BILLABLE"
   | "TUITION_POLICY_NOT_FOUND"
   | "TUITION_POLICY_OVERLAP"
   | "MAKEUP_SOURCE_INVALID"
@@ -99,8 +98,6 @@ export interface LessonParticipantDetail {
   studentId: number;
   studentName: string;
   tuitionMode: "CLASS_DEFAULT" | "CUSTOM" | "FREE";
-  effectivePackagePrice: number | null;
-  currentProgress: number | null;
   attendance: {
     status: AttendanceStatus;
     studentNote: string | null;
@@ -123,32 +120,14 @@ export interface LessonDetail extends LessonSummary {
   participants: LessonParticipantDetail[];
 }
 
-export interface TuitionProgressImpact {
-  enrollmentId: number;
-  studentId: number;
-  studentName: string;
-  previousProgress: number | null;
-  newProgress: number | null;
-  becamePaymentDue: boolean;
-  cycleId: number | null;
-}
-
 export interface CompleteLessonResult {
   lessonId: number;
   completedAt: string;
   attendanceCount: number;
-  newlyDueCycles: Array<{
-    cycleId: number;
-    studentId: number;
-    studentName: string;
-  }>;
   lesson: LessonSummary;
   actualDurationMinutes: number;
   presentCount: number;
   absentCount: number;
-  freeCount: number;
-  tuitionImpacts: TuitionProgressImpact[];
-  recalculationConflict: { code: "PAID_CYCLE_CONFLICT"; message: string } | null;
 }
 
 export interface CancelLessonRequest {

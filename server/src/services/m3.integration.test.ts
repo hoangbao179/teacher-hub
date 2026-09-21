@@ -60,7 +60,7 @@ async function fixture() {
   } finally { connection.release(); }
 }
 
-function service() { return new LessonService(new LessonRepository(), new TuitionRepository()); }
+function service() { return new LessonService(new LessonRepository()); }
 
 async function completeOn(lessons: LessonService, classId: number, enrollmentId: number, date: string, status: "PRESENT" | "ABSENT" = "PRESENT") {
   const draft = await lessons.create({

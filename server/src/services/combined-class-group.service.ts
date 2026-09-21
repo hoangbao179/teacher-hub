@@ -6,7 +6,6 @@ import type {
   EndCombinedClassGroupRequest,
   RescheduleOccurrenceRequest,
   SkipOccurrenceRequest,
-  TuitionProgressImpact,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import {
@@ -164,7 +163,6 @@ export class CombinedClassGroupService {
     const results: Array<{
       lessonId: number;
       duplicate: boolean;
-      impacts: TuitionProgressImpact[];
     }> = [];
     try {
       await connection.beginTransaction();
@@ -197,7 +195,7 @@ export class CombinedClassGroupService {
     return {
       occurrenceId: id,
       lessons: await Promise.all(results.map((item) =>
-        this.lessons.completedResult(item.lessonId, item.impacts, item.duplicate))),
+        this.lessons.completedResult(item.lessonId, item.duplicate))),
     };
   }
 

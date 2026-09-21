@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ScheduleRepository } from "../repositories/schedule.repository";
 import { LessonRepository } from "../repositories/lesson.repository";
-import { TuitionRepository } from "../repositories/tuition.repository";
 import { LessonService } from "./lesson.service";
 import { ScheduleService } from "./schedule.service";
 
@@ -11,7 +10,7 @@ test("occurrence lookback advances at midnight in Ho Chi Minh, including the 60-
   const repository = new ScheduleRepository();
   const list = context.mock.method(repository, "listOccurrences", async () => []);
   const service = new ScheduleService(
-    repository, new LessonService(new LessonRepository(), new TuitionRepository()),
+    repository, new LessonService(new LessonRepository()),
   );
   const query = { from: "2026-07-06", to: "2026-09-05", lookbackDays: 60 };
 

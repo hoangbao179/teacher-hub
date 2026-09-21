@@ -11,7 +11,6 @@ import { StudentService } from "./student.service";
 import { GoogleSheetSyncRepository } from "../repositories/google-sheet-sync.repository";
 import { GoogleSheetSyncWorker } from "../workers/google-sheet-sync.worker";
 import { LessonRepository } from "../repositories/lesson.repository";
-import { TuitionRepository } from "../repositories/tuition.repository";
 import { LessonService } from "./lesson.service";
 
 const enabled = process.env.RUN_MYSQL_INTEGRATION === "1";
@@ -415,7 +414,7 @@ integration("outbox is transactional, revision-safe and worker syncs the canonic
 
   const outbox = new GoogleSheetSyncRepository();
   const lessonService = new LessonService(
-    new LessonRepository(), new TuitionRepository(), undefined, undefined, outbox,
+    new LessonRepository(), undefined, undefined, outbox,
   );
   await lessonService.updateContent(
     lesson.insertId,

@@ -40,7 +40,7 @@ export function CombinedTeachingOccurrencePage() {
     setAttendances(Object.fromEntries(value.classes.flatMap((entry) =>
       entry.participants.map((participant) => [
         participant.enrollmentId,
-        participant.attendance?.status ?? (participant.tuitionMode === "FREE" ? "FREE" : "PRESENT"),
+        participant.attendance?.status ?? "PRESENT",
       ]))));
   }).catch((value: Error) => setError(value.message)), [id]);
 
@@ -126,12 +126,7 @@ export function CombinedTeachingOccurrencePage() {
             spacing={1}
             sx={{ alignItems: { sm: "center" }, justifyContent: "space-between", minWidth: 0 }}
           >
-            <Stack sx={{ minWidth: 0 }}>
-              <Typography sx={{ overflowWrap: "anywhere" }}>{participant.studentName}</Typography>
-              <Typography variant="caption" color="text.secondary">
-                {participant.tuitionMode === "FREE" ? "Miễn phí" : `Tiến độ hiện tại: ${participant.currentProgress ?? 0}/8`}
-              </Typography>
-            </Stack>
+            <Typography sx={{ overflowWrap: "anywhere" }}>{participant.studentName}</Typography>
             <TextField
               select
               size="small"
@@ -144,9 +139,8 @@ export function CombinedTeachingOccurrencePage() {
               }))}
               sx={{ width: { xs: "100%", sm: 150 }, flexShrink: 0 }}
             >
-              {participant.tuitionMode !== "FREE" && <MenuItem value="PRESENT">Có mặt</MenuItem>}
+              <MenuItem value="PRESENT">Có mặt</MenuItem>
               <MenuItem value="ABSENT">Nghỉ</MenuItem>
-              <MenuItem value="FREE">Miễn phí</MenuItem>
             </TextField>
           </Stack>)}
         </Stack>
@@ -160,7 +154,7 @@ export function CombinedTeachingOccurrencePage() {
     </Stack></CardContent></Card>}
 
     {!completed && <Alert severity="info">
-      Hệ thống ghi nhận đồng thời cho {item.classes.length} lớp trong một giao dịch. Tiến độ và học phí vẫn được cập nhật riêng theo từng enrollment.
+      Hệ thống ghi nhận đồng thời cho {item.classes.length} lớp trong một giao dịch.
     </Alert>}
     {!completed && <Button
       variant="contained"

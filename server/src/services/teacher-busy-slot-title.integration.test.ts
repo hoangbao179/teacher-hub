@@ -5,7 +5,6 @@ import { AppError } from "../errors/app-error";
 import { pool } from "../db/pool";
 import { LessonRepository } from "../repositories/lesson.repository";
 import { ScheduleRepository } from "../repositories/schedule.repository";
-import { TuitionRepository } from "../repositories/tuition.repository";
 import { LessonService } from "./lesson.service";
 import { ScheduleService } from "./schedule.service";
 
@@ -19,7 +18,7 @@ test.after(async () => {
 function service(): ScheduleService {
   return new ScheduleService(
     new ScheduleRepository(),
-    new LessonService(new LessonRepository(), new TuitionRepository()),
+    new LessonService(new LessonRepository()),
   );
 }
 

@@ -172,7 +172,7 @@ integration("mark-paid is atomic, audited, idempotent and concurrency-safe", asy
   const [itemsBefore] = await pool.query<RowDataPacket[]>(
     "SELECT * FROM tuition_cycle_sessions WHERE tuition_cycle_id=? ORDER BY sequence_number", [due.id],
   );
-  const lessons = new LessonService(new LessonRepository(), new TuitionRepository());
+  const lessons = new LessonService(new LessonRepository());
   const draft = await lessons.create({
     classId: data.classId, sessionDate: "2026-07-20", scheduledStartTime: "18:00",
     scheduledEndTime: "19:30", lessonType: "MAKEUP", selectedEnrollmentIds: [data.enrollments.An],
