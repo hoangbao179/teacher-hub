@@ -225,20 +225,11 @@ export function createRouter(): Router {
     asyncHandler(controllers.lessons.complete),
   );
   router.post("/api/lessons/:id/cancel", asyncHandler(controllers.lessons.cancel));
-  router.get("/api/tuition/board", asyncHandler(controllers.tuition.board));
-  router.get("/api/tuition-cycles", asyncHandler(controllers.tuition.list));
-  router.get("/api/tuition-cycles/summary", asyncHandler(controllers.tuition.summary));
-  router.get(
-    "/api/tuition-cycles/:id",
-    asyncHandler(controllers.tuition.detail),
+  router.get("/api/tuition/monthly", asyncHandler(controllers.tuition.monthlyBoard));
+  router.put(
+    "/api/tuition/monthly/:enrollmentId/:year/:month/paid",
+    asyncHandler(controllers.tuition.markMonthlyPaid),
   );
-  router.post(
-    "/api/tuition-cycles/:id/mark-paid",
-    asyncHandler(controllers.tuition.markPaid),
-  );
-  router.post("/api/tuition-cycles/:id/settle-incomplete", asyncHandler(controllers.tuition.settleIncomplete));
-  router.get("/api/enrollments/:id/tuition-receipts", asyncHandler(controllers.tuition.listReceipts));
-  router.post("/api/enrollments/:id/tuition-receipts/advance", asyncHandler(controllers.tuition.createAdvanceReceipt));
   router.get(
     "/api/schedule/unrecorded",
     asyncHandler(controllers.schedule.unrecorded),

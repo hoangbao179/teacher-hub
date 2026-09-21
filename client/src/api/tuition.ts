@@ -1,64 +1,26 @@
 import type {
-  MarkTuitionPaidRequest,
-  MarkTuitionPaidResult,
-  PageResult,
-  TuitionCycleDetail,
-  TuitionCycleListItem,
-  TuitionCycleListQuery,
-  CreateAdvanceReceiptRequest,
-  TuitionReceipt,
-  SettleIncompleteCycleRequest,
-  TuitionBoard,
+  MarkMonthlyTuitionPaidRequest,
+  MarkMonthlyTuitionPaidResult,
+  MonthlyTuitionBoard,
+  MonthlyTuitionQuery,
 } from "@teacher/shared";
-import { api, apiEnvelope } from "./client";
+import { api } from "./client";
 
-export function getTuitionBoard(): Promise<TuitionBoard> {
-  return api<TuitionBoard>("/api/tuition/board");
+export function getMonthlyTuitionBoard(query: MonthlyTuitionQuery): Promise<MonthlyTuitionBoard> {
+  const params = new URLSearchParams({ year: String(query.year), month: String(query.month) });
+  if (query.classId != null) params.set("classId", String(query.classId));
+  if (query.search) params.set("search", query.search);
+  return api<MonthlyTuitionBoard>(`/api/tuition/monthly?${params.toString()}`);
 }
 
-export async function listTuitionCycles(
-  query: TuitionCycleListQuery,
-): Promise<PageResult<TuitionCycleListItem>> {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query))
-    if (value != null && value !== "") params.set(key, String(value));
-  const envelope = await apiEnvelope<TuitionCycleListItem[]>(
-    `/api/tuition-cycles?${params.toString()}`,
+export function markMonthlyTuitionPaid(
+  enrollmentId: number,
+  year: number,
+  month: number,
+  input: MarkMonthlyTuitionPaidRequest,
+): Promise<MarkMonthlyTuitionPaidResult> {
+  return api<MarkMonthlyTuitionPaidResult>(
+    `/api/tuition/monthly/${enrollmentId}/${year}/${month}/paid`,
+    { method: "PUT", body: JSON.stringify(input) },
   );
-  return {
-    items: envelope.data,
-    total: Number(envelope.meta?.total ?? envelope.data.length),
-    page: Number(envelope.meta?.page ?? query.page ?? 1),
-    pageSize: Number(envelope.meta?.pageSize ?? query.pageSize ?? envelope.data.length),
-  };
-}
-
-export function getTuitionCycle(id: number): Promise<TuitionCycleDetail> {
-  return api<TuitionCycleDetail>(`/api/tuition-cycles/${id}`);
-}
-
-export function markTuitionPaid(
-  id: number,
-  input: MarkTuitionPaidRequest,
-): Promise<MarkTuitionPaidResult> {
-  return api<MarkTuitionPaidResult>(`/api/tuition-cycles/${id}/mark-paid`, {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export function listTuitionReceipts(enrollmentId: number): Promise<TuitionReceipt[]> {
-  return api<TuitionReceipt[]>(`/api/enrollments/${enrollmentId}/tuition-receipts`);
-}
-
-export function createAdvanceReceipt(enrollmentId: number, input: CreateAdvanceReceiptRequest): Promise<TuitionReceipt> {
-  return api<TuitionReceipt>(`/api/enrollments/${enrollmentId}/tuition-receipts/advance`, {
-    method: "POST", body: JSON.stringify(input),
-  });
-}
-
-export function settleIncompleteCycle(id: number, input: SettleIncompleteCycleRequest): Promise<TuitionCycleDetail> {
-  return api<TuitionCycleDetail>(`/api/tuition-cycles/${id}/settle-incomplete`, {
-    method: "POST", body: JSON.stringify(input),
-  });
 }

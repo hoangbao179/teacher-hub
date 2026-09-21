@@ -1,31 +1,33 @@
-import type { TuitionBoardRow } from "@teacher/shared";
+import type { MonthlyTuitionRow } from "@teacher/shared";
 
-export type TuitionBoardScope = "ALL" | "PAYMENT_DUE";
+export type TuitionBoardScope = "ALL" | "UNPAID" | "PAID";
 
 export function filterTuitionBoardRows(
-  rows: TuitionBoardRow[],
+  rows: MonthlyTuitionRow[],
   input: { search: string; classId: string; scope: TuitionBoardScope },
-): TuitionBoardRow[] {
+): MonthlyTuitionRow[] {
   const keyword = input.search.trim().toLocaleLowerCase("vi");
   return rows.filter((row) =>
     (!input.classId || row.classId === Number(input.classId)) &&
-    (input.scope === "ALL" || row.paymentDue) &&
+    (input.scope === "ALL" || row.status === input.scope) &&
     (!keyword || `${row.studentName} ${row.studentNickname ?? ""}`.toLocaleLowerCase("vi").includes(keyword)));
 }
 
-export function tuitionBoardProgress(row: TuitionBoardRow): string {
-  return row.currentProgress ? `${row.currentProgress.attended}/${row.currentProgress.target}` : "—";
+export function tuitionAttendanceLabel(row: MonthlyTuitionRow): { progress: string; absent: string } {
+  return {
+    progress: `${row.attendance.present}/${row.attendance.total}`,
+    absent: `Vắng ${row.attendance.absent}`,
+  };
 }
 
-export function tuitionBoardAmount(row: TuitionBoardRow): number | null {
-  return row.paymentDue ? row.paymentDueAmount : row.currentAmount;
-}
-
-export function tuitionBoardMultipleDue(row: TuitionBoardRow): { label: string; totalAmount: number } | null {
-  if (row.paymentDueCount <= 1) return null;
-  return { label: `${row.paymentDueCount} khoản cần thu`, totalAmount: row.totalDueAmount };
-}
-
-export function tuitionBoardDetailCycleId(row: TuitionBoardRow): number | null {
-  return row.needsReview ? row.needsReviewCycleId : row.currentCycleId;
+export function moveTuitionMonth(
+  current: { year: number; month: number },
+  offset: -1 | 1,
+): { year: number; month: number } {
+  if (!Number.isInteger(current.year) || current.year < 2000 || current.year > 2100 ||
+      !Number.isInteger(current.month) || current.month < 1 || current.month > 12)
+    throw new Error("Invalid tuition year/month");
+  if (current.month === 1 && offset === -1) return { year: current.year - 1, month: 12 };
+  if (current.month === 12 && offset === 1) return { year: current.year + 1, month: 1 };
+  return { year: current.year, month: current.month + offset };
 }

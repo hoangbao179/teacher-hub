@@ -1,17 +1,15 @@
 /* global process, fetch, setTimeout, console, document, localStorage */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
 import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
-import ExcelJS from "exceljs";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const artifactPolicy = createArtifactPolicy(root, "tuition-management", {});
-let artifactRunPassed = false;
+const artifactPolicy = createArtifactPolicy(root, "monthly-tuition", {});
 const artifactDir = artifactPolicy.runDir;
+let artifactRunPassed = false;
 fs.mkdirSync(artifactDir, { recursive: true });
 dotenv.config({ path: path.join(root, "server/.env"), quiet: true });
 const testEnv = {
@@ -22,8 +20,7 @@ const testEnv = {
   DB_USER: process.env.DB_USER ?? "root",
   DB_PASSWORD: process.env.DB_PASSWORD ?? "",
   DB_NAME: `${process.env.DB_NAME ?? "teacher_hub"}_test`,
-  JWT_SECRET: "tuition-e2e-secret-with-at-least-32-characters",
-  REPORT_VIETINBANK_ACCOUNT_NUMBER: "123456789012",
+  JWT_SECRET: "monthly-tuition-e2e-secret-at-least-32-characters",
   BOOTSTRAP_ADMIN_PASSWORD: "tuition-e2e-password-123",
   PORT: "4102",
   CORS_ORIGIN: "http://127.0.0.1:5176",
@@ -32,10 +29,10 @@ const children = [];
 let browser;
 
 function run(command, args, cwd = root) {
-  const useWindowsCommand = ["npm", "npx"].includes(command) && process.platform === "win32";
-  const packageCommand = useWindowsCommand ? `${command}.cmd` : command;
-  const executable = useWindowsCommand ? process.env.ComSpec ?? "cmd.exe" : packageCommand;
-  const commandArgs = useWindowsCommand ? ["/d", "/s", "/c", packageCommand, ...args] : args;
+  const windowsCommand = ["npm", "npx"].includes(command) && process.platform === "win32";
+  const packageCommand = windowsCommand ? `${command}.cmd` : command;
+  const executable = windowsCommand ? process.env.ComSpec ?? "cmd.exe" : packageCommand;
+  const commandArgs = windowsCommand ? ["/d", "/s", "/c", packageCommand, ...args] : args;
   const result = spawnSync(executable, commandArgs, { cwd, env: testEnv, stdio: "inherit", shell: false });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed: ${result.status}`);
@@ -68,14 +65,14 @@ async function noHorizontalScroll(page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (overflow > 1) throw new Error(`Horizontal page overflow: ${overflow}px`);
 }
-async function completeLesson(classId, enrollmentId, date, token) {
-  const draft = await api("/api/lessons", token, "POST", {
+async function completeLesson(classId, enrollmentId, date, status, token) {
+  const lesson = await api("/api/lessons", token, "POST", {
     classId, sessionDate: date, scheduledStartTime: "18:00", scheduledEndTime: "19:30",
     lessonType: "MAKEUP", selectedEnrollmentIds: [enrollmentId],
   });
-  await api(`/api/lessons/${draft.id}/complete`, token, "POST", {
+  await api(`/api/lessons/${lesson.id}/complete`, token, "POST", {
     actualStartTime: "18:05", actualEndTime: "19:35",
-    attendances: [{ enrollmentId, status: "PRESENT" }],
+    attendances: [{ enrollmentId, status }],
   });
 }
 
@@ -106,256 +103,61 @@ try {
 
   const suffix = Date.now();
   const klass = await api("/api/classes", token, "POST", {
-    name: `M4B Tuition ${suffix}`, type: "GROUP", defaultPackagePrice: 2_400_000,
+    name: `Monthly ${suffix}`, type: "GROUP", defaultPackagePrice: 2_400_000,
     defaultDurationMinutes: 90, startDate: "2026-01-01", schedules: [],
   });
-  const dueStudentName = `M4B Due ${suffix}`;
-  const dueStudent = await api("/api/students", token, "POST", { fullName: dueStudentName });
-  const dueEnrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
-    studentId: dueStudent.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
+  const studentName = `Monthly Student ${suffix}`;
+  const student = await api("/api/students", token, "POST", { fullName: studentName });
+  const enrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
+    studentId: student.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
   });
-  for (let day = 1; day <= 10; day += 1)
-    await completeLesson(klass.id, dueEnrollment.id, `2026-07-${String(day).padStart(2, "0")}`, token);
-
-  const incompleteStudentName = `M4B Incomplete ${suffix}`;
-  const incompleteStudent = await api("/api/students", token, "POST", { fullName: incompleteStudentName });
-  const incompleteEnrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
-    studentId: incompleteStudent.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
-  });
-  for (let day = 11; day <= 15; day += 1)
-    await completeLesson(klass.id, incompleteEnrollment.id, `2026-07-${day}`, token);
-  await api(`/api/enrollments/${incompleteEnrollment.id}/end`, token, "POST", { endedAt: "2026-07-20", reason: "E2E" });
-
-  const optionalClass = await api("/api/classes", token, "POST", {
-    name: `M4B Optional ${suffix}`, type: "GROUP", defaultPackagePrice: 0,
-    defaultDurationMinutes: 90, startDate: "2026-01-01", schedules: [],
-  });
-  const optionalStudentName = `M4B Chưa cài ${suffix}`;
-  const optionalStudent = await api("/api/students", token, "POST", { fullName: optionalStudentName });
-  const optionalEnrollment = await api(`/api/classes/${optionalClass.id}/enrollments`, token, "POST", {
-    studentId: optionalStudent.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
-  });
-  for (let day = 1; day <= 10; day += 1)
-    await completeLesson(optionalClass.id, optionalEnrollment.id, `2026-06-${String(day).padStart(2, "0")}`, token);
-  const freeStudentName = `M4B Miễn phí ${suffix}`;
-  const freeStudent = await api("/api/students", token, "POST", { fullName: freeStudentName });
-  await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
+  for (let day = 1; day <= 6; day += 1)
+    await completeLesson(klass.id, enrollment.id, `2026-09-${String(day).padStart(2, "0")}`, "PRESENT", token);
+  for (let day = 7; day <= 8; day += 1)
+    await completeLesson(klass.id, enrollment.id, `2026-09-${String(day).padStart(2, "0")}`, "ABSENT", token);
+  const freeStudent = await api("/api/students", token, "POST", { fullName: `Free ${suffix}` });
+  const freeEnrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
     studentId: freeStudent.id, joinedAt: "2026-01-01", tuitionMode: "FREE",
   });
+  await completeLesson(klass.id, freeEnrollment.id, "2026-09-09", "PRESENT", token);
 
-  const inactiveDueStudentName = `M4B Inactive Due ${suffix}`;
-  const inactiveDueStudent = await api("/api/students", token, "POST", { fullName: inactiveDueStudentName });
-  const inactiveDueEnrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
-    studentId: inactiveDueStudent.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
-  });
-  for (let day = 1; day <= 8; day += 1)
-    await completeLesson(klass.id, inactiveDueEnrollment.id, `2026-05-${String(day).padStart(2, "0")}`, token);
-  await api(`/api/enrollments/${inactiveDueEnrollment.id}/end`, token, "POST", { endedAt: "2026-05-20", reason: "E2E" });
+  const board = await api("/api/tuition/monthly?year=2026&month=9", token);
+  const row = board.rows.find((item) => item.enrollmentId === enrollment.id);
+  if (row?.attendance.present !== 6 || row?.attendance.absent !== 2 || row?.attendance.total !== 8)
+    throw new Error("Monthly board did not aggregate 6 present and 2 absent lessons");
+  if (board.rows.some((item) => item.enrollmentId === freeEnrollment.id))
+    throw new Error("FREE enrollment appeared on the monthly tuition board");
 
-  const multipleDueStudentName = `M4B Multiple Due ${suffix}`;
-  const multipleDueStudent = await api("/api/students", token, "POST", { fullName: multipleDueStudentName });
-  const multipleDueEnrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
-    studentId: multipleDueStudent.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
-  });
-  for (let day = 1; day <= 18; day += 1)
-    await completeLesson(klass.id, multipleDueEnrollment.id, `2026-04-${String(day).padStart(2, "0")}`, token);
-
-  await page.goto("http://127.0.0.1:5176/admin/classes");
-  const optionalClassCard = page.getByTestId("class-card-grid").locator(`a[href="/admin/classes/${optionalClass.id}"]`);
-  await optionalClassCard.getByText("Chưa cài học phí", { exact: true }).waitFor();
-  if (await optionalClassCard.getByText("0đ / 8 buổi", { exact: true }).count())
-    throw new Error("ClassesPage exposed a zero-value tuition package");
-  await optionalClassCard.click();
-  await page.getByText("Giá mặc định: Chưa cài học phí", { exact: true }).waitFor();
-  if (await page.getByText("Giá mặc định: 0đ / 8 buổi", { exact: true }).count())
-    throw new Error("ClassDetailPage exposed a zero-value tuition package");
-
-  const beforeCycles = await api(`/api/tuition-cycles?studentId=${dueStudent.id}&pageSize=20`, token);
-  const due = beforeCycles.find((item) => item.status === "PAYMENT_DUE");
-  const accumulatingBefore = beforeCycles.find((item) => item.status === "ACCUMULATING");
-  if (!due || !accumulatingBefore || accumulatingBefore.itemCount !== 2) throw new Error("Expected due 8/8 and accumulating 2/8 cycles");
   await page.goto("http://127.0.0.1:5176/admin/tuition");
-  await page.getByRole("heading", { name: "Bảng học phí" }).waitFor();
-  const boardData = await api("/api/tuition/board", token);
-  const dueBoardRow = boardData.rows.find((item) => item.enrollmentId === dueEnrollment.id);
-  const optionalBoardRow = boardData.rows.find((item) => item.enrollmentId === optionalEnrollment.id);
-  const freeBoardRow = boardData.rows.find((item) => item.studentId === freeStudent.id);
-  const inactiveDueBoardRow = boardData.rows.find((item) => item.enrollmentId === inactiveDueEnrollment.id);
-  const multipleDueBoardRow = boardData.rows.find((item) => item.enrollmentId === multipleDueEnrollment.id);
-  if (boardData.rows.filter((item) => item.enrollmentId === dueEnrollment.id).length !== 1 ||
-      dueBoardRow?.currentProgress?.attended !== 2 || dueBoardRow?.paymentDueCycleId !== due.id)
-    throw new Error("Board did not aggregate old due + current 2/8 into one enrollment row");
-  if (optionalBoardRow?.tuitionTracking !== "NOT_CONFIGURED" || optionalBoardRow.currentProgress !== null || optionalBoardRow.currentAmount !== null)
-    throw new Error("Optional tuition row was shown as tracked/free or exposed zero values");
-  if (freeBoardRow?.tuitionTracking !== "FREE" || freeBoardRow.currentProgress !== null)
-    throw new Error("Explicit FREE row was not distinct from optional tuition");
-  if (inactiveDueBoardRow?.enrollmentStatus !== "ENDED" || inactiveDueBoardRow.status !== "PAYMENT_DUE")
-    throw new Error("Inactive enrollment with a due cycle was missing from the board");
-  if (multipleDueBoardRow?.paymentDueCount !== 2 || multipleDueBoardRow.totalDueAmount !== 4_800_000 ||
-      multipleDueBoardRow.currentProgress?.attended !== 2)
-    throw new Error("Multiple due cycles were not aggregated into one student row");
+  await page.getByRole("heading", { name: "Học phí theo tháng" }).waitFor();
+  await page.getByLabel("Tìm học sinh").fill(studentName);
+  const card = page.getByTestId("tuition-board-card").filter({ hasText: studentName });
+  await card.getByText("6/8 buổi", { exact: true }).waitFor();
+  await card.getByText("Vắng 2", { exact: true }).waitFor();
+  await noHorizontalScroll(page);
+  await page.getByLabel("Tháng trước").click();
+  await page.getByText("Tháng 8/2026", { exact: true }).waitFor();
+  await page.getByLabel("Tháng sau").click();
+  await page.getByText("Tháng 9/2026", { exact: true }).waitFor();
+  await page.getByLabel("Tìm học sinh").fill(studentName);
+  await card.getByRole("button", { name: "Đã thu" }).click();
+  await page.getByLabel("Số tiền (tùy chọn)").fill("1200000");
+  await page.getByLabel("Ghi chú (tùy chọn)").fill("Thanh toán E2E");
+  const confirm = page.getByTestId("confirm-monthly-payment");
+  await confirm.click({ noWaitAfter: true });
+  await page.getByText(`Đã ghi nhận học phí tháng 9 của ${studentName}.`).waitFor();
+  await card.getByText("Đã thu", { exact: true }).waitFor();
 
-  for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }, { width: 2560, height: 1440 }, { width: 390, height: 844 }]) {
+  const replay = await api(`/api/tuition/monthly/${enrollment.id}/2026/9/paid`, token, "PUT", {
+    amount: 1_200_000, paidAt: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }), note: "Thanh toán E2E",
+  });
+  if (!replay.idempotent) throw new Error("Identical monthly payment replay was not idempotent");
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, { width: 360, height: 800 }]) {
     await page.setViewportSize(viewport);
     await noHorizontalScroll(page);
-    await page.screenshot({ path: path.join(artifactDir, `tuition-board-${viewport.width}.png`), fullPage: false });
+    await page.screenshot({ path: path.join(artifactDir, `monthly-tuition-${viewport.width}.png`), fullPage: false });
   }
-  await page.getByLabel("Tìm học sinh").fill(multipleDueStudentName);
-  const multipleDueCard = page.getByTestId("tuition-board-card").filter({ hasText: multipleDueStudentName });
-  await multipleDueCard.getByText("2 khoản cần thu", { exact: true }).waitFor();
-  await multipleDueCard.getByText("Tổng: 4.800.000đ", { exact: true }).waitFor();
-  await noHorizontalScroll(page);
-  await page.getByLabel("Tìm học sinh").fill(inactiveDueStudentName);
-  const inactiveDueCard = page.getByTestId("tuition-board-card").filter({ hasText: inactiveDueStudentName });
-  await inactiveDueCard.getByText("Đã nghỉ", { exact: false }).waitFor();
-  await inactiveDueCard.getByText("Cần thu", { exact: true }).waitFor();
-  await inactiveDueCard.getByRole("button", { name: "Đã nhận tiền" }).waitFor();
-  await api(`/api/tuition-cycles/${inactiveDueBoardRow.paymentDueCycleId}/mark-paid`, token, "POST", {
-    paidAmount: inactiveDueBoardRow.paymentDueAmount, paidAt: "2026-08-15", paymentMethod: "BANK_TRANSFER",
-  });
-  await page.reload();
-  await page.getByLabel("Tìm học sinh").fill(inactiveDueStudentName);
-  await page.getByText("Không có học sinh phù hợp.", { exact: true }).waitFor();
-  const dashboardBeforePayment = await api("/api/dashboard", token);
-  await page.getByLabel("Tìm học sinh").fill(dueStudentName);
-  const dueCard = page.getByTestId("tuition-board-card").filter({ hasText: dueStudentName });
-  await dueCard.getByText("2/8", { exact: true }).waitFor();
-  await dueCard.getByText("Cần thu", { exact: true }).waitFor();
-  await dueCard.getByRole("button", { name: "Đã nhận tiền" }).click();
-  await page.getByRole("dialog", { name: "Đã nhận tiền" }).waitFor();
-  await page.getByLabel("Phương thức").click();
-  await page.getByRole("option", { name: "Chuyển khoản" }).click();
-  await page.getByLabel("Ghi chú (tùy chọn)").fill("Thanh toán E2E");
-  await page.route("**/api/tuition-cycles/*/mark-paid", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    await route.continue();
-  });
-  const confirm = page.getByTestId("confirm-board-payment");
-  await confirm.click({ noWaitAfter: true });
-  if (!(await confirm.isDisabled())) throw new Error("Duplicate board payment submission was not disabled");
-  await page.getByText(`Đã ghi nhận học phí của ${dueStudentName}.`).waitFor();
-  await dueCard.getByText("Đang học", { exact: true }).waitFor();
-  await dueCard.getByText("2/8", { exact: true }).waitFor();
-
-  await page.goto(`http://127.0.0.1:5176/admin/tuition/${due.id}`);
-  await page.getByTestId("tuition-cycle-item").first().waitFor();
-  const detailItemCount = await page.getByTestId("tuition-cycle-item").count();
-  if (detailItemCount !== 8) throw new Error(`Tuition detail rendered ${detailItemCount} items instead of eight`);
-  await noHorizontalScroll(page);
-  await page.getByText("Đợt học phí đã thu và đang ở trạng thái chỉ đọc.").waitFor();
-  if (await page.getByRole("link", { name: "Đánh dấu đã thu" }).count()) throw new Error("PAID detail still exposed payment action");
-
-  await page.goto(`http://127.0.0.1:5176/admin/students/${dueStudent.id}`);
-  await page.getByRole("heading", { name: dueStudentName }).waitFor();
-  await page.getByText("Công cụ nâng cao", { exact: true }).click();
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Xuất báo cáo Excel" }).click();
-  const download = await downloadPromise;
-  if (!/^Bao-cao-.+-\d{8}\.xlsx$/.test(download.suggestedFilename()))
-    throw new Error(`Downloaded report has an ambiguous filename: ${download.suggestedFilename()}`);
-  const downloadPath = path.join(os.tmpdir(), `teacher-hub-m6b-${suffix}.xlsx`);
-  await download.saveAs(downloadPath);
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(fs.readFileSync(downloadPath));
-  const sheetNames = workbook.worksheets.map((sheet) => sheet.name);
-  if (JSON.stringify(sheetNames) !== JSON.stringify(["Quá trình học tập", "Học phí"]))
-    throw new Error(`Unexpected workbook sheets: ${sheetNames.join(", ")}`);
-  if (workbook.getWorksheet("Quá trình học tập").rowCount !== 11 || workbook.getWorksheet("Học phí").rowCount !== 11)
-    throw new Error("Downloaded workbook row counts do not match canonical data");
-  const tuitionSheet = workbook.getWorksheet("Học phí");
-  if (tuitionSheet.columnCount !== 6 || tuitionSheet.getCell("A9").master.address !== "A2" ||
-      tuitionSheet.getCell("B9").master.address !== "B2" || tuitionSheet.getCell("C9").master.address !== "C2" ||
-      tuitionSheet.getCell("F9").master.address !== "F2" || tuitionSheet.getCell("F2").value !== "123456789012")
-    throw new Error("Downloaded workbook did not keep the compact merged tuition layout");
-  const downloadSuccess = page.getByText(/Đã tải báo cáo Excel:/);
-  await downloadSuccess.waitFor();
-  await downloadSuccess.waitFor({ state: "hidden", timeout: 3000 });
-
-  const paidDetail = await api(`/api/tuition-cycles/${due.id}`, token);
-  const dashboardAfterPayment = await api("/api/dashboard", token);
-  if (dashboardAfterPayment.paymentDueCount !== dashboardBeforePayment.paymentDueCount - 1 ||
-      dashboardAfterPayment.totalUnpaidAmount !== dashboardBeforePayment.totalUnpaidAmount - due.packagePriceSnapshot)
-    throw new Error("Dashboard tuition aggregate did not refresh after payment");
-  await page.goto("http://127.0.0.1:5176/admin");
-  await page.getByTestId("dashboard-tuition-card").getByText(`${dashboardAfterPayment.paymentDueCount} khoản học phí cần thu`).waitFor();
-  const replay = await api(`/api/tuition-cycles/${due.id}/mark-paid`, token, "POST", {
-    paidAmount: due.packagePriceSnapshot,
-    paidAt: paidDetail.paidAt,
-    paymentMethod: "BANK_TRANSFER",
-    paymentNote: "Thanh toán E2E",
-  });
-  if (!replay.idempotent) throw new Error("Identical payment replay was not idempotent");
-  const afterCycles = await api(`/api/tuition-cycles?studentId=${dueStudent.id}&pageSize=20`, token);
-  const accumulatingAfter = afterCycles.find((item) => item.status === "ACCUMULATING");
-  if (JSON.stringify(accumulatingAfter) !== JSON.stringify(accumulatingBefore)) throw new Error("Next accumulating cycle changed after payment");
-
-  const incompleteCycles = await api(`/api/tuition-cycles?studentId=${incompleteStudent.id}&status=INCOMPLETE&pageSize=20`, token);
-  await page.goto(`http://127.0.0.1:5176/admin/tuition/${incompleteCycles[0].id}`);
-  await page.getByRole("button", { name: "Chốt học phí" }).click();
-  await page.getByLabel("Số tiền thực thu").fill("1200000");
-  await page.getByLabel("Lý do").fill("Chốt khi ngừng học");
-  await page.getByRole("button", { name: "Xác nhận" }).click();
-  await page.getByText("Đã chốt 1.200.000đ").waitFor();
-
-  await page.goto("http://127.0.0.1:5176/admin/tuition/history");
-  await page.getByRole("heading", { name: "Lịch sử học phí" }).waitFor();
-  await page.getByRole("button", { name: /^Lọc/ }).click();
-  await page.getByTestId("tuition-status-filter").click();
-  await page.getByRole("option", { name: "Đang học" }).click();
-  await page.getByRole("button", { name: "Áp dụng" }).click();
-  await page.getByLabel("Tìm học sinh").fill(dueStudentName);
-  await page.getByLabel("Tìm học sinh").press("Enter");
-  await page.getByText("2/8", { exact: true }).waitFor();
-  await page.getByRole("button", { name: /^Lọc/ }).click();
-  await page.getByTestId("tuition-status-filter").click();
-  await page.getByRole("option", { name: "Dở dang" }).click();
-  await page.getByRole("button", { name: "Áp dụng" }).click();
-  await page.getByLabel("Tìm học sinh").fill(incompleteStudentName);
-  await page.getByLabel("Tìm học sinh").press("Enter");
-  await page.getByTestId("tuition-cycle-card").filter({ hasText: incompleteStudentName }).waitFor();
-  await page.getByLabel("Tìm học sinh").fill("Không có học sinh này");
-  await page.getByLabel("Tìm học sinh").press("Enter");
-  await page.getByText("Không có đợt học phí phù hợp.").waitFor();
-  await page.setViewportSize({ width: 360, height: 800 });
-  await noHorizontalScroll(page);
-
-  await page.goto(`http://127.0.0.1:5176/admin/students/${dueStudent.id}`);
-  await page.getByText("Công cụ nâng cao", { exact: true }).click();
-  await page.getByRole("button", { name: "Thu học phí trước" }).click();
-  await page.getByLabel("Phương thức").click(); await page.getByRole("option", { name: "Chuyển khoản" }).click();
-  await page.getByRole("button", { name: "Xác nhận thu trước" }).click();
-  await page.getByText("Đã ghi nhận thu trước", { exact: false }).waitFor();
-  const targetClass = await api("/api/classes", token, "POST", {
-    name: `M4B Transfer ${suffix}`, type: "ONE_TO_ONE", defaultPackagePrice: 2_400_000,
-    defaultDurationMinutes: 90, startDate: "2026-01-01", schedules: [],
-  });
-  await page.getByRole("button", { name: "Chuyển lớp" }).click();
-  await page.getByLabel("Lớp mới").click(); await page.getByRole("option", { name: `M4B Transfer ${suffix}` }).click();
-  await page.getByLabel("Lý do chuyển").fill("Cần học 1-1");
-  await page.getByLabel("Khoản thu trước").click(); await page.getByRole("option", { name: "Chuyển sang lớp mới" }).click();
-  await page.getByRole("button", { name: "Xác nhận chuyển lớp" }).click();
-  await page.getByText("Đã chuyển lớp", { exact: false }).waitFor();
-  const transferredStudent = await api(`/api/students/${dueStudent.id}`, token);
-  if (transferredStudent.classId !== targetClass.id || transferredStudent.currentProgress !== 2)
-    throw new Error("Transfer UI did not preserve the same-price student cycle at 2/8");
-  await page.getByRole("button", { name: "Ngừng học" }).click();
-  const endDialog = page.getByRole("dialog", { name: "Ngừng học" });
-  await endDialog.waitFor();
-  await endDialog.getByLabel("Lý do", { exact: false }).fill("Kết thúc sau chuyển lớp");
-  await endDialog.getByLabel("Ghi chú (tùy chọn)").fill("Kiểm tra dialog ngừng học V15");
-  await endDialog.getByLabel("Khoản đã thu trước").click();
-  await page.getByRole("option", { name: "Hoàn tiền" }).click();
-  await page.getByRole("button", { name: "Xác nhận ngừng học" }).click();
-  await page.getByText("Đã ngừng học", { exact: false }).waitFor();
-  const endedStudent = await api(`/api/students/${dueStudent.id}`, token);
-  if (endedStudent.enrollmentId !== null) throw new Error("End-enrollment dialog left an active or paused enrollment");
-  const refunded = await api(`/api/enrollments/${transferredStudent.enrollmentId}/tuition-receipts`, token);
-  if (refunded[0]?.status !== "REFUNDED") throw new Error("End-enrollment dialog did not refund the advance receipt");
-  for (const width of [360, 390, 430]) {
-    await page.setViewportSize({ width, height: 844 });
-    await noHorizontalScroll(page);
-  }
-  console.log(`Playwright tuition E2E passed; review artifacts: ${artifactDir}`);
+  console.log(`Playwright monthly tuition E2E passed; review artifacts: ${artifactDir}`);
   artifactRunPassed = true;
 } finally {
   await finalizePlaywrightArtifacts(browser, artifactPolicy, artifactRunPassed);

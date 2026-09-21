@@ -1,51 +1,46 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filterTuitionBoardRows, tuitionBoardAmount, tuitionBoardDetailCycleId, tuitionBoardMultipleDue, tuitionBoardProgress } from "../src/features/tuition-board.ts";
+import {
+  filterTuitionBoardRows,
+  moveTuitionMonth,
+  tuitionAttendanceLabel,
+} from "../src/features/tuition-board.ts";
 
 function row(overrides = {}) {
   return {
-    studentId: 1, studentName: "Ken", studentNickname: null, enrollmentId: 10, enrollmentStatus: "ACTIVE",
-    classId: 2, className: "Lớp 3", tuitionMode: "CLASS_DEFAULT", tuitionTracking: "TRACKED",
-    status: "LEARNING", currentProgress: { attended: 6, target: 8 }, currentAmount: 1_068_750,
-    currentCycleId: 20, paymentDue: false, paymentDueCycleId: null, paymentDueAmount: null,
-    paymentDueCount: 0, totalDueAmount: 0, lastPaidAt: null, hasAdvancePayment: false,
-    needsReview: false, needsReviewCycleId: null, ...overrides,
+    paymentId: null, enrollmentId: 10, studentId: 1, studentName: "Ken",
+    studentNickname: null, classId: 2, className: "Lớp 3", year: 2026, month: 9,
+    attendance: { present: 6, absent: 2, total: 8 }, status: "UNPAID",
+    amount: null, paidAt: null, note: null, ...overrides,
   };
 }
 
-test("a due cycle takes the displayed amount while current progress stays on the new cycle", () => {
-  const item = row({ currentProgress: { attended: 2, target: 8 }, paymentDue: true,
-    paymentDueCycleId: 19, paymentDueAmount: 1_068_750, status: "PAYMENT_DUE" });
-  assert.equal(tuitionBoardProgress(item), "2/8");
-  assert.equal(tuitionBoardAmount(item), 1_068_750);
+test("attendance is displayed as present over total with a separate absent count", () => {
+  assert.deepEqual(tuitionAttendanceLabel(row()), { progress: "6/8", absent: "Vắng 2" });
+  assert.deepEqual(
+    tuitionAttendanceLabel(row({ attendance: { present: 7, absent: 2, total: 9 } })),
+    { progress: "7/9", absent: "Vắng 2" },
+  );
 });
 
-test("not configured and free rows display neither zero progress nor zero tuition", () => {
-  for (const item of [
-    row({ tuitionTracking: "NOT_CONFIGURED", status: "NOT_CONFIGURED", currentProgress: null, currentAmount: null }),
-    row({ tuitionMode: "FREE", tuitionTracking: "FREE", status: "FREE", currentProgress: null, currentAmount: null }),
-  ]) {
-    assert.equal(tuitionBoardProgress(item), "—");
-    assert.equal(tuitionBoardAmount(item), null);
-  }
+test("month navigation crosses year boundaries without normalizing invalid input", () => {
+  assert.deepEqual(moveTuitionMonth({ year: 2026, month: 1 }, -1), { year: 2025, month: 12 });
+  assert.deepEqual(moveTuitionMonth({ year: 2026, month: 12 }, 1), { year: 2027, month: 1 });
+  assert.throws(() => moveTuitionMonth({ year: 2026, month: 13 }, 1), /month/i);
 });
 
-test("simple board filters preserve the server ordering", () => {
-  const rows = [row({ studentName: "An", paymentDue: true }), row({ studentId: 2, enrollmentId: 11, studentName: "Bình", classId: 3 })];
+test("board filters preserve server ordering and support paid status", () => {
+  const rows = [
+    row({ studentName: "An", status: "PAID", paymentId: 5, paidAt: "2026-09-20" }),
+    row({ enrollmentId: 11, studentId: 2, studentName: "Bình", classId: 3 }),
+  ];
   assert.deepEqual(filterTuitionBoardRows(rows, { search: "an", classId: "", scope: "ALL" }).map((item) => item.studentName), ["An"]);
-  assert.deepEqual(filterTuitionBoardRows(rows, { search: "", classId: "", scope: "PAYMENT_DUE" }).map((item) => item.studentName), ["An"]);
+  assert.deepEqual(filterTuitionBoardRows(rows, { search: "", classId: "", scope: "PAID" }).map((item) => item.studentName), ["An"]);
+  assert.deepEqual(filterTuitionBoardRows(rows, { search: "", classId: "3", scope: "UNPAID" }).map((item) => item.studentName), ["Bình"]);
 });
 
-test("multiple due cycles expose the student-level total while payment keeps the oldest cycle", () => {
-  const item = row({ paymentDue: true, paymentDueCycleId: 18, paymentDueAmount: 1_200_000,
-    paymentDueCount: 2, totalDueAmount: 2_400_000, status: "PAYMENT_DUE" });
-  assert.deepEqual(tuitionBoardMultipleDue(item), { label: "2 khoản cần thu", totalAmount: 2_400_000 });
-  assert.equal(item.paymentDueCycleId, 18);
-});
-
-test("review action targets the oldest unresolved cycle instead of the accumulating cycle", () => {
-  const item = row({ currentCycleId: 22, currentProgress: { attended: 3, target: 8 },
-    needsReview: true, needsReviewCycleId: 11, status: "NEEDS_REVIEW" });
-  assert.equal(tuitionBoardDetailCycleId(item), 11);
-  assert.equal(item.currentCycleId, 22);
+test("amount stays optional after a month is marked paid", () => {
+  const paid = row({ status: "PAID", amount: null, paidAt: "2026-09-20" });
+  assert.equal(paid.amount, null);
+  assert.equal(paid.status, "PAID");
 });

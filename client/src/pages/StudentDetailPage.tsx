@@ -28,7 +28,6 @@ import { ContentCopy, Download, ExpandMore, Launch, UploadFile } from "@mui/icon
 import { api } from "../api/client";
 import { archiveStudentGoogleSheet, createStudentGoogleSheet, downloadStudentReport, endEnrollment as endEnrollmentApi,
   getStudentGoogleSheet, regenerateStudentGoogleSheet, resyncStudentGoogleSheet, retryStudentGoogleSheet, transferEnrollment } from "../api/students";
-import { createAdvanceReceipt } from "../api/tuition";
 import { LoadingState } from "../components/LoadingState";
 import { CurrencyDisplay, PageHeader, ProgressCount } from "../components/UiKit";
 import { todayInHoChiMinh } from "../utils/date";
@@ -60,8 +59,6 @@ export function StudentDetailPage() {
   const [closureAmount, setClosureAmount] = useState("0");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [receiptAction, setReceiptAction] = useState<"NONE" | "REFUND" | "APPLY_TO_OLD_SETTLEMENT">("NONE");
-  const [advanceOpen, setAdvanceOpen] = useState(false);
-  const [receivedAt, setReceivedAt] = useState(today);
   const [transferOpen, setTransferOpen] = useState(false);
   const [targetClassId, setTargetClassId] = useState(0);
   const [transferDate, setTransferDate] = useState(today);
@@ -112,10 +109,6 @@ export function StudentDetailPage() {
       incompleteCycleAction: incompleteAction(endReason, endNote), advanceReceiptAction: { type: receiptAction } });
     setEndOpen(false); await load(); setSuccess("Đã ngừng học và giữ nguyên toàn bộ lịch sử.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể kết thúc ghi danh."); } finally { setBusy(false); } };
-  const receiveAdvance = async () => { if (!item?.enrollmentId || !item.effectivePackagePrice) return; setBusy(true); setError(""); try {
-    await createAdvanceReceipt(item.enrollmentId, { amount: item.effectivePackagePrice, receivedAt, paymentMethod });
-    setAdvanceOpen(false); await load(); setSuccess("Đã ghi nhận thu trước; tiến độ vẫn tích lũy đến đủ 8 buổi.");
-  } catch (e) { setError(e instanceof Error ? e.message : "Không thể thu trước."); } finally { setBusy(false); } };
   const transfer = async () => { if (!item?.enrollmentId) return; setBusy(true); setError(""); try {
     await transferEnrollment(item.enrollmentId, { targetClassId, effectiveDate: transferDate, tuitionMode,
       customPackagePrice: tuitionMode === "CUSTOM" ? Number(customPrice) : undefined,
@@ -241,7 +234,6 @@ export function StudentDetailPage() {
             {item!.enrollmentStatus === "ACTIVE" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("pause")}>Tạm dừng ghi danh</Button>}
             {item!.enrollmentStatus === "PAUSED" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("resume")}>Mở lại ghi danh</Button>}
             <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setTuitionOpen(true)}>Đổi chế độ học phí</Button>
-            {item!.tuitionMode !== "FREE" && <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED" || Boolean(item!.advanceReceipt)} onClick={() => setAdvanceOpen(true)}>Thu học phí trước</Button>}
             <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => void openTransfer()}>Chuyển lớp</Button>
             <Button color="error" variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setEndOpen(true)}>Ngừng học</Button>
           </Stack>
@@ -258,11 +250,6 @@ export function StudentDetailPage() {
         <TextField required type="date" label="Ngày hiệu lực" value={statusEffectiveDate} onChange={(e) => setStatusEffectiveDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField label="Lý do (tùy chọn)" value={statusReason} onChange={(e) => setStatusReason(e.target.value)} />
       </Stack></DialogContent><DialogActions><Button onClick={() => setStatusActionName(null)}>Hủy</Button><Button variant="contained" disabled={busy || !statusEffectiveDate} onClick={() => void changeEnrollmentStatus()}>{busy ? "Đang lưu…" : "Xác nhận"}</Button></DialogActions></Dialog>
-      <Dialog open={advanceOpen} onClose={() => !busy && setAdvanceOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Thu học phí trước</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
-        <Alert severity="info">Thu đúng một gói <CurrencyDisplay value={item!.effectivePackagePrice} />. Chu kỳ chỉ tự chuyển đã thu khi đủ 8 buổi.</Alert>
-        <TextField type="date" label="Ngày nhận" value={receivedAt} onChange={(e) => setReceivedAt(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField select label="Phương thức" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}><MenuItem value="CASH">Tiền mặt</MenuItem><MenuItem value="BANK_TRANSFER">Chuyển khoản</MenuItem></TextField>
-      </Stack></DialogContent><DialogActions><Button onClick={() => setAdvanceOpen(false)}>Hủy</Button><Button variant="contained" disabled={busy} onClick={() => void receiveAdvance()}>Xác nhận thu trước</Button></DialogActions></Dialog>
       <Dialog open={endOpen} onClose={() => !busy && setEndOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Ngừng học</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         <TextField required type="date" label="Ngày kết thúc" value={endDate} onChange={(e) => setEndDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} /><TextField required label="Lý do" value={endReason} onChange={(e) => setEndReason(e.target.value)} /><TextField multiline minRows={2} label="Ghi chú (tùy chọn)" value={endNote} onChange={(e) => setEndNote(e.target.value)} />
         {item!.incompleteCycle && <Alert severity="info">Đợt hiện tại: {item!.incompleteCycle.itemCount}/8 buổi</Alert>}
