@@ -28,8 +28,6 @@ import { StudentService } from "./services/student.service";
 import { TuitionService } from "./services/tuition.service";
 import { StudentReportService } from "./services/student-report.service";
 import { EnrollmentService } from "./services/enrollment.service";
-import { LegacyImportController } from "./controllers/legacy-import.controller";
-import { LegacyImportService } from "./services/legacy-import.service";
 import { StudentGoogleSheetController } from "./controllers/student-google-sheet.controller";
 import { StudentGoogleSheetService } from "./services/student-google-sheet.service";
 import { StudentGoogleSheetRepository } from "./repositories/student-google-sheet.repository";
@@ -88,7 +86,6 @@ const studentReportService = new StudentReportService(
   studentReports,
   config.studentReport.vietinBankAccountNumber,
 );
-const legacyImportService = new LegacyImportService(studentService, classService);
 const vocabularyService = new VocabularyService(vocabulary);
 const vocabularyImageProviderList = [
   ...(config.vocabularyMedia.arasaacEnabled
@@ -157,7 +154,6 @@ export const controllers = {
   dashboard: new DashboardController(dashboardService),
   enrollments: new EnrollmentController(enrollmentService),
   studentReports: new StudentReportController(studentReportService),
-  legacyImports: new LegacyImportController(legacyImportService),
   studentGoogleSheets: new StudentGoogleSheetController(studentGoogleSheetService),
   vocabulary: new VocabularyController(vocabularyService),
   vocabularyMedia: new VocabularyMediaController(vocabularyMediaService),

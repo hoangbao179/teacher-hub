@@ -56,7 +56,7 @@ export class StudentGoogleSheetService {
     const provider = this.requireProvider();
     if (input.forceRegenerate) throw new AppError(400, "VALIDATION_ERROR", "Hãy dùng thao tác tạo lại nội dung.");
     const student = await this.students.detail(studentId);
-    const claim = await this.repository.claim({ studentId, legacyImportId: input.legacyImportId,
+    const claim = await this.repository.claim({ studentId,
       fileName: safeName(student.fullName, student.className), rootFolderId: this.settings.rootFolderId,
       templateVersion: this.settings.templateVersion }, retry);
     if (claim.sheet.status === "ACTIVE") return { sheet: claim.sheet, reused: true };

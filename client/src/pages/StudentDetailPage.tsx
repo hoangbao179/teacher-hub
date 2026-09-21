@@ -24,7 +24,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import type { ClassListItem, IncompleteCycleAction, PaymentMethod, StudentDetail, StudentGoogleSheetState, TuitionMode } from "@teacher/shared";
-import { ContentCopy, Download, ExpandMore, Launch, UploadFile } from "@mui/icons-material";
+import { ContentCopy, Download, ExpandMore, Launch } from "@mui/icons-material";
 import { api } from "../api/client";
 import { archiveStudentGoogleSheet, createStudentGoogleSheet, downloadStudentReport, endEnrollment as endEnrollmentApi,
   getStudentGoogleSheet, regenerateStudentGoogleSheet, resyncStudentGoogleSheet, retryStudentGoogleSheet, transferEnrollment } from "../api/students";
@@ -229,7 +229,6 @@ export function StudentDetailPage() {
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
             <Button component={Link} to={`/admin/students/${item!.id}/edit`} variant="outlined">Sửa thông tin</Button>
             <Button startIcon={<Download />} variant="outlined" disabled={busy} onClick={exportReport}>{busy ? "Đang tạo báo cáo…" : "Xuất báo cáo Excel"}</Button>
-            <Button component={Link} to={`/admin/students/${item!.id}/legacy-import`} startIcon={<UploadFile />} variant="outlined">Import lịch sử</Button>
             {item!.enrollmentStatus === "ACTIVE" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("pause")}>Tạm dừng ghi danh</Button>}
             {item!.enrollmentStatus === "PAUSED" && <Button disabled={busy} variant="outlined" onClick={() => setStatusActionName("resume")}>Mở lại ghi danh</Button>}
             <Button variant="outlined" disabled={busy || !item!.enrollmentId || item!.enrollmentStatus === "ENDED"} onClick={() => setTuitionOpen(true)}>Đổi chế độ học phí</Button>

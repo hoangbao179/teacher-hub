@@ -6,8 +6,8 @@ import type { StudentGoogleSheetSnapshot } from "../integrations/google/google-i
 import { vocabularyMastery } from "../domain/vocabulary-mastery";
 import { AuditRepository } from "./audit.repository";
 
-interface ClaimInput { studentId: number; legacyImportId?: number; fileName: string; rootFolderId: string; templateVersion: string }
-export interface SheetClaim { sheet: StudentGoogleSheetInfo; owner: boolean; sourceImportSha256: string | null }
+interface ClaimInput { studentId: number; fileName: string; rootFolderId: string; templateVersion: string }
+export interface SheetClaim { sheet: StudentGoogleSheetInfo; owner: boolean }
 
 function dateTime(value: unknown): string | null { return value == null ? null : String(value).replace(" ", "T") + (String(value).includes("Z") ? "" : "+07:00"); }
 function mapSheet(row: RowDataPacket): StudentGoogleSheetInfo {
@@ -17,7 +17,7 @@ function mapSheet(row: RowDataPacket): StudentGoogleSheetInfo {
     generationStartedAt != null &&
     Date.now() - new Date(generationStartedAt).getTime() >= 10 * 60_000
   );
-  return { id: Number(row.id), studentId: Number(row.student_id), legacyImportId: row.legacy_import_id == null ? null : Number(row.legacy_import_id),
+  return { id: Number(row.id), studentId: Number(row.student_id),
     fileName: String(row.file_name), webViewUrl: row.web_view_url == null ? null : String(row.web_view_url),
     templateVersion: String(row.template_version), status: row.status, sharingStatus: row.sharing_status,
     lastGeneratedAt: dateTime(row.last_generated_at), lastSyncedAt: dateTime(row.last_synced_at),
@@ -50,14 +50,6 @@ export class StudentGoogleSheetRepository {
       await connection.beginTransaction();
       const [students] = await connection.query<RowDataPacket[]>("SELECT id FROM students WHERE id=? FOR UPDATE", [input.studentId]);
       if (!students[0]) throw new AppError(404, "STUDENT_NOT_FOUND", "Không tìm thấy học sinh.");
-      let sha: string | null = null;
-      if (input.legacyImportId != null) {
-        const [imports] = await connection.query<RowDataPacket[]>(
-          "SELECT sha256 FROM legacy_imports WHERE id=? AND student_id=? AND status='APPLIED' FOR UPDATE",
-          [input.legacyImportId, input.studentId]);
-        if (!imports[0]) throw new AppError(400, "LEGACY_IMPORT_INVALID", "Bản import không thuộc học sinh hoặc chưa Apply.");
-        sha = String(imports[0].sha256);
-      }
       const [existingRows] = await connection.query<RowDataPacket[]>(
         `SELECT *,generation_started_at <= DATE_SUB(NOW(),INTERVAL 10 MINUTE) AS generation_is_stale
          FROM student_google_sheets WHERE student_id=? AND status IN ('ACTIVE','CREATING')
@@ -68,21 +60,17 @@ export class StudentGoogleSheetRepository {
           Number(existing.generation_is_stale) === 1;
         if (!staleCreating) {
           await connection.commit();
-          return { sheet: mapSheet(existing), owner: false, sourceImportSha256: existing.source_import_sha256 ?? null };
+          return { sheet: mapSheet(existing), owner: false };
         }
         await connection.execute(
-          `UPDATE student_google_sheets
-           SET generation_started_at=NOW(),last_sync_error=NULL,
-             legacy_import_id=COALESCE(?,legacy_import_id),
-             source_import_sha256=COALESCE(?,source_import_sha256)
-           WHERE id=?`,
-          [input.legacyImportId ?? null, sha, existing.id],
+          "UPDATE student_google_sheets SET generation_started_at=NOW(),last_sync_error=NULL WHERE id=?",
+          [existing.id],
         );
         const [reclaimed] = await connection.query<RowDataPacket[]>(
           "SELECT * FROM student_google_sheets WHERE id=?", [existing.id],
         );
         await connection.commit();
-        return { sheet: mapSheet(reclaimed[0]), owner: true, sourceImportSha256: reclaimed[0].source_import_sha256 ?? null };
+        return { sheet: mapSheet(reclaimed[0]), owner: true };
       }
       const [failedRows] = retry ? await connection.query<RowDataPacket[]>(
         "SELECT * FROM student_google_sheets WHERE student_id=? AND status='GENERATION_ERROR' ORDER BY id DESC LIMIT 1 FOR UPDATE", [input.studentId]) : [[]];
@@ -90,19 +78,18 @@ export class StudentGoogleSheetRepository {
       if (retry && failedRows[0]) {
         id = Number(failedRows[0].id);
         await connection.execute(
-          `UPDATE student_google_sheets SET status='CREATING',generation_started_at=NOW(),last_sync_error=NULL,legacy_import_id=COALESCE(?,legacy_import_id),
-           source_import_sha256=COALESCE(?,source_import_sha256) WHERE id=?`, [input.legacyImportId ?? null, sha, id]);
+          "UPDATE student_google_sheets SET status='CREATING',generation_started_at=NOW(),last_sync_error=NULL WHERE id=?", [id]);
       } else {
         const [created] = await connection.execute<ResultSetHeader>(
           `INSERT INTO student_google_sheets
-            (student_id,legacy_import_id,file_name,root_folder_id,template_version,status,source_import_sha256,generation_started_at)
-           VALUES (?,?,?,?,?,'CREATING',?,NOW())`, [input.studentId, input.legacyImportId ?? null, input.fileName,
-            input.rootFolderId, input.templateVersion, sha]);
+            (student_id,file_name,root_folder_id,template_version,status,generation_started_at)
+           VALUES (?,?,?,?,'CREATING',NOW())`, [input.studentId, input.fileName,
+            input.rootFolderId, input.templateVersion]);
         id = created.insertId;
       }
       const [claimed] = await connection.query<RowDataPacket[]>("SELECT * FROM student_google_sheets WHERE id=?", [id]);
       await connection.commit();
-      return { sheet: mapSheet(claimed[0]), owner: true, sourceImportSha256: sha };
+      return { sheet: mapSheet(claimed[0]), owner: true };
     } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
   }
 

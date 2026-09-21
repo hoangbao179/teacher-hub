@@ -4,7 +4,6 @@ export type StudentGoogleSheetSharingStatus = "RESTRICTED" | "MANUALLY_SHARED";
 export interface StudentGoogleSheetInfo {
   id: number;
   studentId: number;
-  legacyImportId: number | null;
   fileName: string;
   webViewUrl: string | null;
   templateVersion: string;
@@ -33,7 +32,6 @@ export interface StudentGoogleSheetState {
 }
 
 export interface CreateStudentGoogleSheetRequest {
-  legacyImportId?: number;
   forceRegenerate?: boolean;
 }
 

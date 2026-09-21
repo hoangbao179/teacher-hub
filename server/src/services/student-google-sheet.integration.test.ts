@@ -94,14 +94,11 @@ integration("hardening migration narrows attendance enum and adds generation rec
   assert.ok(columns.some((row) => row.COLUMN_NAME === "generation_started_at"));
 });
 
-integration("create is concurrent-safe, linked to import, stable across enrollment and archive allows a new record", async () => {
+integration("create is concurrent-safe, stable across enrollment and archive allows a new record", async () => {
   const data = await fixture();
-  const [legacy] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO legacy_imports(student_id,original_filename,file_size,sha256,status,total_row_count,applied_by_user_id,applied_at)
-     VALUES (?,'history.xlsx',100,?,'APPLIED',1,?,NOW())`, [data.studentId, "a".repeat(64), data.actorId]);
   const [first, second] = await Promise.all([
-    data.service.create(data.studentId, { legacyImportId: legacy.insertId }, data.actorId),
-    data.service.create(data.studentId, { legacyImportId: legacy.insertId }, data.actorId),
+    data.service.create(data.studentId, {}, data.actorId),
+    data.service.create(data.studentId, {}, data.actorId),
   ]);
   const active = first.sheet.status === "ACTIVE" ? first : await data.service.retry(data.studentId, data.actorId);
   assert.equal(active.sheet.status, "ACTIVE");

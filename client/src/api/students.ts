@@ -1,6 +1,6 @@
 import { apiDownload } from "./client";
 import { api } from "./client";
-import type { CreateStudentGoogleSheetRequest, EndEnrollmentRequest, LegacyImportApplyResult, LegacyImportPreview, LegacyImportRowDecision, StudentGoogleSheetMutationResult, StudentGoogleSheetResyncResult, StudentGoogleSheetState, TransferEnrollmentRequest, TransferEnrollmentResult } from "@teacher/shared";
+import type { CreateStudentGoogleSheetRequest, EndEnrollmentRequest, StudentGoogleSheetMutationResult, StudentGoogleSheetResyncResult, StudentGoogleSheetState, TransferEnrollmentRequest, TransferEnrollmentResult } from "@teacher/shared";
 
 function fallbackStudentReportFilename(studentName: string, reportDate: string): string {
   const safeName = studentName.trim().replace(/[<>:"/\\|?*]+/g, "-").replace(/\s+/g, "-") || "hoc-sinh";
@@ -32,25 +32,6 @@ export function endEnrollment(enrollmentId: number, input: EndEnrollmentRequest)
 
 export function transferEnrollment(enrollmentId: number, input: TransferEnrollmentRequest): Promise<TransferEnrollmentResult> {
   return api<TransferEnrollmentResult>(`/api/enrollments/${enrollmentId}/transfer`, { method: "POST", body: JSON.stringify(input) });
-}
-
-export function previewLegacyWorkbook(studentId: number, file: File): Promise<LegacyImportPreview> {
-  const body = new FormData();
-  body.append("file", file);
-  return api<LegacyImportPreview>(`/api/students/${studentId}/legacy-imports/preview`, { method: "POST", body });
-}
-
-export function applyLegacyWorkbook(
-  studentId: number,
-  file: File,
-  previewSha256: string,
-  decisions: LegacyImportRowDecision[],
-): Promise<LegacyImportApplyResult> {
-  const body = new FormData();
-  body.append("file", file);
-  body.append("previewSha256", previewSha256);
-  body.append("decisions", JSON.stringify(decisions));
-  return api<LegacyImportApplyResult>(`/api/students/${studentId}/legacy-imports/apply`, { method: "POST", body });
 }
 
 export function getStudentGoogleSheet(studentId: number): Promise<StudentGoogleSheetState> {
