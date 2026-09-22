@@ -27,12 +27,7 @@ export class EnrollmentService {
   async end(id: number, input: EndEnrollmentRequest, actorUserId?: number) {
     this.validateId(id);
     this.validateDate(input.endedAt, "Ngày kết thúc");
-    this.validateClosure(input.incompleteCycleAction, input.advanceReceiptAction, false);
-    const hasFinancialChoice = input.incompleteCycleAction != null || input.advanceReceiptAction != null || input.note != null;
-    const result = hasFinancialChoice
-      ? await this.repository.setStatus(id, "ENDED", input.endedAt, input.endedAt, input.reason, actorUserId, input)
-      : await this.repository.setStatus(id, "ENDED", input.endedAt, input.endedAt, input.reason, actorUserId);
-    this.unwrap(result);
+    this.unwrap(await this.repository.setStatus(id, "ENDED", input.endedAt, input.endedAt, input.reason, actorUserId));
   }
 
   async transfer(id: number, input: TransferEnrollmentRequest, actorUserId?: number) {
@@ -41,7 +36,6 @@ export class EnrollmentService {
     this.validateTuition(input.tuitionMode, input.customPackagePrice);
     if (!input.reason?.trim() || input.reason.trim().length > 255)
       throw new AppError(400, "VALIDATION_ERROR", "Lý do chuyển lớp là bắt buộc và tối đa 255 ký tự.");
-    this.validateClosure(input.incompleteCycleAction, input.advanceReceiptAction, true);
     try { return await this.repository.transfer(id, input, actorUserId); }
     catch (error) {
       const code = (error as Error).message;
@@ -55,7 +49,6 @@ export class EnrollmentService {
         ONE_TO_ONE_LIMIT: [409, "ONE_TO_ONE_LIMIT", "Lớp 1 kèm 1 đã có học sinh."],
         TRANSFER_SAME_CLASS: [409, "TRANSFER_SAME_CLASS", "Lớp đích phải khác lớp hiện tại."],
         INVALID_TRANSFER_DATE: [400, "INVALID_TRANSFER_DATE", "Ngày chuyển phải sau ngày bắt đầu ghi danh cũ."],
-        INCOMPLETE_CYCLE_NOT_FOUND: [409, "INCOMPLETE_CYCLE_NOT_FOUND", "Không có đợt dở dang để xử lý."],
       };
       if (mapped[code]) throw new AppError(...mapped[code]);
       throw error;
@@ -82,17 +75,6 @@ export class EnrollmentService {
   private validateIdentity(classId: number, studentId: number) {
     this.validateId(classId);
     this.validateId(studentId);
-  }
-  private validateClosure(incomplete?: EndEnrollmentRequest["incompleteCycleAction"], receipt?: { type: string }, transferring = false) {
-    if (incomplete?.type === "SETTLE" && (!Number.isInteger(incomplete.amount) || incomplete.amount < 0 ||
-        !["CASH", "BANK_TRANSFER"].includes(incomplete.method)))
-      throw new AppError(400, "VALIDATION_ERROR", "Thông tin chốt đợt dở dang không hợp lệ.");
-    if (incomplete?.type === "WAIVE" && !incomplete.reason?.trim())
-      throw new AppError(400, "VALIDATION_ERROR", "Cần nhập lý do miễn đợt dở dang.");
-    if (receipt && !["NONE", "REFUND", "APPLY_TO_OLD_SETTLEMENT", "TRANSFER_TO_NEW_ENROLLMENT"].includes(receipt.type))
-      throw new AppError(400, "VALIDATION_ERROR", "Cách xử lý khoản thu trước không hợp lệ.");
-    if (!transferring && receipt?.type === "TRANSFER_TO_NEW_ENROLLMENT")
-      throw new AppError(400, "VALIDATION_ERROR", "Chỉ thao tác chuyển lớp mới được chuyển khoản thu trước sang ghi danh mới.");
   }
   private validateId(id: number) {
     if (!Number.isInteger(id) || id < 1) throw new AppError(400, "VALIDATION_ERROR", "Mã dữ liệu không hợp lệ.");

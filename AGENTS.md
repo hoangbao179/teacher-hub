@@ -56,12 +56,12 @@ Lịch sử thay đổi nằm trong Git, không ghi nhật ký task vào status.
 - Chỉ có một giáo viên/admin; học sinh và phụ huynh không có tài khoản.
 - Một học sinh chỉ có tối đa một enrollment `ACTIVE`.
 - Lớp 1 kèm 1 và lớp nhóm dùng chung domain model.
-- Học phí tính theo gói đúng 8 buổi; thời lượng không làm tăng số buổi học phí.
-- Chỉ `PRESENT` có thể tính học phí; `ABSENT` và `FREE` không tính học phí.
-- Enrollment `FREE` không tạo chu kỳ học phí.
+- Điểm danh runtime chỉ có `PRESENT` và `ABSENT`; thời lượng không tác động học phí.
+- Học phí theo tháng dương lịch, tổng hợp từ lesson `COMPLETED` và participant snapshot.
+- Enrollment `FREE` không xuất hiện trong bảng hoặc payment học phí tháng.
 - Dữ liệu nhập muộn xử lý theo ngày học thực tế.
-- Chu kỳ đủ 8 buổi chuyển thành `PAYMENT_DUE`; V1 không thanh toán một phần.
-- Chu kỳ `PAID` và item của nó bất biến.
+- Payment tháng có `UNPAID | PAID`; amount tùy chọn và `PAID` bất biến.
+- Không suy amount tháng hoặc backfill từ cycle/receipt cũ; dữ liệu lịch sử vẫn giữ.
 - Lịch lặp chỉ là lịch dự kiến, không chứng minh đã dạy.
 - Buổi học bù có thể chỉ gồm một số học sinh.
 - Đóng lớp và ngừng học phải giữ lịch sử.

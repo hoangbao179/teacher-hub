@@ -36,7 +36,7 @@ GOOGLE_SHEET_SYNC_ENABLED=true
 buộc sẽ làm startup fail rõ ràng. Các giá trị này chỉ được cấp cho API container lúc
 runtime, không phải Docker build args.
 
-Backend cố định nhãn chủ sở hữu là `Cô Vy`, template version là `v5`, chu kỳ sync là
+Backend cố định nhãn chủ sở hữu là `Cô Vy`, template version là `v6`, chu kỳ sync là
 30 giây, batch 20 event, tối đa 8 lần thử và lock timeout 10 phút. Các giá trị này
 không cấu hình qua environment.
 
@@ -48,7 +48,7 @@ Chỉ dùng account test hoặc dữ liệu giả:
 GOOGLE_DRIVE_SMOKE=1 npm -w server run google-drive:smoke
 ```
 
-Script xác minh auth/root folder, tạo và format hai sheet hiển thị cùng một sheet kỹ thuật
+Script xác minh auth/root folder, tạo và format một sheet hiển thị cùng một sheet kỹ thuật
 ẩn bằng dữ liệu giả, đọc lại
 appProperties rồi đưa file thử vào Trash. Không chạy trong CI và không dùng học sinh thật.
 
@@ -63,13 +63,10 @@ appProperties rồi đưa file thử vào Trash. Không chạy trong CI và khô
   Retry tìm file bằng `appProperties` trước khi tạo mới để recovery không tạo duplicate.
 - Regenerate giữ nguyên spreadsheet ID/URL và không xóa formatting/protection do
   người dùng tự tạo ngoài rule Teacher Hub quản lý.
-- Khi nâng lên template `v5`, dùng **Tạo lại nội dung** một lần cho spreadsheet cũ để
-  đổi tab lịch sử thành `Quá trình học tập`, xóa `Tổng quan` và `Ôn từ vựng`, rồi đồng
-  nhất hai sheet hiển thị với file Excel tải xuống. Header dùng xanh nhạt và không
-  bật bộ lọc trên hàng tiêu đề.
+- Khi nâng lên template `v6`, dùng **Tạo lại nội dung** một lần để tạo tab **Sổ theo
+  dõi học tập**, xóa các tab hiển thị lỗi thời và giữ metadata kỹ thuật ẩn.
 - Worker chỉ chạy khi cả Drive và sync đều bật. Tắt sync không xóa event; khi bật
   lại worker tiếp tục pending/retry, hoặc admin chọn **Đồng bộ lại**.
-- Mỗi event lesson cập nhật cả dòng lịch sử liên quan và dựng lại tab `Học phí` từ
-  database, cùng cấu trúc từng buổi trong chu kỳ như file Excel tải xuống.
+- Mỗi event lesson cập nhật đúng dòng lịch sử liên quan theo stable lesson ID/revision.
 - Kết quả ôn từ vựng được quản lý trong Teacher Hub và không tạo tab riêng trong Google
   Sheet theo dõi học sinh. OPEN_LINK guest không tạo student sync.

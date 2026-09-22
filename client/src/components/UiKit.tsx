@@ -10,7 +10,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  LinearProgress,
   Stack,
   Typography,
 } from "@mui/material";
@@ -25,11 +24,7 @@ const visibleLabels: Record<string, string> = {
   ENDED: "Đã ngừng học",
   PRESENT: "Có mặt",
   ABSENT: "Nghỉ",
-  FREE: "Miễn phí",
-  ACCUMULATING: "Chưa đủ 8 buổi",
-  PAYMENT_DUE: "Cần thu",
   PAID: "Đã thu",
-  INCOMPLETE: "Dở dang",
   CANCELLED: "Đã hủy",
   REGULAR: "Buổi thường",
   MAKEUP: "Buổi học bù",
@@ -58,9 +53,9 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 
 export function StatusBadge({ status }: { status: string }) {
   const color = status === "ACTIVE" || status === "COMPLETED" || status === "PAID" || status === "RECORDED" ? "success"
-    : status === "PAYMENT_DUE" || status === "UNRECORDED" || status === "PAUSED" ? "warning"
+    : status === "UNRECORDED" || status === "PAUSED" ? "warning"
       : status === "CLOSED" || status === "CANCELLED" || status === "ENDED" ? "default" : "primary";
-  return <Chip size="small" color={color} variant={status === "INCOMPLETE" || status === "CLOSED" ? "outlined" : "filled"} label={visibleStatusLabel(status)} sx={{ flexShrink: 0 }} />;
+  return <Chip size="small" color={color} variant={status === "CLOSED" ? "outlined" : "filled"} label={visibleStatusLabel(status)} sx={{ flexShrink: 0 }} />;
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
@@ -91,21 +86,9 @@ export function MobileCard({ children, ...props }: { children: ReactNode; compon
   return <Card variant="outlined" {...props} sx={{ minWidth: 0, textDecoration: "none", color: "inherit", bgcolor: "background.paper" }}><CardContent>{children}</CardContent></Card>;
 }
 
-export function CurrencyDisplay({ value }: { value: number | null | undefined }) {
-  return <Typography component="span" sx={{ fontVariantNumeric: "tabular-nums" }}>{value == null ? "—" : `${value.toLocaleString("vi-VN")}đ`}</Typography>;
-}
-
 export function DateTimeDisplay({ date, startTime, endTime }: { date?: string | null; startTime?: string | null; endTime?: string | null }) {
   const time = startTime ? `${startTime}${endTime ? `–${endTime}` : ""}` : "";
   return <Typography component="span" sx={{ fontVariantNumeric: "tabular-nums" }}>{[date ? displayDate(date) : "", time].filter(Boolean).join(" · ") || "—"}</Typography>;
-}
-
-export function ProgressCount({ value, target = 8, label = "Tiến độ" }: { value: number; target?: number; label?: string }) {
-  const safeValue = Math.min(Math.max(value, 0), target);
-  return <Stack spacing={0.75}>
-    <Typography variant="subtitle2">{label} {safeValue}/{target}</Typography>
-    <LinearProgress aria-label={`${label} ${safeValue} trên ${target}`} variant="determinate" value={target ? (safeValue / target) * 100 : 0} sx={{ height: 6, borderRadius: 4, bgcolor: "#dceee9", "& .MuiLinearProgress-bar": { borderRadius: 4 } }} />
-  </Stack>;
 }
 
 export function FormSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {

@@ -145,11 +145,9 @@ try {
   for (const student of quickStudents) await page.getByText(student.name, { exact: true }).waitFor();
   const firstQuickDraft = await api(`/api/lessons/${firstQuickId}`, token);
   for (const student of quickStudents) {
-    const expected = student.tuitionMode === "FREE" ? "FREE" : "PRESENT";
     const card = page.locator(".MuiCard-root").filter({ hasText: student.name });
-    const label = expected === "FREE" ? "Có mặt · miễn phí" : "Có mặt";
-    if ((await card.getByRole("button", { name: label, exact: true }).getAttribute("aria-pressed")) !== "true")
-      throw new Error(`Simple Mode did not default ${student.name} to ${expected}`);
+    if ((await card.getByRole("button", { name: "Có mặt", exact: true }).getAttribute("aria-pressed")) !== "true")
+      throw new Error(`Simple Mode did not default ${student.name} to PRESENT`);
   }
   if (firstQuickDraft.status !== "DRAFT" || firstQuickDraft.sourceOccurrenceKey == null) throw new Error("Simple Mode did not reuse the scheduled draft");
   await page.getByRole("link", { name: "Chỉnh sửa đầy đủ" }).click();
@@ -167,7 +165,7 @@ try {
   await page.getByRole("link", { name: "Về Hôm nay" }).waitFor();
   const firstCompleted = await api(`/api/lessons/${firstQuickId}`, token);
   if (firstCompleted.status !== "COMPLETED" || firstCompleted.content !== "Simple Mode: cả lớp có mặt"
-    || firstCompleted.participants.some((item) => item.attendance?.status !== (item.tuitionMode === "FREE" ? "FREE" : "PRESENT")))
+    || firstCompleted.participants.some((item) => item.attendance?.status !== "PRESENT"))
     throw new Error("Simple Mode did not complete default attendance/content correctly");
 
   await page.getByRole("link", { name: "Về Hôm nay" }).click();
@@ -198,7 +196,7 @@ try {
       family: getComputedStyle(document.body).fontFamily,
       titleSize: titleStyle.fontSize,
       titleWeight: titleStyle.fontWeight,
-      rawEnums: document.body.innerText.match(/\b(ACTIVE|PRESENT|ABSENT|FREE|REGULAR|MAKEUP|EXTRA|DRAFT|COMPLETED)\b/g) ?? [],
+      rawEnums: document.body.innerText.match(/\b(ACTIVE|PRESENT|ABSENT|REGULAR|MAKEUP|EXTRA|DRAFT|COMPLETED)\b/g) ?? [],
     };
   });
   if (!lessonTypography.fontLoaded || !lessonTypography.family.includes("Be Vietnam Pro")) throw new Error(`Lesson wizard font is not loaded: ${JSON.stringify(lessonTypography)}`);
@@ -233,8 +231,8 @@ try {
   await secondCard.getByRole("button", { name: "Thêm nhận xét riêng" }).click();
   await page.getByLabel("Nhận xét riêng (tùy chọn)").last().fill("Nghỉ có phép");
   const freeCard = page.locator(".MuiCard-root").filter({ hasText: "Học sinh Mẫu Ba" });
-  if ((await freeCard.getByRole("button", { name: "Miễn phí" }).getAttribute("aria-pressed")) !== "true")
-    throw new Error("Global FREE attendance did not default to FREE");
+  if ((await freeCard.getByRole("button", { name: "Có mặt", exact: true }).getAttribute("aria-pressed")) !== "true")
+    throw new Error("Tuition-free enrollment did not default attendance to PRESENT");
   await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
   await page.reload();
   await page.getByLabel("Nội dung buổi học").waitFor();
@@ -316,35 +314,34 @@ try {
       attendances: [{ enrollmentId: m3Enrollment.id, status: "PRESENT" }],
     });
   }
-  let lastResult;
-  for (const date of ["2026-07-10", "2026-07-02", "2026-07-09", "2026-07-01", "2026-07-08", "2026-07-03", "2026-07-07", "2026-07-04", "2026-07-06"])
-    lastResult = await completeTechnical(date);
-  if (lastResult.tuitionImpacts[0].newProgress !== 1) throw new Error("Nine out-of-order lessons did not produce 8/8 + 1/8");
-  await completeTechnical("2026-07-05");
-  const cycles = await api(`/api/tuition-cycles?studentId=${m3Student.id}&pageSize=20`, token);
-  if (cycles.length !== 2 || cycles.find((item) => item.status === "PAYMENT_DUE")?.progress !== 8 || cycles.find((item) => item.status === "ACCUMULATING")?.progress !== 2)
-    throw new Error("Chronological E2E cycles are not 8/8 and 2/8");
-  const due = cycles.find((item) => item.status === "PAYMENT_DUE");
-  const dueDetail = await api(`/api/tuition-cycles/${due.id}`, token);
-  const orderedDates = dueDetail.items.map((item) => item.sessionDate);
-  if (JSON.stringify(orderedDates) !== JSON.stringify([...orderedDates].sort())) throw new Error("Cycle detail is not chronological");
-  await apiMutation(`/api/tuition-cycles/${due.id}/mark-paid`, token, "POST", {
-    paidAmount: due.packagePriceSnapshot, paidAt: "2026-07-31", paymentMethod: "CASH",
+  for (const date of ["2026-07-10", "2026-07-02", "2026-07-09", "2026-07-01", "2026-07-08", "2026-07-03", "2026-07-07", "2026-07-04", "2026-07-06", "2026-07-05"])
+    await completeTechnical(date);
+  const julyBoard = await api("/api/tuition/monthly?year=2026&month=7", token);
+  const julyRow = julyBoard.rows.find((item) => item.enrollmentId === m3Enrollment.id);
+  if (julyRow?.attendance.present !== 10 || julyRow.attendance.absent !== 0 || julyRow.attendance.total !== 10 || julyRow.status !== "UNPAID")
+    throw new Error("Monthly tuition board did not aggregate ten out-of-order lessons");
+  const firstPayment = await apiMutation(`/api/tuition/monthly/${m3Enrollment.id}/2026/7/paid`, token, "PUT", {
+    amount: 2_000_000, paidAt: "2026-07-31", note: "E2E monthly tuition",
   });
-  const conflictDraft = await apiMutation("/api/lessons", token, "POST", {
+  if (firstPayment.idempotent || firstPayment.payment.status !== "PAID") throw new Error("Monthly tuition payment was not created");
+  const replayPayment = await apiMutation(`/api/tuition/monthly/${m3Enrollment.id}/2026/7/paid`, token, "PUT", {
+    amount: 2_000_000, paidAt: "2026-07-31", note: "E2E monthly tuition",
+  });
+  if (!replayPayment.idempotent) throw new Error("Identical monthly tuition payment replay was not idempotent");
+  const juneDraft = await apiMutation("/api/lessons", token, "POST", {
     classId: m3Class.id, sessionDate: "2026-06-30", scheduledStartTime: "18:00", scheduledEndTime: "19:30",
     lessonType: "MAKEUP", selectedEnrollmentIds: [m3Enrollment.id],
   });
-  await apiMutation(`/api/lessons/${conflictDraft.id}/attendances`, token, "PUT", {
+  await apiMutation(`/api/lessons/${juneDraft.id}/complete`, token, "POST", {
+    actualStartTime: "18:00", actualEndTime: "19:30",
     attendances: [{ enrollmentId: m3Enrollment.id, status: "PRESENT" }],
   });
-  await apiMutation(`/api/lessons/${conflictDraft.id}/content`, token, "PUT", { content: "Paid boundary conflict" });
-  await page.goto(`http://127.0.0.1:5175/admin/lessons/${conflictDraft.id}/edit`);
-  await page.getByText("Xác nhận buổi học").waitFor();
-  await page.getByRole("button", { name: "Hoàn tất ghi nhận" }).click();
-  await page.getByText("Xung đột:").waitFor();
-  const conflictPersisted = await api(`/api/lessons/${conflictDraft.id}`, token);
-  if (conflictPersisted.status !== "DRAFT") throw new Error("Paid conflict did not roll lesson back to DRAFT");
+  const juneBoard = await api("/api/tuition/monthly?year=2026&month=6", token);
+  const juneRow = juneBoard.rows.find((item) => item.enrollmentId === m3Enrollment.id);
+  if (juneRow?.attendance.present !== 1 || juneRow.status !== "UNPAID") throw new Error("Late-entered June lesson was not assigned to June tuition");
+  const refreshedJulyBoard = await api("/api/tuition/monthly?year=2026&month=7", token);
+  if (refreshedJulyBoard.rows.find((item) => item.enrollmentId === m3Enrollment.id)?.status !== "PAID")
+    throw new Error("Late-entered June lesson changed the immutable July payment");
   console.log(`Playwright lesson E2E passed at 390x844; screenshot: ${path.join(artifactDir, "lesson-confirmation-390.png")}`);
   artifactRunPassed = true;
 } finally {

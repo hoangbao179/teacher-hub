@@ -26,9 +26,9 @@ import type { StudentListItem } from "@teacher/shared";
 import { api } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
-import { PageHeader, ProgressCount } from "../components/UiKit";
+import { PageHeader } from "../components/UiKit";
 
-type StudentFilter = "ALL" | "ACTIVE" | "PAUSED" | "ENDED" | "FREE" | "DUE";
+type StudentFilter = "ALL" | "ACTIVE" | "PAUSED" | "ENDED" | "FREE";
 type StudentSort = "AZ" | "ZA";
 
 function studentStatus(item: StudentListItem): string {
@@ -53,7 +53,6 @@ function matchesFilter(item: StudentListItem, filter: StudentFilter): boolean {
   if (filter === "PAUSED") return item.enrollmentStatus === "PAUSED";
   if (filter === "ENDED") return item.status === "INACTIVE" || item.enrollmentStatus === "ENDED";
   if (filter === "FREE") return item.tuitionMode === "FREE";
-  if (filter === "DUE") return item.hasPaymentDue;
   return true;
 }
 
@@ -70,7 +69,6 @@ const filterOptions: Array<{ value: StudentFilter; label: string }> = [
   { value: "PAUSED", label: "Tạm dừng" },
   { value: "ENDED", label: "Đã nghỉ" },
   { value: "FREE", label: "Miễn phí" },
-  { value: "DUE", label: "Cần thu" },
 ];
 
 export function StudentsPage() {
@@ -171,10 +169,9 @@ export function StudentsPage() {
                 </Stack>
                 <Stack spacing={0.5} sx={{ alignItems: "flex-end", flexShrink: 0 }}>
                   <Chip size="small" color={item.enrollmentStatus === "ACTIVE" && item.status === "ACTIVE" ? "success" : item.enrollmentStatus === "PAUSED" ? "warning" : "default"} label={studentStatus(item)} />
-                  {(item.hasPaymentDue || item.tuitionMode === "FREE") && <Chip size="small" color={item.hasPaymentDue ? "warning" : "default"} variant="outlined" label={item.hasPaymentDue ? "Cần thu" : "Miễn phí"} />}
+                  {item.tuitionMode === "FREE" && <Chip size="small" variant="outlined" label="Miễn phí" />}
                 </Stack>
               </Stack>
-              {item.enrollmentStatus === "ACTIVE" && item.tuitionMode !== "FREE" && <Box sx={{ mt: 1.25 }}><ProgressCount value={item.currentProgress ?? 0} /></Box>}
             </CardContent>
           </Card>
         ))}

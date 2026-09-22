@@ -17,7 +17,7 @@ npm run check:repo
 ```
 
 Sau restore kiểm tra `schema_migrations`, utf8mb4, timezone, số lớp/học sinh/buổi,
-chu kỳ PAID và login. `--confirm` chỉ xác nhận ý định; operator vẫn phải kiểm tra
+payment tháng PAID và login. `--confirm` chỉ xác nhận ý định; operator vẫn phải kiểm tra
 đúng host/database. Scripts yêu cầu MySQL client trong PATH và không xóa database.
 
 ## Recovery set có vocabulary media
@@ -89,7 +89,7 @@ ghi migration record sau cùng; không tự restore backup hoặc rollback dữ 
 - Mỗi backup phải có checksum, mã hóa khi lưu/chuyển và ít nhất một bản sao ngoài
   máy chủ. Không coi bản nằm cạnh volume MySQL đang chạy là phương án khôi phục.
 - Hằng tháng chọn một backup, restore vào database mới/cô lập, chạy migration và
-  kiểm tra các bất biến lớp, học sinh, lịch sử buổi, chu kỳ PAID và đăng nhập.
+  kiểm tra các bất biến lớp, học sinh, lịch sử buổi, payment tháng PAID và đăng nhập.
 - Ghi thời lượng, dung lượng, checksum và kết quả restore drill; không ghi secret
   hoặc dữ liệu học sinh vào log vận hành.
 

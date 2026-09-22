@@ -4,12 +4,10 @@
   chia sẻ giữa nhiều replica; multi-instance cần shared store.
 - JWT dùng localStorage khi chọn ghi nhớ hoặc sessionStorage khi không chọn; V1 chưa có
   refresh/revoke tập trung và logout xóa token phía client khỏi cả hai nơi.
-- Legacy Import không phải generic Excel importer: chỉ nhận `.xlsx` tối đa 10 MB,
-  theo từng học sinh, với hai sheet chuẩn `Quá trình học tập` và `Học phí`. File sai
-  cấu trúc/không khớp học sinh bị chặn; dòng mơ hồ phải được resolve hoặc skip có lý
-  do trước khi apply. Apply là toàn bộ transaction, không có partial apply.
+- Legacy Import và giao diện tra cứu cycle/receipt lịch sử không còn trong runtime;
+  bảng cũ vẫn tồn tại và cần task migration riêng nếu muốn archive/drop vật lý.
 - Chưa có notification, payment gateway, partial payment, CMS, parent account,
-  multi-teacher, offline PWA hay paid-cycle unlock.
+  multi-teacher hay offline PWA.
 - Calendar desktop không drag/drop; mobile week list là flow chuẩn.
 - Homepage còn dùng public media tạm; thay theo tài liệu media trước public chính thức.
 - Testimonial chưa verified/published không được hiển thị như phản hồi thật.

@@ -3,20 +3,10 @@ import type { StudentReportExportQuery } from "@teacher/shared";
 import type {
   StudentLearningReportRow,
   StudentReportStudent,
-  StudentTuitionReportRow,
 } from "../repositories/student-report.repository";
 
-const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Nghỉ", FREE: "Miễn phí" } as const;
+const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Nghỉ" } as const;
 const lessonTypeLabels = { REGULAR: "Buổi thường", MAKEUP: "Buổi học bù", EXTRA: "Buổi học thêm" } as const;
-
-export const studentTuitionSheetHeaders = [
-  "Số chu kỳ",
-  "Ngày bắt đầu",
-  "Ngày đủ 8 buổi",
-  "Ngày học",
-  "Giờ dự kiến",
-  "Số tài khoản (VietinBank)",
-] as const;
 
 export function safeSpreadsheetText(value: string | null | undefined): string {
   const text = value ?? "";
@@ -71,25 +61,6 @@ function styleSheet(sheet: ExcelJS.Worksheet, columnCount: number): void {
   });
 }
 
-function mergeTuitionCycleCells(
-  sheet: ExcelJS.Worksheet,
-  rows: StudentTuitionReportRow[],
-): void {
-  let start = 0;
-  while (start < rows.length) {
-    let end = start;
-    while (end + 1 < rows.length && rows[end + 1].cycleId === rows[start].cycleId) end += 1;
-    if (end > start) {
-      for (const key of ["cycle", "started", "reached", "accountNumber"]) {
-        const column = sheet.getColumn(key).number;
-        sheet.mergeCells(start + 2, column, end + 2, column);
-        sheet.getCell(start + 2, column).alignment = { vertical: "middle", horizontal: "center", wrapText: true };
-      }
-    }
-    start = end + 1;
-  }
-}
-
 function highlightAbsentLearningRows(
   sheet: ExcelJS.Worksheet,
   rows: StudentLearningReportRow[],
@@ -109,10 +80,8 @@ function highlightAbsentLearningRows(
 export interface StudentWorkbookInput {
   student: StudentReportStudent;
   learningRows: StudentLearningReportRow[];
-  tuitionRows: StudentTuitionReportRow[];
   query: StudentReportExportQuery;
   generatedAt: string;
-  vietinBankAccountNumber: string;
 }
 
 export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise<Buffer> {
@@ -145,28 +114,6 @@ export async function buildStudentWorkbook(input: StudentWorkbookInput): Promise
   learning.getColumn("date").numFmt = "dd/mm/yyyy";
   styleSheet(learning, 9);
   highlightAbsentLearningRows(learning, orderedLearningRows, 9);
-
-  const tuition = workbook.addWorksheet("Học phí", { properties: { defaultRowHeight: 20 } });
-  tuition.columns = [
-    { header: studentTuitionSheetHeaders[0], key: "cycle", width: 12 },
-    { header: studentTuitionSheetHeaders[1], key: "started", width: 14 },
-    { header: studentTuitionSheetHeaders[2], key: "reached", width: 16 },
-    { header: studentTuitionSheetHeaders[3], key: "date", width: 13 },
-    { header: studentTuitionSheetHeaders[4], key: "scheduled", width: 20 },
-    { header: studentTuitionSheetHeaders[5], key: "accountNumber", width: 26 },
-  ];
-  const orderedTuitionRows = [...input.tuitionRows].sort((left, right) =>
-    left.cycleNumber - right.cycleNumber || left.cycleId - right.cycleId || left.sequenceNumber - right.sequenceNumber,
-  );
-  for (const row of orderedTuitionRows) tuition.addRow({
-    cycle: row.cycleNumber,
-    started: excelDate(row.startedAt), reached: excelDate(row.reachedTargetAt),
-    date: excelDate(row.sessionDate), scheduled: `${row.scheduledStartTime} – ${row.scheduledEndTime}`,
-    accountNumber: safeSpreadsheetText(input.vietinBankAccountNumber),
-  });
-  for (const key of ["started", "reached", "date"]) tuition.getColumn(key).numFmt = "dd/mm/yyyy";
-  styleSheet(tuition, 6);
-  mergeTuitionCycleCells(tuition, orderedTuitionRows);
 
   const bytes = await workbook.xlsx.writeBuffer();
   return Buffer.from(bytes);

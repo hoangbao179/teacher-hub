@@ -43,7 +43,7 @@ read/write của media root lúc startup và provider có thể tắt mà không
 emoji/public asset. Các result route là protected `/api`; `/play/*` và
 `/api/public/*` giữ nguyên proxy/noindex/no-referrer đã harden.
 
-Google Sheets dùng template version cố định `v5`. Khi tạo lại nội dung, existing
+Google Sheets dùng template version cố định `v6`. Khi tạo lại nội dung, existing
 spreadsheet được nâng cấp tại chỗ: đổi `Nhật ký học tập` thành `Quá trình học tập`, xóa
 tab `Tổng quan` và `Ôn từ vựng`, rồi giữ nguyên spreadsheet ID/URL. Chỉ hai tab nghiệp vụ
 giống file Excel tải xuống được hiển thị; `_TeacherHub` vẫn ẩn để phục vụ đồng bộ. Mỗi

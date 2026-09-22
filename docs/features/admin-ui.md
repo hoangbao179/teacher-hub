@@ -49,7 +49,7 @@ và gate `npm run check:full` đã PASS. Chi tiết triển khai và khác biệ
   không tạo dữ liệu giả ở client.
 - Lesson wizard: Thông tin sky blue, Điểm danh mint, Nội dung peach, Xác nhận teal;
   nhãn/số vẫn truyền đạt trạng thái khi không nhìn màu.
-- Học phí: Chưa đủ 8 buổi blue, Cần thu orange, Đã thu green, Dở dang neutral.
+- Học phí: Chưa thu dùng warning/outline; Đã thu dùng success.
   Không hiển thị raw enum.
 - Minh họa Admin phải là static asset local đã tối ưu; không gọi API ảnh bên ngoài
   ở runtime. Ảnh trang trí dùng `alt=""` và `aria-hidden="true"`, không chứa text

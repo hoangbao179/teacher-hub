@@ -62,7 +62,6 @@ export interface ClassListItem {
   defaultPackagePrice: number;
   defaultDurationMinutes: number;
   activeStudentCount: number;
-  paymentDueCount: number;
 }
 
 export interface ClassDetail extends ClassListItem {
@@ -77,7 +76,5 @@ export interface ClassDetail extends ClassListItem {
     fullName: string;
     nickname: string | null;
     tuitionMode: "CLASS_DEFAULT" | "CUSTOM" | "FREE";
-    currentProgress: number | null;
-    hasPaymentDue: boolean;
   }>;
 }

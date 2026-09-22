@@ -177,12 +177,6 @@ integration("V14 preserves history and enforces pause, cancel, makeup and tempor
     lessonType: "MAKEUP", selectedEnrollmentIds: [secondEnrollmentId],
   });
   assert.equal(genericMakeup.makeupSource, null);
-  const [cycleItems] = await pool.query<RowDataPacket[]>(
-    "SELECT id FROM tuition_cycle_sessions WHERE tuition_cycle_id IN (SELECT id FROM tuition_cycles WHERE enrollment_id=?)",
-    [enrollmentId],
-  );
-  assert.equal(cycleItems.length, 1);
-
   await schedules.createBusySlot({
     slotType: "OTHER", title: "Bận", recurrenceType: "ONCE", specificDate: "2026-07-28",
     startTime: "18:00", endTime: "19:30",

@@ -152,7 +152,7 @@ try {
       headingWeight: headingStyle?.fontWeight,
       buttonSize: buttonStyle?.fontSize,
       buttonWeight: buttonStyle?.fontWeight,
-      rawEnums: (document.body.innerText.match(/\\b(ACTIVE|PAUSED|CLOSED|PRESENT|ABSENT|FREE|ACCUMULATING|PAYMENT_DUE|PAID|INCOMPLETE)\\b/g) || []),
+      rawEnums: (document.body.innerText.match(/\\b(ACTIVE|PAUSED|CLOSED|PRESENT|ABSENT|PAID|UNPAID)\\b/g) || []),
       unnamedEnabledActions: [...document.querySelectorAll('button:not(:disabled),a[href]')].filter((el) => !(el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent.trim())).length,
     };
   })()`);
@@ -245,9 +245,9 @@ try {
   await cdp.wait("location.pathname==='/admin/classes/new' && document.body.innerText.includes('Tên lớp')", "class form");
   const classDefaults = await cdp.eval(`(() => {
     const valueFor = (needle) => { const label=[...document.querySelectorAll('label')].find((item)=>item.textContent.includes(needle)); return label ? document.getElementById(label.htmlFor)?.value : undefined; };
-    return { price: valueFor('Giá gói'), subject: valueFor('Môn học'), sections: [...document.querySelectorAll('h2')].map((item)=>item.textContent) };
+    return { hasPrice: valueFor('Giá gói') !== undefined, subject: valueFor('Môn học'), sections: [...document.querySelectorAll('h2')].map((item)=>item.textContent) };
   })()`);
-  if (classDefaults.price !== "" || classDefaults.subject !== "Tiếng Anh" || !["Thông tin lớp", "Học phí", "Lịch học hằng tuần", "Ghi chú"].every((item) => classDefaults.sections.includes(item)))
+  if (classDefaults.hasPrice || classDefaults.subject !== "Tiếng Anh" || !["Thông tin lớp", "Lịch học hằng tuần", "Ghi chú"].every((item) => classDefaults.sections.includes(item)) || classDefaults.sections.includes("Học phí"))
     throw new Error(`Unexpected new-class defaults/sections: ${JSON.stringify(classDefaults)}`);
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   const formWidth = await cdp.eval("document.querySelector('[data-testid=bounded-form]').getBoundingClientRect().width");
@@ -256,9 +256,9 @@ try {
   await cdp.screenshot("class-form-390");
   await cdp.setInput("Tên lớp", `Browser Smoke ${Date.now()}`); await cdp.clickText("Lưu lớp");
   await cdp.wait("/\\/admin\\/classes\\/\\d+$/.test(location.pathname)", "class detail"); const classPath = await cdp.eval("location.pathname");
-  await cdp.wait("document.body.innerText.includes('Giá mặc định: Chưa cài học phí')", "unconfigured class tuition detail");
-  if (await cdp.eval("document.body.innerText.includes('0đ / 8 buổi')"))
-    throw new Error("Zero-price class detail exposed a zero-value tuition package");
+  await cdp.wait("document.body.innerText.includes('Học phí: theo dõi theo tháng')", "monthly tuition class detail");
+  if (await cdp.eval("document.body.innerText.includes('/ 8 buổi')"))
+    throw new Error("Class detail still exposes the retired eight-session package");
   await cdp.screenshot("class-detail-390");
 
   await cdp.clickText("Học sinh"); await cdp.wait("location.pathname==='/admin/students' && document.body.innerText.includes('Thêm')", "students"); await cdp.screenshot("student-list-390"); await cdp.clickText("Thêm");
@@ -279,9 +279,9 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 350));
   const dialogFits = await cdp.eval("(() => { const r=document.querySelector('[role=dialog]').getBoundingClientRect(); return r.top>=0 && r.bottom<=innerHeight && r.left>=0 && r.right<=innerWidth; })()");
   if (!dialogFits) throw new Error("Tuition dialog does not fit the 390x844 viewport");
-  await cdp.screenshot("tuition-mode-dialog-390"); await cdp.select("Chế độ", "Giá riêng"); await cdp.wait("document.body.innerText.includes('Giá riêng / 8 buổi')", "custom price input"); await cdp.setInput("Giá riêng", "1900000"); await cdp.clickDialogText("Lưu");
+  await cdp.screenshot("tuition-mode-dialog-390"); await cdp.select("Chế độ", "Miễn phí"); await cdp.clickDialogText("Lưu");
   await cdp.wait("document.body.innerText.includes('Đã cập nhật chế độ học phí')", "tuition success"); await cdp.send("Page.reload");
-  await cdp.wait("document.body.innerText.includes('1.900.000')", "persisted custom tuition");
+  await cdp.wait("document.body.innerText.includes('Học phí: Miễn phí')", "persisted free tuition mode");
 
   await cdp.eval("location.assign('http://127.0.0.1:5174/admin/students')");
   await cdp.wait("!!document.querySelector('[data-testid=student-list-page]')", "student list filters");

@@ -23,13 +23,13 @@ import {
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import type { ClassListItem, IncompleteCycleAction, PaymentMethod, StudentDetail, StudentGoogleSheetState, TuitionMode } from "@teacher/shared";
+import type { ClassListItem, StudentDetail, StudentGoogleSheetState, TuitionMode } from "@teacher/shared";
 import { ContentCopy, Download, ExpandMore, Launch } from "@mui/icons-material";
 import { api } from "../api/client";
 import { archiveStudentGoogleSheet, createStudentGoogleSheet, downloadStudentReport, endEnrollment as endEnrollmentApi,
   getStudentGoogleSheet, regenerateStudentGoogleSheet, resyncStudentGoogleSheet, retryStudentGoogleSheet, transferEnrollment } from "../api/students";
 import { LoadingState } from "../components/LoadingState";
-import { CurrencyDisplay, PageHeader, ProgressCount } from "../components/UiKit";
+import { PageHeader } from "../components/UiKit";
 import { todayInHoChiMinh } from "../utils/date";
 export function StudentDetailPage() {
   const { id } = useParams();
@@ -38,7 +38,6 @@ export function StudentDetailPage() {
   const [error, setError] = useState("");
   const [tuitionOpen, setTuitionOpen] = useState(false);
   const [tuitionMode, setTuitionMode] = useState<TuitionMode>("CLASS_DEFAULT");
-  const [customPrice, setCustomPrice] = useState("");
   const today = todayInHoChiMinh();
   const [effectiveFrom, setEffectiveFrom] = useState(today);
   const [busy, setBusy] = useState(false);
@@ -55,19 +54,13 @@ export function StudentDetailPage() {
   const [endDate, setEndDate] = useState(today);
   const [endReason, setEndReason] = useState("");
   const [endNote, setEndNote] = useState("");
-  const [closureAction, setClosureAction] = useState<"KEEP_OPEN" | "SETTLE" | "WAIVE">("KEEP_OPEN");
-  const [closureAmount, setClosureAmount] = useState("0");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
-  const [receiptAction, setReceiptAction] = useState<"NONE" | "REFUND" | "APPLY_TO_OLD_SETTLEMENT">("NONE");
   const [transferOpen, setTransferOpen] = useState(false);
   const [targetClassId, setTargetClassId] = useState(0);
   const [transferDate, setTransferDate] = useState(today);
   const [transferReason, setTransferReason] = useState("");
   const [transferNote, setTransferNote] = useState("");
-  const [transferReceiptAction, setTransferReceiptAction] = useState<"NONE" | "TRANSFER_TO_NEW_ENROLLMENT" | "REFUND" | "APPLY_TO_OLD_SETTLEMENT">("NONE");
   const load = useCallback(() => api<StudentDetail>(`/api/students/${id}`).then((value) => {
-    setItem(value); setTuitionMode(value.tuitionMode ?? "CLASS_DEFAULT");
-    setCustomPrice(value.customPackagePrice?.toString() ?? "");
+    setItem(value); setTuitionMode(value.tuitionMode === "FREE" ? "FREE" : "CLASS_DEFAULT");
   }).catch((e: Error) => setError(e.message)), [id]);
   const loadGoogleSheet = useCallback(() => getStudentGoogleSheet(Number(id)).then(setGoogleState)
     .catch((e: Error) => setError(e.message)), [id]);
@@ -98,22 +91,17 @@ export function StudentDetailPage() {
     }
   };
   const changeTuition = async () => { if (!item?.enrollmentId) return; setError(""); setSuccess(""); setBusy(true); try {
-    await api(`/api/enrollments/${item.enrollmentId}/tuition-mode`, { method: "PATCH", body: JSON.stringify({ tuitionMode, effectiveFrom, customPackagePrice: tuitionMode === "CUSTOM" ? Number(customPrice) : undefined }) });
+    await api(`/api/enrollments/${item.enrollmentId}/tuition-mode`, { method: "PATCH", body: JSON.stringify({ tuitionMode, effectiveFrom }) });
     setTuitionOpen(false); await load(); setSuccess("Đã cập nhật chế độ học phí.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi học phí."); } finally { setBusy(false); } };
-  const incompleteAction = (reason: string, note: string): IncompleteCycleAction => closureAction === "SETTLE"
-    ? { type: "SETTLE", amount: Number(closureAmount), method: paymentMethod, note: note || undefined }
-    : closureAction === "WAIVE" ? { type: "WAIVE", reason: reason || "Miễn phần còn lại" } : { type: "KEEP_OPEN" };
   const endEnrollment = async () => { if (!item?.enrollmentId) return; setError(""); setSuccess(""); setBusy(true); try {
-    await endEnrollmentApi(item.enrollmentId, { endedAt: endDate, reason: endReason || undefined, note: endNote || undefined,
-      incompleteCycleAction: incompleteAction(endReason, endNote), advanceReceiptAction: { type: receiptAction } });
+    await endEnrollmentApi(item.enrollmentId, { endedAt: endDate, reason: endReason || undefined, note: endNote || undefined });
     setEndOpen(false); await load(); setSuccess("Đã ngừng học và giữ nguyên toàn bộ lịch sử.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể kết thúc ghi danh."); } finally { setBusy(false); } };
   const transfer = async () => { if (!item?.enrollmentId) return; setBusy(true); setError(""); try {
     await transferEnrollment(item.enrollmentId, { targetClassId, effectiveDate: transferDate, tuitionMode,
-      customPackagePrice: tuitionMode === "CUSTOM" ? Number(customPrice) : undefined,
-      reason: transferReason, note: transferNote || undefined, incompleteCycleAction: incompleteAction(transferReason, transferNote), advanceReceiptAction: { type: transferReceiptAction } });
-    setTransferOpen(false); setTargetClassId(0); await load(); setSuccess("Đã chuyển lớp; tiến độ học phí được tiếp tục khi giá không đổi và lịch sử lớp cũ được giữ nguyên.");
+      reason: transferReason, note: transferNote || undefined });
+    setTransferOpen(false); setTargetClassId(0); await load(); setSuccess("Đã chuyển lớp và giữ nguyên lịch sử lớp cũ.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể chuyển lớp."); } finally { setBusy(false); } };
   const changeEnrollmentStatus = async () => { const action = statusActionName; if (!item?.enrollmentId || !action) return; setError(""); setSuccess(""); setBusy(true); try {
     await api(`/api/enrollments/${item.enrollmentId}/${action}`, { method: "POST", body: JSON.stringify({ effectiveDate: statusEffectiveDate, reason: statusReason || undefined }) }); await load(); setStatusActionName(null); setSuccess(action === "pause" ? "Đã tạm dừng ghi danh theo ngày hiệu lực." : "Đã mở lại ghi danh theo ngày hiệu lực.");
@@ -161,10 +149,7 @@ export function StudentDetailPage() {
         </Stack>
         <Divider />
         {item!.enrollmentId && item!.tuitionMode ? <>
-          <Typography>Học phí: {item!.tuitionMode === "FREE"
-            ? "Miễn phí"
-            : <><CurrencyDisplay value={item!.effectivePackagePrice} /> / 8 buổi</>}</Typography>
-          {item!.tuitionMode !== "FREE" && <ProgressCount value={item!.currentProgress ?? 0} label="Tiến độ học phí" />}
+          <Typography>Học phí: {item!.tuitionMode === "FREE" ? "Miễn phí" : "Theo dõi theo tháng"}</Typography>
         </> : <Typography color="text.secondary">Chưa có ghi danh đang học.</Typography>}
         {(item!.parentName || item!.parentPhone) && <Typography variant="body2" color="text.secondary">
           Phụ huynh: {[item!.parentName, item!.parentPhone].filter(Boolean).join(" · ")}
@@ -238,10 +223,9 @@ export function StudentDetailPage() {
         </Stack></AccordionDetails>
       </Accordion>
       <Dialog open={tuitionOpen} onClose={() => setTuitionOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Chế độ học phí</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
-        <FormControl><InputLabel>Chế độ</InputLabel><Select label="Chế độ" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Theo giá lớp</MenuItem><MenuItem value="CUSTOM">Giá riêng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
-        {tuitionMode === "CUSTOM" && <TextField type="number" required label="Giá riêng / 8 buổi" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} />}
+        <FormControl><InputLabel>Chế độ</InputLabel><Select label="Chế độ" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Có thu theo tháng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
         <TextField type="date" label="Áp dụng từ" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <Alert severity="info">Thay đổi chỉ áp dụng cho đợt học phí tiếp theo.</Alert>
+        <Alert severity="info">Học sinh miễn phí sẽ không xuất hiện trong bảng học phí tháng.</Alert>
       </Stack></DialogContent><DialogActions><Button onClick={() => setTuitionOpen(false)}>Hủy</Button><Button variant="contained" disabled={busy} onClick={changeTuition}>{busy ? "Đang lưu…" : "Lưu"}</Button></DialogActions></Dialog>
       <Dialog open={Boolean(statusActionName)} onClose={() => !busy && setStatusActionName(null)} fullWidth maxWidth="xs"><DialogTitle>{statusActionName === "pause" ? "Tạm dừng ghi danh" : "Mở lại ghi danh"}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         <Alert severity="info">Participant lịch sử không đổi; ngày hiệu lực chỉ quyết định các buổi nào học sinh đủ điều kiện.</Alert>
@@ -250,18 +234,11 @@ export function StudentDetailPage() {
       </Stack></DialogContent><DialogActions><Button onClick={() => setStatusActionName(null)}>Hủy</Button><Button variant="contained" disabled={busy || !statusEffectiveDate} onClick={() => void changeEnrollmentStatus()}>{busy ? "Đang lưu…" : "Xác nhận"}</Button></DialogActions></Dialog>
       <Dialog open={endOpen} onClose={() => !busy && setEndOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Ngừng học</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         <TextField required type="date" label="Ngày kết thúc" value={endDate} onChange={(e) => setEndDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} /><TextField required label="Lý do" value={endReason} onChange={(e) => setEndReason(e.target.value)} /><TextField multiline minRows={2} label="Ghi chú (tùy chọn)" value={endNote} onChange={(e) => setEndNote(e.target.value)} />
-        {item!.incompleteCycle && <Alert severity="info">Đợt hiện tại: {item!.incompleteCycle.itemCount}/8 buổi</Alert>}
-        <TextField select label="Xử lý đợt hiện tại" value={closureAction} onChange={(e) => setClosureAction(e.target.value as typeof closureAction)}><MenuItem value="KEEP_OPEN">Để xử lý sau</MenuItem><MenuItem value="SETTLE">Chốt học phí</MenuItem><MenuItem value="WAIVE">Miễn phần còn lại</MenuItem></TextField>
-        {closureAction === "SETTLE" && <><TextField type="number" label="Số tiền thực thu" value={closureAmount} onChange={(e) => setClosureAmount(e.target.value)} /><TextField select label="Phương thức" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}><MenuItem value="CASH">Tiền mặt</MenuItem><MenuItem value="BANK_TRANSFER">Chuyển khoản</MenuItem></TextField></>}
-        {item!.advanceReceipt && <TextField select label="Khoản đã thu trước" value={receiptAction} onChange={(e) => setReceiptAction(e.target.value as typeof receiptAction)}><MenuItem value="NONE">Giữ nguyên</MenuItem><MenuItem value="REFUND">Hoàn tiền</MenuItem><MenuItem value="APPLY_TO_OLD_SETTLEMENT">Dùng để chốt đợt cũ</MenuItem></TextField>}
       </Stack></DialogContent><DialogActions><Button onClick={() => setEndOpen(false)}>Hủy</Button><Button color="error" variant="contained" disabled={busy || !endReason.trim()} onClick={() => void endEnrollment()}>Xác nhận ngừng học</Button></DialogActions></Dialog>
       <Dialog open={transferOpen} onClose={() => !busy && setTransferOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Chuyển lớp</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         <TextField select required label="Lớp mới" value={targetClassId || ""} onChange={(e) => setTargetClassId(Number(e.target.value))}>{classes.filter((value) => value.id !== item!.classId && value.status === "ACTIVE").map((value) => <MenuItem key={value.id} value={value.id}>{value.name}</MenuItem>)}</TextField>
         <TextField required type="date" label="Ngày chuyển" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} /><TextField required label="Lý do chuyển" value={transferReason} onChange={(e) => setTransferReason(e.target.value)} /><TextField multiline minRows={2} label="Ghi chú chuyển lớp (tùy chọn)" value={transferNote} onChange={(e) => setTransferNote(e.target.value)} />
-        <TextField select label="Xử lý đợt cũ" value={closureAction} onChange={(e) => setClosureAction(e.target.value as typeof closureAction)}><MenuItem value="KEEP_OPEN">Để xử lý sau</MenuItem><MenuItem value="SETTLE">Chốt học phí</MenuItem><MenuItem value="WAIVE">Miễn phần còn lại</MenuItem></TextField>
-        {closureAction === "SETTLE" && <><TextField type="number" label="Số tiền chốt" value={closureAmount} onChange={(e) => setClosureAmount(e.target.value)} /><TextField select label="Phương thức chốt" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}><MenuItem value="CASH">Tiền mặt</MenuItem><MenuItem value="BANK_TRANSFER">Chuyển khoản</MenuItem></TextField></>}
-        {item!.advanceReceipt && <TextField select label="Khoản thu trước" value={transferReceiptAction} onChange={(e) => setTransferReceiptAction(e.target.value as typeof transferReceiptAction)}><MenuItem value="TRANSFER_TO_NEW_ENROLLMENT">Chuyển sang lớp mới</MenuItem><MenuItem value="APPLY_TO_OLD_SETTLEMENT">Dùng chốt đợt cũ</MenuItem><MenuItem value="REFUND">Hoàn tiền</MenuItem><MenuItem value="NONE">Giữ nguyên</MenuItem></TextField>}
-        <Alert severity="info">Nếu giá gói không đổi, tiến độ đang dở tiếp tục theo học sinh. Nếu giá đổi, lựa chọn chốt/giữ đợt cũ được áp dụng rõ ràng. Lesson và attendance cũ không thay đổi.</Alert>
+        <Alert severity="info">Các buổi học và điểm danh cũ được giữ nguyên khi chuyển lớp.</Alert>
       </Stack></DialogContent><DialogActions><Button onClick={() => setTransferOpen(false)}>Hủy</Button><Button variant="contained" disabled={busy || !targetClassId || !transferReason.trim()} onClick={() => void transfer()}>Xác nhận chuyển lớp</Button></DialogActions></Dialog>
       <Dialog open={Boolean(googleConfirm)} onClose={() => !googleBusy && setGoogleConfirm(null)} fullWidth maxWidth="xs">
         <DialogTitle>{googleConfirm === "archive" ? "Lưu trữ Google Sheet"

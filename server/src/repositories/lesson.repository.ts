@@ -48,6 +48,7 @@ export interface ParticipantRow extends RowDataPacket {
   enrollment_id: number;
   student_id: number;
   student_name: string;
+  tuition_mode: "CLASS_DEFAULT" | "CUSTOM" | "FREE";
 }
 
 function dateOnly(value: Date | string): string {
@@ -248,7 +249,7 @@ export class LessonRepository {
   async participantRowsForUpdate(connection: PoolConnection, lessonId: number): Promise<ParticipantRow[]> {
     const [rows] = await connection.query<ParticipantRow[]>(
       `SELECT p.id participant_id,p.enrollment_id,s.id student_id,
-        COALESCE(p.student_name_snapshot,s.full_name) student_name
+        COALESCE(p.student_name_snapshot,s.full_name) student_name,e.tuition_mode
        FROM lesson_session_participants p
        JOIN class_enrollments e ON e.id=p.enrollment_id
        JOIN students s ON s.id=e.student_id

@@ -10,11 +10,6 @@ import { todayInHoChiMinh } from "../utils/date";
 
 const emptySchedule: RecurringScheduleInput = { dayOfWeek: 1, startTime: "18:00", endTime: "19:30" };
 const today = todayInHoChiMinh();
-const priceDigits = (value: string): string => value.replace(/\D/g, "").replace(/^0+/, "");
-const formatPrice = (value: string | number): string => {
-  const digits = priceDigits(String(value));
-  return digits ? Number(digits).toLocaleString("vi-VN") : "";
-};
 const time24Pattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 const formatTime24Input = (value: string): string => {
   const cleaned = value.replace(/[^\d:]/g, "");
@@ -56,7 +51,7 @@ export function ClassFormPage() {
     if (!id) return;
     api<ClassDetail>(`/api/classes/${id}`).then((item) => {
       setName(item.name); setType(item.type); setSubject(item.subject ?? "");
-      setPrice(formatPrice(item.defaultPackagePrice)); setDuration(item.defaultDurationMinutes);
+      setPrice(String(item.defaultPackagePrice)); setDuration(item.defaultDurationMinutes);
       setStartDate(item.startDate); setExpectedEndDate(item.expectedEndDate ?? "");
       setStatus(item.status); setOriginalStatus(item.status); setNote(item.note ?? "");
       setSchedules(item.schedules.map(({ id: scheduleId, dayOfWeek, startTime, endTime }) => ({ id: scheduleId, dayOfWeek, startTime, endTime })));
@@ -65,12 +60,7 @@ export function ClassFormPage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const digits = priceDigits(price);
-    const parsedPrice = digits ? Number(digits) : 0;
-    if (!Number.isSafeInteger(parsedPrice) || parsedPrice < 0) {
-      setError("Học phí gói 8 buổi không hợp lệ.");
-      return;
-    }
+    const parsedPrice = Number(price) || 0;
     if (schedules.some((schedule) => !time24Pattern.test(schedule.startTime) ||
       !time24Pattern.test(schedule.endTime) || schedule.endTime <= schedule.startTime)) {
       setError("Giờ học phải theo định dạng 24 giờ HH:mm và giờ kết thúc phải sau giờ bắt đầu.");
@@ -109,9 +99,6 @@ export function ClassFormPage() {
         <TextField fullWidth type="date" label="Ngày kết thúc dự kiến" value={expectedEndDate} onChange={(e) => setExpectedEndDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       </Stack>
       {editing && <Alert severity="info">Đổi trạng thái lớp tại trang chi tiết để chọn đúng ngày hiệu lực.</Alert>}
-    </FormSection>
-    <FormSection title="Học phí" description="Mức học phí cho đúng 8 buổi; có thể để trống nếu chưa muốn theo dõi học phí.">
-      <TextField label="Giá gói 8 buổi (VND)" placeholder="Ví dụ: 2.400.000" value={price} onChange={(event) => setPrice(formatPrice(event.target.value))} onBlur={() => setPrice(formatPrice(price))} helperText="Có thể để trống nếu chưa muốn theo dõi học phí." slotProps={{ htmlInput: { inputMode: "numeric", pattern: "[0-9.]*" } }} />
     </FormSection>
     <FormSection title="Lịch học hằng tuần">
       {editing && <TextField required type="date" label="Áp dụng thay đổi lịch từ" value={scheduleEffectiveDate} onChange={(e) => setScheduleEffectiveDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} helperText="Chỉ dùng khi thêm, sửa hoặc xóa lịch; sửa metadata không tạo version lịch mới." />}

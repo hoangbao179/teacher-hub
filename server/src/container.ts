@@ -76,16 +76,13 @@ const authService = new AuthService(users);
 const classService = new ClassService(classes);
 const studentService = new StudentService(students);
 const googleSheetSync = new GoogleSheetSyncRepository();
-const lessonService = new LessonService(lessons, undefined, undefined, googleSheetSync);
+const lessonService = new LessonService(lessons, undefined, googleSheetSync);
 const tuitionService = new TuitionService(tuition);
 const combinedClassGroupService = new CombinedClassGroupService(combinedClassGroups, lessonService);
 const scheduleService = new ScheduleService(schedules, lessonService, combinedClassGroupService);
 const dashboardService = new DashboardService(tuition, schedules);
 const enrollmentService = new EnrollmentService(enrollments);
-const studentReportService = new StudentReportService(
-  studentReports,
-  config.studentReport.vietinBankAccountNumber,
-);
+const studentReportService = new StudentReportService(studentReports);
 const vocabularyService = new VocabularyService(vocabulary);
 const vocabularyImageProviderList = [
   ...(config.vocabularyMedia.arasaacEnabled

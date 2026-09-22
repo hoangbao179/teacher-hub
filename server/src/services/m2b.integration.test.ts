@@ -99,8 +99,6 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
   assert.equal(Number.isNaN(Date.parse(result.completedAt)), false);
   const [attendanceRows] = await pool.query<RowDataPacket[]>("SELECT * FROM lesson_attendances WHERE lesson_session_id=?", [draft.id]);
   assert.equal(attendanceRows.length, 3);
-  const [cycleItems] = await pool.query<RowDataPacket[]>("SELECT * FROM tuition_cycle_sessions");
-  assert.equal(cycleItems.length, 0);
   const replay = await lessons.complete(draft.id, {
     actualStartTime: "18:05", actualEndTime: "20:05",
     attendances: persisted.participants.map((item) => ({ enrollmentId: item.enrollmentId, status: item.attendance!.status })),
@@ -108,12 +106,9 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
   assert.equal(replay.lesson.status, "COMPLETED");
   assert.equal(replay.completedAt, result.completedAt);
   assert.equal(replay.lesson.completedAt, result.completedAt);
-  const [afterReplay] = await pool.query<RowDataPacket[]>("SELECT * FROM tuition_cycle_sessions");
-  assert.equal(afterReplay.length, 0);
-  const [audits] = await pool.query<RowDataPacket[]>("SELECT action FROM audit_logs WHERE entity_id=? OR entity_type='TUITION_CYCLE'", [draft.id]);
+  const [audits] = await pool.query<RowDataPacket[]>("SELECT action FROM audit_logs WHERE entity_id=?", [draft.id]);
   for (const action of ["LESSON_DRAFT_CREATED", "LESSON_ATTENDANCE_UPDATED", "LESSON_UPDATED", "LESSON_COMPLETED"])
     assert.ok(audits.some((row) => row.action === action), `missing audit ${action}`);
-  assert.equal(audits.some((row) => String(row.action).startsWith("TUITION_")), false);
 
   const makeup = await lessons.create({
     classId: data.classId, sessionDate: "2026-07-10", scheduledStartTime: "20:00",
@@ -167,7 +162,7 @@ integration("completion accepts PRESENT for a free enrollment without billing it
   }), (error: unknown) => error instanceof AppError && error.code === "LESSON_NOT_DRAFT");
 });
 
-integration("concurrent completion cannot double-count", async () => {
+integration("concurrent completion keeps one attendance row", async () => {
   const data = await fixture();
   const lessons = service();
   const draft = await lessons.create({
@@ -180,8 +175,8 @@ integration("concurrent completion cannot double-count", async () => {
   };
   const results = await Promise.all([lessons.complete(draft.id, request), lessons.complete(draft.id, request)]);
   assert.equal(results.every((item) => item.lesson.status === "COMPLETED"), true);
-  const [rows] = await pool.query<RowDataPacket[]>("SELECT * FROM tuition_cycle_sessions");
-  assert.equal(rows.length, 0);
+  const [rows] = await pool.query<RowDataPacket[]>("SELECT * FROM lesson_attendances WHERE lesson_session_id=?", [draft.id]);
+  assert.equal(rows.length, 1);
 });
 
 test.after(async () => { if (enabled) await pool.end(); });

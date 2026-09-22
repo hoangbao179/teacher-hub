@@ -75,7 +75,7 @@ try {
   await advanced.getByText("Công cụ nâng cao").click();
   await advanced.getByRole("button", { name: "Thử tạo lại" }).click(); await card.getByText("Đã đồng bộ").waitFor();
   await advanced.getByRole("button", { name: "Lưu trữ sổ" }).waitFor();
-  await advanced.getByRole("link", { name: "Import lịch sử" }).waitFor();
+  if (await advanced.getByRole("link", { name: "Import lịch sử" }).count()) throw new Error("Retired Legacy Import action is still visible");
   const open = card.getByRole("link", { name: "Mở sổ phụ huynh" }); const firstUrl = await open.getAttribute("href");
   if (!firstUrl?.startsWith("https://docs.google.com/spreadsheets/")) throw new Error("Unsafe or missing Google Sheet URL");
   if (await open.getAttribute("rel") !== "noopener noreferrer") throw new Error("External Google Sheet link is missing rel safety");
@@ -105,7 +105,8 @@ try {
   await card.getByText("Đang chờ đồng bộ").waitFor();
   const summary = page.getByTestId("student-summary-card");
   await summary.getByText(groupName).waitFor();
-  await summary.getByText("Tiến độ học phí 1/8").waitFor();
+  await summary.getByText("Học phí: Theo dõi theo tháng").waitFor();
+  if ((await summary.innerText()).includes("/8")) throw new Error("Student summary still exposes the retired eight-session tuition progress");
   if ((await card.innerText()).match(/outbox|retry|dead|generation/i)) throw new Error("Technical sync terms are visible on the main Google card");
   await page.getByTestId("student-advanced-tools").getByText("Công cụ nâng cao").click();
   await page.getByTestId("student-advanced-tools").getByRole("button", { name: "Đồng bộ lại" }).click();

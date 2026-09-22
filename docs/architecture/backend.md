@@ -1,14 +1,15 @@
 # Backend architecture
 
-Controller chỉ xử lý HTTP. Service xử lý business rule và transaction. Repository chứa SQL.
+Express tuân theo controller → service → repository:
 
-Transaction bắt buộc cho:
+- controller parse HTTP/auth/status;
+- service giữ validation, business rule và transaction orchestration;
+- repository giữ SQL và row mapping.
 
-- hoàn thành buổi học + điểm danh + phân bổ chu kỳ;
-- sửa attendance ảnh hưởng chu kỳ;
-- đóng enrollment có chu kỳ dang dở;
-- mở khóa chu kỳ đã thu trong tương lai.
+Lesson completion lưu lesson/attendance và enqueue Google Sheet event trong cùng
+transaction; không gọi Google API trong transaction. Monthly tuition service dựng
+board từ completed lesson/participant snapshot và transactionally upsert payment/audit.
+Không có orchestration cycle/receipt hoặc Legacy Import trong runtime.
 
-Business logic không được chuyển sang frontend.
-
-`LessonService.complete` hiện là vertical slice mẫu cho cách triển khai feature.
+Shared DTO chỉ import từ `@teacher/shared`. Mutation nhiều bảng bắt buộc dùng
+transaction; external API phải nằm ngoài consistency boundary database.

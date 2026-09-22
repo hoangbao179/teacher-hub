@@ -1,29 +1,16 @@
 # 02. Scope V1
 
 ## Trong phạm vi
-- Đăng nhập một giáo viên.
-- Trang public mobile-first cho Cô Vy tại Huế: giới thiệu giáo viên, chương trình
-  Tiếng Anh lớp 1–9 và 1–1/nhóm nhỏ, video dài từ YouTube và CTA ưu tiên Zalo.
-- Lớp 1 kèm 1 và lớp nhóm dùng chung cấu trúc.
-- Một học sinh chỉ có tối đa một ghi danh đang hoạt động.
-- Giá gói 8 buổi mặc định ở lớp; cho phép giá riêng hoặc miễn phí hoàn toàn theo học sinh.
-- Lịch học lặp hằng tuần và lịch bận/dạy ở trường.
-- Ghi nhận buổi học trước hoặc sau khi dạy; ưu tiên hỗ trợ nhập sau.
-- Đối soát các buổi dự kiến chưa ghi nhận, kể cả nhập muộn 1-2 tuần.
-- Điểm danh Có mặt, Nghỉ, Miễn phí.
-- Buổi học bù cho một số học sinh; không bắt buộc liên kết kỹ thuật với buổi nghỉ cũ.
-- Tự động tạo và phân bổ chu kỳ 8 buổi tính phí cho từng học sinh.
-- Danh sách cần thu, đánh dấu đã thu toàn bộ, không thanh toán một phần.
-- Tạm dừng/đóng lớp; tạm dừng/cho học sinh ngừng học mà không xóa lịch sử.
-- Xuất Excel theo học sinh ở giai đoạn triển khai sau, nhưng data model phải hỗ trợ ngay.
 
-## Ngoài phạm vi V1
-- Nhiều giáo viên, nhiều chi nhánh, phân quyền phức tạp.
-- Tài khoản học sinh/phụ huynh.
-- Thanh toán online hoặc thanh toán một phần.
-- Push notification, Messenger API, Zalo OA/API.
-- CMS kéo-thả cho trang Home.
-- Upload và xử lý video dài trực tiếp trên server.
-- Quản lý lớp/học sinh ở trường nơi cô giáo công tác.
-- Báo cáo doanh thu nâng cao, kế toán, hóa đơn điện tử.
-- Import Excel tùy ý từ giao diện; file cũ chỉ là nguồn migration một lần.
+- Một teacher/admin; lớp 1 kèm 1 và lớp nhóm; student/enrollment/history.
+- Lịch lặp, busy slot, external schedule, combined class, nghỉ, đổi lịch và học bù.
+- Lesson draft/completed/cancelled, participant snapshot, `PRESENT | ABSENT` và
+  nhận xét tùy chọn.
+- Bảng học phí theo tháng, amount VND tùy chọn, `PAID` bất biến.
+- Excel quá trình học tập và Google Sheet phụ huynh đồng bộ qua outbox.
+
+## Ngoài phạm vi
+
+- Tài khoản học sinh/phụ huynh, nhiều giáo viên, notification, payment gateway,
+  partial payment, CMS và import workbook lịch sử.
+- Tự động chuyển cycle 8 buổi cũ sang payment tháng.

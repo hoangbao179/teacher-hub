@@ -217,12 +217,8 @@ integration("combined group resolves one card and completes child lessons atomic
     })),
   }, data.actorId);
   assert.equal(replayCompletion.lessons.every((item) => item.attendanceCount > 0), true);
-  const [progress] = await pool.query<RowDataPacket[]>(
-    `SELECT tc.enrollment_id,COUNT(tcs.id) progress
-     FROM tuition_cycles tc JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
-     GROUP BY tc.enrollment_id ORDER BY tc.enrollment_id`,
-  );
-  assert.deepEqual(progress.map((row) => Number(row.progress)), []);
+  const [attendanceRows] = await pool.query<RowDataPacket[]>("SELECT id FROM lesson_attendances");
+  assert.equal(attendanceRows.length, 3);
 });
 
 integration("combined completion rolls back every child when attendance is incomplete", async () => {
@@ -258,9 +254,7 @@ integration("combined completion rolls back every child when attendance is incom
   assert.equal(lessons.length, 3);
   assert.equal(lessons.every((row) => row.status === "DRAFT"), true);
   const [attendances] = await pool.query<RowDataPacket[]>("SELECT id FROM lesson_attendances");
-  const [cycles] = await pool.query<RowDataPacket[]>("SELECT id FROM tuition_cycles");
   assert.equal(attendances.length, 0);
-  assert.equal(cycles.length, 0);
 });
 // Keep the July–September fixtures inside the API's rolling 60-day lookback.
 // Mock only Date so MySQL/network timers continue to run normally.

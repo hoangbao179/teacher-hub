@@ -11,7 +11,6 @@ import type {
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { AuditRepository } from "./audit.repository";
-import { TuitionPolicyRepository } from "./tuition-policy.repository";
 import { todayInHoChiMinh } from "../utils/date";
 
 interface ClassRow extends RowDataPacket {
@@ -27,7 +26,6 @@ interface ClassRow extends RowDataPacket {
   closed_at: string | null;
   note: string | null;
   active_student_count: number;
-  payment_due_count: number;
 }
 
 function mapList(row: ClassRow): ClassListItem {
@@ -40,23 +38,17 @@ function mapList(row: ClassRow): ClassListItem {
     defaultPackagePrice: Number(row.default_package_price),
     defaultDurationMinutes: Number(row.default_duration_minutes),
     activeStudentCount: Number(row.active_student_count),
-    paymentDueCount: Number(row.payment_due_count),
   };
 }
 
 export class ClassRepository {
-  constructor(
-    private readonly audit = new AuditRepository(),
-    private readonly policies = new TuitionPolicyRepository(),
-  ) {}
+  constructor(private readonly audit = new AuditRepository()) {}
   async list(): Promise<ClassListItem[]> {
     const [rows] = await pool.query<ClassRow[]>(`
       SELECT c.*,
-        COUNT(DISTINCT CASE WHEN e.status='ACTIVE' THEN e.id END) AS active_student_count,
-        COUNT(DISTINCT CASE WHEN tc.status='PAYMENT_DUE' THEN tc.id END) AS payment_due_count
+        COUNT(DISTINCT CASE WHEN e.status='ACTIVE' THEN e.id END) AS active_student_count
       FROM classes c
       LEFT JOIN class_enrollments e ON e.class_id = c.id
-      LEFT JOIN tuition_cycles tc ON tc.enrollment_id = e.id
       GROUP BY c.id
       ORDER BY FIELD(c.status,'ACTIVE','PAUSED','CLOSED'), c.name
     `);
@@ -67,11 +59,9 @@ export class ClassRepository {
     const [classes] = await pool.query<ClassRow[]>(
       `
       SELECT c.*,
-        COUNT(DISTINCT CASE WHEN e.status='ACTIVE' THEN e.id END) AS active_student_count,
-        COUNT(DISTINCT CASE WHEN tc.status='PAYMENT_DUE' THEN tc.id END) AS payment_due_count
+        COUNT(DISTINCT CASE WHEN e.status='ACTIVE' THEN e.id END) AS active_student_count
       FROM classes c
       LEFT JOIN class_enrollments e ON e.class_id = c.id
-      LEFT JOIN tuition_cycles tc ON tc.enrollment_id = e.id
       WHERE c.id = ? GROUP BY c.id
     `,
       [id],
@@ -88,11 +78,7 @@ export class ClassRepository {
     );
     const [students] = await pool.query<RowDataPacket[]>(
       `
-      SELECT e.id enrollment_id, s.id student_id, s.full_name, s.nickname, e.tuition_mode,
-        (SELECT COUNT(*) FROM tuition_cycle_sessions tcs JOIN tuition_cycles tc2 ON tc2.id=tcs.tuition_cycle_id
-          JOIN class_enrollments cycle_owner ON cycle_owner.id=tc2.enrollment_id
-          WHERE cycle_owner.student_id=e.student_id AND tc2.status='ACCUMULATING') current_progress,
-        EXISTS(SELECT 1 FROM tuition_cycles due WHERE due.enrollment_id=e.id AND due.status='PAYMENT_DUE') has_payment_due
+      SELECT e.id enrollment_id, s.id student_id, s.full_name, s.nickname, e.tuition_mode
       FROM class_enrollments e JOIN students s ON s.id=e.student_id
       WHERE e.class_id=? AND e.status='ACTIVE' ORDER BY s.full_name
     `,
@@ -119,9 +105,6 @@ export class ClassRepository {
         fullName: String(item.full_name),
         nickname: item.nickname ? String(item.nickname) : null,
         tuitionMode: item.tuition_mode,
-        currentProgress:
-          item.current_progress == null ? null : Number(item.current_progress),
-        hasPaymentDue: Boolean(item.has_payment_due),
       })),
     };
   }
@@ -152,13 +135,6 @@ export class ClassRepository {
         actorUserId, action: "CLASS_CREATED", entityType: "CLASS",
         entityId: result.insertId, newValues: input,
       });
-      await this.policies.createInitialClassPolicy(
-        connection,
-        result.insertId,
-        input.defaultPackagePrice,
-        input.startDate,
-        actorUserId,
-      );
       if ((input.status ?? "ACTIVE") === "ACTIVE")
         await connection.execute(
           "INSERT INTO class_active_periods(class_id,active_from,created_by) VALUES (?,?,?)",
@@ -232,15 +208,6 @@ export class ClassRepository {
           id,
         ],
       );
-      if (Number(existing[0].default_package_price) !== input.defaultPackagePrice) {
-        await this.policies.replaceClassPolicy(
-          connection,
-          id,
-          input.defaultPackagePrice,
-          todayInHoChiMinh(),
-          actorUserId,
-        );
-      }
       await this.audit.record(connection, {
         actorUserId, action: "CLASS_UPDATED", entityType: "CLASS", entityId: id,
         previousValues: existing[0], newValues: input,

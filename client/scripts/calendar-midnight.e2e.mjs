@@ -93,13 +93,9 @@ function dashboardPayload(date, title) {
     memberClasses: [{ id: 3, name: "Lớp 6A" }, { id: 4, name: "Lớp 6B" }],
   });
   return { data: {
-    paymentDueCount: 0,
-    totalUnpaidAmount: 0,
-    accumulatingStudentCount: 0,
-    paidCycleCount: 0,
+    monthlyTuitionUnpaidCount: 0,
     unrecordedCount: 1,
     outstandingMakeupStudentCount: 0,
-    openIncompleteCycleCount: 0,
     recentUnrecordedSessions: [],
     todaySchedule: {
       from: date,

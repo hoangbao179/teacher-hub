@@ -13,10 +13,7 @@ function validDate(value: string): boolean {
 }
 
 export class StudentReportService {
-  constructor(
-    private readonly repository: StudentReportRepository,
-    private readonly vietinBankAccountNumber = "",
-  ) {}
+  constructor(private readonly repository: StudentReportRepository) {}
 
   async export(studentId: number, query: StudentReportExportQuery, actorUserId: number) {
     if (!Number.isInteger(studentId) || studentId <= 0)
@@ -35,21 +32,16 @@ export class StudentReportService {
     if (query.classId != null && !(await this.repository.studentHasClass(studentId, query.classId)))
       throw new AppError(400, "STUDENT_CLASS_MISMATCH", "Học sinh không có lịch sử ghi danh tại lớp đã chọn.");
 
-    const [learningRows, tuitionRows] = await Promise.all([
-      this.repository.learningRows(studentId, query),
-      this.repository.tuitionRows(studentId, query),
-    ]);
-    if (learningRows.length > 5000 || tuitionRows.length > 5000)
+    const learningRows = await this.repository.learningRows(studentId, query);
+    if (learningRows.length > 5000)
       throw new AppError(413, "REPORT_TOO_LARGE", "Báo cáo vượt quá 5.000 dòng; vui lòng chọn khoảng ngày ngắn hơn.");
 
     const generatedAt = new Date().toISOString();
     const buffer = await buildStudentWorkbook({
       student,
       learningRows,
-      tuitionRows,
       query,
       generatedAt,
-      vietinBankAccountNumber: this.vietinBankAccountNumber,
     });
     await this.repository.recordExport(studentId, actorUserId, query);
     return {

@@ -17,10 +17,9 @@ import { AppError } from "../errors/app-error";
 import { AuditRepository } from "../repositories/audit.repository";
 import { LessonRepository, type LessonRow, type ParticipantRow } from "../repositories/lesson.repository";
 import { GoogleSheetSyncRepository } from "../repositories/google-sheet-sync.repository";
-import { TuitionPolicyRepository } from "../repositories/tuition-policy.repository";
 import { durationMinutes } from "../utils/date";
 import { occurrenceKey, parseOccurrenceKey } from "../domain/schedule-projection";
-import { isBillableAttendance, parseRuntimeAttendanceStatus } from "../domain/lesson-domain";
+import { parseRuntimeAttendanceStatus } from "../domain/lesson-domain";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -28,7 +27,6 @@ const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 export class LessonService {
   constructor(
     private readonly lessons: LessonRepository,
-    private readonly policies = new TuitionPolicyRepository(),
     private readonly audit = new AuditRepository(),
     private readonly googleSheetSync = new GoogleSheetSyncRepository(),
   ) {}
@@ -550,13 +548,12 @@ export class LessonService {
       throw new AppError(400, "MISSING_ATTENDANCE", "Phải điểm danh đúng một trạng thái cho mọi học sinh tham gia.");
     const result: Array<{
       enrollmentId: number; studentId: number; studentName: string; attendanceId: number;
-      policyMode: "CLASS_DEFAULT" | "CUSTOM" | "FREE"; packagePrice: number | null; billable: boolean;
+      billable: boolean;
     }> = [];
     for (const input of inputs) {
       this.validateAttendanceStatus(input.status);
       const participant = byEnrollment.get(input.enrollmentId)!;
-      const policy = await this.policies.resolve(connection, input.enrollmentId, this.dateOnly(lesson.session_date), true);
-      const billable = isBillableAttendance(input.status, policy.mode, policy.packagePrice);
+      const billable = input.status === "PRESENT" && participant.tuition_mode !== "FREE";
       const attendanceId = await this.lessons.upsertAttendance(
         connection, Number(lesson.id), Number(participant.participant_id), input.enrollmentId,
         input.status, billable, input.studentNote?.trim() || null,
@@ -565,7 +562,7 @@ export class LessonService {
         enrollmentId: input.enrollmentId,
         studentId: Number(participant.student_id),
         studentName: String(participant.student_name),
-        attendanceId, policyMode: policy.mode, packagePrice: policy.packagePrice, billable,
+        attendanceId, billable,
       });
     }
     return result;

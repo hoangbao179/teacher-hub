@@ -67,7 +67,7 @@ async function noHorizontalScroll(page) {
 }
 async function assertNoRawEnums(page) {
   const raw = await page.locator("body").innerText();
-  const match = raw.match(/\b(ACTIVE|PAUSED|CLOSED|PRESENT|ABSENT|FREE|ACCUMULATING|PAYMENT_DUE|PAID|INCOMPLETE|REGULAR|MAKEUP|EXTRA|DRAFT|COMPLETED)\b/);
+  const match = raw.match(/\b(ACTIVE|PAUSED|CLOSED|PRESENT|ABSENT|PAID|UNPAID|REGULAR|MAKEUP|EXTRA|DRAFT|COMPLETED)\b/);
   if (match) throw new Error(`Visible raw enum: ${match[0]}`);
 }
 function todayInHoChiMinh() {
@@ -132,17 +132,15 @@ try {
   }
   const operationUnrecorded = await api(`/api/schedule/occurrences?from=${addDays(today, -14)}&to=${today}&classId=${klass.id}&state=UNRECORDED&lookbackDays=60`, token);
   const initialDashboard = await api("/api/dashboard", token);
-  const expectedDue = baselineDashboard.paymentDueCount + 1;
-  const expectedUnpaid = baselineDashboard.totalUnpaidAmount + 2_400_000;
+  const expectedUnpaidStudents = baselineDashboard.monthlyTuitionUnpaidCount + 1;
   const expectedUnrecorded = baselineDashboard.unrecordedCount + operationUnrecorded.length;
-  if (initialDashboard.paymentDueCount !== expectedDue || initialDashboard.totalUnpaidAmount !== expectedUnpaid || initialDashboard.unrecordedCount !== expectedUnrecorded)
+  if (initialDashboard.monthlyTuitionUnpaidCount !== expectedUnpaidStudents || initialDashboard.unrecordedCount !== expectedUnrecorded)
     throw new Error(`Unexpected dashboard aggregate ${JSON.stringify(initialDashboard)}`);
 
   await page.reload();
-  await page.getByTestId("dashboard-tuition-card").getByText(`${expectedDue} khoản học phí cần thu`).waitFor();
-  await page.getByText(`${expectedUnpaid.toLocaleString("vi-VN")}đ chưa thu`).waitFor();
+  await page.getByTestId("dashboard-tuition-card").getByText(`${expectedUnpaidStudents} học sinh chưa thu tháng này`).waitFor();
   await page.getByTestId("dashboard-tuition-card").click();
-  await page.waitForURL("**/admin/tuition?status=PAYMENT_DUE");
+  await page.waitForURL("**/admin/tuition?status=UNPAID");
   await page.goto("http://127.0.0.1:5177/admin");
   await page.getByTestId("dashboard-unrecorded-card").getByText(`${expectedUnrecorded} buổi chưa ghi`).waitFor();
   await page.getByTestId("dashboard-unrecorded-card").click();
@@ -380,9 +378,9 @@ try {
   await page.getByText("Đã mở lại lớp theo ngày hiệu lực.").waitFor();
 
   const classFixtures = [
-    { id: 91001, name: "Lớp Alpha đang dạy", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 4, paymentDueCount: 0 },
-    { id: 91002, name: "Lớp Beta tạm dừng", type: "ONE_TO_ONE", subject: "Tiếng Anh", status: "PAUSED", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 1, paymentDueCount: 0 },
-    { id: 91003, name: "Lớp Gamma đã đóng", type: "GROUP", subject: "Tiếng Anh", status: "CLOSED", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 0, paymentDueCount: 0 },
+    { id: 91001, name: "Lớp Alpha đang dạy", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 4 },
+    { id: 91002, name: "Lớp Beta tạm dừng", type: "ONE_TO_ONE", subject: "Tiếng Anh", status: "PAUSED", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 1 },
+    { id: 91003, name: "Lớp Gamma đã đóng", type: "GROUP", subject: "Tiếng Anh", status: "CLOSED", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 0 },
   ];
   await page.route("**/api/classes", (route) => route.request().method() === "GET"
     ? route.fulfill({ status: 200, contentType: "application/json", json: { data: classFixtures } })

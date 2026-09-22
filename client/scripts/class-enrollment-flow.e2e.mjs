@@ -97,7 +97,6 @@ async function runViewport(viewport) {
           defaultPackagePrice: 800000,
           defaultDurationMinutes: 60,
           activeStudentCount: classStudents.length,
-          paymentDueCount: 0,
           startDate: "2026-07-01",
           expectedEndDate: null,
           closedAt: null,

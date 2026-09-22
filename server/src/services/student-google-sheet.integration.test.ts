@@ -302,7 +302,7 @@ integration("outbox is transactional, revision-safe and worker syncs the canonic
 
   const outbox = new GoogleSheetSyncRepository();
   const lessonService = new LessonService(
-    new LessonRepository(), undefined, undefined, outbox,
+    new LessonRepository(), undefined, outbox,
   );
   await lessonService.updateContent(
     lesson.insertId,

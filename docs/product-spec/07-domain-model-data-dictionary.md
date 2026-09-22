@@ -1,109 +1,46 @@
-# 07. Domain Model and Data Dictionary
+# 07. Domain model and data dictionary
 
-## User
-- id, username (unique), email (legacy/optional), passwordHash, status, lastLoginAt.
+## Core
 
-## Student
-- id, fullName, nickname, dateOfBirth (optional), gender (optional), parentName, parentPhone, note, status, createdAt, updatedAt.
+- `Student`: id, fullName, nickname, ngày sinh/giới tính tùy chọn, liên hệ phụ huynh,
+  note, status, timestamps.
+- `Class`: id, name, classType, subject, defaultDurationMinutes, start/end/status,
+  note. `defaultPackagePrice` còn là cột tương thích lịch sử, không định giá tháng.
+- `ClassEnrollment`: id, classId, studentId, joinedAt, endedAt, status, tuitionMode,
+  customPackagePrice, note. `FREE` loại khỏi bảng học phí tháng; `CUSTOM` và policy
+  cũ được giữ để tương thích dữ liệu.
+- `RecurringSchedule`, `ScheduleException`, `TeacherBusySlot` và combined group giữ
+  mô hình hiệu lực hiện hành.
 
-## Class
-- id, name, classType, subject, level, defaultPackagePrice, defaultSessionDurationMinutes, startDate, expectedEndDate, status, note.
+## Lesson
 
-## ClassEnrollment
-- id, classId, studentId, joinedAt, endedAt, status, tuitionMode, customPackagePrice, tuitionEffectiveFrom, note.
-- Constraint: một student chỉ có tối đa một enrollment ACTIVE.
+- `LessonSession`: classId, participant source, ngày, giờ dự kiến/thực tế, duration,
+  type, content/homework/generalComment/note, status và timestamps.
+- `LessonSessionParticipant`: snapshot unique theo lesson + enrollment.
+- `LessonAttendance`: participantId, enrollmentId, `PRESENT|ABSENT` cho runtime,
+  studentNote. Các cột billing và giá trị `FREE` cũ chỉ phục vụ tương thích lịch sử.
 
-## RecurringSchedule
-- id, classId, dayOfWeek, scheduledStartTime, scheduledEndTime, effectiveFrom, effectiveTo.
+## MonthlyTuitionPayment
 
-## CombinedClassGroup
-- id, name, status (`ACTIVE`/`ENDED`), effectiveFrom, effectiveTo, createdAt,
-  updatedAt, createdBy.
-- Có ít nhất hai `CombinedClassGroupClass` unique theo groupId + classId.
-- Có một hoặc nhiều `CombinedClassGroupSchedule`: id, groupId, dayOfWeek,
-  startTime, endTime; unique theo groupId + dayOfWeek + startTime.
+- id, enrollmentId, tuitionYear, tuitionMonth, `UNPAID|PAID`, amount nullable,
+  paidAt, note, createdAt, updatedAt.
+- Unique `(enrollmentId, tuitionYear, tuitionMonth)`; month 1–12; `PAID` bắt buộc
+  có `paidAt`; amount nếu có là integer VND không âm.
+- Student/class được resolve qua enrollment. Summary attendance được query từ
+  completed lesson + participant snapshot, không lưu trùng trong payment row.
 
-## CombinedTeachingOccurrence
-- id, groupId, groupScheduleId, occurrenceDate, scheduledStartTime,
-  scheduledEndTime, status (`DRAFT`/`COMPLETED`/`SKIPPED`/`RESCHEDULED`),
-  replacementDate/start/end, reason, note và audit timestamps.
-- Unique groupScheduleId + occurrenceDate. Mỗi lesson con có
-  `combinedTeachingOccurrenceId`; unique occurrence + classId.
-- Chỉ lưu khi ca được xử lý. Lịch dự kiến chưa xử lý vẫn là projection ảo.
+## Historical-only tables
 
-## ScheduleException
-- id, classId, recurringScheduleId, originalDate, originalStartTime,
-  originalEndTime, type (`SKIPPED`/`RESCHEDULED`), replacementDate,
-  replacementStartTime, replacementEndTime, reason, note, createdBy, createdAt.
-- Unique: recurringScheduleId + originalDate. Exception chỉ xử lý một occurrence
-  và không sửa định nghĩa lịch lặp.
-
-## TeacherBusySlot
-- id, slotType (`EXTERNAL_CLASS`/`PERSONAL`/`OTHER`), organizationType
-  (`SCHOOL`/`CENTER`, chỉ dùng cho `EXTERNAL_CLASS`), organizationName, title,
-  recurrenceType, specificDate/startTime/endTime cho lịch một lần, effectiveFrom,
-  effectiveTo, location, note, createdBy, createdAt, updatedAt.
-- Lịch `WEEKLY` có một hoặc nhiều `TeacherBusySlotSchedule`: id,
-  teacherBusySlotId, dayOfWeek, startTime, endTime, displayOrder, timestamps.
-- Không có student, enrollment, attendance hoặc tuition behavior.
-
-## LessonSession
-- id, classId, sourceOccurrenceKey (nullable/unique),
-  combinedTeachingOccurrenceId (nullable), lessonDate,
-  scheduledStartTime, scheduledEndTime, actualStartTime, actualEndTime,
-  actualDurationMinutes, sessionType, content, homework, note, status, createdAt,
-  updatedAt.
-
-## LessonAttendance
-- id, sessionId, participantId, enrollmentId, attendanceStatus,
-  countsForTuition, excludedFromTuition, studentNote, createdAt, updatedAt.
-- Unique: participantId và sessionId + enrollmentId; composite foreign key bảo
-  đảm attendance thuộc đúng participant snapshot.
-- `excludedFromTuition=true` là manual approved exclusion và bắt buộc
-  `countsForTuition=false`.
-
-## LessonSessionParticipant
-- id, lessonSessionId, enrollmentId, createdAt, createdBy.
-- Unique: lessonSessionId + enrollmentId.
-
-## ClassTuitionPolicy
-- id, classId, packagePrice, effectiveFrom, effectiveTo, createdAt, createdBy.
-- Khoảng ngày inclusive, không overlap; packagePrice là integer VND không âm.
-  Giá `0` nghĩa là chưa cấu hình và không sinh phân bổ học phí theo giá lớp.
-
-## EnrollmentTuitionPolicy
-- id, enrollmentId, tuitionMode, customPackagePrice, effectiveFrom, effectiveTo,
-  createdAt, createdBy.
-- Khoảng ngày inclusive, không overlap; `CUSTOM` có giá dương, `FREE` và
-  `CLASS_DEFAULT` không có custom price.
-
-## TuitionCycle
-- id, enrollmentId, cycleNumber, targetCount=8, packagePriceSnapshot, status, startedAt, reachedTargetAt, paidAt, paidAmount, paymentMethod, paymentNote, lockReason.
-- `paidAt` là ngày thu trong V1; `paidAmount` phải bằng `packagePriceSnapshot`.
-- `paymentMethod`: `CASH` hoặc `BANK_TRANSFER`; không có partial payment.
-- Chỉ partial cycle của enrollment `ENDED` có trạng thái `INCOMPLETE`.
-
-## TuitionCycleSession
-- id, tuitionCycleId, attendanceId, sequenceNumber 1..8.
-- Unique attendanceId; unique cycleId + sequenceNumber.
+`tuition_cycles`, cycle items, receipts, allocations, tuition policies và legacy
+import tables vẫn tồn tại vì không được xóa dữ liệu/migration đã áp dụng. Runtime
+hiện hành không đọc/ghi các bảng này.
 
 ## AuditLog
-- id, actorUserId, entityType, entityId, action, reason, beforeJson, afterJson, createdAt.
-- Tuition actions hiện hành: `TUITION_ALLOCATION_RECALCULATED`,
-  `TUITION_CYCLE_CREATED`, `TUITION_CYCLE_PAYMENT_DUE`,
-  `TUITION_CYCLE_MARKED_PAID`.
-- `TUITION_CYCLE_MARKED_PAID` được ghi cùng transaction với payment fields;
-  replay đồng nhất không tạo audit thứ hai.
-- Schedule actions hiện hành: `SCHEDULE_OCCURRENCE_SKIPPED`,
-  `SCHEDULE_OCCURRENCE_RESCHEDULED`, `TEACHER_BUSY_SLOT_CREATED`,
-  `TEACHER_BUSY_SLOT_UPDATED`, `TEACHER_BUSY_SLOT_DELETED` và các mutation
-  `RECURRING_SCHEDULE_*`. Replay exception đồng nhất không tạo audit thứ hai.
-- Report action: `STUDENT_REPORT_EXPORTED`, entity là `STUDENT`; `after_json`
-  chỉ lưu filters đã dùng. Workbook bytes không được lưu trong audit/database.
 
-## Kiểu dữ liệu bắt buộc
-- Múi giờ ứng dụng: Asia/Ho_Chi_Minh.
-- Tiền: integer VND.
-- Duration: integer minutes.
-- Ngày hiển thị: dd/MM/yyyy.
-- Không cho session đi qua nửa đêm trong V1.
+Mutation payment tháng ghi `MONTHLY_TUITION_MARKED_PAID` cùng transaction. Export
+ghi `STUDENT_REPORT_EXPORTED`. Workbook bytes, token và credential không vào audit.
+
+## Kiểu dữ liệu
+
+Timezone `Asia/Ho_Chi_Minh`; tiền integer VND; duration integer minutes; ngày `DATE`;
+giờ `TIME`; hiển thị ngày `dd/MM/yyyy`.

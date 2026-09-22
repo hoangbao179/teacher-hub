@@ -115,15 +115,12 @@ try {
   const token = await page.evaluate(() => localStorage.getItem("teacher-token"));
   if (!token) throw new Error("Capture login did not return a token");
 
-  const [classes, students, cycles] = await Promise.all([
+  const [classes, students] = await Promise.all([
     api("/api/classes", token),
     api("/api/students", token),
-    api("/api/tuition-cycles?page=1&pageSize=100", token),
   ]);
   const firstClass = classes[0];
   const firstStudent = students[0];
-  const firstCycle = cycles[0];
-  const dueCycle = cycles.find((cycle) => cycle.status === "PAYMENT_DUE") ?? firstCycle;
   const screens = [
     { name: "public-home", path: "/", public: true },
     { name: "login", path: "/admin/login", public: true },
@@ -135,8 +132,6 @@ try {
     { name: "student-detail", path: firstStudent ? `/admin/students/${firstStudent.id}` : null },
     { name: "lesson-wizard", path: firstClass ? `/admin/lessons/new?classId=${firstClass.id}` : "/admin/lessons/new" },
     { name: "tuition-list", path: "/admin/tuition" },
-    { name: "tuition-detail", path: firstCycle ? `/admin/tuition/${firstCycle.id}` : null },
-    { name: "mark-paid", path: dueCycle ? `/admin/tuition/${dueCycle.id}/mark-paid` : null },
     { name: "reconciliation", path: "/admin/reconciliation" },
     { name: "weekly-calendar", path: "/admin/calendar" },
     { name: "busy-slot", path: "/admin/busy-slots/new" },

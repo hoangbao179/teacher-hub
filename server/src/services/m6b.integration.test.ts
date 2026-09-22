@@ -9,13 +9,10 @@ import { config } from "../config/config";
 import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
 import { StudentReportRepository } from "../repositories/student-report.repository";
-import { TuitionRepository } from "../repositories/tuition.repository";
 import { StudentReportService } from "./student-report.service";
-import { TuitionService } from "./tuition.service";
 
 const enabled = process.env.RUN_MYSQL_INTEGRATION === "1";
 const integration = enabled ? test : test.skip;
-const reportAccountNumber = "123456789012";
 
 async function clean(): Promise<void> {
   const connection = await pool.getConnection();
@@ -88,14 +85,7 @@ async function fixture() {
         [lesson.insertId, participant.insertId, enrollment.insertId, status, billable, day === 2 ? "+cmd" : `Nhận xét ${day}`],
       );
     }
-    await new TuitionRepository().recalculateEnrollment(connection, enrollment.insertId);
     await connection.commit();
-    const [cycles] = await pool.query<RowDataPacket[]>(
-      "SELECT id,status FROM tuition_cycles WHERE enrollment_id=? ORDER BY cycle_number", [enrollment.insertId],
-    );
-    await new TuitionService(new TuitionRepository()).markPaid(Number(cycles[0].id), {
-      paidAmount: 2_400_000, paidAt: "2026-07-15", paymentMethod: "BANK_TRANSFER", paymentNote: "@đã nhận",
-    }, actor.insertId);
     return { actorId: actor.insertId, classId: klass.insertId, otherClassId: otherClass.insertId, studentId: student.insertId };
   } catch (error) {
     await connection.rollback();
@@ -103,22 +93,20 @@ async function fixture() {
   } finally { connection.release(); }
 }
 
-integration("canonical workbook contains normalized history, paid eight-item and accumulating cycles", async () => {
+integration("canonical workbook contains normalized learning history", async () => {
   const data = await fixture();
-  const service = new StudentReportService(new StudentReportRepository(), reportAccountNumber);
+  const service = new StudentReportService(new StudentReportRepository());
   const result = await service.export(data.studentId, {}, data.actorId);
   assert.match(result.filename, /^Bao-cao-Nguyen-Minh-An-Lop-M6B-\d{8}\.xlsx$/);
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(result.buffer as never);
-  assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["Quá trình học tập", "Học phí"]);
+  assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["Quá trình học tập"]);
   const history = workbook.getWorksheet("Quá trình học tập")!;
-  const fees = workbook.getWorksheet("Học phí")!;
   assert.equal(history.rowCount, 13);
-  assert.equal(fees.rowCount, 11);
   assert.equal(history.getCell("A2").numFmt, "dd/mm/yyyy");
   assert.equal(history.getCell("F12").value, "Nghỉ");
-  assert.equal(history.getCell("F13").value, "Miễn phí");
+  assert.equal(history.getCell("F13").value, "Có mặt");
   const absentFill = history.getCell("A12").fill;
   assert.equal(absentFill.type === "pattern" ? absentFill.fgColor?.argb : undefined, "FFFFDADA");
   const absentLastColumnFill = history.getCell("I12").fill;
@@ -126,19 +114,6 @@ integration("canonical workbook contains normalized history, paid eight-item and
   assert.notEqual(history.getCell("J12").fill?.type, "pattern");
   assert.equal(history.getCell("G2").value, "'=HYPERLINK(\"https://invalid\")");
   assert.equal(history.getCell("I3").value, "'+cmd");
-  assert.equal(fees.getCell("A9").master.address, "A2");
-  assert.equal(fees.getCell("B9").master.address, "B2");
-  assert.equal(fees.getCell("C9").master.address, "C2");
-  assert.equal(fees.getCell("F9").master.address, "F2");
-  assert.equal(fees.getCell("F2").value, reportAccountNumber);
-  assert.equal(fees.getCell("A11").master.address, "A10");
-  assert.equal(fees.getCell("A2").alignment.horizontal, "center");
-  assert.equal(fees.getCell("B2").alignment.horizontal, "center");
-  assert.equal(fees.getCell("C2").alignment.horizontal, "center");
-  assert.equal(fees.getCell("F2").alignment.horizontal, "center");
-  assert.equal(fees.columnCount, 6);
-  assert.notEqual(fees.getCell("G1").fill?.type, "pattern");
-  assert.notEqual(fees.getCell("G2").fill?.type, "pattern");
   for (const sheet of workbook.worksheets) sheet.eachRow((row) => row.eachCell((cell) => assert.notEqual(cell.type, ExcelJS.ValueType.Formula)));
 
   const [audits] = await pool.query<RowDataPacket[]>(
@@ -151,7 +126,7 @@ integration("canonical workbook contains normalized history, paid eight-item and
 
 integration("filters validate dates and class relationship and bound representative rows", async () => {
   const data = await fixture();
-  const service = new StudentReportService(new StudentReportRepository(), reportAccountNumber);
+  const service = new StudentReportService(new StudentReportRepository());
   await assert.rejects(() => service.export(999999, {}, data.actorId), (error: unknown) => error instanceof AppError && error.code === "STUDENT_NOT_FOUND");
   await assert.rejects(() => service.export(data.studentId, { fromDate: "2026-07-09", toDate: "2026-07-01" }, data.actorId),
     (error: unknown) => error instanceof AppError && error.code === "VALIDATION_ERROR");
@@ -162,7 +137,7 @@ integration("filters validate dates and class relationship and bound representat
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(result.buffer as never);
   assert.equal(workbook.getWorksheet("Quá trình học tập")!.rowCount, 4);
-  assert.equal(workbook.getWorksheet("Học phí")!.rowCount, 4);
+  assert.equal(workbook.worksheets.length, 1);
 });
 
 integration("HTTP export requires auth and returns a parseable XLSX attachment", async () => {
@@ -181,7 +156,7 @@ integration("HTTP export requires auth and returns a parseable XLSX attachment",
     assert.match(response.headers.get("access-control-expose-headers") ?? "", /Content-Disposition/i);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(await response.arrayBuffer()) as never);
-    assert.equal(workbook.getWorksheet("Học phí")!.rowCount, 11);
+    assert.equal(workbook.getWorksheet("Quá trình học tập")!.rowCount, 13);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

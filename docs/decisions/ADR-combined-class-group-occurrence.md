@@ -14,7 +14,7 @@ UI hiển thị một card cha. Tạo nháp và hoàn thành các lesson con ch�
 transaction; retry dùng unique key của occurrence và không tạo lesson/tiến độ
 lặp.
 
-Attendance, enrollment, chu kỳ 8 buổi và học phí tiếp tục thuộc lesson con của
+Attendance, enrollment và monthly tuition summary tiếp tục thuộc lesson con của
 từng lớp. Thống kê ca dạy dùng occurrence cha nên một ca ghép chỉ là một ca làm
 việc của giáo viên.
 

@@ -24,36 +24,12 @@ export interface StudentLearningReportRow {
   actualStartTime: string | null;
   actualEndTime: string | null;
   actualDurationMinutes: number | null;
-  attendanceStatus: "PRESENT" | "ABSENT" | "FREE";
+  attendanceStatus: "PRESENT" | "ABSENT";
   countsForTuition: boolean;
   content: string | null;
   homework: string | null;
   studentNote: string | null;
   lessonNote: string | null;
-}
-
-export interface StudentTuitionReportRow {
-  cycleId: number;
-  enrollmentId: number;
-  cycleNumber: number;
-  cycleStatus: "ACCUMULATING" | "PAYMENT_DUE" | "PAID" | "INCOMPLETE";
-  classId: number;
-  className: string;
-  startedAt: string | null;
-  reachedTargetAt: string | null;
-  packagePriceSnapshot: number;
-  paidAt: string | null;
-  paidAmount: number | null;
-  paymentMethod: "CASH" | "BANK_TRANSFER" | null;
-  paymentNote: string | null;
-  cycleItemCount: number;
-  sequenceNumber: number;
-  sessionDate: string;
-  scheduledStartTime: string;
-  scheduledEndTime: string;
-  actualStartTime: string | null;
-  actualEndTime: string | null;
-  actualDurationMinutes: number | null;
 }
 
 function dateText(value: unknown): string | null {
@@ -110,7 +86,9 @@ export class StudentReportRepository {
       `SELECT a.id attendance_id,l.id lesson_id,l.session_date,l.class_id,
         COALESCE(l.class_name_snapshot,c.name) class_name,
         l.lesson_type,l.scheduled_start_time,l.scheduled_end_time,l.actual_start_time,
-        l.actual_end_time,l.actual_duration_minutes,a.attendance_status,a.counts_for_tuition,
+        l.actual_end_time,l.actual_duration_minutes,
+        CASE WHEN a.attendance_status='FREE' THEN 'PRESENT' ELSE a.attendance_status END attendance_status,
+        a.counts_for_tuition,
         l.content,l.homework,a.student_note,l.note lesson_note
        FROM lesson_attendances a
        JOIN class_enrollments e ON e.id=a.enrollment_id
@@ -135,42 +113,6 @@ export class StudentReportRepository {
       homework: row.homework == null ? null : String(row.homework),
       studentNote: row.student_note == null ? null : String(row.student_note),
       lessonNote: row.lesson_note == null ? null : String(row.lesson_note),
-    }));
-  }
-
-  async tuitionRows(studentId: number, query: StudentReportExportQuery): Promise<StudentTuitionReportRow[]> {
-    const filters = reportFilters(query, "l");
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT tc.id cycle_id,tc.enrollment_id,tc.cycle_number,tc.status cycle_status,
-        e.class_id,COALESCE(l.class_name_snapshot,c.name) class_name,tc.started_at,tc.reached_target_at,
-        tc.package_price_snapshot,tc.paid_at,tc.paid_amount,tc.payment_method,tc.payment_note,
-        (SELECT COUNT(*) FROM tuition_cycle_sessions all_items WHERE all_items.tuition_cycle_id=tc.id) cycle_item_count,
-        tcs.sequence_number,l.session_date,l.scheduled_start_time,l.scheduled_end_time,
-        l.actual_start_time,l.actual_end_time,l.actual_duration_minutes
-       FROM tuition_cycles tc
-       JOIN class_enrollments e ON e.id=tc.enrollment_id
-       JOIN classes c ON c.id=e.class_id
-       JOIN tuition_cycle_sessions tcs ON tcs.tuition_cycle_id=tc.id
-       JOIN lesson_attendances a ON a.id=tcs.attendance_id
-       JOIN lesson_sessions l ON l.id=a.lesson_session_id
-       WHERE e.student_id=? AND tc.status<>'CANCELLED'${filters.sql}
-       ORDER BY tc.cycle_number,tc.id,tcs.sequence_number
-       LIMIT 5001`,
-      [studentId, ...filters.params],
-    );
-    return rows.map((row) => ({
-      cycleId: Number(row.cycle_id), enrollmentId: Number(row.enrollment_id),
-      cycleNumber: Number(row.cycle_number), cycleStatus: row.cycle_status,
-      classId: Number(row.class_id), className: String(row.class_name),
-      startedAt: dateText(row.started_at), reachedTargetAt: dateText(row.reached_target_at),
-      packagePriceSnapshot: Number(row.package_price_snapshot),
-      paidAt: dateText(row.paid_at), paidAmount: row.paid_amount == null ? null : Number(row.paid_amount),
-      paymentMethod: row.payment_method, paymentNote: row.payment_note == null ? null : String(row.payment_note),
-      cycleItemCount: Number(row.cycle_item_count), sequenceNumber: Number(row.sequence_number),
-      sessionDate: dateText(row.session_date)!, scheduledStartTime: timeText(row.scheduled_start_time)!,
-      scheduledEndTime: timeText(row.scheduled_end_time)!, actualStartTime: timeText(row.actual_start_time),
-      actualEndTime: timeText(row.actual_end_time),
-      actualDurationMinutes: row.actual_duration_minutes == null ? null : Number(row.actual_duration_minutes),
     }));
   }
 

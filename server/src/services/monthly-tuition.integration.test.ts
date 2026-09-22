@@ -69,7 +69,7 @@ async function seedLesson(
   );
 }
 
-integration("monthly board derives 6/8 and excludes invalid lessons", async () => {
+integration("monthly board derives present and absent counts and excludes invalid lessons", async () => {
   await clean();
   const seeded = await seedEnrollment();
   for (let day = 1; day <= 6; day += 1)

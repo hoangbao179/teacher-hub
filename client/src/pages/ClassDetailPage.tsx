@@ -23,12 +23,11 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { ClassDetail, StudentListItem, TemporaryReschedulePreview, TuitionMode, Weekday } from "@teacher/shared";
 import { ApiError, api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
-import { CurrencyDisplay, ErrorState, MobileCard, PageHeader, ProgressCount, StatusBadge } from "../components/UiKit";
+import { ErrorState, MobileCard, PageHeader, StatusBadge } from "../components/UiKit";
 import { scheduleApi } from "../api/schedule";
 import { getEnrollmentCandidates } from "../features/class-enrollment";
 import { formatClassSchedule, formatClassScheduleItem } from "../utils/classSchedule";
 import { addDays, todayInHoChiMinh } from "../utils/date";
-import { hasConfiguredClassTuition } from "../features/class-tuition";
 export function ClassDetailPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -40,7 +39,6 @@ export function ClassDetailPage() {
   const [studentId, setStudentId] = useState("");
   const [enrollmentError, setEnrollmentError] = useState("");
   const [tuitionMode, setTuitionMode] = useState<TuitionMode>("CLASS_DEFAULT");
-  const [customPrice, setCustomPrice] = useState("");
   const [joinedAt, setJoinedAt] = useState(new Date().toISOString().slice(0, 10));
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(() => (location.state as { success?: string } | null)?.success ?? "");
@@ -134,7 +132,6 @@ export function ClassDetailPage() {
     setBusy(true); setSuccess(""); try {
       await api(`/api/classes/${id}/enrollments`, { method: "POST", body: JSON.stringify({
         studentId: Number(studentId), joinedAt, tuitionMode,
-        customPackagePrice: tuitionMode === "CUSTOM" ? Number(customPrice) : undefined,
       }) });
       enrollmentCreated = true;
       setDialogOpen(false);
@@ -185,7 +182,7 @@ export function ClassDetailPage() {
         {item!.status !== "CLOSED" && <Button disabled={busy} color="error" onClick={() => setStatusActionName("close")}>Đóng lớp</Button>}
       </Stack>
       <MobileCard>
-          <Typography>Giá mặc định: {hasConfiguredClassTuition(item!.defaultPackagePrice) ? <><CurrencyDisplay value={item!.defaultPackagePrice} /> / 8 buổi</> : "Chưa cài học phí"}</Typography>
+          <Typography>Học phí: theo dõi theo tháng</Typography>
           <Typography>
             Lịch:{" "}
             {formatClassSchedule(item!.schedules)}
@@ -205,14 +202,9 @@ export function ClassDetailPage() {
             <Stack direction="row" sx={{ justifyContent: "space-between" }}>
               <Typography variant="subtitle1">{student.fullName}</Typography>
               <Typography>
-                {student.tuitionMode === "FREE"
-                  ? "Miễn phí"
-                  : `${student.currentProgress ?? 0}/8`}
+                {student.tuitionMode === "FREE" ? "Miễn phí" : "Theo tháng"}
               </Typography>
             </Stack>
-            {student.tuitionMode !== "FREE" && (
-              <ProgressCount value={student.currentProgress ?? 0} />
-            )}
           </CardContent>
         </Card>
       ))}
@@ -224,8 +216,7 @@ export function ClassDetailPage() {
             {enrollmentCandidates.map((x) => <MenuItem value={String(x.id)} key={x.id}>{x.fullName}</MenuItem>)}
           </Select></FormControl>
           <TextField type="date" label="Ngày vào học" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-          <FormControl><InputLabel>Học phí</InputLabel><Select label="Học phí" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Theo giá lớp</MenuItem><MenuItem value="CUSTOM">Giá riêng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
-          {tuitionMode === "CUSTOM" && <TextField required type="number" label="Giá riêng / 8 buổi" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} />}
+          <FormControl><InputLabel>Học phí</InputLabel><Select label="Học phí" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Có thu theo tháng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
         </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={closeEnrollmentDialog}>Hủy</Button><Button variant="contained" disabled={!studentId || busy} onClick={() => void enroll()}>{busy ? "Đang ghi danh…" : "Ghi danh"}</Button></DialogActions>
       </Dialog>
       <Dialog open={Boolean(statusActionName)} onClose={() => !busy && setStatusActionName(null)} fullWidth maxWidth="xs">

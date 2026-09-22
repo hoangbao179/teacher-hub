@@ -158,13 +158,9 @@ async function installUiMocks(context, currentWeek, populatedWeek, occurrenceReq
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ data: {
-      paymentDueCount: 1,
-      totalUnpaidAmount: 800000,
-      accumulatingStudentCount: 4,
-      paidCycleCount: 2,
+      monthlyTuitionUnpaidCount: 1,
       unrecordedCount: 2,
       outstandingMakeupStudentCount: 0,
-      openIncompleteCycleCount: 0,
       recentUnrecordedSessions: [],
       todaySchedule: weekPayload(currentWeek, populatedWeek).data,
     } }),
@@ -181,8 +177,8 @@ async function installUiMocks(context, currentWeek, populatedWeek, occurrenceReq
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ data: [
-      { id: 1, name: "Lớp 3A", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 800000, defaultDurationMinutes: 60, activeStudentCount: 3, paymentDueCount: 0 },
-      { id: 2, name: "Lớp 6B", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 900000, defaultDurationMinutes: 90, activeStudentCount: 4, paymentDueCount: 0 },
+      { id: 1, name: "Lớp 3A", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 800000, defaultDurationMinutes: 60, activeStudentCount: 3 },
+      { id: 2, name: "Lớp 6B", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 900000, defaultDurationMinutes: 90, activeStudentCount: 4 },
     ] }),
   }));
   await context.route("**/api/schedule/occurrences?*", (route) => {

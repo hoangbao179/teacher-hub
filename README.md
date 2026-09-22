@@ -1,6 +1,7 @@
 # Teacher Class Hub
 
-Monorepo mobile-first cho website giới thiệu giáo viên và hệ thống quản lý lớp học, buổi học, học sinh, lịch học và chu kỳ học phí 8 buổi.
+Monorepo mobile-first cho website giới thiệu giáo viên và hệ thống quản lý lớp học,
+buổi học, học sinh, lịch học và học phí theo tháng.
 
 ## Cấu trúc
 
@@ -97,7 +98,9 @@ Base đã có:
 - auth một tài khoản giáo viên;
 - schema MySQL đầy đủ cho V1;
 - API nền cho lớp, học sinh, buổi học, học phí, lịch và dashboard;
-- business service hoàn thành buổi học và tự phân bổ chu kỳ 8 buổi;
+- luồng ghi buổi một màn với điểm danh Có mặt/Nghỉ và nhận xét tùy chọn;
+- bảng học phí theo tháng với thống kê hiện diện và trạng thái Chưa thu/Đã thu;
+- Google Sheet phụ huynh đồng bộ qua transactional outbox;
 - frontend shell mobile-first và các route chính;
 - Docker/CI/docs/rules cho Cursor và Codex.
 

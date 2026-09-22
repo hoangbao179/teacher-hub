@@ -10,8 +10,10 @@ export class DashboardService {
   ) {}
   async get(): Promise<DashboardResponse> {
     const today = todayInHoChiMinh();
+    const year = Number(today.slice(0, 4));
+    const month = Number(today.slice(5, 7));
     const [tuitionSummary, unrecorded, todaySchedule, outstandingMakeupStudentCount] = await Promise.all([
-      this.tuition.summary({}),
+      this.tuition.monthlyBoard({ year, month }),
       this.schedules.listUnrecorded(
         addDays(today, -14),
         today,
@@ -20,13 +22,9 @@ export class DashboardService {
       this.schedules.outstandingMakeupStudentCount(),
     ]);
     return {
-      paymentDueCount: tuitionSummary.paymentDueCount,
-      totalUnpaidAmount: tuitionSummary.totalUnpaidAmount,
-      accumulatingStudentCount: tuitionSummary.accumulatingEnrollmentCount,
-      paidCycleCount: tuitionSummary.paidCycleCount,
+      monthlyTuitionUnpaidCount: tuitionSummary.unpaidCount,
       unrecordedCount: unrecorded.length,
       outstandingMakeupStudentCount,
-      openIncompleteCycleCount: tuitionSummary.openIncompleteCount,
       recentUnrecordedSessions: unrecorded.slice(-5).reverse(),
       todaySchedule,
     };

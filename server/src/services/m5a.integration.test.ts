@@ -88,9 +88,7 @@ integration("project, cancel canonical draft as skipped and preserve pre-pause h
   assert.equal(detail.status, "DRAFT");
   assert.deepEqual(detail.participants.map((item) => item.enrollmentId), data.enrollmentIds);
   const [attendances] = await pool.query<RowDataPacket[]>("SELECT id FROM lesson_attendances WHERE lesson_session_id=?", [first.lessonId]);
-  const [cycles] = await pool.query<RowDataPacket[]>("SELECT id FROM tuition_cycles");
   assert.equal(attendances.length, 0);
-  assert.equal(cycles.length, 0);
   await lessons.cancel(first.lessonId, { reason: "Teacher cancelled" }, data.actorId);
   const handled = (await schedules.occurrences({ from: "2026-07-20", to: "2026-07-20", lookbackDays: 60 }))[0];
   assert.equal(handled.state, "SKIPPED");
@@ -150,8 +148,6 @@ integration("skip, reschedule, replacement draft and busy-slot conflicts are ope
   assert.equal(occurrences.find((item) => item.key === replacementKey)?.projectionSource, "RESCHEDULED");
   const replacementDraft = await schedules.createDraft(replacementKey, data.actorId);
   assert.equal(replacementDraft.idempotent, false);
-  const [tuition] = await pool.query<RowDataPacket[]>("SELECT id FROM tuition_cycles");
-  assert.equal(tuition.length, 0);
 
   const updated = await schedules.updateBusySlot(busy.slot.id, {
     slotType: "EXTERNAL_CLASS", organizationType: "SCHOOL", organizationName: "Trường M5A",
@@ -198,8 +194,7 @@ integration("multiple external schedules project, conflict and update atomically
       (SELECT COUNT(*) FROM students) students,
       (SELECT COUNT(*) FROM class_enrollments) enrollments,
       (SELECT COUNT(*) FROM lesson_sessions) lessons,
-      (SELECT COUNT(*) FROM lesson_attendances) attendances,
-      (SELECT COUNT(*) FROM tuition_cycles) cycles`,
+      (SELECT COUNT(*) FROM lesson_attendances) attendances`,
   );
   const school = await schedules.createBusySlot({
     slotType: "EXTERNAL_CLASS", organizationType: "SCHOOL", organizationName: "Trường Nguyễn Huệ",
@@ -271,13 +266,12 @@ integration("multiple external schedules project, conflict and update atomically
       (SELECT COUNT(*) FROM students) students,
       (SELECT COUNT(*) FROM class_enrollments) enrollments,
       (SELECT COUNT(*) FROM lesson_sessions) lessons,
-      (SELECT COUNT(*) FROM lesson_attendances) attendances,
-      (SELECT COUNT(*) FROM tuition_cycles) cycles`,
+      (SELECT COUNT(*) FROM lesson_attendances) attendances`,
   );
   assert.deepEqual(after[0], before[0]);
 });
 
-integration("bulk draft and skip return independent results without tuition mutation", async () => {
+integration("bulk draft and skip return independent results without attendance mutation", async () => {
   const data = await fixture();
   const { schedules } = services();
   const createKeys = [
@@ -296,9 +290,7 @@ integration("bulk draft and skip return independent results without tuition muta
   assert.equal(lessons.length, 2);
   assert.equal(lessons.every((row) => row.status === "DRAFT"), true);
   const [attendances] = await pool.query<RowDataPacket[]>("SELECT id FROM lesson_attendances");
-  const [tuition] = await pool.query<RowDataPacket[]>("SELECT id FROM tuition_cycles");
   assert.equal(attendances.length, 0);
-  assert.equal(tuition.length, 0);
   const unrecorded = await schedules.unrecorded(60);
   assert.equal(unrecorded.some((item) => skipKeys.includes(item.occurrenceKey)), false);
 });

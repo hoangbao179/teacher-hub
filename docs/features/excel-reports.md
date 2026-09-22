@@ -1,54 +1,13 @@
 # Excel reports
 
-## Canonical export
+`GET /api/students/{studentId}/export.xlsx` đọc MySQL authoritative và tạo một sheet
+**Quá trình học tập**. Bộ lọc `fromDate`, `toDate`, `classId` là tùy chọn; class phải
+thuộc lịch sử ghi danh của học sinh. Export được audit nhưng bytes không được lưu.
 
-Giáo viên mở chi tiết học sinh và chọn **Xuất báo cáo Excel**. Client chỉ bắt đầu
-download đã xác thực; server đọc MySQL authoritative và trả XLSX. Không dựng
-workbook từ state React và không lưu workbook vào database hoặc file tạm.
+Mỗi row là attendance của lesson completed, gồm ngày, lớp, loại buổi, giờ dự kiến,
+trạng thái, nội dung, bài tập và nhận xét học sinh. Historical `FREE` hiển thị Có mặt;
+ABSENT tô đỏ nhạt. Header freeze, text wrap, ngày `dd/MM/yyyy`; chuỗi bắt đầu bằng
+`= + - @` được prefix apostrophe để chặn formula injection.
 
-Endpoint:
-
-```text
-GET /api/students/{studentId}/export.xlsx?fromDate=&toDate=&classId=
-```
-
-- `fromDate`/`toDate` là inclusive theo `lesson_sessions.session_date`.
-- `classId` cho phép lọc lịch sử nhưng phải thuộc một enrollment của học sinh.
-- Mỗi sheet bị giới hạn 5.000 data rows để memory có biên rõ ràng.
-- Audit `STUDENT_REPORT_EXPORTED` lưu actor, student ID, filters và timestamp.
-- Tên file tải xuống gồm tên học sinh, lớp hiện tại và ngày xuất; các ký tự không an toàn
-  được chuẩn hóa trước khi đưa vào `Content-Disposition`.
-
-## Workbook
-
-- `Quá trình học tập`: một dòng/attendance hoàn thành, gồm PRESENT/ABSENT/FREE,
-  giờ dự kiến, nội dung, bài tập và nhận xét học sinh. Dòng ABSENT dùng màu đỏ
-  nhạt trong toàn bộ vùng bảng A:I, không tô lan sang phần còn lại của worksheet.
-- `Học phí`: chỉ stored cycle items billable theo stored sequence; dùng snapshot
-  và payment data đã lưu, không suy lại từ cấu hình lớp hiện tại. Thông tin đầu
-  chu kỳ được gộp dọc, căn giữa theo các dòng ngày học thuộc cùng chu kỳ; cột
-  `Số tài khoản (VietinBank)` cuối sheet lấy từ cấu hình server
-  `REPORT_VIETINBANK_ACCOUNT_NUMBER`, được merge và căn giữa theo chu kỳ.
-
-Header được freeze nhưng không bật AutoFilter, text dài wrap, ngày hiển thị
-`dd/MM/yyyy`, tiền là số nguyên VND. Text bắt đầu bằng `=`, `+`, `-`, `@` được
-prefix apostrophe để không trở thành công thức. Workbook không có macro, external
-link, credential hoặc dữ liệu học sinh khác.
-
-Style của bảng chỉ áp dụng theo từng cell trong phạm vi header: `A:I` ở sheet
-`Quá trình học tập` và `A:F` ở sheet `Học phí`. Các cột nằm ngoài phạm vi này
-không nhận fill hoặc border của bảng.
-
-## Legacy files
-
-Workbook xuất là normalized canonical output và không mô phỏng cấu trúc file cũ.
-V16B đã parse/preview controlled workbook legacy theo student và chỉ ghi database
-sau khi structured decisions được xác nhận; workbook gốc chỉ là migration source, binary
-không được giữ lâu dài theo mặc định. Google Sheet V16C–V16E sẽ được dựng từ dữ
-liệu canonical trong DB, không convert hoặc chia sẻ nguyên trạng workbook cũ.
-
-Sheet `Học phí` được đọc theo block từ header `FULL NAME` đến `TOTAL` (hoặc trước
-header kế tiếp). Một block có đúng tám buổi hợp lệ trước/đến marker `PAID` tạo một
-cycle `PAID` tám item với `paid_at` và `payment_method` để trống; note ghi rõ không
-biết ngày thanh toán. Các buổi sau marker trong cùng block được nhập là `FREE`,
-không thuộc cycle và không tăng tiến độ. Block kế tiếp bắt đầu cycle sequence mới.
+Workbook không chứa sheet payment/cycle và không dùng làm import. Legacy Import đã
+được gỡ khỏi runtime; dữ liệu/bảng lịch sử không bị xóa.

@@ -3,14 +3,11 @@ import type {
   ChangeTuitionModeRequest,
   CreateEnrollmentRequest,
   EnrollmentStatus,
-  EndEnrollmentRequest,
   TransferEnrollmentRequest,
   TransferEnrollmentResult,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { AuditRepository } from "./audit.repository";
-import { TuitionPolicyRepository } from "./tuition-policy.repository";
-import { TuitionRepository } from "./tuition.repository";
 import { addDays } from "../utils/date";
 
 export type EnrollmentWriteResult =
@@ -20,11 +17,7 @@ export type EnrollmentWriteResult =
   | { kind: "INVALID_TRANSITION" };
 
 export class EnrollmentRepository {
-  constructor(
-    private readonly audit = new AuditRepository(),
-    private readonly policies = new TuitionPolicyRepository(),
-    private readonly tuition = new TuitionRepository(),
-  ) {}
+  constructor(private readonly audit = new AuditRepository()) {}
 
   async create(classId: number, input: CreateEnrollmentRequest, actorUserId?: number): Promise<EnrollmentWriteResult> {
     const connection = await pool.getConnection();
@@ -62,14 +55,6 @@ export class EnrollmentRepository {
           input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
           input.joinedAt, input.note ?? null],
       );
-      await this.policies.createInitialEnrollmentPolicy(
-        connection,
-        result.insertId,
-        input.tuitionMode,
-        input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
-        input.joinedAt,
-        actorUserId,
-      );
       await connection.execute(
         "INSERT INTO enrollment_active_periods(enrollment_id,active_from,created_by) VALUES (?,?,?)",
         [result.insertId, input.joinedAt, actorUserId ?? null],
@@ -99,7 +84,6 @@ export class EnrollmentRepository {
     endedAt?: string,
     reason?: string,
     actorUserId?: number,
-    financial?: EndEnrollmentRequest,
   ): Promise<EnrollmentWriteResult> {
     const connection = await pool.getConnection();
     try {
@@ -162,11 +146,6 @@ export class EnrollmentRepository {
         `UPDATE class_enrollments SET status=?,ended_at=?,end_reason=? WHERE id=?`,
         [status, status === "ENDED" ? (endedAt ?? null) : null, status === "ENDED" ? (reason ?? null) : null, id],
       );
-      if (status === "ENDED")
-        await this.tuition.markAccumulatingIncomplete(connection, id);
-      if (status === "ENDED" && financial)
-        await this.applyClosureActions(connection, id, financial.incompleteCycleAction ?? { type: "KEEP_OPEN" },
-          financial.advanceReceiptAction ?? { type: "NONE" }, reason ?? "Ngừng học", actorUserId);
       const action = status === "PAUSED" ? "ENROLLMENT_PAUSED" : status === "ACTIVE" ? "ENROLLMENT_RESUMED" : "ENROLLMENT_ENDED";
       await this.audit.record(connection, {
         actorUserId, action, entityType: "ENROLLMENT", entityId: id,
@@ -216,26 +195,6 @@ export class EnrollmentRepository {
         if (occupied.length) throw new Error("ONE_TO_ONE_LIMIT");
       }
       const oldEndedAt = addDays(input.effectiveDate, -1);
-      const oldPolicy = await this.policies.resolve(connection, id, oldEndedAt, true);
-      let targetPrice: number | null = null;
-      if (input.tuitionMode === "CUSTOM") targetPrice = input.customPackagePrice ?? null;
-      else if (input.tuitionMode === "CLASS_DEFAULT") {
-        const [targetPolicies] = await connection.query<RowDataPacket[]>(
-          `SELECT package_price FROM class_tuition_policies WHERE class_id=? AND effective_from<=?
-           AND (effective_to IS NULL OR effective_to>=?) ORDER BY effective_from DESC LIMIT 1 FOR UPDATE`,
-          [input.targetClassId, input.effectiveDate, input.effectiveDate],
-        );
-        targetPrice = targetPolicies[0] ? Number(targetPolicies[0].package_price) : null;
-      }
-      const receiptActionType = input.advanceReceiptAction?.type ?? "NONE";
-      const continueCycle = oldPolicy.packagePrice != null && oldPolicy.packagePrice === targetPrice &&
-        input.incompleteCycleAction.type === "KEEP_OPEN" &&
-        (receiptActionType === "NONE" || receiptActionType === "TRANSFER_TO_NEW_ENROLLMENT");
-      if (!continueCycle) {
-        await this.tuition.markAccumulatingIncomplete(connection, id);
-        await this.applyClosureActions(connection, id, input.incompleteCycleAction,
-          input.advanceReceiptAction ?? { type: "NONE" }, input.reason, actorUserId, true);
-      }
       await connection.execute(
         "UPDATE enrollment_active_periods SET active_to=? WHERE enrollment_id=? AND active_to IS NULL",
         [oldEndedAt, id],
@@ -252,110 +211,18 @@ export class EnrollmentRepository {
           input.tuitionMode === "CUSTOM" ? input.customPackagePrice ?? null : null,
           input.effectiveDate, input.note?.trim() || null],
       );
-      await this.policies.createInitialEnrollmentPolicy(connection, created.insertId, input.tuitionMode,
-        input.tuitionMode === "CUSTOM" ? input.customPackagePrice ?? null : null,
-        input.effectiveDate, actorUserId);
       await connection.execute(
         "INSERT INTO enrollment_active_periods(enrollment_id,active_from,created_by) VALUES (?,?,?)",
         [created.insertId, input.effectiveDate, actorUserId ?? null],
       );
-      if (continueCycle) await this.tuition.recalculateEnrollment(connection, created.insertId);
-      if (input.advanceReceiptAction?.type === "TRANSFER_TO_NEW_ENROLLMENT")
-        await connection.execute(
-          "UPDATE tuition_receipts SET enrollment_id=?,status='TRANSFERRED' WHERE enrollment_id=? AND status IN ('AVAILABLE','ALLOCATED','TRANSFERRED')",
-          [created.insertId, id],
-        );
-      if (input.advanceReceiptAction?.type === "TRANSFER_TO_NEW_ENROLLMENT") {
-        const [transferredReceipts] = await connection.query<RowDataPacket[]>(
-          "SELECT id FROM tuition_receipts WHERE enrollment_id=? AND status='TRANSFERRED' FOR UPDATE", [created.insertId],
-        );
-        for (const receipt of transferredReceipts) await this.audit.record(connection, { actorUserId,
-          action: "TUITION_ADVANCE_TRANSFERRED", entityType: "TUITION_RECEIPT", entityId: Number(receipt.id),
-          newValues: { fromEnrollmentId: id, toEnrollmentId: created.insertId } });
-      }
       await this.audit.record(connection, { actorUserId, action: "ENROLLMENT_TRANSFERRED",
         entityType: "ENROLLMENT", entityId: id, previousValues: { classId: old.class_id, status: old.status },
         newValues: { newEnrollmentId: created.insertId, targetClassId: input.targetClassId,
-          effectiveDate: input.effectiveDate, incompleteCycleAction: input.incompleteCycleAction,
-          advanceReceiptAction: input.advanceReceiptAction, continuedStudentCycle: continueCycle }, reason: input.reason });
+          effectiveDate: input.effectiveDate }, reason: input.reason });
       await connection.commit();
       return { oldEnrollmentId: id, newEnrollmentId: created.insertId, effectiveDate: input.effectiveDate };
     } catch (error) { await connection.rollback(); throw error; }
     finally { connection.release(); }
-  }
-
-  private async applyClosureActions(
-    connection: import("mysql2/promise").PoolConnection,
-    enrollmentId: number,
-    incompleteAction: NonNullable<EndEnrollmentRequest["incompleteCycleAction"]>,
-    receiptAction: NonNullable<EndEnrollmentRequest["advanceReceiptAction"]> | { type: "TRANSFER_TO_NEW_ENROLLMENT" },
-    reason: string,
-    actorUserId?: number,
-    transferring = false,
-  ): Promise<void> {
-    const [cycles] = await connection.query<RowDataPacket[]>(
-      "SELECT * FROM tuition_cycles WHERE enrollment_id=? AND status='INCOMPLETE' ORDER BY cycle_number DESC LIMIT 1 FOR UPDATE",
-      [enrollmentId],
-    );
-    const cycle = cycles[0];
-    if (incompleteAction.type !== "KEEP_OPEN" && !cycle) throw new Error("INCOMPLETE_CYCLE_NOT_FOUND");
-    if (cycle && incompleteAction.type === "SETTLE") {
-      await connection.execute(
-        `UPDATE tuition_cycles SET settlement_status='SETTLED',settled_amount=?,settled_at=NOW(),
-          settlement_method=?,settlement_reason=?,settlement_note=?,settled_by=? WHERE id=? AND settlement_status='OPEN'`,
-        [incompleteAction.amount, incompleteAction.method, reason, incompleteAction.note?.trim() || null,
-          actorUserId ?? null, cycle.id],
-      );
-      await this.audit.record(connection, { actorUserId, action: "TUITION_INCOMPLETE_SETTLED",
-        entityType: "TUITION_CYCLE", entityId: Number(cycle.id), reason,
-        newValues: { amount: incompleteAction.amount, method: incompleteAction.method } });
-    }
-    if (cycle && incompleteAction.type === "WAIVE") {
-      await connection.execute(
-        `UPDATE tuition_cycles SET settlement_status='WAIVED',settled_at=NOW(),settlement_reason=?,settled_by=?
-         WHERE id=? AND settlement_status='OPEN'`, [incompleteAction.reason, actorUserId ?? null, cycle.id],
-      );
-      await this.audit.record(connection, { actorUserId, action: "TUITION_INCOMPLETE_WAIVED",
-        entityType: "TUITION_CYCLE", entityId: Number(cycle.id), reason: incompleteAction.reason });
-    }
-    const [receipts] = await connection.query<RowDataPacket[]>(
-      `SELECT * FROM tuition_receipts WHERE enrollment_id=? AND status IN ('AVAILABLE','ALLOCATED','TRANSFERRED')
-       ORDER BY id LIMIT 1 FOR UPDATE`, [enrollmentId],
-    );
-    const receipt = receipts[0];
-    if (!receipt || receiptAction.type === "NONE") return;
-    if (transferring && receiptAction.type === "TRANSFER_TO_NEW_ENROLLMENT") {
-      await connection.execute("DELETE FROM tuition_receipt_allocations WHERE receipt_id=?", [receipt.id]);
-      return;
-    }
-    if (receiptAction.type === "REFUND") {
-      await connection.execute("DELETE FROM tuition_receipt_allocations WHERE receipt_id=?", [receipt.id]);
-      await connection.execute("UPDATE tuition_receipts SET status='REFUNDED',note=COALESCE(?,note) WHERE id=?",
-        [receiptAction.note?.trim() || null, receipt.id]);
-      await this.audit.record(connection, { actorUserId, action: "TUITION_ADVANCE_REFUNDED",
-        entityType: "TUITION_RECEIPT", entityId: Number(receipt.id), reason,
-        newValues: { enrollmentId } });
-    }
-    if (receiptAction.type === "APPLY_TO_OLD_SETTLEMENT") {
-      if (!cycle) throw new Error("INCOMPLETE_CYCLE_NOT_FOUND");
-      await connection.execute("DELETE FROM tuition_receipt_allocations WHERE receipt_id=?", [receipt.id]);
-      await connection.execute(
-        "INSERT INTO tuition_receipt_allocations(receipt_id,tuition_cycle_id,allocated_amount) VALUES (?,?,?)",
-        [receipt.id, cycle.id, receipt.amount],
-      );
-      await connection.execute("UPDATE tuition_receipts SET status='ALLOCATED' WHERE id=?", [receipt.id]);
-      await connection.execute(
-        `UPDATE tuition_cycles SET settlement_status='SETTLED',settled_amount=?,settled_at=NOW(),
-          settlement_method=?,settlement_reason=?,settled_by=? WHERE id=?`,
-        [receipt.amount, receipt.payment_method, reason, actorUserId ?? null, cycle.id],
-      );
-      await this.audit.record(connection, { actorUserId, action: "TUITION_INCOMPLETE_SETTLED",
-        entityType: "TUITION_CYCLE", entityId: Number(cycle.id), reason,
-        newValues: { amount: Number(receipt.amount), method: receipt.payment_method, receiptId: Number(receipt.id) } });
-      await this.audit.record(connection, { actorUserId, action: "TUITION_ADVANCE_ALLOCATED",
-        entityType: "TUITION_RECEIPT", entityId: Number(receipt.id), reason,
-        newValues: { tuitionCycleId: Number(cycle.id), settlement: true } });
-    }
   }
 
   async changeTuitionMode(id: number, input: ChangeTuitionModeRequest, actorUserId?: number): Promise<boolean> {
@@ -370,14 +237,6 @@ export class EnrollmentRepository {
         `UPDATE class_enrollments SET tuition_mode=?,custom_package_price=?,tuition_effective_from=? WHERE id=?`,
         [input.tuitionMode, input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
           input.effectiveFrom, id],
-      );
-      await this.policies.replaceEnrollmentPolicy(
-        connection,
-        id,
-        input.tuitionMode,
-        input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
-        input.effectiveFrom,
-        actorUserId,
       );
       await this.audit.record(connection, {
         actorUserId, action: "TUITION_MODE_CHANGED", entityType: "ENROLLMENT", entityId: id,
