@@ -3,6 +3,7 @@ import type {
   MarkMonthlyTuitionPaidResult,
   MonthlyTuitionBoard,
   MonthlyTuitionQuery,
+  ScheduleOccurrence,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
 import { validateTuitionMonth } from "../domain/monthly-tuition";
@@ -28,25 +29,30 @@ export class TuitionService {
     if (!board.rows.length) return board;
     const start = `${year}-${String(month).padStart(2, "0")}-01`;
     const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-    const [occurrences, activePeriods] = await Promise.all([
+    const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const enrollmentIds = board.rows.map((row) => row.enrollmentId);
+    const [occurrences, activePeriods, actualByEnrollment] = await Promise.all([
       this.schedules.listOccurrences(start, end, input.classId),
-      this.repository.enrollmentActivePeriods(board.rows.map((row) => row.enrollmentId)),
+      this.repository.enrollmentActivePeriods(enrollmentIds),
+      this.repository.monthlyLessonAttendances(enrollmentIds, start, nextMonth),
     ]);
     for (const row of board.rows) {
       const periods = activePeriods.get(row.enrollmentId) ?? [];
-      const scheduled = occurrences.filter((occurrence) => {
-        const belongsToClass = occurrence.combinedGroupId == null
-          ? occurrence.classId === row.classId
-          : occurrence.memberClasses.some((member) => member.id === row.classId);
-        const active = periods.some((period) => period.activeFrom <= occurrence.occurrenceDate &&
-          (period.activeTo == null || period.activeTo >= occurrence.occurrenceDate));
-        const valid = occurrence.state !== "SKIPPED" &&
-          !(occurrence.state === "RESCHEDULED" && occurrence.projectionSource === "RECURRING") &&
-          !occurrence.replacementCancelled;
-        return belongsToClass && active && valid;
-      }).length;
-      row.attendance.total = Math.max(row.attendance.present + row.attendance.absent, scheduled);
+      const related = occurrences.filter((occurrence) => this.occurrenceBelongsToRow(occurrence, row.classId, periods));
+      const scheduled = related.filter((occurrence) => this.isValidOccurrence(occurrence));
+      const excluded = related.filter((occurrence) => !this.isValidOccurrence(occurrence));
+      const actual = (actualByEnrollment.get(row.enrollmentId) ?? []).filter((lesson) =>
+        scheduled.some((occurrence) => this.occurrenceRepresentsLesson(occurrence, lesson)) ||
+        !excluded.some((occurrence) => this.occurrenceRepresentsLesson(occurrence, lesson)));
+      const outsideProjection = actual.filter((lesson) =>
+        !scheduled.some((occurrence) => this.occurrenceRepresentsLesson(occurrence, lesson)));
+      row.attendance.present = actual.filter((lesson) => lesson.attendanceStatus === "PRESENT").length;
+      row.attendance.absent = actual.filter((lesson) => lesson.attendanceStatus === "ABSENT").length;
+      row.attendance.total = scheduled.length + outsideProjection.length;
     }
+    board.rows = board.rows.filter((row) => row.attendance.total > 0);
+    board.paidCount = board.rows.filter((row) => row.status === "PAID").length;
+    board.unpaidCount = board.rows.filter((row) => row.status === "UNPAID").length;
     return board;
   }
 
@@ -67,6 +73,10 @@ export class TuitionService {
     try {
       await connection.beginTransaction();
       const existing = await this.repository.lockMonthlyPayment(connection, enrollmentId, year, month);
+      const revalidated = (await this.monthlyBoard({ year, month, classId: current.classId })).rows
+        .find((item) => item.enrollmentId === enrollmentId);
+      if (!revalidated)
+        throw new AppError(404, "MONTHLY_TUITION_NOT_FOUND", "Không tìm thấy học phí tháng.");
       if (existing) {
         const same = Number(existing.amount ?? 0) === Number(normalized.amount ?? 0) &&
           (existing.amount == null) === (normalized.amount == null) &&
@@ -74,7 +84,7 @@ export class TuitionService {
           (existing.note == null ? null : String(existing.note)) === normalized.note;
         if (!same) throw new AppError(409, "MONTHLY_TUITION_PAID_IMMUTABLE", "Học phí tháng đã thu và không thể thay đổi.");
         await connection.commit();
-        return { payment: { ...current, paymentId: Number(existing.id), status: "PAID",
+        return { payment: { ...revalidated, paymentId: Number(existing.id), status: "PAID",
           amount: existing.amount == null ? null : Number(existing.amount),
           paidAt: String(existing.paid_at).slice(0, 10), note: existing.note == null ? null : String(existing.note) }, idempotent: true };
       }
@@ -82,7 +92,7 @@ export class TuitionService {
       await this.audit.record(connection, { actorUserId, action: "MONTHLY_TUITION_MARKED_PAID", entityType: "MONTHLY_TUITION",
         entityId: paymentId, newValues: { enrollmentId, year, month, status: "PAID", ...normalized } });
       await connection.commit();
-      return { payment: { ...current, paymentId, status: "PAID", ...normalized }, idempotent: false };
+      return { payment: { ...revalidated, paymentId, status: "PAID", ...normalized }, idempotent: false };
     } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
   }
 
@@ -93,5 +103,35 @@ export class TuitionService {
   }
   private validateId(id: number): void {
     if (!Number.isInteger(id) || id < 1) throw new AppError(400, "VALIDATION_ERROR", "Mã dữ liệu không hợp lệ.");
+  }
+  private occurrenceBelongsToRow(
+    occurrence: ScheduleOccurrence,
+    classId: number,
+    periods: Array<{ activeFrom: string; activeTo: string | null }>,
+  ): boolean {
+    const belongsToClass = occurrence.combinedGroupId == null
+      ? occurrence.classId === classId
+      : occurrence.memberClasses.some((member) => member.id === classId);
+    const active = periods.some((period) => period.activeFrom <= occurrence.occurrenceDate &&
+      (period.activeTo == null || period.activeTo >= occurrence.occurrenceDate));
+    return belongsToClass && active;
+  }
+  private isValidOccurrence(occurrence: ScheduleOccurrence): boolean {
+    return occurrence.state !== "SKIPPED" &&
+      !(occurrence.state === "RESCHEDULED" && occurrence.projectionSource === "RECURRING") &&
+      !occurrence.replacementCancelled;
+  }
+  private occurrenceRepresentsLesson(
+    occurrence: ScheduleOccurrence,
+    lesson: {
+      lessonId: number;
+      sourceOccurrenceKey: string | null;
+      combinedTeachingOccurrenceId: number | null;
+    },
+  ): boolean {
+    return occurrence.linkedLessonId === lesson.lessonId ||
+      (lesson.sourceOccurrenceKey != null && occurrence.key === lesson.sourceOccurrenceKey) ||
+      (lesson.combinedTeachingOccurrenceId != null &&
+        occurrence.combinedTeachingOccurrenceId === lesson.combinedTeachingOccurrenceId);
   }
 }

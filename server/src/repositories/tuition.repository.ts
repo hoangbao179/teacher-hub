@@ -3,6 +3,14 @@ import type { MonthlyTuitionBoard, MonthlyTuitionQuery, MonthlyTuitionRow } from
 import { pool } from "../db/pool";
 import { AppError } from "../errors/app-error";
 
+export interface MonthlyLessonAttendance {
+  enrollmentId: number;
+  lessonId: number;
+  sourceOccurrenceKey: string | null;
+  combinedTeachingOccurrenceId: number | null;
+  attendanceStatus: "PRESENT" | "ABSENT";
+}
+
 export class TuitionRepository {
   async monthlyBoard(query: MonthlyTuitionQuery): Promise<MonthlyTuitionBoard> {
     const start = `${query.year}-${String(query.month).padStart(2, "0")}-01`;
@@ -52,6 +60,39 @@ export class TuitionRepository {
       const id = Number(row.enrollment_id);
       result.set(id, [...(result.get(id) ?? []), {
         activeFrom: String(row.active_from), activeTo: row.active_to == null ? null : String(row.active_to),
+      }]);
+    }
+    return result;
+  }
+
+  async monthlyLessonAttendances(
+    enrollmentIds: number[],
+    start: string,
+    nextMonth: string,
+  ): Promise<Map<number, MonthlyLessonAttendance[]>> {
+    const result = new Map<number, MonthlyLessonAttendance[]>();
+    if (!enrollmentIds.length) return result;
+    const placeholders = enrollmentIds.map(() => "?").join(",");
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT participant.enrollment_id,l.id lesson_id,l.source_occurrence_key,
+        l.combined_teaching_occurrence_id,a.attendance_status
+       FROM lesson_session_participants participant
+       JOIN lesson_sessions l ON l.id=participant.lesson_session_id AND l.status='COMPLETED'
+       JOIN lesson_attendances a ON a.participant_id=participant.id
+       WHERE participant.enrollment_id IN (${placeholders})
+         AND l.session_date>=? AND l.session_date<?`,
+      [...enrollmentIds, start, nextMonth],
+    );
+    for (const row of rows) {
+      const enrollmentId = Number(row.enrollment_id);
+      result.set(enrollmentId, [...(result.get(enrollmentId) ?? []), {
+        enrollmentId,
+        lessonId: Number(row.lesson_id),
+        sourceOccurrenceKey: row.source_occurrence_key == null ? null : String(row.source_occurrence_key),
+        combinedTeachingOccurrenceId: row.combined_teaching_occurrence_id == null
+          ? null
+          : Number(row.combined_teaching_occurrence_id),
+        attendanceStatus: row.attendance_status,
       }]);
     }
     return result;

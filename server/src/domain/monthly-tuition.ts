@@ -1,3 +1,5 @@
+import { AppError } from "../errors/app-error";
+
 export type StoredAttendanceStatus = "PRESENT" | "ABSENT";
 
 export interface MonthlyAttendanceSummary {
@@ -11,9 +13,9 @@ export function validateTuitionMonth(year: number, month: number): {
   month: number;
 } {
   if (!Number.isInteger(year) || year < 2000 || year > 2100)
-    throw new Error("Năm học phí không hợp lệ.");
+    throw new AppError(400, "VALIDATION_ERROR", "Năm học phí không hợp lệ.");
   if (!Number.isInteger(month) || month < 1 || month > 12)
-    throw new Error("Tháng học phí không hợp lệ.");
+    throw new AppError(400, "VALIDATION_ERROR", "Tháng học phí không hợp lệ.");
   return { year, month };
 }
 
