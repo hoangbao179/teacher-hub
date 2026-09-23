@@ -62,11 +62,6 @@ export class ClassService {
       throw new AppError(400, "VALIDATION_ERROR", "Loại lớp không hợp lệ.");
     if ("status" in input && input.status && !(["ACTIVE", "PAUSED", "CLOSED"] as const).includes(input.status))
       throw new AppError(400, "VALIDATION_ERROR", "Trạng thái lớp không hợp lệ.");
-    if (
-      !Number.isInteger(input.defaultPackagePrice) ||
-      input.defaultPackagePrice < 0
-    )
-      throw new AppError(400, "VALIDATION_ERROR", "Giá gói không hợp lệ.");
     if (!Number.isInteger(input.defaultDurationMinutes) || input.defaultDurationMinutes < 1)
       throw new AppError(400, "VALIDATION_ERROR", "Thời lượng không hợp lệ.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startDate))

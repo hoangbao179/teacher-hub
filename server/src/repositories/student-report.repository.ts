@@ -25,7 +25,6 @@ export interface StudentLearningReportRow {
   actualEndTime: string | null;
   actualDurationMinutes: number | null;
   attendanceStatus: "PRESENT" | "ABSENT";
-  countsForTuition: boolean;
   content: string | null;
   homework: string | null;
   studentNote: string | null;
@@ -87,8 +86,7 @@ export class StudentReportRepository {
         COALESCE(l.class_name_snapshot,c.name) class_name,
         l.lesson_type,l.scheduled_start_time,l.scheduled_end_time,l.actual_start_time,
         l.actual_end_time,l.actual_duration_minutes,
-        CASE WHEN a.attendance_status='FREE' THEN 'PRESENT' ELSE a.attendance_status END attendance_status,
-        a.counts_for_tuition,
+        a.attendance_status,
         l.content,l.homework,a.student_note,l.note lesson_note
        FROM lesson_attendances a
        JOIN class_enrollments e ON e.id=a.enrollment_id
@@ -108,7 +106,7 @@ export class StudentReportRepository {
       scheduledEndTime: timeText(row.scheduled_end_time)!,
       actualStartTime: timeText(row.actual_start_time), actualEndTime: timeText(row.actual_end_time),
       actualDurationMinutes: row.actual_duration_minutes == null ? null : Number(row.actual_duration_minutes),
-      attendanceStatus: row.attendance_status, countsForTuition: Boolean(row.counts_for_tuition),
+      attendanceStatus: row.attendance_status,
       content: row.content == null ? null : String(row.content),
       homework: row.homework == null ? null : String(row.homework),
       studentNote: row.student_note == null ? null : String(row.student_note),

@@ -23,7 +23,7 @@
 ## Độ tin cậy
 - Backup database định kỳ.
 - Soft delete/archive dữ liệu nghiệp vụ.
-- Transaction khi hoàn thành lesson và phân bổ tuition cycle.
+- Transaction khi hoàn thành lesson; Google sync chỉ chạy sau commit qua outbox.
 - Idempotency cho thao tác hoàn thành buổi và đánh dấu đã thu.
 
 ## Khả dụng

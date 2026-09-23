@@ -26,8 +26,7 @@ teacher-class-hub/
 │   ├── architecture/
 │   ├── decisions/
 │   ├── implementation/
-│   ├── api/
-│   └── wireframes/
+│   └── api/
 └── deploy/
 ```
 

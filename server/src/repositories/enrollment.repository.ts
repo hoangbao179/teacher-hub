@@ -1,6 +1,6 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import type {
-  ChangeTuitionModeRequest,
+  ChangeTuitionExemptionRequest,
   CreateEnrollmentRequest,
   EnrollmentStatus,
   TransferEnrollmentRequest,
@@ -49,11 +49,9 @@ export class EnrollmentRepository {
       }
       const [result] = await connection.execute<ResultSetHeader>(
         `INSERT INTO class_enrollments
-          (class_id,student_id,joined_at,tuition_mode,custom_package_price,tuition_effective_from,note)
-         VALUES (?,?,?,?,?,?,?)`,
-        [classId, input.studentId, input.joinedAt, input.tuitionMode,
-          input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
-          input.joinedAt, input.note ?? null],
+          (class_id,student_id,joined_at,tuition_exempt,note)
+         VALUES (?,?,?,?,?)`,
+        [classId, input.studentId, input.joinedAt, input.tuitionExempt ?? false, input.note ?? null],
       );
       await connection.execute(
         "INSERT INTO enrollment_active_periods(enrollment_id,active_from,created_by) VALUES (?,?,?)",
@@ -205,11 +203,10 @@ export class EnrollmentRepository {
       );
       const [created] = await connection.execute<ResultSetHeader>(
         `INSERT INTO class_enrollments
-          (class_id,student_id,joined_at,tuition_mode,custom_package_price,tuition_effective_from,note)
-         VALUES (?,?,?,?,?,?,?)`,
-        [input.targetClassId, old.student_id, input.effectiveDate, input.tuitionMode,
-          input.tuitionMode === "CUSTOM" ? input.customPackagePrice ?? null : null,
-          input.effectiveDate, input.note?.trim() || null],
+          (class_id,student_id,joined_at,tuition_exempt,note)
+         VALUES (?,?,?,?,?)`,
+        [input.targetClassId, old.student_id, input.effectiveDate,
+          input.tuitionExempt ?? false, input.note?.trim() || null],
       );
       await connection.execute(
         "INSERT INTO enrollment_active_periods(enrollment_id,active_from,created_by) VALUES (?,?,?)",
@@ -225,7 +222,7 @@ export class EnrollmentRepository {
     finally { connection.release(); }
   }
 
-  async changeTuitionMode(id: number, input: ChangeTuitionModeRequest, actorUserId?: number): Promise<boolean> {
+  async changeTuitionExemption(id: number, input: ChangeTuitionExemptionRequest, actorUserId?: number): Promise<boolean> {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -234,13 +231,12 @@ export class EnrollmentRepository {
       );
       if (!rows[0]) { await connection.rollback(); return false; }
       const [result] = await connection.execute<ResultSetHeader>(
-        `UPDATE class_enrollments SET tuition_mode=?,custom_package_price=?,tuition_effective_from=? WHERE id=?`,
-        [input.tuitionMode, input.tuitionMode === "CUSTOM" ? (input.customPackagePrice ?? null) : null,
-          input.effectiveFrom, id],
+        "UPDATE class_enrollments SET tuition_exempt=? WHERE id=?",
+        [input.tuitionExempt, id],
       );
       await this.audit.record(connection, {
-        actorUserId, action: "TUITION_MODE_CHANGED", entityType: "ENROLLMENT", entityId: id,
-        previousValues: { tuitionMode: rows[0].tuition_mode, customPackagePrice: rows[0].custom_package_price, effectiveFrom: rows[0].tuition_effective_from },
+        actorUserId, action: "TUITION_EXEMPTION_CHANGED", entityType: "ENROLLMENT", entityId: id,
+        previousValues: { tuitionExempt: Boolean(rows[0].tuition_exempt) },
         newValues: input, reason: input.reason,
       });
       await connection.commit();

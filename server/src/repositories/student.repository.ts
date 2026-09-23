@@ -3,7 +3,6 @@ import type {
   CreateStudentRequest,
   StudentDetail,
   StudentListItem,
-  TuitionMode,
   UpdateStudentRequest,
 } from "@teacher/shared";
 import { pool } from "../db/pool";
@@ -22,19 +21,11 @@ interface StudentJoinedRow extends RowDataPacket {
   class_name: string | null;
   enrollment_id: number | null;
   enrollment_status: StudentListItem["enrollmentStatus"];
-  tuition_mode: TuitionMode | null;
-  custom_package_price: number | null;
-  default_package_price: number | null;
+  tuition_exempt: number | boolean | null;
   joined_at: string | null;
 }
 
 function map(row: StudentJoinedRow): StudentDetail {
-  const effective =
-    row.tuition_mode === "FREE"
-      ? null
-      : row.tuition_mode === "CUSTOM"
-        ? row.custom_package_price
-        : row.default_package_price;
   return {
     id: row.id,
     fullName: row.full_name,
@@ -50,19 +41,14 @@ function map(row: StudentJoinedRow): StudentDetail {
     className: row.class_name,
     enrollmentId: row.enrollment_id,
     enrollmentStatus: row.enrollment_status,
-    tuitionMode: row.tuition_mode,
-    customPackagePrice:
-      row.custom_package_price == null
-        ? null
-        : Number(row.custom_package_price),
+    tuitionExempt: row.tuition_exempt == null ? null : Boolean(row.tuition_exempt),
     joinedAt: row.joined_at ? String(row.joined_at).slice(0, 10) : null,
-    effectivePackagePrice: effective == null ? null : Number(effective),
   };
 }
 
 const baseQuery = `
   SELECT s.*, e.id enrollment_id, e.class_id, c.name class_name, e.status enrollment_status,
-    e.tuition_mode, e.custom_package_price, c.default_package_price, e.joined_at
+    e.tuition_exempt, e.joined_at
   FROM students s
   LEFT JOIN class_enrollments e ON e.student_id=s.id AND e.status IN ('ACTIVE','PAUSED')
   LEFT JOIN classes c ON c.id=e.class_id

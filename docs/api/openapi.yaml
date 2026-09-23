@@ -159,8 +159,8 @@ paths:
     post: {summary: Kết thúc ghi danh và giữ lịch sử, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã kết thúc}}}
   /api/enrollments/{id}/transfer:
     post: {summary: Chuyển lớp atomic và giữ lịch sử cũ, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'201': {description: Đã chuyển lớp}, '409': {$ref: '#/components/responses/Conflict'}}}
-  /api/enrollments/{id}/tuition-mode:
-    patch: {summary: Đổi tuition mode có effective date, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
+  /api/enrollments/{id}/tuition-exemption:
+    patch: {summary: Bật hoặc tắt miễn học phí cho enrollment, parameters: [{$ref: '#/components/parameters/Id'}], responses: {'204': {description: Đã cập nhật}}}
   /api/lessons:
     post:
       summary: Tạo lesson draft và participant snapshot
@@ -245,7 +245,7 @@ paths:
         '409': {$ref: '#/components/responses/Conflict'}
   /api/tuition/monthly:
     get:
-      summary: Bảng học phí theo tháng từ lesson completed và participant snapshot
+      summary: Bảng học phí tháng với tổng buổi từ schedule/lesson projection hiện tại
       parameters:
         - {in: query, name: year, required: true, schema: {type: integer, minimum: 2000, maximum: 2100}}
         - {in: query, name: month, required: true, schema: {type: integer, minimum: 1, maximum: 12}}
@@ -2025,13 +2025,13 @@ components:
             attendances: {type: array, items: {$ref: '#/components/schemas/AttendanceInput'}}
     LessonParticipant:
       type: object
-      required: [participantId, enrollmentId, studentId, studentName, tuitionMode]
+      required: [participantId, enrollmentId, studentId, studentName, tuitionExempt]
       properties:
         participantId: {type: integer, format: int64}
         enrollmentId: {type: integer, format: int64}
         studentId: {type: integer, format: int64}
         studentName: {type: string}
-        tuitionMode: {type: string, enum: [CLASS_DEFAULT, CUSTOM, FREE]}
+        tuitionExempt: {type: boolean}
         attendance:
           nullable: true
           allOf: [{$ref: '#/components/schemas/AttendanceInput'}]

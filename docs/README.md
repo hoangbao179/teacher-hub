@@ -21,11 +21,7 @@ khác implementation hiện tại, phải kiểm tra status và code đang chạ
 3. Contracts trong `../shared/src/`.
 4. [`api/openapi.yaml`](api/openapi.yaml).
 5. Migration/schema và source hiện tại.
-6. Visual references đã duyệt.
-
-Wireframe không ghi đè business rule. PNG P0 là mô tả luồng; screenshot chạy thật
-trong [`wireframes/v2-branding/`](wireframes/v2-branding/) và baseline đã duyệt
-trong `ui-baselines/`, nếu có, là tham chiếu styling cho màn hình tương ứng.
+6. Visual baseline đã duyệt trong `ui-baselines/`, nếu có.
 
 ## Vai trò từng nhóm
 
@@ -42,8 +38,7 @@ trong `ui-baselines/`, nếu có, là tham chiếu styling cho màn hình tươn
   hành duy nhất.
 - `changes/`: tối đa một consolidated change report cho thay đổi cần
   giữ kiến thức lâu dài; không dùng làm nhật ký mọi task.
-- [`wireframes/`](wireframes/) và `ui-baselines/`: chỉ chứa hình đã được reviewer
-  hoặc user duyệt.
+- `ui-baselines/`: chỉ chứa hình đã được reviewer hoặc user duyệt.
 
 Artifact kiểm thử tạm thuộc `.artifacts/` và không được commit. `.agent-reports/`
 chỉ là đường dẫn tương thích đã ignore, không phải nguồn tài liệu.
@@ -56,7 +51,6 @@ chỉ là đường dẫn tương thích đã ignore, không phải nguồn tài
   legacy Excel và Google Drive/Sheets.
 - [`features/vocabulary-assignments-and-games.md`](features/vocabulary-assignments-and-games.md):
   vocabulary catalog, media, assignment, game và result.
-- [`design/admin-ui-visual-refresh.md`](design/admin-ui-visual-refresh.md): visual
-  target đã duyệt cho Admin Dashboard.
+- [`design/ui-guidelines.md`](design/ui-guidelines.md): quy tắc UI hiện hành.
 
 Khi sửa feature quan trọng, cập nhật feature doc và shared contract trong cùng PR.

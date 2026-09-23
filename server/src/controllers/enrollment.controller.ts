@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { ChangeEnrollmentStatusRequest, ChangeTuitionModeRequest, CreateEnrollmentRequest, EndEnrollmentRequest, TransferEnrollmentRequest } from "@teacher/shared";
+import type { ChangeEnrollmentStatusRequest, ChangeTuitionExemptionRequest, CreateEnrollmentRequest, EndEnrollmentRequest, TransferEnrollmentRequest } from "@teacher/shared";
 import { EnrollmentService } from "../services/enrollment.service";
 
 export class EnrollmentController {
@@ -13,5 +13,5 @@ export class EnrollmentController {
   end = async (req: Request, res: Response) => { await this.service.end(Number(req.params.id), req.body as EndEnrollmentRequest, req.auth!.id); res.status(204).end(); };
   transfer = async (req: Request, res: Response) => res.status(201).json({ data:
     await this.service.transfer(Number(req.params.id), req.body as TransferEnrollmentRequest, req.auth!.id) });
-  changeTuitionMode = async (req: Request, res: Response) => { await this.service.changeTuitionMode(Number(req.params.id), req.body as ChangeTuitionModeRequest, req.auth!.id); res.status(204).end(); };
+  changeTuitionExemption = async (req: Request, res: Response) => { await this.service.changeTuitionExemption(Number(req.params.id), req.body as ChangeTuitionExemptionRequest, req.auth!.id); res.status(204).end(); };
 }

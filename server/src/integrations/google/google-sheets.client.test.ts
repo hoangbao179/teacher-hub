@@ -1,6 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { teacherHubFormattingCleanup, templateSheetReconciliationRequests } from "./google-sheets.client";
+import {
+  learningRowSyncPlan,
+  learningSyncTimestampValues,
+  teacherHubFormattingCleanup,
+  templateSheetReconciliationRequests,
+} from "./google-sheets.client";
+
+test("lesson sync updates an existing technical ID instead of appending a duplicate", () => {
+  const values = [["Teacher Hub Lesson ID", "Ngày học"], [10, "20/07/2026"], [11, "21/07/2026"]];
+  assert.deepEqual(learningRowSyncPlan(values, 11), { action: "UPDATE", rowNumber: 8 });
+  assert.deepEqual(learningRowSyncPlan(values, 12), { action: "APPEND", rowNumber: 9 });
+});
+
+test("lesson sync updates visible and technical timestamps together", () => {
+  assert.deepEqual(learningSyncTimestampValues("2026-07-27T08:30:00.000Z"), [
+    { range: "'Sổ theo dõi học tập'!B4", values: [["27/07/2026 15:30"]] },
+    { range: "'_TeacherHub'!B7", values: [["2026-07-27T08:30:00.000Z"]] },
+  ]);
+});
 
 test("template reconciliation renames learning history and removes obsolete visible sheets", () => {
   assert.deepEqual(templateSheetReconciliationRequests(

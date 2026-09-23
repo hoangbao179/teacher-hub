@@ -30,7 +30,6 @@ export interface CreateClassRequest {
   name: string;
   type: ClassType;
   subject?: string;
-  defaultPackagePrice: number;
   defaultDurationMinutes: number;
   startDate: string;
   expectedEndDate?: string;
@@ -43,7 +42,6 @@ export interface UpdateClassRequest {
   name: string;
   type: ClassType;
   subject?: string;
-  defaultPackagePrice: number;
   defaultDurationMinutes: number;
   startDate: string;
   expectedEndDate?: string;
@@ -59,7 +57,6 @@ export interface ClassListItem {
   type: ClassType;
   subject: string | null;
   status: ClassStatus;
-  defaultPackagePrice: number;
   defaultDurationMinutes: number;
   activeStudentCount: number;
 }
@@ -75,6 +72,6 @@ export interface ClassDetail extends ClassListItem {
     studentId: number;
     fullName: string;
     nickname: string | null;
-    tuitionMode: "CLASS_DEFAULT" | "CUSTOM" | "FREE";
+    tuitionExempt: boolean;
   }>;
 }

@@ -177,8 +177,8 @@ async function installUiMocks(context, currentWeek, populatedWeek, occurrenceReq
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ data: [
-      { id: 1, name: "Lớp 3A", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 800000, defaultDurationMinutes: 60, activeStudentCount: 3 },
-      { id: 2, name: "Lớp 6B", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 900000, defaultDurationMinutes: 90, activeStudentCount: 4 },
+      { id: 1, name: "Lớp 3A", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultDurationMinutes: 60, activeStudentCount: 3 },
+      { id: 2, name: "Lớp 6B", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultDurationMinutes: 90, activeStudentCount: 4 },
     ] }),
   }));
   await context.route("**/api/schedule/occurrences?*", (route) => {

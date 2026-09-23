@@ -70,7 +70,7 @@ npm -w client run build:production
 1. Đọc `AGENTS.md`.
 2. Đọc `docs/README.md`.
 3. Đọc tài liệu nghiệp vụ liên quan trong `docs/product-spec/` và `docs/features/`.
-4. Không suy diễn nghiệp vụ từ wireframe nếu tài liệu chữ đã quy định khác.
+4. Không suy diễn nghiệp vụ từ hình tham khảo nếu tài liệu chữ đã quy định khác.
 5. Cập nhật docs cùng lúc khi thay đổi business rule, schema, API hoặc deploy.
 
 ## Lệnh kiểm tra và vận hành

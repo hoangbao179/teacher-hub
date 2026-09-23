@@ -15,5 +15,5 @@ test("historical enrollment eligibility includes the ending date", () => {
 test("runtime attendance accepts only present and absent", () => {
   assert.equal(parseRuntimeAttendanceStatus("PRESENT"), "PRESENT");
   assert.equal(parseRuntimeAttendanceStatus("ABSENT"), "ABSENT");
-  assert.throws(() => parseRuntimeAttendanceStatus("FREE"), /Trạng thái điểm danh không hợp lệ/);
+  assert.throws(() => parseRuntimeAttendanceStatus("EXCUSED"), /Trạng thái điểm danh không hợp lệ/);
 });

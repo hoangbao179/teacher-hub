@@ -202,7 +202,7 @@ export function createRouter(): Router {
   router.post("/api/enrollments/:id/resume", asyncHandler(controllers.enrollments.resume));
   router.post("/api/enrollments/:id/end", asyncHandler(controllers.enrollments.end));
   router.post("/api/enrollments/:id/transfer", asyncHandler(controllers.enrollments.transfer));
-  router.patch("/api/enrollments/:id/tuition-mode", asyncHandler(controllers.enrollments.changeTuitionMode));
+  router.patch("/api/enrollments/:id/tuition-exemption", asyncHandler(controllers.enrollments.changeTuitionExemption));
   router.post("/api/lessons", asyncHandler(controllers.lessons.create));
   router.get("/api/lessons/:id", asyncHandler(controllers.lessons.detail));
   router.patch("/api/lessons/:id", asyncHandler(controllers.lessons.update));

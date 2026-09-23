@@ -19,7 +19,6 @@ interface ClassRow extends RowDataPacket {
   class_type: ClassListItem["type"];
   subject: string | null;
   status: ClassListItem["status"];
-  default_package_price: number;
   default_duration_minutes: number;
   start_date: string;
   expected_end_date: string | null;
@@ -35,7 +34,6 @@ function mapList(row: ClassRow): ClassListItem {
     type: row.class_type,
     subject: row.subject,
     status: row.status,
-    defaultPackagePrice: Number(row.default_package_price),
     defaultDurationMinutes: Number(row.default_duration_minutes),
     activeStudentCount: Number(row.active_student_count),
   };
@@ -78,7 +76,7 @@ export class ClassRepository {
     );
     const [students] = await pool.query<RowDataPacket[]>(
       `
-      SELECT e.id enrollment_id, s.id student_id, s.full_name, s.nickname, e.tuition_mode
+      SELECT e.id enrollment_id, s.id student_id, s.full_name, s.nickname, e.tuition_exempt
       FROM class_enrollments e JOIN students s ON s.id=e.student_id
       WHERE e.class_id=? AND e.status='ACTIVE' ORDER BY s.full_name
     `,
@@ -104,7 +102,7 @@ export class ClassRepository {
         studentId: Number(item.student_id),
         fullName: String(item.full_name),
         nickname: item.nickname ? String(item.nickname) : null,
-        tuitionMode: item.tuition_mode,
+        tuitionExempt: Boolean(item.tuition_exempt),
       })),
     };
   }
@@ -115,14 +113,13 @@ export class ClassRepository {
       await connection.beginTransaction();
       const [result] = await connection.execute<ResultSetHeader>(
         `
-        INSERT INTO classes(name,class_type,subject,default_package_price,default_duration_minutes,start_date,expected_end_date,status,note,closed_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
+        INSERT INTO classes(name,class_type,subject,default_duration_minutes,start_date,expected_end_date,status,note,closed_at)
+        VALUES (?,?,?,?,?,?,?,?,?)
       `,
         [
           input.name,
           input.type,
           input.subject ?? null,
-          input.defaultPackagePrice,
           input.defaultDurationMinutes,
           input.startDate,
           input.expectedEndDate ?? null,
@@ -193,14 +190,13 @@ export class ClassRepository {
         }
       }
       await connection.execute<ResultSetHeader>(
-        `UPDATE classes SET name=?,class_type=?,subject=?,default_package_price=?,
+        `UPDATE classes SET name=?,class_type=?,subject=?,
           default_duration_minutes=?,start_date=?,expected_end_date=?,note=?
          WHERE id=?`,
         [
           input.name,
           input.type,
           input.subject ?? null,
-          input.defaultPackagePrice,
           input.defaultDurationMinutes,
           input.startDate,
           input.expectedEndDate ?? null,

@@ -39,12 +39,7 @@ Khi có mâu thuẫn về giao diện, ưu tiên:
 
 1. ứng dụng đang chạy và đã được user duyệt;
 2. baseline đã duyệt trong `docs/ui-baselines/`, nếu có;
-3. screenshot V2 trong `docs/wireframes/v2-branding/`;
-4. `docs/design/ui-guidelines.md`;
-5. wireframe P0.
-
-Wireframe P0 chỉ mô tả luồng và phân cấp thông tin. Không dùng text hoặc số liệu
-trong ảnh wireframe để thay đổi business rule.
+3. `docs/design/ui-guidelines.md`.
 
 `docs/implementation/status.md` là nguồn duy nhất mô tả trạng thái hiện hành.
 Lịch sử thay đổi nằm trong Git, không ghi nhật ký task vào status.
@@ -57,11 +52,12 @@ Lịch sử thay đổi nằm trong Git, không ghi nhật ký task vào status.
 - Một học sinh chỉ có tối đa một enrollment `ACTIVE`.
 - Lớp 1 kèm 1 và lớp nhóm dùng chung domain model.
 - Điểm danh runtime chỉ có `PRESENT` và `ABSENT`; thời lượng không tác động học phí.
-- Học phí theo tháng dương lịch, tổng hợp từ lesson `COMPLETED` và participant snapshot.
-- Enrollment `FREE` không xuất hiện trong bảng hoặc payment học phí tháng.
+- Học phí theo tháng dương lịch; tổng buổi lấy từ schedule/lesson projection hiện tại,
+  không phải cycle 8 buổi cố định.
+- Enrollment có `tuitionExempt=true` không xuất hiện trong bảng hoặc payment học phí tháng.
 - Dữ liệu nhập muộn xử lý theo ngày học thực tế.
 - Payment tháng có `UNPAID | PAID`; amount tùy chọn và `PAID` bất biến.
-- Không suy amount tháng hoặc backfill từ cycle/receipt cũ; dữ liệu lịch sử vẫn giữ.
+- Không có payment row nghĩa là `UNPAID`; có payment row nghĩa là `PAID`.
 - Lịch lặp chỉ là lịch dự kiến, không chứng minh đã dạy.
 - Buổi học bù có thể chỉ gồm một số học sinh.
 - Đóng lớp và ngừng học phải giữ lịch sử.
@@ -251,13 +247,8 @@ passed”. Không tuyên bố PASS khi mandatory checks theo final level chưa �
 
 ## 8. Screenshot và artifact
 
-Được commit chỉ khi reviewer/user đã duyệt:
-
-- `docs/wireframes/`;
-- `docs/ui-baselines/`.
-
-Không xóa wireframe hiện có. UI baseline chỉ giữ số ảnh tối thiểu đại diện cho các
-layout thực sự khác nhau.
+UI baseline chỉ được commit khi reviewer/user đã duyệt và chỉ giữ số ảnh tối thiểu
+đại diện cho các layout thực sự khác nhau. Wireframe không phải artifact được duy trì.
 
 Không commit Playwright screenshot, ảnh PASS/FAIL, before/after tạm, ảnh agent tự
 kiểm tra, trace, video, HTML report, browser log hoặc test result. Lưu chúng tại:
@@ -284,14 +275,14 @@ và giữ 7 ngày.
 `npm run check:repo` phải chặn file tracked/staged thuộc các nhóm:
 
 - `.agent-reports/`, `.artifacts/`, `playwright-report/`, `test-results/`;
-- screenshot ngoài `docs/wireframes/`, `docs/ui-baselines/` và production asset
+- screenshot ngoài `docs/ui-baselines/` và production asset
   source được cho phép;
 - log, archive không được phép, build output, binary quá ngưỡng ngoài allowlist;
 - `.env`, private data, workbook thật, dump hoặc secret;
 - cặp report `implementation.md`/`verification.md` theo quy trình cũ.
 
-Guard không chặn wireframe/baseline đã duyệt, production asset được source dùng,
-migration hay fixture cần thiết. Khi chưa xác định chính xác asset có được dùng,
+Guard không chặn baseline đã duyệt, production asset được source dùng, migration
+hay fixture cần thiết. Khi chưa xác định chính xác asset có được dùng,
 chỉ cảnh báo; không tự xóa.
 
 Không log hoặc commit password/hash, JWT, database credentials, `.env`, dữ liệu học
@@ -352,7 +343,7 @@ Reason:
 ## Artifacts
 
 - Temporary artifacts:
-- Committed baselines/wireframes:
+- Committed baselines:
 
 ## Remaining risks
 

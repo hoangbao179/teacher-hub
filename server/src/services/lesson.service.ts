@@ -548,21 +548,19 @@ export class LessonService {
       throw new AppError(400, "MISSING_ATTENDANCE", "Phải điểm danh đúng một trạng thái cho mọi học sinh tham gia.");
     const result: Array<{
       enrollmentId: number; studentId: number; studentName: string; attendanceId: number;
-      billable: boolean;
     }> = [];
     for (const input of inputs) {
       this.validateAttendanceStatus(input.status);
       const participant = byEnrollment.get(input.enrollmentId)!;
-      const billable = input.status === "PRESENT" && participant.tuition_mode !== "FREE";
       const attendanceId = await this.lessons.upsertAttendance(
         connection, Number(lesson.id), Number(participant.participant_id), input.enrollmentId,
-        input.status, billable, input.studentNote?.trim() || null,
+        input.status, input.studentNote?.trim() || null,
       );
       result.push({
         enrollmentId: input.enrollmentId,
         studentId: Number(participant.student_id),
         studentName: String(participant.student_name),
-        attendanceId, billable,
+        attendanceId,
       });
     }
     return result;

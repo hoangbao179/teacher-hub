@@ -23,10 +23,10 @@ async function clean() {
   try {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
-      "tuition_receipt_allocations", "tuition_receipts", "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements",
+      "monthly_tuition_payments", "lesson_attendances", "lesson_makeup_replacements",
       "lesson_session_participants", "lesson_sessions", "schedule_exceptions", "teacher_busy_slot_schedules", "teacher_busy_slots",
       "recurring_schedules", "enrollment_active_periods", "class_active_periods",
-      "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments",
+      "class_enrollments",
       "audit_logs", "students", "classes", "users",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
@@ -67,13 +67,13 @@ integration("V14 preserves history and enforces pause, cancel, makeup and tempor
   await clean();
   const { classes, students, enrollments, lessons, schedules } = services();
   const classId = await classes.create({
-    name: "V14 Group", type: "GROUP", subject: "English", defaultPackagePrice: 2_400_000,
+    name: "V14 Group", type: "GROUP", subject: "English",
     defaultDurationMinutes: 90, startDate: "2026-07-01",
     schedules: [{ dayOfWeek: 1, startTime: "18:00", endTime: "19:30" }],
   });
   const studentId = await students.create({ fullName: "V14 Student", nickname: "Old" });
   const enrollmentId = await enrollments.create(classId, {
-    studentId, joinedAt: "2026-07-01", tuitionMode: "CLASS_DEFAULT",
+    studentId, joinedAt: "2026-07-01",
   });
   const first = await lessons.create({
     classId, sessionDate: "2026-07-02", scheduledStartTime: "18:00",
@@ -82,7 +82,7 @@ integration("V14 preserves history and enforces pause, cancel, makeup and tempor
   const before = await classes.detail(classId);
   const scheduleId = before.schedules[0].id;
   await classes.update(classId, {
-    name: "V14 Renamed", type: "GROUP", subject: "English", defaultPackagePrice: 2_400_000,
+    name: "V14 Renamed", type: "GROUP", subject: "English",
     defaultDurationMinutes: 90, startDate: "2026-07-01", status: "ACTIVE",
     schedules: before.schedules, scheduleEffectiveDate: "2026-07-21",
   });
@@ -120,11 +120,11 @@ integration("V14 preserves history and enforces pause, cancel, makeup and tempor
 
   const secondStudentId = await students.create({ fullName: "V14 Student Two" });
   const secondEnrollmentId = await enrollments.create(classId, {
-    studentId: secondStudentId, joinedAt: "2026-07-01", tuitionMode: "CLASS_DEFAULT",
+    studentId: secondStudentId, joinedAt: "2026-07-01",
   });
   const freeStudentId = await students.create({ fullName: "V14 Student Free" });
   const freeEnrollmentId = await enrollments.create(classId, {
-    studentId: freeStudentId, joinedAt: "2026-07-01", tuitionMode: "FREE",
+    studentId: freeStudentId, joinedAt: "2026-07-01", tuitionExempt: true,
   });
 
   const sourceKey = occurrenceKey(classId, scheduleId, "2026-07-06");
@@ -211,7 +211,7 @@ integration("V14 versions recurring schedules and preserves linked operational h
   const { classes, lessons, schedules } = services();
   const classId = await classes.create({
     name: "V14 Schedule History", type: "GROUP", subject: "English",
-    defaultPackagePrice: 2_000_000, defaultDurationMinutes: 90, startDate: "2026-06-01",
+    defaultDurationMinutes: 90, startDate: "2026-06-01",
     schedules: [{ dayOfWeek: 1, startTime: "18:00", endTime: "19:30" }],
   });
   const original = (await classes.detail(classId)).schedules[0];
@@ -227,7 +227,7 @@ integration("V14 versions recurring schedules and preserves linked operational h
 
   await classes.update(classId, {
     name: "V14 Schedule History Renamed", type: "GROUP", subject: "English Advanced",
-    defaultPackagePrice: 2_200_000, defaultDurationMinutes: 75, startDate: "2026-06-01",
+    defaultDurationMinutes: 75, startDate: "2026-06-01",
     expectedEndDate: "2026-12-31", note: "Metadata only", status: "ACTIVE",
     schedules: [original], scheduleEffectiveDate: "2026-07-21",
   });
@@ -282,12 +282,12 @@ integration("V14 versions recurring schedules and preserves linked operational h
   assert.equal(Number(exception[0].recurring_schedule_id), original.id);
 
   const immediateClassId = await classes.create({
-    name: "V14 Immediate Pause", type: "GROUP", defaultPackagePrice: 1_800_000,
+    name: "V14 Immediate Pause", type: "GROUP",
     defaultDurationMinutes: 60, startDate: "2026-09-01", schedules: [],
   });
   const immediateStudentId = await services().students.create({ fullName: "V14 Immediate Student" });
   const immediateEnrollmentId = await services().enrollments.create(immediateClassId, {
-    studentId: immediateStudentId, joinedAt: "2026-09-01", tuitionMode: "CLASS_DEFAULT",
+    studentId: immediateStudentId, joinedAt: "2026-09-01",
   });
   await services().enrollments.pause(immediateEnrollmentId, { effectiveDate: "2026-09-01" });
   const [emptyEnrollmentPeriods] = await pool.query<RowDataPacket[]>(

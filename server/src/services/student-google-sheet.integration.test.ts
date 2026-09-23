@@ -29,10 +29,9 @@ async function clean(): Promise<void> {
       "learning_access_sessions", "learning_assignment_recipients",
       "learning_assignment_audience_students", "learning_assignment_activities",
       "learning_assignment_items", "learning_assignments",
-      "legacy_import_lesson_links", "legacy_import_row_audits", "legacy_imports",
-      "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances",
-      "lesson_session_participants", "lesson_sessions", "enrollment_active_periods", "class_active_periods", "enrollment_tuition_policies",
-      "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes", "users",
+      "monthly_tuition_payments", "lesson_attendances",
+      "lesson_session_participants", "lesson_sessions", "enrollment_active_periods", "class_active_periods",
+      "class_enrollments", "audit_logs", "students", "classes", "users",
     ])
       await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
@@ -49,9 +48,9 @@ async function fixture(repository = new StudentGoogleSheetRepository()) {
   return { actorId: actor.insertId, studentId: student.insertId, provider, service };
 }
 
-async function seedSnapshotLessons(studentId: number, statuses: Array<"PRESENT" | "ABSENT" | "FREE">) {
+async function seedSnapshotLessons(studentId: number, statuses: Array<"PRESENT" | "ABSENT">) {
   const [firstClass] = await pool.execute<ResultSetHeader>(
-    "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp 5A','ONE_TO_ONE',2000000,90,'2026-06-01')",
+    "INSERT INTO classes(name,class_type,default_duration_minutes,start_date) VALUES ('Lớp 5A','ONE_TO_ONE',90,'2026-06-01')",
   );
   const [firstEnrollment] = await pool.execute<ResultSetHeader>(
     "INSERT INTO class_enrollments(class_id,student_id,joined_at,status) VALUES (?,?,'2026-06-01','ACTIVE')",
@@ -69,9 +68,9 @@ async function seedSnapshotLessons(studentId: number, statuses: Array<"PRESENT" 
       [lesson.insertId, firstEnrollment.insertId, "Học sinh Google Test"],
     );
     await pool.execute<ResultSetHeader>(
-      `INSERT INTO lesson_attendances(lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition)
-       VALUES (?,?,?,?,?)`,
-      [lesson.insertId, participant.insertId, firstEnrollment.insertId, status, status === "PRESENT" ? 1 : 0],
+      `INSERT INTO lesson_attendances(lesson_session_id,participant_id,enrollment_id,attendance_status)
+       VALUES (?,?,?,?)`,
+      [lesson.insertId, participant.insertId, firstEnrollment.insertId, status],
     );
   }
   return new StudentGoogleSheetRepository().snapshot(studentId);
@@ -90,7 +89,7 @@ integration("hardening migration narrows attendance enum and adds generation rec
          OR (TABLE_NAME='student_google_sheets' AND COLUMN_NAME='generation_started_at'))`,
   );
   const attendance = columns.find((row) => row.COLUMN_NAME === "attendance_status");
-  assert.equal(attendance?.COLUMN_TYPE, "enum('PRESENT','ABSENT','FREE')");
+  assert.equal(attendance?.COLUMN_TYPE, "enum('PRESENT','ABSENT')");
   assert.ok(columns.some((row) => row.COLUMN_NAME === "generation_started_at"));
 });
 
@@ -107,7 +106,7 @@ integration("create is concurrent-safe, stable across enrollment and archive all
   assert.equal(data.provider.lastCreateInput?.appProperties.studentId, String(data.studentId));
   assert.ok(["ACTIVE", "CREATING"].includes(second.sheet.status));
   const [classResult] = await pool.execute<ResultSetHeader>(
-    "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp 7','ONE_TO_ONE',2000000,90,'2026-06-01')");
+    "INSERT INTO classes(name,class_type,default_duration_minutes,start_date) VALUES ('Lớp 7','ONE_TO_ONE',90,'2026-06-01')");
   await pool.execute("INSERT INTO class_enrollments(class_id,student_id,joined_at,status) VALUES (?,?,'2026-06-01','ACTIVE')",
     [classResult.insertId, data.studentId]);
   const repeated = await data.service.create(data.studentId, {}, data.actorId);
@@ -135,7 +134,7 @@ integration("regenerate upgrades an existing spreadsheet to the current template
   const created = await data.service.create(data.studentId, {}, data.actorId);
   await pool.execute("UPDATE student_google_sheets SET template_version='v0' WHERE id=?", [created.sheet.id]);
   const [classResult] = await pool.execute<ResultSetHeader>(
-    "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp 3A','ONE_TO_ONE',2000000,90,'2026-06-01')");
+    "INSERT INTO classes(name,class_type,default_duration_minutes,start_date) VALUES ('Lớp 3A','ONE_TO_ONE',90,'2026-06-01')");
   await pool.execute("INSERT INTO class_enrollments(class_id,student_id,joined_at,status) VALUES (?,?,'2026-06-01','ACTIVE')",
     [classResult.insertId, data.studentId]);
 
@@ -244,7 +243,7 @@ integration("snapshot isolates group attendance and student note", async () => {
   const data = await fixture();
   const [other] = await pool.execute<ResultSetHeader>("INSERT INTO students(full_name) VALUES ('Học sinh Khác')");
   const [group] = await pool.execute<ResultSetHeader>(
-    "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Nhóm Khối 6','GROUP',2000000,90,'2026-06-01')");
+    "INSERT INTO classes(name,class_type,default_duration_minutes,start_date) VALUES ('Nhóm Khối 6','GROUP',90,'2026-06-01')");
   const enrollments: number[] = [];
   for (const studentId of [data.studentId, other.insertId]) {
     const [enrollment] = await pool.execute<ResultSetHeader>(
@@ -259,8 +258,8 @@ integration("snapshot isolates group attendance and student note", async () => {
       "INSERT INTO lesson_session_participants(lesson_session_id,enrollment_id,student_name_snapshot) VALUES (?,?,?)",
       [lesson.insertId, enrollmentId, index ? "Học sinh Khác" : "Học sinh Google Test"]);
     await pool.execute(
-      `INSERT INTO lesson_attendances(lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition,student_note)
-       VALUES (?,?,?,'PRESENT',1,?)`, [lesson.insertId, participant.insertId, enrollmentId, index ? "Ghi chú bí mật của bạn khác" : "Ghi chú đúng học sinh"]);
+      `INSERT INTO lesson_attendances(lesson_session_id,participant_id,enrollment_id,attendance_status,student_note)
+       VALUES (?,?,?,'PRESENT',?)`, [lesson.insertId, participant.insertId, enrollmentId, index ? "Ghi chú bí mật của bạn khác" : "Ghi chú đúng học sinh"]);
   }
   const snapshot = await new StudentGoogleSheetRepository().snapshot(data.studentId);
   assert.equal(snapshot.learning.length, 1);
@@ -273,20 +272,10 @@ integration("outbox is transactional, revision-safe and worker syncs the canonic
   const data = await fixture();
   const active = await data.service.create(data.studentId, {}, data.actorId);
   const [classResult] = await pool.execute<ResultSetHeader>(
-    "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp Sync','ONE_TO_ONE',2000000,90,'2026-06-01')");
+    "INSERT INTO classes(name,class_type,default_duration_minutes,start_date) VALUES ('Lớp Sync','ONE_TO_ONE',90,'2026-06-01')");
   const [enrollment] = await pool.execute<ResultSetHeader>(
     "INSERT INTO class_enrollments(class_id,student_id,joined_at,status) VALUES (?,?,'2026-06-01','ACTIVE')",
     [classResult.insertId, data.studentId]);
-  await pool.execute(
-    `INSERT INTO class_tuition_policies(class_id,effective_from,package_price,created_by)
-     VALUES (?,'2026-06-01',2000000,?)`,
-    [classResult.insertId, data.actorId],
-  );
-  await pool.execute(
-    `INSERT INTO enrollment_tuition_policies(enrollment_id,tuition_mode,effective_from,created_by)
-     VALUES (?,'CLASS_DEFAULT','2026-06-01',?)`,
-    [enrollment.insertId, data.actorId],
-  );
   const [lesson] = await pool.execute<ResultSetHeader>(
     `INSERT INTO lesson_sessions(class_id,class_name_snapshot,class_type_snapshot,session_date,scheduled_start_time,scheduled_end_time,
       status,content,homework,general_comment,completed_at)
@@ -296,8 +285,8 @@ integration("outbox is transactional, revision-safe and worker syncs the canonic
     "INSERT INTO lesson_session_participants(lesson_session_id,enrollment_id,student_name_snapshot) VALUES (?,?,?)",
     [lesson.insertId, enrollment.insertId, "Học sinh Google Test"]);
   await pool.execute(
-    `INSERT INTO lesson_attendances(lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition,student_note)
-     VALUES (?,?,?,'PRESENT',1,'Riêng')`,
+    `INSERT INTO lesson_attendances(lesson_session_id,participant_id,enrollment_id,attendance_status,student_note)
+     VALUES (?,?,?,'PRESENT','Riêng')`,
     [lesson.insertId, participant.insertId, enrollment.insertId]);
 
   const outbox = new GoogleSheetSyncRepository();

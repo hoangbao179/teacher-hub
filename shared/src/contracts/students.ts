@@ -1,6 +1,5 @@
 export type StudentStatus = "ACTIVE" | "INACTIVE";
 export type EnrollmentStatus = "ACTIVE" | "PAUSED" | "ENDED";
-export type TuitionMode = "CLASS_DEFAULT" | "CUSTOM" | "FREE";
 
 export interface CreateStudentRequest {
   fullName: string;
@@ -24,8 +23,7 @@ export interface UpdateStudentRequest {
 export interface CreateEnrollmentRequest {
   studentId: number;
   joinedAt: string;
-  tuitionMode: TuitionMode;
-  customPackagePrice?: number;
+  tuitionExempt?: boolean;
   note?: string;
 }
 
@@ -44,8 +42,7 @@ export interface EndEnrollmentRequest {
 export interface TransferEnrollmentRequest {
   targetClassId: number;
   effectiveDate: string;
-  tuitionMode: TuitionMode;
-  customPackagePrice?: number;
+  tuitionExempt?: boolean;
   reason: string;
   note?: string;
 }
@@ -72,20 +69,16 @@ export interface StudentListItem {
   className: string | null;
   enrollmentId: number | null;
   enrollmentStatus: EnrollmentStatus | null;
-  tuitionMode: TuitionMode | null;
-  customPackagePrice: number | null;
+  tuitionExempt: boolean | null;
 }
 
 export interface StudentDetail extends StudentListItem {
   dateOfBirth: string | null;
   note: string | null;
   joinedAt: string | null;
-  effectivePackagePrice: number | null;
 }
 
-export interface ChangeTuitionModeRequest {
-  tuitionMode: TuitionMode;
-  customPackagePrice?: number;
-  effectiveFrom: string;
+export interface ChangeTuitionExemptionRequest {
+  tuitionExempt: boolean;
   reason?: string;
 }

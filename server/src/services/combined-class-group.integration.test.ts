@@ -22,8 +22,7 @@ async function clean() {
   try {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
-      "tuition_cycle_sessions",
-      "tuition_cycles",
+      "monthly_tuition_payments",
       "lesson_attendances",
       "lesson_session_participants",
       "lesson_sessions",
@@ -34,8 +33,6 @@ async function clean() {
       "recurring_schedules",
       "enrollment_active_periods",
       "class_active_periods",
-      "enrollment_tuition_policies",
-      "class_tuition_policies",
       "class_enrollments",
       "audit_logs",
       "students",
@@ -60,17 +57,13 @@ async function fixture() {
     for (const grade of [4, 5, 6]) {
       const [klass] = await connection.execute<ResultSetHeader>(
         `INSERT INTO classes
-          (name,class_type,default_package_price,default_duration_minutes,start_date)
-         VALUES (?,'GROUP',1600000,120,'2026-07-01')`,
+          (name,class_type,default_duration_minutes,start_date)
+         VALUES (?,'GROUP',120,'2026-07-01')`,
         [`Lớp ${grade}`],
       );
       classIds.push(klass.insertId);
       await connection.execute(
         "INSERT INTO class_active_periods(class_id,active_from) VALUES (?,'2026-07-01')",
-        [klass.insertId],
-      );
-      await connection.execute(
-        "INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,1600000,'2026-07-01')",
         [klass.insertId],
       );
       await connection.execute(
@@ -85,8 +78,8 @@ async function fixture() {
       );
       const [enrollment] = await connection.execute<ResultSetHeader>(
         `INSERT INTO class_enrollments
-          (class_id,student_id,joined_at,tuition_mode,tuition_effective_from)
-         VALUES (?,?,'2026-07-01','CLASS_DEFAULT','2026-07-01')`,
+          (class_id,student_id,joined_at)
+         VALUES (?,?,'2026-07-01')`,
         [klass.insertId, student.insertId],
       );
       enrollmentIds.push(enrollment.insertId);
@@ -94,19 +87,13 @@ async function fixture() {
         "INSERT INTO enrollment_active_periods(enrollment_id,active_from) VALUES (?,'2026-07-01')",
         [enrollment.insertId],
       );
-      await connection.execute(
-        `INSERT INTO enrollment_tuition_policies
-          (enrollment_id,tuition_mode,effective_from)
-         VALUES (?,'CLASS_DEFAULT','2026-07-01')`,
-        [enrollment.insertId],
-      );
     }
     const outsiderClassIds: number[] = [];
     for (const name of ["Lớp ngoài A", "Lớp ngoài B"]) {
       const [klass] = await connection.execute<ResultSetHeader>(
         `INSERT INTO classes
-          (name,class_type,default_package_price,default_duration_minutes,start_date)
-         VALUES (?,'GROUP',1600000,120,'2026-07-01')`,
+          (name,class_type,default_duration_minutes,start_date)
+         VALUES (?,'GROUP',120,'2026-07-01')`,
         [name],
       );
       outsiderClassIds.push(klass.insertId);

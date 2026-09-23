@@ -13,9 +13,9 @@ test("validateTuitionMonth rejects a month outside the calendar", () => {
   assert.throws(() => validateTuitionMonth(2026, 13), /Tháng học phí không hợp lệ/);
 });
 
-test("summarizeMonthlyAttendance maps historical FREE attendance to present", () => {
+test("summarizeMonthlyAttendance counts only PRESENT and ABSENT", () => {
   assert.deepEqual(
-    summarizeMonthlyAttendance(["PRESENT", "ABSENT", "FREE"]),
+    summarizeMonthlyAttendance(["PRESENT", "ABSENT", "PRESENT"]),
     { present: 2, absent: 1, total: 3 },
   );
 });

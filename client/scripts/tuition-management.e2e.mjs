@@ -103,13 +103,13 @@ try {
 
   const suffix = Date.now();
   const klass = await api("/api/classes", token, "POST", {
-    name: `Monthly ${suffix}`, type: "GROUP", defaultPackagePrice: 2_400_000,
+    name: `Monthly ${suffix}`, type: "GROUP",
     defaultDurationMinutes: 90, startDate: "2026-01-01", schedules: [],
   });
   const studentName = `Monthly Student ${suffix}`;
   const student = await api("/api/students", token, "POST", { fullName: studentName });
   const enrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
-    studentId: student.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
+    studentId: student.id, joinedAt: "2026-01-01",
   });
   for (let day = 1; day <= 6; day += 1)
     await completeLesson(klass.id, enrollment.id, `2026-09-${String(day).padStart(2, "0")}`, "PRESENT", token);
@@ -117,7 +117,7 @@ try {
     await completeLesson(klass.id, enrollment.id, `2026-09-${String(day).padStart(2, "0")}`, "ABSENT", token);
   const freeStudent = await api("/api/students", token, "POST", { fullName: `Free ${suffix}` });
   const freeEnrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
-    studentId: freeStudent.id, joinedAt: "2026-01-01", tuitionMode: "FREE",
+    studentId: freeStudent.id, joinedAt: "2026-01-01", tuitionExempt: true,
   });
   await completeLesson(klass.id, freeEnrollment.id, "2026-09-09", "PRESENT", token);
 
@@ -126,7 +126,7 @@ try {
   if (row?.attendance.present !== 6 || row?.attendance.absent !== 2 || row?.attendance.total !== 8)
     throw new Error("Monthly board did not aggregate 6 present and 2 absent lessons");
   if (board.rows.some((item) => item.enrollmentId === freeEnrollment.id))
-    throw new Error("FREE enrollment appeared on the monthly tuition board");
+    throw new Error("Tuition-exempt enrollment appeared on the monthly tuition board");
 
   await page.goto("http://127.0.0.1:5176/admin/tuition");
   await page.getByRole("heading", { name: "Học phí theo tháng" }).waitFor();

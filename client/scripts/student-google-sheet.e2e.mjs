@@ -86,11 +86,11 @@ try {
   const suffix = Date.now();
   const groupName = `Google sync E2E ${suffix}`;
   const group = await apiMutation("/api/classes", token, "POST", {
-    name: groupName, type: "GROUP", defaultPackagePrice: 2_000_000,
+    name: groupName, type: "GROUP",
     defaultDurationMinutes: 90, startDate: "2026-07-01", schedules: [],
   });
   const enrollment = await apiMutation(`/api/classes/${group.id}/enrollments`, token, "POST", {
-    studentId, joinedAt: "2026-07-01", tuitionMode: "CLASS_DEFAULT",
+    studentId, joinedAt: "2026-07-01",
   });
   const lesson = await apiMutation("/api/lessons", token, "POST", {
     classId: group.id, sessionDate: "2026-07-26", scheduledStartTime: "18:00",

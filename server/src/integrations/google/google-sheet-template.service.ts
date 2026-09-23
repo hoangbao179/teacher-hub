@@ -1,7 +1,7 @@
 import type { sheets_v4 } from "googleapis";
 import type { StudentGoogleSheetSnapshot } from "./google-integration.types";
 
-const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Vắng", FREE: "Có mặt" } as const;
+const attendanceLabels = { PRESENT: "Có mặt", ABSENT: "Vắng" } as const;
 const names = ["Sổ theo dõi học tập", "_TeacherHub"] as const;
 
 export function googleLearningRowValues(row: StudentGoogleSheetSnapshot["learning"][number]): Array<string | number | boolean> {
@@ -22,16 +22,31 @@ function googleDate(value: string): string {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
 }
 
+export function googleSyncTimestamp(value: string): string {
+  const instant = new Date(value);
+  if (Number.isNaN(instant.getTime())) return googleDate(value);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instant);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("day")}/${part("month")}/${part("year")} ${part("hour")}:${part("minute")}`;
+}
+
 function conditionalAttendanceRequest(
   sheetId: number,
-  rows: number,
   label: "Có mặt" | "Vắng",
 ): sheets_v4.Schema$Request {
   const backgroundColor = label === "Có mặt"
     ? { red: 232 / 255, green: 245 / 255, blue: 233 / 255 }
     : { red: 255 / 255, green: 235 / 255, blue: 238 / 255 };
   return { addConditionalFormatRule: { index: 0, rule: {
-    ranges: [{ sheetId, startRowIndex: 6, endRowIndex: Math.max(rows, 7), startColumnIndex: 2, endColumnIndex: 3 }],
+    ranges: [{ sheetId, startRowIndex: 6, startColumnIndex: 2, endColumnIndex: 3 }],
     booleanRule: { condition: { type: "TEXT_EQ", values: [{ userEnteredValue: label }] }, format: { backgroundColor } },
   } } };
 }
@@ -51,12 +66,12 @@ export class GoogleSheetTemplateService {
     templateVersion: string; generatedAt: string; syncedAt?: string | null;
   }): GoogleTemplatePlan {
     for (const name of names) if (ids[name] == null) throw new Error(`Missing template sheet: ${name}`);
-    const generatedDate = googleDate(metadata.generatedAt);
+    const updatedDate = googleSyncTimestamp(metadata.syncedAt ?? metadata.generatedAt);
     const learning = [
       ["SỔ THEO DÕI HỌC TẬP", "", "", "", ""],
       ["Học sinh", safeGoogleCell(snapshot.student.fullName), "", "", ""],
       ["Lớp", safeGoogleCell(snapshot.student.currentClass), "", "", ""],
-      ["Cập nhật gần nhất", generatedDate, "", "", ""],
+      ["Cập nhật gần nhất", updatedDate, "", "", ""],
       ["", "", "", "", ""],
       ["Teacher Hub Lesson ID", "Ngày học", "Điểm danh", "Nhận xét của cô", "Nội dung"],
       ...snapshot.learning.map(googleLearningRowValues),
@@ -78,8 +93,8 @@ export class GoogleSheetTemplateService {
           textFormat: { bold: true }, horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE", wrapStrategy: "WRAP" } }, fields: "userEnteredFormat" } },
       { repeatCell: { range: { sheetId: learningId, startRowIndex: 6, endRowIndex: Math.max(learning.length, 7), startColumnIndex: 0, endColumnIndex: 5 },
         cell: { userEnteredFormat: { verticalAlignment: "TOP", wrapStrategy: "WRAP" } }, fields: "userEnteredFormat(verticalAlignment,wrapStrategy)" } },
-      conditionalAttendanceRequest(learningId, learning.length, "Có mặt"),
-      conditionalAttendanceRequest(learningId, learning.length, "Vắng"),
+      conditionalAttendanceRequest(learningId, "Có mặt"),
+      conditionalAttendanceRequest(learningId, "Vắng"),
       { updateDimensionProperties: { range: { sheetId: learningId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { hiddenByUser: true }, fields: "hiddenByUser" } },
       ...[95, 105, 240, 280].map((pixelSize, offset) => ({ updateDimensionProperties: {
         range: { sheetId: learningId, dimension: "COLUMNS" as const, startIndex: offset + 1, endIndex: offset + 2 },

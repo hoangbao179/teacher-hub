@@ -23,10 +23,9 @@ draft khôi phục participant, attendance và content đã lưu. UI cảnh báo
 trang có thay đổi local, chặn duplicate submit và giữ primary action phía trên
 bottom navigation ở viewport 360–430px.
 
-M4B tuition pages call `client/src/api/tuition.ts`. List responses preserve API
-pagination metadata through `apiEnvelope`; pages never calculate authoritative
-payment state. Detail/payment primary actions remain above bottom navigation,
-and all cycle items use mobile cards rather than a wide table.
+Monthly tuition pages call `client/src/api/tuition.ts`. Pages never calculate
+authoritative payment state; they display `present/total` and absent count returned
+by the API. Payment actions remain above bottom navigation and use responsive cards.
 
 M5B operational pages call `client/src/api/schedule.ts`. Dashboard composes the
 server aggregate; reconciliation follows server-returned wizard routes; calendar

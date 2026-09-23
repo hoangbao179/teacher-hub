@@ -1,6 +1,24 @@
 import { google, type sheets_v4 } from "googleapis";
+import { googleSyncTimestamp } from "./google-sheet-template.service";
 
 type GoogleOAuthClient = InstanceType<typeof google.auth.OAuth2>;
+
+export function learningRowSyncPlan(
+  values: Array<Array<string | number | boolean>>,
+  lessonId: number,
+): { action: "UPDATE" | "APPEND"; rowNumber: number } {
+  const rowIndex = values.findIndex((candidate, index) => index > 0 && String(candidate[0] ?? "") === String(lessonId));
+  return rowIndex >= 1
+    ? { action: "UPDATE", rowNumber: rowIndex + 6 }
+    : { action: "APPEND", rowNumber: values.length + 6 };
+}
+
+export function learningSyncTimestampValues(syncedAt: string): sheets_v4.Schema$ValueRange[] {
+  return [
+    { range: "'Sổ theo dõi học tập'!B4", values: [[googleSyncTimestamp(syncedAt)]] },
+    { range: "'_TeacherHub'!B7", values: [[syncedAt]] },
+  ];
+}
 
 function isTeacherHubConditionalRule(rule: sheets_v4.Schema$ConditionalFormatRule): boolean {
   const condition = rule.booleanRule?.condition;
@@ -111,15 +129,15 @@ export class GoogleSheetsClient {
     const range = "'Sổ theo dõi học tập'!A6:E";
     const response = await this.sheets.spreadsheets.values.get({ spreadsheetId, range });
     const values = response.data.values ?? [];
-    const rowIndex = values.findIndex((candidate, index) => index > 0 && String(candidate[0] ?? "") === String(lessonId));
+    const plan = learningRowSyncPlan(values, lessonId);
     const ids = await this.metadata(spreadsheetId);
     const learningSheetId = ids["Sổ theo dõi học tập"];
     if (learningSheetId == null) throw new Error("Missing managed Google Sheet tab");
     if (row) {
-      if (rowIndex >= 1) {
+      if (plan.action === "UPDATE") {
         await this.sheets.spreadsheets.values.update({
           spreadsheetId,
-          range: `'Sổ theo dõi học tập'!A${rowIndex + 6}:E${rowIndex + 6}`,
+          range: `'Sổ theo dõi học tập'!A${plan.rowNumber}:E${plan.rowNumber}`,
           valueInputOption: "RAW",
           requestBody: { values: [row] },
         });
@@ -131,12 +149,21 @@ export class GoogleSheetsClient {
           insertDataOption: "INSERT_ROWS",
           requestBody: { values: [row] },
         });
+        const targetRowIndex = plan.rowNumber - 1;
+        await this.sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: [{
+          repeatCell: {
+            range: { sheetId: learningSheetId, startRowIndex: targetRowIndex, endRowIndex: targetRowIndex + 1,
+              startColumnIndex: 0, endColumnIndex: 5 },
+            cell: { userEnteredFormat: { verticalAlignment: "TOP", wrapStrategy: "WRAP" } },
+            fields: "userEnteredFormat(verticalAlignment,wrapStrategy)",
+          },
+        }] } });
       }
-    } else if (rowIndex >= 1) {
+    } else if (plan.action === "UPDATE") {
       await this.sheets.spreadsheets.batchUpdate({
         spreadsheetId,
         requestBody: { requests: [{ deleteDimension: { range: {
-          sheetId: learningSheetId, dimension: "ROWS", startIndex: rowIndex + 5, endIndex: rowIndex + 6,
+          sheetId: learningSheetId, dimension: "ROWS", startIndex: plan.rowNumber - 1, endIndex: plan.rowNumber,
         } } }] },
       });
     }
@@ -144,7 +171,7 @@ export class GoogleSheetsClient {
       spreadsheetId,
       requestBody: {
         valueInputOption: "RAW",
-        data: [{ range: "'_TeacherHub'!B7", values: [[syncedAt]] }],
+        data: learningSyncTimestampValues(syncedAt),
       },
     });
     await this.sheets.spreadsheets.batchUpdate({

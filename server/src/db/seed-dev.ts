@@ -11,7 +11,7 @@ async function ensureClassActivePeriod(connection: PoolConnection, classId: numb
   );
 }
 
-async function ensureClass(connection: PoolConnection, name: string, type: "GROUP" | "ONE_TO_ONE", status: "ACTIVE" | "PAUSED" | "CLOSED", price: number): Promise<number> {
+async function ensureClass(connection: PoolConnection, name: string, type: "GROUP" | "ONE_TO_ONE", status: "ACTIVE" | "PAUSED" | "CLOSED"): Promise<number> {
   const [rows] = await connection.query<RowDataPacket[]>("SELECT id FROM classes WHERE name=? LIMIT 1 FOR UPDATE", [name]);
   if (rows[0]) {
     const classId = Number(rows[0].id);
@@ -19,13 +19,9 @@ async function ensureClass(connection: PoolConnection, name: string, type: "GROU
     return classId;
   }
   const [result] = await connection.execute<ResultSetHeader>(
-    `INSERT INTO classes(name,class_type,subject,default_package_price,default_duration_minutes,start_date,status,closed_at,note)
-     VALUES (?,?,?, ?,90,CURDATE(),?,IF(?='CLOSED',NOW(),NULL),'DEV_SEED')`,
-    [name, type, "Tiếng Anh", price, status, status],
-  );
-  await connection.execute(
-    "INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,?,CURDATE())",
-    [result.insertId, price],
+    `INSERT INTO classes(name,class_type,subject,default_duration_minutes,start_date,status,closed_at,note)
+     VALUES (?,?,?,90,CURDATE(),?,IF(?='CLOSED',NOW(),NULL),'DEV_SEED')`,
+    [name, type, "Tiếng Anh", status, status],
   );
   await ensureClassActivePeriod(connection, result.insertId, status);
   return result.insertId;
@@ -41,7 +37,7 @@ async function ensureStudent(connection: PoolConnection, fullName: string): Prom
   return result.insertId;
 }
 
-async function ensureEnrollment(connection: PoolConnection, classId: number, studentId: number, mode: "CLASS_DEFAULT" | "CUSTOM" | "FREE", price?: number): Promise<void> {
+async function ensureEnrollment(connection: PoolConnection, classId: number, studentId: number, tuitionExempt = false): Promise<void> {
   const [rows] = await connection.query<RowDataPacket[]>("SELECT id FROM class_enrollments WHERE class_id=? AND student_id=? LIMIT 1 FOR UPDATE", [classId, studentId]);
   if (rows[0]) {
     const enrollmentId = Number(rows[0].id);
@@ -54,15 +50,9 @@ async function ensureEnrollment(connection: PoolConnection, classId: number, stu
     return;
   }
   const [result] = await connection.execute<ResultSetHeader>(
-    `INSERT INTO class_enrollments(class_id,student_id,joined_at,tuition_mode,custom_package_price,tuition_effective_from,note)
-     VALUES (?,?,CURDATE(),?,?,CURDATE(),'DEV_SEED')`,
-    [classId, studentId, mode, mode === "CUSTOM" ? (price ?? null) : null],
-  );
-  await connection.execute(
-    `INSERT INTO enrollment_tuition_policies
-      (enrollment_id,tuition_mode,custom_package_price,effective_from)
-     VALUES (?,?,?,CURDATE())`,
-    [result.insertId, mode, mode === "CUSTOM" ? (price ?? null) : null],
+    `INSERT INTO class_enrollments(class_id,student_id,joined_at,tuition_exempt,note)
+     VALUES (?,?,CURDATE(),?,'DEV_SEED')`,
+    [classId, studentId, tuitionExempt],
   );
   await connection.execute(
     "INSERT INTO enrollment_active_periods(enrollment_id,active_from) VALUES (?,CURDATE())",
@@ -102,15 +92,15 @@ async function seed(): Promise<void> {
   try {
     await connection.beginTransaction();
     await upgradeLegacyDevClasses(connection);
-    const groupId = await ensureClass(connection, "DEV - Tiếng Anh lớp 6 nhóm nhỏ", "GROUP", "ACTIVE", 2400000);
-    const oneToOneId = await ensureClass(connection, "DEV - Tiếng Anh 1 kèm 1", "ONE_TO_ONE", "ACTIVE", 2800000);
-    await ensureClass(connection, "DEV - Ôn ngữ pháp tạm dừng", "GROUP", "PAUSED", 2200000);
-    await ensureClass(connection, "DEV - Phonics đã đóng", "GROUP", "CLOSED", 2200000);
+    const groupId = await ensureClass(connection, "DEV - Tiếng Anh lớp 6 nhóm nhỏ", "GROUP", "ACTIVE");
+    const oneToOneId = await ensureClass(connection, "DEV - Tiếng Anh 1 kèm 1", "ONE_TO_ONE", "ACTIVE");
+    await ensureClass(connection, "DEV - Ôn ngữ pháp tạm dừng", "GROUP", "PAUSED");
+    await ensureClass(connection, "DEV - Phonics đã đóng", "GROUP", "CLOSED");
     const students = await Promise.all(["Học sinh Mẫu Một", "Học sinh Mẫu Hai", "Học sinh Mẫu Ba", "Học sinh Mẫu Bốn", "Học sinh Mẫu Năm"].map((name) => ensureStudent(connection, name)));
-    await ensureEnrollment(connection, groupId, students[0], "CLASS_DEFAULT");
-    await ensureEnrollment(connection, groupId, students[1], "CUSTOM", 2000000);
-    await ensureEnrollment(connection, groupId, students[2], "FREE");
-    await ensureEnrollment(connection, oneToOneId, students[3], "CLASS_DEFAULT");
+    await ensureEnrollment(connection, groupId, students[0]);
+    await ensureEnrollment(connection, groupId, students[1]);
+    await ensureEnrollment(connection, groupId, students[2], true);
+    await ensureEnrollment(connection, oneToOneId, students[3]);
     await ensureSchedule(connection, groupId, 2, "18:00", "19:30");
     await ensureSchedule(connection, groupId, 5, "18:00", "19:30");
     await ensureSchedule(connection, oneToOneId, 3, "20:00", "21:30");

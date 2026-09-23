@@ -92,7 +92,7 @@ test("lesson sync refreshes the matching learning row by stable lesson id", asyn
   const learning = [{
     lessonId: 88, lessonType: "REGULAR" as const, scheduledStartTime: "18:00", scheduledEndTime: "19:30",
     academicYear: "2026–2027", grade: "Khối 3", className: "3A", date: "2026-07-27",
-    attendance: "PRESENT" as const, billable: true, cycleId: 9, cycleSequence: 1,
+    attendance: "PRESENT" as const,
     content: "Lesson", homework: "Homework", generalComment: "", studentComment: "Good",
     updatedAt: "2026-07-27T20:00:00+07:00",
   }];

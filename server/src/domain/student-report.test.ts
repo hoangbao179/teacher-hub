@@ -9,7 +9,7 @@ function learning(overrides: Partial<StudentLearningReportRow> = {}): StudentLea
     attendanceId: 1, lessonId: 1, sessionDate: "2026-07-01", classId: 1,
     className: "Lớp Toán", lessonType: "REGULAR", scheduledStartTime: "18:00",
     scheduledEndTime: "19:30", actualStartTime: "18:05", actualEndTime: "19:45",
-    actualDurationMinutes: 100, attendanceStatus: "PRESENT", countsForTuition: true,
+    actualDurationMinutes: 100, attendanceStatus: "PRESENT",
     content: "Phân số", homework: "Bài 1", studentNote: "Tiến bộ", lessonNote: "",
     ...overrides,
   };

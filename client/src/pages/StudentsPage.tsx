@@ -28,7 +28,7 @@ import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
 import { PageHeader } from "../components/UiKit";
 
-type StudentFilter = "ALL" | "ACTIVE" | "PAUSED" | "ENDED" | "FREE";
+type StudentFilter = "ALL" | "ACTIVE" | "PAUSED" | "ENDED" | "EXEMPT";
 type StudentSort = "AZ" | "ZA";
 
 function studentStatus(item: StudentListItem): string {
@@ -52,7 +52,7 @@ function matchesFilter(item: StudentListItem, filter: StudentFilter): boolean {
   if (filter === "ACTIVE") return item.status === "ACTIVE" && item.enrollmentStatus === "ACTIVE";
   if (filter === "PAUSED") return item.enrollmentStatus === "PAUSED";
   if (filter === "ENDED") return item.status === "INACTIVE" || item.enrollmentStatus === "ENDED";
-  if (filter === "FREE") return item.tuitionMode === "FREE";
+  if (filter === "EXEMPT") return item.tuitionExempt === true;
   return true;
 }
 
@@ -68,7 +68,7 @@ const filterOptions: Array<{ value: StudentFilter; label: string }> = [
   { value: "ACTIVE", label: "Đang học" },
   { value: "PAUSED", label: "Tạm dừng" },
   { value: "ENDED", label: "Đã nghỉ" },
-  { value: "FREE", label: "Miễn phí" },
+  { value: "EXEMPT", label: "Miễn phí" },
 ];
 
 export function StudentsPage() {
@@ -169,7 +169,7 @@ export function StudentsPage() {
                 </Stack>
                 <Stack spacing={0.5} sx={{ alignItems: "flex-end", flexShrink: 0 }}>
                   <Chip size="small" color={item.enrollmentStatus === "ACTIVE" && item.status === "ACTIVE" ? "success" : item.enrollmentStatus === "PAUSED" ? "warning" : "default"} label={studentStatus(item)} />
-                  {item.tuitionMode === "FREE" && <Chip size="small" variant="outlined" label="Miễn phí" />}
+                  {item.tuitionExempt && <Chip size="small" variant="outlined" label="Miễn phí" />}
                 </Stack>
               </Stack>
             </CardContent>

@@ -8,8 +8,8 @@ Completion lưu attendance và lesson atomically, audit rồi enqueue Google She
 outbox trong cùng transaction. Google worker chạy sau commit. Không có tuition-cycle
 recalculation hoặc Google API call trong transaction.
 
-Runtime request/response chỉ dùng `PRESENT|ABSENT`. Dữ liệu `FREE` lịch sử được
-normalize thành `PRESENT` khi đọc, trong khi cờ billing cũ không bị rewrite.
+Runtime request/response và database chỉ dùng `PRESENT|ABSENT`. Miễn học phí là cờ
+`tuitionExempt` của enrollment và không làm thay đổi attendance.
 
 Full editor vẫn dành cho buổi ngoài lịch, học thêm, học bù, combined class hoặc sửa
 metadata. Idempotent replay của lesson `COMPLETED` không tạo attendance/outbox trùng.

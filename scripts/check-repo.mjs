@@ -28,14 +28,7 @@ const required = [
   "docs/operations/release-checklist.md",
   "docs/features/public-homepage.md", "docs/features/authentication.md",
   "docs/features/admin-ui.md", "docs/user-guide/teacher-guide.md",
-  "docs/design/ui-guidelines.md", "docs/wireframes/README.md",
-  "docs/wireframes/v2-branding/README.md",
-  ...Array.from({ length: 8 }, (_, index) =>
-    `docs/wireframes/v2-branding/0${index + 1}-${[
-      "homepage-mobile", "homepage-desktop", "login-mobile", "dashboard-mobile",
-      "student-list-mobile", "bottom-navigation-mobile", "lesson-wizard-mobile",
-      "tuition-list-mobile",
-    ][index]}.png`),
+  "docs/design/ui-guidelines.md",
 ];
 assertRuleSelfTests();
 for (const file of required) if (!fs.existsSync(path.join(root, file))) failures.push(`Missing required file: ${file}`);
@@ -69,7 +62,7 @@ const staged = gitFiles("diff", "--cached", "--name-only", "--diff-filter=ACMR")
 const repositoryFiles = [...new Set([...tracked, ...staged])];
 const repositoryFileSet = new Set(repositoryFiles.map((file) => file.toLowerCase()));
 const binaryThreshold = 5_000_000;
-const approvedImagePath = (file) => /^(docs\/(?:wireframes|ui-baselines)|client\/(?:public|src\/assets))\//i.test(file);
+const approvedImagePath = (file) => /^(docs\/ui-baselines|client\/(?:public|src\/assets))\//i.test(file);
 const approvedLargeBinaryPath = (file) => approvedImagePath(file)
   || /^server\/src\/.*\/fixtures\//i.test(file)
   || /^docs\/reference\//i.test(file);
@@ -137,7 +130,7 @@ for (const file of clientFiles) {
 
 const currentDocumentationFiles = listFiles("docs/product-spec", "docs/features", "docs/user-guide", "docs/design", "docs/operations", "docs/security", "docs/bug-notes")
   .filter((file) => file.endsWith(".md"));
-currentDocumentationFiles.push("README.md", "AGENTS.md", "docs/README.md", "docs/wireframes/README.md", "docs/wireframes/v2-branding/README.md");
+currentDocumentationFiles.push("README.md", "AGENTS.md", "docs/README.md");
 const staleVisiblePatterns = [
   { label: "old teacher name", pattern: /Cô (?:giáo )?An\b/i, probe: "Cô An" },
   { label: "mathematics marketing copy", pattern: /\b(?:Học Toán|Xây nền Toán|Mathematics)\b/i, probe: "Học Toán" },
@@ -145,7 +138,6 @@ const staleVisiblePatterns = [
   { label: "old ten-character password minimum", pattern: /(?:ít nhất|tối thiểu|minimum|at least)\s+10\s+(?:ký tự|characters?)/i, probe: "tối thiểu 10 ký tự" },
   { label: "old fifteen-minute login limiter", pattern: /\b(?:15 phút|15 minutes)\b|15\s*\*\s*60\s*\*\s*1000/i, probe: "15 phút" },
   { label: "indefinite login limiter text", pattern: /Vui lòng chờ rồi thử lại/i, probe: "Vui lòng chờ rồi thử lại" },
-  { label: "old wireframe authority statement", pattern: /wireframes?\s+(?:are|is|là).{0,40}(?:authoritative|source of truth|nguồn đúng)/i, probe: "Wireframe là nguồn đúng" },
 ];
 for (const { label, pattern, probe } of staleVisiblePatterns) {
   if (!pattern.test(probe)) failures.push(`Repository checker self-test failed for ${label}`);
@@ -158,7 +150,7 @@ for (const file of currentDocumentationFiles) {
 }
 
 const agents = read("AGENTS.md");
-for (const marker of ["docs/wireframes/v2-branding/", "Wireframe P0", "docs/content/replacing-public-media.md"])
+for (const marker of ["docs/design/ui-guidelines.md", "docs/content/replacing-public-media.md"])
   if (!agents.includes(marker)) failures.push(`AGENTS visual-reference rules are missing: ${marker}`);
 
 const obsoleteFiles = ["client/src/pages/LessonCompletePlaceholderPage.tsx"];

@@ -19,9 +19,9 @@ async function clean(): Promise<void> {
   try {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
-      "tuition_receipt_allocations", "tuition_receipts", "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants",
+      "monthly_tuition_payments", "lesson_attendances", "lesson_makeup_replacements", "lesson_session_participants",
       "lesson_sessions", "schedule_exceptions", "teacher_busy_slot_schedules", "teacher_busy_slots", "recurring_schedules", "enrollment_active_periods",
-      "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs",
+      "class_active_periods", "class_enrollments", "audit_logs",
       "students", "classes", "users",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
@@ -37,33 +37,24 @@ async function fixture() {
       "INSERT INTO users(username,email,password_hash,display_name) VALUES ('m6b','m6b@example.com','hash','M6B')",
     );
     const [klass] = await connection.execute<ResultSetHeader>(
-      "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp M6B','GROUP',2400000,90,'2026-07-01')",
+      "INSERT INTO classes(name,class_type,default_duration_minutes,start_date) VALUES ('Lớp M6B','GROUP',90,'2026-07-01')",
     );
     const [otherClass] = await connection.execute<ResultSetHeader>(
-      "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('Lớp khác','GROUP',1800000,90,'2026-07-01')",
-    );
-    await connection.execute(
-      "INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,2400000,'2026-07-01'),(?,1800000,'2026-07-01')",
-      [klass.insertId, otherClass.insertId],
+      "INSERT INTO classes(name,class_type,default_duration_minutes,start_date) VALUES ('Lớp khác','GROUP',90,'2026-07-01')",
     );
     await connection.execute("INSERT INTO class_active_periods(class_id,active_from) VALUES (?,'2026-07-01'),(?,'2026-07-01')", [klass.insertId, otherClass.insertId]);
     const [student] = await connection.execute<ResultSetHeader>(
       "INSERT INTO students(full_name,nickname,parent_name,parent_phone) VALUES ('Nguyễn Minh An','An','Phụ huynh An','0900000000')",
     );
     const [enrollment] = await connection.execute<ResultSetHeader>(
-      `INSERT INTO class_enrollments(class_id,student_id,joined_at,tuition_mode,tuition_effective_from)
-       VALUES (?,?,'2026-07-01','CLASS_DEFAULT','2026-07-01')`,
+      `INSERT INTO class_enrollments(class_id,student_id,joined_at)
+       VALUES (?,?,'2026-07-01')`,
       [klass.insertId, student.insertId],
-    );
-    await connection.execute(
-      "INSERT INTO enrollment_tuition_policies(enrollment_id,tuition_mode,effective_from) VALUES (?,'CLASS_DEFAULT','2026-07-01')",
-      [enrollment.insertId],
     );
     await connection.execute("INSERT INTO enrollment_active_periods(enrollment_id,active_from) VALUES (?,'2026-07-01')", [enrollment.insertId]);
 
     for (let day = 1; day <= 12; day += 1) {
-      const status = day === 11 ? "ABSENT" : day === 12 ? "FREE" : "PRESENT";
-      const billable = status === "PRESENT" ? 1 : 0;
+      const status = day === 11 ? "ABSENT" : "PRESENT";
       const date = `2026-07-${String(day).padStart(2, "0")}`;
       const [lesson] = await connection.execute<ResultSetHeader>(
         `INSERT INTO lesson_sessions
@@ -80,9 +71,9 @@ async function fixture() {
       );
       await connection.execute(
         `INSERT INTO lesson_attendances
-          (lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition,student_note)
-         VALUES (?,?,?,?,?,?)`,
-        [lesson.insertId, participant.insertId, enrollment.insertId, status, billable, day === 2 ? "+cmd" : `Nhận xét ${day}`],
+          (lesson_session_id,participant_id,enrollment_id,attendance_status,student_note)
+         VALUES (?,?,?,?,?)`,
+        [lesson.insertId, participant.insertId, enrollment.insertId, status, day === 2 ? "+cmd" : `Nhận xét ${day}`],
       );
     }
     await connection.commit();

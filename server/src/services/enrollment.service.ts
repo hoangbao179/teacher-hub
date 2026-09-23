@@ -1,4 +1,4 @@
-import type { ChangeEnrollmentStatusRequest, ChangeTuitionModeRequest, CreateEnrollmentRequest, EndEnrollmentRequest, TransferEnrollmentRequest } from "@teacher/shared";
+import type { ChangeEnrollmentStatusRequest, ChangeTuitionExemptionRequest, CreateEnrollmentRequest, EndEnrollmentRequest, TransferEnrollmentRequest } from "@teacher/shared";
 import { AppError } from "../errors/app-error";
 import { EnrollmentRepository, type EnrollmentWriteResult } from "../repositories/enrollment.repository";
 
@@ -7,7 +7,7 @@ export class EnrollmentService {
 
   async create(classId: number, input: CreateEnrollmentRequest, actorUserId?: number) {
     this.validateIdentity(classId, input.studentId);
-    this.validateTuition(input.tuitionMode, input.customPackagePrice);
+    this.validateExemption(input.tuitionExempt);
     this.validateDate(input.joinedAt, "Ngày vào học");
     return this.unwrap(await this.repository.create(classId, input, actorUserId));
   }
@@ -33,7 +33,7 @@ export class EnrollmentService {
   async transfer(id: number, input: TransferEnrollmentRequest, actorUserId?: number) {
     this.validateId(id); this.validateId(input.targetClassId);
     this.validateDate(input.effectiveDate, "Ngày chuyển lớp");
-    this.validateTuition(input.tuitionMode, input.customPackagePrice);
+    this.validateExemption(input.tuitionExempt);
     if (!input.reason?.trim() || input.reason.trim().length > 255)
       throw new AppError(400, "VALIDATION_ERROR", "Lý do chuyển lớp là bắt buộc và tối đa 255 ký tự.");
     try { return await this.repository.transfer(id, input, actorUserId); }
@@ -55,21 +55,16 @@ export class EnrollmentService {
     }
   }
 
-  async changeTuitionMode(id: number, input: ChangeTuitionModeRequest, actorUserId?: number) {
+  async changeTuitionExemption(id: number, input: ChangeTuitionExemptionRequest, actorUserId?: number) {
     this.validateId(id);
-    this.validateTuition(input.tuitionMode, input.customPackagePrice);
-    this.validateDate(input.effectiveFrom, "Ngày áp dụng");
-    if (!(await this.repository.changeTuitionMode(id, input, actorUserId)))
+    this.validateExemption(input.tuitionExempt);
+    if (!(await this.repository.changeTuitionExemption(id, input, actorUserId)))
       throw new AppError(404, "ENROLLMENT_NOT_FOUND", "Không tìm thấy ghi danh đang hoạt động.");
   }
 
-  private validateTuition(mode: string, customPrice?: number) {
-    if (!(["CLASS_DEFAULT", "CUSTOM", "FREE"] as const).includes(mode as never))
-      throw new AppError(400, "VALIDATION_ERROR", "Chế độ học phí không hợp lệ.");
-    if (mode === "CUSTOM" && (!Number.isInteger(customPrice) || (customPrice ?? 0) <= 0))
-      throw new AppError(400, "CUSTOM_PRICE_REQUIRED", "Giá riêng nguyên VND lớn hơn 0 là bắt buộc.");
-    if (mode !== "CUSTOM" && customPrice != null)
-      throw new AppError(400, mode === "FREE" ? "FREE_CUSTOM_PRICE" : "CLASS_DEFAULT_CUSTOM_PRICE", "Chỉ chế độ giá riêng mới được có giá riêng.");
+  private validateExemption(value?: boolean) {
+    if (value != null && typeof value !== "boolean")
+      throw new AppError(400, "VALIDATION_ERROR", "Cờ miễn học phí không hợp lệ.");
   }
 
   private validateIdentity(classId: number, studentId: number) {

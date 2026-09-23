@@ -112,19 +112,19 @@ try {
   const quickSuffix = Date.now();
   const quickClassName = `Simple Mode ${quickSuffix}`;
   const quickClass = await apiMutation("/api/classes", token, "POST", {
-    name: quickClassName, type: "GROUP", defaultPackagePrice: 2_000_000,
+    name: quickClassName, type: "GROUP",
     defaultDurationMinutes: 60, startDate: "2026-01-01", schedules: [
       { dayOfWeek: weekdayIso(quickToday), startTime: "09:00", endTime: "10:00" },
       { dayOfWeek: weekdayIso(quickToday), startTime: "11:00", endTime: "12:00" },
     ],
   });
   const quickStudents = [];
-  for (const [name, tuitionMode] of [["Simple An", "CLASS_DEFAULT"], ["Simple Bình", "CLASS_DEFAULT"], ["Simple Chi", "FREE"]]) {
+  for (const [name, tuitionExempt] of [["Simple An", false], ["Simple Bình", false], ["Simple Chi", true]]) {
     const student = await apiMutation("/api/students", token, "POST", { fullName: `${name} ${quickSuffix}` });
     const enrollment = await apiMutation(`/api/classes/${quickClass.id}/enrollments`, token, "POST", {
-      studentId: student.id, joinedAt: "2026-01-01", tuitionMode,
+      studentId: student.id, joinedAt: "2026-01-01", tuitionExempt,
     });
-    quickStudents.push({ name: `${name} ${quickSuffix}`, enrollmentId: enrollment.id, tuitionMode });
+    quickStudents.push({ name: `${name} ${quickSuffix}`, enrollmentId: enrollment.id, tuitionExempt });
   }
   const externalTitle = `Lịch trường Simple ${quickSuffix}`;
   await apiMutation("/api/teacher-busy-slots", token, "POST", {
@@ -297,12 +297,12 @@ try {
 
   const suffix = Date.now();
   const m3Class = await apiMutation("/api/classes", token, "POST", {
-    name: `M3 E2E ${suffix}`, type: "GROUP", defaultPackagePrice: 2_000_000,
+    name: `M3 E2E ${suffix}`, type: "GROUP",
     defaultDurationMinutes: 90, startDate: "2026-01-01", schedules: [],
   });
   const m3Student = await apiMutation("/api/students", token, "POST", { fullName: `M3 E2E Student ${suffix}` });
   const m3Enrollment = await apiMutation(`/api/classes/${m3Class.id}/enrollments`, token, "POST", {
-    studentId: m3Student.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
+    studentId: m3Student.id, joinedAt: "2026-01-01",
   });
   async function completeTechnical(date) {
     const draft = await apiMutation("/api/lessons", token, "POST", {

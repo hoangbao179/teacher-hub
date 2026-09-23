@@ -2,7 +2,7 @@ export interface GoogleLearningRow {
   lessonId: number;
   className: string;
   date: string;
-  attendance: "PRESENT" | "ABSENT" | "FREE";
+  attendance: "PRESENT" | "ABSENT";
   content: string;
   generalComment: string;
   studentComment: string;

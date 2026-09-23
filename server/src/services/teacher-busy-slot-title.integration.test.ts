@@ -42,8 +42,7 @@ integration("creates and updates optional busy-slot titles with stable PATCH sem
       (SELECT COUNT(*) FROM students) students,
       (SELECT COUNT(*) FROM class_enrollments) enrollments,
       (SELECT COUNT(*) FROM lesson_sessions) lessons,
-      (SELECT COUNT(*) FROM lesson_attendances) attendances,
-      (SELECT COUNT(*) FROM tuition_cycles) cycles`,
+      (SELECT COUNT(*) FROM lesson_attendances) attendances`,
   );
   const recurringInput = {
     slotType: "EXTERNAL_CLASS" as const,
@@ -128,8 +127,7 @@ integration("creates and updates optional busy-slot titles with stable PATCH sem
       (SELECT COUNT(*) FROM students) students,
       (SELECT COUNT(*) FROM class_enrollments) enrollments,
       (SELECT COUNT(*) FROM lesson_sessions) lessons,
-      (SELECT COUNT(*) FROM lesson_attendances) attendances,
-      (SELECT COUNT(*) FROM tuition_cycles) cycles`,
+      (SELECT COUNT(*) FROM lesson_attendances) attendances`,
   );
   assert.deepEqual(managedAfter[0], managedBefore[0]);
 });

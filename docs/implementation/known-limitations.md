@@ -4,8 +4,7 @@
   chia sẻ giữa nhiều replica; multi-instance cần shared store.
 - JWT dùng localStorage khi chọn ghi nhớ hoặc sessionStorage khi không chọn; V1 chưa có
   refresh/revoke tập trung và logout xóa token phía client khỏi cả hai nơi.
-- Legacy Import và giao diện tra cứu cycle/receipt lịch sử không còn trong runtime;
-  bảng cũ vẫn tồn tại và cần task migration riêng nếu muốn archive/drop vật lý.
+- Legacy Import và giao diện/schema cycle/receipt/policy không còn tồn tại.
 - Chưa có notification, payment gateway, partial payment, CMS, parent account,
   multi-teacher hay offline PWA.
 - Calendar desktop không drag/drop; mobile week list là flow chuẩn.

@@ -25,5 +25,5 @@ TypeScript `7.0.2` is newer, but `@typescript-eslint/* 8.64.0` supports TypeScri
 3. Update exact versions and regenerate `package-lock.json` on the pinned Node/npm versions.
 4. Run `npm ci` from a clean state.
 5. Run `npm run verify`.
-6. Smoke-test authentication, migrations, lesson completion and tuition-cycle allocation.
+6. Smoke-test authentication, migrations, lesson completion and monthly tuition payment.
 7. Update this document when an exception or runtime baseline changes.

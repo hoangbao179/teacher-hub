@@ -52,8 +52,8 @@ async function fixture() {
   );
   const [classResult] = await pool.execute<ResultSetHeader>(
     `INSERT INTO classes
-      (name,class_type,subject,default_package_price,default_duration_minutes,start_date,status)
-     VALUES ('V20C class','GROUP','English',800000,90,'2026-07-01','ACTIVE')`,
+      (name,class_type,subject,default_duration_minutes,start_date,status)
+     VALUES ('V20C class','GROUP','English',90,'2026-07-01','ACTIVE')`,
   );
   const studentIds: number[] = [];
   for (const [index, name] of ["An", "Bình"].entries()) {
@@ -64,8 +64,8 @@ async function fixture() {
     studentIds.push(student.insertId);
     await pool.execute(
       `INSERT INTO class_enrollments
-        (class_id,student_id,joined_at,tuition_mode,status)
-       VALUES (?,?,'2026-07-01','CLASS_DEFAULT','ACTIVE')`,
+        (class_id,student_id,joined_at,status)
+       VALUES (?,?,'2026-07-01','ACTIVE')`,
       [classResult.insertId, student.insertId],
     );
   }

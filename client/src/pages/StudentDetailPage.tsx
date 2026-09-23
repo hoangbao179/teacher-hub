@@ -23,7 +23,7 @@ import {
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import type { ClassListItem, StudentDetail, StudentGoogleSheetState, TuitionMode } from "@teacher/shared";
+import type { ClassListItem, StudentDetail, StudentGoogleSheetState } from "@teacher/shared";
 import { ContentCopy, Download, ExpandMore, Launch } from "@mui/icons-material";
 import { api } from "../api/client";
 import { archiveStudentGoogleSheet, createStudentGoogleSheet, downloadStudentReport, endEnrollment as endEnrollmentApi,
@@ -37,9 +37,8 @@ export function StudentDetailPage() {
   const [item, setItem] = useState<StudentDetail | null>(null);
   const [error, setError] = useState("");
   const [tuitionOpen, setTuitionOpen] = useState(false);
-  const [tuitionMode, setTuitionMode] = useState<TuitionMode>("CLASS_DEFAULT");
+  const [tuitionExempt, setTuitionExempt] = useState(false);
   const today = todayInHoChiMinh();
-  const [effectiveFrom, setEffectiveFrom] = useState(today);
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleState, setGoogleState] = useState<StudentGoogleSheetState | null>(null);
@@ -60,7 +59,7 @@ export function StudentDetailPage() {
   const [transferReason, setTransferReason] = useState("");
   const [transferNote, setTransferNote] = useState("");
   const load = useCallback(() => api<StudentDetail>(`/api/students/${id}`).then((value) => {
-    setItem(value); setTuitionMode(value.tuitionMode === "FREE" ? "FREE" : "CLASS_DEFAULT");
+    setItem(value); setTuitionExempt(Boolean(value.tuitionExempt));
   }).catch((e: Error) => setError(e.message)), [id]);
   const loadGoogleSheet = useCallback(() => getStudentGoogleSheet(Number(id)).then(setGoogleState)
     .catch((e: Error) => setError(e.message)), [id]);
@@ -91,15 +90,15 @@ export function StudentDetailPage() {
     }
   };
   const changeTuition = async () => { if (!item?.enrollmentId) return; setError(""); setSuccess(""); setBusy(true); try {
-    await api(`/api/enrollments/${item.enrollmentId}/tuition-mode`, { method: "PATCH", body: JSON.stringify({ tuitionMode, effectiveFrom }) });
-    setTuitionOpen(false); await load(); setSuccess("Đã cập nhật chế độ học phí.");
+    await api(`/api/enrollments/${item.enrollmentId}/tuition-exemption`, { method: "PATCH", body: JSON.stringify({ tuitionExempt }) });
+    setTuitionOpen(false); await load(); setSuccess("Đã cập nhật miễn học phí.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể đổi học phí."); } finally { setBusy(false); } };
   const endEnrollment = async () => { if (!item?.enrollmentId) return; setError(""); setSuccess(""); setBusy(true); try {
     await endEnrollmentApi(item.enrollmentId, { endedAt: endDate, reason: endReason || undefined, note: endNote || undefined });
     setEndOpen(false); await load(); setSuccess("Đã ngừng học và giữ nguyên toàn bộ lịch sử.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể kết thúc ghi danh."); } finally { setBusy(false); } };
   const transfer = async () => { if (!item?.enrollmentId) return; setBusy(true); setError(""); try {
-    await transferEnrollment(item.enrollmentId, { targetClassId, effectiveDate: transferDate, tuitionMode,
+    await transferEnrollment(item.enrollmentId, { targetClassId, effectiveDate: transferDate, tuitionExempt,
       reason: transferReason, note: transferNote || undefined });
     setTransferOpen(false); setTargetClassId(0); await load(); setSuccess("Đã chuyển lớp và giữ nguyên lịch sử lớp cũ.");
   } catch (e) { setError(e instanceof Error ? e.message : "Không thể chuyển lớp."); } finally { setBusy(false); } };
@@ -148,8 +147,8 @@ export function StudentDetailPage() {
           <Typography component="h2" variant="h6">{item!.className ?? "Chưa xếp lớp"}</Typography>
         </Stack>
         <Divider />
-        {item!.enrollmentId && item!.tuitionMode ? <>
-          <Typography>Học phí: {item!.tuitionMode === "FREE" ? "Miễn phí" : "Theo dõi theo tháng"}</Typography>
+        {item!.enrollmentId ? <>
+          <Typography>Học phí: {item!.tuitionExempt ? "Miễn phí" : "Theo dõi theo tháng"}</Typography>
         </> : <Typography color="text.secondary">Chưa có ghi danh đang học.</Typography>}
         {(item!.parentName || item!.parentPhone) && <Typography variant="body2" color="text.secondary">
           Phụ huynh: {[item!.parentName, item!.parentPhone].filter(Boolean).join(" · ")}
@@ -223,8 +222,7 @@ export function StudentDetailPage() {
         </Stack></AccordionDetails>
       </Accordion>
       <Dialog open={tuitionOpen} onClose={() => setTuitionOpen(false)} fullWidth maxWidth="xs"><DialogTitle>Chế độ học phí</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
-        <FormControl><InputLabel>Chế độ</InputLabel><Select label="Chế độ" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Có thu theo tháng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
-        <TextField type="date" label="Áp dụng từ" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <FormControl><InputLabel>Chế độ</InputLabel><Select label="Chế độ" value={tuitionExempt ? "EXEMPT" : "MONTHLY"} onChange={(e) => setTuitionExempt(e.target.value === "EXEMPT")}><MenuItem value="MONTHLY">Có thu theo tháng</MenuItem><MenuItem value="EXEMPT">Miễn phí</MenuItem></Select></FormControl>
         <Alert severity="info">Học sinh miễn phí sẽ không xuất hiện trong bảng học phí tháng.</Alert>
       </Stack></DialogContent><DialogActions><Button onClick={() => setTuitionOpen(false)}>Hủy</Button><Button variant="contained" disabled={busy} onClick={changeTuition}>{busy ? "Đang lưu…" : "Lưu"}</Button></DialogActions></Dialog>
       <Dialog open={Boolean(statusActionName)} onClose={() => !busy && setStatusActionName(null)} fullWidth maxWidth="xs"><DialogTitle>{statusActionName === "pause" ? "Tạm dừng ghi danh" : "Mở lại ghi danh"}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>

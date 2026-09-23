@@ -12,12 +12,6 @@
 > tập nhưng không hiển thị action giao/chia sẻ game.
 > Authentication: **giáo viên đăng nhập; học sinh không cần tài khoản**
 > Responsive priority: **mobile-first 360–430 px; hỗ trợ tablet và desktop**
-> Wireframes:
-> - [`../wireframes/22-vocabulary-assignment-teacher-mobile.png`](../wireframes/22-vocabulary-assignment-teacher-mobile.png)
-> - [`../wireframes/23-vocabulary-assignment-teacher-desktop.png`](../wireframes/23-vocabulary-assignment-teacher-desktop.png)
-> - [`../wireframes/24-vocabulary-games-student-mobile.png`](../wireframes/24-vocabulary-games-student-mobile.png)
-> - [`../wireframes/25-vocabulary-games-student-desktop.png`](../wireframes/25-vocabulary-games-student-desktop.png)
-> - [`../wireframes/26-vocabulary-assignment-results-responsive.png`](../wireframes/26-vocabulary-assignment-results-responsive.png)
 
 ## 1. Mục tiêu
 

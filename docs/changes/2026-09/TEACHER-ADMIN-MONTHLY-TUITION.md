@@ -1,67 +1,85 @@
-# Teacher Admin monthly tuition
+# Teacher Admin: attendance và học phí tháng
 
 ## Task level
 
-Level 3: thay đổi persisted financial model, shared contract xuyên client/server và
-thêm migration.
+Level 3: thay đổi mô hình tài chính đã lưu, shared contract xuyên client/server,
+migration xóa dữ liệu/schema và cleanup lớn.
 
 ## Problem
 
-Admin cũ buộc công việc hằng ngày vào cycle tám buổi, receipt và Legacy Import,
-trong khi nhu cầu thực tế là điểm danh nhanh, nhận xét tùy chọn và theo dõi đã thu
-theo từng tháng.
+Teacher Admin cũ gắn điểm danh với cycle tám buổi, receipt, tuition policy và
+Legacy Import. Mô hình này làm luồng hằng ngày phức tạp, đồng thời summary tháng
+chỉ dựa trên lesson đã hoàn thành nên có thể hiển thị `3/3` dù lịch tháng có tám
+buổi hợp lệ. Mutation đánh dấu đã thu còn có thể ghi payment rồi mới thất bại khi
+đọc response.
 
 ## Root cause
 
-Lesson completion, tuition cycle, export và Google Sheet dùng chung orchestration
-tài chính. Attendance `FREE` đồng thời biểu diễn trạng thái học và billing concern,
-làm UI/phân loại dữ liệu phức tạp hơn nhu cầu.
+- Attendance chứa cả trạng thái học (`PRESENT|ABSENT`) lẫn billing concern
+  (`FREE` và các cờ tính học phí).
+- Học phí được orchestration qua cycle/receipt/policy thay vì một trạng thái tháng.
+- Tổng số buổi lấy từ lesson record, không lấy từ occurrence engine hiện có.
+- Payment được insert trước khi hoàn tất validation và dựng response.
+- Google Sheet append theo vị trí dòng, chưa upsert bằng lesson ID ổn định và chưa
+  cập nhật metadata sau mọi lần sync.
 
 ## Decision
 
-- Runtime attendance chỉ `PRESENT|ABSENT`; enrollment `FREE` xử lý riêng ở billing.
-- Tạo `monthly_tuition_payments`, unique theo enrollment/year/month. Summary lấy từ
-  completed canonical lesson và participant snapshot.
-- `PAID` bất biến, replay cùng payload idempotent; amount tùy chọn, không suy từ cycle.
-- Giữ bảng/migration cycle, receipt, policy và import cũ nhưng loại khỏi runtime.
-- Giữ Google outbox, thay projection bằng một sổ học tập dễ đọc.
+- Attendance runtime chỉ còn `PRESENT|ABSENT`; nhận xét học sinh vẫn tùy chọn.
+- Enrollment dùng một cờ `tuitionExempt`.
+- `monthly_tuition_payments` là mô hình thanh toán duy nhất: không có row là
+  `UNPAID`, có row là `PAID`; `amount`, `note` tùy chọn và `paidAt` bắt buộc khi tạo.
+- Summary tháng dùng occurrence từ schedule engine đang có. `present` là số
+  attendance `PRESENT`; `total` là các occurrence hợp lệ trong tháng của enrollment,
+  loại occurrence bị skip/cancel và bản gốc đã reschedule. Tổng không thấp hơn số
+  attendance đã ghi để chịu được dữ liệu lesson ngoại lệ.
+- Validation enrollment, miễn học phí và tháng chạy trước insert, được kiểm tra lại
+  dưới lock trong transaction; response được dựng trước commit.
+- Google Sheet upsert theo technical lesson ID ẩn, cập nhật timestamp sau mọi sync
+  và copy format cho dòng append.
 
 ## Changes
 
-- Thay API/UI tuition bằng board tháng và mark-paid.
-- Tách lesson khỏi cycle allocation, dọn dashboard, student/class UI và report Excel.
-- Loại Legacy Import route/client/shared contract; URL cũ trả 404.
-- Google Sheet template v6 có một tab hiển thị và metadata ẩn.
-- Cập nhật spec, OpenAPI, status, architecture, operations và user guide.
+- Thêm migration `0028_teacher_admin_clean_schema.sql` để drop cycle, receipt,
+  policy, Legacy Import cùng FK/index/column liên quan; đơn giản hóa attendance,
+  enrollment và monthly payment schema.
+- Cập nhật API, shared contracts, repositories, services và UI theo monthly model;
+  bỏ giá gói/cycle/policy và route Legacy Import khỏi runtime.
+- Giữ nguyên schedule engine, combined class, busy slot, external schedule,
+  reschedule/cancel và enrollment scheduling; bổ sung regression integration/E2E.
+- Cập nhật `db:reset:dev` để xóa `monthly_tuition_payments` trước enrollment.
+- Sửa Google Sheet timestamp, formatting dòng append, upsert tránh duplicate và
+  giữ technical lesson ID ẩn.
+- Xóa toàn bộ `docs/wireframes`, mock/test image không dùng, tài liệu và test legacy;
+  cập nhật repository guard và tài liệu source of truth.
 
 ## Verification
 
-- `npm run check:ci`: PASS (build, typecheck, lint, 155 server unit, 95 client
-  unit, repository guard và documentation links).
-- `npm run test:integration`: PASS, 57/57 integration tests; gồm migrate mới từ
-  database sạch, monthly board, payment bất biến/idempotent và Google Sheet v6.
-- Full E2E suite: PASS sau khi chạy lại đúng các kịch bản bị dừng bởi assertion cũ;
-  gồm responsive Admin, lesson, monthly tuition, schedule, Google Sheet và
-  vocabulary regressions.
-- Targeted `test:e2e:schedule`, `test:e2e:tuition`, lesson wizard và Google Sheet:
-  PASS.
+- `npm run check:ci`: PASS — shared build, server/client typecheck, client lint,
+  153 server unit tests, 95 client unit tests, build, OpenAPI, repo và docs checks.
+- `npm run test:integration`: PASS — 60/60, gồm clean schema, monthly tuition,
+  combined class, schedule, external schedule, busy slot, reschedule/cancel và
+  Google Sheet.
+- Browser smoke: PASS sau khi cập nhật assertion sang tuition exemption mới.
+- Relevant E2E: PASS — lesson wizard, monthly tuition, schedule operations,
+  student Google Sheet, vocabulary game disabled và vocabulary results.
+- `git diff --check`: PASS.
 
 ## Documentation updated
 
 `AGENTS.md`, README, product spec, feature docs, OpenAPI, implementation status,
-architecture, operations và teacher guide.
+architecture, operations, repository map và repository guard.
 
 ## Rollback
 
-1. Deploy lại runtime trước thay đổi; runtime cũ bỏ qua bảng mới.
-2. Không drop `monthly_tuition_payments` nếu đã có dữ liệu cần giữ. Export/backup
-   dữ liệu trước khi rollback vật lý.
-3. Chỉ drop bảng mới bằng migration riêng sau khi xác nhận chưa có payment cần giữ.
-4. Không restore hoặc sửa các bảng cycle/import lịch sử trong rollback ứng dụng.
+Migration cleanup là destructive và không có down migration. Với môi trường hiện
+tại, rollback bằng cách checkout/deploy phiên bản trước rồi reset/reseed database.
+Nếu áp dụng ở môi trường có dữ liệu cần giữ, phải backup trước migration; restore
+backup là cách duy nhất khôi phục nội dung cycle/receipt/import đã drop.
 
 ## Remaining risks
 
-- Payment cycle lịch sử không hiển thị trong board tháng vì không có mapping an toàn
-  qua ranh giới tháng.
-- Schema lịch sử vẫn chiếm dung lượng đến khi có cleanup database riêng.
-- Wireframe cũ được giữ theo repository policy và có thể không phản ánh UI mới.
+- Chưa gọi Google Sheets API thật vì bộ kiểm thử không dùng production OAuth;
+  hành vi được cover bằng unit, fake integration và browser E2E.
+- Các migration `0001`–`0027` vẫn chứa DDL/tên legacy để giữ chuỗi migrate từ đầu;
+  migration `0028` bảo đảm final schema sạch và runtime không tham chiếu chúng.

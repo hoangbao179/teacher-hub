@@ -26,7 +26,7 @@ test("learning rows show date, friendly attendance, teacher comment and content"
 test("template builds one mobile-readable learning log and hides technical metadata", () => {
   const template = new GoogleSheetTemplateService();
   const plan = template.build(snapshot, "sheet-1", { "Sổ theo dõi học tập": 2, _TeacherHub: 5 },
-    { templateVersion: "v6", generatedAt: "2026-07-26T00:00:00Z" });
+    { templateVersion: "v6", generatedAt: "2026-07-26T00:00:00Z", syncedAt: "2026-07-27T00:00:00Z" });
 
   assert.deepEqual(template.sheetNames, ["Sổ theo dõi học tập", "_TeacherHub"]);
   assert.ok(template.obsoleteSheetNames.includes("Học phí"));
@@ -36,7 +36,7 @@ test("template builds one mobile-readable learning log and hides technical metad
     ["SỔ THEO DÕI HỌC TẬP", "", "", "", ""],
     ["Học sinh", "'=Tên thử", "", "", ""],
     ["Lớp", "Lớp 6", "", "", ""],
-    ["Cập nhật gần nhất", "26/07/2026", "", "", ""],
+    ["Cập nhật gần nhất", "27/07/2026 07:00", "", "", ""],
     ["", "", "", "", ""],
     ["Teacher Hub Lesson ID", "Ngày học", "Điểm danh", "Nhận xét của cô", "Nội dung"],
   ]);
@@ -47,6 +47,7 @@ test("template builds one mobile-readable learning log and hides technical metad
     && item.updateDimensionProperties.range.startIndex === 0
     && item.updateDimensionProperties.properties?.hiddenByUser === true));
   assert.ok(plan.requests.some((item) => item.addConditionalFormatRule?.rule?.booleanRule?.condition?.values?.[0]?.userEnteredValue === "Có mặt"));
+  assert.ok(plan.requests.some((item) => item.addConditionalFormatRule?.rule?.ranges?.[0]?.endRowIndex == null));
   assert.ok(plan.requests.some((item) => item.addConditionalFormatRule?.rule?.booleanRule?.condition?.values?.[0]?.userEnteredValue === "Vắng"));
   assert.ok(plan.requests.some((item) => item.updateSheetProperties?.properties?.hidden === true));
   assert.ok(plan.requests.some((item) => item.addProtectedRange?.protectedRange?.range?.sheetId === 5));

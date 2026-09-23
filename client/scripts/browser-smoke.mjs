@@ -130,7 +130,9 @@ try {
   const chrome = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   if (!fs.existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
   chromeProfile = fs.mkdtempSync(path.join(os.tmpdir(), "teacher-hub-smoke-"));
-  start(chrome, ["--headless=new", "--no-first-run", "--disable-gpu", "--remote-debugging-port=9223", `--user-data-dir=${chromeProfile}`, "about:blank"], root, testEnv);
+  start(chrome, ["--headless=new", "--no-first-run", "--no-sandbox", "--disable-gpu",
+    "--remote-debugging-port=9223",
+    `--user-data-dir=${chromeProfile}`, "about:blank"], root, testEnv);
   await waitUrl("http://127.0.0.1:9223/json/version");
   const target = await fetch("http://127.0.0.1:9223/json/new?http://127.0.0.1:5174/admin/login", { method: "PUT" }).then((response) => response.json());
   cdp = new Cdp(target.webSocketDebuggerUrl); await cdp.open();
@@ -275,12 +277,12 @@ try {
   await cdp.wait("!!document.querySelector('[data-testid=student-advanced-tools] .MuiAccordionSummary-root')", "student detail from class");
   await cdp.eval("document.querySelector('[data-testid=student-advanced-tools] .MuiAccordionSummary-root').click()");
   await cdp.wait("document.querySelector('[data-testid=student-advanced-tools].Mui-expanded') && document.body.innerText.includes('Đổi chế độ học phí')", "student advanced tools from class");
-  await cdp.clickText("Đổi chế độ học phí"); await cdp.wait("document.querySelector('[role=dialog]') && document.body.innerText.includes('Áp dụng từ')", "tuition dialog");
+  await cdp.clickText("Đổi chế độ học phí"); await cdp.wait("document.querySelector('[role=dialog]') && document.body.innerText.includes('Chế độ học phí')", "tuition exemption dialog");
   await new Promise((resolve) => setTimeout(resolve, 350));
   const dialogFits = await cdp.eval("(() => { const r=document.querySelector('[role=dialog]').getBoundingClientRect(); return r.top>=0 && r.bottom<=innerHeight && r.left>=0 && r.right<=innerWidth; })()");
   if (!dialogFits) throw new Error("Tuition dialog does not fit the 390x844 viewport");
-  await cdp.screenshot("tuition-mode-dialog-390"); await cdp.select("Chế độ", "Miễn phí"); await cdp.clickDialogText("Lưu");
-  await cdp.wait("document.body.innerText.includes('Đã cập nhật chế độ học phí')", "tuition success"); await cdp.send("Page.reload");
+  await cdp.screenshot("tuition-exemption-dialog-390"); await cdp.selectDialog("Chế độ", "Miễn phí"); await cdp.clickDialogText("Lưu");
+  await cdp.wait("document.body.innerText.includes('Đã cập nhật miễn học phí.')", "tuition exemption success"); await cdp.send("Page.reload");
   await cdp.wait("document.body.innerText.includes('Học phí: Miễn phí')", "persisted free tuition mode");
 
   await cdp.eval("location.assign('http://127.0.0.1:5174/admin/students')");

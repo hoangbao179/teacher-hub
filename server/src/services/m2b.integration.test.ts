@@ -14,9 +14,9 @@ async function clean(): Promise<void> {
   try {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
-      "tuition_receipt_allocations", "tuition_receipts", "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances",
+      "monthly_tuition_payments", "lesson_attendances",
       "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions", "enrollment_active_periods",
-      "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes",
+      "class_active_periods", "class_enrollments", "audit_logs", "students", "classes",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
   } finally { connection.release(); }
@@ -27,31 +27,23 @@ async function fixture() {
   const connection = await pool.getConnection();
   try {
     const [klass] = await connection.execute<ResultSetHeader>(
-      "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('M2B Group','GROUP',2400000,90,'2026-07-01')",
+      "INSERT INTO classes(name,class_type,default_duration_minutes,start_date) VALUES ('M2B Group','GROUP',90,'2026-07-01')",
     );
-    await connection.execute("INSERT INTO class_tuition_policies(class_id,package_price,effective_from) VALUES (?,2400000,'2026-07-01')", [klass.insertId]);
     await connection.execute("INSERT INTO class_active_periods(class_id,active_from) VALUES (?,'2026-07-01')", [klass.insertId]);
     const ids: number[] = [];
     const students: number[] = [];
-    for (const [name, joined, ended, mode] of [
-      ["Paid", "2026-07-01", null, "CLASS_DEFAULT"],
-      ["Free", "2026-07-01", null, "FREE"],
-      ["Historical", "2026-07-01", "2026-07-15", "CUSTOM"],
-      ["Future", "2026-07-11", null, "CLASS_DEFAULT"],
+    for (const [name, joined, ended, tuitionExempt] of [
+      ["Paid", "2026-07-01", null, false],
+      ["Exempt", "2026-07-01", null, true],
+      ["Historical", "2026-07-01", "2026-07-15", false],
+      ["Future", "2026-07-11", null, false],
     ] as const) {
       const [student] = await connection.execute<ResultSetHeader>("INSERT INTO students(full_name) VALUES (?)", [name]);
       const [enrollment] = await connection.execute<ResultSetHeader>(
         `INSERT INTO class_enrollments
-          (class_id,student_id,joined_at,ended_at,status,tuition_mode,custom_package_price,tuition_effective_from)
-         VALUES (?,?,?,?,?,?,?,?)`,
-        [klass.insertId, student.insertId, joined, ended, ended ? "ENDED" : "ACTIVE", mode,
-          mode === "CUSTOM" ? 2_000_000 : null, joined],
-      );
-      await connection.execute(
-        `INSERT INTO enrollment_tuition_policies
-          (enrollment_id,tuition_mode,custom_package_price,effective_from)
-         VALUES (?,?,?,?)`,
-        [enrollment.insertId, mode, mode === "CUSTOM" ? 2_000_000 : null, joined],
+          (class_id,student_id,joined_at,ended_at,status,tuition_exempt)
+         VALUES (?,?,?,?,?,?)`,
+        [klass.insertId, student.insertId, joined, ended, ended ? "ENDED" : "ACTIVE", tuitionExempt],
       );
       await connection.execute(
         "INSERT INTO enrollment_active_periods(enrollment_id,active_from,active_to) VALUES (?,?,?)",
@@ -122,7 +114,7 @@ integration("canonical lesson workflow snapshots, persists, completes and audits
   assert.equal((await lessons.detail(draft.id)).participants.length, 3);
 });
 
-integration("completion accepts PRESENT for a free enrollment without billing it", async () => {
+integration("completion accepts PRESENT for a tuition-exempt enrollment", async () => {
   const data = await fixture();
   const lessons = service();
   const draft = await lessons.create({
@@ -146,10 +138,10 @@ integration("completion accepts PRESENT for a free enrollment without billing it
   assert.equal(completed.presentCount, 2);
   assert.equal((await lessons.detail(draft.id)).status, "COMPLETED");
   const [rows] = await pool.query<RowDataPacket[]>(
-    "SELECT enrollment_id,counts_for_tuition FROM lesson_attendances WHERE lesson_session_id=? ORDER BY enrollment_id",
+    "SELECT enrollment_id,attendance_status FROM lesson_attendances WHERE lesson_session_id=? ORDER BY enrollment_id",
     [draft.id],
   );
-  assert.deepEqual(rows.map((row) => Number(row.counts_for_tuition)), [1, 0]);
+  assert.deepEqual(rows.map((row) => row.attendance_status), ["PRESENT", "PRESENT"]);
 
   const cancelled = await lessons.create({
     classId: data.classId, sessionDate: "2026-07-10", scheduledStartTime: "20:00",

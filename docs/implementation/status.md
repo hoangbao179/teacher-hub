@@ -11,9 +11,10 @@ trong Git.
   chỉ đổi em vắng sang `ABSENT`; nội dung, bài tập và nhận xét đều không bắt buộc.
 - Schedule engine giữ lịch lặp, busy slot, lịch trường/trung tâm, nghỉ, đổi lịch,
   học bù và combined class. Lịch dự kiến không chứng minh đã dạy.
-- `/admin/tuition` là bảng học phí theo tháng dương lịch. Mỗi row lấy số có mặt,
-  vắng và tổng từ lesson `COMPLETED` cùng participant snapshot; giáo viên có thể
-  nhập số tiền tùy chọn và đánh dấu `PAID`. Enrollment `FREE` không xuất hiện.
+- `/admin/tuition` là bảng học phí theo tháng dương lịch. Mỗi row lấy số có mặt từ
+  attendance và tổng buổi hợp lệ từ schedule/lesson projection, gồm cả occurrence
+  tương lai trong tháng. Giáo viên có thể nhập số tiền tùy chọn và đánh dấu `PAID`.
+  Enrollment có `tuitionExempt=true` không xuất hiện.
 - Student Detail cho phép xuất một sheet Excel **Quá trình học tập** và quản lý
   Google Sheet phụ huynh. Google Sheet có một tab hiển thị **Sổ theo dõi học tập**,
   metadata kỹ thuật ẩn, đồng bộ một chiều qua transactional outbox.
@@ -29,8 +30,8 @@ trong Git.
 
 - Chu kỳ học phí 8 buổi, receipt/advance payment và Legacy Import không còn route,
   UI, shared contract hoặc orchestration runtime.
-- Bảng và migration lịch sử của các tính năng trên vẫn được giữ nguyên để bảo toàn
-  dữ liệu. Runtime mới không backfill hay suy luận payment tháng từ cycle cũ.
+- Schema cycle, receipt, tuition policy và Legacy Import đã được drop bằng cleanup
+  migration vì hệ thống clean-reset không giữ compatibility dữ liệu cũ.
 
 ## Temporary disabled
 

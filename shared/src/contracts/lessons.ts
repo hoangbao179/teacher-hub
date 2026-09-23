@@ -94,7 +94,7 @@ export interface LessonParticipantDetail {
   enrollmentId: number;
   studentId: number;
   studentName: string;
-  tuitionMode: "CLASS_DEFAULT" | "CUSTOM" | "FREE";
+  tuitionExempt: boolean;
   attendance: {
     status: AttendanceStatus;
     studentNote: string | null;

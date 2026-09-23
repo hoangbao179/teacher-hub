@@ -20,7 +20,7 @@ import {
 } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import type { ClassDetail, StudentListItem, TemporaryReschedulePreview, TuitionMode, Weekday } from "@teacher/shared";
+import type { ClassDetail, StudentListItem, TemporaryReschedulePreview, Weekday } from "@teacher/shared";
 import { ApiError, api } from "../api/client";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState, MobileCard, PageHeader, StatusBadge } from "../components/UiKit";
@@ -38,7 +38,7 @@ export function ClassDetailPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [studentId, setStudentId] = useState("");
   const [enrollmentError, setEnrollmentError] = useState("");
-  const [tuitionMode, setTuitionMode] = useState<TuitionMode>("CLASS_DEFAULT");
+  const [tuitionExempt, setTuitionExempt] = useState(false);
   const [joinedAt, setJoinedAt] = useState(new Date().toISOString().slice(0, 10));
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(() => (location.state as { success?: string } | null)?.success ?? "");
@@ -131,7 +131,7 @@ export function ClassDetailPage() {
     setEnrollmentError("");
     setBusy(true); setSuccess(""); try {
       await api(`/api/classes/${id}/enrollments`, { method: "POST", body: JSON.stringify({
-        studentId: Number(studentId), joinedAt, tuitionMode,
+        studentId: Number(studentId), joinedAt, tuitionExempt,
       }) });
       enrollmentCreated = true;
       setDialogOpen(false);
@@ -202,7 +202,7 @@ export function ClassDetailPage() {
             <Stack direction="row" sx={{ justifyContent: "space-between" }}>
               <Typography variant="subtitle1">{student.fullName}</Typography>
               <Typography>
-                {student.tuitionMode === "FREE" ? "Miễn phí" : "Theo tháng"}
+                {student.tuitionExempt ? "Miễn phí" : "Theo tháng"}
               </Typography>
             </Stack>
           </CardContent>
@@ -216,7 +216,7 @@ export function ClassDetailPage() {
             {enrollmentCandidates.map((x) => <MenuItem value={String(x.id)} key={x.id}>{x.fullName}</MenuItem>)}
           </Select></FormControl>
           <TextField type="date" label="Ngày vào học" value={joinedAt} onChange={(e) => setJoinedAt(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-          <FormControl><InputLabel>Học phí</InputLabel><Select label="Học phí" value={tuitionMode} onChange={(e) => setTuitionMode(e.target.value as TuitionMode)}><MenuItem value="CLASS_DEFAULT">Có thu theo tháng</MenuItem><MenuItem value="FREE">Miễn phí</MenuItem></Select></FormControl>
+          <FormControlLabel control={<Checkbox checked={tuitionExempt} onChange={(event) => setTuitionExempt(event.target.checked)} />} label="Miễn học phí" />
         </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={closeEnrollmentDialog}>Hủy</Button><Button variant="contained" disabled={!studentId || busy} onClick={() => void enroll()}>{busy ? "Đang ghi danh…" : "Ghi danh"}</Button></DialogActions>
       </Dialog>
       <Dialog open={Boolean(statusActionName)} onClose={() => !busy && setStatusActionName(null)} fullWidth maxWidth="xs">

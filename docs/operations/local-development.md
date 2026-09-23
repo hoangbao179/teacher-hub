@@ -28,7 +28,10 @@ taskkill /PID <PID> /F
 
 Seed chỉ chứa tên/số điện thoại giả, idempotent và bị từ chối khi
 `NODE_ENV=production`. `db:reset:dev` là lệnh phá hủy dữ liệu dev và không được
-dùng với database cần giữ. Trước checkpoint dùng `npm run check:fast`; trước
+dùng với database cần giữ; lệnh reset cả `monthly_tuition_payments` trước enrollment
+để không để lại orphan data. Migration cleanup `0028` chủ đích xóa schema cycle,
+receipt, policy và legacy import nên môi trường cũ phải backup hoặc reset sạch trước
+khi áp dụng. Trước checkpoint dùng `npm run check:fast`; trước
 release dùng `npm run check:full` với MySQL đang chạy.
 
 Google Drive mặc định tắt. Xem `docs/operations/google-drive.md` để tạo OAuth client,

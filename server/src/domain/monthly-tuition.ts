@@ -1,4 +1,4 @@
-export type StoredAttendanceStatus = "PRESENT" | "ABSENT" | "FREE";
+export type StoredAttendanceStatus = "PRESENT" | "ABSENT";
 
 export interface MonthlyAttendanceSummary {
   present: number;
@@ -23,8 +23,8 @@ export function summarizeMonthlyAttendance(
   let present = 0;
   let absent = 0;
   for (const status of statuses) {
-    if (status === "ABSENT") absent += 1;
-    else present += 1;
+    if (status === "PRESENT") present += 1;
+    else absent += 1;
   }
   return { present, absent, total: present + absent };
 }

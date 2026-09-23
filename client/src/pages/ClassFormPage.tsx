@@ -37,7 +37,6 @@ export function ClassFormPage() {
   const [name, setName] = useState("");
   const [type, setType] = useState<ClassType>("GROUP");
   const [subject, setSubject] = useState("Tiếng Anh");
-  const [price, setPrice] = useState("");
   const [duration, setDuration] = useState(90);
   const [startDate, setStartDate] = useState(today);
   const [expectedEndDate, setExpectedEndDate] = useState("");
@@ -51,7 +50,7 @@ export function ClassFormPage() {
     if (!id) return;
     api<ClassDetail>(`/api/classes/${id}`).then((item) => {
       setName(item.name); setType(item.type); setSubject(item.subject ?? "");
-      setPrice(String(item.defaultPackagePrice)); setDuration(item.defaultDurationMinutes);
+      setDuration(item.defaultDurationMinutes);
       setStartDate(item.startDate); setExpectedEndDate(item.expectedEndDate ?? "");
       setStatus(item.status); setOriginalStatus(item.status); setNote(item.note ?? "");
       setSchedules(item.schedules.map(({ id: scheduleId, dayOfWeek, startTime, endTime }) => ({ id: scheduleId, dayOfWeek, startTime, endTime })));
@@ -60,7 +59,6 @@ export function ClassFormPage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const parsedPrice = Number(price) || 0;
     if (schedules.some((schedule) => !time24Pattern.test(schedule.startTime) ||
       !time24Pattern.test(schedule.endTime) || schedule.endTime <= schedule.startTime)) {
       setError("Giờ học phải theo định dạng 24 giờ HH:mm và giờ kết thúc phải sau giờ bắt đầu.");
@@ -69,7 +67,7 @@ export function ClassFormPage() {
     if (editing && status !== originalStatus && (status === "PAUSED" || status === "CLOSED") &&
       !window.confirm(status === "CLOSED" ? "Đóng lớp? Lịch sử sẽ được giữ lại và không thể mở lại." : "Tạm dừng lớp?")) return;
     setSaving(true); setError("");
-    const body = { name, type, subject: subject || undefined, defaultPackagePrice: parsedPrice,
+    const body = { name, type, subject: subject || undefined,
       defaultDurationMinutes: Number(duration), startDate, expectedEndDate: expectedEndDate || undefined,
       note: note || undefined, status, schedules,
       scheduleEffectiveDate: editing ? scheduleEffectiveDate : undefined };

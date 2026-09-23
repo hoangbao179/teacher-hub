@@ -4,8 +4,7 @@
 > Technical name: **Public English Learning Corner**  
 > Target: public learning module sau V1  
 > Primary route family: `/hoc/*`  
-> Authentication: **không yêu cầu trong MVP**  
-> Wireframe: [`../wireframes/19-public-english-learning-corner.png`](../wireframes/19-public-english-learning-corner.png)
+> Authentication: **không yêu cầu trong MVP**
 
 ## 1. Mục tiêu
 
@@ -97,7 +96,7 @@ Các mục ngoài MVP chỉ được triển khai bằng feature/ADR riêng.
 - Không hiển thị hoặc suy diễn dữ liệu học sinh trong hệ thống quản trị.
 - Nội dung learning MVP là dữ liệu public tĩnh trong frontend.
 - `/hoc` indexable; `/admin/*` vẫn giữ `noindex` theo cơ chế hiện tại.
-- Business rule và tài liệu source of truth có ưu tiên cao hơn wireframe.
+- Business rule và tài liệu source of truth có ưu tiên cao hơn hình tham khảo.
 
 ## 5. Luồng người dùng
 
@@ -531,5 +530,5 @@ Feature chỉ được xem là hoàn thành khi:
 - nội dung seed được chủ website/cô Vy duyệt;
 - tiếng Việt, phiên âm, nghĩa và ví dụ được rà soát;
 - responsive được kiểm tra tại 360, 375, 390, 393, 400, 412, 430 và desktop;
-- tài liệu feature, task, acceptance và wireframe đồng bộ;
+- tài liệu feature, task và acceptance đồng bộ;
 - `docs/implementation/status.md` chỉ cập nhật sau khi code và verification hoàn tất.

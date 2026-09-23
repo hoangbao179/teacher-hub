@@ -112,14 +112,14 @@ try {
   const className = `M5B Operations ${suffix}`;
   const times = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00"];
   const klass = await api("/api/classes", token, "POST", {
-    name: className, type: "GROUP", defaultPackagePrice: 2_400_000,
+    name: className, type: "GROUP",
     defaultDurationMinutes: 60, startDate: "2026-01-01",
     schedules: times.map((startTime) => ({ dayOfWeek: weekdayIso(today), startTime, endTime: `${String(Number(startTime.slice(0, 2)) + 1).padStart(2, "0")}:00` })),
   });
   const studentName = `M5B Student ${suffix}`;
   const student = await api("/api/students", token, "POST", { fullName: studentName });
   const enrollment = await api(`/api/classes/${klass.id}/enrollments`, token, "POST", {
-    studentId: student.id, joinedAt: "2026-01-01", tuitionMode: "CLASS_DEFAULT",
+    studentId: student.id, joinedAt: "2026-01-01",
   });
   for (let index = 20; index >= 13; index -= 1) {
     const draft = await api("/api/lessons", token, "POST", {
@@ -378,9 +378,9 @@ try {
   await page.getByText("Đã mở lại lớp theo ngày hiệu lực.").waitFor();
 
   const classFixtures = [
-    { id: 91001, name: "Lớp Alpha đang dạy", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 4 },
-    { id: 91002, name: "Lớp Beta tạm dừng", type: "ONE_TO_ONE", subject: "Tiếng Anh", status: "PAUSED", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 1 },
-    { id: 91003, name: "Lớp Gamma đã đóng", type: "GROUP", subject: "Tiếng Anh", status: "CLOSED", defaultPackagePrice: 2_400_000, defaultDurationMinutes: 60, activeStudentCount: 0 },
+    { id: 91001, name: "Lớp Alpha đang dạy", type: "GROUP", subject: "Tiếng Anh", status: "ACTIVE", defaultDurationMinutes: 60, activeStudentCount: 4 },
+    { id: 91002, name: "Lớp Beta tạm dừng", type: "ONE_TO_ONE", subject: "Tiếng Anh", status: "PAUSED", defaultDurationMinutes: 60, activeStudentCount: 1 },
+    { id: 91003, name: "Lớp Gamma đã đóng", type: "GROUP", subject: "Tiếng Anh", status: "CLOSED", defaultDurationMinutes: 60, activeStudentCount: 0 },
   ];
   await page.route("**/api/classes", (route) => route.request().method() === "GET"
     ? route.fulfill({ status: 200, contentType: "application/json", json: { data: classFixtures } })

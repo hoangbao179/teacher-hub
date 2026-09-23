@@ -49,8 +49,7 @@ function student(id, fullName, enrollmentId = null) {
     className: enrollmentId == null ? null : "Lớp kiểm thử ghi danh",
     enrollmentId,
     enrollmentStatus: enrollmentId == null ? null : "ACTIVE",
-    tuitionMode: enrollmentId == null ? null : "CLASS_DEFAULT",
-    customPackagePrice: null,
+    tuitionExempt: enrollmentId == null ? null : false,
     currentProgress: enrollmentId == null ? null : 0,
     hasPaymentDue: false,
   };
@@ -81,7 +80,7 @@ async function runViewport(viewport) {
         studentId,
         fullName: ["", "An", "Bình", "Chi"][studentId],
         nickname: null,
-        tuitionMode: "CLASS_DEFAULT",
+        tuitionExempt: false,
         currentProgress: 0,
         hasPaymentDue: false,
       }));
@@ -94,7 +93,6 @@ async function runViewport(viewport) {
           type: "GROUP",
           subject: "Tiếng Anh",
           status: "ACTIVE",
-          defaultPackagePrice: 800000,
           defaultDurationMinutes: 60,
           activeStudentCount: classStudents.length,
           startDate: "2026-07-01",

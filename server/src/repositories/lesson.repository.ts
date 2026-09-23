@@ -48,7 +48,7 @@ export interface ParticipantRow extends RowDataPacket {
   enrollment_id: number;
   student_id: number;
   student_name: string;
-  tuition_mode: "CLASS_DEFAULT" | "CUSTOM" | "FREE";
+  tuition_exempt: number | boolean;
 }
 
 function dateOnly(value: Date | string): string {
@@ -138,7 +138,7 @@ export class LessonRepository {
       const [rows] = await connection.query<RowDataPacket[]>(
         `SELECT p.id participant_id,p.enrollment_id,s.id student_id,
           COALESCE(p.student_name_snapshot,s.full_name) student_name,
-          e.tuition_mode,a.attendance_status,a.student_note
+          e.tuition_exempt,a.attendance_status,a.student_note
          FROM lesson_session_participants p
          JOIN class_enrollments e ON e.id=p.enrollment_id
          JOIN students s ON s.id=e.student_id
@@ -151,7 +151,7 @@ export class LessonRepository {
           enrollmentId: Number(row.enrollment_id),
           studentId: Number(row.student_id),
           studentName: String(row.student_name),
-          tuitionMode: row.tuition_mode,
+          tuitionExempt: Boolean(row.tuition_exempt),
           attendance: row.attendance_status ? {
             status: row.attendance_status === "ABSENT" ? "ABSENT" : "PRESENT",
             studentNote: row.student_note == null ? null : String(row.student_note),
@@ -249,7 +249,7 @@ export class LessonRepository {
   async participantRowsForUpdate(connection: PoolConnection, lessonId: number): Promise<ParticipantRow[]> {
     const [rows] = await connection.query<ParticipantRow[]>(
       `SELECT p.id participant_id,p.enrollment_id,s.id student_id,
-        COALESCE(p.student_name_snapshot,s.full_name) student_name,e.tuition_mode
+        COALESCE(p.student_name_snapshot,s.full_name) student_name,e.tuition_exempt
        FROM lesson_session_participants p
        JOIN class_enrollments e ON e.id=p.enrollment_id
        JOIN students s ON s.id=e.student_id
@@ -311,16 +311,15 @@ export class LessonRepository {
     participantId: number,
     enrollmentId: number,
     status: AttendanceStatus,
-    countsForTuition: boolean,
     studentNote: string | null,
   ): Promise<number> {
     await connection.execute(
       `INSERT INTO lesson_attendances
-        (lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition,student_note)
-       VALUES (?,?,?,?,?,?)
+        (lesson_session_id,participant_id,enrollment_id,attendance_status,student_note)
+       VALUES (?,?,?,?,?)
        ON DUPLICATE KEY UPDATE attendance_status=VALUES(attendance_status),
-         counts_for_tuition=VALUES(counts_for_tuition),student_note=VALUES(student_note)`,
-      [lessonId, participantId, enrollmentId, status, countsForTuition, studentNote],
+         student_note=VALUES(student_note)`,
+      [lessonId, participantId, enrollmentId, status, studentNote],
     );
     const [rows] = await connection.query<RowDataPacket[]>(
       "SELECT id FROM lesson_attendances WHERE participant_id=? FOR UPDATE", [participantId],

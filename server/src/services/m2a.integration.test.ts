@@ -12,9 +12,9 @@ async function clean(): Promise<void> {
   try {
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const table of [
-      "tuition_receipt_allocations", "tuition_receipts", "tuition_cycle_sessions", "tuition_cycles", "lesson_attendances",
+      "monthly_tuition_payments", "lesson_attendances",
       "lesson_makeup_replacements", "lesson_session_participants", "lesson_sessions", "enrollment_active_periods",
-      "class_active_periods", "enrollment_tuition_policies", "class_tuition_policies", "class_enrollments", "audit_logs", "students", "classes",
+      "class_active_periods", "class_enrollments", "audit_logs", "students", "classes",
     ]) await connection.query(`TRUNCATE TABLE ${table}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=1");
   } finally {
@@ -40,7 +40,7 @@ integration("historical regular and selected makeup participant snapshots are co
   try {
     await connection.beginTransaction();
     const [classResult] = await connection.execute<import("mysql2/promise").ResultSetHeader>(
-      "INSERT INTO classes(name,class_type,default_package_price,default_duration_minutes,start_date) VALUES ('M2A','GROUP',2400000,90,'2026-07-01')",
+      "INSERT INTO classes(name,class_type,default_duration_minutes,start_date) VALUES ('M2A','GROUP',90,'2026-07-01')",
     );
     await connection.execute("INSERT INTO class_active_periods(class_id,active_from) VALUES (?,'2026-07-01')", [classResult.insertId]);
     const enrollmentIds: number[] = [];
@@ -54,9 +54,9 @@ integration("historical regular and selected makeup participant snapshots are co
         "INSERT INTO students(full_name) VALUES (?)", [`M2A Student ${index}`],
       );
       const [enrollment] = await connection.execute<import("mysql2/promise").ResultSetHeader>(
-        `INSERT INTO class_enrollments(class_id,student_id,joined_at,ended_at,status,tuition_mode,tuition_effective_from)
-         VALUES (?,?,?,?,?,'CLASS_DEFAULT',?)`,
-        [classResult.insertId, student.insertId, joinedAt, endedAt, endedAt ? "ENDED" : "ACTIVE", joinedAt],
+        `INSERT INTO class_enrollments(class_id,student_id,joined_at,ended_at,status)
+         VALUES (?,?,?,?,?)`,
+        [classResult.insertId, student.insertId, joinedAt, endedAt, endedAt ? "ENDED" : "ACTIVE"],
       );
       enrollmentIds.push(enrollment.insertId);
       await connection.execute(
@@ -91,8 +91,8 @@ integration("historical regular and selected makeup participant snapshots are co
     await assert.rejects(
       () => connection.execute(
         `INSERT INTO lesson_attendances
-          (lesson_session_id,participant_id,enrollment_id,attendance_status,counts_for_tuition)
-         VALUES (?,?,?,'PRESENT',1)`,
+          (lesson_session_id,participant_id,enrollment_id,attendance_status)
+         VALUES (?,?,?,'PRESENT')`,
         [makeup.insertId, participants[0].id, enrollmentIds[0]],
       ),
       (error: unknown) => (error as { code?: string }).code === "ER_NO_REFERENCED_ROW_2",

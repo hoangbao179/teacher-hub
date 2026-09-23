@@ -18,9 +18,8 @@ greeting/sidebar dùng WebP local; không thêm route, menu, API, query, dữ li
 feature từ annotated board.
 
 Dashboard đã được chụp và audit tại 1440×900, 1366×768, 390×844 và 360×800. Client
-typecheck, lint, unit test, production build, Playwright responsive/navigation smoke
-và gate `npm run check:full` đã PASS. Chi tiết triển khai và khác biệt có chủ đích nằm tại
-[`../design/admin-ui-visual-refresh.md`](../design/admin-ui-visual-refresh.md).
+Chi tiết quy tắc giao diện hiện hành nằm tại
+[`../design/ui-guidelines.md`](../design/ui-guidelines.md).
 
 ## Responsive và navigation
 
