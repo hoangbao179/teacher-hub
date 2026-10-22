@@ -87,9 +87,16 @@ Không thay đổi các rule trên trong task UI hoặc maintenance.
 - API call đặt trong `client/src/api/`; page không gọi `fetch` trực tiếp.
 - Internal navigation dùng React Router.
 - Mobile-first ở 360–430 px; không có page-level horizontal scroll.
+- Teacher Tools tại `/admin/tools` là giao diện giáo viên mặc định: đơn giản,
+  một cột khi thích hợp, nút dễ chạm. Không tự thêm dashboard, sidebar hoặc bottom
+  navigation vào Teacher Tools.
 - Không dùng bảng rộng cho luồng mobile, không hiện raw enum, không để action giả.
-- Bottom navigation có 5 mục, label không xuống dòng; sticky action không che nav
-  và phải tôn trọng safe area.
+- Chỉ giao diện legacy khi `LEGACY_ADMIN_ENABLED = true` áp dụng bottom navigation
+  5 mục, label không xuống dòng. Sticky action không che navigation hiện có và
+  phải tôn trọng safe area.
+- Website public `/`, `/hoc`, `/sach` tiếp tục hoạt động bình thường. Không tự xóa
+  code quản trị cũ hoặc sửa nghiệp vụ lớp, học phí hay dữ liệu ngoài phạm vi task.
+- Tạm ẩn frontend không đồng nghĩa vô hiệu hóa các API phía server.
 - Brand: `Lớp học cô Vy`, `Tiếng Anh lớp 1–9`, `Huế`.
 - Homepage sinh động hơn Admin; Admin ưu tiên rõ ràng và thao tác nhanh.
 
@@ -216,6 +223,31 @@ command và PASS/FAIL. Git history đã giữ lịch sử triển khai.
 Luôn chạy targeted checks trước; không chạy lại command đã PASS nếu source liên
 quan không đổi. Không khởi động MySQL, Chrome hoặc hạ tầng ngoài phạm vi.
 
+### Kiểm thử theo feature availability
+
+Đối chiếu `client/src/config/featureAvailability.ts` và
+`docs/implementation/status.md` trước khi chọn suite. Hiện tại
+`LEGACY_ADMIN_ENABLED = false` và `VOCABULARY_GAMES_ENABLED = false`.
+
+- Ưu tiên regression liên quan của tính năng active: website công khai, Góc học,
+  Tủ sách, Teacher Tools, authentication/session/routing liên quan và backend/API
+  còn được các luồng active sử dụng.
+- Phân biệt **Disabled UI** (giao diện không cho truy cập), **Retained business
+  logic** (backend và nghiệp vụ còn tồn tại, cần bảo vệ) và **Active regression**
+  (kiểm tra hành vi đang phục vụ người dùng).
+- Không tự xóa source, unit test, integration test hoặc E2E chỉ vì module tạm ẩn.
+  Unit/integration bảo vệ nghiệp vụ và dữ liệu cũ vẫn có giá trị; chạy khi thay
+  đổi liên quan tác động tới chúng.
+- Không tự chạy toàn bộ E2E quản trị cũ cho mỗi thay đổi Teacher Tools. E2E màn
+  bị ẩn nên thuộc nhóm legacy regression hoặc chạy có điều kiện theo feature flag.
+- E2E mặc định không được yêu cầu truy cập màn mà routing chủ động chuyển hướng,
+  trừ khi có cơ chế test riêng hợp lệ. Test SKIP không chứng minh chức năng PASS.
+- Nếu test hoặc CI gate không còn phù hợp, báo rõ nguyên nhân và đề xuất thay đổi
+  nhỏ nhất. Không tự bỏ gate để đạt PASS; điều chỉnh pipeline phải giữ coverage
+  tương đương cho tính năng active.
+
+Chỉ mở rộng kiểm thử theo rủi ro và quy định Level 1/2/3 bên dưới.
+
 ### Level 1
 
 Tối đa 2–3 command trực tiếp. Frontend nhỏ thường dùng:
@@ -309,6 +341,17 @@ Không ZIP nguyên working directory.
 
 ## 10. Git và commit sau PASS
 
+### Nguyên tắc commit
+
+- Ưu tiên ít commit, mỗi commit có ý nghĩa; không commit theo từng file hoặc từng
+  chỉnh sửa nhỏ. Không trộn thay đổi không liên quan vào cùng commit.
+- Hoàn thành implementation và targeted checks trước khi tạo commit cuối cùng.
+- Task nhỏ ưu tiên 1 commit; task vừa 1–2 commit; task lớn 2–4 commit, chia theo
+  chức năng hoặc thay đổi độc lập. Đây là hướng dẫn, không phải giới hạn cứng.
+- Commit message dùng tiếng Việt theo convention hiện tại.
+
+### Kiểm tra và tạo commit
+
 Sau khi final classification và mandatory checks đạt PASS:
 
 1. chạy `git status --short`, `git diff --stat`, `git diff --check`;
@@ -320,8 +363,22 @@ Sau khi final classification và mandatory checks đạt PASS:
 6. ghi hash và message trong final response.
 
 Không commit khi verdict FAIL, mandatory check chưa chạy, staged diff có secret,
-diff trộn ngoài task hoặc phạm vi chưa rõ. Không reset hard, amend, rewrite history,
-force commit code lỗi hay tự push.
+diff trộn ngoài task hoặc phạm vi chưa rõ. Không reset hard hoặc force commit code lỗi.
+
+### Squash và bàn giao audit
+
+- Sau khi task hoàn thành và đạt mandatory checks, ưu tiên lịch sử gọn trước khi
+  bàn giao user chạy Codex audit local. Nếu chưa commit, tạo trực tiếp 1–3 commit
+  sạch thay vì nhiều commit WIP/fix rồi squash; vẫn ưu tiên 1 commit cho task nhỏ.
+- Không bắt buộc squash khi các commit đã có ranh giới chức năng rõ ràng. Việc gom
+  WIP/fix phải tuân thủ quyền rewrite bên dưới, không tự động thực hiện.
+- Tuyệt đối không rewrite lịch sử `main` hoặc commit đã merge.
+- Không tự amend/rebase/squash trên branch đã chia sẻ hoặc đã push khi chưa được
+  user cho phép. Với feature branch riêng chưa chia sẻ, chỉ rewrite commit thuộc
+  task khi user cho phép rõ ràng và đã xác minh không có thay đổi của người khác.
+- Không làm mất thay đổi hoặc commit của user. Không force-push mặc định; nếu
+  squash cần force-push để cập nhật remote, báo rõ và xin phép riêng.
+- Không tự push, merge hoặc deploy khi chưa được yêu cầu.
 
 ## 11. Final response/PR
 

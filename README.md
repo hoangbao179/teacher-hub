@@ -2,6 +2,12 @@
 
 Monorepo mobile-first cho website giới thiệu giáo viên và hệ thống quản lý lớp học, buổi học, học sinh, lịch học và chu kỳ học phí 8 buổi.
 
+Luồng chính hiện tại là website public (`/`, `/hoc`, `/sach`) và Teacher Tools
+mobile-first tại `/admin/tools`. Giao diện quản trị cũ đang tạm ẩn; source và dữ
+liệu vẫn được bảo toàn. Developer/agent đọc [AGENTS.md](AGENTS.md) để nắm workflow,
+quy định commit và chính sách kiểm thử; trạng thái chi tiết nằm trong
+[implementation status](docs/implementation/status.md).
+
 ## Cấu trúc
 
 - `client/`: React + Vite + MUI, gồm trang public và trang quản trị.
