@@ -3,7 +3,8 @@
 This is a standalone research tool, not a Teacher Tools feature or a deployed worker.
 It reuses the owned five-page synthetic PDF prepared by the earlier PoC. Input/output
 PDFs, screenshots, private documents and measurements remain under `.artifacts/`.
-No Drive downloader, network endpoint, authentication or production dependency is added.
+No public downloader, network endpoint, authentication or production dependency is added.
+The optional Drive experiment below is a local CLI for the exact owned synthetic fixture.
 
 ## Reproduce
 
@@ -283,8 +284,8 @@ proven host minimum. Do not choose 512 MiB for a worker based on a lucky complet
 Larger documents, job repetition, cold caches, browser reuse and arbitrary viewers need
 separate testing. For an already available local PDF, pipeline A remains simpler.
 
-**NO-GO for claiming a Google Drive/view-only downloader or deploying a production
-worker.** The owned fixture has not been tested through Drive, and authorization,
+**Task C alone is NO-GO for claiming a Google Drive/view-only downloader or deploying a production
+worker.** At that stage the owned fixture had not been tested through Drive, and authorization,
 viewer-specific behavior and real-device/print review remain unresolved. This result
 does not establish any right or ability to copy restricted third-party documents.
 
@@ -299,3 +300,162 @@ For budgeting only, a separate 2 GiB/1 vCPU VM is listed at about USD 12/month o
 budget based on measured container peaks, not a benchmark of a whole 2 GiB VM or a
 purchase/deployment recommendation. The existing 1.5 GB shared production host and
 384 MB API container remain out of scope and unsuitable for this measured pipeline.
+
+## Controlled Google Drive experiment (Task D)
+
+The owner supplies an anonymously viewable Drive upload of the exact five-page
+synthetic original. `drive-policy.mjs` pins the local original's SHA-256; the
+remote title, viewer count and enabled Print button are also checked. A title
+match alone is not content verification: the reconstructed output must match
+all five original pages independently, including the blank and landscape pages.
+This test does not attempt extraction when Drive disables Print.
+
+```powershell
+$env:PDF_POC_DRIVE_ID='ID_OF_THE_OWNED_SYNTHETIC_UPLOAD'
+node scripts/pdf-poc/browser-linux-benchmark.mjs .artifacts/print-quality-pdf/20261022/owned-synthetic-original.pdf .artifacts/drive-linux-pdf/NEW-BASELINE --drive-baseline
+# Only after the baseline completes and visual review succeeds:
+node scripts/pdf-poc/browser-linux-benchmark.mjs .artifacts/print-quality-pdf/20261022/owned-synthetic-original.pdf .artifacts/drive-linux-pdf/NEW-MATRIX --drive-matrix
+node scripts/pdf-poc/browser-linux-benchmark.mjs .artifacts/print-quality-pdf/20261022/owned-synthetic-original.pdf .artifacts/drive-linux-pdf/NEW-FAULT --drive-faults
+```
+
+This reuses the Task C local-Docker host checks, cgroup/RSS sampling, prepare and
+indexed256 encoding stages, global deadline and cleanup. Concurrency is one, CPU
+one, no swap, baseline 4 GiB; the matrix stops on any unsuccessful job before
+trying a smaller 2/1 GiB limit. Containers have a read-only root/original, 256 MiB
+profile tmpfs, 128 MiB shared memory and 256-process limit. Input is at most 10 MiB,
+exactly five pages, at most 12 million pixels/page, capture PNG at most 32 MiB,
+job directory soft limit 64 MiB, and job deadline 120 seconds. Failed job data is
+deleted; successful artifacts remain only for local review. Container removal
+cleans browser/profile processes and tmpfs, not retained host evidence.
+
+Unlike Task C's offline viewer, this adapter needs internet access. Playwright
+routes permit only the supplied fixed Drive navigation and HTTPS resources from
+Drive/Docs, gstatic and googleusercontent. Login and other navigations are denied;
+service workers and downloads are disabled. There is a 500-request / 64 MiB
+observed response-body budget. These are application-level, post-response soft
+limits, **not a network firewall or a hardened worker boundary**. Browser-owned
+background traffic, bandwidth enforcement and an external egress proxy require
+separate work before a service. No supplied cookies, tokens, passwords or saved
+storage state are used; a fresh anonymous context can still receive transient
+cookies from Google, and its profile disappears when the container is removed.
+
+Only already-rendered blob images from the permitted owned fixture are used.
+Native image dimensions are measured and retained. Original PDF point dimensions
+are used to calculate separate horizontal/vertical effective DPI, with an aspect
+ratio guard. Viewer zoom percent is not DPI. The output is image-only; it loses
+vector text, search, accessibility and original PDF structure. It is not a copy
+of the original PDF bytes. No sharpening or pixel upscaling is used in encoding.
+
+Quality verification renders the output at 300 DPI solely for comparison with
+the original's 300-DPI reference (and a resampled capture reference). It checks
+paper sizes and nearest original-page content, and rejects a changed blank page.
+That comparison raster size is never reported as the native source resolution.
+RMSE and ink-region error quantify renderer/compression differences, not paper
+print quality; Vietnamese small text and thin rules require crop review.
+
+The fixture-specific full-page RMSE ceiling is 20 (0.1 for the blank page), plus
+nearest-original identity for every page. This is a coarse corruption guard,
+not a general acceptance threshold for documents or print quality. Thumbnail
+RMSE is deliberately not thresholded: downsampling the table produces about
+34.23 even though its full-page error is 16.03 and its original identity is
+correct. Regression tests reject wrong order, unrelated full-page content,
+nonfinite metrics and a changed blank page:
+
+```text
+node --test scripts/pdf-poc/drive-policy.test.mjs
+node --check scripts/pdf-poc/drive-capture.mjs
+node --check scripts/pdf-poc/drive-quality.mjs
+```
+
+### Measured result, 2026-10-22
+
+The supplied upload was anonymously reachable, titled `owned-synthetic-original.pdf`,
+and reported five pages. **Download and Print were enabled.** This is not a test
+of a download/print-disabled fixture. No account or saved session was supplied.
+The earlier 17-page link was rejected as the wrong fixture before extraction.
+
+Linux x86_64, Docker Desktop/WSL2 kernel 6.6.87.2, Node 24.18.0, Chromium
+149.0.7827.55; each fresh container had one CPU, no swap and concurrency one.
+The Docker VM exposed 12 CPUs / approximately 15.45 GiB host memory, but the
+individual jobs had the explicit CPU/RAM limits below. These are container
+measurements, not a benchmark of a whole small Linux VM.
+
+| RAM cap | Peak cgroup MiB | Browser tree RSS MiB | Node RSS MiB | CPU seconds | Wall seconds | Job disk MiB | Profile tmpfs MiB | PDF bytes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4 GiB | 546.8 | 769.7 | 628.1 | 16.05 | 17.50 | 4.33 | 31.14 | 647534 |
+| 2 GiB | 538.2 | 773.0 | 626.3 | 15.90 | 17.16 | 4.33 | 31.14 | 647537 |
+| 1 GiB | 579.8 | 768.3 | 677.6 | 15.43 | 16.93 | 4.33 | 31.14 | 647536 |
+
+All three final jobs completed, with `oom = oom_kill = 0`. Peak cgroup is the
+kernel-accounted job memory (including charged caches/tmpfs); sampled RSS sums
+double-count shared mappings and the browser/Node peaks are not simultaneous.
+Do not add them or label their sum physical RAM. Job disk and tmpfs peaks are
+separate sampled measurements; they are not simultaneous totals or VM disk needs.
+Docker reported image size 376530541 bytes, excluding build cache, unpacked-layer
+overhead and the Docker VM/OS. A final job observed 58 requests and about 3.03 MB
+response-body traffic; these are not billing-grade network measurements.
+
+The initial successful baseline before removing a redundant PNG normalization
+buffer took 18.94 seconds / 15.43 CPU seconds, peak cgroup 540.8 MiB and PDF
+647537 bytes. An exploratory native-resolution matrix also completed at all
+three caps (815.2/525.9/529.0 MiB). Thus **1 GiB completed twice**, but the
+variation is a reason to retain margin, not proof of sustained service capacity.
+No Drive job below 1 GiB was attempted; no claim is made about 512 MiB.
+The final source uses one native canvas/page, resets it, writes each PNG to disk,
+then closes Chromium before sequential indexed256 encoding and verification.
+Drive itself still controls image/cache retention; there is no claim that all
+viewer resources are freed after each captured page.
+
+All final outputs retained **5/5 pages**, correct nearest-original order 1–5,
+the blank third page, the illustration fourth page and the landscape fifth page.
+Paper dimensions match the original within 0.01 pt: 594.95996 × 841.91998 pt
+for pages 1–4 and the reversed dimensions for page 5. Indexed256 is retained
+from the earlier compression experiment; this task did not rerun a full codec
+comparison on Drive. PDF sizes differ by a few bytes between runs; the page
+identity, dimensions and image-error checks give the same results.
+
+| Pages | Native bitmap | Effective DPI X/Y | Full-page RMSE versus original |
+| --- | --- | --- | --- |
+| 1 | 2400 × 3396 | 290.44 / 290.42 | 6.640 |
+| 2 | 2400 × 3396 | 290.44 / 290.42 | 16.031 |
+| 3 (blank) | 2400 × 3396 | 290.44 / 290.42 | 0 |
+| 4 (image) | 2400 × 3396 | 290.44 / 290.42 | 7.888 |
+| 5 (landscape) | 2400 × 1696 | 205.25 / 205.24 | 5.567 |
+
+The highest **measured** source resolution is about 290 DPI, not a universal
+viewer maximum. A separate landscape probe at requested 400% still observed
+2400 × 1696; requested 500% was clamped to 400%. Waiting for an assumed 4000 px
+bitmap therefore timed out; that job is INCOMPLETE, not evidence of higher DPI.
+No undocumented image endpoint or artificial upscaling was used to pursue that
+path. The pipeline has not demonstrated nearly 300 DPI on every page.
+
+Contact sheets and original/output crops were reviewed. Vietnamese 6 pt text and
+diacritics remain legible on screen; thin table rules remain visible but appear
+heavier and antialiasing differs from the original. Image colors/details differ
+as the RMSE indicates. This is not lossless reproduction and **actual A4 paper
+print quality remains unverified**, especially for the 205-DPI landscape page.
+
+A forced five-second deadline ended in TIMEOUT after 5.11 seconds while Chromium
+was active; partial job data (about 1.41 MiB) was removed and the container was
+removed. The failed higher-zoom job and an initial blob-fetch failure were also
+INCOMPLETE and cleaned up. Canvas reading succeeded through ordinary browser APIs
+without disabling CSP/CORS; a tainted/blocked canvas would fail rather than use a
+bypass. No OOM was observed for this Drive workload, so Drive-specific OOM cleanup
+was not independently triggered; Task C's OOM fault test is separate evidence.
+Successful PDFs and evidence remain ignored under `.artifacts/drive-linux-pdf/`.
+
+**Conditional GO for an external experimental worker handling this exact owned,
+print-enabled fixture and this staged pipeline.** The smallest container cap
+tested successfully is **1 CPU / 1 GiB**, not a proven VM minimum or production
+sizing. A 2 GiB container cap has also been exercised and leaves more experimental
+headroom, but the host needs its own OS/runtime budget. Larger files, repeated
+jobs, cold caches, viewer changes, strict egress isolation and durable cleanup
+still require validation before choosing service capacity or infrastructure cost.
+
+**NO-GO for production, a universal downloader, a print-disabled viewer claim,
+or claiming uniform 300-DPI/A4 print quality.** Technical success on an authorized
+fixture does not grant permission to reproduce other documents. When download is
+allowed, prefer the original PDF over raster reconstruction for print fidelity.
+Do not put this browser in the existing 384 MiB API container or the shared
+1.5 GB production VPS. There is no Windows-versus-Linux performance conclusion:
+the earlier Windows observation used a different 17-page Drive document.

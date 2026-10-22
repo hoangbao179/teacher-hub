@@ -9,6 +9,7 @@ RUN npm ci --omit=dev --no-audit --no-fund \
     && npm cache clean --force \
     && rm -rf /var/lib/apt/lists/*
 COPY benchmark.mjs checks.mjs checks.test.mjs linux-measure.mjs linux-metrics.mjs linux-metrics.test.mjs browser-capture.mjs browser-quality.mjs browser-limits.mjs browser-limits.test.mjs ./
-RUN node --test checks.test.mjs linux-metrics.test.mjs browser-limits.test.mjs
+COPY drive-policy.mjs drive-policy.test.mjs drive-capture.mjs drive-quality.mjs ./
+RUN node --test checks.test.mjs linux-metrics.test.mjs browser-limits.test.mjs drive-policy.test.mjs
 USER node
 ENTRYPOINT ["node", "/poc/linux-measure.mjs"]

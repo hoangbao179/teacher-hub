@@ -2,12 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {assertLocalEndpoint,directoryBytes} from './linux-metrics.mjs';
 import {limits} from './browser-limits.mjs';
+import {ownedHash,driveId} from './drive-policy.mjs';
 const [inputArg,outputArg,option]=process.argv.slice(2);
-if(!inputArg||!outputArg||option&&!['--baseline-only','--matrix','--faults-only','--stability'].includes(option))throw Error('Usage: node browser-linux-benchmark.mjs OWNED.pdf NEW_ARTIFACT_DIR [--baseline-only|--matrix|--faults-only|--stability]');
+if(!inputArg||!outputArg||option&&!['--baseline-only','--matrix','--faults-only','--stability','--drive-baseline','--drive-matrix','--drive-faults'].includes(option))throw Error('Usage: node browser-linux-benchmark.mjs OWNED.pdf NEW_ARTIFACT_DIR [--baseline-only|--matrix|--faults-only|--stability|--drive-baseline|--drive-matrix|--drive-faults]');
 const input=fs.realpathSync(inputArg),output=path.resolve(outputArg),source=path.dirname(fileURLToPath(import.meta.url));
 if(fs.statSync(input).size>limits.inputBytes)throw Error('Input limit');
+const drive=option?.startsWith('--drive-');
+if(drive){driveId(process.env.PDF_POC_DRIVE_ID);if(createHash('sha256').update(fs.readFileSync(input)).digest('hex')!==ownedHash)throw Error('Wrong owned original');}
 if(fs.existsSync(output))throw Error('New output directory required');
 let contextName;
 const docker=(args,allowFailure=false,timeout=240000)=>{
@@ -22,7 +26,7 @@ fs.mkdirSync(output,{recursive:true});
 const imageInfo=JSON.parse(docker(['image','inspect',image]).stdout)[0];
 fs.writeFileSync(path.join(output,'environment.json'),JSON.stringify({context:contextName,kernel:info.KernelVersion,os:info.OperatingSystem,architecture:info.Architecture,hostMemory:info.MemTotal,hostCpus:info.NCPU,image:{id:imageInfo.Id,sizeBytes:imageInfo.Size}},null,2));
 const baseline={memory:'4g',mode:'retained',deadline:120000,expect:'COMPLETE'};
-const cases=option==='--stability'?Array.from({length:3},()=>({memory:'512m',mode:'sequential',deadline:120000,expect:'OBSERVE'})):option==='--faults-only'?[
+const cases=drive?(option==='--drive-faults'?[{memory:'4g',mode:'sequential',deadline:5000,expect:'TIMEOUT'}]:(option==='--drive-matrix'?['4g','2g','1g']:['4g']).map(memory=>({memory,mode:'sequential',deadline:120000,expect:'COMPLETE'}))):option==='--stability'?Array.from({length:3},()=>({memory:'512m',mode:'sequential',deadline:120000,expect:'OBSERVE'})):option==='--faults-only'?[
   {memory:'512m',mode:'retained',deadline:120000,expect:'OOM'},
   {memory:'4g',mode:'sequential',deadline:3000,expect:'TIMEOUT'},
 ]:option==='--matrix'?[
@@ -33,8 +37,8 @@ for(let i=0;i<cases.length;i++){
  const c=cases[i],dir=path.join(output,`${i+1}-${c.memory}-${c.mode}`),name=`browser-pdf-poc-${process.pid}-${i}`;fs.mkdirSync(dir);
  let inspected;
  try{
-  docker(['create','--name',name,'--cpus','1','--memory',c.memory,'--memory-swap',c.memory,'--pids-limit','256','--network','none','--read-only','--tmpfs','/tmp:rw,noexec,nosuid,size=256m','--shm-size','128m',
-   '--mount',`type=bind,source=${input},target=/fixture/original.pdf,readonly`,'--mount',`type=bind,source=${dir},target=/output`,image,'indexed256',String(c.deadline),'browser',c.mode]);
+  docker(['create','--name',name,'--cpus','1','--memory',c.memory,'--memory-swap',c.memory,'--pids-limit','256','--network',drive?'bridge':'none',...(drive?['--env',`PDF_POC_DRIVE_ID=${process.env.PDF_POC_DRIVE_ID}`]:[]),'--read-only','--tmpfs','/tmp:rw,noexec,nosuid,size=256m','--shm-size','128m',
+   '--mount',`type=bind,source=${input},target=/fixture/original.pdf,readonly`,'--mount',`type=bind,source=${dir},target=/output`,image,'indexed256',String(c.deadline),drive?'drive':'browser',c.mode]);
   const run=docker(['start','--attach',name],true,150000);fs.writeFileSync(path.join(dir,'stdout.log'),run.stdout);fs.writeFileSync(path.join(dir,'stderr.log'),run.stderr);
   inspected=JSON.parse(docker(['inspect',name]).stdout)[0];
  }finally{docker(['rm','--force',name],true);}
