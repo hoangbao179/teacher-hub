@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assertLocalEndpoint,parseCounters,treeRss} from './linux-metrics.mjs';
+import {assertLocalEndpoint,isNodeProcess,parseCounters,treeRss} from './linux-metrics.mjs';
 
 test('process RSS includes descendants, excludes unrelated processes, independent of order', () => {
   const processes = [{pid:9,ppid:4,rssBytes:30},{pid:99,ppid:1,rssBytes:999},{pid:4,ppid:2,rssBytes:20},{pid:2,ppid:0,rssBytes:10}];
@@ -14,4 +14,10 @@ test('cgroup counters distinguish OOM kill from ordinary exit', () => {
 test('Docker benchmark refuses remote engines', () => {
   for(const endpoint of ['ssh://production','tcp://host:2375','https://host',undefined]) assert.throws(()=>assertLocalEndpoint(endpoint),/local/);
   for(const endpoint of ['unix:///var/run/docker.sock','npipe:////./pipe/dockerDesktopLinuxEngine']) assert.doesNotThrow(()=>assertLocalEndpoint(endpoint));
+});
+
+test('Node RSS classification uses executable because Linux Node 24 is named MainThread',()=>{
+  assert.equal(isNodeProcess({name:'MainThread',executable:'/usr/local/bin/node'}),true);
+  assert.equal(isNodeProcess({name:'node',executable:'/opt/chrome-headless-shell'}),false);
+  assert.equal(isNodeProcess({name:'node'}),false);
 });

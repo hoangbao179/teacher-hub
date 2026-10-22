@@ -163,18 +163,139 @@ does not establish an absolute minimum or capacity for larger PDFs, repeated req
 other CPU hardware, cold caches or a complete worker service. Indexed 256 remains the
 fixture-specific choice; keep RGB for lossless/color-sensitive cases.
 
-**Browser pipeline B remains NOT TESTED on Linux.** No Chromium is installed in this
-benchmark image. Drive rendering of the owned fixture also remains NOT TESTED. The
-prior 17-page viewer's roughly 1.4 GiB Chromium result is a different Windows workload;
-successful Node-only runs do not prove browser memory has been reduced.
-
-Before sizing B, plan a separate authorized-fixture experiment with a larger isolated
-Linux allocation (initial test envelope 1 CPU / 4 GiB, not a measured requirement),
-concurrency 1, no saved login/cookies, strict page/size/deadline limits and controlled
-viewer egress. Measure browser + Node together, cgroup peaks and failure cleanup, then
-test lower limits. Do not use the current API container or infer production capacity.
+The Node-only image contains no Chromium binary. Browser measurements use the separate
+image and viewer described below; they do not establish Google Drive feasibility.
 
 **NO-GO for the existing shared production VPS/API container 384 MB**; see
 [production resource budget](../operations/production.md#production-vps-capacity-and-resource-budget).
 The 1 GiB result is a container budget, not an entire host budget. This work changes
 no production Dockerfiles, deployment workflows, APIs, authentication or database.
+
+## Linux browser + Node benchmark (owned local viewer)
+
+The [browser image](../../scripts/pdf-poc/Dockerfile.browser-benchmark) contains pinned
+Playwright 1.61.1, Chromium headless shell 149.0.7827.55 and PDF.js 6.4.299. The viewer
+is a small local PDF.js/Canvas test surface, **not Google Drive or Chromium's built-in
+PDF viewer**. Playwright routes supply only the fixture and installed library assets
+at a synthetic origin; Docker networking is disabled. No HTTP server/public endpoint,
+cookies, passwords, stored login state, screenshots of third-party documents or production
+infrastructure are used. Chromium sandbox is disabled inside the disposable container;
+this is suitable only for this trusted fixture, not an untrusted public renderer.
+
+Run sequentially, reviewing the baseline before the memory descent:
+
+```text
+node scripts/pdf-poc/browser-linux-benchmark.mjs .artifacts/print-quality-pdf/20261022/owned-synthetic-original.pdf .artifacts/browser-linux-pdf/NEW-BASELINE --baseline-only
+node scripts/pdf-poc/browser-linux-benchmark.mjs .artifacts/print-quality-pdf/20261022/owned-synthetic-original.pdf .artifacts/browser-linux-pdf/NEW-MATRIX --matrix
+node scripts/pdf-poc/browser-linux-benchmark.mjs .artifacts/print-quality-pdf/20261022/owned-synthetic-original.pdf .artifacts/browser-linux-pdf/NEW-FAULTS --faults-only
+node scripts/pdf-poc/browser-linux-benchmark.mjs .artifacts/print-quality-pdf/20261022/owned-synthetic-original.pdf .artifacts/browser-linux-pdf/NEW-STABILITY --stability
+```
+
+The matrix starts at 4 GiB and descends to 3/2/1.5/1 GiB, 768 and 512 MiB, stopping
+on the first unsuccessful workload. A detected OOM boundary is a successful research
+observation, **never** a successful PDF job; each row retains its actual exit/status.
+Stability probes repeat the same low RAM cap and may record both completions and OOMs.
+
+### Limits and pipeline
+
+- One CPU quota, concurrency 1, no swap, 256 PIDs, 120-second whole-job deadline.
+- Owned input at most 10 MiB, exactly five pages, at most 12 million pixels/page and
+  60 million pixels total. Page metadata is checked before rasterization.
+- Native canvas resolution 300 dpi (portrait 2479 × 3508, landscape reversed); never
+  upscale captured images. An originally raster picture still has its original detail.
+- Captured PNG total at most 32 MiB; job directory soft cap 64 MiB sampled every 100 ms;
+  hard `/tmp` tmpfs cap 256 MiB and `/dev/shm` cap 128 MiB. Sampled caps may overshoot
+  between samples, so these are not substitutes for filesystem quotas in a service.
+- Reference: Node rasterizes the original. Browser renders the original independently
+  and exports PNGs. Node uses existing indexed-256 encoding/assembly, existing roundtrip
+  verification, then a second comparison against the original Node-rendered reference.
+- Baseline retains five browser canvases until export. Optimized mode renders, exports
+  and clears one canvas/page at a time, cleans PDF.js page resources and explicitly
+  collects browser garbage. Browser closes before Node compression/verification; no
+  browser reuse/pooling is measured. This ordering is part of the measured design.
+- Cgroup peak includes all stages and browser temporary tmpfs pages. Browser tree and
+  Node RSS are separately sampled; their peaks may occur at different times. Summed
+  RSS includes shared pages and must not be interpreted as physical RAM or added to
+  cgroup memory. Node 24 Linux is named `MainThread`; the sampler identifies Node by
+  executable, covered by regression. Earlier name-based Node RSS results are discarded.
+
+### Measured results
+
+Same Linux/WSL2 Docker host and owned original as pipeline A, with an unconstrained
+approximately 16 GB host VM. Container CPU/RAM limits were inspected. Each main row is
+one run, not a throughput estimate or a cold-cache/dedicated-host guarantee.
+
+| Mode | RAM cap | Cgroup peak MiB | Browser tree RSS MiB | Node RSS MiB | CPU seconds | Wall seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Retained baseline | 4 GiB | 644.8 | 774.8 | 550.1 | 17.89 | 17.93 |
+| Sequential | 4 GiB | 493.7 | 547.1 | 563.8 | 18.13 | 18.20 |
+| Sequential | 3 GiB | 491.8 | 544.6 | 565.0 | 17.95 | 18.02 |
+| Sequential | 2 GiB | 485.4 | 544.1 | 559.3 | 18.05 | 18.12 |
+| Sequential | 1.5 GiB | 489.3 | 544.0 | 591.4 | 18.27 | 18.35 |
+| Sequential | 1 GiB | 456.5 | 548.9 | 559.7 | 18.03 | 18.12 |
+| Sequential | 768 MiB | 481.1 | 546.4 | 559.9 | 18.38 | 18.43 |
+| Sequential | 512 MiB | 469.5 | 548.3 | 570.6 | 18.87 | 18.95 |
+
+At the same 4 GiB cap, sequential processing reduced whole-job cgroup peak about 23.4%.
+Sampled browser-phase charged memory decreased from about 636 to 384 MiB; afterwards
+verification, not Chromium, dominates the optimized peak. No quality setting was reduced.
+
+All completed jobs reconstructed five pages in the correct order, original point sizes,
+blank third page and landscape fifth page. PDF approximately 763414–763417 bytes;
+job disk peak approximately 5.16 MiB plus browser `/tmp` peak 33.22 MiB. These are
+separate sampled logical peaks, not an exact simultaneous physical disk total. Temporary
+profiles live only in tmpfs and disappear with container removal. Docker inspect reported
+376525258 bytes for the matrix image (as reported by Docker, not physical host usage); build
+cache, unpacked layers and VM/OS storage are additional and were not capacity-tested.
+
+Reconstructed PDF versus captured browser pages: RMSE zero on pages 1/2/3/5 and about
+0.269 on the illustration page. Versus the original rendered using Node Canvas, raw
+RMSE is 6.639, 9.556, 0, 2.550 and 3.631 by page, with larger ink-region differences.
+The two renderers differ in text rasterization/placement; this is **not pixel-identical
+reproduction of the original**. Crops of Vietnamese 6 pt text and 0.25 pt rules and the
+five-page contact sheet were visually reviewed; no missing page/blank/orientation issue
+was observed. Actual paper print quality remains unverified.
+
+At 512 MiB, an earlier descent hit OOM during verification despite a later successful
+matrix run at the same cap. Do not treat one passing row as reliable capacity. The
+smallest cap ever completing the fixture is 512 MiB; 768 MiB also completed both the
+exploratory and final descents, while 1 GiB provides more margin for further experiments.
+Three additional sequential 512 MiB probes completed in 18.47/18.64/18.62 seconds,
+with cgroup peaks 471.3/466.6/466.3 MiB. Thus four completions and one OOM were observed
+across the sequential 512 MiB attempts (not an estimated failure probability). The
+initial name-based Node RSS bug did not invalidate the cgroup OOM event, but those
+early per-Node RSS values are excluded from the table.
+
+### Failure behavior and conclusion
+
+Retained mode at 512 MiB triggers cgroup `oom_kill = 1` during browser rendering. The
+first control exposed a renderer wait that lasted until the global deadline after OOM.
+The supervisor now watches `memory.events` and fails fast: measured 3.77 seconds,
+INCOMPLETE, no final PDF, failed job directory removed. A forced three-second deadline
+while Chromium was active measured 3.03 seconds, TIMEOUT, with about 1.48 MB of partial
+job data removed. Host finally removes the container (including browser processes and
+tmpfs/profile); retained metric/log files are intentional local evidence. This is not
+a durable service cleanup/retention mechanism.
+
+**Conditional GO for an external prototype handling this owned local viewer**, using
+1 CPU / 1 GiB container RAM / concurrency 1 as a starting experimental budget, not a
+proven host minimum. Do not choose 512 MiB for a worker based on a lucky completion.
+Larger documents, job repetition, cold caches, browser reuse and arbitrary viewers need
+separate testing. For an already available local PDF, pipeline A remains simpler.
+
+**NO-GO for claiming a Google Drive/view-only downloader or deploying a production
+worker.** The owned fixture has not been tested through Drive, and authorization,
+viewer-specific behavior and real-device/print review remain unresolved. This result
+does not establish any right or ability to copy restricted third-party documents.
+
+Windows's earlier approximately 1.4 GiB browser observation used 17 pages in Google
+Drive; these Linux figures use five pages in a local PDF.js viewer with different
+flags/renderer/measurement. They are not an OS performance comparison and no percentage
+Linux-versus-Windows saving is claimed.
+
+For budgeting only, a separate 2 GiB/1 vCPU VM is listed at about USD 12/month on
+[DigitalOcean's pricing page](https://www.digitalocean.com/pricing/droplets) (checked
+2026-10-22), excluding tax, backups and operation. That is a prospective experiment
+budget based on measured container peaks, not a benchmark of a whole 2 GiB VM or a
+purchase/deployment recommendation. The existing 1.5 GB shared production host and
+384 MB API container remain out of scope and unsuitable for this measured pipeline.

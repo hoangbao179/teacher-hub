@@ -1,0 +1,14 @@
+FROM node:24.18.0-bookworm-slim
+WORKDIR /poc
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/poc-browsers
+RUN npm install -g npm@12.0.1
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund \
+    && npx playwright install --with-deps --only-shell chromium \
+    && chmod -R a+rX /opt/poc-browsers \
+    && npm cache clean --force \
+    && rm -rf /var/lib/apt/lists/*
+COPY benchmark.mjs checks.mjs checks.test.mjs linux-measure.mjs linux-metrics.mjs linux-metrics.test.mjs browser-capture.mjs browser-quality.mjs browser-limits.mjs browser-limits.test.mjs ./
+RUN node --test checks.test.mjs linux-metrics.test.mjs browser-limits.test.mjs
+USER node
+ENTRYPOINT ["node", "/poc/linux-measure.mjs"]

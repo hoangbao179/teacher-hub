@@ -2,11 +2,15 @@
   "name": "teacher-pdf-quality-poc",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node --test checks.test.mjs linux-metrics.test.mjs", "check": "node --check benchmark.mjs && node --check linux-benchmark.mjs && node --check linux-measure.mjs" },
+  "scripts": {
+    "test": "node --test checks.test.mjs linux-metrics.test.mjs browser-limits.test.mjs",
+    "check": "node --check benchmark.mjs && node --check linux-benchmark.mjs && node --check linux-measure.mjs && node --check browser-capture.mjs && node --check browser-quality.mjs && node --check browser-linux-benchmark.mjs"
+  },
   "dependencies": {
     "@napi-rs/canvas": "1.0.13",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.4.299",
+    "playwright": "1.61.1",
     "sharp": "0.34.5"
   }
 }
