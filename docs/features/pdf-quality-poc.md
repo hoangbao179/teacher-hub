@@ -95,24 +95,86 @@ Keep RGB as the lossless fallback for color-sensitive material. This does not ju
 an automatic policy for photographs or other documents; 128 colors is not chosen merely
 because its file is smallest. No physical printing has been performed.
 
-## Linux experiment decision
+## Linux Node-only benchmark
 
-GO for a separate, bounded **Linux benchmark**, not production or a public render service.
-Docker CLI/WSL exist locally but Docker Desktop's Linux daemon is unavailable; no Linux
-container measurements were obtained and no production infrastructure was started.
-The local raster/encode/verify run needs substantially more RAM than its sub-1 MB PDF.
-Start a future isolated Node-only experiment at 1 vCPU / 2 GiB RAM, concurrency 1, with a
-five-minute deadline and explicit input/page/output/disk limits. This is a conservative
-test allocation based on Windows measurements, not a proven Linux requirement.
-Measure cgroup memory peak, CPU, wall time, temporary disk, image/layer size and cleanup
-before reducing that allocation or planning a service. No image size or Linux disk
-headroom has been measured here.
+The isolated benchmark image is [Dockerfile.benchmark](../../scripts/pdf-poc/Dockerfile.benchmark),
+separate from production Dockerfiles. It reuses the existing preparation, compression
+and verification code. Run on a local Linux Docker engine (including Docker Desktop):
 
-Drive rendering of this owned fixture remains NOT TESTED (it has not been uploaded).
-The prior 17-page viewer's roughly 1.4 GiB Chromium result is a different workload;
-this compression-only experiment does not prove browser memory has been reduced.
-If Chromium is required, benchmark it separately together with compression before sizing
-the worker. NO-GO for the existing 1.5 GB shared VPS/API container 384 MB; see
+```text
+node scripts/pdf-poc/linux-benchmark.mjs .artifacts/print-quality-pdf/20261022/owned-synthetic-original.pdf .artifacts/linux-pdf-benchmark/NEW-RUN
+```
+
+The harness refuses SSH/TCP Docker endpoints and pins the inspected local context,
+builds a dedicated image, runs regression tests in that image, and starts fresh
+containers for RGB and indexed 256 at each RAM limit. Each container has a one-CPU
+quota (`cpu.max = 100000 100000`), concurrency 1, no swap, no network, read-only root
+and fixture, a 64 MiB `/tmp` limit, 128 PID limit and a 120-second pipeline deadline.
+Results go to bind-mounted `.artifacts`; no fixture is copied into the image/build context.
+
+Supervisor measurements cover prepare + encode + verify. CPU is the cgroup usage
+delta, wall time excludes image build/container startup, memory peak is cgroup v2
+`memory.peak` (including charged cache/kernel allocations), and tree RSS is the sum
+from `/proc` sampled every 100 ms. Shared pages can be counted twice in RSS or charged
+to another cgroup; these figures need not match. Temporary disk is the sampled peak
+logical bytes in the job directory, not physical host filesystem allocation. Image,
+VM/OS overhead and build cache are additional; the host itself was not RAM-constrained.
+
+Measured on Docker Desktop Linux x86_64, kernel `6.6.87.2-microsoft-standard-WSL2`,
+Node 24.18.0, Debian bookworm image. Same five-page owned original, 300 dpi. Each row
+is one run, with shared filesystem caches potentially warm, not a cold-boot guarantee.
+
+| RAM cap | Encoding | cgroup peak MiB | Sampled tree RSS MiB | CPU seconds | Wall seconds | Temporary MiB | PDF bytes |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 GiB | RGB | 470.4 | 572.1 | 9.54 | 9.56 | 2.87 | 1190760 |
+| 1 GiB | Indexed 256 | 436.5 | 537.0 | 12.59 | 12.62 | 2.59 | 924118 |
+| 1.5 GiB | RGB | 471.5 | 575.1 | 9.38 | 9.42 | 2.87 | 1190763 |
+| 1.5 GiB | Indexed 256 | 480.2 | 557.7 | 12.07 | 12.08 | 2.59 | 924118 |
+| 2 GiB | RGB | 468.3 | 560.9 | 9.56 | 9.60 | 2.87 | 1190761 |
+| 2 GiB | Indexed 256 | 472.9 | 556.6 | 12.61 | 12.65 | 2.59 | 924116 |
+
+All six rows completed without OOM/timeout: five pages, correct order, original page
+point dimensions, blank page 3 and landscape page 5. RGB roundtrip RMSE is zero on
+every page. Indexed 256 is zero on pages 1/2/3/5; illustration page 4 RMSE is 0.26154.
+Crops of 6 pt Vietnamese and thin table strokes were visually reviewed. No paper was
+printed. PDF byte totals vary by a few bytes across runs while the verified rendered
+pixels and dimensions agree; byte identity is not an acceptance condition. Image size reported by Docker inspect was 131165034
+bytes for the matrix image; Docker storage/backend representation and build cache
+are separate from this number. Image remains local for reproducibility; no image is pushed.
+
+OOM control at 64 MiB reported `oom_kill = 1` and INCOMPLETE; timeout was deliberately
+forced at two seconds after 1483480 temporary bytes had been observed. Both controls
+exited 1, removed their failed job folders, and passed the host cleanup assertions.
+Failed job folders are removed
+while metric/log files are retained; the host also performs cleanup if the supervisor
+is killed. Every benchmark container is removed in a finally block. Failure controls
+can be repeated without rerunning successful rows:
+
+```text
+node scripts/pdf-poc/linux-benchmark.mjs .artifacts/print-quality-pdf/20261022/owned-synthetic-original.pdf .artifacts/linux-pdf-benchmark/NEW-FAULT-RUN --faults-only
+```
+
+## Decision and remaining limits
+
+**GO for further isolated Node-only worker experiments.** The smallest tested successful
+allocation among the requested sizes is **1 CPU / 1 GiB RAM / concurrency 1**, for this
+five-page fixture and this full preparation/compression/verification pipeline. This
+does not establish an absolute minimum or capacity for larger PDFs, repeated requests,
+other CPU hardware, cold caches or a complete worker service. Indexed 256 remains the
+fixture-specific choice; keep RGB for lossless/color-sensitive cases.
+
+**Browser pipeline B remains NOT TESTED on Linux.** No Chromium is installed in this
+benchmark image. Drive rendering of the owned fixture also remains NOT TESTED. The
+prior 17-page viewer's roughly 1.4 GiB Chromium result is a different Windows workload;
+successful Node-only runs do not prove browser memory has been reduced.
+
+Before sizing B, plan a separate authorized-fixture experiment with a larger isolated
+Linux allocation (initial test envelope 1 CPU / 4 GiB, not a measured requirement),
+concurrency 1, no saved login/cookies, strict page/size/deadline limits and controlled
+viewer egress. Measure browser + Node together, cgroup peaks and failure cleanup, then
+test lower limits. Do not use the current API container or infer production capacity.
+
+**NO-GO for the existing shared production VPS/API container 384 MB**; see
 [production resource budget](../operations/production.md#production-vps-capacity-and-resource-budget).
-Any future service needs authorized sources, bounded egress, no cookies/credentials,
-concurrency/deadlines/quotas, cancellation and cleanup; none is deployed by this PoC.
+The 1 GiB result is a container budget, not an entire host budget. This work changes
+no production Dockerfiles, deployment workflows, APIs, authentication or database.

@@ -1,0 +1,9 @@
+FROM node:24.18.0-bookworm-slim
+WORKDIR /poc
+RUN npm install -g npm@12.0.1
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
+COPY benchmark.mjs checks.mjs checks.test.mjs linux-measure.mjs linux-metrics.mjs linux-metrics.test.mjs ./
+RUN node --test checks.test.mjs linux-metrics.test.mjs
+USER node
+ENTRYPOINT ["node", "/poc/linux-measure.mjs"]

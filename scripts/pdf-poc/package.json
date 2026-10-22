@@ -2,7 +2,7 @@
   "name": "teacher-pdf-quality-poc",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node --test checks.test.mjs", "check": "node --check benchmark.mjs" },
+  "scripts": { "test": "node --test checks.test.mjs linux-metrics.test.mjs", "check": "node --check benchmark.mjs && node --check linux-benchmark.mjs && node --check linux-measure.mjs" },
   "dependencies": {
     "@napi-rs/canvas": "1.0.13",
     "pdf-lib": "1.17.1",
