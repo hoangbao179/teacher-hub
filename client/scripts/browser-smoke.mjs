@@ -5,7 +5,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import dotenv from "dotenv";
+import { LEGACY_ADMIN_ENABLED } from "../src/config/featureAvailability.ts";
 import { createArtifactPolicy, finalizeArtifactDirectory } from "./artifacts.mjs";
+
+if (!LEGACY_ADMIN_ENABLED) {
+  console.log("SKIP legacy CRUD browser smoke: management UI is disabled. Run test:e2e:tools for the active entry flow.");
+  process.exit(0);
+}
 
 const root = path.resolve(import.meta.dirname, "../..");
 const artifactPolicy = createArtifactPolicy(root, "browser-smoke");

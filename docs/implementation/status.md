@@ -22,6 +22,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### ACTIVE — dùng thực tế
 
+- **Teacher Tools (giao diện mặc định)**: Trang công khai giữ nguyên; header có nút **Công cụ** dẫn tới `/admin/tools`, yêu cầu tài khoản giáo viên. Sau đăng nhập, cô vào trang công cụ mobile-first, không có sidebar hay bottom navigation quản trị. Module tải tài liệu từ liên kết mới chỉ hiển thị giới thiệu và trạng thái đang chuẩn bị, chưa có chức năng tải thực tế.
+
 - **Lớp và học sinh**: quản lý lớp 1–1/lớp nhóm, học sinh, enrollment, khoảng hiệu
   lực, chuyển lớp, tạm dừng/ngừng học và lịch sử bất biến.
 - **Schedule**: Calendar hiển thị chung lớp riêng, lịch trường/trung tâm, lịch cá
@@ -53,8 +55,9 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 - **Public**: Homepage chỉ quảng bá dịch vụ Tiếng Anh lớp 1–9 tại Huế. Catalog Mầm
   non vẫn tồn tại riêng trong Góc học miễn phí. Góc học, flashcard/quiz, Tủ sách và
   prerender/SEO đang hoạt động.
-- **Admin shell và vận hành**: desktop có sidebar, mobile có bottom navigation năm
-  mục; Account, Kho từ vựng và Bài tập từ vựng nằm trong menu avatar. CI/deploy,
+- **Admin shell cũ và vận hành**: source desktop sidebar, mobile bottom navigation năm
+  mục và menu avatar vẫn được giữ nhưng không xuất hiện khi `LEGACY_ADMIN_ENABLED = false`.
+  Trang Tools chỉ có liên kết Trang chủ và nút Đăng xuất. CI/deploy,
   backup và rollback hiện hành được mô tả trong tài liệu operations.
 
 ### ADVANCED — có nhưng không nằm happy path
@@ -78,6 +81,18 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   trang không hiển thị action giả.
 
 ### TEMP_DISABLED
+
+- **Giao diện quản trị cũ**: `LEGACY_ADMIN_ENABLED = false` tạm ngừng truy cập tất cả màn quản lý lớp, học sinh, lịch, học phí, kho từ và giao bài ở frontend; điều hướng về `/admin/tools`. Toàn bộ source, API và dữ liệu giữ nguyên, không thực hiện xóa hay di chuyển dữ liệu. Các feature được liệt kê ACTIVE/ADVANCED phía trên phản ánh trạng thái implementation lưu lại, không phải các màn còn được truy cập trong UI mặc định.
+
+  Regression hiện hành: `npm -w client run test:e2e:tools` chạy frontend thật với API auth
+  giả lập, không cần database; kiểm tra guest/login, refresh cả hai chế độ ghi nhớ,
+  session hết hạn, redirect route cũ, Trang chủ/Đăng xuất và overflow/touch target ở
+  360/375/390/430/1440 px trên `/`, `/hoc`, `/sach` và Tools. Test này không xác minh
+  backend auth. `auth-session.e2e.mjs` dùng landing page theo feature flag và nút đăng
+  xuất Tools. `browser-smoke.mjs` và `mobile-navigation.e2e.mjs` báo SKIP khi legacy tắt;
+  coverage của các luồng CRUD/navigation cũ chỉ chạy khi bật lại giao diện cũ.
+  Suite smoke mặc định chỉ gồm Tools, Homepage và auth session; các suite E2E
+  quản trị nghiệp vụ còn lại cần giao diện legacy, không dùng để xác minh Tools.
 
 - **Vocabulary public game**: `VOCABULARY_GAMES_ENABLED = false`. Các route `/play/*`
   hiển thị “Trò chơi đang được hoàn thiện” và dẫn về `/hoc`; action giao/chia sẻ game

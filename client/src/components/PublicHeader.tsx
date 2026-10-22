@@ -50,7 +50,7 @@ export function PublicHeader({ active, showHomepageLinks = false }: PublicHeader
               <Button component={Link} to="/hoc" data-testid="header-learning" aria-current={active === "learning" ? "page" : undefined} sx={{ ...navButtonSx, px: { xs: 0.75, sm: 1.5 }, ...(active === "learning" ? activeSx : {}) }}>Góc học</Button>
               <Button component={Link} to="/sach" data-testid="header-books" aria-current={active === "books" ? "page" : undefined} sx={{ ...navButtonSx, px: { xs: 0.75, sm: 1.5 }, ...(active === "books" ? activeSx : {}) }}>Tủ sách</Button>
             </>}
-            <Button disableRipple component={Link} to="/admin/login" data-testid="header-admin" sx={textLinkSx}>Quản trị</Button>
+            <Button component={Link} to="/admin/tools" data-testid="header-tools" variant="contained" sx={{ ...navButtonSx, px: { xs: 1.5, sm: 2 }, bgcolor: "#0f766e", "&:hover": { bgcolor: "#115e59" } }}>Công cụ</Button>
           </Stack>
         </Toolbar>
       </Container>

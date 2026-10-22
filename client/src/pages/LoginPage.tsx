@@ -26,6 +26,7 @@ import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { getRememberedUsername, getRememberPreference } from "../auth/authStorage";
 import { adminTheme, uiTokens } from "../theme";
+import { LEGACY_ADMIN_ENABLED } from "../config/featureAvailability";
 
 function friendlyLoginError(error: unknown): string {
   if (!(error instanceof ApiError)) return "Không thể đăng nhập. Vui lòng thử lại.";
@@ -65,7 +66,7 @@ export function LoginPage() {
     try {
       await auth.login({ username, password }, remember);
       const destination = (location.state as { from?: string } | null)?.from;
-      navigate(destination?.startsWith("/admin") ? destination : "/admin", { replace: true });
+      navigate(LEGACY_ADMIN_ENABLED && destination?.startsWith("/admin") ? destination : "/admin/tools", { replace: true });
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 429) {
         setBlockedSeconds(Math.max(1, caught.retryAfterSeconds ?? 60));
@@ -107,7 +108,7 @@ export function LoginPage() {
             <Stack spacing={0.5}>
               <Typography variant="overline" color="primary">LỚP HỌC CÔ VY</Typography>
               <Typography component="p" variant="h4" sx={{ color: "primary.dark" }}>Tiếng Anh lớp 1–9</Typography>
-              <Typography variant="body2" color="text.secondary">Ghi buổi học · Theo dõi học phí · Đồng bộ sổ phụ huynh</Typography>
+              <Typography variant="body2" color="text.secondary">Công cụ hỗ trợ chuẩn bị tài liệu và in ấn</Typography>
             </Stack>
             <Box component="img" src="/assets/admin-ui/teacher-dashboard-hero.webp" alt="" aria-hidden="true" sx={{ width: "100%", height: 270, mt: 1, objectFit: "contain", objectPosition: "center bottom" }} />
           </Box>
