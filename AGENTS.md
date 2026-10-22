@@ -24,6 +24,33 @@ Node.js 24
 npm 12
 ```
 
+### Production resource constraints
+
+Mọi task phát triển phải tính tới VPS Ubuntu/Linux dùng Docker Compose: **1.5 GB
+RAM tổng, 1 vCPU, 15 GB SSD tổng**, dùng chung cho MySQL, API, Web/Nginx và Caddy.
+Đây là cấu hình chủ dự án xác nhận, không phải số đo RAM/disk còn trống hay trạng
+thái swap. Chi tiết tại [production resource budget](docs/operations/production.md#production-vps-capacity-and-resource-budget).
+
+- Không suy từ kết quả local rằng tính năng sẽ chạy tốt trên VPS; phân biệt số
+  đo và ước tính, không báo production-ready khi chưa kiểm chứng.
+- Không tự thêm headless Chromium, Playwright worker, LibreOffice, OCR hoặc xử lý
+  ảnh/PDF nặng vào API container. Tác vụ CPU-bound hoặc memory-intensive đồng bộ
+  trong request API phải được benchmark trên cấu hình phù hợp trước.
+- Với tác vụ nặng, đánh giá browser, streaming, chunking, queue hoặc worker bên
+  ngoài; không mặc định browser truy cập được nội dung cross-origin. Khi thêm
+  service/container, phải tính tài nguyên cả hệ thống.
+- Luôn tính image size, Docker layer, volume, log, backup, temporary files và disk
+  headroom; không lưu lâu dài PDF/ảnh tạm không cần thiết.
+- Không tự tăng giới hạn RAM, đổi Docker image, bật swap hoặc chỉnh VPS để tính
+  năng chạy được. Thay đổi kiến trúc, deployment hoặc nâng VPS phải báo chi phí,
+  tác động và xin người dùng duyệt trước.
+
+Teacher Tools PDF: PoC local trên Windows ghi nhận Playwright/Chromium dùng khoảng
+**1.4 GiB RAM ở gần 300 DPI**, không phải benchmark Linux production. Không đưa
+browser-based PDF rendering vào API container `384m`. PDF **12.72 MB** không đồng
+nghĩa chỉ cần từng đó RAM để tạo file; phải đánh giá chất lượng in, quyền sử dụng
+tài liệu, bộ nhớ, thời gian và dung lượng trước khi chọn kiến trúc.
+
 ## 2. Source of truth
 
 Khi có mâu thuẫn về business hoặc API, ưu tiên:

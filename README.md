@@ -8,6 +8,10 @@ liệu vẫn được bảo toàn. Developer/agent đọc [AGENTS.md](AGENTS.md)
 quy định commit và chính sách kiểm thử; trạng thái chi tiết nằm trong
 [implementation status](docs/implementation/status.md).
 
+Production chạy trên VPS Linux tài nguyên giới hạn. Mọi agent phải tuân thủ
+[resource constraints trong AGENTS.md](AGENTS.md#production-resource-constraints)
+và xem chi tiết tại [production resource budget](docs/operations/production.md#production-vps-capacity-and-resource-budget).
+
 ## Cấu trúc
 
 - `client/`: React + Vite + MUI, gồm trang public và trang quản trị.

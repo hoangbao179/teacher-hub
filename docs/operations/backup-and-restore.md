@@ -95,8 +95,10 @@ ghi migration record sau cùng; không tự restore backup hoặc rollback dữ 
 
 ## Checklist đo dung lượng máy nhỏ
 
-Không coi cấu hình 1 GB RAM là đã được chứng minh nếu chưa đo trên đúng image và
-dữ liệu đại diện. Trước production, ghi lại:
+VPS hiện tại có 1.5 GB RAM tổng theo chủ dự án xác nhận; đây không phải số đo RAM
+còn trống. Không coi cấu hình này là đã được chứng minh đủ tải nếu chưa đo trên
+đúng image và dữ liệu đại diện. Xem [production resource budget](production.md#production-vps-capacity-and-resource-budget).
+Trước production, ghi lại:
 
 - `docker stats` khi idle và trong một phiên sử dụng thông thường;
 - đỉnh RAM của API khi xuất Excel lớn đại diện;
@@ -104,6 +106,6 @@ dữ liệu đại diện. Trước production, ghi lại:
 - `docker system df`, dung lượng filesystem và tốc độ tăng volume MySQL cùng
   `vocabulary-media` khi V20 enable;
 - dung lượng log theo ngày và chính sách rotate/cap cho Docker/Nginx/API;
-- swap đã bật hay chưa (khuyến nghị một lượng swap nhỏ có giám sát trên VPS 1 GB,
+- swap đã bật hay chưa (khuyến nghị một lượng swap nhỏ có giám sát trên VPS 1.5 GB,
   không dùng swap để che thiếu RAM kéo dài);
 - headroom sau phép đo, cảnh báo disk/RAM và ngưỡng nâng cấu hình.

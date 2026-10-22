@@ -6,6 +6,114 @@ MySQL. GitHub Actions kiểm tra source, build hai image, đẩy lên GHCR, sinh
 không cần source, Node.js hoặc npm; mỗi lần deploy chỉ nhận `.env` mới,
 `docker-compose.deploy.yml`, `Caddyfile`, `deploy-production.sh` và `deploy-env.sh`.
 
+## Production VPS capacity and resource budget
+
+### Host resources
+
+Cấu hình do chủ dự án xác nhận: VPS Ubuntu/Linux, **1.5 GB RAM tổng, 1 vCPU,
+15 GB SSD tổng**, chạy Docker Compose. MySQL, API, Web/Nginx và Caddy cùng dùng
+tài nguyên host. Đây không phải số đo tài nguyên thực tế: chưa thể suy ra RAM
+còn trống, disk còn trống hoặc swap đã bật.
+
+### CI/CD architecture
+
+Theo [CI workflow](../../.github/workflows/ci.yml) và
+[deploy workflow](../../.github/workflows/deploy.yml), GitHub Actions chạy quality
+checks trên runner rồi build API/Web bằng [Dockerfile.api](../../Dockerfile.api)
+và [Dockerfile.web](../../Dockerfile.web), đẩy image lên GHCR. VPS nhận deployment
+files qua SSH, pull image theo full commit SHA và chạy bằng Compose; pipeline
+hiện tại không build source/frontend/backend trên VPS production.
+
+### Container constraints
+
+Giới hạn hiện tại trong [docker-compose.deploy.yml](../../docker-compose.deploy.yml):
+
+| Thành phần | Giới hạn cấu hình |
+| --- | --- |
+| MySQL | `mem_limit: 512m` |
+| API | `mem_limit: 384m` |
+| Web/Nginx | `mem_limit: 96m` |
+| Caddy | `mem_limit: 96m` |
+| Node API heap (V8 old space) | `--max-old-space-size=256` (256 MiB) |
+
+Container memory limit không phải RAM reservation. Không cộng các giới hạn rồi
+kết luận đó là RAM đang sử dụng hoặc lấy hiệu với RAM tổng để báo RAM còn trống.
+Node heap limit chỉ giới hạn V8 old space, không phải toàn bộ bộ nhớ tiến trình;
+buffer, native allocations và tiến trình con vẫn phải nằm trong giới hạn container.
+Phải chừa tài nguyên cho kernel, Docker daemon, filesystem cache và tiến trình
+hệ thống. Swap không thay thế RAM vật lý; cần đọc trạng thái thực tế thay vì giả
+định đã bật từ hướng dẫn bootstrap.
+
+### SSD / deployment
+
+15 GB là toàn bộ SSD, không phải dung lượng riêng cho file người dùng. Phải tính
+OS, Docker images/layers, volumes, MySQL, logs, backup, temporary files và khoảng
+trống cho deployment, kể cả khi image cũ và mới cùng tồn tại.
+
+[Deploy script](../../scripts/deploy-production.sh) hiện yêu cầu tối thiểu **1 GiB
+trống (1.048.576 KiB) và 10.000 inode trống** trên filesystem chứa
+`/opt/teacher-hub`, sau cleanup trước deploy. Đây là điều kiện tối thiểu để tiếp
+tục deploy, không chứng minh còn đủ dung lượng cho mọi workload.
+
+Giữ nguyên image cleanup, backup, rollback và log rotation hiện hành: cleanup
+trước deploy giữ SHA active; sau readiness giữ SHA mới và SHA active trước đó cho
+API/Web, prune dangling images và áp dụng retention backup pre-migration 14 ngày.
+Compose dùng Docker `json-file` với `max-size: "10m"`, `max-file: "3"` cho từng
+service. Chính sách recovery set/backup ngoài host tiếp tục theo
+[backup and restore](backup-and-restore.md).
+Không tự điều chỉnh retention hoặc disk threshold; không dùng
+`docker system prune --volumes` hay lệnh cleanup có nguy cơ xóa dữ liệu.
+
+### Heavy processing policy
+
+- Không mặc định kết quả local áp dụng được cho VPS. Không tự thêm headless
+  Chromium, Playwright worker, LibreOffice, OCR hoặc tác vụ ảnh/PDF nặng vào API
+  container hiện tại; không chạy xử lý vượt giới hạn bộ nhớ trong container này.
+- Tác vụ CPU-bound hoặc memory-intensive đồng bộ trong request API phải được
+  benchmark trên cấu hình phù hợp trước. Đo peak memory, CPU, wall time, temporary
+  disk và concurrency bằng dữ liệu đại diện, xét cả MySQL/API/Web/Caddy đang hoạt
+  động cùng overhead hệ thống. Ghi rõ đâu là số đo, đâu là ước tính; không báo
+  production-ready khi chưa kiểm chứng.
+- Đánh giá browser, streaming, chunking, queue hoặc worker bên ngoài; nếu không
+  đủ tài nguyên, đề xuất cách xử lý nhẹ hơn hoặc worker bên ngoài. Không mặc định
+  browser truy cập được nội dung cross-origin; phải kiểm tra quyền truy cập/CORS.
+  Queue trên cùng host vẫn tiêu thụ tài nguyên; Compose hỗ trợ thêm container
+  không chứng minh VPS đủ sức chạy thêm service. Tính ngân sách cả hệ thống.
+- Không lưu lâu dài PDF/ảnh tạm không cần thiết; phải tính vòng đời và cleanup.
+  Không đưa file khách hàng hoặc tài liệu riêng tư vào logs, artifacts hay repository.
+- Không tự tăng giới hạn RAM, đổi Docker image, bật swap hoặc chỉnh VPS để một
+  tính năng chạy được. Thay đổi kiến trúc, deployment hoặc nâng VPS phải báo chi
+  phí, tác động và xin người dùng duyệt trước.
+
+Với **Teacher Tools PDF**, PoC local do chủ dự án cung cấp ghi nhận
+Playwright/Chromium có thể dùng khoảng **1.4 GiB RAM ở gần 300 DPI trên Windows**.
+Đây là quan sát local, không phải benchmark Linux production hoặc số đo của VPS.
+Không đưa browser-based PDF rendering vào API container `384m`. File PDF
+**12.72 MB** không có nghĩa chỉ cần 12.72 MB RAM để tạo ra file. Phải đánh giá
+chất lượng in, quyền sử dụng tài liệu, bộ nhớ, thời gian và dung lượng trước khi
+chọn kiến trúc.
+
+### Operational monitoring
+
+Các lệnh chỉ đọc sau dành cho operator chạy trên host khi cần đo thực trạng;
+task tài liệu không SSH vào production hoặc tự chạy chúng:
+
+```bash
+free -h
+swapon --show
+df -h
+df -i
+docker stats --no-stream
+docker system df
+```
+
+`swapon --show` chỉ đọc trạng thái swap, không kích hoạt hay thay đổi swap. Ghi
+nhận tài nguyên khi idle và dưới tải đại diện (kể cả backup/deploy), không chỉ
+dựa vào một snapshot để kết luận đủ công suất. Theo dõi thêm peak memory, CPU,
+wall time, temporary disk và concurrency của tác vụ nặng; dùng
+[checklist đo dung lượng máy nhỏ](backup-and-restore.md#checklist-đo-dung-lượng-máy-nhỏ)
+cho backup/restore. Không ghi secret hoặc nội dung tài liệu riêng tư vào kết quả đo.
+
 ## GitHub configuration
 
 Tạo environment `production`. Tạo các Repository Secrets bắt buộc sau:
@@ -57,8 +165,9 @@ rồi deploy để build Web image mới.
    `~deploy/.ssh/authorized_keys`, rồi cấp quyền Docker. Giữ đăng nhập root hiện tại
    cho đến khi đã thử key ở một terminal khác.
 2. Cài Docker Engine và Docker Compose plugin từ repository chính thức của Docker.
-3. Tạo 1 GB swap, bật firewall cho SSH, TCP 80/443 và UDP 443. Nếu SSH không dùng port
-   22, mở `PROD_PORT` thay cho 22 trước khi bật firewall.
+3. Kiểm tra swap hiện có; chỉ tạo 1 GB swap nếu chưa có và đã được chủ dự án duyệt
+   theo resource policy. Bật firewall cho SSH, TCP 80/443 và UDP 443. Nếu SSH không
+   dùng port 22, mở `PROD_PORT` thay cho 22 trước khi bật firewall.
 4. Tạo thư mục và trao quyền cho user deploy:
 
    ```bash
@@ -82,7 +191,9 @@ rồi deploy để build Web image mới.
 7. Tạo DNS Cloudflare: bản ghi apex trỏ tới VPS và `www` trỏ về apex. Đặt SSL/TLS mode
    `Full (strict)`. Caddy tự xin/gia hạn certificate; không copy certificate vào repo.
 
-Ví dụ tạo swap lần đầu:
+Hướng dẫn bootstrap bên dưới không xác nhận VPS hiện tại đã bật swap. Operator
+phải kiểm tra bằng `swapon --show`; chỉ tạo swap lần đầu sau khi chủ dự án duyệt
+chi phí/tác động theo resource policy ở trên:
 
 ```bash
 sudo fallocate -l 1G /swapfile
