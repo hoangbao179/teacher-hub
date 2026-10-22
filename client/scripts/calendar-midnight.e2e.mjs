@@ -3,7 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { chromium } from "@playwright/test";
+import { LEGACY_ADMIN_ENABLED } from "../src/config/featureAvailability.ts";
 import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
+
+if (!LEGACY_ADMIN_ENABLED) {
+  console.log("SKIP legacy calendar midnight E2E: Dashboard/calendar UI is disabled. Run test:e2e:tools for the active entry flow.");
+  process.exit(0);
+}
 
 const root = path.resolve(import.meta.dirname, "../..");
 const clientRoot = path.join(root, "client");

@@ -1,9 +1,15 @@
-/* global process, fetch, setTimeout, document, localStorage, window, URL */
+/* global process, fetch, setTimeout, document, localStorage, window, URL, console */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "@playwright/test";
+import { LEGACY_ADMIN_ENABLED } from "../src/config/featureAvailability.ts";
 import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
+
+if (!LEGACY_ADMIN_ENABLED) {
+  console.log("SKIP legacy calendar mobile E2E: calendar management UI is disabled. Run test:e2e:tools for the active entry flow.");
+  process.exit(0);
+}
 
 const root = path.resolve(import.meta.dirname, "../..");
 const artifactPolicy = createArtifactPolicy(root, "calendar-mobile-ui", {});
