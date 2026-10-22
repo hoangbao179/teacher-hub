@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium } from "@playwright/test";
+import { LEGACY_ADMIN_ENABLED } from "../src/config/featureAvailability.ts";
 import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
@@ -13,6 +14,8 @@ dotenv.config({ path: path.join(root, "server/.env") });
 const apiPort = 4108;
 const webPort = 5188;
 const origin = `http://127.0.0.1:${webPort}`;
+const landingPath = LEGACY_ADMIN_ENABLED ? "/admin" : "/admin/tools";
+const landingTestId = LEGACY_ADMIN_ENABLED ? "dashboard-page" : "teacher-tools-page";
 const username = "covy";
 const bootstrapE2ePassword = "auth-e2e-password-123";
 const password = "v12c42";
@@ -66,11 +69,16 @@ function assert(condition, message) {
 }
 
 async function logoutThroughAccountMenu(page) {
+  if (!LEGACY_ADMIN_ENABLED) {
+    await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
+    return;
+  }
   await page.getByRole("button", { name: "Mở menu tài khoản" }).click();
   await page.getByRole("menuitem", { name: "Đăng xuất", exact: true }).click();
 }
 
 async function logoutThroughAccountPage(page) {
+  if (!LEGACY_ADMIN_ENABLED) return logoutThroughAccountMenu(page);
   await page.getByRole("button", { name: "Mở menu tài khoản" }).click();
   await page.getByRole("menuitem", { name: "Tài khoản", exact: true }).click();
   await page.waitForURL(`${origin}/admin/account`);
@@ -100,8 +108,8 @@ async function login(page, remember) {
   const checkbox = page.getByRole("checkbox", { name: "Ghi nhớ đăng nhập" });
   if ((await checkbox.isChecked()) !== remember) await checkbox.click();
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-  await page.waitForURL(`${origin}/admin`);
-  await page.locator('[data-testid="dashboard-page"]').waitFor();
+  await page.waitForURL(`${origin}${landingPath}`);
+  await page.getByTestId(landingTestId).waitFor();
 }
 
 try {
@@ -166,11 +174,11 @@ try {
   await assertNoPasswordPersisted(page, context);
 
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForURL(`${origin}/admin`);
-  await page.locator('[data-testid="dashboard-page"]').waitFor();
+  await page.waitForURL(`${origin}${landingPath}`);
+  await page.getByTestId(landingTestId).waitFor();
   await page.goto(`${origin}/admin/login`);
-  await page.waitForURL(`${origin}/admin`);
-  await page.locator('[data-testid="dashboard-page"]').waitFor();
+  await page.waitForURL(`${origin}${landingPath}`);
+  await page.getByTestId(landingTestId).waitFor();
 
   await logoutThroughAccountPage(page);
   await page.waitForURL(`${origin}/admin/login`);
@@ -195,11 +203,11 @@ try {
   await assertNoPasswordPersisted(page, context);
 
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForURL(`${origin}/admin`);
-  await page.locator('[data-testid="dashboard-page"]').waitFor();
+  await page.waitForURL(`${origin}${landingPath}`);
+  await page.getByTestId(landingTestId).waitFor();
   await page.goto(`${origin}/admin/login`);
-  await page.waitForURL(`${origin}/admin`);
-  await page.locator('[data-testid="dashboard-page"]').waitFor();
+  await page.waitForURL(`${origin}${landingPath}`);
+  await page.getByTestId(landingTestId).waitFor();
 
   const freshPage = await context.newPage();
   await freshPage.goto(`${origin}/admin`, { waitUntil: "networkidle" });
@@ -242,8 +250,8 @@ try {
   assert(await blockedSubmit.isEnabled(), "Submit did not automatically re-enable after Retry-After");
   await passwordInput.fill(password);
   await blockedSubmit.click();
-  await page.waitForURL(`${origin}/admin`);
-  await page.locator('[data-testid="dashboard-page"]').waitFor();
+  await page.waitForURL(`${origin}${landingPath}`);
+  await page.getByTestId(landingTestId).waitFor();
   await assertNoPasswordPersisted(page, context);
   await logoutThroughAccountMenu(page);
   await page.waitForURL(`${origin}/admin/login`);

@@ -202,8 +202,8 @@ try {
   assert(await header.getByRole("link", { name: "Góc học", exact: true }).count() === 0, "Learning link must stay out of the Homepage Header");
   assert(await header.getByRole("link", { name: "Tủ sách", exact: true }).count() === 0, "Books link must stay out of the Homepage Header");
   assert(await header.getByRole("link", { name: "Liên hệ", exact: true }).isVisible(), "Mobile Contact link is missing");
-  assert(await header.getByRole("link", { name: "Quản trị", exact: true }).isVisible(), "Mobile Admin text link is missing");
-  assert(await page.getByTestId("header-admin").count() === 1, "Admin link must exist only once in the Header");
+  assert(await header.getByRole("link", { name: "Công cụ", exact: true }).isVisible(), "Mobile Tools button is missing");
+  assert(await page.getByTestId("header-tools").count() === 1, "Tools link must exist only once in the Header");
   assert(await page.getByRole("heading", { level: 2, name: "Video học tiếng Anh tham khảo", exact: true }).count() === 0, "Old video heading remains");
 
   const hero = page.locator("section").filter({ has: page.locator("#hero-heading") }).first();
@@ -341,7 +341,7 @@ try {
       const brand = document.querySelector('[data-testid="header-brand"]');
       const linkCandidates = [
         document.querySelector('[data-testid="header-contact"]'),
-        document.querySelector('[data-testid="header-admin"]'),
+        document.querySelector('[data-testid="header-tools"]'),
       ].filter(Boolean);
       const links = linkCandidates.filter((item) => item.getBoundingClientRect().width > 0);
       const items = [logo, brand, ...links].filter((item) => item && item.getBoundingClientRect().width > 0).map((item) => item.getBoundingClientRect());
@@ -381,14 +381,15 @@ try {
     assert(metrics.brandScrollWidth <= metrics.brandClientWidth, `Header brand is truncated at ${viewport.width}px`);
     assert(metrics.brandTextOverflow !== "ellipsis", `Header brand uses ellipsis at ${viewport.width}px`);
     assert(metrics.linkMetrics.every((link) => link.whiteSpace === "nowrap"), `Header link wraps at ${viewport.width}px`);
-    assert(new Set(metrics.linkColors).size === 1, `Contact and Admin colors differ at ${viewport.width}px`);
-    assert(metrics.linkBackgroundColors.every((color) => color === "rgba(0, 0, 0, 0)"), `Header text link has a background at ${viewport.width}px`);
+    assert(metrics.linkColors[0] !== metrics.linkColors[1], `Tools button must remain distinct from Contact at ${viewport.width}px`);
+    assert(metrics.linkBackgroundColors[0] === "rgba(0, 0, 0, 0)", `Contact link has a background at ${viewport.width}px`);
+    assert(metrics.linkBackgroundColors[1] !== "rgba(0, 0, 0, 0)", `Tools button has no background at ${viewport.width}px`);
     if (viewport.width <= 430) {
       assert(Math.abs(metrics.logoWidth - 28) <= 1, `Mobile header logo must be 28px at ${viewport.width}px`);
       assert(metrics.brandDisplay === "none", `Mobile header brand text remains at ${viewport.width}px`);
       assert(metrics.linkMetrics.every((link) => link.height >= 44), `Mobile header touch target is too short at ${viewport.width}px`);
       assert(await page.getByTestId("header-contact").isVisible(), `Mobile Contact link is missing at ${viewport.width}px`);
-      assert(await page.getByTestId("header-admin").isVisible(), `Mobile Admin text link is missing at ${viewport.width}px`);
+      assert(await page.getByTestId("header-tools").isVisible(), `Mobile Tools button is missing at ${viewport.width}px`);
     } else {
       assert(Math.abs(metrics.logoWidth - 32) <= 1, `Header logo must remain 32px at ${viewport.width}px`);
       assert(metrics.brandDisplay !== "none", `Desktop header brand is hidden at ${viewport.width}px`);
