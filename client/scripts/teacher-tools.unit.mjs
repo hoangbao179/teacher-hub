@@ -32,9 +32,22 @@ test("tools screen replaces the legacy management entry points", () => {
   assert.match(flags, /LEGACY_ADMIN_ENABLED: boolean = false/);
   assert.match(app, /path="\/admin\/tools" element=\{<TeacherToolsPage \/>\}/);
   assert.match(app, /location\.pathname !== "\/admin\/tools"/);
-  assert.match(header, /to="\/admin\/tools" data-testid="header-tools"/);
+  assert.match(header, /to="\/tools" data-testid="header-tools"/);
+  assert.match(app, /path="\/tools" element=\{<PublicToolsPage \/>\}/);
+  assert(app.indexOf('path="/tools"') < app.indexOf('<Route element={<AdminAuthBoundary />}'), "Public Tools must be outside auth boundaries");
   assert.doesNotMatch(header, /data-testid="header-admin"/);
   assert.match(login, /: "\/admin\/tools"/);
+});
+
+test("public tools is informational and has its own static entry and metadata", () => {
+  const page = read("src/pages/PublicToolsPage.tsx");
+  assert.match(page, /Góc công cụ/);
+  assert.match(page, /Đang nghiên cứu/);
+  assert.match(page, /Công cụ chưa sẵn sàng sử dụng/);
+  assert.match(page, /component="main"/);
+  assert.doesNotMatch(page, /useAuth|AuthProvider|logout|fetch\(|<input|<TextField|<form/);
+  assert.match(read("scripts/prerender-home.mjs"), /"tools", "index.html"/);
+  assert.match(read("src/components/RouteMetadata.tsx"), /pathname === "\/tools"/);
 });
 
 test("tools page is mobile-first, accessible and does not advertise a fake download action", () => {

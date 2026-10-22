@@ -27,7 +27,7 @@ async function checkLayout(page, width) {
   await page.evaluate(() => document.fonts.ready);
   const layout = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    controls: [...document.querySelectorAll("header a, [data-testid=teacher-tools-page] a, [data-testid=teacher-tools-page] button")]
+    controls: [...document.querySelectorAll("header a, [data-testid=teacher-tools-page] a, [data-testid=teacher-tools-page] button, [data-testid=public-tools-page] a")]
       .filter((element) => element.getBoundingClientRect().width > 0)
       .map((element) => {
         const rect = element.getBoundingClientRect();
@@ -72,7 +72,28 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(origin, { waitUntil: "networkidle" });
   await page.getByTestId("header-tools").click();
-  await page.waitForURL(`${origin}/admin/login`);
+  await page.waitForURL(`${origin}/tools`);
+  await page.getByTestId("public-tools-page").waitFor();
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByTestId("public-tools-page").waitFor();
+  assert.equal(await page.getByRole("button", { name: "Đăng xuất" }).count(), 0);
+  assert.equal(await page.locator("input, form, .MuiDrawer-root, .MuiBottomNavigation-root").count(), 0);
+  assert.match(await page.title(), /Góc công cụ của cô Vy/);
+  assert.equal(await page.locator('link[rel="canonical"]').getAttribute("href"), "https://tienganhcovy.com/tools");
+  assert.equal(await page.locator("#public-home-structured-data").count(), 0);
+  assert.equal(calls.length, 0, "Public Tools requested auth data");
+  for (const width of [360, 375, 390, 393, 400, 412, 430, 768, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    await checkLayout(page, width);
+    if (width === 360 || width === 1440) await page.screenshot({ path: path.join(policy.runDir, `public-tools-${width}.png`), fullPage: true });
+  }
+  for (const [name, route] of [["Góc học miễn phí", "/hoc"], ["Tủ sách tiếng Anh", "/sach"]]) {
+    await page.getByRole("link", { name: new RegExp(name) }).click();
+    await page.waitForURL(`${origin}${route}`);
+    await page.getByTestId("header-tools").click();
+    await page.waitForURL(`${origin}/tools`);
+    await page.getByTestId("public-tools-page").waitFor();
+  }
   for (const route of [...legacyRoutes, "/admin/tools"]) {
     await page.goto(`${origin}${route}`);
     await page.waitForURL(`${origin}/admin/login`);
@@ -103,13 +124,15 @@ try {
       await checkLayout(page, width);
       if (width === 360 || width === 1440) await page.screenshot({ path: path.join(policy.runDir, `public-${pathname === "/" ? "home" : pathname.slice(1)}-${width}.png`), fullPage: true });
       await page.getByTestId("header-tools").click();
-      await page.waitForURL(`${origin}/admin/tools`);
-      await page.getByTestId("teacher-tools-page").waitFor();
+      await page.waitForURL(`${origin}/tools`);
+      await page.getByTestId("public-tools-page").waitFor();
       await checkLayout(page, width);
-      await page.getByText("Tính năng này đang được chuẩn bị.", { exact: false }).waitFor();
-      assert.equal(await page.getByRole("button").count(), 1, "Tools exposes an unexpected action");
+      await page.getByText("Công cụ chưa sẵn sàng sử dụng.", { exact: false }).waitFor();
+      assert.equal(await page.getByRole("button").count(), 0, "Public Tools exposes an unexpected action");
       if (pathname === "/" && (width === 360 || width === 1440)) await page.screenshot({ path: path.join(policy.runDir, `tools-${width}.png`), fullPage: true });
     }
+    await page.goto(`${origin}/admin/tools`);
+    await page.getByTestId("teacher-tools-page").waitFor();
     await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
     await page.waitForURL(`${origin}/admin/login`);
     await checkLayout(page, width);
@@ -122,6 +145,9 @@ try {
   await page.getByRole("link", { name: "Trang chủ", exact: true }).click();
   await page.waitForURL(`${origin}/`);
   await page.getByTestId("header-tools").click();
+  await page.waitForURL(`${origin}/tools`);
+  await page.getByTestId("public-tools-page").waitFor();
+  await page.goto(`${origin}/admin/tools`);
   await page.getByTestId("teacher-tools-page").waitFor();
   await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
   await page.waitForURL(`${origin}/admin/login`);
@@ -146,7 +172,7 @@ try {
   assert(calls.every((pathname) => pathname.startsWith("/api/auth/")), "Legacy page requested business data");
   assert.deepEqual(errors, []);
   passed = true;
-  console.log("Teacher Tools browser smoke passed: guest/login/refresh/legacy redirects/logout; 360, 375, 390, 430, 1440px. Auth API mocked; no backend verification.");
+  console.log("Teacher Tools browser smoke passed: public tools/reload/navigation, protected admin/login/refresh/redirects/logout; mobile/tablet/desktop. Auth API mocked; no backend verification.");
 } finally {
   await finalizePlaywrightArtifacts(browser, policy, passed);
   if (browser) await browser.close();

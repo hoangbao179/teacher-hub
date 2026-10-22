@@ -4,6 +4,7 @@ import { publicHomeContent, publicHomeStructuredData } from "../content/publicHo
 import { learningRouteMetadata } from "../features/learning/seo/learningMetadata";
 import { bookRouteMetadata } from "../features/books/seo/bookMetadata";
 import { VOCABULARY_GAMES_ENABLED } from "../config/featureAvailability";
+import { publicToolsMetadata } from "../content/publicTools";
 
 function setMeta(name: string, value: string, property = false) {
   const attribute = property ? "property" : "name";
@@ -41,6 +42,20 @@ export function RouteMetadata() {
       script.setAttribute("type", "application/ld+json");
       script.textContent = JSON.stringify(publicHomeStructuredData);
       if (!structuredData) document.head.append(script);
+      return;
+    }
+
+    if (pathname === "/tools" || pathname === "/tools/") {
+      const metadata = publicToolsMetadata;
+      document.title = metadata.title;
+      setMeta("description", metadata.description);
+      setMeta("robots", metadata.robots);
+      setCanonical(metadata.canonical);
+      setMeta("og:title", metadata.title, true);
+      setMeta("og:description", metadata.description, true);
+      setMeta("og:url", metadata.canonical, true);
+      setMeta("og:type", "website", true);
+      structuredData?.remove();
       return;
     }
 

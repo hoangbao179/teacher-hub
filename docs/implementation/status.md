@@ -22,7 +22,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### ACTIVE — dùng thực tế
 
-- **Teacher Tools (giao diện mặc định)**: Trang công khai giữ nguyên; header có nút **Công cụ** dẫn tới `/admin/tools`, yêu cầu tài khoản giáo viên. Sau đăng nhập, cô vào trang công cụ mobile-first, không có sidebar hay bottom navigation quản trị. Module tải tài liệu từ liên kết mới chỉ hiển thị giới thiệu và trạng thái đang chuẩn bị, chưa có chức năng tải thực tế.
+- **Góc công cụ public**: Nút **Công cụ** trên public header dẫn thẳng tới `/tools`, không yêu cầu đăng nhập và không khởi tạo auth session. Trang mobile-first một cột có màu pastel, hoa lá trang trí, liên kết Trang chủ/Góc học/Tủ sách và giới thiệu công cụ PDF **đang nghiên cứu**; chưa có chức năng tải tài liệu hoặc action tải giả. Route có metadata riêng và HTML prerender tại `tools/index.html` để mở trực tiếp/reload với cấu hình static hosting hiện hành.
+- **Teacher Tools quản trị (giao diện mặc định sau đăng nhập)**: `/admin/tools` cùng toàn bộ `/admin/*` tiếp tục nằm trong auth boundary hiện hành. Khi legacy tắt, các route quản trị cũ chuyển về `/admin/tools` sau khi xác thực; khách vẫn được đưa tới `/admin/login`. Trang public `/tools` không thay thế màn đăng nhập hay trang công cụ quản trị.
 
 - **Lớp và học sinh**: quản lý lớp 1–1/lớp nhóm, học sinh, enrollment, khoảng hiệu
   lực, chuyển lớp, tạm dừng/ngừng học và lịch sử bất biến.
@@ -85,7 +86,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 - **Giao diện quản trị cũ**: `LEGACY_ADMIN_ENABLED = false` tạm ngừng truy cập tất cả màn quản lý lớp, học sinh, lịch, học phí, kho từ và giao bài ở frontend; điều hướng về `/admin/tools`. Toàn bộ source, API và dữ liệu giữ nguyên, không thực hiện xóa hay di chuyển dữ liệu. Các feature được liệt kê ACTIVE/ADVANCED phía trên phản ánh trạng thái implementation lưu lại, không phải các màn còn được truy cập trong UI mặc định.
 
   Regression hiện hành: `npm -w client run test:e2e:tools` chạy frontend thật với API auth
-  giả lập, không cần database; kiểm tra guest/login, refresh cả hai chế độ ghi nhớ,
+  giả lập, không cần database; kiểm tra public `/tools`/reload/navigation/metadata, guest/login, refresh cả hai chế độ ghi nhớ,
   session hết hạn, redirect route cũ, Trang chủ/Đăng xuất và overflow/touch target ở
   360/375/390/430/1440 px trên `/`, `/hoc`, `/sach` và Tools. Test này không xác minh
   backend auth. `auth-session.e2e.mjs` dùng landing page theo feature flag và nút đăng

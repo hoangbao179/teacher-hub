@@ -2,6 +2,8 @@ import { CssBaseline, ThemeProvider } from "@mui/material";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HomePage } from "./pages/HomePage";
+import { PublicToolsPage } from "./pages/PublicToolsPage";
+export { publicToolsMetadata } from "./content/publicTools";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { LearningHubPage } from "./features/learning/pages/LearningHubPage";
 import { LearningLevelPage } from "./features/learning/pages/LearningLevelPage";
@@ -33,6 +35,10 @@ export function renderNotFoundPage() {
       </MemoryRouter>
     </ThemeProvider>,
   );
+}
+
+export function renderPublicToolsPage() {
+  return renderToString(<ThemeProvider theme={theme}><CssBaseline /><MemoryRouter initialEntries={["/tools"]}><PublicToolsPage /></MemoryRouter></ThemeProvider>);
 }
 
 export const stableLearningRoutes = [

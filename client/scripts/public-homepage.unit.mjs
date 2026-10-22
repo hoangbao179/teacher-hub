@@ -26,7 +26,7 @@ test("public navigation and Homepage hero expose the new entry points without du
   assert.doesNotMatch(publicHeaderSource, /data-testid="header-home"/);
   assert.doesNotMatch(publicHeaderSource, /header-about|AccountCircleOutlined|header-admin-mobile/);
   assert.match(publicHeaderSource, /disableRipple component="a" href="#contact"/);
-  assert.match(publicHeaderSource, /to="\/admin\/tools" data-testid="header-tools"/);
+  assert.match(publicHeaderSource, /to="\/tools" data-testid="header-tools"/);
   assert.doesNotMatch(publicHeaderSource, /data-testid="header-admin"/);
   assert.match(homepageSource, /data-testid="homepage-hero-learning"/);
   assert.match(homepageSource, /data-testid="homepage-hero-books"/);

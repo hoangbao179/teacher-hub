@@ -204,6 +204,20 @@ try {
   assert(await header.getByRole("link", { name: "Liên hệ", exact: true }).isVisible(), "Mobile Contact link is missing");
   assert(await header.getByRole("link", { name: "Công cụ", exact: true }).isVisible(), "Mobile Tools button is missing");
   assert(await page.getByTestId("header-tools").count() === 1, "Tools link must exist only once in the Header");
+  assert(await page.getByTestId("header-tools").getAttribute("href") === "/tools", "Tools must link directly to the public route");
+  await page.getByTestId("header-tools").click();
+  await page.waitForURL(`${origin}/tools`);
+  await page.getByTestId("public-tools-page").waitFor();
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByTestId("public-tools-page").waitFor();
+  assert(await page.getByRole("button", { name: "Đăng xuất" }).count() === 0, "Guest Tools shows logout");
+  assert((await page.title()).includes("Góc công cụ của cô Vy"), "Tools metadata is missing");
+  const toolsSource = await (await fetch(`${origin}/tools/index.html`)).text();
+  assert(toolsSource.includes('data-testid="public-tools-page"'), "Built Tools entry is missing; direct production requests would fail");
+  assert(!toolsSource.includes("public-home-structured-data"), "Tools retained Homepage JSON-LD");
+  await page.getByRole("link", { name: "Trang chủ", exact: true }).click();
+  await page.waitForURL(`${origin}/`);
+  await page.getByTestId("homepage-hero-learning").waitFor();
   assert(await page.getByRole("heading", { level: 2, name: "Video học tiếng Anh tham khảo", exact: true }).count() === 0, "Old video heading remains");
 
   const hero = page.locator("section").filter({ has: page.locator("#hero-heading") }).first();
