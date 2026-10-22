@@ -91,6 +91,11 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   backend auth. `auth-session.e2e.mjs` dùng landing page theo feature flag và nút đăng
   xuất Tools. `browser-smoke.mjs` và `mobile-navigation.e2e.mjs` báo SKIP khi legacy tắt;
   coverage của các luồng CRUD/navigation cũ chỉ chạy khi bật lại giao diện cũ.
+  Ba suite trong `test:e2e:schedule` (`calendar-midnight`, `calendar-mobile-ui`,
+  `schedule-operations`) cũng báo SKIP trước khi khởi động browser/database khi
+  legacy tắt: chúng kiểm tra Dashboard/Calendar đang bị chuyển hướng về Tools.
+  Khi bật lại feature flag, các suite này tự chạy đầy đủ. Unit test lịch, ngày
+  chuyển ngày và server integration vẫn chạy độc lập với trạng thái giao diện.
   Suite smoke mặc định chỉ gồm Tools, Homepage và auth session; các suite E2E
   quản trị nghiệp vụ còn lại cần giao diện legacy, không dùng để xác minh Tools.
 
