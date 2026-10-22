@@ -8,6 +8,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { LEGACY_ADMIN_ENABLED, VOCABULARY_GAMES_ENABLED } from "./config/featureAvailability";
 
 const TeacherToolsPage = lazy(() => import("./pages/TeacherToolsPage").then((module) => ({ default: module.TeacherToolsPage })));
+const PublicToolsPage = lazy(() => import("./pages/PublicToolsPage").then((module) => ({ default: module.PublicToolsPage })));
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })));
 const LoginPage = lazy(() => import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })));
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then((module) => ({ default: module.DashboardPage })));
@@ -78,6 +79,7 @@ export function App() {
       <RouteMetadata />
       <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/tools" element={<PublicToolsPage />} />
       <Route path="/hoc" element={<LearningHubPage />} />
       <Route path="/hoc/:levelSlug" element={<LearningLevelPage />} />
       <Route path="/hoc/:levelSlug/:unitSlug" element={<LearningUnitPage />} />
