@@ -59,6 +59,13 @@ for guard in GITHUB_REPOSITORY GITHUB_REF GITHUB_EVENT_NAME MODE CONFIRMATION GC
   fi
   test ! -s "$MOCK_LOG"
 done
+for ref in refs/tags/main refs/heads/main-extra main; do
+  : > "$MOCK_LOG"
+  if GITHUB_REF="$ref" bash scripts/deploy-pdf-worker.sh > "$tmpdir/output" 2>&1; then
+    echo "FAIL: non-main-branch ref accepted"; exit 1
+  fi
+  test ! -s "$MOCK_LOG"
+done
 for failure in list-fails public authenticated-public build-fails smoke-fails bad-digest iam-disabled iam-denied new-service deploy-fails; do
   : > "$MOCK_LOG"
   if MOCK_CASE="$failure" bash scripts/deploy-pdf-worker.sh > "$tmpdir/output" 2>&1; then

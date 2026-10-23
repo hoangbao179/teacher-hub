@@ -271,12 +271,41 @@ deployments use the existing checked workflow; IAM remains operator-controlled.
 Official endpoint documentation requires Actions read for both
 [environment GET](https://docs.github.com/en/rest/deployments/environments#get-an-environment)
 and [branch policy LIST](https://docs.github.com/en/rest/deployments/branch-policies#list-deployment-branch-policies).
-Examples may omit `can_admins_bypass` or branch `type`. The validator deliberately
-does not interpret an omitted field as secure: require explicit bypass=false and
-type=branch. Missing fields, malformed response, 403/404 and transport errors block
-WIF. Confirm the live response before declaring readiness; never relax checks to
-work around an unsupported API/plan. API checks verify configuration, while GitHub
-environment protection performs the actual approval gate.
+The LIST response and [Octokit generated schema](https://github.com/octokit/openapi-types.ts/blob/main/packages/openapi-types/types.d.ts)
+do not guarantee branch `type`. Require exactly one array entry named `main` and
+`total_count === 1`; accept omitted `type`, but reject any explicit value other
+than `branch`. Require literal `custom_branch_policies === true`, explicit
+`can_admins_bypass === false`, nonempty valid reviewers and prevent-self-review.
+Missing security fields, malformed responses, 403/404/500 and transport errors
+block WIF. Never relax approval/bypass checks for an unsupported API/plan.
+
+An omitted policy type cannot prove whether a policy targets a branch or a tag;
+the operator must still confirm a branch policy in Settings. A tag named `main`
+has ref `refs/tags/main`: the job condition, validator run context and deploy
+script require exactly `refs/heads/main` and `workflow_dispatch`. The provider
+must independently enforce the numeric identity, ref, event and workflow_ref
+conditions above. Environment OIDC subject alone does not constrain branch/tag.
+These local guards do not verify actual provider configuration. API checks
+verify configuration; GitHub environment protection performs the approval gate.
+
+### Validator runtime and language
+
+Keep this small adapter CommonJS: `actions/github-script@v8` supplies `github`,
+`context` and a checkout-relative `require()`; the workflow calls the exported
+async function directly on Node 24. `.mjs` with dynamic import is possible but
+adds no benefit here and would require action-runtime verification. TypeScript
+would need a compatible execution/build mechanism; do not add one just for this
+adapter. A brief JSDoc describes its boundary; runtime schema guards and Node
+regressions cover untrusted responses. Adding checkJs solely here would require
+new type plumbing for the injected Octokit client, without replacing runtime
+validation. Revisit typed extraction if the module grows beyond this adapter.
+
+Application code remains TypeScript by default (strict client/server/shared
+configs). Shared emits ESM and CommonJS; server uses Node16 module resolution;
+client uses ESNext/Bundler. Root automation mostly uses `.mjs`, with `.cjs`
+adapters where needed. The standalone dependency-free health worker currently
+uses `.mjs` and Node syntax/tests, outside root workspaces. New worker business
+modules should use TypeScript; migration of the existing worker is separate.
 
 ## References
 

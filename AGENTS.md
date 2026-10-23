@@ -24,6 +24,16 @@ Node.js 24
 npm 12
 ```
 
+### Quy ước TypeScript
+
+- TypeScript là mặc định cho client, server, shared contracts, application code
+  mới và module nghiệp vụ mới trong worker.
+- JavaScript `.mjs`/`.cjs` được phép cho build, test, automation và adapter bên
+  thứ ba khi có lý do kỹ thuật; module JavaScript lớn phải giải thích lý do và
+  có kiểm thử phù hợp. Không phát triển nghiệp vụ phức tạp trong adapter nhỏ.
+- Không thêm compiler, dependency hoặc build step chỉ để đổi một adapter nhỏ
+  sang TypeScript; chỉ đổi định dạng khi chứng minh được lợi ích và tương thích.
+
 ### Production resource constraints
 
 Mọi task phát triển phải tính tới VPS Ubuntu/Linux dùng Docker Compose: **1.5 GB
