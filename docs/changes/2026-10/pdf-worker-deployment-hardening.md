@@ -14,12 +14,13 @@ Preserve existing private-service IAM; operator bootstraps and configures IAM se
 Pre/post checks reject disabled checking, public bindings and permission errors. Missing
 service fails before build. No Run Admin escalation. Environment reviewer/main-only
 protection is checked before WIF; API errors fail closed. Existing quality includes
-worker tests; no existing gate removed. Added shutdown and IAM/deploy failure coverage.
+worker tests; no existing gate removed. Environment validation is extracted into a tested CommonJS helper; worker job receives actions:read, required by both GitHub endpoints. Missing response fields fail closed. Runbook includes first bootstrap with operator identity, immutable digest and private-service verification. Added shutdown and IAM/deploy failure coverage.
 
 ## Verification
 Node syntax and 3 real process/HTTP tests passed; shutdown emits SIGTERM inside child
 for Windows compatibility (not proof of Linux OS signal delivery). Bash deployment
 regressions passed using mocked gcloud/docker. actionlint passed with ShellCheck disabled.
+Three environment regression tests also passed (safe fixture, API errors, unsafe/malformed responses); these mock GitHub API and do not establish live permissions.
 No cloud credentials, IAM inspection, WIF exchange, workflow dispatch or container build.
 Full app regression unnecessary: isolated worker and additive quality steps only.
 

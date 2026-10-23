@@ -47,7 +47,7 @@ permissions; this workflow neither enables APIs nor creates IAM bindings.
 | --- | --- |
 | Approved GitHub WIF principal | `roles/iam.workloadIdentityUser` on the deployer SA |
 | Deployer SA | `roles/artifactregistry.writer` on repository `teacher-pdf` (push and read image digest) |
-| Deployer SA | `roles/run.developer` on the dedicated project; existing-service update/get and getIamPolicy, no setIamPolicy
+| Deployer SA | `roles/run.developer` on the dedicated project; existing-service update/get and getIamPolicy, no setIamPolicy |
 | Deployer SA | `roles/iam.serviceAccountUser` on the runtime SA only (`iam.serviceAccounts.actAs`) |
 | Cloud Run service agent | Google-managed `roles/run.serviceAgent`; same-project image pull relies on this service agent, not runtime Storage privileges |
 | Runtime SA | No application data roles required for health-only; do not add Storage/Tasks/Admin roles now |
@@ -183,6 +183,100 @@ lifecycle rules in this step. Linux container smoke, WIF, real service IAM/healt
 regional quota and billing still require verification on the target infrastructure.
 PDF handling needs a new design/security/resource review and authorized fixtures;
 this foundation is not production approval for the PoC pipeline.
+
+## First bootstrap: operator only, after explicit approval
+
+These commands are a manual runbook, not a script invoked by CI. Use a reviewed,
+clean checkout and an operator identity approved for service creation/update,
+`run.services.getIamPolicy`/`setIamPolicy`, repository push and actAs on the runtime
+SA. Those bootstrap permissions belong to the operator, not the deployer. Confirm
+the project has billing/APIs enabled, the repository exists and service is absent.
+A permission/network error is not evidence of absence; stop and resolve it first.
+Review ancestor IAM for public invoker grants before creating the service.
+
+In Bash on an approved workstation with Linux Docker and gcloud, first build/test:
+
+```bash
+set -euo pipefail
+test -z "$(git status --porcelain)"
+BOOTSTRAP_SHA=$(git rev-parse HEAD)
+IMAGE="asia-southeast1-docker.pkg.dev/teacher-hub-pdf/teacher-pdf/teacher-pdf-worker:$BOOTSTRAP_SHA"
+npm --prefix workers/pdf test
+docker build --pull --platform linux/amd64 -t "$IMAGE" workers/pdf
+docker run -d --name pdf-bootstrap-smoke --cpus=1 --memory=2g --memory-swap=2g \
+  --read-only --cap-drop=ALL --security-opt=no-new-privileges "$IMAGE"
+docker exec pdf-bootstrap-smoke node --input-type=module -e 'const r=await fetch("http://localhost:8080/health"); if(r.status!==200 || (await r.json()).status!=="ok")process.exit(1)'
+docker stop --time=10 pdf-bootstrap-smoke
+test "$(docker inspect --format='{{.State.ExitCode}}' pdf-bootstrap-smoke)" = 0
+docker rm pdf-bootstrap-smoke
+```
+
+If the container/probe fails, stop; inspect sanitized errors and remove only the
+named smoke container. After successful smoke and owner approval, push and create:
+
+```bash
+gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+docker push "$IMAGE"
+DIGEST=$(gcloud artifacts docker images describe "$IMAGE" --project=teacher-hub-pdf --format='value(image_summary.digest)')
+[[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+gcloud run deploy teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 \
+  --image="${IMAGE%:*}@$DIGEST" \
+  --service-account=teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com \
+  --cpu=1 --memory=2Gi --concurrency=1 --min=0 --max=3 --min-instances=0 --max-instances=3 \
+  --no-cpu-boost --cpu-throttling --timeout=30 --port=8080 --ingress=all \
+  --invoker-iam-check --no-allow-unauthenticated \
+  --startup-probe='httpGet.path=/health,httpGet.port=8080,periodSeconds=5,timeoutSeconds=2,failureThreshold=3' --quiet
+gcloud run services add-iam-policy-binding teacher-pdf-worker \
+  --project=teacher-hub-pdf --region=asia-southeast1 \
+  --member=serviceAccount:teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com \
+  --role=roles/run.invoker
+gcloud run services describe teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 --format=json
+gcloud run services get-iam-policy teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 --format=json
+```
+
+Confirm the invoker-check-disabled annotation is absent or `false`, resource limits
+and runtime identity match, and service invoker binding contains only the named
+invoker SA. No `allUsers`/`allAuthenticatedUsers`, including inherited grants.
+Perform the anonymous 401/403 and impersonated 200 health tests above; any other
+status is a failed bootstrap. Preserve only sanitized config, digest and revision.
+Do not mark deployment ready merely because gcloud returned success.
+
+First-deploy failure has no prior revision to restore. Stop further dispatches,
+inspect the actual service state (creation may have partially succeeded), and ask
+the owner to approve either repair or deletion of this exact health-only service.
+Do not delete bucket/queue/repository or broaden deployer IAM. A pushed but unused
+digest is handled by the approved image retention policy. Subsequent application
+deployments use the existing checked workflow; IAM remains operator-controlled.
+
+## Console checklist and API contract
+
+- GitHub Settings → Environments → `pdf-worker`: independent reviewer, prevent
+  self-review, disable administrator bypass; selected branch policy `main` only,
+  no tag policy. Unsupported plan: keep workflow blocked and use the separately
+  approved operator path; typed confirmation is not equivalent protection.
+- GitHub Settings → Rulesets/Branches → `main`: require PR review and existing
+  quality/integration/E2E checks; prevent force push and bypass. Verify actual
+  check names on the repository before selecting required checks.
+- GitHub Variables: verify all four GCP values, provider numeric project number
+  and deployer email. Job uses `actions: read` for both environment GET and branch
+  policy LIST, `contents: read` for checkout, `id-token: write` for WIF only.
+- Google Cloud IAM → Workload Identity Federation: inspect issuer, attribute
+  mappings and condition covering numeric repository/owner IDs, main ref,
+  workflow_dispatch and exact workflow_ref as described above. Inspect the
+  deployer SA binding for the environment subject; do not grant the whole pool.
+- Google Cloud Run/IAM: operator performs approved bootstrap, inspects service and
+  inherited policies; deployer remains Run Developer + repository Writer + runtime
+  SA User. Verify WIF User separately. No service account key is needed.
+
+Official endpoint documentation requires Actions read for both
+[environment GET](https://docs.github.com/en/rest/deployments/environments#get-an-environment)
+and [branch policy LIST](https://docs.github.com/en/rest/deployments/branch-policies#list-deployment-branch-policies).
+Examples may omit `can_admins_bypass` or branch `type`. The validator deliberately
+does not interpret an omitted field as secure: require explicit bypass=false and
+type=branch. Missing fields, malformed response, 403/404 and transport errors block
+WIF. Confirm the live response before declaring readiness; never relax checks to
+work around an unsupported API/plan. API checks verify configuration, while GitHub
+environment protection performs the actual approval gate.
 
 ## References
 
