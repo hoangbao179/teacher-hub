@@ -131,3 +131,5 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 Xem [`known-limitations.md`](known-limitations.md) và các mục “quyết định còn mở”
 trong feature doc liên quan. Không suy diễn các gate vận hành chưa hoàn tất thành
 lỗi chức năng hoặc bằng chứng production.
+
+PDF worker deployment ch? c?p nh?t service private ?? ???c operator bootstrap; ki?m tra IAM tr??c/sau deploy v? environment approval tr??c WIF. CI quality bao g?m worker HTTP/shutdown v? deployment mocks.

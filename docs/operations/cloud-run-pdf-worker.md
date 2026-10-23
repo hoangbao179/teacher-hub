@@ -47,18 +47,19 @@ permissions; this workflow neither enables APIs nor creates IAM bindings.
 | --- | --- |
 | Approved GitHub WIF principal | `roles/iam.workloadIdentityUser` on the deployer SA |
 | Deployer SA | `roles/artifactregistry.writer` on repository `teacher-pdf` (push and read image digest) |
-| Deployer SA | `roles/run.admin` on this dedicated project for first service creation and IAM policy operations used by `--no-allow-unauthenticated`; includes list/get/deploy/getIamPolicy/setIamPolicy |
+| Deployer SA | `roles/run.developer` on the dedicated project; existing-service update/get and getIamPolicy, no setIamPolicy
 | Deployer SA | `roles/iam.serviceAccountUser` on the runtime SA only (`iam.serviceAccounts.actAs`) |
 | Cloud Run service agent | Google-managed `roles/run.serviceAgent`; same-project image pull relies on this service agent, not runtime Storage privileges |
 | Runtime SA | No application data roles required for health-only; do not add Storage/Tasks/Admin roles now |
 | Invoker SA | After first deploy, `roles/run.invoker` on this service only, granted by an authorized operator |
 | Human smoke tester | `roles/iam.serviceAccountOpenIdTokenCreator` on invoker SA to mint an ID token for testing; do not give deployer runtime invocation merely to test health |
 
-`roles/run.admin` is broad: it permits service/IAM changes across the dedicated
-project. Approve that scope explicitly or design/review a narrower custom role
-before deployment; `roles/run.developer` alone cannot perform setIamPolicy.
-Do not grant Owner/Editor or project-wide Service Account Token Creator to solve
-WIF errors. WIF SA impersonation uses Workload Identity User; no JSON key is needed.
+Application deployment preserves IAM and requires an existing private service. The
+old --no-allow-unauthenticated path requests an IAM policy write (setIamPolicy),
+which Run Developer does not provide. It is removed together with IAM-check mutation;
+pre/post checks now reject disabled invoker checking, public bindings and read errors.
+Operator bootstrap/configuration needs setIamPolicy separately; never grant Run Admin
+to the application deployer to repair this. No Owner/Editor grant is required. WIF SA impersonation uses Workload Identity User; no JSON key is needed.
 
 Verify billing and APIs: `run.googleapis.com`, `artifactregistry.googleapis.com`,
 `iam.googleapis.com`, `iamcredentials.googleapis.com`, `sts.googleapis.com`.
@@ -80,10 +81,9 @@ resource name, using the numeric project number. No credential secret is require
 The workflow validates the exact project, region and deployer before authentication.
 
 Before any run, configure GitHub environment **`pdf-worker`** with required reviewers,
-prevent self-review where supported, and allow only `main`. Merely declaring an
+prevent self-review where supported, disable admin bypass, and allow only `main` via a custom branch policy. The workflow reads these settings before WIF and fails closed on missing protection or read denial. Merely declaring an
 environment in YAML does not enforce approval: GitHub may create an unprotected
-environment. If repository plan/settings cannot enforce reviewers, require a
-documented owner approval before dispatch and keep deploy IAM unavailable until then.
+environment. If the plan cannot enforce reviewers, this workflow stays blocked. Use an independently approved operator-run deployment with credentials inaccessible to GitHub, or upgrade the plan; a typed confirmation alone is not equivalent approval.
 
 Provider issuer must be `https://token.actions.githubusercontent.com`. Restrict the
 provider attribute condition to this repository's **numeric repository ID and
@@ -131,7 +131,7 @@ The deploy workflow performs these container checks before pushing anything.
    against the table; write/deploy/actAs permissions remain unproven.
 4. Owner approves IAM scope, authentication, resource/cost budget, environment
    reviewers, image retention and rollback before the **first** deployment.
-5. Only then dispatch mode **`deploy`**, confirmation **`deploy-health-only`**.
+5. An authorized operator must first bootstrap the reviewed health image as a private service, enable IAM invoker checking, remove public service AND inherited grants, and grant only the invoker SA. This is a separate approved operation; the application workflow refuses a missing service. Only then dispatch mode **`deploy`**, confirmation **`deploy-health-only`**.
    It builds on the runner, smoke-tests the image with Linux/amd64 and the stated
    resource caps, pushes a full-SHA tag, resolves its immutable digest and deploys
    that digest. No `latest` tag or VPS workflow changes. A failed postcheck is a
@@ -193,3 +193,18 @@ this foundation is not production approval for the PoC pipeline.
 - [Cloud Tasks HTTP/OIDC](https://docs.cloud.google.com/tasks/docs/creating-http-target-tasks)
 - [Cloud Run maximum instances](https://docs.cloud.google.com/run/docs/configuring/max-instances)
 - [Cloud Run pricing](https://cloud.google.com/run/pricing)
+
+## Hardening readiness gates
+
+Protect main with PR review, no force pushes/bypass, and required existing quality,
+integration, e2e-smoke and schedule-regression checks. Worker checks run in quality.
+Require CODEOWNERS review for workflow/deployment changes where supported. Do not
+change settings automatically. GitHub API read failure blocks WIF; operator must
+verify token access to environment metadata before dispatch. Numeric OIDC identity,
+ref/event/workflow restrictions must be enforced by the provider, not merely YAML.
+Neither provider nor environment settings were inspected live in this task.
+
+verify-wif: NOT READY until those external protections and Variables are verified.
+Health deploy: NOT READY until operator bootstrap/IAM, container smoke and WIF pass.
+CLI flags match the current gcloud reference; setup-gcloud uses its current release,
+so actual CLI/API acceptance still requires the approved infrastructure test.
