@@ -1,5 +1,9 @@
 # Production deployment
 
+Nền tảng PDF worker bên ngoài có [runbook Cloud Run riêng](cloud-run-pdf-worker.md).
+Workflow đó chỉ chạy thủ công, chưa được triển khai trong task chuẩn bị; không thay
+thế pipeline VPS dưới đây và không đưa Chromium hoặc PDF processing vào API.
+
 Production chạy trên một VPS Ubuntu bằng bốn container: Caddy → Web/Nginx → API →
 MySQL. GitHub Actions kiểm tra source, build hai image, đẩy lên GHCR, sinh runtime
 `.env` từ GitHub Repository Secrets rồi SSH vào VPS để chạy script triển khai. VPS

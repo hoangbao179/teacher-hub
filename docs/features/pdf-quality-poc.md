@@ -6,6 +6,11 @@ PDFs, screenshots, private documents and measurements remain under `.artifacts/`
 No public downloader, network endpoint, authentication or production dependency is added.
 The optional Drive experiment below is a local CLI for the exact owned synthetic fixture.
 
+The separate [Cloud Run foundation](../operations/cloud-run-pdf-worker.md) provides
+only a health endpoint and manual WIF/deployment tooling. It does not expose this
+PoC, render PDFs, consume Cloud Tasks or access result storage. Its 2 GiB target
+is a requested experimental allocation, not validated production PDF capacity.
+
 ## Reproduce
 
 Requires Node 24/npm 12. Install the separate tool dependencies (not root workspaces):

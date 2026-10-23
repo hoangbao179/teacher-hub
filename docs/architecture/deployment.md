@@ -1,5 +1,10 @@
 # Deployment architecture
 
+PDF worker có nền tảng container riêng tại `workers/pdf`, ngoài Compose/VPS và
+không kết nối với API hiện hành. [Runbook Cloud Run](../operations/cloud-run-pdf-worker.md)
+mô tả workflow thủ công dùng WIF và các gate IAM/cost trước deploy. Phạm vi hiện tại
+chỉ là health endpoint; chưa triển khai cloud hoặc tích hợp PDF/Storage/Tasks.
+
 Production mục tiêu là một VPS 1 core, 1.5 GB RAM, 15 GB SSD. GitHub Actions build API
 và Web song song sau bốn gate quality/integration/smoke/schedule-regression, lưu image trong GHCR rồi triển
 khai full commit SHA; VPS chỉ chạy Docker Engine và Compose. Full regression được giữ
