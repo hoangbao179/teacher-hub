@@ -77,13 +77,19 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### DEVELOPING
 
-- **Cloud Run PDF worker foundation**: `workers/pdf` là container Node độc lập,
-  chỉ có `GET/HEAD /health`, chưa xử lý PDF hoặc nối API/VPS, bucket, Cloud Tasks.
+- **Cloud Run PDF worker v1 — DEVELOPING, processing disabled**: `workers/pdf`
+  là container Node độc lập, giữ `GET/HEAD /health`, có `POST /jobs` mặc định tắt.
+  Source hỗ trợ direct-download PDF Google Drive công khai được phép tải, streaming,
+  kiểm tra qpdf, lưu GCS private và retry/idempotency theo [contract v1](../api/pdf-worker-v1.md).
+  Local fixture E2E dùng synthetic PDF/fake GCS; chưa cloud E2E hoặc nối API/MySQL/queue.
   Workflow `pdf-worker-manual` chỉ `workflow_dispatch` trên `main`, chỉ kiểm
   tra WIF bằng verifier chỉ đọc; deploy thủ công ngoài Actions. Target 1 vCPU/2 GiB, concurrency 1,
-  min 0/max 3, Cloud Run IAM authentication. Chưa deploy hoặc xác minh IAM/WIF
-  thực tế; xem [runbook](../operations/cloud-run-pdf-worker.md). PoC và benchmark
-  không đồng nghĩa worker production-ready.
+  min 0/max 3, Cloud Run IAM authentication. Chủ dự án xác nhận health-only đã
+  deploy, anonymous 403 và authenticated 200; revision processing chưa deploy.
+  Runtime SA được báo có Object Creator; quyền object get và mount tmpfs giới hạn
+  còn cần operator review, không tự cấp. WIF/IAM chưa được task này kiểm kê lại;
+  xem [runbook](../operations/cloud-run-pdf-worker.md). Task 2/3 và private cloud E2E
+  vẫn là gate; PoC và local checks không đồng nghĩa production-ready.
 
 - **Account settings**: trang tài khoản hiện có tên hiển thị, username, trạng thái
   đăng nhập và đăng xuất. Đổi mật khẩu/cập nhật thông tin trong UI chưa hoàn thiện;
