@@ -173,6 +173,13 @@ bash scripts/deploy-pdf-worker.test.sh
 
 The Bash regression mocks all cloud/container calls. It is not a cloud dry run.
 Install standalone dev tooling first with `npm ci --prefix workers/pdf`.
+For native Linux tests, install `qpdf` and `util-linux` and verify both `qpdf` and
+`prlimit` are executable before E2E. The Fast quality gate installs and probes
+these dependencies explicitly; a generic Ubuntu runner is not the worker image.
+Missing/inaccessible parser executables or launcher failures are retryable
+SERVICE_UNAVAILABLE, not a permanently invalid PDF. Production diagnostics never
+expose parser stderr; only the controlled missing-executable test prints its
+sanitized fixture error. The Linux E2E remains required and is not skipped.
 `test:docker` builds only `teacher-pdf-worker:local-processing-v1`; it pins a
 local context and rejects remote endpoint overrides. It runs Linux/amd64 with
 1 CPU, 2 GiB/no swap, non-root user, read-only root, 32 MiB `/tmp` tmpfs, network

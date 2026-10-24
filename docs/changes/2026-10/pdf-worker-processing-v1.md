@@ -38,7 +38,7 @@ E2E are required. The Docker harness enforces Linux/amd64, one CPU, 2 GiB, no sw
 read-only root, non-root user, no network and 32 MiB temporary filesystem.
 Real qpdf checks byte-identical synthetic output; GCS REST tests check multipart
 payloads and preconditions separately from the in-memory atomic storage fixture.
-Final targeted results:
+Original implementation local results (before the CI correction below):
 
 - `npm --prefix workers/pdf run check`: PASS (strict TypeScript and adapter syntax).
 - `npm --prefix workers/pdf test`: 17 PASS, one Linux-only E2E SKIP on Windows;
@@ -76,8 +76,42 @@ IAM correctness. No production capacity claim follows from synthetic test timing
 ## Documentation updated
 
 Worker feature/architecture, Worker v1 API contract, Cloud Run runbook, PoC boundary
-and canonical current implementation status. Existing WIF/deployment workflow is
-unchanged; only the documented subject is corrected to the supplied numeric-ID form.
+and canonical current implementation status. WIF/production deployment is unchanged;
+only the documented subject is corrected to the supplied numeric-ID form.
+
+## CI runtime prerequisite and error-classification correction
+
+The initial PR's Fast quality gate ran native Linux worker tests without installing
+qpdf/util-linux. The Docker image included both, so Docker tests passed while the
+Ubuntu runner's E2E persisted FAILED instead of COMPLETED. The original log did
+not capture a result error code or parser stderr. A controlled Linux reproduction
+with only prlimit in PATH confirms the missing-qpdf path: exit 127, stderr
+`prlimit: failed to execute qpdf: No such file or directory`, incorrectly classified
+as permanent INVALID_PDF. A missing prlimit itself already yielded Node ENOENT.
+The launcher can also report exit 1/126 across failure modes; qpdf's documented
+document outcomes use 0/2/3.
+
+Fast quality gate now installs qpdf/util-linux, checks executables and versions,
+and installs standalone worker dev dependencies from their lockfile. Only this
+job's dependency setup/cache changes; all four gates and deployment conditions
+remain intact. Parser launch failures (ENOENT/EACCES or 1/126/127) now yield
+retryable SERVICE_UNAVAILABLE, while corrupt/warning PDFs still fail strict checks.
+
+The regression runs in isolated child processes with an empty PATH, then a PATH
+containing only prlimit, without changing the parent environment. It failed on
+the original image with INVALID_PDF and reports only controlled fixture stderr.
+E2E also probes required executables and includes sanitized terminal-result metadata
+on assertion failure. No document stderr is logged in production. Worker contract,
+security limits, Linux E2E expectations and feature gates are unchanged.
+
+Correction verification: standalone worker typecheck PASS; Windows 17 tests PASS
+with two Linux-only tests skipped; Linux Docker 19/19 PASS with zero skips,
+including the missing-executable regression and original E2E. WIF validator six
+tests PASS, mocked deployment guards PASS, repository/docs checks PASS. GitHub's
+four required checks must independently confirm the pushed correction; local
+results alone do not establish PR merge readiness. This correction remains Level 3
+because it changes CI runtime setup and infrastructure-error handling. Rollback
+is reverting the correction commit; no cloud or production state is modified.
 
 ## Rollback
 

@@ -18,10 +18,14 @@ export async function validatePDF(path: string, cap: Limits, signal: AbortSignal
     // Linux production: bound parser address space, CPU, wall time and diagnostic output.
     execFile('prlimit', ['--as=536870912', '--cpu=5', '--', 'qpdf', ...args, path],
       { signal, timeout: 6000, killSignal: 'SIGKILL', maxBuffer: 16384, encoding: 'utf8' }, (error, stdout) => {
+        // qpdf uses 0/2/3. Launcher failure (including qpdf missing behind prlimit)
+        // is infrastructure failure, never evidence that the document is invalid.
+        const unavailable = error && (error.code === 'ENOENT' || error.code === 'EACCES' ||
+          (typeof error.code === 'number' && [1, 126, 127].includes(error.code)));
         if (error && typeof error.code === 'number' && allowedCodes.includes(error.code)) resolve(String(error.code));
         else if (error) reject(new JobError(signal.aborted || error.killed ? 'TIMEOUT' :
-          'code' in error && error.code === 'ENOENT' ? 'SERVICE_UNAVAILABLE' : 'INVALID_PDF',
-          signal.aborted || error.killed || ('code' in error && error.code === 'ENOENT')));
+          unavailable ? 'SERVICE_UNAVAILABLE' : 'INVALID_PDF',
+          signal.aborted || error.killed || !!unavailable));
         else resolve(stdout.trim());
       });
   });

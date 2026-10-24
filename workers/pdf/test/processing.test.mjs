@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createServer, get } from 'node:http';
-import { mkdtemp, readdir, rm, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile, readFile, mkdir, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { Resolver } from 'node:dns/promises';
 import test from 'node:test';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { JobError, limits, parseJob } from '../src/contract.ts';
 import { download, openSource, sourceURL, publicAddress } from '../src/download.ts';
 import { processJob } from '../src/processor.ts';
@@ -191,7 +191,42 @@ test('HTTP never ACKs a permanent failure until its result is stored, and retrie
   assert.equal((await r.json()).status, 'FAILED');
 });
 
+test('missing Linux parser runtime is retryable instead of an invalid PDF', { skip: process.platform !== 'linux' }, async t => {
+  const root = await directory(t);
+  const path = join(root, 'owned.pdf'); await writeFile(path, syntheticPDF());
+  const bin = join(root, 'bin'); await mkdir(bin);
+  const program = `
+    import { validatePDF } from './src/pdf.ts';
+    import { limits } from './src/contract.ts';
+    try {
+      await validatePDF(process.argv[1], limits({}), AbortSignal.timeout(3000));
+      process.stdout.write(JSON.stringify({ unexpectedSuccess: true }));
+    } catch (error) {
+      process.stdout.write(JSON.stringify({ code: error.code, retryable: error.retryable }));
+    }
+  `;
+  const validate = () => {
+    const child = spawnSync(process.execPath, ['--input-type=module', '-e', program, path], {
+      env: { ...process.env, PATH: bin }, encoding: 'utf8', timeout: 5000, maxBuffer: 4096 });
+    assert.equal(child.status, 0);
+    assert.deepEqual(JSON.parse(child.stdout), { code: 'SERVICE_UNAVAILABLE', retryable: true });
+  };
+  validate(); // Missing prlimit itself produces Node ENOENT.
+  await symlink('/usr/bin/prlimit', join(bin, 'prlimit'));
+  const probe = spawnSync(join(bin, 'prlimit'), ['--as=536870912', '--cpu=5', '--', 'qpdf', '--check', path], {
+    env: { ...process.env, PATH: bin, LC_ALL: 'C' }, encoding: 'utf8', maxBuffer: 4096 });
+  assert.ok([1, 126, 127].includes(probe.status), `Unexpected launcher exit: ${probe.status}`);
+  assert.match(probe.stderr, /failed to execute qpdf: No such file or directory/);
+  // This diagnostic comes only from an owned missing-executable fixture, never a document.
+  t.diagnostic(`Missing-qpdf fixture: exit=${probe.status}; stderr=${probe.stderr.trim()}`);
+  validate(); // prlimit starts but cannot exec qpdf: numeric launcher exit, not Node ENOENT.
+});
+
 test('local HTTP-to-download-to-qpdf-to-fake-GCS end-to-end, byte identity', { skip: process.platform !== 'linux' }, async t => {
+  for (const command of ['qpdf', 'prlimit']) {
+    const probe = spawnSync(command, ['--version'], { encoding: 'utf8', maxBuffer: 4096 });
+    assert.equal(probe.status, 0, `Linux E2E requires executable ${command}; install qpdf and util-linux`);
+  }
   const root = await directory(t);
   const source = createServer((_req, res) => { res.setHeader('Content-Type', 'application/octet-stream'); res.end(syntheticPDF()); });
   source.listen(0, '127.0.0.1'); await once(source, 'listening');
@@ -206,7 +241,7 @@ test('local HTTP-to-download-to-qpdf-to-fake-GCS end-to-end, byte identity', { s
   t.after(() => new Promise(resolve => worker.close(resolve)));
   const r = await fetch(`http://127.0.0.1:${worker.address().port}/jobs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(job) });
   assert.equal(r.status, 200);
-  const result = await r.json(); assert.equal(result.status, 'COMPLETED'); assert.equal(result.pages, 2);
+  const result = await r.json(); assert.equal(result.status, 'COMPLETED', `Owned fixture result: ${JSON.stringify(result)}`); assert.equal(result.pages, 2);
   assert.deepEqual(store.objects.get(output).bytes, syntheticPDF());
   assert.deepEqual(await readdir(root), []);
   for (const [name, bytes, error] of [['corrupt', Buffer.from('%PDF-1.7\ncorrupt\n%%EOF'), 'INVALID_PDF'],
