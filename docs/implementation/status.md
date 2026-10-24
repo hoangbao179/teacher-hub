@@ -77,11 +77,22 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### DEVELOPING
 
+- **PDF job API — production fail-closed**: backend `/api/pdf/*` dùng auth giáo
+  viên hiện có, batch/job/outbox và ticket hash trong MySQL migration `0027`.
+  Có provider abstraction, REST transport và integration bằng fake Cloud Tasks/GCS;
+  factory production/CLI vẫn dùng provider disabled vì identity VPS → GCP chưa
+  được duyệt. Reconciler độc lập có nhiều lượt, tối đa 50 job/45 giây mỗi run,
+  shared factory và gate xác minh lịch recovery. RESULT_UNCONFIRMED/RETRY_EXHAUSTED
+  tiếp tục đọc result muộn tới expiry. UI/public `/tools` không thay đổi. Task 3 dùng shared contracts và
+  [API feature](../features/pdf-job-api.md); [identity ADR](../decisions/ADR-pdf-producer-identity.md)
+  và [runbook API](../operations/pdf-job-api.md) ghi các gate còn thiếu. Chưa cloud E2E.
+
 - **Cloud Run PDF worker v1 — DEVELOPING, processing disabled**: `workers/pdf`
   là container Node độc lập, giữ `GET/HEAD /health`, có `POST /jobs` mặc định tắt.
   Source hỗ trợ direct-download PDF Google Drive công khai được phép tải, streaming,
   kiểm tra qpdf, lưu GCS private và retry/idempotency theo [contract v1](../api/pdf-worker-v1.md).
-  Local fixture E2E dùng synthetic PDF/fake GCS; chưa cloud E2E hoặc nối API/MySQL/queue.
+  Local fixture E2E dùng synthetic PDF/fake GCS; chưa cloud E2E hoặc nối queue thực.
+  API/MySQL orchestration có trong source với production provider disabled.
   Workflow `pdf-worker-manual` chỉ `workflow_dispatch` trên `main`, chỉ kiểm
   tra WIF bằng verifier chỉ đọc; deploy thủ công ngoài Actions. Target 1 vCPU/2 GiB, concurrency 1,
   min 0/max 3, Cloud Run IAM authentication. Chủ dự án xác nhận health-only đã

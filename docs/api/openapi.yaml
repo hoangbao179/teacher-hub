@@ -29,6 +29,100 @@ paths:
     post: {summary: Kết thúc session phía client, responses: {'204': {description: Đã đăng xuất}}}
   /api/auth/me:
     get: {summary: Đọc authoritative user từ database, responses: {'200': {description: Thành công}, '401': {description: Token không hợp lệ}}}
+  /api/pdf/capabilities:
+    get:
+      summary: Khả năng PDF của giáo viên; production mặc định disabled
+      responses:
+        '200': {description: Capabilities, content: {application/json: {schema: {type: object, required: [data], properties: {data: {$ref: '#/components/schemas/PdfCapabilities'}}}}}}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/pdf/batches:
+    post:
+      summary: Tạo batch và outbox nguyên tử; quyền sử dụng phải được xác nhận
+      parameters: [{$ref: '#/components/parameters/PdfIdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [links, rightsConfirmed]
+              properties:
+                links: {type: array, minItems: 1, maxItems: 5, items: {type: string, format: uri, maxLength: 512}}
+                rightsConfirmed: {type: boolean, enum: [true]}
+      responses:
+        '201': {description: Batch tồn tại hoặc đã tạo; chưa đồng nghĩa PDF thành công, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
+        default: {$ref: '#/components/responses/PdfError'}
+    get:
+      summary: Lịch sử riêng của giáo viên; pageSize cố định 20
+      parameters: [{in: query, name: page, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}]
+      responses:
+        '200':
+          description: Danh sách batch mới nhất trước
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [items, page, pageSize, total]
+                    properties:
+                      items: {type: array, items: {$ref: '#/components/schemas/PdfBatchSummary'}}
+                      page: {type: integer}
+                      pageSize: {type: integer, enum: [20]}
+                      total: {type: integer}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/pdf/batches/{id}:
+    get:
+      summary: Chi tiết batch; reconcile tối đa 3 job đến hạn mỗi lượt
+      parameters: [{$ref: '#/components/parameters/PdfId'}]
+      responses:
+        '200': {description: Batch và tất cả attempts, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/pdf/jobs/{id}/retry:
+    post:
+      summary: Tạo attempt UUID mới sau terminal failure hoặc expiry; tối đa 2 retries
+      description: 'Không retry RESULT_UNCONFIRMED trước expiresAt; chờ reconciliation hoặc expiry rồi retry thủ công. Lease đang hoạt động trả 409 PDF_RETRY_BUSY. Không tự tạo UUID vì task biến mất.'
+      parameters: [{$ref: '#/components/parameters/PdfId'}, {$ref: '#/components/parameters/PdfIdempotencyKey'}]
+      responses:
+        '201': {description: Job retry riêng biệt; idempotent theo key, content: {application/json: {schema: {type: object, required: [data], properties: {data: {$ref: '#/components/schemas/PdfJob'}}}}}}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/pdf/jobs/{id}/download-ticket:
+    post:
+      summary: Ticket dùng một lần; vẫn cần Bearer auth khi tải; TTL tối đa 120 giây
+      parameters: [{$ref: '#/components/parameters/PdfId'}]
+      responses:
+        '200':
+          description: Ticket không phải signed GCS URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [ticket, downloadPath, expiresAt]
+                    properties:
+                      ticket: {type: string, pattern: '^[A-Za-z0-9_-]{43}$'}
+                      downloadPath: {type: string}
+                      expiresAt: {type: string, format: date-time}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/pdf/jobs/{id}/download:
+    post:
+      summary: Streaming attachment có giới hạn; không nhận object path hoặc URL từ client
+      parameters: [{$ref: '#/components/parameters/PdfId'}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}}}
+      responses:
+        '200':
+          description: PDF tối đa 10 MiB; deadline 30 giây hoặc expiresAt sớm hơn; stream lỗi sẽ đóng kết nối
+          headers:
+            Content-Disposition: {schema: {type: string}, description: attachment}
+            X-Content-Type-Options: {schema: {type: string, enum: [nosniff]}}
+          content: {application/pdf: {schema: {type: string, format: binary}}}
+        default: {$ref: '#/components/responses/PdfError'}
   /api/dashboard:
     get:
       summary: Dashboard giáo viên với học phí, đối soát và lịch hôm nay từ dữ liệu thật
@@ -1042,6 +1136,8 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   parameters:
+    PdfId: {in: path, name: id, required: true, schema: {type: string, format: uuid, pattern: '^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$'}}
+    PdfIdempotencyKey: {in: header, name: Idempotency-Key, required: true, schema: {type: string, format: uuid}, description: Lowercase UUID-v4; giữ nguyên khi retry HTTP request}
     Id: {in: path, name: id, required: true, schema: {type: integer, format: int64}}
     StudentId: {in: path, name: studentId, required: true, schema: {type: integer, format: int64, minimum: 1}}
     OccurrenceKey: {in: path, name: key, required: true, schema: {type: string, maxLength: 160}, example: '12:34:2026-07-20'}
@@ -1053,6 +1149,9 @@ components:
     Page: {in: query, name: page, schema: {type: integer, minimum: 1, default: 1}}
     PageSize: {in: query, name: pageSize, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
   responses:
+    PdfError:
+      description: '401 auth; 403 teacher/ticket; 400 validation; 404 ownership/not-found; 409 idempotency/state; 429 rate/concurrency; 503 PDF_SERVICE_UNAVAILABLE hoặc PDF_DOWNLOAD_UNAVAILABLE. ErrorEnvelope.code là mã ổn định.'
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
     ValidationError:
       description: Dữ liệu không hợp lệ
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
@@ -1074,6 +1173,56 @@ components:
         Retry-After: {schema: {type: integer, minimum: 1}}
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
   schemas:
+    PdfCapabilities:
+      type: object
+      required: [submitEnabled, downloadEnabled, unavailableReason, maxLinksPerBatch, maxActiveJobs, maxBatchesPerHour, maxRetries, maxBytes, maxPages, ticketTtlSeconds]
+      properties:
+        submitEnabled: {type: boolean}
+        downloadEnabled: {type: boolean}
+        unavailableReason: {type: string, nullable: true}
+        maxLinksPerBatch: {type: integer, maximum: 5}
+        maxActiveJobs: {type: integer, maximum: 20}
+        maxBatchesPerHour: {type: integer, maximum: 30}
+        maxRetries: {type: integer, enum: [2]}
+        maxBytes: {type: integer, enum: [10485760]}
+        maxPages: {type: integer, enum: [40]}
+        ticketTtlSeconds: {type: integer, enum: [120]}
+    PdfJob:
+      type: object
+      description: 'Worker result hợp lệ xác nhận COMPLETED/FAILED. Task MISSING chỉ thành RESULT_UNCONFIRMED; RETRY_EXHAUSTED cần bằng chứng mạnh và vẫn poll result muộn đến expiry. ENUM/payload giữ tương thích.'
+      required: [id, batchId, fileId, status, createdAt, updatedAt, enqueuedAt, completedAt, expiresAt, errorCode, cloudErrorCode, bytes, pages, retryOf, retryAttempts, enqueueAttempts]
+      properties:
+        id: {type: string, format: uuid}
+        batchId: {type: string, format: uuid}
+        fileId: {type: string, pattern: '^[A-Za-z0-9_-]{10,128}$'}
+        status: {type: string, enum: [ENQUEUE_PENDING, ENQUEUE_RETRY, QUEUED, COMPLETED, FAILED, RETRY_EXHAUSTED, RESULT_UNCONFIRMED, EXPIRED]}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        enqueuedAt: {type: string, format: date-time, nullable: true}
+        completedAt: {type: string, format: date-time, nullable: true}
+        expiresAt: {type: string, format: date-time}
+        errorCode: {type: string, nullable: true}
+        cloudErrorCode: {type: string, nullable: true}
+        bytes: {type: integer, maximum: 10485760, nullable: true}
+        pages: {type: integer, maximum: 40, nullable: true}
+        retryOf: {type: string, format: uuid, nullable: true}
+        retryAttempts: {type: integer, minimum: 0, maximum: 2}
+        enqueueAttempts: {type: integer, minimum: 0}
+    PdfBatchSummary:
+      type: object
+      required: [id, createdAt, rightsConfirmedAt]
+      properties:
+        id: {type: string, format: uuid}
+        createdAt: {type: string, format: date-time}
+        rightsConfirmedAt: {type: string, format: date-time}
+    PdfBatch:
+      allOf:
+        - {$ref: '#/components/schemas/PdfBatchSummary'}
+        - {type: object, required: [jobs], properties: {jobs: {type: array, items: {$ref: '#/components/schemas/PdfJob'}}}}
+    PdfBatchEnvelope:
+      type: object
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/PdfBatch'}}
     VocabularyAgeBand:
       type: string
       enum: [PRESCHOOL_G1, G2_G3, G4_G5, G6_G9]

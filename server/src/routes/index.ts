@@ -83,6 +83,14 @@ export function createRouter(): Router {
   );
 
   router.use("/api", requireAuth);
+  router.use("/api/pdf", asyncHandler(controllers.pdf.guard));
+  router.get("/api/pdf/capabilities", asyncHandler(controllers.pdf.capabilities));
+  router.post("/api/pdf/batches", asyncHandler(controllers.pdf.create));
+  router.get("/api/pdf/batches", asyncHandler(controllers.pdf.list));
+  router.get("/api/pdf/batches/:id", asyncHandler(controllers.pdf.detail));
+  router.post("/api/pdf/jobs/:id/retry", asyncHandler(controllers.pdf.retry));
+  router.post("/api/pdf/jobs/:id/download-ticket", asyncHandler(controllers.pdf.ticket));
+  router.post("/api/pdf/jobs/:id/download", asyncHandler(controllers.pdf.download));
   router.get("/api/dashboard", asyncHandler(controllers.dashboard.get));
   router.get("/api/vocabulary/topics", asyncHandler(controllers.vocabulary.listTopics));
   router.get("/api/vocabulary/topics/:slug", asyncHandler(controllers.vocabulary.topicDetail));

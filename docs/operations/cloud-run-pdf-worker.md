@@ -9,6 +9,9 @@ default-disabled PDF job handler, verified only with local fixtures; it has not
 been deployed or cloud-E2E verified. No cloud/IAM/queue mutation or VPS change is
 authorized here. The [PoC](../features/pdf-quality-poc.md) remains separate. See
 [worker architecture](../features/pdf-worker.md) and [contract v1](../api/pdf-worker-v1.md).
+Teacher Hub job persistence/producer/download implementation is described in the
+[PDF API runbook](pdf-job-api.md); its production identity is still blocked and
+neither API submission nor worker processing is activated by Task 2.
 
 | Resource | Infrastructure reported by owner; IAM not re-inventoried here |
 | --- | --- |

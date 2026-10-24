@@ -1,4 +1,6 @@
 import { AuthController } from "./controllers/auth.controller";
+import { PdfController } from './controllers/pdf.controller';
+import { createPdfRuntime } from './services/pdf-runtime';
 import { ClassController } from "./controllers/class.controller";
 import { CombinedClassGroupController } from "./controllers/combined-class-group.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
@@ -146,6 +148,7 @@ export const googleSheetSyncWorker = new GoogleSheetSyncWorker(
 );
 
 export const controllers = {
+  pdf: new PdfController(createPdfRuntime()),
   health: new HealthController(),
   auth: new AuthController(authService),
   classes: new ClassController(classService, lessonService),
