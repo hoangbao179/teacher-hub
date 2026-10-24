@@ -29,6 +29,80 @@ paths:
     post: {summary: Kết thúc session phía client, responses: {'204': {description: Đã đăng xuất}}}
   /api/auth/me:
     get: {summary: Đọc authoritative user từ database, responses: {'200': {description: Thành công}, '401': {description: Token không hợp lệ}}}
+  /api/public/pdf/capabilities:
+    get:
+      security: []
+      summary: Public PDF capabilities; production remains disabled until independently approved
+      responses:
+        '200': {description: Capabilities, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/PdfCapabilities'}}}}}}
+  /api/public/pdf/session:
+    post:
+      security: []
+      summary: Issue or reuse a browser-only opaque guest session
+      description: Requires exact Origin matching the configured public website. On success may set a 180-day HttpOnly SameSite=Strict cookie. Only available when PDF processing is enabled.
+      responses:
+        '200': {description: Guest session ready; cookie is never exposed in response JSON}
+        '403': {description: Invalid Origin}
+        '503': {description: PDF provider unavailable}
+  /api/public/pdf/batches:
+    get:
+      security: []
+      summary: List PDF batches submitted through the public tool, shared across devices
+      parameters: [{in: query, name: page, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}]
+      responses:
+        '200': {description: Paginated guest batches, pageSize 20}
+    post:
+      security: []
+      summary: Submit one to five authorized Drive links for this browser
+      description: Requires a valid guest cookie, exact Origin and UUID-v4 idempotency header scoped to the browser. Existing teacher quotas and guest rate limits apply.
+      parameters: [{$ref: '#/components/parameters/PdfIdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [links, rightsConfirmed]
+              properties:
+                links: {type: array, minItems: 1, maxItems: 5, items: {type: string, format: uri, maxLength: 512}}
+                rightsConfirmed: {type: boolean, enum: [true]}
+      responses:
+        '201': {description: Batch accepted, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/public/pdf/batches/{id}:
+    get:
+      security: []
+      summary: Retrieve a public-tool batch on any device
+      parameters: [{$ref: '#/components/parameters/PdfId'}]
+      responses:
+        '200': {description: Guest-owned batch, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
+        '404': {description: Not owned or unknown}
+  /api/public/pdf/jobs/{id}/retry:
+    post:
+      security: []
+      summary: Retry a public-tool PDF job when server policy permits
+      parameters: [{$ref: '#/components/parameters/PdfId'}, {$ref: '#/components/parameters/PdfIdempotencyKey'}]
+      responses:
+        '201': {description: Idempotent successor job}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/public/pdf/jobs/{id}/download-ticket:
+    post:
+      security: []
+      summary: Create one-use download ticket for completed public-tool job
+      parameters: [{$ref: '#/components/parameters/PdfId'}]
+      responses:
+        '200': {description: Ticket, guest download path and expiry; no permanent public URL}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/public/pdf/jobs/{id}/download:
+    post:
+      security: []
+      summary: One-use ticket PDF attachment streaming for public-tool job
+      parameters: [{$ref: '#/components/parameters/PdfId'}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}}}
+      responses:
+        '200': {description: PDF stream, content: {application/pdf: {schema: {type: string, format: binary}}}}
+        default: {$ref: '#/components/responses/PdfError'}
   /api/pdf/capabilities:
     get:
       summary: Khả năng PDF của giáo viên; production mặc định disabled

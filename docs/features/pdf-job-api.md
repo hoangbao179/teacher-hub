@@ -102,3 +102,7 @@ production token acquisition/wiring remains blocked on operator identity review,
 Worker activation, OIDC, bucket permissions, queue verification, reconciliation
 and private cloud E2E. Task 3 can build against shared contracts/fake tests and
 must display unavailable on the real disabled backend. No production readiness claim.
+
+## Public guest Tools (Task 3 change)
+
+The public website /tools uses /api/public/pdf/* with its own anonymous browser session, not an admin JWT. POST /session issues a Secure (production), HttpOnly, SameSite=Strict cookie scoped to /api/public/pdf; require exact Origin on every public mutation. Guest GET /batches and /batches/:id, job retry, ticket and streaming download are scoped by the database guest-to-batch relationship. Missing cookie has empty list and no ability to read a different guest's batch/job. API remains disabled unless the approved cloud provider is wired; an enabled frontend alone does not enable PDF processing. Guest create jobs are included in the existing teacher-wide cap and extra per-IP limits. Browser history can disappear when cookies are cleared. The Worker still returns only file ID, not original document name; UI labels are fallback until a reviewed metadata pathway exists. Public download remains one-time ticket + POST; no Drive auto-upload. This is an additive change; original authenticated /api/pdf contract is unchanged.

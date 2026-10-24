@@ -22,7 +22,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### ACTIVE — dùng thực tế
 
-- **Góc công cụ public**: Nút **Công cụ** trên public header dẫn thẳng tới `/tools`, không yêu cầu đăng nhập và không khởi tạo auth session. Trang mobile-first một cột có màu pastel, hoa lá trang trí, liên kết Trang chủ/Góc học/Tủ sách và giới thiệu công cụ PDF **đang nghiên cứu**; chưa có chức năng tải tài liệu hoặc action tải giả. Route có metadata riêng và HTML prerender tại `tools/index.html` để mở trực tiếp/reload với cấu hình static hosting hiện hành.
+- **Góc công cụ public**: Nút Công cụ màu hồng pastel dẫn tới /tools, không yêu cầu đăng nhập. Trang public có form tối đa 5 link PDF được phép tải, quyền xác nhận, lịch sử riêng của phiên khách, trạng thái job, retry và download bằng ticket; capabilities vẫn báo unavailable vì production PDF worker/identity chưa bật.
 - **Teacher Tools quản trị (giao diện mặc định sau đăng nhập)**: `/admin/tools` cùng toàn bộ `/admin/*` tiếp tục nằm trong auth boundary hiện hành. Khi legacy tắt, các route quản trị cũ chuyển về `/admin/tools` sau khi xác thực; khách vẫn được đưa tới `/admin/login`. Trang public `/tools` không thay thế màn đăng nhập hay trang công cụ quản trị.
 
 - **Lớp và học sinh**: quản lý lớp 1–1/lớp nhóm, học sinh, enrollment, khoảng hiệu
@@ -83,7 +83,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   factory production/CLI vẫn dùng provider disabled vì identity VPS → GCP chưa
   được duyệt. Reconciler độc lập có nhiều lượt, tối đa 50 job/45 giây mỗi run,
   shared factory và gate xác minh lịch recovery. RESULT_UNCONFIRMED/RETRY_EXHAUSTED
-  tiếp tục đọc result muộn tới expiry. UI/public `/tools` không thay đổi. Task 3 dùng shared contracts và
+  tiếp tục đọc result muộn tới expiry. Task 3 có UI PDF công khai và phiên cookie riêng; submit/download vẫn chỉ mở khi capabilities cho phép. Task 3 dùng shared contracts và
   [API feature](../features/pdf-job-api.md); [identity ADR](../decisions/ADR-pdf-producer-identity.md)
   và [runbook API](../operations/pdf-job-api.md) ghi các gate còn thiếu. Chưa cloud E2E.
 
