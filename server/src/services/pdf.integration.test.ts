@@ -199,7 +199,7 @@ integration('independent recovery drains five-link HTTP batch and reconciles del
   assert.equal((await repo.get(owner,outageJob.id)).enqueueAttempts,1);
 });
 
-integration('public guest history and downloads never cross browser sessions',async t=>{
+integration('public history crosses devices while private history stays isolated',async t=>{
   const [insert]=await pool.execute<ResultSetHeader>(
     "INSERT INTO users(username,password_hash,display_name) VALUES(?, 'synthetic-fixture', 'PDF guest fixture')",
     ['pdf-guest-'+randomUUID()]);
@@ -222,8 +222,7 @@ integration('public guest history and downloads never cross browser sessions',as
   });
   assert.equal((await guests.find(secretA))?.id,first.id);
   assert.equal(await guests.find('invalid'),null);
-  const batch=await service.create(owner,randomUUID(),{links:[link],rightsConfirmed:true});
-  await guests.attach(first,batch.id);
+  const batch=await service.create(owner,randomUUID(),{links:[link],rightsConfirmed:true},first.id);
   assert.equal((await guests.list(first,1)).total,1);
   assert.equal((await guests.list(second,1)).total,0);
   assert.equal((await guests.publicList(1)).items.some(b=>b.id===batch.id),true);
@@ -236,10 +235,58 @@ integration('public guest history and downloads never cross browser sessions',as
   await assert.rejects(guests.ownsJob(second,randomUUID()),{code:'PDF_NOT_FOUND'});
   // Existing teacher-owned batches are not silently exposed to public guests.
   const privateBatch=await service.create(owner,randomUUID(),{links:[link],rightsConfirmed:true});
+  const privateList=await service.list(owner,1);
+  assert.equal(privateList.total,1);
+  assert.deepEqual(privateList.items.map(b=>b.id),[privateBatch.id]);
+  assert.equal((await guests.publicList(1)).items.some(b=>b.id===privateBatch.id),false);
   await assert.rejects(guests.ownsBatch(first,privateBatch.id),{code:'PDF_NOT_FOUND'});
   await assert.rejects(guests.publicBatch(privateBatch.id),{code:'PDF_NOT_FOUND'});
   await assert.rejects(guests.publicJob(privateBatch.jobs[0].id),{code:'PDF_NOT_FOUND'});
   assert.equal((await guests.list(first,1)).total,1);
   await pool.execute("UPDATE pdf_guest_sessions SET expires_at=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND WHERE id=?",[second.id]);
   assert.equal(await guests.find(secretB),null);
+  await pool.execute("UPDATE pdf_guest_sessions SET expires_at=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND WHERE id=?",[first.id]);
+  assert.equal(await guests.find(secretA),null);
+  assert.equal((await guests.publicBatch(batch.id)).owner,owner);
+  assert.equal((await guests.publicJob(batch.jobs[0].id)).owner,owner);
+});
+
+integration('public batch linkage rolls back with jobs and is durable before enqueue and restart',async t=>{
+  const [insert]=await pool.execute<ResultSetHeader>(
+    "INSERT INTO users(username,password_hash,display_name) VALUES(?,'synthetic-fixture','Atomic PDF fixture')",['pdf-atomic-'+randomUUID()]);
+  const owner=insert.insertId,session=randomUUID(),repo=new PdfRepository(),cloud=new FakeCloud();
+  const service=new PdfService(repo,cloud,settings),guests=new PdfGuestRepository();
+  await pool.execute("INSERT INTO pdf_guest_sessions(id,token_hash,owner_id,created_at,expires_at) VALUES(?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3)+INTERVAL 1 DAY)",[session,digest(randomUUID()),owner]);
+  const trigger='audit_public_link_'+randomUUID().replaceAll('-','');
+  t.after(async()=>{
+    await pool.query(`DROP TRIGGER IF EXISTS ${trigger}`);
+    await pool.execute('DELETE FROM pdf_guest_batches WHERE session_id=?',[session]);
+    await pool.execute('DELETE FROM pdf_guest_sessions WHERE id=?',[session]);
+    await pool.execute('DELETE FROM pdf_jobs WHERE owner_id=?',[owner]);
+    await pool.execute('DELETE FROM pdf_batches WHERE owner_id=?',[owner]);
+    await pool.execute('DELETE FROM users WHERE id=?',[owner]);
+  });
+  await pool.query(`CREATE TRIGGER ${trigger} BEFORE INSERT ON pdf_guest_batches FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic public link failure'`);
+  const key=randomUUID();
+  await assert.rejects(service.create(owner,key,{links:[link],rightsConfirmed:true},session));
+  assert.equal((await repo.list(owner,1)).total,0);
+  const [jobs]=await pool.query<RowDataPacket[]>('SELECT COUNT(*) n FROM pdf_jobs WHERE owner_id=?',[owner]);
+  assert.equal(jobs[0].n,0);assert.equal(cloud.tasks.size,0);
+  await pool.query(`DROP TRIGGER ${trigger}`);
+  const enqueue=cloud.enqueue.bind(cloud);
+  cloud.enqueue=async payload=>{
+    const durable=await repo.get(owner,payload.jobId);
+    assert.equal((await guests.publicBatch(durable.batchId)).id,session);
+    await enqueue(payload);
+  };
+  const repeated=await Promise.all([service.create(owner,key,{links:[link],rightsConfirmed:true},session),service.create(owner,key,{links:[link],rightsConfirmed:true},session)]);
+  assert.equal(repeated[0].id,repeated[1].id);assert.equal(cloud.tasks.size,1);
+  const batch=repeated[0];
+  const [counts]=await pool.query<RowDataPacket[]>('SELECT COUNT(*) n FROM pdf_batches WHERE owner_id=?',[owner]);assert.equal(counts[0].n,1);
+  await assert.rejects(service.create(owner,key,{links:[link],rightsConfirmed:true}),{code:'PDF_IDEMPOTENCY_CONFLICT'});
+  const restarted=new PdfService(new PdfRepository(),cloud,settings);
+  cloud.results.set(batch.jobs[0].id,completed(batch.jobs[0],cloud));await due(batch.jobs[0].id);
+  await runPdfRecovery({},restarted);
+  assert.equal((await new PdfGuestRepository().publicBatch(batch.id)).owner,owner);
+  assert.equal((await restarted.detail(owner,batch.id)).jobs[0].status,'COMPLETED');
 });

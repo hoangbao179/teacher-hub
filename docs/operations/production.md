@@ -28,6 +28,30 @@ và [Dockerfile.web](../../Dockerfile.web), đẩy image lên GHCR. VPS nhận d
 files qua SSH, pull image theo full commit SHA và chạy bằng Compose; pipeline
 hiện tại không build source/frontend/backend trên VPS production.
 
+### Trusted proxy and client IP
+
+The public path is **Caddy → Web/Nginx → API**. Caddy explicitly replaces
+`X-Forwarded-For` with `{remote_host}` (the connecting client socket), discarding
+any spoofed incoming chain. Both Nginx API locations preserve this sanitized
+header without appending Caddy's address. Express trusts exactly one immediate
+proxy hop. Keep API and Web ports unpublished as in Compose; only Caddy exposes
+80/443. Do not set `trust proxy=true`, trust arbitrary private networks, or accept
+untrusted ingress directly into Web/API. Changing topology requires reviewing
+this boundary and its regression tests first.
+
+The public PDF limits remain five combined submission/retry requests and ten
+session requests per client IP/hour; durable owner-wide job quotas also apply.
+In-process counters reset on API restart and are not a distributed quota.
+The proxy regression uses two HTTP proxy hops, independent client socket IPs and
+spoofed headers; real deployed ingress still needs an operator smoke before activation.
+
+Roll out the matching Caddyfile, Web image/Nginx config and API together through
+the existing reviewed deployment process. Before PDF activation, verify two
+external client IPs retain separate quotas and a forged incoming XFF cannot
+change either identity. Rollback restores the matching proxy/API revision;
+keep PDF disabled and preserve all PDF tables/history. No topology, port,
+container resource limit or VPS size change is required by this fix.
+
 ### Container constraints
 
 Giới hạn hiện tại trong [docker-compose.deploy.yml](../../docker-compose.deploy.yml):

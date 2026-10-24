@@ -25,10 +25,6 @@ export class PdfGuestRepository {
       [id, digest(token), owner]);
     return { guest: { id, owner }, token };
   }
-  async attach(guest: PdfGuest, batchId: string): Promise<void> {
-    await pool.execute("INSERT IGNORE INTO pdf_guest_batches(batch_id,session_id) VALUES(?,?)", [batchId, guest.id]);
-    await this.ownsBatch(guest, batchId);
-  }
   async ownsBatch(guest: PdfGuest, id: string): Promise<void> {
     if (!uuid(id)) throw pdfError(400, "PDF_INVALID_REQUEST");
     const [rows] = await pool.execute<RowDataPacket[]>(

@@ -4,5 +4,8 @@ www.tienganhcovy.com {
 
 tienganhcovy.com {
 	encode zstd gzip
-	reverse_proxy web:8080
+	reverse_proxy web:8080 {
+		# Replace any client-supplied chain at the only public ingress.
+		header_up X-Forwarded-For {remote_host}
+	}
 }

@@ -18,7 +18,7 @@ export class PdfService {
   }
   private async available() { if (!(await this.capabilities()).submitEnabled) throw pdfError(503,'PDF_SERVICE_UNAVAILABLE'); }
   private id(id: string) { if (!uuid(id)) throw pdfError(400,'PDF_INVALID_REQUEST'); }
-  async create(owner: number, key: unknown, body: unknown) {
+  async create(owner: number, key: unknown, body: unknown, publicSessionId?: string) {
     await this.available();
     if (!uuid(key) || !body || typeof body !== 'object' || Array.isArray(body) ||
       Object.keys(body).sort().join() !== 'links,rightsConfirmed') throw pdfError(400,'PDF_INVALID_REQUEST');
@@ -27,7 +27,7 @@ export class PdfService {
     const files = value.links.map(driveFileId);
     if (new Set(files).size !== files.length) throw pdfError(400,'PDF_DUPLICATE_SOURCE');
     const hash = digest(JSON.stringify({ files,rightsConfirmed:true }));
-    const id = await this.repo.create(owner,key,hash,files,this.cfg);
+    const id = await this.repo.create(owner,key,hash,files,this.cfg,publicSessionId);
     await this.tick(owner,id);
     return this.repo.batch(owner,id);
   }

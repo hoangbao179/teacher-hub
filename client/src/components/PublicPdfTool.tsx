@@ -4,6 +4,7 @@ import { DownloadRounded, RefreshRounded, ReplayRounded } from "@mui/icons-mater
 import type { PdfBatch, PdfBatchList, PdfCapabilities, PdfJob, PdfJobStatus } from "@teacher/shared";
 import { pdfApi, pdfDriveId } from "../api/pdf";
 import { ApiError } from "../api/client";
+import { pdfBatchNeedsPolling } from "../api/pdfPolling";
 
 const statuses: Record<PdfJobStatus,string> = {
   ENQUEUE_PENDING:"Đang chuẩn bị",ENQUEUE_RETRY:"Đang thử lại",QUEUED:"Đang chờ xử lý",
@@ -38,6 +39,8 @@ export function PublicPdfTool() {
   const [notice,setNotice]=useState("");
   const [page,setPage]=useState(1);
   const mounted=useRef(true),inFlight=useRef(false);
+  const detailCache=useRef<Record<string,PdfBatch>>({});
+  const visiblePage=useRef(1),activePage=useRef(1),pendingRefresh=useRef<number|null>(null);
   const createAttempt=useRef<{fingerprint:string;key:string}|null>(null);
   const retryAttempts=useRef(new Map<string,string>());
   const enabled=caps?.submitEnabled===true;
@@ -50,23 +53,44 @@ export function PublicPdfTool() {
     if(new Set(ids).size!==ids.length)return "Danh sách chứa liên kết trùng nhau.";
     return "";
   },[parts,caps?.maxLinksPerBatch]);
-  const refresh=useCallback(async(p=1)=>{
-    if(inFlight.current)return;
+  const refresh=useCallback(async function refreshPage(p=1,force=true):Promise<void>{
+    if(inFlight.current){if(force)pendingRefresh.current=p;return;}
     inFlight.current=true;
+    activePage.current=p;
     try{
       const [cap,list]=await Promise.all([pdfApi.capabilities(),pdfApi.list(p)]);
       if(!mounted.current)return;
-      setCaps(cap);setHistory(list);
-      const batches=await Promise.all(list.items.map(async item=>pdfApi.detail(item.id).catch(()=>null)));
-      if(mounted.current)setDetails(Object.fromEntries(batches.filter((b):b is PdfBatch=>!!b).map(b=>[b.id,b])));
-      setError("");
+      const cached=detailCache.current;
+      const next:Record<string,PdfBatch>={};
+      for(const item of list.items)if(cached[item.id])next[item.id]=cached[item.id];
+      const due=list.items.filter(item=>force||!cached[item.id]||pdfBatchNeedsPolling(cached[item.id]));
+      // Limit concurrent detail reads, including first load/manual refresh of 20 batches.
+      for(let start=0;start<due.length;start+=4){
+        const batches=await Promise.all(due.slice(start,start+4).map(async item=>pdfApi.detail(item.id).catch(()=>null)));
+        for(const batch of batches)if(batch)next[batch.id]=batch;
+      }
+      if(mounted.current&&visiblePage.current===p){
+        detailCache.current=next;setCaps(cap);setHistory(list);setDetails(next);setError("");
+      }
     }catch(e){if(mounted.current)setError(message(e));}
-    finally{inFlight.current=false;if(mounted.current)setLoading(false);}
+    finally{
+      inFlight.current=false;
+      if(mounted.current){
+        setLoading(false);
+        const pending=pendingRefresh.current;pendingRefresh.current=null;
+        if(pending!==null)void refreshPage(pending,true);
+      }
+    }
   },[]);
   useEffect(()=>{
     mounted.current=true;
-    queueMicrotask(()=>{if(mounted.current)void refresh(page);});
-    const timer=window.setInterval(()=>{if(!document.hidden&&!inFlight.current)void refresh(page);},15000);
+    visiblePage.current=page;
+    queueMicrotask(()=>{
+      if(!mounted.current)return;
+      if(inFlight.current){if(activePage.current!==page)pendingRefresh.current=page;}
+      else void refresh(page,false);
+    });
+    const timer=window.setInterval(()=>{if(!document.hidden&&!inFlight.current)void refresh(page,false);},15000);
     return ()=>{mounted.current=false;window.clearInterval(timer);};
   },[refresh,page]);
   async function submit(){
@@ -133,6 +157,7 @@ export function PublicPdfTool() {
         <Typography component="h2" sx={{fontWeight:800,fontSize:19}}>Tài liệu đã xử lý</Typography>
         <Button startIcon={<RefreshRounded/>} onClick={()=>void refresh(page)} disabled={busy||loading} sx={{minHeight:44,color:"#b96d8d"}}>Làm mới</Button>
       </Stack>
+      <Typography sx={{fontSize:12,color:"#866a77",mt:1}}>Tên tài liệu hiện đặt theo mã Drive; chưa có tên file gốc.</Typography>
       {!history?.items.length?<Typography sx={{mt:2,color:"#866a77"}}>Chưa có tài liệu nào được gửi lên công cụ.</Typography>:
         <Stack component="div" spacing={2} sx={{mt:2}}>
           {history.items.map(batch=><Box key={batch.id} sx={{border:"1px solid #f4e6ec",borderRadius:3,p:2}}>
@@ -140,7 +165,7 @@ export function PublicPdfTool() {
             {(details[batch.id]?.jobs??[]).map(job=>{
               const expired=Date.parse(job.expiresAt)<=Date.now();
               const completed=job.status==="COMPLETED"&&!expired;
-              const retryable=["FAILED","RETRY_EXHAUSTED","EXPIRED"].includes(job.status)&&job.retryAttempts<(caps?.maxRetries??2);
+              const retryable=(expired||["FAILED","RETRY_EXHAUSTED","EXPIRED"].includes(job.status))&&job.retryAttempts<(caps?.maxRetries??2);
               return <Box data-testid="pdf-job" key={job.id} sx={{py:1.5,borderTop:"1px solid #f4e6ec"}}>
                 <Stack component="div" direction="row" spacing={1} sx={{justifyContent:"space-between",alignItems:"flex-start"}}>
                   <Box sx={{minWidth:0}}>

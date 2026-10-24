@@ -110,7 +110,7 @@ export async function apiPostPdfBlob(path: string, payload: unknown, signal?: Ab
   } catch {
     throw new ApiError(0, "NETWORK_ERROR", "Không thể kết nối máy chủ để tải PDF.");
   }
-  if (response.status === 401) {
+  if (response.status === 401 && !path.startsWith("/api/public/pdf/")) {
     clearToken();
     unauthorizedHandler?.();
   }

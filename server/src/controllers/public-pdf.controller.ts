@@ -49,8 +49,7 @@ export class PublicPdfController {
   create = async (req:Request,res:Response) => {
     origin(req);
     const guest = await this.requireGuest(req);
-    const batch = await this.service.create(guest.owner,scopedKey(guest,req.header("Idempotency-Key")),req.body);
-    await this.repository.attach(guest,batch.id);
+    const batch = await this.service.create(guest.owner,scopedKey(guest,req.header("Idempotency-Key")),req.body,guest.id);
     res.status(201).json({data:batch});
   };
   detail = async (req:Request,res:Response) => {
@@ -71,9 +70,6 @@ export class PublicPdfController {
   download = async (req:Request,res:Response) => {
     origin(req);
     const id=String(req.params.id),guest=await this.repository.publicJob(id);
-    const previous = req.auth;
-    req.auth = {id:guest.owner,role:"TEACHER"} as typeof req.auth;
-    try { await this.streaming.download(req,res); }
-    finally { req.auth = previous; }
+    await this.streaming.streamDownload(guest.owner,req,res);
   };
 }
