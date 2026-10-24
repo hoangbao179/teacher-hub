@@ -60,7 +60,11 @@ DDL on an approved backup-verified database. Do not edit earlier migrations.
 - Worker processing revision, 32 MiB bounded writable volume, result bucket permissions
   and runtime gates verified per [worker runbook](cloud-run-pdf-worker.md). Storage
   reads/downloads and late/missing/error result reconciliation verified in private
-  cloud E2E. Owner approval is the final activation gate.
+  cloud E2E. Owner approval is the final activation gate. Include an independently
+  scheduled reconciler and prove a five-link submit finishes dispatch after the
+  HTTP client closes. HTTP/CLI must receive the same reviewed identity through
+  createPdfRuntime; programmatic recoveryVerified approval requires this test and
+  schedule review. These are integration gates, not flags that mint identity.
 
 No keyless signer has been approved, so this implementation uses authenticated
 streaming rather than signed GCS URLs. The streaming path also remains disabled
@@ -70,11 +74,54 @@ until the same identity/activation gates pass. No signBlob permission is request
 
 When an approved provider is eventually wired, run the bounded one-shot CLI
 `node server/dist/scripts/reconcile-pdf.js` from the existing operator mechanism.
-It processes at most three due jobs then exits. In current source it reports zero
-and submitEnabled=false; it cannot recover production cloud jobs yet. Request
-polling uses the same leases; 60-second abandoned leases recover after restart.
-If operators want unattended recovery, approve wiring/scheduling separately;
-this task adds no timer/daemon/container or CI deployment change.
+It repeatedly processes one due job at a time, across owners/batches, up to
+PDF_RECONCILE_MAX_JOBS=50 or PDF_RECONCILE_BUDGET_MS=45000. Overrides must be
+integers in 1..50 and 1..45000; invalid values fail without work. It stops early
+when idle/unavailable. Output is a sanitized processed count, stop reason and
+actual submitEnabled capability; zero while disabled does not prove recovery works.
+The run deadline cancels cloud calls; each retains a four-second timeout. A
+50-second CLI hard stop also bounds hung DB/driver cleanup. Interrupted leases
+are safe to reclaim after 60 seconds; stale owners cannot overwrite later work.
+
+After identity/activation approval and private E2E, the operator must separately
+configure the existing trusted scheduler to invoke this command once per minute
+inside the existing API runtime, with the same environment and approved identity
+loader as HTTP. From the built repository root, the command is:
+
+```text
+PDF_RECONCILE_MAX_JOBS=50 PDF_RECONCILE_BUDGET_MS=45000 node server/dist/scripts/reconcile-pdf.js
+```
+
+Use the corresponding dist/scripts path if the runtime working directory is
+server/. No key files or personal credentials may be mounted. Configure a scheduler
+timeout of 55 seconds with a five-second kill grace and sanitized exit/stop-reason
+monitoring. Leases protect overlap across processes; optionally use the scheduler's
+single-instance lock. Do not enable submissions before the reviewed schedule is
+active. This task installs no cron, daemon, container or VPS/CI deployment change.
+Current entrypoints remain disabled pending the shared factory's identity loader
+and explicit activation/recovery verification. Operator wiring is still a blocker.
+Each invocation is an additional short-lived Node process, even inside the existing
+API container. Benchmark combined API/CLI/MySQL memory and CPU before scheduling
+on the shared 1.5 GB/1 vCPU VPS; no combined-production peak was measured here.
+Do not increase container limits or VPS resources to enable the schedule silently.
+
+For missing/deleted tasks, keep polling result.json; never infer FAILED or allocate
+a new UUID. RESULT_UNCONFIRMED has an explicit wait-until-expiresAt path; before
+that time manual retry returns 409. At expiry downloads are denied and a new
+successor may be explicitly requested with an idempotency key, subject to the
+existing two-retry, one-successor and owner rate/capacity limits. Only validated
+Worker results confirm PDF success/failure. RETRY_EXHAUSTED is optional positive
+evidence; it also remains pollable so a late durable result can supersede it.
+If fresh task metadata contradicts an older exhausted observation, reconciliation
+returns RESULT_UNCONFIRMED and disallows an early successor. A live queue-policy
+read is required before the REST adapter emits a new exhausted observation.
+Manual retry is denied while a reconciliation lease is active. The positive REST
+evidence requires matching policy, five completed responses, no dispatched request
+still awaiting response, sufficient retry duration and 60 seconds since the last
+failed response; absent/incomplete/overridden policy evidence never proves exhaustion.
+For queues held beyond the local expiry window, operators must investigate stale
+dispatches before authorizing repeated manual work; TTL and attempt caps are not a
+distributed cancellation of a Cloud Tasks delivery or an in-flight Worker request.
 
 Runtime defaults: PDF_BATCH_LIMIT=5 (ceiling 5), PDF_ACTIVE_LIMIT=10 (ceiling 20),
 PDF_HOURLY_LIMIT=10 (ceiling 30). Invalid settings fail closed. Manual retries max

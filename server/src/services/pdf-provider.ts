@@ -6,10 +6,10 @@ export const taskName = (id: string) => `${pdfQueue}/tasks/pdf-${id}`;
 export class PdfCloudError extends Error { constructor() { super('PDF_CLOUD_UNAVAILABLE'); } }
 export interface PdfProvider {
   readonly configured: boolean;
-  ready(): Promise<boolean>;
-  enqueue(payload: PdfPayload): Promise<void>;
-  result(id: string): Promise<{ claim: unknown; result: unknown } | null>;
-  task(id: string): Promise<'WAITING' | 'MISSING' | 'EXHAUSTED'>;
+  ready(signal?: AbortSignal): Promise<boolean>;
+  enqueue(payload: PdfPayload, signal?: AbortSignal): Promise<void>;
+  result(id: string, signal?: AbortSignal): Promise<{ claim: unknown; result: unknown } | null>;
+  task(id: string, signal?: AbortSignal): Promise<'WAITING' | 'MISSING' | 'EXHAUSTED'>;
   open(id: string, signal: AbortSignal): Promise<AsyncIterable<Uint8Array>>;
 }
 export class DisabledPdfProvider implements PdfProvider {
@@ -44,7 +44,8 @@ export class RestPdfProvider implements PdfProvider {
     this.configured = approved && identity?.kind === 'external_workload' && identity.verified === true &&
       /^https:\/\/teacher-pdf-worker-[a-z0-9-]+\.[a-z0-9-]+\.run\.app$/.test(baseURL);
   }
-  private async call(url: string, init: RequestInit = {}, signal = AbortSignal.timeout(4000)) {
+  private async call(url: string, init: RequestInit = {}, parentSignal?: AbortSignal, timeoutMs = 4000) {
+    const signal = parentSignal ? AbortSignal.any([parentSignal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs);
     if (!this.configured || !this.identity) throw new PdfCloudError();
     try {
       let cancel: (() => void) | undefined;
@@ -59,11 +60,11 @@ export class RestPdfProvider implements PdfProvider {
       return response;
     } catch { throw new PdfCloudError(); }
   }
-  async ready() {
-    if (!this.configured) return false;
+  async ready(signal?: AbortSignal) {
+    if (!this.configured || signal?.aborted) return false;
     if (Date.now() < this.readyUntil) return true;
     try {
-      const r = await this.call(`https://cloudtasks.googleapis.com/v2/${pdfQueue}`);
+      const r = await this.call(`https://cloudtasks.googleapis.com/v2/${pdfQueue}`, {}, signal);
       const q = await json(r);
       const retry = q.retryConfig; const rate = q.rateLimits;
       if (q.name !== pdfQueue || q.state !== 'RUNNING' || retry?.maxAttempts !== 5 ||
@@ -74,36 +75,50 @@ export class RestPdfProvider implements PdfProvider {
       this.readyUntil = Date.now() + 60000; return true;
     } catch { return false; }
   }
-  async enqueue(payload: PdfPayload) {
-    if (!await this.ready()) throw new PdfCloudError();
+  async enqueue(payload: PdfPayload, signal?: AbortSignal) {
+    if (!await this.ready(signal)) throw new PdfCloudError();
     const r = await this.call(`https://cloudtasks.googleapis.com/v2/${pdfQueue}/tasks`, { method: 'POST',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task: {
         name: taskName(payload.jobId), dispatchDeadline: '30s', httpRequest: { httpMethod: 'POST',
           url: `${this.baseURL}/jobs`, headers: { 'Content-Type': 'application/json' },
           body: Buffer.from(JSON.stringify(payload)).toString('base64'),
-          oidcToken: { serviceAccountEmail: 'teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com', audience: this.baseURL } } } }) });
+          oidcToken: { serviceAccountEmail: 'teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com', audience: this.baseURL } } } }) }, signal);
     const ok = r.ok || r.status === 409; await r.body?.cancel(); if (!ok) throw new PdfCloudError();
   }
-  private async object(id: string, name: 'request.json' | 'result.json') {
-    const r = await this.call(`https://storage.googleapis.com/storage/v1/b/${pdfBucket}/o/${encodeURIComponent(`jobs/${id}/${name}`)}?alt=media`);
+  private async object(id: string, name: 'request.json' | 'result.json', signal?: AbortSignal) {
+    const r = await this.call(`https://storage.googleapis.com/storage/v1/b/${pdfBucket}/o/${encodeURIComponent(`jobs/${id}/${name}`)}?alt=media`, {}, signal);
     if (r.status === 404) { await r.body?.cancel(); return null; } return json(r);
   }
-  async result(id: string) {
-    const result = await this.object(id, 'result.json'); if (!result) return null;
-    return { result, claim: await this.object(id, 'request.json') };
+  async result(id: string, signal?: AbortSignal) {
+    const result = await this.object(id, 'result.json', signal); if (!result) return null;
+    return { result, claim: await this.object(id, 'request.json', signal) };
   }
-  async task(id: string): Promise<'WAITING' | 'MISSING' | 'EXHAUSTED'> {
-    const r = await this.call(`https://cloudtasks.googleapis.com/v2/${taskName(id)}`);
+  async task(id: string, signal?: AbortSignal): Promise<'WAITING' | 'MISSING' | 'EXHAUSTED'> {
+    const r = await this.call(`https://cloudtasks.googleapis.com/v2/${taskName(id)}`, {}, signal);
     if (r.status === 404) { await r.body?.cancel(); return 'MISSING'; }
     const task = await json(r);
     if (task.name !== taskName(id) || !Number.isInteger(task.responseCount ?? 0) || !Number.isInteger(task.dispatchCount ?? 0)) throw new PdfCloudError();
     const first = Date.parse(task.firstAttempt?.dispatchTime);
-    return task.responseCount >= 5 && task.dispatchCount === task.responseCount &&
-      Number.isFinite(Date.parse(task.lastAttempt?.responseTime)) && task.lastAttempt?.responseStatus?.code > 0 &&
-      Number.isFinite(first) && Date.now() - first >= 3600000 ? 'EXHAUSTED' : 'WAITING';
+    const lastDispatch = Date.parse(task.lastAttempt?.dispatchTime);
+    const response = Date.parse(task.lastAttempt?.responseTime);
+    const retryMatches = !task.retryConfig || (task.retryConfig.maxAttempts === 5 && task.retryConfig.maxRetryDuration === '3600s');
+    // Optional positive evidence only. Deleted tasks have no terminal history.
+    // A full minute of quiescence exceeds the reviewed 30s dispatch/22s worker bounds.
+    const exhaustedSnapshot = task.responseCount >= 5 && task.dispatchCount === task.responseCount &&
+      Number.isInteger(task.lastAttempt?.responseStatus?.code) && task.lastAttempt.responseStatus.code > 0 &&
+      task.lastAttempt.responseStatus.code <= 16 && retryMatches &&
+      Number.isFinite(first) && Number.isFinite(lastDispatch) && Number.isFinite(response) &&
+      first <= lastDispatch && lastDispatch <= response && Date.now() - response >= 60000 &&
+      Date.now() - first >= 3660000;
+    if (!exhaustedSnapshot) return 'WAITING';
+    // Do not derive a terminal observation from a stale readiness cache if the
+    // operator has changed queue retries since dispatch.
+    const queue = await json(await this.call(`https://cloudtasks.googleapis.com/v2/${pdfQueue}`, {}, signal));
+    return queue.name === pdfQueue && queue.state === 'RUNNING' && queue.retryConfig?.maxAttempts === 5 &&
+      queue.retryConfig.maxRetryDuration === '3600s' ? 'EXHAUSTED' : 'WAITING';
   }
   async open(id: string, signal: AbortSignal) {
-    const r = await this.call(`https://storage.googleapis.com/storage/v1/b/${pdfBucket}/o/${encodeURIComponent(`jobs/${id}/output.pdf`)}?alt=media`, {}, signal);
+    const r = await this.call(`https://storage.googleapis.com/storage/v1/b/${pdfBucket}/o/${encodeURIComponent(`jobs/${id}/output.pdf`)}?alt=media`, {}, signal, 30000);
     if (!r.ok || !r.body) { await r.body?.cancel(); throw new PdfCloudError(); }
     return r.body as unknown as AsyncIterable<Uint8Array>;
   }

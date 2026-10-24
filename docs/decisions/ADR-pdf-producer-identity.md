@@ -26,7 +26,9 @@ identified or approved; implementation of token acquisition remains blocked.
 
 Use job rows as a transactional outbox, deterministic task names and expiring DB
 leases. Transactions only record intent/updates; network calls run after commit.
-Bounded request-driven reconciliation plus a one-shot recovery CLI avoids a daemon.
+Bounded request-driven reconciliation plus an independently scheduled one-shot
+recovery CLI avoids a daemon. HTTP/CLI share the same default-disabled factory;
+identity approval also requires verified independent recovery before activation.
 Missing tasks are ambiguous, never proof of failure; overdue missing results become
 RESULT_UNCONFIRMED, with late-result polling until expiry. Only positive exhausted
 attempt evidence becomes RETRY_EXHAUSTED.

@@ -1,12 +1,25 @@
-import { PdfService } from '../services/pdf.service';
-import { PdfRepository } from '../repositories/pdf.repository';
-import { DisabledPdfProvider } from '../services/pdf-provider';
-import { pdfSettings } from '../config/pdf-settings';
+import { createPdfRuntime } from '../services/pdf-runtime';
+import { reconcilePdf, type PdfReconcileOptions } from '../services/pdf-reconciler';
 import { pool } from '../db/pool';
 
-// One-shot recovery hook. No credential fallback; production identity remains unapproved.
-const service = new PdfService(new PdfRepository(),new DisabledPdfProvider(),pdfSettings());
-void (async () => {
-  try { console.log(JSON.stringify({ processed:await service.tick(),submitEnabled:false })); }
-  finally { await pool.end(); }
-})().catch(() => { console.error('PDF_RECOVERY_UNAVAILABLE'); process.exitCode=1; });
+export function runPdfRecovery(options: PdfReconcileOptions = {}, service = createPdfRuntime()) {
+  return reconcilePdf(service, options);
+}
+
+if (require.main === module) {
+  const options = {
+    maxJobs: Number(process.env.PDF_RECONCILE_MAX_JOBS ?? 50),
+    budgetMs: Number(process.env.PDF_RECONCILE_BUDGET_MS ?? 45000),
+  };
+  // Hard process bound also covers an unavailable DB/driver ignoring cancellation.
+  // A forced exit leaves committed outbox rows and reclaimable 60-second leases.
+  const hardStop = setTimeout(() => {
+    console.error('PDF_RECOVERY_DEADLINE'); process.exit(1);
+  }, 50000);
+  const service = createPdfRuntime();
+  void runPdfRecovery(options, service).then(async summary => console.log(JSON.stringify({
+    ...summary, submitEnabled: (await service.capabilities()).submitEnabled,
+  })))
+    .catch(() => { console.error('PDF_RECOVERY_UNAVAILABLE'); process.exitCode=1; })
+    .finally(async () => { await pool.end(); clearTimeout(hardStop); });
+}

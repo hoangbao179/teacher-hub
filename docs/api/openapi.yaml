@@ -84,6 +84,7 @@ paths:
   /api/pdf/jobs/{id}/retry:
     post:
       summary: Tạo attempt UUID mới sau terminal failure hoặc expiry; tối đa 2 retries
+      description: 'Không retry RESULT_UNCONFIRMED trước expiresAt; chờ reconciliation hoặc expiry rồi retry thủ công. Lease đang hoạt động trả 409 PDF_RETRY_BUSY. Không tự tạo UUID vì task biến mất.'
       parameters: [{$ref: '#/components/parameters/PdfId'}, {$ref: '#/components/parameters/PdfIdempotencyKey'}]
       responses:
         '201': {description: Job retry riêng biệt; idempotent theo key, content: {application/json: {schema: {type: object, required: [data], properties: {data: {$ref: '#/components/schemas/PdfJob'}}}}}}
@@ -1188,6 +1189,7 @@ components:
         ticketTtlSeconds: {type: integer, enum: [120]}
     PdfJob:
       type: object
+      description: 'Worker result hợp lệ xác nhận COMPLETED/FAILED. Task MISSING chỉ thành RESULT_UNCONFIRMED; RETRY_EXHAUSTED cần bằng chứng mạnh và vẫn poll result muộn đến expiry. ENUM/payload giữ tương thích.'
       required: [id, batchId, fileId, status, createdAt, updatedAt, enqueuedAt, completedAt, expiresAt, errorCode, cloudErrorCode, bytes, pages, retryOf, retryAttempts, enqueueAttempts]
       properties:
         id: {type: string, format: uuid}

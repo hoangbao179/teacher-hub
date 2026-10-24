@@ -81,7 +81,9 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   viên hiện có, batch/job/outbox và ticket hash trong MySQL migration `0027`.
   Có provider abstraction, REST transport và integration bằng fake Cloud Tasks/GCS;
   factory production/CLI vẫn dùng provider disabled vì identity VPS → GCP chưa
-  được duyệt. UI/public `/tools` không thay đổi. Task 3 dùng shared contracts và
+  được duyệt. Reconciler độc lập có nhiều lượt, tối đa 50 job/45 giây mỗi run,
+  shared factory và gate xác minh lịch recovery. RESULT_UNCONFIRMED/RETRY_EXHAUSTED
+  tiếp tục đọc result muộn tới expiry. UI/public `/tools` không thay đổi. Task 3 dùng shared contracts và
   [API feature](../features/pdf-job-api.md); [identity ADR](../decisions/ADR-pdf-producer-identity.md)
   và [runbook API](../operations/pdf-job-api.md) ghi các gate còn thiếu. Chưa cloud E2E.
 

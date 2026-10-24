@@ -10,8 +10,8 @@ export class PdfService {
   private downloading = false;
   constructor(private repo: PdfRepository, private provider: PdfProvider, private cfg: PdfSettings) {}
   async authorize(owner: number) { await this.repo.authorize(owner); }
-  async capabilities(): Promise<PdfCapabilities> {
-    const enabled = this.cfg.enabled && this.provider.configured && await this.provider.ready().catch(()=>false);
+  async capabilities(signal?: AbortSignal): Promise<PdfCapabilities> {
+    const enabled = this.cfg.enabled && this.provider.configured && await this.provider.ready(signal).catch(()=>false);
     return { submitEnabled:enabled,downloadEnabled:enabled,unavailableReason:enabled ? null : 'PDF_SERVICE_UNAVAILABLE',
       maxLinksPerBatch:this.cfg.maxLinks,maxActiveJobs:this.cfg.maxActive,maxBatchesPerHour:this.cfg.maxHourly,
       maxRetries:this.cfg.maxRetries,maxBytes:10485760,maxPages:40,ticketTtlSeconds:120 };
@@ -47,31 +47,37 @@ export class PdfService {
     const created = await this.repo.get(owner,newId); await this.tick(owner,created.batchId);
     return this.repo.get(owner,newId);
   }
-  /** At most 3 operations per HTTP request; CLI runs the same bounded recovery path. */
-  async tick(owner?: number, batch?: string): Promise<number> {
-    if (!(await this.capabilities()).submitEnabled) return 0;
+  /** HTTP uses at most 3 jobs; the independent reconciler requests one per sweep step. */
+  async tick(owner?: number, batch?: string, limit = 3, signal?: AbortSignal): Promise<number> {
+    if (!Number.isInteger(limit) || limit<1 || limit>3) throw new Error('PDF_TICK_INVALID_LIMIT');
+    if (signal?.aborted || !(await this.capabilities(signal)).submitEnabled) return 0;
     await this.repo.expire(owner); let count = 0;
-    for (; count<3; count++) {
+    for (; count<limit && !signal?.aborted; count++) {
       const work = await this.repo.lease(owner,batch); if (!work) break;
+      let enqueueAttempted = false;
       try {
-        const pair = await this.provider.result(work.id);
+        signal?.throwIfAborted();
+        const pair = await this.provider.result(work.id, signal);
         if (pair) {
           const result = validatePdfResult(work,pair,Date.now());
           await this.repo.save(work,Date.parse(result.expiresAt)<=Date.now() ? 'EXPIRED' : result.status,null,result);
         } else if (['ENQUEUE_PENDING','ENQUEUE_RETRY'].includes(work.status)) {
           if (work.enqueueAttempts>=8) { await this.repo.save(work,'RESULT_UNCONFIRMED','PDF_ENQUEUE_UNCONFIRMED'); continue; }
-          await this.provider.enqueue(workerPayload(work.id,work.fileId));
-          await this.repo.save(work,'QUEUED',null);
+          enqueueAttempted = true;
+          await this.provider.enqueue(workerPayload(work.id,work.fileId), signal);
+          await this.repo.save(work,'QUEUED',null,undefined,true);
         } else {
-          const state = await this.provider.task(work.id);
-          await this.repo.save(work,state === 'EXHAUSTED' ? 'RETRY_EXHAUSTED' :
-            Date.now()-Date.parse(work.createdAt)>7200000 ? 'RESULT_UNCONFIRMED' : 'QUEUED',
-          state === 'EXHAUSTED' ? 'PDF_QUEUE_RETRY_EXHAUSTED' : state === 'MISSING' ? 'PDF_RESULT_PENDING' : null);
+          const state = await this.provider.task(work.id, signal);
+          const exhausted = state === 'EXHAUSTED' || (state === 'MISSING' && work.status === 'RETRY_EXHAUSTED');
+          await this.repo.save(work,exhausted ? 'RETRY_EXHAUSTED' :
+            work.status === 'RESULT_UNCONFIRMED' || work.status === 'RETRY_EXHAUSTED' || state === 'MISSING' || Date.now()-Date.parse(work.createdAt)>7200000
+              ? 'RESULT_UNCONFIRMED' : 'QUEUED',
+          exhausted ? 'PDF_QUEUE_RETRY_EXHAUSTED' : state === 'MISSING' ? 'PDF_RESULT_PENDING' : null);
         }
       } catch (error) {
         const mismatch = error instanceof Error && 'code' in error && error.code === 'PDF_RESULT_SCHEMA_MISMATCH';
         await this.repo.save(work,['ENQUEUE_PENDING','ENQUEUE_RETRY'].includes(work.status) ? 'ENQUEUE_RETRY' : work.status,
-          mismatch ? 'PDF_RESULT_SCHEMA_MISMATCH' : 'PDF_CLOUD_UNAVAILABLE');
+          mismatch ? 'PDF_RESULT_SCHEMA_MISMATCH' : 'PDF_CLOUD_UNAVAILABLE',undefined,enqueueAttempted);
       }
     }
     return count;

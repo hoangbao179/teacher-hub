@@ -75,6 +75,7 @@ export class PdfRepository {
       const [rows] = await c.execute<RowDataPacket[]>('SELECT * FROM pdf_jobs WHERE id=? AND owner_id=? FOR UPDATE', [id,owner]);
       if (!rows.length) throw pdfError(404,'PDF_NOT_FOUND');
       const old = job(rows[0]);
+      if (rows[0].lease_until && Date.parse(date(rows[0].lease_until))>Date.now()) throw pdfError(409,'PDF_RETRY_BUSY');
       if (!['FAILED','RETRY_EXHAUSTED','EXPIRED'].includes(old.status) || old.retryAttempts >= cfg.maxRetries) throw pdfError(409,'PDF_RETRY_NOT_ALLOWED');
       const [children] = await c.execute<RowDataPacket[]>('SELECT id FROM pdf_jobs WHERE retry_of=?', [id]);
       if (children.length) throw pdfError(409,'PDF_RETRY_ALREADY_CREATED');
@@ -100,7 +101,7 @@ export class PdfRepository {
   async lease(owner?: number, batch?: string): Promise<PdfWork | null> {
     return transaction(async c => {
       const [rows] = await c.query<RowDataPacket[]>(`SELECT * FROM pdf_jobs WHERE status IN
-        ('ENQUEUE_PENDING','ENQUEUE_RETRY','QUEUED','RESULT_UNCONFIRMED') AND expires_at>UTC_TIMESTAMP(3)
+        ('ENQUEUE_PENDING','ENQUEUE_RETRY','QUEUED','RESULT_UNCONFIRMED','RETRY_EXHAUSTED') AND expires_at>UTC_TIMESTAMP(3)
         AND next_action_at<=UTC_TIMESTAMP(3) AND (lease_until IS NULL OR lease_until<UTC_TIMESTAMP(3))
         ${owner ? 'AND owner_id=?' : ''} ${batch ? 'AND batch_id=?' : ''} ORDER BY next_action_at LIMIT 1 FOR UPDATE SKIP LOCKED`,
       [...(owner ? [owner] : []),...(batch ? [batch] : [])]);
@@ -110,14 +111,14 @@ export class PdfRepository {
       return { ...job(rows[0]),lease:token };
     });
   }
-  async save(work: PdfWork, status: PdfJobStatus, cloudError: string | null, result?: ValidPdfResult) {
+  async save(work: PdfWork, status: PdfJobStatus, cloudError: string | null, result?: ValidPdfResult, enqueueAttempted = false) {
     await pool.execute(`UPDATE pdf_jobs SET status=?,cloud_error_code=?,updated_at=UTC_TIMESTAMP(3),
       enqueued_at=CASE WHEN ?='QUEUED' THEN COALESCE(enqueued_at,UTC_TIMESTAMP(3)) ELSE enqueued_at END,
       enqueue_attempts=enqueue_attempts+?,next_action_at=UTC_TIMESTAMP(3)+INTERVAL 15 SECOND,lease_token=NULL,lease_until=NULL,
       completed_at=COALESCE(?,completed_at),expires_at=COALESCE(?,expires_at),error_code=COALESCE(?,error_code),
       object_name=COALESCE(?,object_name),bytes=COALESCE(?,bytes),pages=COALESCE(?,pages),sha256=COALESCE(?,sha256)
       WHERE id=? AND lease_token=?`, [status,cloudError,status,
-      ['ENQUEUE_PENDING','ENQUEUE_RETRY'].includes(work.status) ? 1 : 0,
+      enqueueAttempted ? 1 : 0,
       result ? new Date(result.completedAt) : null,result ? new Date(result.expiresAt) : null,result?.errorCode ?? null,
       result?.objectName ?? null,result?.bytes ?? null,result?.pages ?? null,result?.sha256 ?? null,work.id,work.lease]);
   }

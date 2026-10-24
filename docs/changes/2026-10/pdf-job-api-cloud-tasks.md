@@ -44,7 +44,7 @@ auth/ownership, one-use/expired tickets and stream bounds. The isolated local Do
 MySQL container contains synthetic data only. Runtime factory remains disabled even
 with PDF_API_ENABLED=true; no cloud credentials or remote calls are used in tests.
 
-Local verification results: `npm run check:ci` PASS (workspace builds, typechecks,
+Original Task 2 local verification results: `npm run check:ci` PASS (workspace builds, typechecks,
 client lint, unit suites and repo/docs guards); complete MySQL integration 86/86
 PASS with zero skips after migration/recovery. Final targeted PDF unit suite 6/6
 PASS, final PDF MySQL HTTP/orchestration scenario PASS, and server typecheck PASS
@@ -54,6 +54,46 @@ federation setup, production performance and live IAM/queue config remain unveri
 One local setup attempt failed because the test account lacked trigger permission
 required by existing migration recovery; only the disposable test instance's
 synthetic account was adjusted, and the complete migration/integration run passed.
+
+## Recovery reliability correction
+
+Root cause: HTTP tick leased at most three jobs, while batches allowed five; the
+CLI also called only one tick and hardcoded a separate disabled provider. Closing
+the page left the remaining outbox intentions dependent on another request. Task
+metadata was temporary, and RETRY_EXHAUSTED was excluded from later GCS polling.
+A task's deletion could not distinguish successful delivery from exhausted retries.
+
+The independent reconciler now makes sequential single-job sweep steps up to
+50 jobs/45 seconds, with shared HTTP/CLI runtime construction, deadline propagation
+to cloud operations and a 50-second CLI hard bound. Current factory calls remain
+disabled. Future reviewed identity activation additionally requires independent
+recovery verification; no production schedule is installed here. Existing leases,
+transaction boundaries, UUID/task names and Worker v1 remain unchanged.
+
+MISSING immediately records RESULT_UNCONFIRMED, never FAILED. Both unconfirmed and
+positively exhausted observations keep polling durable results until expiry; a
+validated late result takes precedence. REST exhaustion needs a complete matching
+policy/count/time/failed-response snapshot, no outstanding dispatch and 60 seconds
+of quiescence. It is optional evidence, not a durable task history. Unknown jobs
+wait until expiry before a capped/idempotent manual successor is allowed; active
+reconciliation leases reject manual retry. Enqueue counters now increment only
+when task creation is attempted, so repeated GCS outages cannot consume dispatch
+recovery attempts before dispatch occurs.
+
+Regression coverage includes a completed five-link HTTP submission followed by
+independent recovery with no further HTTP calls, restarted/reclaimed leases and
+stale-write rejection, task-name deduplication/timeouts, deleted tasks with late
+GCS results, unavailable GCS, unknown outcomes, late results after positive
+exhaustion, expiry/download/retry rules, run budgets and default-disabled runtime.
+This correction remains Level 3; no migration, UI, IAM, resource or deployment
+change is included. Final local/required GitHub check outcomes accompany handoff.
+Correction verification: server typecheck and nine targeted PDF unit tests PASS;
+both PDF MySQL integration scenarios PASS with zero skips. The integration runner
+also passed existing interrupted-migration recovery and all migrations through 0027;
+no migration file was changed. `npm run check:ci`, repo/docs guards and diff checks
+PASS. Direct CLI invocation with PDF_API_ENABLED=true still reported zero processed
+and submitEnabled=false without approved identity. GitHub's four required checks
+remain independently checked on the correction commit after push.
 
 ## Documentation updated
 

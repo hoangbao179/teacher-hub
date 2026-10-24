@@ -10,6 +10,9 @@ import { DisabledPdfProvider,RestPdfProvider,pdfQueue,taskName } from './pdf-pro
 import { PdfService } from './pdf.service';
 import { PdfRepository } from '../repositories/pdf.repository';
 import { pdfSettings } from '../config/pdf-settings';
+import { reconcilePdf } from './pdf-reconciler';
+import { runPdfRecovery } from '../scripts/reconcile-pdf';
+import { createPdfRuntime } from './pdf-runtime';
 
 test('strict Drive normalization rejects credentials, resource keys and unsupported query/hosts', () => {
   assert.equal(driveFileId('https://drive.google.com/file/d/owned_fixture_12345/view'),'owned_fixture_12345');
@@ -62,14 +65,57 @@ test('REST reconciliation requires positive exhaustion evidence and treats a mis
   const provider=new RestPdfProvider({kind:'external_workload',verified:true,accessToken:async()=>'synthetic'},
     'https://teacher-pdf-worker-123.asia-southeast1.run.app',true);
   let mode='missing';const id=randomUUID();
-  t.mock.method(globalThis,'fetch',async()=>mode==='missing'?new Response('',{status:404}):
+  t.mock.method(globalThis,'fetch',async(url:any)=>String(url).endsWith(pdfQueue)?Response.json({name:pdfQueue,state:'RUNNING',
+    retryConfig:{maxAttempts:mode==='changed-queue'?100:5,maxRetryDuration:'3600s'}}):mode==='missing'?new Response('',{status:404}):
     mode==='error'?new Response('',{status:503}):Response.json({name:taskName(id),responseCount:5,dispatchCount:mode==='inflight'?6:5,
       firstAttempt:{dispatchTime:new Date(Date.now()-7200000).toISOString()},
-      lastAttempt:{responseTime:new Date().toISOString(),responseStatus:{code:14}}}));
+      lastAttempt:{dispatchTime:new Date(Date.now()-120000).toISOString(),
+        responseTime:new Date(Date.now()-(mode==='recent'?0:61000)).toISOString(),responseStatus:{code:14}},
+      ...(mode==='different-retry'?{retryConfig:{maxAttempts:100,maxRetryDuration:'7200s'}}:{})}));
   assert.equal(await provider.task(id),'MISSING');
   mode='inflight';assert.equal(await provider.task(id),'WAITING');
+  mode='recent';assert.equal(await provider.task(id),'WAITING');
+  mode='different-retry';assert.equal(await provider.task(id),'WAITING');
+  mode='changed-queue';assert.equal(await provider.task(id),'WAITING');
   mode='exhausted';assert.equal(await provider.task(id),'EXHAUSTED');
   mode='error';await assert.rejects(provider.task(id),/PDF_CLOUD_UNAVAILABLE/);
+});
+
+test('independent one-shot sweep honors count/time bounds and default runtime remains disabled',async()=>{
+  let calls=0;
+  const service={tick:async(_owner?:number,_batch?:string,limit?:number,signal?:AbortSignal)=>{
+    assert.equal(limit,1); assert.ok(signal); calls++; return 1;
+  }};
+  assert.deepEqual(await reconcilePdf(service,{maxJobs:5}),{processed:5,stopped:'job_limit'});
+  assert.equal(calls,5);
+  let time=0;calls=0;
+  assert.deepEqual(await reconcilePdf(service,{maxJobs:50,budgetMs:10},()=>time+=6),{processed:1,stopped:'deadline'});
+  assert.equal(calls,1);
+  assert.deepEqual(await runPdfRecovery(),{processed:0,stopped:'idle_or_unavailable'});
+  assert.equal((await createPdfRuntime().capabilities()).submitEnabled,false);
+  await assert.rejects(reconcilePdf(service,{maxJobs:51}),/INVALID_LIMITS/);
+});
+
+test('reconciler deadline interrupts an identity supplier that does not finish',async()=>{
+  const provider=new RestPdfProvider({kind:'external_workload',verified:true,
+    accessToken:()=>new Promise(()=>{})},'https://teacher-pdf-worker-123.asia-southeast1.run.app',true);
+  const abort=new AbortController();const timer=setTimeout(()=>abort.abort(),20);
+  try { await assert.rejects(provider.task(randomUUID(),abort.signal),/PDF_CLOUD_UNAVAILABLE/); }
+  finally { clearTimeout(timer); }
+});
+
+test('HTTP/CLI runtime needs approved identity and verified independent recovery together',async t=>{
+  const previous=process.env.PDF_API_ENABLED;process.env.PDF_API_ENABLED='true';
+  t.mock.method(globalThis,'fetch',async()=>Response.json({name:pdfQueue,state:'RUNNING',
+    retryConfig:{maxAttempts:5,maxRetryDuration:'3600s',minBackoff:'10s',maxBackoff:'300s'},
+    rateLimits:{maxConcurrentDispatches:1,maxDispatchesPerSecond:1}}));
+  const approved={identity:{kind:'external_workload' as const,verified:true as const,accessToken:async()=>'synthetic'},
+    workerBaseURL:'https://teacher-pdf-worker-123.asia-southeast1.run.app',activationApproved:true as const};
+  try {
+    assert.equal((await createPdfRuntime().capabilities()).submitEnabled,false);
+    assert.equal((await createPdfRuntime(approved as any).capabilities()).submitEnabled,false);
+    assert.equal((await createPdfRuntime({...approved,recoveryVerified:true}).capabilities()).submitEnabled,true);
+  } finally { if(previous===undefined) delete process.env.PDF_API_ENABLED;else process.env.PDF_API_ENABLED=previous; }
 });
 
 test('VPS PDF modules do not import a parser, renderer or child-process runtime',()=>{
