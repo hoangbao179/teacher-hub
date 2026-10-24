@@ -79,8 +79,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 - **Cloud Run PDF worker foundation**: `workers/pdf` là container Node độc lập,
   chỉ có `GET/HEAD /health`, chưa xử lý PDF hoặc nối API/VPS, bucket, Cloud Tasks.
-  Workflow `pdf-worker-manual` chỉ `workflow_dispatch` trên `main`, mặc định kiểm
-  tra WIF; deploy cần mode và xác nhận riêng. Target 1 vCPU/2 GiB, concurrency 1,
+  Workflow `pdf-worker-manual` chỉ `workflow_dispatch` trên `main`, chỉ kiểm
+  tra WIF bằng verifier chỉ đọc; deploy thủ công ngoài Actions. Target 1 vCPU/2 GiB, concurrency 1,
   min 0/max 3, Cloud Run IAM authentication. Chưa deploy hoặc xác minh IAM/WIF
   thực tế; xem [runbook](../operations/cloud-run-pdf-worker.md). PoC và benchmark
   không đồng nghĩa worker production-ready.

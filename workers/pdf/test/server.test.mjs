@@ -28,3 +28,21 @@ test("invalid runtime PORT fails before opening a listener", () => {
     assert.throws(() => startWorker(port), /PORT must be an integer/);
   }
 });
+
+test("shutdown drains and exits successfully", async () => {
+  const { spawn } = await import('node:child_process');
+  const child = spawn(process.execPath, ['--input-type=module', '-e', `
+    import { createServer } from 'node:net';
+    import { startWorker } from './src/server.mjs';
+    const probe = createServer();
+    probe.listen(0, '127.0.0.1', () => {
+      const port = probe.address().port;
+      probe.close(() => {
+        const server = startWorker(port);
+        server.on('listening', () => process.emit('SIGTERM'));
+      });
+    });
+  `], { stdio: 'pipe' });
+  const [code] = await once(child, 'exit');
+  assert.equal(code, 0);
+});

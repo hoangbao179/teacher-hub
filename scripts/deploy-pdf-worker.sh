@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Fail closed before any cloud call, including when invoked outside Actions.
-test "${GITHUB_REPOSITORY:-}" = hoangbao179/teacher-hub
-test "${GITHUB_REF:-}" = refs/heads/main
-test "${GITHUB_EVENT_NAME:-}" = workflow_dispatch
-test "${MODE:-}" = deploy
+# Operator workstation only. This guard is defense in depth, not an IAM boundary.
+# GitHub must have no impersonation grant on the deployer, even if this file changes.
+test -z "${GITHUB_ACTIONS:-}"
+test -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
 test "${CONFIRMATION:-}" = deploy-health-only
 test "${GCP_PROJECT_ID:-}" = teacher-hub-pdf
 test "${GCP_REGION:-}" = asia-southeast1
-test "${GCP_DEPLOYER_SA:-}" = teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com
-[[ "${GITHUB_SHA:-}" =~ ^[0-9a-f]{40}$ ]]
+[[ "${SOURCE_SHA:-}" =~ ^[0-9a-f]{40}$ ]]
+test "$SOURCE_SHA" = "$(git rev-parse HEAD)"
+checkout_status=$(git status --porcelain)
+test -z "$checkout_status"
 
 service=teacher-pdf-worker
 registry="$GCP_REGION-docker.pkg.dev"
-image="$registry/$GCP_PROJECT_ID/teacher-pdf/$service:$GITHUB_SHA"
+image="$registry/$GCP_PROJECT_ID/teacher-pdf/$service:$SOURCE_SHA"
 runtime_sa=teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com
 cloud=(--project="$GCP_PROJECT_ID" --region="$GCP_REGION")
 tmpdir=$(mktemp -d)
-container="pdf-health-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+container="pdf-health-local-$$"
 cleanup() { docker rm -f "$container" >/dev/null 2>&1 || true; rm -rf -- "$tmpdir"; }
 trap cleanup EXIT
 
@@ -33,18 +34,18 @@ if ((policy.bindings ?? []).some(binding =>
 NODE
 }
 
-# List failing (API disabled/IAM/network) must not be mistaken for a missing service.
-gcloud run services list "${cloud[@]}" --format=json > "$tmpdir/services.json"
-exists=$(node --input-type=module - "$tmpdir/services.json" "$service" <<'NODE'
+check_private_service() {
+  gcloud run services describe "$service" "${cloud[@]}" --format=json > "$tmpdir/service.json" || { echo 'Operator must bootstrap private service; run.services.get required.' >&2; exit 1; }
+  node --input-type=module - "$tmpdir/service.json" <<'NODE'
 import fs from 'node:fs';
-const services = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-console.log(services.some(service => service.metadata.name === process.argv[3]));
+const s = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const disabled = s.metadata?.annotations?.['run.googleapis.com/invoker-iam-disabled'];
+if (!s.metadata || (disabled !== undefined && disabled !== 'false')) throw new Error('IAM invoker check unsafe; operator action required');
 NODE
-)
-if [[ "$exists" = true ]]; then
-  gcloud run services get-iam-policy "$service" "${cloud[@]}" --format=json > "$tmpdir/policy.json"
+  gcloud run services get-iam-policy "$service" "${cloud[@]}" --format=json > "$tmpdir/policy.json" || { echo 'run.services.getIamPolicy required; no IAM writes attempted.' >&2; exit 1; }
   check_private_policy "$tmpdir/policy.json"
-fi
+}
+check_private_service
 
 docker build --pull --platform linux/amd64 -t "$image" workers/pdf
 docker run -d --name "$container" --cpus=1 --memory=2g --memory-swap=2g \
@@ -74,17 +75,8 @@ gcloud run deploy "$service" "${cloud[@]}" \
   --cpu=1 --memory=2Gi --concurrency=1 \
   --min=0 --max=3 --min-instances=0 --max-instances=3 \
   --no-cpu-boost --cpu-throttling --timeout=30 --port=8080 \
-  --ingress=all --invoker-iam-check --no-allow-unauthenticated \
+  --ingress=all \
   --startup-probe='httpGet.path=/health,httpGet.port=8080,periodSeconds=5,timeoutSeconds=2,failureThreshold=3' \
-  --labels="component=pdf-worker,source-sha=$GITHUB_SHA" --quiet
-gcloud run services get-iam-policy "$service" "${cloud[@]}" --format=json > "$tmpdir/policy.json"
-check_private_policy "$tmpdir/policy.json"
-gcloud run services describe "$service" "${cloud[@]}" --format=json > "$tmpdir/service.json"
-node --input-type=module - "$tmpdir/service.json" <<'NODE'
-import fs from 'node:fs';
-const service = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-if (service.metadata.annotations?.['run.googleapis.com/invoker-iam-disabled'] === 'true') {
-  throw new Error('Cloud Run IAM invoker check must remain enabled.');
-}
-NODE
-echo 'Health-only revision deployed. Operator must still verify anonymous denial and authorized invocation.' >> "$GITHUB_STEP_SUMMARY"
+  --labels="component=pdf-worker,source-sha=$SOURCE_SHA" --quiet
+check_private_service
+echo 'Health-only revision deployed. Operator must still verify anonymous denial and authorized invocation.'

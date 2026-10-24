@@ -27,6 +27,10 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm install -g npm@12.0.1
       - run: npm ci
+      - run: npm --prefix workers/pdf run check
+      - run: npm --prefix workers/pdf test
+      - run: node --test scripts/validate-pdf-environment.test.cjs
+      - run: bash scripts/deploy-pdf-worker.test.sh
       - run: bash scripts/deploy-env.test.sh
       - run: npm run check:ci
 
