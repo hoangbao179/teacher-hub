@@ -44,33 +44,36 @@ SH
 printf '#!/usr/bin/env bash\nexit 0\n' > "$tmpdir/bin/sleep"
 chmod +x "$tmpdir/bin/"*
 export PATH="$tmpdir/bin:$PATH"
-export GITHUB_REPOSITORY=hoangbao179/teacher-hub GITHUB_REF=refs/heads/main
-export GITHUB_EVENT_NAME=workflow_dispatch MODE=deploy CONFIRMATION=deploy-health-only
+# Mock checkout metadata so regressions can run with uncommitted task changes.
+cat > "$tmpdir/bin/git" <<'SH'
+#!/usr/bin/env bash
+[[ "${MOCK_CASE:-}" != git-fails ]] || exit 1
+if [[ "$1" = rev-parse ]]; then echo 0123456789012345678901234567890123456789; fi
+if [[ "$1" = status && "${MOCK_CASE:-}" = dirty ]]; then echo ' M workers/pdf/src/server.mjs'; fi
+SH
+chmod +x "$tmpdir/bin/git"
+unset GITHUB_ACTIONS ACTIONS_ID_TOKEN_REQUEST_URL
+export CONFIRMATION=deploy-health-only
 export GCP_PROJECT_ID=teacher-hub-pdf GCP_REGION=asia-southeast1
-export GCP_DEPLOYER_SA=teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com
-export GCP_WIF_PROVIDER=projects/123/locations/global/workloadIdentityPools/github/providers/github
-export GITHUB_SHA=0123456789012345678901234567890123456789
-export GITHUB_STEP_SUMMARY="$tmpdir/summary"
+export SOURCE_SHA=0123456789012345678901234567890123456789
 
-for guard in GITHUB_REPOSITORY GITHUB_REF GITHUB_EVENT_NAME MODE CONFIRMATION GCP_PROJECT_ID GCP_REGION GCP_DEPLOYER_SA GITHUB_SHA GCP_WIF_PROVIDER; do
+for guard in GITHUB_ACTIONS ACTIONS_ID_TOKEN_REQUEST_URL CONFIRMATION GCP_PROJECT_ID GCP_REGION SOURCE_SHA; do
   : > "$MOCK_LOG"
   if env "$guard=invalid" bash scripts/deploy-pdf-worker.sh > "$tmpdir/output" 2>&1; then
     echo "FAIL: $guard accepted"; exit 1
   fi
   test ! -s "$MOCK_LOG"
 done
-for ref in refs/tags/main refs/heads/main-extra main; do
-  : > "$MOCK_LOG"
-  if GITHUB_REF="$ref" bash scripts/deploy-pdf-worker.sh > "$tmpdir/output" 2>&1; then
-    echo "FAIL: non-main-branch ref accepted"; exit 1
-  fi
-  test ! -s "$MOCK_LOG"
-done
-for failure in list-fails public authenticated-public build-fails smoke-fails bad-digest iam-disabled iam-denied new-service deploy-fails; do
+# A valid-looking SHA must still match the reviewed checkout.
+: > "$MOCK_LOG"
+if SOURCE_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bash scripts/deploy-pdf-worker.sh > "$tmpdir/output" 2>&1; then exit 1; fi
+test ! -s "$MOCK_LOG"
+for failure in git-fails dirty list-fails public authenticated-public build-fails smoke-fails bad-digest iam-disabled iam-denied new-service deploy-fails; do
   : > "$MOCK_LOG"
   if MOCK_CASE="$failure" bash scripts/deploy-pdf-worker.sh > "$tmpdir/output" 2>&1; then
     echo "FAIL: $failure accepted"; exit 1
   fi
+  if [[ "$failure" = git-fails || "$failure" = dirty ]]; then test ! -s "$MOCK_LOG"; fi
   if [[ "$failure" != deploy-fails ]]; then
     if grep -q '^gcloud run deploy ' "$MOCK_LOG"; then echo "FAIL: deployed after $failure"; exit 1; fi
   fi

@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Fail closed before any cloud call, including when invoked outside Actions.
-test "${GITHUB_REPOSITORY:-}" = hoangbao179/teacher-hub
-test "${GITHUB_REF:-}" = refs/heads/main
-test "${GITHUB_EVENT_NAME:-}" = workflow_dispatch
-test "${MODE:-}" = deploy
+# Operator workstation only. This guard is defense in depth, not an IAM boundary.
+# GitHub must have no impersonation grant on the deployer, even if this file changes.
+test -z "${GITHUB_ACTIONS:-}"
+test -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
 test "${CONFIRMATION:-}" = deploy-health-only
 test "${GCP_PROJECT_ID:-}" = teacher-hub-pdf
 test "${GCP_REGION:-}" = asia-southeast1
-test "${GCP_DEPLOYER_SA:-}" = teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com
-[[ "${GITHUB_SHA:-}" =~ ^[0-9a-f]{40}$ ]]
+[[ "${SOURCE_SHA:-}" =~ ^[0-9a-f]{40}$ ]]
+test "$SOURCE_SHA" = "$(git rev-parse HEAD)"
+checkout_status=$(git status --porcelain)
+test -z "$checkout_status"
 
-[[ "${GCP_WIF_PROVIDER:-}" =~ ^projects/[0-9]+/locations/global/workloadIdentityPools/[^/]+/providers/[^/]+$ ]] || { echo 'Missing/invalid GCP_WIF_PROVIDER' >&2; exit 1; }
 service=teacher-pdf-worker
 registry="$GCP_REGION-docker.pkg.dev"
-image="$registry/$GCP_PROJECT_ID/teacher-pdf/$service:$GITHUB_SHA"
+image="$registry/$GCP_PROJECT_ID/teacher-pdf/$service:$SOURCE_SHA"
 runtime_sa=teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com
 cloud=(--project="$GCP_PROJECT_ID" --region="$GCP_REGION")
 tmpdir=$(mktemp -d)
-container="pdf-health-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+container="pdf-health-local-$$"
 cleanup() { docker rm -f "$container" >/dev/null 2>&1 || true; rm -rf -- "$tmpdir"; }
 trap cleanup EXIT
 
@@ -77,6 +77,6 @@ gcloud run deploy "$service" "${cloud[@]}" \
   --no-cpu-boost --cpu-throttling --timeout=30 --port=8080 \
   --ingress=all \
   --startup-probe='httpGet.path=/health,httpGet.port=8080,periodSeconds=5,timeoutSeconds=2,failureThreshold=3' \
-  --labels="component=pdf-worker,source-sha=$GITHUB_SHA" --quiet
+  --labels="component=pdf-worker,source-sha=$SOURCE_SHA" --quiet
 check_private_service
-echo 'Health-only revision deployed. Operator must still verify anonymous denial and authorized invocation.' >> "$GITHUB_STEP_SUMMARY"
+echo 'Health-only revision deployed. Operator must still verify anonymous denial and authorized invocation.'

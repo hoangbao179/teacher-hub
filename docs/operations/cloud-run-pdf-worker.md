@@ -14,6 +14,7 @@ remains a local experiment; it is not imported into the worker.
 | Artifact Registry | `teacher-pdf` |
 | Cloud Run service (proposed name) | `teacher-pdf-worker` |
 | Runtime identity | `teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com` |
+| Verifier identity | `teacher-pdf-verifier@teacher-hub-pdf.iam.gserviceaccount.com` |
 | Deployer identity | `teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com` |
 | Future caller identity | `teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com` |
 | Future results bucket | `teacher-hub-pdf-results-2026` (unused) |
@@ -45,8 +46,9 @@ permissions; this workflow neither enables APIs nor creates IAM bindings.
 
 | Principal | Scope and required permission/role |
 | --- | --- |
-| Approved GitHub WIF principal | `roles/iam.workloadIdentityUser` on the deployer SA |
-| Deployer SA | `roles/artifactregistry.writer` on repository `teacher-pdf` (push and read image digest) |
+| Approved GitHub WIF principal | `roles/iam.workloadIdentityUser` on the verifier SA only |
+| Verifier SA | `roles/artifactregistry.reader` on repository `teacher-pdf` only |
+| Deployer SA (manual only; preserve existing grants) | `roles/artifactregistry.writer` on repository `teacher-pdf` (push and read image digest) |
 | Deployer SA | `roles/run.developer` on the dedicated project; existing-service update/get and getIamPolicy, no setIamPolicy |
 | Deployer SA | `roles/iam.serviceAccountUser` on the runtime SA only (`iam.serviceAccounts.actAs`) |
 | Cloud Run service agent | Google-managed `roles/run.serviceAgent`; same-project image pull relies on this service agent, not runtime Storage privileges |
@@ -63,7 +65,7 @@ to the application deployer to repair this. No Owner/Editor grant is required. W
 
 Verify billing and APIs: `run.googleapis.com`, `artifactregistry.googleapis.com`,
 `iam.googleapis.com`, `iamcredentials.googleapis.com`, `sts.googleapis.com`.
-Cloud Build is unused (Docker builds on the GitHub runner). Storage/Tasks APIs and
+Cloud Build is unused (Docker builds on the approved operator workstation). Storage/Tasks APIs and
 data roles are not needed for health-only.
 
 For a later queue integration, separately review task producer `roles/cloudtasks.enqueuer`
@@ -72,72 +74,40 @@ agent `roles/cloudtasks.serviceAgent` for OIDC tokens, service-scoped invoker bi
 and runtime bucket object permissions/retention. Do not activate any of these flows
 now; the worker has no task handler and POST requests return 404.
 
-## WIF trust and GitHub setup
+## Verification and manual deployment
 
-Use the existing repository Variables `GCP_PROJECT_ID`, `GCP_REGION`,
-`GCP_WIF_PROVIDER`, `GCP_DEPLOYER_SA`. Provider must be the full
-`projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL/providers/PROVIDER`
-resource name, using the numeric project number. No credential secret is required.
-The workflow validates the exact project, region and deployer before authentication.
-
-Before any run, configure GitHub environment **`pdf-worker`** with required reviewers,
-prevent self-review where supported, disable admin bypass, and allow only `main` via a custom branch policy. The workflow reads these settings before WIF and fails closed on missing protection or read denial. Merely declaring an
-environment in YAML does not enforce approval: GitHub may create an unprotected
-environment. If the plan cannot enforce reviewers, this workflow stays blocked. Use an independently approved operator-run deployment with credentials inaccessible to GitHub, or upgrade the plan; a typed confirmation alone is not equivalent approval.
-
-Provider issuer must be `https://token.actions.githubusercontent.com`. Restrict the
-provider attribute condition to this repository's **numeric repository ID and
-numeric owner ID** (operator obtains them from GitHub), `assertion.ref == 'refs/heads/main'`,
-`assertion.event_name == 'workflow_dispatch'` and
-`assertion.workflow_ref == 'hoangbao179/teacher-hub/.github/workflows/pdf-worker.yml@refs/heads/main'`.
-Map claims used in principalSet bindings explicitly; check the actual provider
-mapping before changing it. Do not trust a shared pool unrestricted or rely solely
-on mutable repository/owner names. With a GitHub environment, the default OIDC
-subject is `repo:hoangbao179/teacher-hub:environment:pdf-worker`, **not** the
-branch subject. Restrict branch via the provider condition and GitHub environment.
-Check whether custom OIDC subject templates are configured before granting a subject.
-
-## Verification and deliberate deployment sequence
-
-Local checks require no cloud authentication, MySQL or browser:
+GitHub Actions supports only manual **verify-wif**, using the verifier identity.
+There is no deployment mode, image build/push, IAM mutation or Cloud Run call.
+Run local checks without cloud authentication, MySQL or browser:
 
 ```bash
+node --test scripts/validate-pdf-environment.test.cjs
 npm --prefix workers/pdf run check
 npm --prefix workers/pdf test
 bash -n scripts/deploy-pdf-worker.sh
 bash scripts/deploy-pdf-worker.test.sh
 ```
 
-The Bash test replaces **all** gcloud/docker calls with mocks. It checks guards,
-public IAM rejection, failures and the deployment command; it is not a cloud dry
-run. Optional local Linux container verification: build `workers/pdf/Dockerfile`
-with context `workers/pdf`, run with 1 CPU/2 GiB, probe health/404 and send SIGTERM.
-The deploy workflow performs these container checks before pushing anything.
+The Bash regression mocks all cloud/container calls. It is not a cloud dry run.
+For later manual updates, first approve the resource/cost budget, bootstrap the
+private service using the section below, and validate the Linux image. Use a clean,
+reviewed checkout on a trusted workstation with approved operator credentials
+(or an already-authorized human impersonating the deployer). Confirm the active
+gcloud account and any configured impersonation before proceeding. No new human
+impersonation grant is authorized by this task. No GitHub OIDC credentials may be
+used. The script preserves private IAM and the separate runtime SA; it does not
+configure credentials or grant roles. It rejects Actions markers, checks the
+source SHA against HEAD, and refuses a dirty checkout:
 
-1. Review/merge the source separately. GitHub requires a dispatch workflow to exist
-   on the default branch; this workflow additionally rejects refs other than main.
-   Merging into main still invokes the existing VPS CI/deployment behavior. Plan
-   and approve that existing effect separately; this task does not merge or push.
-2. After trust/environment review, select Actions → `pdf-worker-manual` → Run
-   workflow → branch `main` → mode **`verify-wif`**. Leave confirmation empty.
-   This runs offline tests, exchanges OIDC for a deployer token without printing it,
-   and reads Artifact Registry metadata. It **does not build/push an image, create
-   a revision, change IAM, invoke Cloud Run or enqueue tasks**. Token exchange may
-   produce audit logs; generated auth files are ephemeral runner files, never artifacts.
-3. WIF PASS proves token exchange/SA impersonation and repository read only.
-   403 at token exchange suggests provider claims, audience or Workload Identity User;
-   403 on repository read suggests repository IAM/API. Inspect sanitized errors,
-   never print JWT/access tokens or credential files. Compare actual IAM policies
-   against the table; write/deploy/actAs permissions remain unproven.
-4. Owner approves IAM scope, authentication, resource/cost budget, environment
-   reviewers, image retention and rollback before the **first** deployment.
-5. An authorized operator must first bootstrap the reviewed health image as a private service, enable IAM invoker checking, remove public service AND inherited grants, and grant only the invoker SA. This is a separate approved operation; the application workflow refuses a missing service. Only then dispatch mode **`deploy`**, confirmation **`deploy-health-only`**.
-   It builds on the runner, smoke-tests the image with Linux/amd64 and the stated
-   resource caps, pushes a full-SHA tag, resolves its immutable digest and deploys
-   that digest. No `latest` tag or VPS workflow changes. A failed postcheck is a
-   failed deployment verification even if Cloud Run already accepted the revision.
-6. An operator reviews the resulting service config/IAM, grants the invoker binding,
-   and verifies anonymous denial plus authorized health invocation. No task dispatch.
+```bash
+export GCP_PROJECT_ID=teacher-hub-pdf GCP_REGION=asia-southeast1
+export SOURCE_SHA=$(git rev-parse HEAD)
+export CONFIRMATION=deploy-health-only
+bash scripts/deploy-pdf-worker.sh
+```
+
+A shell marker is defense in depth, not authorization. Removing GitHub's deployer
+impersonation grants is mandatory even though no workflow calls this script.
 
 Post-deployment smoke commands for the authorized operator (not run in preparation):
 
@@ -246,47 +216,7 @@ inspect the actual service state (creation may have partially succeeded), and as
 the owner to approve either repair or deletion of this exact health-only service.
 Do not delete bucket/queue/repository or broaden deployer IAM. A pushed but unused
 digest is handled by the approved image retention policy. Subsequent application
-deployments use the existing checked workflow; IAM remains operator-controlled.
-
-## Console checklist and API contract
-
-- GitHub Settings → Environments → `pdf-worker`: independent reviewer, prevent
-  self-review, disable administrator bypass; selected branch policy `main` only,
-  no tag policy. Unsupported plan: keep workflow blocked and use the separately
-  approved operator path; typed confirmation is not equivalent protection.
-- GitHub Settings → Rulesets/Branches → `main`: require PR review and existing
-  quality/integration/E2E checks; prevent force push and bypass. Verify actual
-  check names on the repository before selecting required checks.
-- GitHub Variables: verify all four GCP values, provider numeric project number
-  and deployer email. Job uses `actions: read` for both environment GET and branch
-  policy LIST, `contents: read` for checkout, `id-token: write` for WIF only.
-- Google Cloud IAM → Workload Identity Federation: inspect issuer, attribute
-  mappings and condition covering numeric repository/owner IDs, main ref,
-  workflow_dispatch and exact workflow_ref as described above. Inspect the
-  deployer SA binding for the environment subject; do not grant the whole pool.
-- Google Cloud Run/IAM: operator performs approved bootstrap, inspects service and
-  inherited policies; deployer remains Run Developer + repository Writer + runtime
-  SA User. Verify WIF User separately. No service account key is needed.
-
-Official endpoint documentation requires Actions read for both
-[environment GET](https://docs.github.com/en/rest/deployments/environments#get-an-environment)
-and [branch policy LIST](https://docs.github.com/en/rest/deployments/branch-policies#list-deployment-branch-policies).
-The LIST response and [Octokit generated schema](https://github.com/octokit/openapi-types.ts/blob/main/packages/openapi-types/types.d.ts)
-do not guarantee branch `type`. Require exactly one array entry named `main` and
-`total_count === 1`; accept omitted `type`, but reject any explicit value other
-than `branch`. Require literal `custom_branch_policies === true`, explicit
-`can_admins_bypass === false`, nonempty valid reviewers and prevent-self-review.
-Missing security fields, malformed responses, 403/404/500 and transport errors
-block WIF. Never relax approval/bypass checks for an unsupported API/plan.
-
-An omitted policy type cannot prove whether a policy targets a branch or a tag;
-the operator must still confirm a branch policy in Settings. A tag named `main`
-has ref `refs/tags/main`: the job condition, validator run context and deploy
-script require exactly `refs/heads/main` and `workflow_dispatch`. The provider
-must independently enforce the numeric identity, ref, event and workflow_ref
-conditions above. Environment OIDC subject alone does not constrain branch/tag.
-These local guards do not verify actual provider configuration. API checks
-verify configuration; GitHub environment protection performs the approval gate.
+deployments use the manual script above; IAM remains operator-controlled.
 
 ### Validator runtime and language
 
@@ -317,17 +247,118 @@ modules should use TypeScript; migration of the existing worker is separate.
 - [Cloud Run maximum instances](https://docs.cloud.google.com/run/docs/configuring/max-instances)
 - [Cloud Run pricing](https://cloud.google.com/run/pricing)
 
-## Hardening readiness gates
+## Single-owner Console setup and independent security gates
 
-Protect main with PR review, no force pushes/bypass, and required existing quality,
-integration, e2e-smoke and schedule-regression checks. Worker checks run in quality.
-Require CODEOWNERS review for workflow/deployment changes where supported. Do not
-change settings automatically. GitHub API read failure blocks WIF; operator must
-verify token access to environment metadata before dispatch. Numeric OIDC identity,
-ref/event/workflow restrictions must be enforced by the provider, not merely YAML.
-Neither provider nor environment settings were inspected live in this task.
+Perform these steps as the authorized operator, **before dispatch**. This runbook
+is not permission for automated IAM changes. Existing deployer deployment roles
+remain unchanged. Reviewer approval is not simulated in a single-owner repository.
 
-verify-wif: NOT READY until those external protections and Variables are verified.
-Health deploy: NOT READY until operator bootstrap/IAM, container smoke and WIF pass.
-CLI flags match the current gcloud reference; setup-gcloud uses its current release,
-so actual CLI/API acceptance still requires the approved infrastructure test.
+1. Google Cloud Console → select `teacher-hub-pdf` → IAM & Admin → Service
+   Accounts → Create service account: ID `teacher-pdf-verifier`. Skip project-role
+   grants and key creation. Verify its email exactly matches the table above.
+2. Artifact Registry → Repositories → `teacher-pdf` in `asia-southeast1` →
+   Permissions → Grant access: verifier email, **Artifact Registry Reader**
+   (`roles/artifactregistry.reader`). Grant on this repository, not the project.
+   Inspect IAM including inherited roles, groups, conditional bindings and custom
+   roles. Verifier must have no Run Developer/Admin, Registry Writer, Storage
+   Admin, Tasks Admin, Token Creator, Owner/Editor, actAs, or equivalent custom
+   permissions. No extra permission is required for this metadata-only check.
+3. IAM & Admin → Workload Identity Federation → inspect the pool and provider.
+   Use a dedicated pool or audit **every provider** in the shared pool: a binding
+   is pool-scoped and another provider must not mint the same trusted attributes.
+   Issuer: `https://token.actions.githubusercontent.com`; retain the normal exact
+   provider audience expected by google-github-actions/auth. Map
+   `google.subject=assertion.sub` and
+   `attribute.repository_id=assertion.repository_id`. Review the condition below
+   before saving any operator-approved provider change. Do not broaden audiences.
+4. Service Accounts → verifier → Permissions → Grant access (or the WIF pool's
+   Grant access / service-account impersonation flow): grant only
+   `roles/iam.workloadIdentityUser` **on verifier** to this principal set, replacing
+   PROJECT_NUMBER and POOL with inspected values:
+   `principalSet://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL/attribute.repository_id/1306563928`.
+   Do not grant the entire pool, project-wide WIF User, or Token Creator.
+5. **Separate security gate: revoke GitHub access to deployer.** Service Accounts
+   → `teacher-pdf-deployer` → Permissions: inspect all WIF User/Token Creator and
+   custom impersonation bindings, their members and conditions. Record the exact
+   old member/role/condition for review, without tokens or keys. After operator
+   approval, remove GitHub subject/principalSet grants, including broad pool grants.
+   Also inspect project/folder/organization inherited grants, direct resource grants
+   to federated principals, other SAs reachable by that principal, and delegation
+   chains via verifier. Remove or restrict the offending grant at its actual scope;
+   changing one SA-local binding is insufficient if an inherited path remains.
+   Preserve deployer's Run Developer, Registry Writer, runtime SA User and approved
+   human access. No automatic IAM update is performed by this repository.
+   Re-read policies to establish **no GitHub-to-deployer path**. If unverified,
+   do not dispatch. Deleting `GCP_DEPLOYER_SA` alone does not revoke impersonation.
+6. GitHub Settings → Secrets and variables → Actions → Variables (or environment
+   variables): set `GCP_VERIFIER_SA` to the verifier email. Verify `GCP_PROJECT_ID`,
+   `GCP_REGION`, `GCP_WIF_PROVIDER`; provider is a full numeric-project resource
+   name. Remove obsolete deployer variable if unused elsewhere; no JSON keys.
+7. Settings → Environments → `pdf-worker`: Required reviewers OFF is supported;
+   admin bypass OFF; selected branches/tags: exactly **Branch main**, no tags or
+   wildcards. Settings → Rules → Rulesets: active main/default-branch rule requiring
+   PR (zero approvals for single owner), existing four CI checks, no deletion or
+   force push. Inspect bypass actors with authenticated administration access;
+   do not invent an independent reviewer or disable CI to allow merge.
+8. Only after the IAM/provider gates and variables are verified, and source is
+   merged with required CI passing: Actions → `pdf-worker-manual` → Run workflow
+   → `main`. There are no mode/confirmation inputs. Merging still triggers the
+   existing VPS CI/deployment workflow, a separate effect requiring owner review.
+   This task does not merge or dispatch. Success proves token exchange and registry
+   metadata read only; it cannot prove absence of privileges. Never print JWT,
+   access token or generated credential files; inspect sanitized errors only.
+
+Provider attribute condition (numeric IDs verified from the repository REST API;
+re-check ownership before applying):
+
+```text
+assertion.repository_id == '1306563928' &&
+assertion.repository_owner_id == '52443962' &&
+assertion.ref == 'refs/heads/main' &&
+assertion.event_name == 'workflow_dispatch' &&
+assertion.workflow_ref == 'hoangbao179/teacher-hub/.github/workflows/pdf-worker.yml@refs/heads/main' &&
+assertion.sub == 'repo:hoangbao179/teacher-hub:environment:pdf-worker'
+```
+
+These are GitHub OIDC claims for this non-reusable workflow. Confirm custom subject
+configuration before applying; a changed subject should fail closed, not cause the
+condition to be removed. The environment subject alone does not restrict the ref.
+Provider conditions restrict token acceptance; SA/resource IAM restricts what the
+accepted principal can impersonate or access. Neither is replaced by JavaScript.
+
+### API contract and enforcement boundaries
+
+GitHub Environment enforces selected branch/tag admission (and any configured
+review/wait rules). Workflow checks repository, full main ref, dispatch event,
+exact verifier email/project/region and provider-name syntax before auth. The
+validator reads exactly `pdf-worker`, requires its matching name, protection-rules
+array, explicit `can_admins_bypass=false`, custom policies true and protected-branch
+selection false, then exactly one policy named main with explicit type branch.
+Reviewers and prevent-self-review are not prerequisites for read-only verification.
+
+[Environment GET](https://docs.github.com/en/rest/deployments/environments#get-an-environment)
+and [policy LIST](https://docs.github.com/en/rest/deployments/branch-policies#list-deployment-branch-policies)
+require Actions read; checkout requires Contents read; OIDC requires id-token write.
+No broader GitHub permission is requested. REST examples/generated schemas may omit
+`type` or `can_admins_bypass`; omission is **not** evidence of a safe value. This
+validator deliberately blocks such responses because branch/tag and bypass state
+cannot be established. Live GitHub responses observed here include both fields.
+Do not bypass the check on a plan/API that omits them. Missing/malformed essential
+fields, 403/404/500 or transport errors fail before Google authentication.
+
+### Verification status and readiness
+
+Owner reported single-owner Environment and main ruleset setup. Read-only GitHub
+REST inspection additionally confirmed on 2026-10-24: environment name pdf-worker,
+no reviewer rule, bypass false, custom-only policy, one main branch policy; numeric
+repo/owner IDs above; active ruleset 25771531 and effective main rules requiring PR,
+Fast quality gate, Server integration tests, Production smoke E2E and Schedule
+regression gate, blocking deletion/non-fast-forward. Public REST did not expose
+bypass actors; authenticated operator inspection is still needed for that field.
+No Cloud IAM/provider inventory, variable values or real WIF exchange was verified.
+
+verify-wif: **NOT READY** until verifier least privilege, provider trust, no GitHub
+impersonation of deployer, variables and remaining GitHub settings are verified.
+Cloud Run deployment: **NOT READY**; only a separately approved manual operation
+with bootstrap, Linux container smoke, private IAM, billing/budget and rollback
+checks may proceed. Source checks do not establish these external prerequisites.

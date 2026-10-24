@@ -8,24 +8,23 @@ module.exports = async function validateEnvironment(github, context) {
   }
   const args = { ...context.repo, environment_name: 'pdf-worker' };
   const { data: env } = await github.rest.repos.getEnvironment(args);
-  const review = Array.isArray(env?.protection_rules)
-    ? env.protection_rules.find(r => r?.type === 'required_reviewers') : undefined;
-  if (!Array.isArray(review?.reviewers) || review.reviewers.length === 0 ||
-      !review.reviewers.every(r => ['User', 'Team'].includes(r?.type) &&
-        Number.isInteger(r?.reviewer?.id) && r.reviewer.id > 0) ||
-      review.prevent_self_review !== true || env.can_admins_bypass !== false) {
-    throw new Error('Configure required reviewers, prevent self-review and disable admin bypass before WIF.');
+  // Reviewers are optional for the verifier; security metadata is not inferred.
+  if (env?.name !== 'pdf-worker' || !Array.isArray(env.protection_rules) ||
+      !env.protection_rules.every(r => r && typeof r.type === 'string') ||
+      env.can_admins_bypass !== false) {
+    throw new Error('Require pdf-worker metadata and explicit disabled admin bypass.');
   }
-  if (env.deployment_branch_policy?.custom_branch_policies !== true) {
+  if (env.deployment_branch_policy?.custom_branch_policies !== true ||
+      env.deployment_branch_policy?.protected_branches !== false) {
     throw new Error('Require explicit main-only environment policy.');
   }
   const { data } = await github.rest.repos.listDeploymentBranchPolicies(args);
   const policies = data?.branch_policies;
-  // GitHub's LIST schema does not guarantee type. Explicit non-branch is unsafe.
-  // Exact run ref above and the provider ref/workflow conditions exclude tags.
+  // REST examples omit type. Omission cannot prove branch versus tag: fail closed.
+  // Live responses include type; a matching name alone is insufficient.
   if (data?.total_count !== 1 || !Array.isArray(policies) || policies.length !== 1 ||
       policies[0]?.name !== 'main' ||
-      ('type' in policies[0] && policies[0].type !== 'branch')) {
+      policies[0]?.type !== 'branch') {
     throw new Error('Environment must allow only the main branch.');
   }
 };

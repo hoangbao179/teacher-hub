@@ -2,16 +2,6 @@ name: pdf-worker-manual
 
 on:
   workflow_dispatch:
-    inputs:
-      mode:
-        description: WIF check only, or explicitly approved health-only deployment
-        type: choice
-        options: [verify-wif, deploy]
-        default: verify-wif
-      confirmation:
-        description: For deploy only, enter deploy-health-only after approval
-        type: string
-        default: ''
 
 permissions:
   contents: read
@@ -21,11 +11,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  worker:
+  verify-wif:
     if: github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    # Configure this environment's reviewers and restrict deployment branches to main.
+    # Read-only verification; provider and IAM restrictions are independent gates.
     environment: pdf-worker
     permissions:
       contents: read
@@ -35,26 +25,19 @@ jobs:
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       GCP_REGION: ${{ vars.GCP_REGION }}
       GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
-      GCP_DEPLOYER_SA: ${{ vars.GCP_DEPLOYER_SA }}
-      MODE: ${{ inputs.mode }}
-      CONFIRMATION: ${{ inputs.confirmation }}
+      GCP_VERIFIER_SA: ${{ vars.GCP_VERIFIER_SA }}
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Validate approved target and mode
+      - name: Validate read-only target
         shell: bash
         run: |
           set -euo pipefail
           test "$GCP_PROJECT_ID" = teacher-hub-pdf
           test "$GCP_REGION" = asia-southeast1
-          test "$GCP_DEPLOYER_SA" = teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com
+          test "$GCP_VERIFIER_SA" = teacher-pdf-verifier@teacher-hub-pdf.iam.gserviceaccount.com
           [[ "$GCP_WIF_PROVIDER" =~ ^projects/[0-9]+/locations/global/workloadIdentityPools/[^/]+/providers/[^/]+$ ]]
-          case "$MODE" in
-            verify-wif) ;;
-            deploy) test "$CONFIRMATION" = deploy-health-only ;;
-            *) exit 1 ;;
-          esac
       - uses: actions/setup-node@v6
         with:
           node-version: 24.18.0
@@ -65,7 +48,7 @@ jobs:
           node --test scripts/validate-pdf-environment.test.cjs
           bash -n scripts/deploy-pdf-worker.sh
           bash scripts/deploy-pdf-worker.test.sh
-      - name: Require environment approval protection
+      - name: Validate main-only environment protection
         uses: actions/github-script@v8
         with:
           script: |
@@ -73,7 +56,7 @@ jobs:
       - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+          service_account: ${{ vars.GCP_VERIFIER_SA }}
           project_id: ${{ vars.GCP_PROJECT_ID }}
       - uses: google-github-actions/setup-gcloud@v3
       - name: Verify WIF token exchange without printing credentials
@@ -84,7 +67,3 @@ jobs:
           gcloud artifacts repositories describe teacher-pdf \
             --project="$GCP_PROJECT_ID" --location="$GCP_REGION" --format='value(name)'
           echo 'WIF impersonation and repository read succeeded; deployment permissions are not proven.' >> "$GITHUB_STEP_SUMMARY"
-      - name: Build, smoke test, push and deploy health-only worker
-        if: inputs.mode == 'deploy'
-        shell: bash
-        run: bash scripts/deploy-pdf-worker.sh

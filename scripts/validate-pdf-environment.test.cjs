@@ -6,9 +6,8 @@ const { runInNewContext } = require('node:vm');
 const context = { repo: { owner: 'hoangbao179', repo: 'teacher-hub' }, ref: 'refs/heads/main', eventName: 'workflow_dispatch' };
 function fixture() {
   return {
-    env: { protection_rules: [{ type: 'required_reviewers', reviewers: [{ type: 'User', reviewer: { id: 1 } }], prevent_self_review: true }], can_admins_bypass: false, deployment_branch_policy: { custom_branch_policies: true } },
-    // Official GitHub LIST example shape, reduced to the sole allowed policy.
-    policies: { total_count: 1, branch_policies: [{ id: 361472, node_id: 'example', name: 'main' }] },
+    env: { name: 'pdf-worker', protection_rules: [{ type: 'branch_policy' }], can_admins_bypass: false, deployment_branch_policy: { protected_branches: false, custom_branch_policies: true } },
+    policies: { total_count: 1, branch_policies: [{ id: 64168843, name: 'main', type: 'branch' }] },
   };
 }
 function client(f, failure, status = 403) {
@@ -17,12 +16,15 @@ function client(f, failure, status = 403) {
     listDeploymentBranchPolicies: async args => { assert.deepEqual(args, { ...context.repo, environment_name: 'pdf-worker' }); if (failure === 'policies') throw Object.assign(new Error('API failure'), { status }); return { data: f.policies }; },
   } } };
 }
-test('accepts official response without type and explicit branch type', async () => {
+test('accepts main-only environment without reviewers for verifier workflow', async () => {
   const f = fixture();
   await validate(client(f), context);
-  f.policies.branch_policies[0].type = 'branch';
+  f.env.protection_rules = [];
+  await validate(client(f), context);
+  f.env.protection_rules = [{ type: 'required_reviewers', reviewers: [] }];
   await validate(client(f), context);
 });
+
 test('API denial and errors propagate before authentication', async () => {
   for (const failure of ['env', 'policies']) {
     for (const status of [403, 404, 500]) {
@@ -35,15 +37,12 @@ test('rejects unsafe, incomplete and malformed protection responses', async () =
     f => { f.env = null; },
     f => { delete f.env.protection_rules; },
     f => { f.env.protection_rules = {}; },
-    f => { f.env.protection_rules = []; },
-    f => { f.env.protection_rules[0].reviewers = []; },
-    f => { delete f.env.protection_rules[0].reviewers; },
-    f => { f.env.protection_rules[0].reviewers = { length: 1 }; },
-    f => { f.env.protection_rules[0].reviewers = [null]; },
-    f => { f.env.protection_rules[0].reviewers[0].reviewer = {}; },
-    f => { f.env.protection_rules[0].prevent_self_review = false; },
-    f => { f.env.protection_rules[0].prevent_self_review = 'true'; },
-    f => { delete f.env.protection_rules[0].prevent_self_review; },
+    f => { f.env.name = 'other'; },
+    f => { delete f.env.name; },
+    f => { f.env.protection_rules = [null]; },
+    f => { f.env.deployment_branch_policy.protected_branches = true; },
+    f => { delete f.env.deployment_branch_policy.protected_branches; },
+    f => { delete f.policies.branch_policies[0].type; },
     f => { f.env.can_admins_bypass = true; },
     f => { delete f.env.can_admins_bypass; },
     f => { f.env.deployment_branch_policy = null; },
@@ -102,4 +101,17 @@ test('workflow guards main branch/manual event and validates protection before a
   assert.match(workflow, /id-token: write/);
   const validation = workflow.indexOf("await require('./scripts/validate-pdf-environment.cjs')(github, context)");
   assert.ok(validation > 0 && validation < workflow.indexOf('uses: google-github-actions/auth@v3'));
+});
+
+test('workflow authenticates only the verifier and has no deployment path', () => {
+  const workflow = readFileSync(`${__dirname}/../.github/workflows/pdf-worker.yml`, 'utf8');
+  assert.match(workflow, /on:\s+workflow_dispatch:\s+permissions:/);
+  assert.match(workflow, /service_account: \$\{\{ vars.GCP_VERIFIER_SA \}\}/);
+  assert.match(workflow, /test "\$GCP_VERIFIER_SA" = teacher-pdf-verifier@teacher-hub-pdf\.iam\.gserviceaccount\.com/);
+  assert.doesNotMatch(workflow, /GCP_DEPLOYER_SA|teacher-pdf-deployer|inputs\.|credentials_json|docker (build|push)|run deploy|run: bash scripts\/deploy-pdf-worker\.sh/);
+  assert.deepEqual([...workflow.matchAll(/^  ([\w-]+):$/gm)].map(m => m[1]), ['workflow_dispatch', 'verify-wif']);
+  assert.deepEqual(workflow.match(/^          gcloud .+$/gm).map(s => s.trim()), [
+    'gcloud auth print-access-token >/dev/null',
+    'gcloud artifacts repositories describe teacher-pdf \\',
+  ]);
 });
