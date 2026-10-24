@@ -29,6 +29,84 @@ paths:
     post: {summary: Kết thúc session phía client, responses: {'204': {description: Đã đăng xuất}}}
   /api/auth/me:
     get: {summary: Đọc authoritative user từ database, responses: {'200': {description: Thành công}, '401': {description: Token không hợp lệ}}}
+  /api/public/pdf/capabilities:
+    get:
+      security: []
+      summary: Public PDF capabilities; production remains disabled until independently approved
+      responses:
+        '200': {description: Capabilities, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/PdfCapabilities'}}}}}}
+  /api/public/pdf/session:
+    post:
+      security: []
+      summary: Issue or reuse a browser-only opaque guest session
+      description: Requires exact Origin matching the configured public website. On success may set a 180-day HttpOnly SameSite=Strict cookie. Only available when PDF processing is enabled.
+      responses:
+        '200': {description: Guest session ready; cookie is never exposed in response JSON}
+        '403': {description: Invalid Origin}
+        '503': {description: PDF provider unavailable}
+  /api/public/pdf/batches:
+    get:
+      security: []
+      summary: List PDF batches submitted through the public tool, shared across devices
+      description: Shared public history; no login or submitting-browser cookie required. Private teacher batches are excluded.
+      parameters: [{in: query, name: page, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}]
+      responses:
+        '200': {description: Paginated guest batches, pageSize 20}
+    post:
+      security: []
+      summary: Submit one to five authorized Drive links for this browser
+      description: Requires a valid submission cookie, exact Origin and UUID-v4 idempotency header scoped to the browser. Batch, jobs and public linkage commit atomically before enqueue. Existing teacher quotas and guest rate limits apply.
+      parameters: [{$ref: '#/components/parameters/PdfIdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [links, rightsConfirmed]
+              properties:
+                links: {type: array, minItems: 1, maxItems: 5, items: {type: string, format: uri, maxLength: 512}}
+                rightsConfirmed: {type: boolean, enum: [true]}
+      responses:
+        '201': {description: Batch accepted, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/public/pdf/batches/{id}:
+    get:
+      security: []
+      summary: Retrieve a public-tool batch on any device
+      parameters: [{$ref: '#/components/parameters/PdfId'}]
+      responses:
+        '200': {description: Public-tool batch on any device without a cookie, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
+        '404': {description: Private teacher batch or unknown}
+  /api/public/pdf/jobs/{id}/retry:
+    post:
+      security: []
+      summary: Retry a public-tool PDF job when server policy permits
+      description: Requires exact Origin and idempotency header; no login or submitting-browser cookie. Private jobs return 404.
+      parameters: [{$ref: '#/components/parameters/PdfId'}, {$ref: '#/components/parameters/PdfIdempotencyKey'}]
+      responses:
+        '201': {description: Idempotent successor job}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/public/pdf/jobs/{id}/download-ticket:
+    post:
+      security: []
+      summary: Create one-use download ticket for completed public-tool job
+      description: Requires exact Origin; no login or submitting-browser cookie. Download window is 24 hours from Worker claim once known. Private jobs return 404.
+      parameters: [{$ref: '#/components/parameters/PdfId'}]
+      responses:
+        '200': {description: Ticket, guest download path and expiry; no permanent public URL}
+        default: {$ref: '#/components/responses/PdfError'}
+  /api/public/pdf/jobs/{id}/download:
+    post:
+      security: []
+      summary: One-use ticket PDF attachment streaming for public-tool job
+      description: Requires exact Origin and an unexpired ticket in the POST body; no login or submitting-browser cookie. Tickets must not appear in URLs or browser storage.
+      parameters: [{$ref: '#/components/parameters/PdfId'}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}}}
+      responses:
+        '200': {description: PDF stream, content: {application/pdf: {schema: {type: string, format: binary}}}}
+        default: {$ref: '#/components/responses/PdfError'}
   /api/pdf/capabilities:
     get:
       summary: Khả năng PDF của giáo viên; production mặc định disabled
@@ -54,7 +132,7 @@ paths:
         '201': {description: Batch tồn tại hoặc đã tạo; chưa đồng nghĩa PDF thành công, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
         default: {$ref: '#/components/responses/PdfError'}
     get:
-      summary: Lịch sử riêng của giáo viên; pageSize cố định 20
+      summary: Lịch sử PDF private của giáo viên; loại trừ public trong danh sách và tổng số; pageSize cố định 20
       parameters: [{in: query, name: page, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}]
       responses:
         '200':

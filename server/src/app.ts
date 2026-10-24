@@ -9,6 +9,8 @@ import { requestContext } from "./middleware/request-context";
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
+  // Only Nginx is trusted here. Caddy replaces XFF at ingress; Nginx preserves it.
+  // API/Web have no published ports in the production Compose topology.
   app.set("trust proxy", 1);
   app.use(helmet());
   app.use(requestContext);

@@ -19,6 +19,7 @@ npm -w server run typecheck
 node --import tsx --test server/src/services/pdf.service.test.ts
 node server/scripts/run-integration.cjs src/services/pdf.integration.test.ts
 npm run check:ci
+npm -w client run test:e2e:public-pdf
 ```
 
 The integration runner resets its test database for migration recovery; inspect
@@ -37,6 +38,17 @@ all job history. Do not drop tables with business records or enqueue intentions;
 review data export/retention manually. If migration partially fails, stop rollout,
 inspect actual tables and migration ledger, fix forward/re-run the new idempotent
 DDL on an approved backup-verified database. Do not edit earlier migrations.
+
+Public batches use migration 0028's existing link table in the same transaction
+as batch/job creation; this fix adds no migration or backfill. Link failure must
+leave no batch/job and no dispatched task. Public list/detail/retry/download work
+across devices without the submission cookie; private admin list/count exclude
+public rows. The public browser regression creates its own uniquely named
+synthetic `_test` database, migrates it, injects FakeCloud into the router in
+process and drops only that newly created database on exit. It never enables
+the production runtime. Provide fixture DB host/port/user/password explicitly.
+The [proxy boundary](production.md#trusted-proxy-and-client-ip) is part of the
+cost-control gate; verify the actual deployed client IP before activation.
 
 ## Manual activation prerequisites (not executed)
 

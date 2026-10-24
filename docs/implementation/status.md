@@ -22,7 +22,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### ACTIVE — dùng thực tế
 
-- **Góc công cụ public**: Nút **Công cụ** trên public header dẫn thẳng tới `/tools`, không yêu cầu đăng nhập và không khởi tạo auth session. Trang mobile-first một cột có màu pastel, hoa lá trang trí, liên kết Trang chủ/Góc học/Tủ sách và giới thiệu công cụ PDF **đang nghiên cứu**; chưa có chức năng tải tài liệu hoặc action tải giả. Route có metadata riêng và HTML prerender tại `tools/index.html` để mở trực tiếp/reload với cấu hình static hosting hiện hành.
+- **Góc công cụ public**: Nút Công cụ màu hồng pastel dẫn tới `/tools`, không yêu cầu đăng nhập. Form nhận tối đa 5 link PDF được phép tải và xác nhận quyền sử dụng. Lịch sử public dùng chung trên mọi thiết bị; xem/retry/download không cần cookie thiết bị tạo. Cookie chỉ phục vụ submit/idempotency. Batch/job/liên kết public được ghi nguyên tử; danh sách và tổng số batch admin loại trừ public. UI dùng tên tạm theo mã Drive, ticket POST một lần và thời hạn tải 24 giờ; không upload vào Google Drive cô Vy. Polling bỏ qua chi tiết terminal, giữ theo dõi kết quả muộn và refresh thủ công. Capabilities vẫn unavailable vì production PDF worker/identity chưa bật.
 - **Teacher Tools quản trị (giao diện mặc định sau đăng nhập)**: `/admin/tools` cùng toàn bộ `/admin/*` tiếp tục nằm trong auth boundary hiện hành. Khi legacy tắt, các route quản trị cũ chuyển về `/admin/tools` sau khi xác thực; khách vẫn được đưa tới `/admin/login`. Trang public `/tools` không thay thế màn đăng nhập hay trang công cụ quản trị.
 
 - **Lớp và học sinh**: quản lý lớp 1–1/lớp nhóm, học sinh, enrollment, khoảng hiệu
@@ -83,7 +83,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   factory production/CLI vẫn dùng provider disabled vì identity VPS → GCP chưa
   được duyệt. Reconciler độc lập có nhiều lượt, tối đa 50 job/45 giây mỗi run,
   shared factory và gate xác minh lịch recovery. RESULT_UNCONFIRMED/RETRY_EXHAUSTED
-  tiếp tục đọc result muộn tới expiry. UI/public `/tools` không thay đổi. Task 3 dùng shared contracts và
+  tiếp tục đọc result muộn tới expiry. UI PDF công khai có lịch sử dùng chung; cookie chỉ cần cho submit. Submit/download vẫn chỉ mở khi capabilities cho phép. UI dùng shared contracts và
   [API feature](../features/pdf-job-api.md); [identity ADR](../decisions/ADR-pdf-producer-identity.md)
   và [runbook API](../operations/pdf-job-api.md) ghi các gate còn thiếu. Chưa cloud E2E.
 
@@ -122,7 +122,9 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   legacy tắt: chúng kiểm tra Dashboard/Calendar đang bị chuyển hướng về Tools.
   Khi bật lại feature flag, các suite này tự chạy đầy đủ. Unit test lịch, ngày
   chuyển ngày và server integration vẫn chạy độc lập với trạng thái giao diện.
-  Suite smoke mặc định chỉ gồm Tools, Homepage và auth session; các suite E2E
+  Suite smoke mặc định gồm Tools, public PDF với hai browser context/MySQL/FakeCloud,
+  Homepage và auth session. PDF regression kiểm tra đóng browser/recovery, phân tách
+  public/private, ticket một lần, FAILED/EXPIRED retry, binary 401 và polling có chọn lọc; các suite E2E
   quản trị nghiệp vụ còn lại cần giao diện legacy, không dùng để xác minh Tools.
 
 - **Vocabulary public game**: `VOCABULARY_GAMES_ENABLED = false`. Các route `/play/*`

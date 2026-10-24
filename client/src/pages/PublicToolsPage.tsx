@@ -1,7 +1,8 @@
-import { ArrowBackRounded, ArrowForwardRounded, AutoStoriesRounded, LocalFloristRounded, PictureAsPdfRounded, SpaRounded } from "@mui/icons-material";
-import { Box, Button, Chip, Container, Stack, Typography } from "@mui/material";
+import { ArrowBackRounded, ArrowForwardRounded, AutoStoriesRounded, LocalFloristRounded, SpaRounded } from "@mui/icons-material";
+import { Box, Button, Container, Stack, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 import { publicHomeContent } from "../content/publicHome";
+import { PublicPdfTool } from "../components/PublicPdfTool";
 
 /** Decorative, local vector artwork; all useful information remains in HTML. */
 function GardenSprig() {
@@ -34,36 +35,18 @@ export function PublicToolsPage() {
       <Container component="main" maxWidth="sm" sx={{ flex: 1, pt: { xs: 4, sm: 6 }, pb: 5 }}>
         <Box sx={{ textAlign: "center", position: "relative", px: { xs: 1, sm: 3 }, pb: 4 }}>
           <Box sx={{ position: "absolute", width: 74, height: 96, right: 0, top: -10, opacity: 0.7, pointerEvents: "none" }}><GardenSprig /></Box>
-          <Box sx={{ display: "inline-flex", p: 1.5, borderRadius: "24px 24px 24px 8px", bgcolor: "#eee5fa", color: "#78618f", mb: 2 }}>
+          <Box sx={{ display: "inline-flex", p: 1.5, borderRadius: "24px 24px 24px 8px", bgcolor: "#f9e0e9", color: "#b96d8d", mb: 2 }}>
             <LocalFloristRounded sx={{ fontSize: 32 }} aria-hidden="true" />
           </Box>
-          <Typography sx={{ color: "#756485", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", mb: 1.5 }}>CHUẨN BỊ BÀI, THÊM NIỀM VUI</Typography>
+          <Typography sx={{ color: "#b96d8d", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", mb: 1.5 }}>CHUẨN BỊ BÀI, THÊM NIỀM VUI</Typography>
           <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: 32, sm: 40 }, lineHeight: 1.3, letterSpacing: "-0.035em", textWrap: "balance" }}>Góc công cụ<br />của cô Vy</Typography>
           <Typography sx={{ color: "#72677b", mt: 2, lineHeight: 1.8, maxWidth: 370, mx: "auto" }}>Một góc nhỏ để việc chuẩn bị bài giảng nhẹ nhàng hơn, mỗi ngày một chút.</Typography>
         </Box>
 
-        <Box component="section" aria-labelledby="pdf-tool-heading" sx={{ borderRadius: 5, border: "1px solid #eddae2", bgcolor: "#fff", boxShadow: "0 8px 30px #7655690a", overflow: "hidden" }}>
-          <Box sx={{ bgcolor: "#fbe6ed", px: { xs: 2.5, sm: 3.5 }, pt: 3, pb: 2.5 }}>
-            <Stack direction="row" spacing={2} sx={{ alignItems: "center", mb: 2.5 }}>
-              <Box sx={{ width: 56, height: 64, borderRadius: "12px 20px 12px 12px", bgcolor: "#fffafc", display: "grid", placeItems: "center", color: "#b26080", flexShrink: 0, transform: "rotate(-5deg)" }}><PictureAsPdfRounded sx={{ fontSize: 32 }} aria-hidden="true" /></Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Chip label="Đang nghiên cứu" size="small" sx={{ bgcolor: "#eee4f7", color: "#685080", fontWeight: 700, mb: 1 }} />
-                <Typography id="pdf-tool-heading" component="h2" sx={{ fontSize: 21, fontWeight: 800, lineHeight: 1.4 }}>Tài liệu PDF cho bài giảng</Typography>
-              </Box>
-            </Stack>
-            <Typography sx={{ color: "#775b6b", lineHeight: 1.8 }}>Thêm một người bạn nhỏ cho những giờ soạn bài và chuẩn bị tài liệu in.</Typography>
-          </Box>
-          <Box sx={{ px: { xs: 2.5, sm: 3.5 }, py: 3 }}>
-            <Typography sx={{ lineHeight: 1.8, color: "#6f6477" }}>Cô Vy đang tìm hiểu cách hỗ trợ chuẩn bị PDF từ tài liệu có quyền sao chép và in. Công cụ chưa sẵn sàng sử dụng.</Typography>
-            <Stack direction="row" spacing={1.25} sx={{ bgcolor: "#f1f8f1", borderRadius: 3, p: 2, mt: 2.5, alignItems: "flex-start" }}>
-              <SpaRounded sx={{ color: "#64866e", fontSize: 22, mt: 0.25 }} aria-hidden="true" />
-              <Typography sx={{ fontSize: 13, lineHeight: 1.8, color: "#506957" }}>Với tài liệu bị tắt tải hoặc in, hãy xin bản PDF hay quyền sử dụng từ chủ tài liệu.</Typography>
-            </Stack>
-          </Box>
-        </Box>
+        <PublicPdfTool />
 
         <Box component="section" aria-labelledby="explore-heading" sx={{ mt: 4 }}>
-          <Typography id="explore-heading" component="h2" sx={{ fontWeight: 700, fontSize: 16, mb: 2, textAlign: "center", color: "#6d617a" }}>Trong lúc chờ, ghé một chút nhé</Typography>
+          <Typography id="explore-heading" component="h2" sx={{ fontWeight: 700, fontSize: 16, mb: 2, textAlign: "center", color: "#6d617a" }}>Khám phá thêm</Typography>
           <Stack spacing={1.5}>
             {[
               { to: "/hoc", title: "Góc học miễn phí", copy: "Cùng ôn từ vựng và luyện tiếng Anh", color: "#e8f5ef", icon: <SpaRounded /> },
@@ -76,7 +59,7 @@ export function PublicToolsPage() {
           </Stack>
         </Box>
       </Container>
-      <Box component="footer" sx={{ textAlign: "center", bgcolor: "#f3edf8", px: 2, pt: 2, pb: "max(16px, env(safe-area-inset-bottom))" }}>
+      <Box component="footer" sx={{ textAlign: "center", bgcolor: "#fff1f5", px: 2, pt: 2, pb: "max(16px, env(safe-area-inset-bottom))" }}>
         <Typography sx={{ fontSize: 12, color: "#776884", lineHeight: 1.8 }}>{publicHomeContent.footer.copy}</Typography>
       </Box>
     </Box>

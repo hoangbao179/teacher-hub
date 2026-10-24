@@ -47,12 +47,20 @@ export class PdfRepository {
     [id,batch,owner,file,retry?.id ?? null,retry ? retry.retryAttempts+1 : 0,key ?? null]);
     return id;
   }
-  async create(owner: number, key: string, hash: string, files: string[], cfg: PdfSettings) {
+  async create(owner: number, key: string, hash: string, files: string[], cfg: PdfSettings, publicSessionId?: string) {
     return transaction(async c => {
       await this.lock(c, owner);
+      if (publicSessionId) {
+        const [sessions] = await c.execute<RowDataPacket[]>(
+          'SELECT id FROM pdf_guest_sessions WHERE id=? AND owner_id=? AND expires_at>UTC_TIMESTAMP(3) FOR SHARE',
+          [publicSessionId,owner]);
+        if (!sessions.length) throw pdfError(401,'PDF_GUEST_SESSION_REQUIRED');
+      }
       const [existing] = await c.execute<RowDataPacket[]>('SELECT id,request_hash FROM pdf_batches WHERE owner_id=? AND idempotency_key=?', [owner,key]);
       if (existing.length) {
         if (existing[0].request_hash !== hash) throw pdfError(409, 'PDF_IDEMPOTENCY_CONFLICT');
+        const [visibility] = await c.execute<RowDataPacket[]>('SELECT session_id FROM pdf_guest_batches WHERE batch_id=?', [existing[0].id]);
+        if ((visibility[0]?.session_id ?? undefined) !== publicSessionId) throw pdfError(409,'PDF_IDEMPOTENCY_CONFLICT');
         return existing[0].id as string;
       }
       await this.capacity(c, owner, files.length, cfg);
@@ -61,6 +69,9 @@ export class PdfRepository {
       const id = randomUUID();
       await c.execute('INSERT INTO pdf_batches(id,owner_id,idempotency_key,request_hash,rights_confirmed_at,created_at) VALUES(?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))', [id,owner,key,hash]);
       for (const file of files) await this.insert(c,owner,id,file);
+      if (publicSessionId) {
+        await c.execute('INSERT INTO pdf_guest_batches(batch_id,session_id) VALUES(?,?)', [id,publicSessionId]);
+      }
       return id;
     });
   }
@@ -94,8 +105,9 @@ export class PdfRepository {
     return { id,createdAt:date(rows[0].created_at),rightsConfirmedAt:date(rows[0].rights_confirmed_at),jobs:jobs.map(job) };
   }
   async list(owner: number, page: number): Promise<PdfBatchList> {
-    const [rows] = await pool.query<RowDataPacket[]>('SELECT * FROM pdf_batches WHERE owner_id=? ORDER BY created_at DESC,id LIMIT 20 OFFSET ?', [owner,(page-1)*20]);
-    const [count] = await pool.execute<RowDataPacket[]>('SELECT COUNT(*) n FROM pdf_batches WHERE owner_id=?', [owner]);
+    const privateOnly = 'b.owner_id=? AND NOT EXISTS (SELECT 1 FROM pdf_guest_batches g WHERE g.batch_id=b.id)';
+    const [rows] = await pool.query<RowDataPacket[]>(`SELECT b.* FROM pdf_batches b WHERE ${privateOnly} ORDER BY b.created_at DESC,b.id DESC LIMIT 20 OFFSET ?`, [owner,(page-1)*20]);
+    const [count] = await pool.execute<RowDataPacket[]>(`SELECT COUNT(*) n FROM pdf_batches b WHERE ${privateOnly}`, [owner]);
     return { items:rows.map(r => ({ id:r.id,createdAt:date(r.created_at),rightsConfirmedAt:date(r.rights_confirmed_at) })),page,pageSize:20,total:Number(count[0].n) };
   }
   async lease(owner?: number, batch?: string): Promise<PdfWork | null> {

@@ -39,15 +39,18 @@ test("tools screen replaces the legacy management entry points", () => {
   assert.match(login, /: "\/admin\/tools"/);
 });
 
-test("public tools is informational and has its own static entry and metadata", () => {
-  const page = read("src/pages/PublicToolsPage.tsx");
-  assert.match(page, /Góc công cụ/);
-  assert.match(page, /Đang nghiên cứu/);
-  assert.match(page, /Công cụ chưa sẵn sàng sử dụng/);
-  assert.match(page, /component="main"/);
-  assert.doesNotMatch(page, /useAuth|AuthProvider|logout|fetch\(|<input|<TextField|<form/);
-  assert.match(read("scripts/prerender-home.mjs"), /"tools", "index.html"/);
-  assert.match(read("src/components/RouteMetadata.tsx"), /pathname === "\/tools"/);
+test("public tools embeds guest PDF workspace without teacher login", () => {
+  const page=read("src/pages/PublicToolsPage.tsx");
+  const pdf=read("src/components/PublicPdfTool.tsx");
+  assert.match(page,/PublicPdfTool/);
+  assert.match(page,/component="main"/);
+  assert.doesNotMatch(page,/useAuth|AuthProvider|\/admin\/login/);
+  assert.match(pdf,/pdfApi\.session/);
+  assert.match(pdf,/pdfApi\.create/);
+  assert.match(pdf,/pdfApi\.download/);
+  assert.match(pdf,/RESULT_UNCONFIRMED/);
+  assert.doesNotMatch(pdf,/fetch\(/);
+  assert.match(read("scripts/prerender-home.mjs"),/"tools", "index.html"/);
 });
 
 test("tools page is mobile-first, accessible and does not advertise a fake download action", () => {
@@ -60,4 +63,16 @@ test("tools page is mobile-first, accessible and does not advertise a fake downl
   assert.match(page, /Tính năng này đang được chuẩn bị/);
   assert.match(page, /void logout\(\)/);
   assert.doesNotMatch(page, /<Button[^>]*>Tải (file|ngay)/);
+});
+
+
+test("PDF interface uses shared contracts and keeps actions behind capabilities", () => {
+  const page = read("src/components/PublicPdfTool.tsx");
+  const client = read("src/api/pdf.ts");
+  assert.match(page, /caps\?\.submitEnabled===true/);
+  assert.match(page, /RESULT_UNCONFIRMED/);
+  assert.match(page, /pdfApi\.download/);
+  assert.match(client, /@teacher\/shared/);
+  assert.match(client, /Idempotency-Key/);
+  assert.doesNotMatch(page, /fetch\(/);
 });

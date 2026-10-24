@@ -1,7 +1,7 @@
 # PDF job API — Task 2
 
 Status: backend implemented for local/fake verification; production unavailable.
-No UI or public `/tools` call is added. Use [OpenAPI](../api/openapi.yaml), shared
+The public `/tools` UI uses the public endpoints described below. Use [OpenAPI](../api/openapi.yaml), shared
 contracts in `shared/src/contracts/pdf.ts` and the unchanged [Worker v1](../api/pdf-worker-v1.md).
 
 ## Task 3 API usage
@@ -102,3 +102,51 @@ production token acquisition/wiring remains blocked on operator identity review,
 Worker activation, OIDC, bucket permissions, queue verification, reconciliation
 and private cloud E2E. Task 3 can build against shared contracts/fake tests and
 must display unavailable on the real disabled backend. No production readiness claim.
+
+## Public guest Tools (Task 3 change)
+
+The public website `/tools` requires no login. Everyone can list public-tool
+batches, read their details, retry eligible jobs and download completed/unexpired
+PDFs on a different device. These operations do not require the submitting
+browser's cookie. Clearing or expiring that cookie does not remove public history.
+Only records linked through `pdf_guest_batches` are public; private teacher batches
+are rejected by public detail/retry/ticket/download, including when their UUID is
+known. Teacher history list and count exclude public batches.
+
+POST `/session` issues a Secure (production), HttpOnly, SameSite=Strict cookie
+scoped to `/api/public/pdf`. Only submission needs this cookie, to scope the
+idempotency key. Every public mutation requires the exact website Origin. Creating
+the batch, job outbox and public link is one transaction. A link insert failure
+rolls back all three; enqueue occurs after commit. Retrying the same key/body in
+the same submission session returns the same batch. No teacher JWT is created.
+Guest work shares the teacher-wide capacity/cost ceiling and the existing limits
+of five combined submit/retry requests and ten session requests per IP per hour.
+See the [trusted proxy boundary](../operations/production.md#trusted-proxy-and-client-ip)
+for the actual client IP. Public binary 401 responses leave the teacher session intact.
+
+Initial load and manual refresh read all visible details with at most four
+concurrent requests. Automatic refresh runs at most once per 15 seconds while
+visible, reads list/capabilities to discover new batches, and only loads unknown
+or recoverable unexpired batch details. COMPLETED/FAILED/EXPIRED details are cached
+until manual refresh or page reload. RESULT_UNCONFIRMED and RETRY_EXHAUSTED remain
+pollable until expiry because a late result can supersede them. Manual refresh
+also discovers retries from another device for a cached terminal batch.
+
+PDFs have a temporary 24-hour download window (Worker claim deadline once known;
+conservative submission deadline before that), not permanent public URLs. History
+remains after expiry; retry creates a new capped job. Tickets are one-use POST
+body values, never URL/storage values. There is no automatic upload to cô Vy's
+Google Drive. Production processing/download remains disabled until the approved
+identity, queue, Worker, GCS and independent recovery gates pass.
+
+### Follow-up: original document names
+
+Worker v1 returns file ID and result metadata, not the original filename. The UI
+explicitly identifies its current name as a fallback derived from the Drive ID.
+The unauthenticated direct-download worker has no trusted Drive metadata service;
+adding a Google API lookup to the VPS would add identity, permission and request
+costs. Do not infer the name from viewer HTML or claim that the fallback is original.
+A separate reviewed change should capture and sanitize a trusted filename at the
+Worker's accepted download response, or provide approved Drive metadata access,
+then version/update result validation, shared DTO, persistence and tests together.
+Current strict Worker v1 result fields are unchanged; this PR does not claim real names.

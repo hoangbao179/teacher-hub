@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { publicPdfController } from "../public-pdf-container";
 import { controllers } from "../container";
 import { requireAuth } from "../middleware/auth";
 import { asyncHandler } from "../utils/async-handler";
@@ -35,7 +36,7 @@ const publicGameAnswerRateLimit = fixedWindowRateLimit({
   key: (req) => `${req.ip ?? req.socket.remoteAddress ?? "unknown"}:${req.params.sessionToken ?? ""}`,
 });
 
-export function createRouter(): Router {
+export function createRouter(publicPdf = publicPdfController): Router {
   const router = Router();
   router.get("/health", controllers.health.health);
   router.get("/ready", asyncHandler(controllers.health.ready));
@@ -82,6 +83,16 @@ export function createRouter(): Router {
     asyncHandler(controllers.vocabularyGames.complete),
   );
 
+  const guestSubmitLimit=fixedWindowRateLimit({limit:5,windowMs:3600000,code:"PDF_RATE_LIMITED"});
+  const guestSessionLimit=fixedWindowRateLimit({limit:10,windowMs:3600000,code:"PDF_RATE_LIMITED"});
+  router.get("/api/public/pdf/capabilities",asyncHandler(publicPdf.capabilities));
+  router.post("/api/public/pdf/session",guestSessionLimit,asyncHandler(publicPdf.session));
+  router.get("/api/public/pdf/batches",asyncHandler(publicPdf.list));
+  router.get("/api/public/pdf/batches/:id",asyncHandler(publicPdf.detail));
+  router.post("/api/public/pdf/batches",guestSubmitLimit,asyncHandler(publicPdf.create));
+  router.post("/api/public/pdf/jobs/:id/retry",guestSubmitLimit,asyncHandler(publicPdf.retry));
+  router.post("/api/public/pdf/jobs/:id/download-ticket",asyncHandler(publicPdf.ticket));
+  router.post("/api/public/pdf/jobs/:id/download",asyncHandler(publicPdf.download));
   router.use("/api", requireAuth);
   router.use("/api/pdf", asyncHandler(controllers.pdf.guard));
   router.get("/api/pdf/capabilities", asyncHandler(controllers.pdf.capabilities));
