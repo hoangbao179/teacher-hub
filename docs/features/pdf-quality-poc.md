@@ -6,10 +6,11 @@ PDFs, screenshots, private documents and measurements remain under `.artifacts/`
 No public downloader, network endpoint, authentication or production dependency is added.
 The optional Drive experiment below is a local CLI for the exact owned synthetic fixture.
 
-The separate [Cloud Run foundation](../operations/cloud-run-pdf-worker.md) provides
-only a health endpoint and manual WIF/deployment tooling. It does not expose this
-PoC, render PDFs, consume Cloud Tasks or access result storage. Its 2 GiB target
-is a requested experimental allocation, not validated production PDF capacity.
+The separate [Cloud Run worker](../operations/cloud-run-pdf-worker.md) is deployed
+health-only according to the owner. Source includes a default-disabled
+[direct-download worker](pdf-worker.md), tested locally without importing this
+PoC or rendering PDFs. Its 2 GiB allocation is not validated capacity for arbitrary
+PDFs; real Drive/Tasks/GCS cloud E2E remains pending.
 
 ## Reproduce
 

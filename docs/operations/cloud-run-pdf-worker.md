@@ -1,29 +1,34 @@
-# Cloud Run PDF worker foundation
+# Cloud Run PDF worker
 
 ## Scope and target
 
-This is deployment preparation for an isolated **health-only** service. No cloud
-deployment or IAM mutation is part of this preparation task. No renderer,
-Chromium, job submission, batch processing, 100-page PDF, queue consumer, storage
-integration or VPS API change is included. The [PoC](../features/pdf-quality-poc.md)
-remains a local experiment; it is not imported into the worker.
+The owner confirms that the private **health-only** service is deployed, anonymous
+health returns 403 and authenticated health returns 200. These are supplied
+observations, not cloud checks repeated by this task. Source now includes a
+default-disabled PDF job handler, verified only with local fixtures; it has not
+been deployed or cloud-E2E verified. No cloud/IAM/queue mutation or VPS change is
+authorized here. The [PoC](../features/pdf-quality-poc.md) remains separate. See
+[worker architecture](../features/pdf-worker.md) and [contract v1](../api/pdf-worker-v1.md).
 
-| Resource | Target supplied by owner; existence/IAM not verified here |
+| Resource | Infrastructure reported by owner; IAM not re-inventoried here |
 | --- | --- |
 | Project / region | `teacher-hub-pdf` / `asia-southeast1` |
 | Artifact Registry | `teacher-pdf` |
-| Cloud Run service (proposed name) | `teacher-pdf-worker` |
+| Cloud Run service | `teacher-pdf-worker` (private health-only deployed) |
 | Runtime identity | `teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com` |
 | Verifier identity | `teacher-pdf-verifier@teacher-hub-pdf.iam.gserviceaccount.com` |
 | Deployer identity | `teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com` |
 | Future caller identity | `teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com` |
-| Future results bucket | `teacher-hub-pdf-results-2026` (unused) |
-| Future queue | `teacher-pdf-queue` (unused) |
+| Results bucket | `teacher-hub-pdf-results-2026` (private, seven-day lifecycle; worker not activated) |
+| Queue | `teacher-pdf-queue` (no real tasks submitted here) |
 
-The image uses Node 24.18.0, no npm dependencies, a non-root user and an allowlisted
-build context limited to the worker source. It listens on `0.0.0.0:$PORT` (8080
-default), returns `200 {"status":"ok"}` for `GET /health`, supports `HEAD /health`,
-returns 404 elsewhere, and drains on SIGTERM with an eight-second shutdown bound.
+The new image uses Node 24.18.0, qpdf/util-linux, no runtime npm dependencies, a
+non-root user and an allowlisted source build context. TypeScript tooling/types
+are dev-only in the separate worker package. With Cloud Run `K_SERVICE` set it
+listens on `0.0.0.0:$PORT` (8080 default); local execution binds loopback.
+It returns `200 {"status":"ok"}` for `GET /health`, supports `HEAD /health`,
+returns 404 for disabled POST /jobs and unsupported routes, and drains on SIGTERM
+with an eight-second bound. Interrupted jobs rely on redelivery and storage recovery.
 Health means process liveness only; it does not test Storage, Tasks or PDF readiness.
 IAM authentication is enforced at Cloud Run, not by application JWT parsing.
 Local execution has no authentication and must not be exposed publicly.
@@ -52,7 +57,7 @@ permissions; this workflow neither enables APIs nor creates IAM bindings.
 | Deployer SA | `roles/run.developer` on the dedicated project; existing-service update/get and getIamPolicy, no setIamPolicy |
 | Deployer SA | `roles/iam.serviceAccountUser` on the runtime SA only (`iam.serviceAccounts.actAs`) |
 | Cloud Run service agent | Google-managed `roles/run.serviceAgent`; same-project image pull relies on this service agent, not runtime Storage privileges |
-| Runtime SA | No application data roles required for health-only; do not add Storage/Tasks/Admin roles now |
+| Runtime SA | Owner reports bucket Object Creator; processing also requires `storage.objects.get` on this bucket; no Tasks/Admin/delete/update/list permission needed |
 | Invoker SA | After first deploy, `roles/run.invoker` on this service only, granted by an authorized operator |
 | Human smoke tester | `roles/iam.serviceAccountOpenIdTokenCreator` on invoker SA to mint an ID token for testing; do not give deployer runtime invocation merely to test health |
 
@@ -72,7 +77,84 @@ For a later queue integration, separately review task producer `roles/cloudtasks
 on the queue and `iam.serviceAccounts.actAs` on invoker SA, Cloud Tasks service
 agent `roles/cloudtasks.serviceAgent` for OIDC tokens, service-scoped invoker binding,
 and runtime bucket object permissions/retention. Do not activate any of these flows
-now; the worker has no task handler and POST requests return 404.
+now; the deployed revision remains health-only and source processing remains disabled.
+
+## Processing activation: separate operator review, not performed in Task 1
+
+Object Creator alone cannot read existing claims/results/output metadata. Minimal
+additional bucket-scoped permission: `storage.objects.get`, preferably a custom
+role alongside existing Creator. Object Viewer is a broader alternative because
+it also grants list; review that extra exposure. No Object Admin, delete/update,
+Tasks or project-wide data grant is needed. The worker preflights get/create using
+bucket testPermissions (itself needs no extra IAM permission) before source access
+or object writes. Tokens come from the fixed Cloud Run metadata endpoint; no keys
+or user Drive OAuth are supported. IAM changes remain operator-only.
+
+Before activation, after Tasks 2/3 and private cloud E2E:
+
+1. Inspect actual runtime identity, private bucket/IAM/lifecycle, IAM invoker check
+   and invoker binding. Record the current revision/digest/traffic/config for rollback.
+2. Build/smoke locally, review the image and immutable digest. The retained
+   health-only deploy script does not configure processing prerequisites and must
+   not be used for activation; its default-disabled 404 job smoke remains valid.
+3. Configure a dedicated **in-memory volume**, mount `/tmp/pdf-worker`, explicit
+   size limit **32 MiB**, writable by non-root UID/GID 1000. In Console: service →
+   revision/container configuration → Volumes → In-memory → mount path and size.
+   Reviewed revision YAML fragment (not applied by this task):
+
+   ```yaml
+   containers:
+   - image: REVIEWED_IMAGE_AT_SHA256_DIGEST
+     volumeMounts:
+     - name: pdf-temp
+       mountPath: /tmp/pdf-worker
+   volumes:
+   - name: pdf-temp
+     emptyDir:
+       medium: Memory
+       sizeLimit: 32Mi
+   ```
+
+   Confirm non-root writability on Cloud Run; do not switch to root or silently
+   use unbounded writable root. Preflight checks tmpfs type, total capacity at
+   most 32 MiB and free bytes at least PDF_MAX_BYTES. This volume consumes the
+   existing 2 GiB RAM. Hard-killed attempts can leave files until instance shutdown;
+   if free-space preflight fails, stop dispatch and recycle the instance. Do not
+   remove durable claims/results to unblock processing.
+4. Set `PDF_TEMP_ROOT=/tmp/pdf-worker`, `PDF_WORKER_IAM_READY=true` after review,
+   and finally `PDF_PROCESSING_ENABLED=true` only after all activation gates pass.
+   Cloud Run supplies `K_SERVICE`. Default processing remains 404; enabled but
+   unready returns 503. `PDF_MAX_BYTES`, `PDF_MAX_PAGES`, `PDF_DEADLINE_MS` can only
+   lower the 10 MiB/40 pages/22 seconds ceilings.
+5. Keep 1 vCPU / 2 GiB / concurrency 1 / min 0 / max 3 / request timeout 30 seconds.
+   Larger PDFs require benchmark/review, not automatic resource/timeout changes.
+   Cloud Run's root is not made read-only by this code; local smoke verifies
+   read-only-root compatibility using a separate bounded temporary volume.
+6. Separately review Task 2 producer/queue permissions and retry/cost limits.
+   OIDC identity is the invoker SA; audience is **service base URL**, without
+   `/jobs`. Verify an owned real Drive download, private queue dispatch/storage,
+   duplicate delivery, failures and expiry before teacher access.
+
+Task 2 must authorize teacher downloads and deny them after `expiresAt` (24 hours
+from first claim), using attachment/nosniff headers. The existing seven-day bucket
+lifecycle is eventual cleanup. Worker creates no signed URL. Queue attempts/rate,
+producer limits and monitoring must account for retries/duplicate transfers;
+max instances alone does not cap monthly cost. Review regional CPU/memory/request,
+storage/operations/network egress, registry layers, cache and log retention costs.
+
+For future approved rollout, build the reviewed SHA locally, scan/package-review,
+push only when separately authorized, resolve registry digest and deploy exactly
+`IMAGE@sha256:...` with disabled gates first. Inspect the full revision diff,
+mount, IAM and cost settings before final activation. Keep the prior digest.
+Task 1 performs no cloud build/push/deploy/config command.
+
+To roll back future activation: stop producers first, disable processing, then
+restore the reviewed health-only revision's traffic and previous service config.
+Traffic rollback alone does not restore environment, mount, scaling or IAM. Keep
+private IAM and claims/results until retry windows close; do not auto-delete data.
+
+References: [bounded Cloud Run memory volumes](https://docs.cloud.google.com/run/docs/configuring/services/in-memory-volume-mounts),
+[GCS permission preflight](https://docs.cloud.google.com/storage/docs/json_api/v1/buckets/testIamPermissions).
 
 ## Verification and manual deployment
 
@@ -84,13 +166,42 @@ Run local checks without cloud authentication, MySQL or browser:
 node --test scripts/validate-pdf-environment.test.cjs
 npm --prefix workers/pdf run check
 npm --prefix workers/pdf test
+npm --prefix workers/pdf run test:docker
 bash -n scripts/deploy-pdf-worker.sh
 bash scripts/deploy-pdf-worker.test.sh
 ```
 
 The Bash regression mocks all cloud/container calls. It is not a cloud dry run.
-For later manual updates, first approve the resource/cost budget, bootstrap the
-private service using the section below, and validate the Linux image. Use a clean,
+Install standalone dev tooling first with `npm ci --prefix workers/pdf`.
+For native Linux tests, install `qpdf` and `util-linux` and verify both `qpdf` and
+`prlimit` are executable before E2E. The Fast quality gate installs and probes
+these dependencies explicitly; a generic Ubuntu runner is not the worker image.
+Missing/inaccessible parser executables or launcher failures are retryable
+SERVICE_UNAVAILABLE, not a permanently invalid PDF. Production diagnostics never
+expose parser stderr; only the controlled missing-executable test prints its
+sanitized fixture error. The Linux E2E remains required and is not skipped.
+`test:docker` builds only `teacher-pdf-worker:local-processing-v1`; it pins a
+local context and rejects remote endpoint overrides. It runs Linux/amd64 with
+1 CPU, 2 GiB/no swap, non-root user, read-only root, 32 MiB `/tmp` tmpfs, network
+none, 128 PIDs, dropped capabilities and no-new-privileges. Tests are a read-only
+bind mount, excluded from the runtime image. It prints image size and whole-suite
+cgroup peak/CPU/wall metrics, not production throughput. No credentials are mounted.
+
+Manual equivalent (replace WORKER_TEST_DIRECTORY with an absolute local path):
+
+```bash
+docker build --platform linux/amd64 -t teacher-pdf-worker:local-processing-v1 workers/pdf
+docker run --rm --network none --cpus=1 --memory=2g --memory-swap=2g \
+  --read-only --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=128 \
+  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m,mode=1777 \
+  --mount type=bind,source=WORKER_TEST_DIRECTORY,target=/app/test,readonly \
+  teacher-pdf-worker:local-processing-v1 node test/linux-run.mjs
+docker image inspect teacher-pdf-worker:local-processing-v1 --format '{{.Id}} {{.Size}}'
+```
+
+For later health-only manual updates, first approve the resource/cost budget,
+verify the existing private service, and validate the Linux image. The historical
+bootstrap below is only for separately approved recovery, not an update. Use a clean,
 reviewed checkout on a trusted workstation with approved operator credentials
 (or an already-authorized human impersonating the deployer). Confirm the active
 gcloud account and any configured impersonation before proceeding. No new human
@@ -148,13 +259,17 @@ service. No automatic destructive rollback or IAM repair is implemented.
 
 Full-SHA tags accumulate; approve an Artifact Registry cleanup policy retaining
 active/rollback digests before repeated deployment. Account for compressed images,
-layers, revisions, runner build cache and logs. Do not store PDFs or create bucket
-lifecycle rules in this step. Linux container smoke, WIF, real service IAM/health,
-regional quota and billing still require verification on the target infrastructure.
-PDF handling needs a new design/security/resource review and authorized fixtures;
-this foundation is not production approval for the PoC pipeline.
+layers, revisions, runner build cache and logs. Do not change bucket lifecycle in
+this step. Local Linux processing smoke is available; real processing IAM, WIF,
+regional quota/billing and private cloud PDF E2E still need operator verification.
+Health-only anonymous/authenticated smoke is owner-reported PASS. This does not
+approve production processing or the PoC pipeline.
 
-## First bootstrap: operator only, after explicit approval
+## Historical health-only bootstrap: operator only, after explicit approval
+
+The service already exists according to the owner. Do not repeat bootstrap or its
+IAM commands for Task 1 or to activate processing. Retained for recovery context;
+creation/deletion/IAM actions require a separate operator review.
 
 These commands are a manual runbook, not a script invoked by CI. Use a reviewed,
 clean checkout and an operator identity approved for service creation/update,
@@ -233,9 +348,9 @@ validation. Revisit typed extraction if the module grows beyond this adapter.
 Application code remains TypeScript by default (strict client/server/shared
 configs). Shared emits ESM and CommonJS; server uses Node16 module resolution;
 client uses ESNext/Bundler. Root automation mostly uses `.mjs`, with `.cjs`
-adapters where needed. The standalone dependency-free health worker currently
-uses `.mjs` and Node syntax/tests, outside root workspaces. New worker business
-modules should use TypeScript; migration of the existing worker is separate.
+adapters where needed. The standalone worker retains a small `.mjs` lifecycle
+adapter outside root workspaces; new business modules use erasable TypeScript,
+standalone tsc checks and Node 24 native stripping, without runtime npm dependencies.
 
 ## References
 
@@ -317,7 +432,7 @@ assertion.repository_owner_id == '52443962' &&
 assertion.ref == 'refs/heads/main' &&
 assertion.event_name == 'workflow_dispatch' &&
 assertion.workflow_ref == 'hoangbao179/teacher-hub/.github/workflows/pdf-worker.yml@refs/heads/main' &&
-assertion.sub == 'repo:hoangbao179/teacher-hub:environment:pdf-worker'
+assertion.sub == 'repo:hoangbao179@52443962/teacher-hub@1306563928:environment:pdf-worker'
 ```
 
 These are GitHub OIDC claims for this non-reusable workflow. Confirm custom subject
@@ -359,6 +474,7 @@ No Cloud IAM/provider inventory, variable values or real WIF exchange was verifi
 
 verify-wif: **NOT READY** until verifier least privilege, provider trust, no GitHub
 impersonation of deployer, variables and remaining GitHub settings are verified.
-Cloud Run deployment: **NOT READY**; only a separately approved manual operation
-with bootstrap, Linux container smoke, private IAM, billing/budget and rollback
-checks may proceed. Source checks do not establish these external prerequisites.
+Cloud Run health-only deployment: owner reports deployed, anonymous 403 and
+authenticated 200. PDF processing deployment/activation: **NOT READY** pending
+Tasks 2/3, reviewed IAM/mount/config, authorized real Drive fixture and private
+cloud E2E. No cloud state was changed or independently inventoried by Task 1.

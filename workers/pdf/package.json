@@ -5,7 +5,9 @@
   "engines": { "node": ">=24.15 <25", "npm": ">=12 <13" },
   "scripts": {
     "start": "node src/server.mjs",
-    "check": "node --check src/server.mjs && node --check test/server.test.mjs",
-    "test": "node --test test/*.test.mjs"
-  }
+    "check": "tsc --noEmit && node --check src/server.mjs && node --check test/server.test.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:docker": "node test/docker-smoke.mjs"
+  },
+  "devDependencies": { "@types/node": "24.10.1", "typescript": "5.9.3" }
 }

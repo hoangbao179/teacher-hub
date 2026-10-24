@@ -24,9 +24,20 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            workers/pdf/package-lock.json
       - run: npm install -g npm@12.0.1
       - run: npm ci
+      - run: npm ci --prefix workers/pdf
+      - name: Install and verify PDF worker Linux runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qpdf util-linux
+          command -v qpdf
+          command -v prlimit
+          qpdf --version
+          prlimit --version
       - run: npm --prefix workers/pdf run check
       - run: npm --prefix workers/pdf test
       - run: node --test scripts/validate-pdf-environment.test.cjs
