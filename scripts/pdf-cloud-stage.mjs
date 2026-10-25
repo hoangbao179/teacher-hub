@@ -7,7 +7,6 @@
  */
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { revisionReadCommand } from './pdf-cloud-readiness.mjs';
 
 export const CLOUD = Object.freeze({
   project: 'teacher-hub-pdf', region: 'asia-southeast1',
@@ -65,7 +64,6 @@ export function plan(env=process.env) {
   const sha=env.SOURCE_SHA??'';
   if(!RE_SHA.test(sha)) throw Error('PDF_CLOUD_SOURCE_SHA_REQUIRED');
   const secret=env.PDF_GATEWAY_SECRET_VERSION??'';
-  if(!RE_SECRET.test(secret))throw Error('PDF_CLOUD_SECRET_REFERENCE_REQUIRED');
   return {
     sourceSha:sha, services:[CLOUD.worker,CLOUD.gateway],
     imageTags:[CLOUD.registry+'/'+CLOUD.worker+':'+sha,CLOUD.registry+'/'+CLOUD.gateway+':'+sha],
@@ -79,12 +77,15 @@ export function plan(env=process.env) {
 }
 export function stage(env=process.env, run=cliCall) {
   const p=plan(env);
+  if(!RE_SECRET.test(env.PDF_GATEWAY_SECRET_VERSION??''))
+    throw Error('PDF_CLOUD_SECRET_REFERENCE_REQUIRED');
   if(env.PDF_CLOUD_STAGE_APPROVED!=='private-no-traffic'||
      env.PDF_CLOUD_IAM_REVIEWED!=='true')throw Error('PDF_CLOUD_OPERATOR_APPROVAL_REQUIRED');
   if(run('git',['rev-parse','HEAD']).trim()!==p.sourceSha ||
      run('git',['status','--porcelain']).trim()!=='')
     throw Error('PDF_CLOUD_CHECKOUT_UNVERIFIED');
   const services=[CLOUD.worker,CLOUD.gateway];
+  const initialTraffic=new Map();
   // Inspect both services before any image push or deployment. A new public
   // gateway cannot be accidentally created; bootstrap private IAM separately.
   for(const name of services){
@@ -92,6 +93,9 @@ export function stage(env=process.env, run=cliCall) {
     const svc=JSON.parse(run('gcloud',['run','services','describe',name,...flags]));
     const iam=JSON.parse(run('gcloud',['run','services','get-iam-policy',name,...flags]));
     assertPrivate(svc,iam);
+    if(!Array.isArray(svc.status?.traffic)||svc.status.traffic.length<1)
+      throw Error('PDF_CLOUD_BASELINE_TRAFFIC_REQUIRED');
+    initialTraffic.set(name,JSON.stringify(svc.status.traffic));
   }
   for(let i=0;i<services.length;i++){
     const name=services[i],tag=p.imageTags[i];
@@ -107,7 +111,7 @@ export function stage(env=process.env, run=cliCall) {
     // After deployment verify no production traffic moved automatically.
     const srv=JSON.parse(run('gcloud',['run','services','describe',name,
       '--project='+CLOUD.project,'--region='+CLOUD.region,'--format=json']));
-    if(!srv.status?.traffic?.length || srv.status.traffic.some(t=>t.tag==='pdf-staging'))
+    if(JSON.stringify(srv.status?.traffic)!==initialTraffic.get(name))
       throw Error('PDF_CLOUD_TRAFFIC_CHECK_FAILED');
   }
   return { staged:true, traffic:'unchanged', images:2, activationAllowed:false };
