@@ -83,6 +83,48 @@ test('DNS-resolved private addresses fail before connecting, including mixed ans
   await assert.rejects(openSource(new URL('https://drive.google.com/uc?id=owned'), signal()), { code: 'UNSUPPORTED_SOURCE' });
 });
 
+test('print fallback is off by default and only handles an eligible direct-download error', async t => {
+  const root = await directory(t);
+  let rendered = 0;
+  const create = (error, enabled, render = async (_id, path) => {
+    rendered++;
+    await writeFile(path, syntheticPDF());
+  }) => processJob(job, cap, signal(), {
+    store: new MemoryStore(), tempRoot: root, enablePrintFallback: enabled,
+    download: async (_id, path) => { await writeFile(path, '<html>Preview</html>'); throw error; },
+    render, validate: fakeValidation,
+  });
+  const denied = await create(new JobError('ACCESS_DENIED'), false);
+  assert.equal(denied.status, 'FAILED');
+  assert.equal(rendered, 0, 'fallback must be strictly opt-in');
+
+  const result = await create(new JobError('ACCESS_DENIED'), true);
+  assert.equal(result.status, 'COMPLETED');
+  assert.equal(rendered, 1);
+  assert.deepEqual(await readdir(root), []);
+
+  const unsupported = await create(new JobError('UNSUPPORTED_SOURCE'), true);
+  assert.equal(unsupported.status, 'COMPLETED');
+  assert.equal(rendered, 2);
+
+  await assert.rejects(create(new JobError('SOURCE_UNAVAILABLE',true), true), { code:'SOURCE_UNAVAILABLE' });
+  assert.equal(rendered,2, 'transient upstream failures cannot trigger browser fallback');
+  const forbidden = await create(new JobError('ACCESS_DENIED'), true, async () => {
+    throw new JobError('ACCESS_DENIED');
+  });
+  assert.equal(forbidden.status, 'FAILED');
+  assert.equal(forbidden.errorCode, 'ACCESS_DENIED');
+  assert.deepEqual(await readdir(root),[]);
+});
+
+test('print mode extends deadline only with explicit feature gate', () => {
+  assert.equal(limits({}).deadlineMs,22000);
+  assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'false'}).deadlineMs,22000);
+  assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'true'}).deadlineMs,120000);
+  assert.throws(()=>limits({PDF_PRINT_FALLBACK_ENABLED:'true',PDF_DEADLINE_MS:'120001'}),{code:'SERVICE_UNAVAILABLE'});
+  assert.throws(()=>limits({PDF_DEADLINE_MS:'120000'}),{code:'SERVICE_UNAVAILABLE'});
+});
+
 test('deadline aborts a stalled response and processor removes partial temporary data', async t => {
   const root = await directory(t);
   const store = new MemoryStore();

@@ -8,7 +8,11 @@ import { validatePDF } from './pdf.ts';
 import type { Store } from './storage.ts';
 
 interface Claim { version: 1; sourceHash: string; createdAt: string; expiresAt: string }
-export interface Dependencies { store: Store; download?: typeof download; validate?: typeof validatePDF; tempRoot?: string }
+export interface Dependencies {
+  store: Store; download?: typeof download; validate?: typeof validatePDF;
+  render?: (fileId: string, path: string, cap: Limits, signal: AbortSignal) => Promise<void>;
+  enablePrintFallback?: boolean; tempRoot?: string;
+}
 export async function processJob(job: Job, cap: Limits, signal: AbortSignal, deps: Dependencies): Promise<Result> {
   const { store } = deps;
   const prefix = `jobs/${job.jobId}/`;
@@ -63,8 +67,22 @@ export async function processJob(job: Job, cap: Limits, signal: AbortSignal, dep
   try {
     const path = join(dir, 'source.pdf');
     try {
-      await (deps.download ?? download)(job.source.fileId, path, cap, signal);
-      const info = await (deps.validate ?? validatePDF)(path, cap, signal);
+      let info: Awaited<ReturnType<typeof validatePDF>>;
+      try {
+        await (deps.download ?? download)(job.source.fileId, path, cap, signal);
+        info = await (deps.validate ?? validatePDF)(path, cap, signal);
+      } catch (sourceError) {
+        const fallback = deps.enablePrintFallback === true &&
+          sourceError instanceof JobError && !sourceError.retryable &&
+          ['ACCESS_DENIED','UNSUPPORTED_SOURCE'].includes(sourceError.code);
+        if (!fallback || signal.aborted) throw sourceError;
+        // The direct endpoint may have produced HTML or partial bytes; never
+        // mistake them for an output or let them survive the second attempt.
+        await rm(path, { force:true });
+        const render = deps.render ?? (await import('./renderer.ts')).renderPrintablePdf;
+        await render(job.source.fileId, path, cap, signal);
+        info = await (deps.validate ?? validatePDF)(path, cap, signal);
+      }
       await store.create(`${prefix}output.pdf`, { path, metadata: { sourceHash, ...Object.fromEntries(
         Object.entries(info).map(([k, v]) => [k, String(v)])), completedAt: new Date().toISOString() } }, signal);
       const result = await recover();

@@ -55,7 +55,10 @@ export function jobHandler(deps?: Dependencies, env: NodeJS.ProcessEnv = process
           }
         } catch { throw new JobError('SERVICE_UNAVAILABLE', true); }
       }
-      const result = await processJob(job, cap, controller.signal, deps ?? { store: new GCSStore(), tempRoot: '/tmp/pdf-worker' });
+      const runtime = deps ?? { store: new GCSStore(), tempRoot: '/tmp/pdf-worker' };
+      const result = await processJob(job, cap, controller.signal, {
+        ...runtime, enablePrintFallback: env.PDF_PRINT_FALLBACK_ENABLED === 'true',
+      });
       reply(200, result);
     } catch (error) {
       const safe = controller.signal.aborted ? new JobError('TIMEOUT', true) :

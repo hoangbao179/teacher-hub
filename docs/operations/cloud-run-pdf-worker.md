@@ -489,3 +489,27 @@ The operator preflight `node scripts/pdf-cloud-readiness.mjs --gcloud` now reads
 A service template is the **desired** state and does not prove a successful rollout. A healthy previous revision can continue serving while a newer revision fails. The preflight therefore blocks resource verification if the service or revision lacks `Ready=True`, if latest-created and latest-ready differ, if traffic is not 100% on that revision, or if the revision image digest/processing flags/resource settings differ from expectations. Missing or denied revision reads are `BLOCKED/FAIL`, never presumed healthy. See [Cloud Run revision details](https://docs.cloud.google.com/run/docs/managing/revisions).
 
 The existing report still returns `activationAllowed=false` even when all resource checks are green. An operator must separately inspect inherited/effective IAM, actual processing deployment, queue execution, nonce retention, secret management and real cross-device PDF E2E before activation.
+
+## Experimental anonymous print-to-image-PDF fallback — staged only
+
+The source image includes pinned Playwright, Chromium headless shell, pdf-lib and
+Sharp for a *print-enabled* anonymous Google Drive Viewer. Runtime
+`PDF_PRINT_FALLBACK_ENABLED` defaults to false, keeping direct-only behavior
+and the 22-second job ceiling. Only when explicitly enabled can the Worker
+attempt render fallback after direct download errors; no Google login/OAuth
+or browser cookies are supplied.
+
+**Do not enable on the current 30-second Cloud Run revision.** A useful
+render attempt needs an explicitly reviewed Cloud Run request timeout greater
+than 120 seconds, `PDF_DEADLINE_MS=120000`, and Cloud Tasks/Gateway task
+dispatchDeadline greater than the Worker processing window. Those components
+currently use `30s`. Changes must be coordinated, version-compatible, and
+tested no-traffic before a production rollout. Do not flip flags in isolation.
+
+Cloud Run is private; image includes a headless browser run as non-root.
+Browser sandbox/egress restrictions, CPU/RAM, container start, billable
+duration, network allowlist, tmpfs and output size need an explicit threat
+and cost review. Screenshot capture requires the Viewer Print action to be
+enabled; owner/admin restrictions must not be circumvented. Validate an
+authorized external Viewer link, all pages and actual paper print quality.
+No changes to VPS/credentials/recovery/traffic are made in the source-only PR.

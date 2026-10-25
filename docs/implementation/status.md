@@ -77,6 +77,16 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### DEVELOPING
 
+- **Anonymous PDF print fallback — experimental Worker code:** `workers/pdf/src/renderer.ts`
+  and print policy are optional and disabled by default. A job can try the
+  public/anonymous Print-enabled Drive viewer when direct download fails,
+  producing image-only A4 PDF and using the same qpdf/GCS result path. Production
+  still has 30s Cloud Tasks dispatch deadlines and 30s Cloud Run timeouts; the
+  feature is **not activated or verified** against the user-provided Drive link.
+  Live render deployment and long-task approval remain separate operational gates.
+  See [Worker feature](../features/pdf-worker.md).
+
+
 - **Khoảng cách yêu cầu PDF Viewer:** nghiệp vụ chuẩn đã được xác nhận là
   **dán link Google Drive có quyền Viewer → Tạo PDF**, không cần checkbox
   xác nhận quyền tải. Xem
