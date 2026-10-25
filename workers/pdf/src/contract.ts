@@ -30,6 +30,11 @@ export function limits(env: NodeJS.ProcessEnv = process.env): Limits {
     if (!/^\d+$/.test(raw) || Number(raw) < 1 || Number(raw) > max) throw new JobError('SERVICE_UNAVAILABLE', true);
     return Number(raw);
   };
+  // The existing 22s ceiling is unchanged unless the operator explicitly
+  // enables the experimental anonymous, print-permitted browser fallback.
+  const printFallback = env.PDF_PRINT_FALLBACK_ENABLED === 'true';
   return { maxBytes: number('PDF_MAX_BYTES', 10 * 1024 * 1024, 10 * 1024 * 1024),
-    maxPages: number('PDF_MAX_PAGES', 40, 40), deadlineMs: number('PDF_DEADLINE_MS', 22000, 22000), redirects: 3 };
+    maxPages: number('PDF_MAX_PAGES', 40, 40),
+    deadlineMs: number('PDF_DEADLINE_MS', printFallback ? 120000 : 22000, printFallback ? 120000 : 22000),
+    redirects: 3 };
 }

@@ -14,6 +14,39 @@ pipeline or change Teacher Tools, the VPS, MySQL, client or Teacher Hub API.
 See the [v1 integration contract](../api/pdf-worker-v1.md) for Task 2 and the
 [operator runbook](../operations/cloud-run-pdf-worker.md) for activation gates.
 
+## Experimental anonymous print fallback (code, not production-active)
+
+The Worker now contains an opt-in `PDF_PRINT_FALLBACK_ENABLED=true` mode.
+It is **disabled by default**. If direct source retrieval fails with
+`ACCESS_DENIED` or `UNSUPPORTED_SOURCE`, and only with this explicit flag,
+the Worker can attempt to open a **public/anonymous Google Drive viewer whose
+Print button is enabled**, capture each rendered page, fit onto an A4 image-only
+PDF, validate with qpdf and persist to the existing job output in GCS.
+No OCR/searchable text is required. Owner-disabled Print and Google-login-only
+files are unsupported, not targets for bypass.
+
+The renderer uses Playwright + pdf-lib + sharp in the **Cloud Run worker image
+only**, not in the VPS API. Limits include: <=40 pages, 12 MP/page, total
+captured PNG <=32 MiB, output <=10 MiB, bounded requests/observed wire bytes,
+only Google Drive/Docs/static domains and no arbitrary navigation. This code
+does not prove print quality or readiness for all Drive viewer variants.
+The previous 22s Worker job deadline is still the default; explicitly enabling
+the flag allows up to 120s. The Gateway and API producer now support an
+explicit `PDF_LONG_PRINT_TASKS_ENABLED=true` gate for **180s** Cloud Tasks
+dispatch deadlines. Both gates are **off** by default; the staged Worker
+template uses a 180s Cloud Run request timeout, while Gateway remains 30s
+because it only enqueues tasks. Current live production traffic and task
+deadlines are unchanged. Rendering requires a **coordinated review and activation
+of Worker + producer + Gateway flags**; enabling the Worker flag alone
+will not work with live 30s tasks.
+
+**Before release:** keep flag OFF, perform authorized real-viewer E2E in an
+isolated revision, review Chromium sandbox/egress, cost, image size,
+RAM/CPU, 150dpi rejection threshold, existing Cloud Tasks and Gateway
+allowlist constraints, partial-job cleanup, and rollback. Prefer direct PDF
+bytes when Google makes those available. No production traffic/IAM/flag changed
+by this PR.
+
 ## Processing architecture
 
 1. Cloud Run IAM authenticates invocation; the process keeps GET/HEAD /health.

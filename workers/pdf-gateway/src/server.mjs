@@ -20,7 +20,7 @@ export function signature(key, method, path, timestamp, nonce, body) {
   return createHmac('sha256', key).update(data).digest('hex');
 }
 
-export function route(method, path, body, workerURL) {
+export function route(method, path, body, workerURL, longPrintTasks = false) {
   if (method === 'GET' && path === '/v1/queue')
     return { url: 'https://cloudtasks.googleapis.com/v2/' + QUEUE, method };
   if (method === 'POST' && path === '/v1/tasks') {
@@ -34,7 +34,9 @@ export function route(method, path, body, workerURL) {
       !request || Object.keys(request).sort().join(',') !== 'body,headers,httpMethod,oidcToken,url' ||
       typeof task.name !== 'string' ||
       !new RegExp('^' + QUEUE + '/tasks/pdf-' + UUID + '$').test(task.name) ||
-      task.dispatchDeadline !== '30s' || request.httpMethod !== 'POST' ||
+      !(task.dispatchDeadline === '30s' ||
+        (longPrintTasks === true && task.dispatchDeadline === '180s')) ||
+      request.httpMethod !== 'POST' ||
       request.url !== workerURL + '/jobs' ||
       JSON.stringify(request.headers) !== '{"Content-Type":"application/json"}' ||
       JSON.stringify(request.oidcToken) !== JSON.stringify({ serviceAccountEmail: INVOKER, audience: workerURL }) ||
@@ -146,7 +148,8 @@ export function createGatewayServer({
     if (!timingSafeEqual(Buffer.from(received,'hex'),Buffer.from(expected,'hex'))) {
       reply(401,FORBIDDEN); return;
     }
-    const target = route(req.method,req.url,body,workerURL);
+    const target = route(req.method,req.url,body,workerURL,
+      env.PDF_LONG_PRINT_TASKS_ENABLED === 'true');
     if (!target) { reply(400,ERROR); return; }
     const kind = req.method==='POST' ? 'enqueue' : target.binary ? 'download' : 'read';
     if (target.binary && activeStreams >= 1) { reply(429,ERROR); return; }

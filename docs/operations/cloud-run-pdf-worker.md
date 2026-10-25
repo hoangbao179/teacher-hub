@@ -489,3 +489,47 @@ The operator preflight `node scripts/pdf-cloud-readiness.mjs --gcloud` now reads
 A service template is the **desired** state and does not prove a successful rollout. A healthy previous revision can continue serving while a newer revision fails. The preflight therefore blocks resource verification if the service or revision lacks `Ready=True`, if latest-created and latest-ready differ, if traffic is not 100% on that revision, or if the revision image digest/processing flags/resource settings differ from expectations. Missing or denied revision reads are `BLOCKED/FAIL`, never presumed healthy. See [Cloud Run revision details](https://docs.cloud.google.com/run/docs/managing/revisions).
 
 The existing report still returns `activationAllowed=false` even when all resource checks are green. An operator must separately inspect inherited/effective IAM, actual processing deployment, queue execution, nonce retention, secret management and real cross-device PDF E2E before activation.
+
+## Experimental anonymous print-to-image-PDF fallback — staged only
+
+The source image includes pinned Playwright, Chromium headless shell, pdf-lib and
+Sharp for a *print-enabled* anonymous Google Drive Viewer. Runtime
+`PDF_PRINT_FALLBACK_ENABLED` defaults to false, keeping direct-only behavior
+and the 22-second job ceiling. Only when explicitly enabled can the Worker
+attempt render fallback after direct download errors; no Google login/OAuth
+or browser cookies are supplied.
+
+**Do not enable on the current 30-second Cloud Run revision.** This branch
+adds a *disabled by default* long-task contract:
+- The API `GatewayPdfProvider` sends `dispatchDeadline:'180s'` **only when**
+  `PDF_LONG_PRINT_TASKS_ENABLED=true` on the VPS API container; otherwise
+  it continues to send `30s`.
+- The Gateway accepts signed 180s requests **only when**
+  `PDF_LONG_PRINT_TASKS_ENABLED=true` on the Gateway; otherwise the former
+  exact-30s policy remains. Its own HTTP timeout stays 30s.
+- The operator-only no-traffic staging template sets the Worker Cloud Run
+  request timeout to 180s and explicitly sets both service flags to `false`.
+  No task flag or Worker screenshot renderer is enabled simply by staging.
+- The Worker needs `PDF_PRINT_FALLBACK_ENABLED=true` and
+  `PDF_DEADLINE_MS=120000` to process a large print job within its 180s
+  request/dispatch budgets.
+
+**Activation order (separately approved operational work, not this PR):**
+stage new private Worker and HMAC Gateway revisions without traffic and review
+IAM/HMAC, browser egress, cost and resource isolation. Perform real approved
+anonymous Viewer print E2E in isolation. After readiness, coordinate
+promotion and flags: Gateway long tasks, Worker render plus 120s limit,
+VPS producer long tasks; verify live. Never enable producer's 180s dispatch
+before its Gateway recognizes the new contract. To roll back, disable the
+producer long-task flag first, then Worker fallback, then Gateway long tasks;
+revert to prior immutable Cloud Run revisions as needed. Existing GCS
+results/outbox are preserved. Long-running in-flight tasks should be allowed
+to settle before any stricter timeout change.
+
+Cloud Run is private; image includes a headless browser run as non-root.
+Browser sandbox/egress restrictions, CPU/RAM, container start, billable
+duration, network allowlist, tmpfs and output size need an explicit threat
+and cost review. Screenshot capture requires the Viewer Print action to be
+enabled; owner/admin restrictions must not be circumvented. Validate an
+authorized external Viewer link, all pages and actual paper print quality.
+No changes to VPS/credentials/recovery/traffic are made in the source-only PR.

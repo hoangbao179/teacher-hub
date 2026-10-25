@@ -96,3 +96,22 @@ test('IAM mode rejects an empty token before sending a signed request', async t 
  await assert.rejects(() => provider.task(payload.jobId), /PDF_CLOUD_UNAVAILABLE/);
  assert.equal(calls, 0);
 });
+
+test('opt-in long Print task uses 180s only when explicitly enabled',async t=>{
+ const original=globalThis.fetch; t.after(()=>{globalThis.fetch=original});
+ const deadlines:string[]=[];
+ globalThis.fetch=async (input,init)=>{
+  const url=String(input);
+  if(url.endsWith('/v1/queue'))return Response.json(readyQueue());
+  if(url.endsWith('/v1/tasks')) {
+   const request=JSON.parse(Buffer.from(init?.body as Uint8Array).toString('utf8'));
+   deadlines.push(request.task.dispatchDeadline);
+   return Response.json({name:'accepted'});
+  }
+  throw Error('unrecognized URL');
+ };
+ const args=[GATEWAY,WORKER,'ab'.repeat(32),true,undefined,'hmac_public_v1'] as const;
+ await new GatewayPdfProvider(...args,false).enqueue(payload);
+ await new GatewayPdfProvider(...args,true).enqueue(payload);
+ assert.deepEqual(deadlines,['30s','180s']);
+});

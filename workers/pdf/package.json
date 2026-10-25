@@ -2,12 +2,23 @@
   "name": "teacher-pdf-worker",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.15 <25", "npm": ">=12 <13" },
+  "engines": {
+    "node": ">=24.15 <25",
+    "npm": ">=12 <13"
+  },
   "scripts": {
     "start": "node src/server.mjs",
-    "check": "tsc --noEmit && node --check src/server.mjs && node --check test/server.test.mjs",
+    "check": "tsc --noEmit && node --check src/server.mjs && node --check test/server.test.mjs && node --test test/print-policy.test.mjs",
     "test": "node --test test/*.test.mjs",
     "test:docker": "node test/docker-smoke.mjs"
   },
-  "devDependencies": { "@types/node": "24.10.1", "typescript": "5.9.3" }
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "pdf-lib": "1.17.1",
+    "playwright": "1.61.1",
+    "sharp": "0.34.5"
+  }
 }

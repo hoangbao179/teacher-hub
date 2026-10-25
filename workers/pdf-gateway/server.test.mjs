@@ -22,6 +22,16 @@ test('restrict upstream routes and exact task contract',()=>{
   forged.task.httpRequest.url=WORKER+'/jobs';forged.task.httpRequest.oidcToken.serviceAccountEmail='admin@example.com';
   assert.equal(route('POST','/v1/tasks',Buffer.from(JSON.stringify(forged)),WORKER),null);
 });
+test('long print-task dispatch deadline requires explicit server-side gate',()=>{
+ const long = JSON.parse(body.toString('utf8'));
+ long.task.dispatchDeadline = '180s';
+ const bytes = Buffer.from(JSON.stringify(long));
+ assert.equal(route('POST','/v1/tasks',bytes,WORKER),null);
+ assert.equal(route('POST','/v1/tasks',bytes,WORKER,true)?.method,'POST');
+ long.task.dispatchDeadline = '181s';
+ assert.equal(route('POST','/v1/tasks',Buffer.from(JSON.stringify(long)),WORKER,true),null);
+});
+
 test('HMAC binds body method path timestamp and nonce',()=>{
  const k=Buffer.from(KEY,'hex');const stamp='1792850000',nonce='a'.repeat(32);
  const a=signature(k,'POST','/v1/tasks',stamp,nonce,body);
