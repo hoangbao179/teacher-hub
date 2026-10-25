@@ -102,9 +102,10 @@ export function stage(env=process.env, run=cliCall) {
     const folder=name===CLOUD.worker?'workers/pdf':'workers/pdf-gateway';
     run('docker',['build','--pull','--platform','linux/amd64','-t',tag,folder]);
     run('docker',['push',tag]);
-    const digest=run('gcloud',['artifacts','docker','images','describe',tag,
-      '--project='+CLOUD.project,'--format=value(image_summary.digest)']).trim();
-    if(!RE_DIGEST.test(digest))throw Error('PDF_CLOUD_INVALID_DIGEST');
+    const info=JSON.parse(run('gcloud',['artifacts','docker','images','describe',tag,
+      '--project='+CLOUD.project,'--format=json']));
+    const digest=info.image_summary?.digest ?? info.imageSummary?.digest;
+    if(typeof digest!=='string'||!RE_DIGEST.test(digest))throw Error('PDF_CLOUD_INVALID_DIGEST');
     const args=stagedDeployArgs(i===0?'worker':'gateway',
       CLOUD.registry+'/'+name+'@'+digest,env.PDF_GATEWAY_SECRET_VERSION);
     run('gcloud',args);
