@@ -77,6 +77,18 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### DEVELOPING
 
+- **Khoảng cách yêu cầu PDF Viewer:** nghiệp vụ chuẩn đã được xác nhận là
+  **dán link Google Drive có quyền Viewer → Tạo PDF**, không cần checkbox
+  xác nhận quyền tải. Xem
+  [product contract](../product-spec/pdf-viewer-links.md).
+  Hiện tại `workers/pdf/src/download.ts` chỉ lấy URL download trực tiếp;
+  `PublicPdfTool` và API/shared contract còn yêu cầu xác nhận
+  `rightsConfirmed:true`. Đây là behavior đang có, **chưa đáp ứng toàn
+  bộ mục tiêu Viewer**. E2E thành công với fixture PDF public tải trực tiếp
+  không thay cho E2E bằng tài khoản Viewer khác owner. Link có lệnh cấm
+  tải/copy/print phải được từ chối minh bạch thay vì cố bypass.
+
+
 - **PDF job API - production fail-closed**: migrations `0027`/`0028` cover
   jobs/outbox, ticket hashes and public history. API/CLI share a private approval
   loader. Gateway supports issuer JWT -> STS -> Google ID token plus HMAC,

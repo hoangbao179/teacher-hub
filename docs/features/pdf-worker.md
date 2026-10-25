@@ -1,5 +1,12 @@
 # PDF processing worker v1
 
+> **Lưu ý bắt buộc:** đây là **hành vi v1 hiện tại**, không phải mục tiêu
+> sản phẩm. [PDF Viewer product contract](../product-spec/pdf-viewer-links.md)
+> yêu cầu tiếp nhận link có quyền Viewer và xuất PDF khi được phép; v1 chỉ
+> hoạt động nếu Google Drive cho phép tải trực tiếp. Viewer nhưng bị tắt
+> tải/copy/print không được đi vòng bằng chụp/scrape. Tính năng đầy đủ
+> chưa được chứng minh bằng E2E trên fixture Viewer khác Owner.
+
 The standalone `workers/pdf` service copies an authorized, anonymously downloadable
 Google Drive PDF into private result storage. It retains the original PDF bytes,
 vector text and embedded image quality. It does not run the browser research
