@@ -91,17 +91,14 @@ next scheduled invocation reclaims abandoned leases. No daemon is added.
 
 ## Production blockers
 
-The [identity ADR](../decisions/ADR-pdf-producer-identity.md) is proposed, not a
-grant or an approval. Application/CLI factories deliberately supply a disabled
-provider. `PDF_API_ENABLED=true` alone cannot activate submission or downloads.
-HTTP and CLI use the same createPdfRuntime factory. Supplying reviewed identity,
-activation approval and recoveryVerified together is required to construct the
-enabled transport; current entrypoints supply none. REST transport is implemented
-and tested with an injected verified identity, but
-production token acquisition/wiring remains blocked on operator identity review,
-Worker activation, OIDC, bucket permissions, queue verification, reconciliation
-and private cloud E2E. Task 3 can build against shared contracts/fake tests and
-must display unavailable on the real disabled backend. No production readiness claim.
+The [identity ADR](../decisions/ADR-pdf-producer-identity.md) accepts the Gateway
+direction, not production activation. `PDF_API_ENABLED=true` alone cannot activate
+submission or downloads. HTTP and CLI share createPdfRuntime and the private
+approval-file loader. Reviewed federation, HMAC, activation and recovery attestations
+are required. Operator reports private Worker/Gateway processing PASS, but no VPS
+issuer is confirmed. Token renewal, live recovery and website cloud E2E remain
+blocked until that identity is configured. UI must display unavailable while
+capabilities are disabled. See the activation runbook below.
 
 ## Public guest Tools (Task 3 change)
 
@@ -150,3 +147,7 @@ A separate reviewed change should capture and sanitize a trusted filename at the
 Worker's accepted download response, or provide approved Drive metadata access,
 then version/update result validation, shared DTO, persistence and tests together.
 Current strict Worker v1 result fields are unchanged; this PR does not claim real names.
+
+## Production transport and availability
+
+Gateway transport requires both a Google ID token obtained through explicit OIDC federation and the existing HMAC signature. Public/admin HTTP and recovery CLI share the approved configuration. No issuer is confirmed on the VPS; capabilities remain unavailable until identity renewal, independent recovery, real PDF and cross-device/expiry checks pass. The [activation runbook](../operations/pdf-vps-activation.md) is authoritative for deployment gates. No API contract or 24-hour retention rule changes.

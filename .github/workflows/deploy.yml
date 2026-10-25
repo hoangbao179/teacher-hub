@@ -273,6 +273,7 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o "UserKnownHostsFile=$known_hosts_file" \
             docker-compose.deploy.yml Caddyfile scripts/deploy-production.sh scripts/deploy-env.sh \
+            scripts/pdf-recovery.sh scripts/teacher-pdf-recovery.service scripts/teacher-pdf-recovery.timer \
             "$PROD_USER@$PROD_HOST:/opt/teacher-hub/"
           ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \
             'install -m 600 /dev/null /opt/teacher-hub/.env.next'
@@ -285,6 +286,8 @@ jobs:
             -o "UserKnownHostsFile=$known_hosts_file" \
             "$production_env" \
             "$PROD_USER@$PROD_HOST:/opt/teacher-hub/.env.next"
+          # pdf-runtime/ is operator-managed; never transfer HMAC/subject tokens or
+          # overwrite its runtime.env. Timer installation/activation is operator-only.
           # IMAGE_TAG is deliberately expanded locally after the full-SHA validation above.
           # shellcheck disable=SC2029
           ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \

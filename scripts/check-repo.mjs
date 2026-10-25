@@ -79,7 +79,7 @@ for (const file of repositoryFiles) {
   const lower = normalized.toLowerCase();
   if (/(^|\/)(dist|coverage|\.vite|playwright-report|test-results|\.artifacts|\.agent-reports)(\/|$)/i.test(normalized))
     failures.push(`Generated artifact is tracked or staged: ${normalized}`);
-  if (/(^|\/)(\.private-data|private-data|release|backups|database-dumps)(\/|$)/i.test(normalized))
+  if (/(^|\/)(\.private-data|private-data|pdf-runtime|release|backups|database-dumps)(\/|$)/i.test(normalized))
     failures.push(`Private/generated directory is tracked or staged: ${normalized}`);
   const basename = path.posix.basename(normalized);
   if (/^\.env(?:\.|$)/i.test(basename) && !/^\.env(?:\.[^.]+)?\.example$/i.test(basename) && basename !== ".env.example")
