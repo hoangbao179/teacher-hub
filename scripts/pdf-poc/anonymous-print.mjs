@@ -50,9 +50,13 @@ try {
   });
   // This path requires an anonymous viewer with an enabled Print action.
   const print = page.getByRole('button',{name:/^(In|Print)$/i});
+  await print.first().waitFor({state:'visible',timeout:15000}).catch(() => {
+    throw Error('PRINT_NOT_PERMITTED_OR_LOGIN_REQUIRED');
+  });
   if (await print.count() !== 1 || !(await print.isEnabled())) {
     throw Error('PRINT_NOT_PERMITTED_OR_LOGIN_REQUIRED');
   }
+  await page.locator('h2').filter({hasText:/1\s*\/\s*\d+\s*$/}).first().waitFor({timeout:15000});
   const labels = await page.locator('h2').allTextContents();
   const first = labels.map(x => /(?:^|\D)1\s*\/\s*(\d+)\s*$/.exec(x)).find(Boolean);
   const count = Number(first?.[1]);
