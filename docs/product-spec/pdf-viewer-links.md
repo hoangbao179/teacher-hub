@@ -9,6 +9,30 @@ là cho phép vượt hạn chế của chủ tài liệu.**
 tài liệu cũ giả định "chỉ nhận file đã tải trực tiếp được", phải ghi rõ đó là
 **giới hạn implementation**, không sửa ngược yêu cầu sản phẩm cho khớp code.
 
+## 0. Quyết định phạm vi ưu tiên: bản PDF **để in**, nguồn công khai không đăng nhập
+
+**Chủ dự án xác nhận:**
+- **Đầu vào v1:** các liên kết Google Drive chia sẻ `Viewer` mà một cửa sổ
+  **ẩn danh / không đăng nhập Google vẫn mở xem được**. Không cần file gốc
+  tải được từ nút Download, không cần Owner/Editor.
+- **Ngoài phạm vi v1:** link Viewer chỉ hiển thị cho tài khoản Google được
+  mời (yêu cầu đăng nhập). Không làm OAuth, không yêu cầu cookies/mật khẩu,
+  không dùng session Drive của người gửi. Trả `NEEDS_GOOGLE_LOGIN` hoặc
+  thông báo tương đương; không giả định Worker có thể xem bằng link riêng tư.
+- **Đầu ra v1:** một **PDF phục vụ in giấy**. Cho phép PDF chỉ chứa **ảnh của
+  từng trang**, không có text layer, OCR, tìm kiếm, copy, chỉnh sửa, vector,
+  bookmark hoặc tính toàn vẹn byte với PDF gốc. Đây **không phải lỗi**.
+- **Ưu tiên nghiệm thu:** đủ trang, đúng thứ tự, đủ nét với chữ nhỏ/dòng kẻ
+  để in, tỷ lệ/khổ trang hợp lý, không dính toolbar, không trắng/thiếu
+  trang/ghép nhầm. Người dùng chỉ **dán link → nhấn Tạo PDF → tải về**.
+- **Quyền:** công khai/xem được không luôn đồng nghĩa được tải/in/sao chép.
+  Khi nhà cung cấp/chủ file cấm hành động này, thông báo hạn chế thay vì
+  bypass bằng replay cookies, lục endpoint/tile ẩn hoặc né cơ chế bảo vệ.
+
+**Non-goals:** tìm kiếm nội dung trong PDF, tái tạo bản gốc có text layer,
+hoàn nguyên metadata/chữ ký số, giữ hyperlinks; login-only Google Drive
+và hỗ trợ bản xem riêng tư. Không lẫn non-goal này với lỗi chất lượng in.
+
 ## 1. User story và điều kiện sử dụng
 
 Người dùng mở `https://tienganhcovy.com/tools/`, dán 1–5 liên kết Google Drive
@@ -19,6 +43,11 @@ Hiển thị trạng thái xử lý, nguyên nhân thất bại cụ thể; job 
 khi đóng trình duyệt. Kết quả hợp lệ là một PDF có thứ tự trang, tỷ lệ, khổ
 giấy và nội dung phù hợp; cho phép tải về qua ticket một lần và hết hạn theo
 quy định hiện có.
+
+**Phạm vi cho lần triển khai này:** chỉ nguồn xem được **ẩn danh**. Dù người
+dùng trên máy của họ đăng nhập Google và xem được file, đó **không** phải
+bằng chứng file thuộc phạm vi v1. Tự động hóa phải thử từ môi trường không
+đăng nhập; nếu bị yêu cầu đăng nhập, ngừng xử lý và giải thích rõ.
 
 **Phân biệt bắt buộc:**
 - `role=reader/Viewer`: quyền truy cập xem, **không nói lên** quyền tải.
@@ -63,18 +92,37 @@ quy định hiện có.
    Drive API `files.get?alt=media` hoặc đường tải do Google hỗ trợ, thực
    hiện streaming giới hạn, giữ vector/text, kiểm tra PDF và SHA-256.
    Viewer **được phép tải** phải là happy path bắt buộc.
-3. **Phương án dựng lại từ render** chỉ khi chủ tài liệu cho phép sao chép/
-   xuất: cân nhắc một Cloud Run Worker tách biệt, renderer được xác thực và
-   được phép truy cập nguồn, render từng trang rồi ghép PDF; giữ thứ tự,
-   orientation, khổ giấy, không giả vờ giữ text/vector nếu chỉ là ảnh.
-   Playwright/Chromium không được tự xem là cách để vượt
-   `canDownload=false`, IRM/DLP, CAPTCHA hoặc session boundary.
-   Không thêm Chromium vào VPS/API 384 MB.
-4. **Thiết kế Cloud Run đủ tài nguyên và chi phí trước khi code**:
-   benchmark fixture được sở hữu/cho phép, thời gian cgroup, CPU/RAM và
-   bộ nhớ tạm, hạn mức đồng thời 1, giới hạn bytes/pages và deadline;
-   xem `docs/features/pdf-quality-poc.md`. PoC local PDF.js **không
-   phải** bằng chứng renderer của Google Drive hoạt động.
+3. **Phương án dựng lại PDF ảnh để in** là đường fallback chính khi file
+   không có bản PDF gốc tải trực tiếp nhưng nội dung được phép xuất/in.
+   Dùng Playwright/Chromium **không đăng nhập** trên Cloud Run Worker riêng,
+   dựng trang một cách được hỗ trợ, chụp/capture **từng trang** và ghép
+   thành PDF ảnh; xác thực số trang, thứ tự, hướng, tỷ lệ, crop bỏ toolbar.
+   Chỉ thao tác trên trang mà Worker có quyền truy cập hợp lệ; không dùng
+   Playwright/Chromium làm phương pháp vượt `canDownload=false`,
+   IRM/DLP/CAPTCHA/session boundary. Không thêm Chromium vào VPS/API 384 MB.
+   **Tính khả thi với Google Drive preview thực tế chưa được kiểm chứng**
+   bởi PoC PDF.js local, không hứa rằng chỉ thêm screenshot sẽ chạy ngay.
+4. **Đảm bảo chất lượng in và resource budget trước khi code**:
+   - **Ảnh 8-bit/kênh RGB (24-bit)** là đủ, không có khái niệm cần
+     "JPEG 128-bit màu". Dùng PNG cho chữ/dòng kẻ cần nét; thử JPEG
+     quality khoảng 90–95 cho trang nhiều ảnh nếu đạt test nét in.
+   - Nhắm độ phân giải hiệu dụng **200–300 DPI** theo kích thước giấy
+     thật; chỉ tăng `deviceScaleFactor` không tự tạo thêm chi tiết nếu
+     viewer chỉ cung cấp ảnh thấp độ phân giải. Không upscale rồi báo
+     đạt chất lượng 300 DPI.
+   - Giữ kích thước/tỷ lệ/orientation từng trang, xuất để máy in A4
+     có thể **fit-to-page không cắt mép**; không ép méo landscape thành
+     portrait. Chất lượng quan trọng hơn searchable text.
+   - So sánh trang trắng, chữ Việt cỡ nhỏ, bảng nét mảnh, ảnh màu,
+     trang ngang/dọc và thứ tự trang; phát hiện ảnh thiếu, trùng,
+     ảnh chưa load/lazy-load và crop sai. Không chỉ thử PDF 3 trang
+     đã tải trực tiếp.
+   - Benchmark RAM/CPU, kích thước file, temporary storage, Cloud Run
+     timeout/concurrency và chi phí với fixture đại diện; giới hạn
+     byte/pages hiện hành có thể khiến PDF ảnh lớn bị từ chối: chỉ
+     thay đổi qua PR/đánh giá Level 3 riêng, không tăng âm thầm.
+   - Xem `docs/features/pdf-quality-poc.md`. PoC local PDF.js **không
+     phải** bằng chứng renderer của Google Drive hoạt động.
 5. **Giữ kiến trúc công việc bền vững**: API → Gateway HMAC → Cloud Tasks →
    Worker private → GCS; MySQL outbox, reconciliation sau khi đóng tab,
    trạng thái, quyền truy cập download ticket, TTL 24h. Nếu đổi schema/payload/
@@ -88,10 +136,10 @@ vòng chế độ tắt tải, mở quyền Worker public hoặc bypass captcha.
 
 | Nguồn / quyền | Kết quả mong đợi |
 | --- | --- |
-| File PDF link Viewer, không phải Owner, tải được | **COMPLETED**; tải PDF thật; trang/bytes/hash đúng |
-| File PDF Owner đã cho phép tải, link public | **COMPLETED**; không phát sinh yêu cầu đăng nhập |
+| File PDF link Viewer, không phải Owner, **ẩn danh mở được**, tải được | **COMPLETED**; PDF gốc hoặc PDF ảnh, đúng trang, tải được để in |
+| File PDF Owner đã cho phép tải, link public | **COMPLETED**; không phát sinh yêu cầu đăng nhập; có thể giữ nguyên bytes gốc |
 | File Viewer mở được preview nhưng owner/admin cấm tải/copy/print | **Không cố bypass**; lỗi có lý do và hướng xin quyền |
-| Link Viewer cần đăng nhập, Worker không có quyền | ACCESS_DENIED/NEEDS_ACCESS rõ ràng; không mượn cookie |
+| **Trường hợp B** — link Viewer chỉ cho tài khoản Google được mời | **Ngoài phạm vi v1**; thông báo cần đăng nhập/chưa hỗ trợ; không mượn cookie |
 | `resourcekey`, redirect hợp lệ hoặc loại Drive được hỗ trợ | Không âm thầm loại bỏ key; hoặc hỗ trợ đúng với quyền hợp lệ, hoặc giải thích hạn chế |
 | File không phải PDF / Google Workspace native | Chỉ hỗ trợ export nếu được cho phép và có thiết kế/test riêng; khác thì báo không hỗ trợ |
 | HTML login, CAPTCHA, confirmation page | Không ghi nhận HTML/ảnh sai làm PDF thành công |
@@ -106,8 +154,15 @@ vòng chế độ tắt tải, mở quyền Worker public hoặc bypass captcha.
   thực tế. Không lấy file owned + anonymous-direct-download làm bằng chứng đủ.
 - Thêm fixture Viewer có `canDownload=false`, bảo đảm fail an toàn thay vì
   screenshot bypass hoặc thành công giả.
-- Với render được phép: so sánh từng trang, khổ, chiều, chữ tiếng Việt nhỏ,
-  trang trắng, ảnh, số trang, dung lượng, tài nguyên peak và thời gian.
+- Với render được phép: kiểm tra **PDF dạng ảnh vẫn PASS** (không cần
+  OCR/searchable text), chất lượng in ở 200–300 DPI hiệu dụng; so sánh
+  từng trang, khổ, chiều, chữ tiếng Việt nhỏ, trang trắng, ảnh, số trang,
+  dung lượng, tài nguyên peak và thời gian. Kiểm thử tự động phát hiện
+  trang bị lazy-load thiếu, toolbar lọt vào ảnh, trùng/sai thứ tự, crop mất mép.
+- Kiểm tra đường Viewer **mở được ẩn danh** thành công và đường Viewer
+  **đòi Google login** bị phân loại unsupported v1, không tự khởi tạo OAuth.
+- Test quá giới hạn kích thước PDF raster không được ghi `COMPLETED`
+  giả; giữ giới hạn an toàn và tính lại budget trước khi nâng.
 - Dùng `errorCode` thực tế của job FAILED để phân loại; không suy đoán
   nguyên nhân từ chip giao diện.
 - Verify UX: chỉ dán link → Tạo PDF; không checkbox về quyền tải;

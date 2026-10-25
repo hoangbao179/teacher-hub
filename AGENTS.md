@@ -111,7 +111,9 @@ Không thay đổi các rule trên trong task UI hoặc maintenance.
 
 Trước bất kỳ task liên quan PDF/Drive, đọc
 [product contract](docs/product-spec/pdf-viewer-links.md). Mục tiêu người dùng
-là **dán link có quyền Viewer → nhấn Tạo PDF**; file thuộc quyền người khác
+là **dán link Viewer mở được ẩn danh → nhấn Tạo PDF → có PDF để in**;
+**PDF ảnh là kết quả đạt yêu cầu** (không cần OCR, searchable text hay vector).
+**Link cần đăng nhập Google tạm ngoài phạm vi v1**. File thuộc quyền người khác
 nhưng Viewer được phép tải phải được E2E, không được dùng chỉ file owned
 tải trực tiếp để tuyên bố DONE. Code Worker hiện tại chỉ tải trực tiếp là
 giới hạn implementation, không phải lý do thay đổi mục tiêu sản phẩm.
