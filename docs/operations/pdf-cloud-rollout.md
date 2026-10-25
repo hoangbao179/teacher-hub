@@ -11,6 +11,10 @@ The code can be staged without exposing PDFs publicly. **This procedure has NOT 
 - An approved Secret Manager **version number** exists (e.g. `teacher-pdf-gateway-hmac:1`), containing a **64-character lowercase hex** secret. Never paste the actual secret into CLI, env, Git or issue.
 - The operator reviewed max instances, memory, costs and rollback, with `main` checked out cleanly. Source SHA must be the exact reviewed, CI-green source.
 
+## Read-only inventory: one command
+
+Run `node scripts/pdf-cloud-stage.mjs --inspect` in PowerShell. This reads only whether Worker/Gateway services are present and private, whether the dedicated Gateway service account exists, and (if `PDF_GATEWAY_SECRET_VERSION` is configured) whether that Secret Manager version is enabled. It prints no IAM principals except fixed resource labels, no secret material, and performs no cloud mutation. Any `NOT_FOUND_OR_NOT_READABLE` remains an operator prerequisite, not permission to deploy.
+
 ## One-shot staging
 
 From **PowerShell** in the repository after obtaining the approved secret reference:
