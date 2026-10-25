@@ -117,12 +117,49 @@ export function stage(env=process.env, run=cliCall) {
   }
   return { staged:true, traffic:'unchanged', images:2, activationAllowed:false };
 }
+/** Compact read-only blocker inventory; no secret payload, IAM grants or
+ * operator credentials appear in the output.
+ */
+export function inspect(env=process.env,run=cliCall) {
+  const flags=['--project='+CLOUD.project,'--region='+CLOUD.region,'--format=json'];
+  const results={project:CLOUD.project,region:CLOUD.region,services:{},gatewayServiceAccount:'UNKNOWN',
+    gatewaySecretVersion:'NOT_CONFIGURED',activationAllowed:false};
+  for(const name of [CLOUD.worker,CLOUD.gateway]) {
+    try {
+      const svc=JSON.parse(run('gcloud',['run','services','describe',name,...flags]));
+      const policy=JSON.parse(run('gcloud',['run','services','get-iam-policy',name,...flags]));
+      try {
+        assertPrivate(svc,policy);
+        results.services[name]='EXISTS_PRIVATE_DIRECT_IAM';
+      } catch { results.services[name]='POLICY_REQUIRES_REVIEW'; }
+    } catch { results.services[name]='NOT_FOUND_OR_NOT_READABLE'; }
+  }
+  try {
+    const sa=JSON.parse(run('gcloud',['iam','service-accounts','describe',CLOUD.gatewaySA,
+      '--project='+CLOUD.project,'--format=json']));
+    results.gatewayServiceAccount=sa.email===CLOUD.gatewaySA?'EXISTS':'UNEXPECTED_IDENTITY';
+  } catch { results.gatewayServiceAccount='NOT_FOUND_OR_NOT_READABLE'; }
+  const reference=env.PDF_GATEWAY_SECRET_VERSION;
+  if(reference) {
+    if(!RE_SECRET.test(reference))results.gatewaySecretVersion='INVALID_REFERENCE';
+    else {
+      const [name,version]=reference.split(':');
+      try {
+        const item=JSON.parse(run('gcloud',['secrets','versions','describe',version,
+          '--secret='+name,'--project='+CLOUD.project,'--format=json']));
+        results.gatewaySecretVersion=item.state==='ENABLED'?'ENABLED_VERSION_EXISTS':'NOT_ENABLED';
+      } catch { results.gatewaySecretVersion='NOT_FOUND_OR_NOT_READABLE'; }
+    }
+  }
+  return results;
+}
 export function main(argv=process.argv.slice(2),env=process.env,run=cliCall) {
-  if(argv.length!==1||!['--plan','--stage'].includes(argv[0])){
-    console.error('Usage: node scripts/pdf-cloud-stage.mjs --plan | --stage');return 2;
+  if(argv.length!==1||!['--plan','--inspect','--stage'].includes(argv[0])){
+    console.error('Usage: node scripts/pdf-cloud-stage.mjs --plan | --inspect | --stage');return 2;
   }
   try {
     if(argv[0]==='--plan')console.log(JSON.stringify(plan(env),null,2));
+    else if(argv[0]==='--inspect')console.log(JSON.stringify(inspect(env,run),null,2));
     else console.log(JSON.stringify(stage(env,run)));
     return 0;
   }catch(e){
