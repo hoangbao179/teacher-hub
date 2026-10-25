@@ -57,7 +57,7 @@ test('public-HMAC approval needs an exact explicit mode and never a federation f
   activationApproved: true,
   recoveryVerified: true,
  };
- const read = value => {
+ const read = (value: unknown) => {
   writeFileSync(file, JSON.stringify(value), {mode: 0o600});
   chmodSync(file, 0o600);
   return loadApprovedPdfGateway(env);
