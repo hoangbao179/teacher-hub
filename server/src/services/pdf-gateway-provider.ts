@@ -16,9 +16,13 @@ export class GatewayPdfProvider implements PdfProvider {
   private queueReadyUntil = 0;
   private key: Buffer | null;
   constructor(private url: string, private workerURL: string, keyHex: string, approved = false,
-    private idToken?: GatewayIdToken) {
+    private idToken?: GatewayIdToken,
+    private readonly authMode: 'iam_hmac_v1' | 'hmac_public_v1' = 'iam_hmac_v1') {
+    // Public HMAC is an explicit, review-approved opt-in. The default stays
+    // IAM + HMAC, and a missing IAM token never downgrades authentication.
     this.configured = approved && gateway.test(url) && worker.test(workerURL) &&
-      /^[a-f0-9]{64}$/.test(keyHex) && typeof idToken === 'function';
+      /^[a-f0-9]{64}$/.test(keyHex) &&
+      (authMode === 'hmac_public_v1' || (authMode === 'iam_hmac_v1' && typeof idToken === 'function'));
     this.key = this.configured ? Buffer.from(keyHex,'hex') : null;
   }
   private async call(method: 'GET'|'POST', path: string, body?: Buffer,
@@ -30,9 +34,10 @@ export class GatewayPdfProvider implements PdfProvider {
     const nonce = randomBytes(16).toString('hex');
     const sign = gatewaySignature(this.key,method,path,stamp,nonce,bytes);
     try {
-      const token = await this.idToken!(signal);
+      const token = this.authMode === 'iam_hmac_v1' ? await this.idToken!(signal) : undefined;
       const response=await fetch(this.url+path, {method,redirect:'error',signal,
-        headers:{Authorization:`Bearer ${token}`,'X-PDF-Timestamp':stamp,'X-PDF-Nonce':nonce,'X-PDF-Signature':sign,
+        headers:{...(token ? {Authorization:`Bearer ${token}`} : {}),
+          'X-PDF-Timestamp':stamp,'X-PDF-Nonce':nonce,'X-PDF-Signature':sign,
           ...(body?{'Content-Type':'application/json'}:{})},
         ...(body?{body:new Uint8Array(body)}:{})});
       if(!response.ok && !(method==='GET'&&response.status===404) &&

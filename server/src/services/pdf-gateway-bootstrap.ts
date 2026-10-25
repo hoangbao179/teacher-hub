@@ -8,7 +8,8 @@ type Config = {
   gatewayURL: string;
   workerBaseURL: string;
   hmacKeyHex: string;
-  federation: GatewayFederation;
+  federation?: GatewayFederation;
+  authMode?: 'hmac_public_v1';
   activationApproved: true;
   recoveryVerified: true;
 };
@@ -26,10 +27,17 @@ export function loadApprovedPdfGateway(env: NodeJS.ProcessEnv = process.env): Ap
     if (!st.isFile() || st.size < 50 || st.size > 4096 ||
       (process.platform !== 'win32' && (st.mode & 0o077) !== 0)) return undefined;
     const config: Config = JSON.parse(readFileSync(path, 'utf8'));
+    const keys = Object.keys(config).sort().join(',');
+    // Distinct exact-file contracts: old private IAM + HMAC is preserved.
+    // Public HMAC is never inferred from absent/expired federation credentials.
+    const privateIAM = keys ===
+      'activationApproved,federation,gatewayURL,hmacKeyHex,kind,recoveryVerified,workerBaseURL' &&
+      validGatewayFederation(config.federation!);
+    const publicHmac = keys ===
+      'activationApproved,authMode,gatewayURL,hmacKeyHex,kind,recoveryVerified,workerBaseURL' &&
+      config.authMode === 'hmac_public_v1';
     if (config.kind !== 'pdf_gateway_v1' ||
-      Object.keys(config).sort().join(',') !==
-      'activationApproved,federation,gatewayURL,hmacKeyHex,kind,recoveryVerified,workerBaseURL' ||
-      !validGatewayFederation(config.federation) ||
+      !(privateIAM || publicHmac) ||
       config.activationApproved !== true || config.recoveryVerified !== true ||
       !/^https:\/\/teacher-pdf-gateway-[a-z0-9-]+\.[a-z0-9-]+\.run\.app$/.test(config.gatewayURL) ||
       !/^https:\/\/teacher-pdf-worker-[a-z0-9-]+\.[a-z0-9-]+\.run\.app$/.test(config.workerBaseURL) ||
@@ -37,7 +45,7 @@ export function loadApprovedPdfGateway(env: NodeJS.ProcessEnv = process.env): Ap
     return {
       gatewayURL: config.gatewayURL, workerBaseURL: config.workerBaseURL,
       hmacKeyHex: config.hmacKeyHex, activationApproved: true, recoveryVerified: true,
-      federation: config.federation,
+      ...(publicHmac ? {authMode: 'hmac_public_v1' as const} : {federation: config.federation!}),
     };
   } catch { return undefined; }
 }

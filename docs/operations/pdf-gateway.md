@@ -1,4 +1,9 @@
-# PDF Gateway - private IAM and HMAC
+# PDF Gateway - IAM + HMAC (option A) or explicit public HMAC (option B)
+
+The optional public-HMAC integration is documented in
+[pdf-vps-hmac-public.md](pdf-vps-hmac-public.md). It is **not** enabled by source
+deployment; Cloud Run IAM remains on unless an operator deliberately changes the
+Gateway service setting after security review. The Worker always remains private.
 
 The existing Cloud Run Gateway serves the VPS integration. Operator reports private cloud processing PASS; website activation remains blocked. See [VPS activation](pdf-vps-activation.md) for the current IAM flow, host configuration, rehearsal, timer and rollback. It accepts HMAC-SHA256 signed requests (timestamp, nonce, method, path, raw body) and calls only explicitly allowlisted Cloud Tasks and GCS endpoints with its own workload identity. Worker remains private; API/CLI use a shared file-only approval loader and remain disabled until explicit operator provisioning.
 
