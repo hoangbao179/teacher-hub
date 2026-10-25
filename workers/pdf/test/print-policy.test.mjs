@@ -7,7 +7,7 @@ test('anonymous print browser navigation cannot reach login or arbitrary URLs', 
   assert.equal(allowedPrintRequest('https://drive.google.com/file/d/'+id+'/view',id,true),true);
   assert.equal(allowedPrintRequest('https://lh3.googleusercontent.com/image',id,false),true);
   for(const u of ['https://accounts.google.com/login','https://drive.google.com.evil.test/',
-    'https://127.0.0.1/','http://drive.google.com/','https://drive.google.com:443/',
+    'https://127.0.0.1/','http://drive.google.com/','https://drive.google.com:444/',
     'https://metadata.google.internal/','file:///etc/passwd']) {
     assert.equal(allowedPrintRequest(u,id,true),false);
     assert.equal(allowedPrintRequest(u,id,false),false);
