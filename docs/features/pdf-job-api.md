@@ -1,5 +1,13 @@
 # PDF job API — Task 2
 
+> **Product requirement (chưa triển khai đủ):**
+> [PDF từ liên kết Viewer](../product-spec/pdf-viewer-links.md).
+> Form chuẩn tương lai là **dán link → Tạo PDF**, không checkbox xác
+> nhận quyền tải. Hợp đồng API hiện còn `rightsConfirmed:true`,
+> lưu legacy `rights_confirmed_at`; không xem đó là quyết định UX được
+> chủ dự án duyệt. Một PR code riêng phải đồng bộ shared contract,
+> OpenAPI, API validation, UI, tests và bảo toàn compatibility/idempotency.
+
 Status: backend implemented for local/fake verification; production unavailable.
 The public `/tools` UI uses the public endpoints described below. Use [OpenAPI](../api/openapi.yaml), shared
 contracts in `shared/src/contracts/pdf.ts` and the unchanged [Worker v1](../api/pdf-worker-v1.md).

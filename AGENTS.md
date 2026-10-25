@@ -107,6 +107,22 @@ Lịch sử thay đổi nằm trong Git, không ghi nhật ký task vào status.
 
 Không thay đổi các rule trên trong task UI hoặc maintenance.
 
+### PDF từ liên kết Google Drive Viewer — yêu cầu bắt buộc
+
+Trước bất kỳ task liên quan PDF/Drive, đọc
+[product contract](docs/product-spec/pdf-viewer-links.md). Mục tiêu người dùng
+là **dán link có quyền Viewer → nhấn Tạo PDF**; file thuộc quyền người khác
+nhưng Viewer được phép tải phải được E2E, không được dùng chỉ file owned
+tải trực tiếp để tuyên bố DONE. Code Worker hiện tại chỉ tải trực tiếp là
+giới hạn implementation, không phải lý do thay đổi mục tiêu sản phẩm.
+Checkbox "Tôi có quyền tải xuống" hiện tại cần loại bỏ ở PR code riêng.
+
+Phân biệt Viewer role với `capabilities.canDownload`; không tự động
+scrape/chụp preview để vượt lệnh cấm download/copy/print của owner hoặc
+admin. Nếu bị hạn chế, báo rõ và yêu cầu file có quyền hợp lệ. Bất kỳ
+renderer được cho phép nào cũng phải chạy tách biệt trên Cloud Run sau
+review tài nguyên/bảo mật; không thêm Chromium vào VPS API 384 MB.
+
 ### Backend và database
 
 - Controller xử lý HTTP input/output, auth và status mapping.

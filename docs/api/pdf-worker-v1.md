@@ -1,5 +1,11 @@
 # PDF worker contract v1
 
+> **Phạm vi source v1, không phải yêu cầu nghiệp vụ cuối cùng.** Đọc
+> [Viewer PDF product contract](../product-spec/pdf-viewer-links.md).
+> Worker chỉ hỗ trợ file được tải trực tiếp; `Cloud PDF E2E: PASS` với
+> file public downloadable không chứng minh hỗ trợ mọi liên kết Viewer.
+> Không thêm viewer screenshot bypass khi owner/admin tắt tải/copy/print.
+
 Status: implemented for local fixture verification; production processing disabled.
 No Teacher Hub API, database, queue dispatch or teacher download authorization is
 implemented here. Task 2 consumes this contract; Task 3 and cloud E2E remain gates.

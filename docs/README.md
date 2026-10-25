@@ -50,6 +50,11 @@ chỉ là đường dẫn tương thích đã ignore, không phải nguồn tài
 
 ## Tài liệu đang có hiệu lực
 
+- [`product-spec/pdf-viewer-links.md`](product-spec/pdf-viewer-links.md):
+  mục tiêu PDF Google Drive **Viewer**; phân biệt yêu cầu với giới hạn
+  Worker đang chạy, phương án kỹ thuật hợp lệ và acceptance matrix. Agent
+  không được xác nhận hoàn thành chỉ nhờ E2E file tải trực tiếp.
+
 - [`architecture/dependency-policy.md`](architecture/dependency-policy.md): Node,
   npm và dependency-upgrade rules.
 - [`features/student-parent-tracking.md`](features/student-parent-tracking.md):
