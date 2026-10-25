@@ -1,3 +1,4 @@
+import { loadApprovedPdfGateway } from './services/pdf-gateway-bootstrap';
 import { AuthController } from "./controllers/auth.controller";
 import { PdfController } from './controllers/pdf.controller';
 import { createPdfRuntime } from './services/pdf-runtime';
@@ -148,7 +149,7 @@ export const googleSheetSyncWorker = new GoogleSheetSyncWorker(
 );
 
 export const controllers = {
-  pdf: new PdfController(createPdfRuntime()),
+  pdf: new PdfController(createPdfRuntime(loadApprovedPdfGateway())),
   health: new HealthController(),
   auth: new AuthController(authService),
   classes: new ClassController(classService, lessonService),

@@ -1,8 +1,9 @@
+import { loadApprovedPdfGateway } from '../services/pdf-gateway-bootstrap';
 import { createPdfRuntime } from '../services/pdf-runtime';
 import { reconcilePdf, type PdfReconcileOptions } from '../services/pdf-reconciler';
 import { pool } from '../db/pool';
 
-export function runPdfRecovery(options: PdfReconcileOptions = {}, service = createPdfRuntime()) {
+export function runPdfRecovery(options: PdfReconcileOptions = {}, service = createPdfRuntime(loadApprovedPdfGateway())) {
   return reconcilePdf(service, options);
 }
 
@@ -16,7 +17,7 @@ if (require.main === module) {
   const hardStop = setTimeout(() => {
     console.error('PDF_RECOVERY_DEADLINE'); process.exit(1);
   }, 50000);
-  const service = createPdfRuntime();
+  const service = createPdfRuntime(loadApprovedPdfGateway());
   void runPdfRecovery(options, service).then(async summary => console.log(JSON.stringify({
     ...summary, submitEnabled: (await service.capabilities()).submitEnabled,
   })))
