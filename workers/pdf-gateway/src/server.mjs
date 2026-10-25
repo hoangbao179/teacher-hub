@@ -90,6 +90,8 @@ async function readLimited(response, limit) {
 
 export function createGatewayServer({
   env = process.env, fetcher = fetch, now = () => Date.now(),
+  // Injectable only through trusted server construction (tests), never HTTP/env.
+  deadlines = { ordinary: 8000, download: 25000 },
 } = {}) {
   const enabled = env.PDF_GATEWAY_ENABLED === 'true';
   const keyHex = env.PDF_GATEWAY_HMAC_KEY ?? '';
@@ -147,10 +149,10 @@ export function createGatewayServer({
     const target = route(req.method,req.url,body,workerURL);
     if (!target) { reply(400,ERROR); return; }
     const kind = req.method==='POST' ? 'enqueue' : target.binary ? 'download' : 'read';
-    if (!admit(kind,now())) { reply(429,ERROR); return; }
     if (target.binary && activeStreams >= 1) { reply(429,ERROR); return; }
+    if (!admit(kind,now())) { reply(429,ERROR); return; }
     if (target.binary) activeStreams++;
-    const deadline = AbortSignal.timeout(target.binary ? 25000 : 8000);
+    const deadline = AbortSignal.timeout(target.binary ? deadlines.download : deadlines.ordinary);
     const disconnected = new AbortController();
     const onClose = () => { if (!res.writableFinished) disconnected.abort(); };
     res.once('close',onClose);

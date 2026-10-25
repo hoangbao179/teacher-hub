@@ -113,7 +113,7 @@ test('nonce store failure closes access before calling Tasks',async(t)=>{
  assert.equal(r.status,503);assert.equal(queueCalls,0);
 });
 
-test('download streams exactly, oversized upstream never finishes successfully',async(t)=>{
+test('small PDF streams exactly with proper content type',async(t)=>{
  const env={PDF_GATEWAY_ENABLED:'true',PDF_GATEWAY_HMAC_KEY:KEY,PDF_GATEWAY_WORKER_URL:WORKER};
  const fetcher=async(url)=>{
    if(url.startsWith('http://metadata.google.internal'))
@@ -220,4 +220,82 @@ test('Cloud Tasks conflict is ACKed only for canonical ALREADY_EXISTS response',
  r=await fetch('http://127.0.0.1:'+s.address().port+'/v1/tasks',{
   method:'POST',body,headers:makeHeaders('c'.repeat(32))});
  assert.equal(r.status,503);
+});
+
+test('oversized and upstream-truncated PDFs cannot finish as successful downloads',async t=>{
+ const env={PDF_GATEWAY_ENABLED:'true',PDF_GATEWAY_HMAC_KEY:KEY,PDF_GATEWAY_WORKER_URL:WORKER};
+ let attempt=0;
+ const fetcher=async url=>{
+   if(url.startsWith('http://metadata.google.internal'))
+     return new Response(JSON.stringify({access_token:'a'.repeat(40)}),{headers:{'Metadata-Flavor':'Google'}});
+   if(url.includes('/upload/storage/')) return new Response('{}');
+   if(url.includes('output.pdf')){
+     attempt++;
+     if(attempt===1){
+       let sent=0;
+       return new Response(new ReadableStream({pull(controller){
+         if(sent++<6)controller.enqueue(new Uint8Array(2*1024*1024));
+         else controller.close();
+       }}));
+     }
+     let sent=false;
+     return new Response(new ReadableStream({pull(controller){
+       if(!sent){sent=true;controller.enqueue(new Uint8Array([37,80,68,70]));}
+       else controller.error(new Error('TRUNCATED_UPSTREAM'));
+     }}));
+   }
+   throw Error('Unexpected upstream');
+ };
+ const s=createGatewayServer({env,fetcher});
+ await new Promise(resolve=>s.listen(0,'127.0.0.1',resolve));
+ t.after(()=>{s.closeAllConnections();s.close()});
+ const path='/v1/objects/'+ID+'/output.pdf',base='http://127.0.0.1:'+s.address().port;
+ async function read(nonce){
+   const stamp=String(Math.floor(Date.now()/1000));
+   const headers={'X-PDF-Timestamp':stamp,'X-PDF-Nonce':nonce,
+     'X-PDF-Signature':signature(Buffer.from(KEY,'hex'),'GET',path,stamp,nonce,Buffer.alloc(0))};
+   const response=await fetch(base+path,{headers});
+   assert.equal(response.status,200);
+   return response.arrayBuffer();
+ }
+ await assert.rejects(()=>read('3'.repeat(32)));
+ await assert.rejects(()=>read('4'.repeat(32)));
+ assert.equal(attempt,2);
+});
+test('stalled download times out, rejects a concurrent stream and releases slot',async t=>{
+ const env={PDF_GATEWAY_ENABLED:'true',PDF_GATEWAY_HMAC_KEY:KEY,PDF_GATEWAY_WORKER_URL:WORKER};
+ let calls=0,cancelled=false;
+ const fetcher=async url=>{
+   if(url.startsWith('http://metadata.google.internal'))
+     return new Response(JSON.stringify({access_token:'a'.repeat(40)}),{headers:{'Metadata-Flavor':'Google'}});
+   if(url.includes('/upload/storage/')) return new Response('{}');
+   if(url.includes('output.pdf')){
+     calls++;
+     if(calls===1)return new Response(new ReadableStream({
+       start(controller){controller.enqueue(new Uint8Array([37,80,68,70]));},
+       cancel(){cancelled=true;}
+     }));
+     return new Response(new Uint8Array([37,80,68,70]));
+   }
+   throw Error('Unexpected upstream');
+ };
+ const s=createGatewayServer({env,fetcher,deadlines:{ordinary:1000,download:150}});
+ await new Promise(resolve=>s.listen(0,'127.0.0.1',resolve));
+ t.after(()=>{s.closeAllConnections();s.close()});
+ const path='/v1/objects/'+ID+'/output.pdf',base='http://127.0.0.1:'+s.address().port;
+ const signed=nonce=>{
+   const stamp=String(Math.floor(Date.now()/1000));
+   return {'X-PDF-Timestamp':stamp,'X-PDF-Nonce':nonce,
+     'X-PDF-Signature':signature(Buffer.from(KEY,'hex'),'GET',path,stamp,nonce,Buffer.alloc(0))};
+ };
+ const first=await fetch(base+path,{headers:signed('5'.repeat(32))});
+ assert.equal(first.status,200);
+ const busy=await fetch(base+path,{headers:signed('6'.repeat(32))});
+ assert.equal(busy.status,429);
+ await assert.rejects(()=>first.arrayBuffer());
+ assert.equal(cancelled,true);
+ const fresh=await fetch(base+path,{headers:signed('7'.repeat(32))});
+ assert.equal(fresh.status,200);
+ assert.deepEqual(new Uint8Array(await fresh.arrayBuffer()),new Uint8Array([37,80,68,70]));
+ assert.equal(calls,2);
 });

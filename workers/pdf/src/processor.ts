@@ -15,8 +15,10 @@ export async function processJob(job: Job, cap: Limits, signal: AbortSignal, dep
   const sourceHash = createHash('sha256').update(JSON.stringify({
     provider: job.source.provider, fileId: job.source.fileId })).digest('hex');
   await store.ready(signal); // Check both get/create before downloading or writing any object.
-  const createdAt = new Date().toISOString();
-  const candidate: Claim = { version: 1, sourceHash, createdAt, expiresAt: new Date(Date.now() + 86400000).toISOString() };
+  // Capture a single instant: API reconciliation requires an exact 24-hour claim.
+  const createdMs = Date.now();
+  const createdAt = new Date(createdMs).toISOString();
+  const candidate: Claim = { version: 1, sourceHash, createdAt, expiresAt: new Date(createdMs + 86400000).toISOString() };
   await store.create(`${prefix}request.json`, { json: candidate }, signal);
   const claim = await store.json<Claim>(`${prefix}request.json`, signal);
   if (!claim || claim.version !== 1 || !/^[a-f0-9]{64}$/.test(claim.sourceHash ?? '') ||

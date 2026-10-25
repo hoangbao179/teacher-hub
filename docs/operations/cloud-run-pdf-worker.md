@@ -481,3 +481,11 @@ Cloud Run health-only deployment: owner reports deployed, anonymous 403 and
 authenticated 200. PDF processing deployment/activation: **NOT READY** pending
 Tasks 2/3, reviewed IAM/mount/config, authorized real Drive fixture and private
 cloud E2E. No cloud state was changed or independently inventoried by Task 1.
+
+## Read-only live-revision preflight after PDF audit
+
+The operator preflight `node scripts/pdf-cloud-readiness.mjs --gcloud` now reads both the Cloud Run **service** and its **actual traffic revision**. The latter requires `run.revisions.get` in addition to the existing read permissions. It first validates the revision name from service status before making the read-only `gcloud run revisions describe` call; untrusted text never becomes arbitrary shell input.
+
+A service template is the **desired** state and does not prove a successful rollout. A healthy previous revision can continue serving while a newer revision fails. The preflight therefore blocks resource verification if the service or revision lacks `Ready=True`, if latest-created and latest-ready differ, if traffic is not 100% on that revision, or if the revision image digest/processing flags/resource settings differ from expectations. Missing or denied revision reads are `BLOCKED/FAIL`, never presumed healthy. See [Cloud Run revision details](https://docs.cloud.google.com/run/docs/managing/revisions).
+
+The existing report still returns `activationAllowed=false` even when all resource checks are green. An operator must separately inspect inherited/effective IAM, actual processing deployment, queue execution, nonce retention, secret management and real cross-device PDF E2E before activation.

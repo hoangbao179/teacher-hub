@@ -96,6 +96,20 @@ test('deadline aborts a stalled response and processor removes partial temporary
   assert.equal(store.objects.has(output), false);
 });
 
+test('claim TTL is exactly 24h even when Date.now advances between reads', async t => {
+  const base = Date.now() - 500;
+  let ticks = 0;
+  t.mock.method(Date, 'now', () => base + (++ticks));
+  const store = new MemoryStore();
+  const result = await processJob(job, cap, signal(), { store,
+    download: async () => { throw new JobError('ACCESS_DENIED'); } });
+  const claim = store.objects.get('jobs/' + job.jobId + '/request.json').json;
+  assert.equal(Date.parse(claim.expiresAt) - Date.parse(claim.createdAt), 86400000);
+  assert.equal(result.expiresAt, claim.expiresAt);
+  assert.equal(result.status, 'FAILED');
+  assert.equal(result.errorCode, 'ACCESS_DENIED');
+});
+
 test('expired claims fail durably without another download', async () => {
   const store = new MemoryStore();
   const deps = { store, download: async () => { throw new JobError('SOURCE_UNAVAILABLE', true); } };
