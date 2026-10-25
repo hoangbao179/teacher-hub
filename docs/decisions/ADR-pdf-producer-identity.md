@@ -1,6 +1,6 @@
 # PDF producer identity and durable dispatch
 
-Status: proposed for production identity; accepted local implementation boundary.
+Status: accepted source-only HMAC Gateway direction; production activation remains unapproved.
 
 ## Context
 
@@ -38,7 +38,7 @@ attempt evidence becomes RETRY_EXHAUSTED.
 A separately authenticated broker/gateway could hold cloud privileges and validate
 VPS requests using an independent identity or mTLS. This adds certificate/key
 custody, rotation/revocation, replay protection, another service, logs, requests,
-network egress and operational cost. No public gateway or broker is approved.
+network egress and operational cost. A source-only HMAC Gateway direction has been approved for implementation, but its public deployment, credentials, IAM bindings and activation remain unapproved.
 Moving the producer to an attested cloud runtime changes deployment/architecture
 and costs; it needs separate approval. Static SA keys and public worker access are
 rejected. IAM keyless signing would need signBlob authority; use bounded authenticated
@@ -59,3 +59,9 @@ and logging incur workload-dependent costs; no monthly estimate is validated.
 
 References: [external federation](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-providers),
 [queue retries](https://docs.cloud.google.com/tasks/docs/configuring-queues).
+
+## Source-level architecture update — October 2026
+
+For the small single-teacher site, the owner selected a lightweight HMAC-authenticated Cloud Run Gateway over a custom VPS X.509/OIDC certificate authority. The Gateway limits each operation to a fixed PDF queue, task schema and private result bucket; a dedicated Cloud Run service account obtains short-lived GCP credentials from runtime metadata. The external VPS holds only a random shared HMAC secret, not a Google service-account key. Nonce replay prevention reserves create-only GCS objects, and responses/backpressure use bounded streaming. Public/admin API and independently invoked recovery CLI share the same private approval-file loader and stay disabled without an explicitly provisioned valid file. This is a source implementation decision, not a grant to deploy or enable service.
+
+Security consequences: a compromised shared secret can impersonate the producer until revoked; nonces consume GCS storage operations and require dedicated permissions and cleanup; global admission and cost caps require live Cloud Run review; actual IAM, lifecycle, secret rotation, recovery schedule, Worker revision, PDF E2E and measured VPS cost remain production gates. The previously created teacher-hub-vps WIF pool is unused. The existing REST/WIF producer adapter remains disabled unless explicitly injected through a reviewed runtime.
