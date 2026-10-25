@@ -36,6 +36,34 @@ test('producer payload accepted by real worker v1 guards, rejects schema drift',
   assert.equal(result.status,0); assert.ok(Buffer.byteLength(JSON.stringify(payload))<=4096);
 });
 
+test('Worker claim is accepted by real API validator with a ticking clock', () => {
+  const workerURL=pathToFileURL(path.resolve(__dirname,'../../../workers/pdf/src/processor.ts')).href;
+  const fixtureURL=pathToFileURL(path.resolve(__dirname,'../../../workers/pdf/test/fixtures.mjs')).href;
+  const contractURL=pathToFileURL(path.resolve(__dirname,'../../../workers/pdf/src/contract.ts')).href;
+  const program = `
+    const {processJob}=await import(process.argv[1]);
+    const {job,MemoryStore}=await import(process.argv[2]);
+    const {JobError,limits}=await import(process.argv[3]);
+    const store=new MemoryStore(); const original=Date.now; let i=0;
+    Date.now=()=>original()-500+(++i);
+    const result=await processJob(job,limits({}),AbortSignal.timeout(10000),{
+      store,download:async()=>{throw new JobError('ACCESS_DENIED');}
+    });
+    process.stdout.write(JSON.stringify({claim:store.objects.get('jobs/'+job.jobId+'/request.json').json,result,job}));
+  `;
+  const child=spawnSync(process.execPath,['--input-type=module','-e',program,workerURL,fixtureURL,contractURL],
+    {encoding:'utf8',timeout:12000,maxBuffer:16384});
+  assert.equal(child.status,0,child.stderr);
+  const data=JSON.parse(child.stdout);
+  const {validatePdfResult}=require('./pdf-validation') as typeof import('./pdf-validation');
+  const normalized=validatePdfResult(
+    {id:data.job.jobId,fileId:data.job.source.fileId,createdAt:data.claim.createdAt} as any,
+    {claim:data.claim,result:data.result},Date.now());
+  assert.equal(normalized.status,'FAILED');
+  assert.equal(normalized.errorCode,'ACCESS_DENIED');
+  assert.equal(Date.parse(data.claim.expiresAt)-Date.parse(data.claim.createdAt),86400000);
+});
+
 test('production factory remains fail-closed even when environment flag is set', async () => {
   const service=new PdfService(new PdfRepository(),new DisabledPdfProvider(),pdfSettings({PDF_API_ENABLED:'true'}));
   assert.equal((await service.capabilities()).submitEnabled,false);
