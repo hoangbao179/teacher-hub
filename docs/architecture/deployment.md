@@ -53,3 +53,7 @@ spreadsheet được nâng cấp tại chỗ: đổi `Nhật ký học tập` th
 tab `Tổng quan` và `Ôn từ vựng`, rồi giữ nguyên spreadsheet ID/URL. Chỉ hai tab nghiệp vụ
 giống file Excel tải xuống được hiển thị; `_TeacherHub` vẫn ẩn để phục vụ đồng bộ. Mỗi
 event lesson cập nhật cả lịch sử và snapshot Học phí để hai tab không lệch nhau.
+
+## PDF VPS integration
+
+See [private Gateway activation](../operations/pdf-vps-activation.md) for IAM + HMAC, host-owned secret configuration, outbound API networking, the one-minute systemd recovery timer and rollback. PDF stays disabled until the existing-issuer and live recovery gates pass; no new VPS container or resource increase is introduced.

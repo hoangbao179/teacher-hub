@@ -60,6 +60,23 @@ function assertPrivate(service, policy) {
     (policy.bindings??[]).some(b=>(b.members??[]).some(m=>['allUsers','allAuthenticatedUsers'].includes(m))))
     throw Error('PDF_CLOUD_UNSAFE_INVOCATION_POLICY');
 }
+// --no-traffic may turn latestRevision into an explicit revision and reorder
+// response fields. Compare resolved routing, including tagged URLs, not JSON bytes.
+export function trafficSnapshot(traffic) {
+  if (!Array.isArray(traffic) || traffic.length === 0) throw Error('PDF_CLOUD_BASELINE_TRAFFIC_REQUIRED');
+  let total = 0;
+  const routes = traffic.map(item => {
+    const percent = item.percent ?? 0;
+    if (typeof item.revisionName !== 'string' || !item.revisionName ||
+        !Number.isInteger(percent) || percent < 0 || percent > 100 ||
+        (item.tag !== undefined && typeof item.tag !== 'string') ||
+        (item.url !== undefined && typeof item.url !== 'string')) throw Error('PDF_CLOUD_INVALID_TRAFFIC');
+    total += percent;
+    return JSON.stringify([item.revisionName, percent, item.tag ?? '', item.url ?? '']);
+  });
+  if (total !== 100) throw Error('PDF_CLOUD_INVALID_TRAFFIC');
+  return JSON.stringify(routes.sort());
+}
 export function plan(env=process.env) {
   const sha=env.SOURCE_SHA??'';
   if(!RE_SHA.test(sha)) throw Error('PDF_CLOUD_SOURCE_SHA_REQUIRED');
@@ -95,7 +112,7 @@ export function stage(env=process.env, run=cliCall) {
     assertPrivate(svc,iam);
     if(!Array.isArray(svc.status?.traffic)||svc.status.traffic.length<1)
       throw Error('PDF_CLOUD_BASELINE_TRAFFIC_REQUIRED');
-    initialTraffic.set(name,JSON.stringify(svc.status.traffic));
+    initialTraffic.set(name,trafficSnapshot(svc.status.traffic));
   }
   for(let i=0;i<services.length;i++){
     const name=services[i],tag=p.imageTags[i];
@@ -112,7 +129,7 @@ export function stage(env=process.env, run=cliCall) {
     // After deployment verify no production traffic moved automatically.
     const srv=JSON.parse(run('gcloud',['run','services','describe',name,
       '--project='+CLOUD.project,'--region='+CLOUD.region,'--format=json']));
-    if(JSON.stringify(srv.status?.traffic)!==initialTraffic.get(name))
+    if(trafficSnapshot(srv.status?.traffic)!==initialTraffic.get(name))
       throw Error('PDF_CLOUD_TRAFFIC_CHECK_FAILED');
   }
   return { staged:true, traffic:'unchanged', images:2, activationAllowed:false };

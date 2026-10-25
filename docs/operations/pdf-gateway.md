@@ -1,6 +1,6 @@
-# PDF Gateway — source only, NOT production ready
+# PDF Gateway - private IAM and HMAC
 
-A small Cloud Run gateway is proposed for the Nhân Hòa VPS. It accepts HMAC-SHA256 signed requests (timestamp, nonce, method, path, raw body) and calls only explicitly allowlisted Cloud Tasks and GCS endpoints with its own workload identity. Worker remains private; API/CLI use a shared file-only approval loader and remain disabled until explicit operator provisioning.
+The existing Cloud Run Gateway serves the VPS integration. Operator reports private cloud processing PASS; website activation remains blocked. See [VPS activation](pdf-vps-activation.md) for the current IAM flow, host configuration, rehearsal, timer and rollback. It accepts HMAC-SHA256 signed requests (timestamp, nonce, method, path, raw body) and calls only explicitly allowlisted Cloud Tasks and GCS endpoints with its own workload identity. Worker remains private; API/CLI use a shared file-only approval loader and remain disabled until explicit operator provisioning.
 
 ### Threat model and outstanding gates
 
@@ -29,7 +29,7 @@ Disable producer first; revoke the shared secret, stop gateway dispatch and sche
 
 ### Shared bootstrap (HTTP + CLI)
 
-Both `server/src/container.ts`, `server/src/public-pdf-container.ts` and `server/src/scripts/reconcile-pdf.ts` use `loadApprovedPdfGateway()`. In absence of a review-approved file, all keep `DisabledPdfProvider`. The environment variable `PDF_GATEWAY_APPROVAL_FILE` is an absolute path to a private (Linux mode 0600) local JSON document containing EXACTLY `kind: "pdf_gateway_v1"`, `gatewayURL`, `workerBaseURL`, `hmacKeyHex`, `activationApproved: true`, and `recoveryVerified: true`. **Do not create or populate this file before all production gates are satisfied**, especially the independently running scheduler and cloud E2E; this is operator attestation, NOT automatic verification. Secrets must never appear in shell history, images, Git, logs or client data. File provision/rotation and per-host ownership must be reviewed before deployment.
+Both `server/src/container.ts`, `server/src/public-pdf-container.ts` and `server/src/scripts/reconcile-pdf.ts` use `loadApprovedPdfGateway()`. In absence of a review-approved file, all keep `DisabledPdfProvider`. The environment variable `PDF_GATEWAY_APPROVAL_FILE` is an absolute path to a private (Linux mode 0600) local JSON document containing EXACTLY `kind: "pdf_gateway_v1"`, `gatewayURL`, `workerBaseURL`, `hmacKeyHex`, `activationApproved: true`, and `recoveryVerified: true`, plus the exact `federation` object documented in the activation runbook. **Do not provision production `approval.json` before all production gates are satisfied**; private rehearsal uses a separate file injected only into a controlled test process as described in the activation runbook; this is operator attestation, NOT automatic verification. Secrets must never appear in shell history, images, Git, logs or client data. File provision/rotation and per-host ownership must be reviewed before deployment.
 
 ### Status and caveats
 

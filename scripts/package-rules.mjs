@@ -25,7 +25,7 @@ export function prohibitedArchiveReason(value) {
   if (/(^|\/)\.git(?:\/|$)/i.test(file)) return "Git metadata";
   if (/(^|\/)node_modules(?:\/|$)/i.test(file)) return "dependency directory";
   if (/(^|\/)(dist|coverage|\.vite|\.cache|playwright-report|test-results|screenshots|\.artifacts)(?:\/|$)/i.test(file)) return "generated build/test output";
-  if (/(^|\/)(\.agent-reports|\.private-data|private-data|release|backups|database-dumps)(?:\/|$)/i.test(file)) return "private or generated artifact directory";
+  if (/(^|\/)(\.agent-reports|\.private-data|private-data|pdf-runtime|release|backups|database-dumps)(?:\/|$)/i.test(file)) return "private or generated artifact directory";
   if (/(^|\/)\.env(?:\.|$)/i.test(file) && !/(^|\/)\.env(?:\.[^/]+)?\.example$/i.test(file) && !/(^|\/)\.env\.example$/i.test(file)) return "real environment file";
   if (/\.(xlsx?|xlsm|xlsb)$/i.test(lower)) return "private workbook";
   if (/\.(dump|bak|sql\.gz)$/i.test(lower) || /(^|\/)[^/]*(?:backup|dump)[^/]*\.sql$/i.test(lower)) return "database dump or backup";
@@ -68,6 +68,7 @@ export function assertRuleSelfTests() {
     ".git/config", "server/.env", "client/node_modules/x", "client/dist/app.js", ".artifacts/task/failure.png",
     "docs/private.xlsx", "backups/live.sql", "database.dump", "C:/Users/person/file.txt",
     "docs/name#U1EA1.txt",
+    "pdf-runtime/approval.json", "pdf-runtime/subject.jwt", "pdf-runtime/runtime.env",
   ];
   for (const file of prohibited) if (!prohibitedArchiveReason(file)) throw new Error(`Package-rule self-test did not reject ${file}`);
   const sensitive = [

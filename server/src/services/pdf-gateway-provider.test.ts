@@ -14,11 +14,12 @@ function readyQueue(){
 test('HTTP 409 only means duplicate when explicit TASK_ALREADY_EXISTS; authorization failure rejects',async t=>{
  const original=globalThis.fetch;t.after(()=>{globalThis.fetch=original});
  for(const error of ['UNAUTHORIZED','NOT_FOUND','TASK_ALREADY_EXISTS']){
-  const provider=new GatewayPdfProvider(GATEWAY,WORKER,'ab'.repeat(32),true);
+  const provider=new GatewayPdfProvider(GATEWAY,WORKER,'ab'.repeat(32),true,async()=> 'google-id-token');
   let creations=0;
   globalThis.fetch=async(input,init)=>{
    const url=String(input);
    assert.equal(init?.redirect,'error');
+   assert.equal((init?.headers as Record<string,string>).Authorization,'Bearer google-id-token');
    assert.match(String((init?.headers as Record<string,string>)['X-PDF-Signature']),/^[a-f0-9]{64}$/);
    if(url.endsWith('/v1/queue'))
      return new Response(JSON.stringify(readyQueue()),{status:200});
@@ -42,4 +43,13 @@ test('provider fails closed on invalid gateway URL, key and approval',async()=>{
   assert.equal(await provider.ready(),false);
   await assert.rejects(()=>provider.enqueue(payload),/PDF_CLOUD_UNAVAILABLE/);
  }
+});
+test('missing IAM supplier and failed token exchange cannot dispatch HMAC-only requests',async t=>{
+ const original=globalThis.fetch;t.after(()=>{globalThis.fetch=original});
+ globalThis.fetch=async()=>assert.fail('must not call Gateway without IAM identity');
+ const missing=new GatewayPdfProvider(GATEWAY,WORKER,'ab'.repeat(32),true);
+ assert.equal(missing.configured,false);
+ const failed=new GatewayPdfProvider(GATEWAY,WORKER,'ab'.repeat(32),true,async()=>{throw Error('secret');});
+ assert.equal(await failed.ready(),false);
+ await assert.rejects(()=>failed.enqueue(payload),/PDF_CLOUD_UNAVAILABLE/);
 });

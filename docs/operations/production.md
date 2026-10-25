@@ -369,3 +369,7 @@ terminal chia sẻ.
 Chỉ Caddy publish TCP 80/443 và UDP 443. MySQL, API và Web không publish port. Nginx
 trong Web tiếp tục là điểm proxy duy nhất cho `/api`, `/health` và `/ready`; Caddy chỉ
 terminate HTTPS và chuyển toàn bộ request sang Web nên không tạo vòng proxy.
+
+## PDF VPS integration
+
+See [private Gateway activation](pdf-vps-activation.md) for IAM + HMAC, host-owned secret configuration, outbound API networking, the one-minute systemd recovery timer and rollback. PDF stays disabled until the existing-issuer and live recovery gates pass; no new VPS container or resource increase is introduced.

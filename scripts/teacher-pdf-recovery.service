@@ -1,0 +1,11 @@
+[Unit]
+Description=Teacher Hub bounded PDF recovery
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/teacher-hub/pdf-recovery.sh
+TimeoutStartSec=55
+# CLI inside API also exits after 50s, including unavailable DB.
+UMask=0077

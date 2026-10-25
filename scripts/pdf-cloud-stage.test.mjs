@@ -1,12 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CLOUD, plan, stagedDeployArgs, cliCall, stage, inspect, main } from './pdf-cloud-stage.mjs';
+import { CLOUD, plan, stagedDeployArgs, cliCall, stage, inspect, main, trafficSnapshot } from './pdf-cloud-stage.mjs';
 const SHA='a'.repeat(40);
 const DIGEST='sha256:'+'b'.repeat(64);
 const secret='teacher-pdf-gateway-hmac:1';
 const env={SOURCE_SHA:SHA,PDF_GATEWAY_SECRET_VERSION:secret,
   PDF_CLOUD_STAGE_APPROVED:'private-no-traffic',PDF_CLOUD_IAM_REVIEWED:'true'};
 const traffic=[{revisionName:'teacher-pdf-worker-00002-lml',percent:100}];
+test('traffic comparison ignores latest metadata/order but preserves routing changes',()=>{
+ const before=[{revisionName:'old',percent:100,latestRevision:true},{revisionName:'tagged',tag:'preview',url:'https://preview'}];
+ assert.equal(trafficSnapshot(before),trafficSnapshot([
+  {url:'https://preview',tag:'preview',revisionName:'tagged',percent:0},
+  {percent:100,revisionName:'old',latestRevision:false}]));
+ for(const changed of [
+  [{revisionName:'new',percent:100}],
+  [{revisionName:'old',percent:99},{revisionName:'new',percent:1}],
+  [{revisionName:'old',percent:100},{revisionName:'other',tag:'preview',url:'https://preview'}],
+ ]) assert.notEqual(trafficSnapshot(before),trafficSnapshot(changed));
+ for(const invalid of [undefined,[],[{latestRevision:true,percent:100}],[{revisionName:'x',percent:99}]])
+  assert.throws(()=>trafficSnapshot(invalid));
+});
 function fakeRunner({publicGateway=false,failedDigest=false,trafficDrift=false,missingGateway=false}={}){
  const calls=[];
  const run=(command,args)=>{

@@ -1,11 +1,12 @@
 # PDF API operation and activation gates
 
-No cloud/VPS/config/secret/deployment change is performed by Task 2. Current API
-and recovery CLI use DisabledPdfProvider. Even a true PDF_API_ENABLED flag cannot
-produce cloud calls. Do not wire a credential provider or expose downloads until
-the [identity ADR](../decisions/ADR-pdf-producer-identity.md) is approved and verified.
-The REST adapter accepts only an explicitly verified external-workload token
-supplier; it never loads ADC, JSON keys, user gcloud or GitHub WIF credentials.
+API and recovery CLI default to DisabledPdfProvider. A PDF_API_ENABLED flag alone
+cannot produce cloud calls. The shared private approval loader can now construct
+GatewayPdfProvider with explicit OIDC federation and HMAC. No issuer has been
+confirmed on the VPS; keep production disabled until the
+[activation gates](pdf-vps-activation.md) pass. No ADC, JSON keys, user gcloud or
+GitHub verifier credentials are used. The older direct REST provider remains an
+explicitly injected alternative, not the production Gateway path.
 
 ## Local verification and migration
 
@@ -109,9 +110,10 @@ server/. No key files or personal credentials may be mounted. Configure a schedu
 timeout of 55 seconds with a five-second kill grace and sanitized exit/stop-reason
 monitoring. Leases protect overlap across processes; optionally use the scheduler's
 single-instance lock. Do not enable submissions before the reviewed schedule is
-active. This task installs no cron, daemon, container or VPS/CI deployment change.
-Current entrypoints remain disabled pending the shared factory's identity loader
-and explicit activation/recovery verification. Operator wiring is still a blocker.
+active. The repository provides systemd timer/service templates and Actions copies
+them, but operator installation and verification remain required. Current
+entrypoints remain disabled without approved federation and explicit
+activation/recovery verification. Operator identity wiring is still a blocker.
 Each invocation is an additional short-lived Node process, even inside the existing
 API container. Benchmark combined API/CLI/MySQL memory and CPU before scheduling
 on the shared 1.5 GB/1 vCPU VPS; no combined-production peak was measured here.
@@ -154,3 +156,7 @@ issuer/broker costs need an actual workload estimate. VPS resources remain uncha
 Audit logs must never contain tickets, tokens, source URLs, file content or provider
 error payloads. Cloud transport errors are sanitized. qpdf is not antivirus;
 downloads remain attachment/nosniff. No cloud E2E or production resource claim is made.
+
+## PDF VPS integration
+
+See [private Gateway activation](pdf-vps-activation.md) for IAM + HMAC, host-owned secret configuration, outbound API networking, the one-minute systemd recovery timer and rollback. PDF stays disabled until the existing-issuer and live recovery gates pass; no new VPS container or resource increase is introduced.

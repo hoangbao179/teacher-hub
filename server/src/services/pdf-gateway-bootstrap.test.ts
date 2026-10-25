@@ -10,6 +10,8 @@ const valid = () => ({
   gatewayURL:'https://teacher-pdf-gateway-851777150171.asia-southeast1.run.app',
   workerBaseURL:'https://teacher-pdf-worker-851777150171.asia-southeast1.run.app',
   hmacKeyHex:'ab'.repeat(32),
+  federation: { audience:'//iam.googleapis.com/projects/851777150171/locations/global/workloadIdentityPools/vps/providers/oidc',
+    serviceAccount:'teacher-pdf-producer@teacher-hub-pdf.iam.gserviceaccount.com',subjectTokenFile:join(tmpdir(),'subject.jwt') },
   activationApproved:true,
   recoveryVerified:true,
 });
@@ -27,6 +29,7 @@ test('gateway config file fail-closed and shared bootstrap', t => {
     {activationApproved:false},{recoveryVerified:false},{hmacKeyHex:'invalid'},
     {gatewayURL:'https://attacker.example.com'},{workerBaseURL:'http://localhost:8080'},
     {extra:'unsafe'},
+    {federation:undefined},{federation:{type:'service_account',private_key:'rejected'}},
   ]) {
     writeFileSync(file,JSON.stringify({...valid(),...patch}));
     assert.equal(loadApprovedPdfGateway(env),undefined,JSON.stringify(patch));

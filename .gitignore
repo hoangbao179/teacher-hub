@@ -9,6 +9,7 @@ coverage/
 .cache/
 .private-data/
 private-data/
+pdf-runtime/
 release/
 backups/
 database-dumps/

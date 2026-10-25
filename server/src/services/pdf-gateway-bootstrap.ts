@@ -1,12 +1,14 @@
 import { readFileSync, statSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import type { ApprovedGatewayRuntime } from './pdf-runtime';
+import { validGatewayFederation, type GatewayFederation } from './pdf-gateway-identity';
 
 type Config = {
   kind: 'pdf_gateway_v1';
   gatewayURL: string;
   workerBaseURL: string;
   hmacKeyHex: string;
+  federation: GatewayFederation;
   activationApproved: true;
   recoveryVerified: true;
 };
@@ -26,7 +28,8 @@ export function loadApprovedPdfGateway(env: NodeJS.ProcessEnv = process.env): Ap
     const config: Config = JSON.parse(readFileSync(path, 'utf8'));
     if (config.kind !== 'pdf_gateway_v1' ||
       Object.keys(config).sort().join(',') !==
-      'activationApproved,gatewayURL,hmacKeyHex,kind,recoveryVerified,workerBaseURL' ||
+      'activationApproved,federation,gatewayURL,hmacKeyHex,kind,recoveryVerified,workerBaseURL' ||
+      !validGatewayFederation(config.federation) ||
       config.activationApproved !== true || config.recoveryVerified !== true ||
       !/^https:\/\/teacher-pdf-gateway-[a-z0-9-]+\.[a-z0-9-]+\.run\.app$/.test(config.gatewayURL) ||
       !/^https:\/\/teacher-pdf-worker-[a-z0-9-]+\.[a-z0-9-]+\.run\.app$/.test(config.workerBaseURL) ||
@@ -34,6 +37,7 @@ export function loadApprovedPdfGateway(env: NodeJS.ProcessEnv = process.env): Ap
     return {
       gatewayURL: config.gatewayURL, workerBaseURL: config.workerBaseURL,
       hmacKeyHex: config.hmacKeyHex, activationApproved: true, recoveryVerified: true,
+      federation: config.federation,
     };
   } catch { return undefined; }
 }

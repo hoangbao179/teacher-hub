@@ -22,7 +22,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### ACTIVE — dùng thực tế
 
-- **Góc công cụ public**: Nút Công cụ màu hồng pastel dẫn tới `/tools`, không yêu cầu đăng nhập. Form nhận tối đa 5 link PDF được phép tải và xác nhận quyền sử dụng. Lịch sử public dùng chung trên mọi thiết bị; xem/retry/download không cần cookie thiết bị tạo. Cookie chỉ phục vụ submit/idempotency. Batch/job/liên kết public được ghi nguyên tử; danh sách và tổng số batch admin loại trừ public. UI dùng tên tạm theo mã Drive, ticket POST một lần và thời hạn tải 24 giờ; không upload vào Google Drive cô Vy. Polling bỏ qua chi tiết terminal, giữ theo dõi kết quả muộn và refresh thủ công. Capabilities vẫn unavailable vì production PDF worker/identity chưa bật.
+- **Góc công cụ public**: Nút Công cụ màu hồng pastel dẫn tới `/tools`, không yêu cầu đăng nhập. Form nhận tối đa 5 link PDF được phép tải và xác nhận quyền sử dụng. Lịch sử public dùng chung trên mọi thiết bị; xem/retry/download không cần cookie thiết bị tạo. Cookie chỉ phục vụ submit/idempotency. Batch/job/liên kết public được ghi nguyên tử; danh sách và tổng số batch admin loại trừ public. UI dùng tên tạm theo mã Drive, ticket POST một lần và thời hạn tải 24 giờ; không upload vào Google Drive cô Vy. Polling bỏ qua chi tiết terminal, giữ theo dõi kết quả muộn và refresh thủ công. Capabilities remain unavailable pending confirmed VPS identity and production recovery verification.
 - **Teacher Tools quản trị (giao diện mặc định sau đăng nhập)**: `/admin/tools` cùng toàn bộ `/admin/*` tiếp tục nằm trong auth boundary hiện hành. Khi legacy tắt, các route quản trị cũ chuyển về `/admin/tools` sau khi xác thực; khách vẫn được đưa tới `/admin/login`. Trang public `/tools` không thay thế màn đăng nhập hay trang công cụ quản trị.
 
 - **Lớp và học sinh**: quản lý lớp 1–1/lớp nhóm, học sinh, enrollment, khoảng hiệu
@@ -77,30 +77,20 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### DEVELOPING
 
-- **PDF job API — production fail-closed**: backend `/api/pdf/*` dùng auth giáo
-  viên hiện có, batch/job/outbox và ticket hash trong MySQL migration `0027`.
-  Có provider abstraction, REST transport và integration bằng fake Cloud Tasks/GCS;
-  factory production/CLI vẫn dùng provider disabled vì identity VPS → GCP chưa
-  được duyệt. Reconciler độc lập có nhiều lượt, tối đa 50 job/45 giây mỗi run,
-  shared factory và gate xác minh lịch recovery. RESULT_UNCONFIRMED/RETRY_EXHAUSTED
-  tiếp tục đọc result muộn tới expiry. UI PDF công khai có lịch sử dùng chung; cookie chỉ cần cho submit. Submit/download vẫn chỉ mở khi capabilities cho phép. UI dùng shared contracts và
-  [API feature](../features/pdf-job-api.md); [identity ADR](../decisions/ADR-pdf-producer-identity.md)
-  và [runbook API](../operations/pdf-job-api.md) ghi các gate còn thiếu. Chưa cloud E2E.
-
-- **Cloud Run PDF worker v1 — DEVELOPING, processing disabled**: `workers/pdf`
-  là container Node độc lập, giữ `GET/HEAD /health`, có `POST /jobs` mặc định tắt.
-  Source hỗ trợ direct-download PDF Google Drive công khai được phép tải, streaming,
-  kiểm tra qpdf, lưu GCS private và retry/idempotency theo [contract v1](../api/pdf-worker-v1.md).
-  Local fixture E2E dùng synthetic PDF/fake GCS; chưa cloud E2E hoặc nối queue thực.
-  API/MySQL orchestration có trong source với production provider disabled.
-  Workflow `pdf-worker-manual` chỉ `workflow_dispatch` trên `main`, chỉ kiểm
-  tra WIF bằng verifier chỉ đọc; deploy thủ công ngoài Actions. Target 1 vCPU/2 GiB, concurrency 1,
-  min 0/max 3, Cloud Run IAM authentication. Chủ dự án xác nhận health-only đã
-  deploy, anonymous 403 và authenticated 200; revision processing chưa deploy.
-  Runtime SA được báo có Object Creator; quyền object get và mount tmpfs giới hạn
-  còn cần operator review, không tự cấp. WIF/IAM chưa được task này kiểm kê lại;
-  xem [runbook](../operations/cloud-run-pdf-worker.md). Task 2/3 và private cloud E2E
-  vẫn là gate; PoC và local checks không đồng nghĩa production-ready.
+- **PDF job API - production fail-closed**: migrations `0027`/`0028` cover
+  jobs/outbox, ticket hashes and public history. API/CLI share a private approval
+  loader. Gateway supports issuer JWT -> STS -> Google ID token plus HMAC,
+  with no JSON key/ADC or HMAC-only fallback. Compose provides outbound networking
+  and read-only host configuration; PDF remains disabled by default. A one-minute
+  systemd timer runs recovery in the existing API container; installation and live
+  recovery are not yet verified. No VPS issuer is confirmed. See
+  [activation runbook](../operations/pdf-vps-activation.md).
+- **Cloud Run PDF worker/Gateway**: operator reports Worker
+  `teacher-pdf-worker-00003-6m4` and Gateway `teacher-pdf-gateway-00003-s6v`
+  at 100% traffic; Tasks -> Worker -> PDF and HMAC -> nonce -> Tasks PASS.
+  These are operator-provided results, not website E2E evidence. Gateway remains
+  IAM-private; cloud services are not redeployed. VPS identity/renewal, live
+  recovery, second-device download/24h expiry and VPS headroom remain activation gates.
 
 - **Account settings**: trang tài khoản hiện có tên hiển thị, username, trạng thái
   đăng nhập và đăng xuất. Đổi mật khẩu/cập nhật thông tin trong UI chưa hoàn thiện;

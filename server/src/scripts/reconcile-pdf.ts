@@ -18,9 +18,11 @@ if (require.main === module) {
     console.error('PDF_RECOVERY_DEADLINE'); process.exit(1);
   }, 50000);
   const service = createPdfRuntime(loadApprovedPdfGateway());
-  void runPdfRecovery(options, service).then(async summary => console.log(JSON.stringify({
-    ...summary, submitEnabled: (await service.capabilities()).submitEnabled,
-  })))
+  void runPdfRecovery(options, service).then(async summary => {
+    const submitEnabled = (await service.capabilities()).submitEnabled;
+    if (process.env.PDF_API_ENABLED === 'true' && !submitEnabled) throw new Error('PDF_RECOVERY_UNAVAILABLE');
+    console.log(JSON.stringify({ ...summary, submitEnabled }));
+  })
     .catch(() => { console.error('PDF_RECOVERY_UNAVAILABLE'); process.exitCode=1; })
     .finally(async () => { await pool.end(); clearTimeout(hardStop); });
 }

@@ -1,0 +1,11 @@
+[Unit]
+Description=Recover PDF jobs every minute without a browser
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=1s
+Persistent=true
+Unit=teacher-pdf-recovery.service
+
+[Install]
+WantedBy=timers.target
