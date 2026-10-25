@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CLOUD, plan, stagedDeployArgs, cliCall, stage, main } from './pdf-cloud-stage.mjs';
+import { CLOUD, plan, stagedDeployArgs, cliCall, stage, inspect, main } from './pdf-cloud-stage.mjs';
 const SHA='a'.repeat(40);
 const DIGEST='sha256:'+'b'.repeat(64);
 const secret='teacher-pdf-gateway-hmac:1';
@@ -84,4 +84,29 @@ test('stage uses private no-traffic images and confirms original traffic remains
  assert(a.calls.filter(x=>x[0]==='docker'&&x[1]==='build').length===2);
  const b=fakeRunner({trafficDrift:true});
  assert.throws(()=>stage(env,b.run),/TRAFFIC_CHECK_FAILED/);
+});
+
+test('read-only inspect reports absent gateway/secret without writes',()=>{
+ const calls=[];
+ const run=(command,args)=>{
+  calls.push([command,...args]);
+  assert.equal(command,'gcloud');
+  if(args[0]==='iam')return JSON.stringify({email:CLOUD.gatewaySA});
+  if(args[0]==='secrets')return JSON.stringify({state:'ENABLED'});
+  if(args[0]==='run'&&args[2]==='describe'){
+    if(args[3]===CLOUD.gateway)throw Error('not found');
+    return JSON.stringify({metadata:{annotations:{'run.googleapis.com/invoker-iam-disabled':'false'}}});
+  }
+  if(args[0]==='run'&&args[2]==='get-iam-policy')return JSON.stringify({bindings:[]});
+  throw Error('unexpected');
+ };
+ const result=inspect(env,run);
+ assert.equal(result.services[CLOUD.gateway],'NOT_FOUND_OR_NOT_READABLE');
+ assert.equal(result.services[CLOUD.worker],'EXISTS_PRIVATE_DIRECT_IAM');
+ assert.equal(result.gatewayServiceAccount,'EXISTS');
+ assert.equal(result.gatewaySecretVersion,'ENABLED_VERSION_EXISTS');
+ assert.equal(result.activationAllowed,false);
+ assert(!calls.some(c=>c.includes('deploy')||c.includes('add-iam-policy-binding')||c.includes('access')));
+ const absent=inspect({},run);
+ assert.equal(absent.gatewaySecretVersion,'NOT_CONFIGURED');
 });
