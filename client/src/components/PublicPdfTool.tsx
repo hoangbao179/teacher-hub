@@ -180,7 +180,7 @@ export function PublicPdfTool() {
                   <Chip size="small" color={completed?"success":"default"} label={expired?"Hết hạn":statuses[job.status]}/>
                 </Stack>
                 {job.status==="FAILED"&&job.errorCode&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>{failureReasons[job.errorCode]??"Không thể xử lý tài liệu này."}</Typography>}
-                {job.status==="RESULT_UNCONFIRMED"&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Chưa xác nhận được kết quả. Hệ thống đang tiếp tục kiểm tra.</Typography>
+                {job.status==="RESULT_UNCONFIRMED"&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Chưa xác nhận được kết quả. Hệ thống đang tiếp tục kiểm tra.</Typography>}
                 {ongoing.includes(job.status)&&!expired&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>Có thể đóng trang trong khi chờ.</Typography>}
                 <Stack component="div" direction="row" sx={{mt:1,gap:1,flexWrap:"wrap"}}>
                   {completed&&<Button data-testid="pdf-download" startIcon={<DownloadRounded/>} disabled={busy||caps?.downloadEnabled!==true}
