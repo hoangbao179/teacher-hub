@@ -140,3 +140,49 @@ interpret their expected rejection as a reason to alter Worker IAM.
 PR CI and FakeCloud are not evidence of real public Gateway abuse resistance,
 billing limits, remote IAM policy, or a real VPS-originated E2E. Those remain
 operator-controlled gates.
+
+## Deploying new image revisions for option B (public-HMAC) — no traffic
+
+The legacy `node scripts/pdf-cloud-stage.mjs --stage` intentionally requires
+**both** Cloud Run services to be private, so it **must not be used** for this
+option B installation. `--inspect` reporting `POLICY_REQUIRES_REVIEW` for
+the intentionally public Gateway is expected, not a request to make it private.
+Do not falsely attest both services are private.
+
+Use `node scripts/pdf-cloud-stage-public-hmac.mjs --stage`, which checks:
+- Worker has Cloud Run Invoker IAM enabled and no `allUsers`/
+  `allAuthenticatedUsers` bindings.
+- Gateway already has the exact **invoker-IAM-check disabled** setting for
+  approved HMAC-public option B, and no public IAM role bindings.
+- Exact SHA and clean checkout, an existing numeric HMAC Secret Manager
+  version, reviewed IAM/HMAC and explicit operator approval.
+- Existing traffic routing before and after each service deployment; it builds
+  immutable images and deploys **`--no-traffic` only**. It never changes IAM,
+  flips PDF API flags, activates fallback or switches production traffic.
+
+PowerShell on an already-authorized operator workstation:
+
+```powershell
+git switch main
+git pull --ff-only
+$env:SOURCE_SHA = (git rev-parse HEAD).Trim()
+$env:PDF_GATEWAY_SECRET_VERSION = "teacher-pdf-gateway-hmac:1"
+# Check service IAM, Gateway HMAC anti-replay and billing/cost controls FIRST.
+$env:PDF_CLOUD_IAM_REVIEWED = "true"
+$env:PDF_CLOUD_HMAC_REVIEWED = "true"
+$env:PDF_CLOUD_PUBLIC_HMAC_STAGE_APPROVED = "public-hmac-no-traffic"
+node scripts/pdf-cloud-stage-public-hmac.mjs --stage
+```
+
+The example secret-version reference is the non-secret identifier, **not a
+secret value**; re-check it is enabled before staging. Do not set review
+flags without completing the review. No GitHub Actions, GCP service-account
+credentials, temporary API keys or HMAC contents are transmitted by this
+script.
+
+A successful return reports `mode:public-hmac-gateway`,
+`traffic:unchanged`, `activationAllowed:false`. Browser render requires a
+**separate authorized no-traffic canary E2E** before any activation. The API
+producer, Gateway and Worker opt-in flags for longer PDF jobs stay disabled.
+Do not assume `--no-traffic` itself verifies runtime readiness, cold-start
+memory, Chromium sandbox or the provided Google Drive file.
