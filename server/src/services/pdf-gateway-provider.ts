@@ -17,7 +17,8 @@ export class GatewayPdfProvider implements PdfProvider {
   private key: Buffer | null;
   constructor(private url: string, private workerURL: string, keyHex: string, approved = false,
     private idToken?: GatewayIdToken,
-    private readonly authMode: 'iam_hmac_v1' | 'hmac_public_v1' = 'iam_hmac_v1') {
+    private readonly authMode: 'iam_hmac_v1' | 'hmac_public_v1' = 'iam_hmac_v1',
+    private readonly longPrintTasks = process.env.PDF_LONG_PRINT_TASKS_ENABLED === 'true') {
     // Public HMAC is an explicit, review-approved opt-in. The default stays
     // IAM + HMAC, and a missing IAM token never downgrades authentication.
     this.configured = approved === true &&
@@ -81,7 +82,7 @@ export class GatewayPdfProvider implements PdfProvider {
   async enqueue(payload: PdfPayload, signal?: AbortSignal) {
     if(!uuid.test(payload.jobId)||!await this.ready(signal))throw new PdfCloudError();
     const body=Buffer.from(JSON.stringify({task:{
-      name:taskName(payload.jobId),dispatchDeadline:'30s',httpRequest:{
+      name:taskName(payload.jobId),dispatchDeadline:this.longPrintTasks ? '180s' : '30s',httpRequest:{
         httpMethod:'POST',url:this.workerURL+'/jobs',
         headers:{'Content-Type':'application/json'},
         body:Buffer.from(JSON.stringify(payload)).toString('base64'),

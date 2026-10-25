@@ -81,9 +81,12 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   and print policy are optional and disabled by default. A job can try the
   public/anonymous Print-enabled Drive viewer when direct download fails,
   producing image-only A4 PDF and using the same qpdf/GCS result path. Production
-  still has 30s Cloud Tasks dispatch deadlines and 30s Cloud Run timeouts; the
-  feature is **not activated or verified** against the user-provided Drive link.
-  Live render deployment and long-task approval remain separate operational gates.
+  still uses 30s Cloud Tasks dispatch deadlines and a 30s Cloud Run timeout on
+  the existing live revision. New source includes strictly opt-in 180s task
+  support in the API producer/Gateway and a 180s no-traffic Worker staging
+  template; **none is activated**. The feature is **not verified** against
+  the user-provided Drive link; coordinated promotion and quality testing are
+  still required.
   See [Worker feature](../features/pdf-worker.md).
 
 

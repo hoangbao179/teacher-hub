@@ -31,10 +31,14 @@ captured PNG <=32 MiB, output <=10 MiB, bounded requests/observed wire bytes,
 only Google Drive/Docs/static domains and no arbitrary navigation. This code
 does not prove print quality or readiness for all Drive viewer variants.
 The previous 22s Worker job deadline is still the default; explicitly enabling
-the flag allows up to 120s, requiring a matching **Cloud Tasks dispatchDeadline
-and Cloud Run request timeout change**. The existing production task deadline is
-30s, so simply deploying this code or enabling only the Worker flag **will
-not make rendering usable in production**.
+the flag allows up to 120s. The Gateway and API producer now support an
+explicit `PDF_LONG_PRINT_TASKS_ENABLED=true` gate for **180s** Cloud Tasks
+dispatch deadlines. Both gates are **off** by default; the staged Worker
+template uses a 180s Cloud Run request timeout, while Gateway remains 30s
+because it only enqueues tasks. Current live production traffic and task
+deadlines are unchanged. Rendering requires a **coordinated review and activation
+of Worker + producer + Gateway flags**; enabling the Worker flag alone
+will not work with live 30s tasks.
 
 **Before release:** keep flag OFF, perform authorized real-viewer E2E in an
 isolated revision, review Chromium sandbox/egress, cost, image size,

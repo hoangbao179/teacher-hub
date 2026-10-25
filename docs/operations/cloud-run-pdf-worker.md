@@ -499,12 +499,32 @@ and the 22-second job ceiling. Only when explicitly enabled can the Worker
 attempt render fallback after direct download errors; no Google login/OAuth
 or browser cookies are supplied.
 
-**Do not enable on the current 30-second Cloud Run revision.** A useful
-render attempt needs an explicitly reviewed Cloud Run request timeout greater
-than 120 seconds, `PDF_DEADLINE_MS=120000`, and Cloud Tasks/Gateway task
-dispatchDeadline greater than the Worker processing window. Those components
-currently use `30s`. Changes must be coordinated, version-compatible, and
-tested no-traffic before a production rollout. Do not flip flags in isolation.
+**Do not enable on the current 30-second Cloud Run revision.** This branch
+adds a *disabled by default* long-task contract:
+- The API `GatewayPdfProvider` sends `dispatchDeadline:'180s'` **only when**
+  `PDF_LONG_PRINT_TASKS_ENABLED=true` on the VPS API container; otherwise
+  it continues to send `30s`.
+- The Gateway accepts signed 180s requests **only when**
+  `PDF_LONG_PRINT_TASKS_ENABLED=true` on the Gateway; otherwise the former
+  exact-30s policy remains. Its own HTTP timeout stays 30s.
+- The operator-only no-traffic staging template sets the Worker Cloud Run
+  request timeout to 180s and explicitly sets both service flags to `false`.
+  No task flag or Worker screenshot renderer is enabled simply by staging.
+- The Worker needs `PDF_PRINT_FALLBACK_ENABLED=true` and
+  `PDF_DEADLINE_MS=120000` to process a large print job within its 180s
+  request/dispatch budgets.
+
+**Activation order (separately approved operational work, not this PR):**
+stage new private Worker and HMAC Gateway revisions without traffic and review
+IAM/HMAC, browser egress, cost and resource isolation. Perform real approved
+anonymous Viewer print E2E in isolation. After readiness, coordinate
+promotion and flags: Gateway long tasks, Worker render plus 120s limit,
+VPS producer long tasks; verify live. Never enable producer's 180s dispatch
+before its Gateway recognizes the new contract. To roll back, disable the
+producer long-task flag first, then Worker fallback, then Gateway long tasks;
+revert to prior immutable Cloud Run revisions as needed. Existing GCS
+results/outbox are preserved. Long-running in-flight tasks should be allowed
+to settle before any stricter timeout change.
 
 Cloud Run is private; image includes a headless browser run as non-root.
 Browser sandbox/egress restrictions, CPU/RAM, container start, billable
