@@ -68,9 +68,9 @@ test('explicit public-HMAC mode signs both reads and writes without Authorizatio
   const timestamp = headers['X-PDF-Timestamp'], nonce = headers['X-PDF-Nonce'];
   assert.match(timestamp, /^[1-9][0-9]{9}$/);
   assert.match(nonce, /^[a-f0-9]{32}$/);
-  const bytes = Buffer.from(String(init?.body ?? ''));
+  const bytes = init?.body ? Buffer.from(init.body as Uint8Array) : Buffer.alloc(0);
   const canonical = ['v1', String(init?.method), route, timestamp, nonce,
-    createHash('sha256').update(bytes).digest('hex')].join('\\n');
+    createHash('sha256').update(bytes).digest('hex')].join('\n');
   assert.equal(headers['X-PDF-Signature'],
     createHmac('sha256', Buffer.from('ab'.repeat(32), 'hex')).update(canonical).digest('hex'));
   seen++;
