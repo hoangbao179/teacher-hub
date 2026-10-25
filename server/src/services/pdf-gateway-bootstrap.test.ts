@@ -29,6 +29,10 @@ test('gateway config file fail-closed and shared bootstrap', t => {
     {activationApproved:false},{recoveryVerified:false},{hmacKeyHex:'invalid'},
     {gatewayURL:'https://attacker.example.com'},{workerBaseURL:'http://localhost:8080'},
     {extra:'unsafe'},
+    {gatewayURL:[valid().gatewayURL]}, {workerBaseURL:[valid().workerBaseURL]},
+    {hmacKeyHex:[valid().hmacKeyHex]},
+    {federation:{...valid().federation,audience:[valid().federation.audience]}},
+    {federation:{...valid().federation,serviceAccount:[valid().federation.serviceAccount]}},
     {federation:undefined},{federation:{type:'service_account',private_key:'rejected'}},
   ]) {
     writeFileSync(file,JSON.stringify({...valid(),...patch}));
@@ -69,6 +73,12 @@ test('public-HMAC approval needs an exact explicit mode and never a federation f
   {federation: valid().federation}, {activationApproved: false},
   {recoveryVerified: false}, {hmacKeyHex: 'invalid'}, {extra: true},
   {gatewayURL: 'https://attacker.invalid'},
+  {gatewayURL: [publicConfig.gatewayURL]},
+  {workerBaseURL: [publicConfig.workerBaseURL]},
+  {hmacKeyHex: [publicConfig.hmacKeyHex]},
+  {gatewayURL: publicConfig.gatewayURL + '\n'},
+  {workerBaseURL: publicConfig.workerBaseURL + '\n'},
+  {hmacKeyHex: publicConfig.hmacKeyHex + '\n'},
  ]) {
   assert.equal(read({...publicConfig, ...patch}), undefined, JSON.stringify(patch));
  }

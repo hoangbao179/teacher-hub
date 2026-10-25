@@ -68,4 +68,24 @@ Security consequences: a compromised shared secret can impersonate the producer 
 
 ## Private Gateway IAM completion
 
-The Gateway remains IAM-private in addition to HMAC. The source adapter now supports the preferred existing-issuer OIDC federation: a host-renewed subject JWT is exchanged with STS, then IAM Credentials generates a Gateway-audience ID token. The dedicated caller SA needs only Gateway invoker permission, not Tasks/GCS. This implements the earlier federation option without adding an issuer/service, changing Cloud Run, granting IAM or enabling production. No issuer is confirmed; activation is blocked until operator verification. HMAC-only public ingress, long-lived service-account keys and GitHub verifier reuse remain rejected. See [activation](../operations/pdf-vps-activation.md). Token refresh is an additional dependency; failure remains unavailable.
+The Gateway remains IAM-private in addition to HMAC. The source adapter supports existing-issuer OIDC federation: a host-renewed subject JWT is exchanged with STS, then IAM Credentials generates a Gateway-audience ID token. The dedicated caller SA needs only Gateway invoker permission, not Tasks/GCS. No issuer is confirmed; private-mode activation is blocked until operator verification. Long-lived service-account keys and GitHub verifier reuse remain rejected. See [activation](../operations/pdf-vps-activation.md). Token refresh is an additional dependency; failure or an empty token remains unavailable without dispatch.
+
+## Explicit public-HMAC alternative
+
+The owner-selected source-only option B uses the existing Gateway with HTTPS and
+HMAC, without a VPS OIDC issuer. Its distinct approval contract requires
+`authMode: "hmac_public_v1"` and forbids `federation`; absent/invalid IAM identity
+never selects this mode. Both schemas require string URLs and a 64-character
+hexadecimal secret, with no type coercion or surrounding whitespace. API and
+recovery CLI share this loader. Worker invocation remains Cloud Tasks OIDC and
+IAM-private. Existing short-lived IAM federation remains the default alternative.
+
+This removes the issuer dependency but makes the shared secret the sole producer
+credential and allows unauthenticated traffic to incur Gateway costs. A leaked
+key grants all allowlisted PDF task/object operations; CORS and unpredictable job
+IDs are not authorization. Bounded streaming and local admission do not establish
+a global spending limit. No new VPS service, rendering dependency or resource
+increase is introduced. Public exposure, secret provisioning, independent recovery,
+live E2E and resource/cost verification remain separate operator gates in the
+[public-HMAC runbook](../operations/pdf-vps-hmac-public.md); source approval does
+not authorize changing production IAM.

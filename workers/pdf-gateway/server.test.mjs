@@ -69,6 +69,46 @@ test('service stays disabled without explicit gate',async(t)=>{
  assert.equal((await fetch(url+'/v1/queue')).status,503);
 });
 
+test('public attack surface rejects tampering, preflight and malformed tasks before Google calls', async t => {
+ const now = Date.now(); let upstream = 0;
+ const s = createGatewayServer({
+  env: {PDF_GATEWAY_ENABLED:'true',PDF_GATEWAY_HMAC_KEY:KEY,PDF_GATEWAY_WORKER_URL:WORKER},
+  now: () => now,
+  fetcher: async () => { upstream++; throw Error('must not reach Google'); },
+ });
+ await new Promise(resolve => s.listen(0,'127.0.0.1',resolve));
+ t.after(() => { s.closeAllConnections(); s.close(); });
+ const base = 'http://127.0.0.1:' + s.address().port;
+ const stamp = String(Math.floor(now/1000)), nonce = 'd'.repeat(32);
+ const headers = (method, path, bytes, ts = stamp) => ({
+  'X-PDF-Timestamp':ts, 'X-PDF-Nonce':nonce,
+  'X-PDF-Signature':signature(Buffer.from(KEY,'hex'),method,path,ts,nonce,bytes),
+ });
+ const empty = Buffer.alloc(0);
+ const cases = [
+  ['/v1/queue', {method:'OPTIONS',headers:{Origin:'https://attacker.invalid'}}, 404],
+  ['/v1/queue?extra=1', {headers:headers('GET','/v1/queue',empty)}, 404],
+  ['/v1/objects/'+ID+'/secret.json', {}, 404],
+  ['/v1/tasks/'+ID, {headers:headers('GET','/v1/queue',empty)}, 401],
+  ['/v1/queue', {headers:headers('POST','/v1/queue',empty)}, 401],
+  ['/v1/queue', {headers:headers('GET','/v1/queue',empty,String(Number(stamp)+61))}, 401],
+  ['/v1/queue', {headers:headers('GET','/v1/queue',empty,String(Number(stamp)-61))}, 401],
+  ['/v1/tasks', {method:'POST',body:Buffer.concat([body,Buffer.from(' ')]),headers:headers('POST','/v1/tasks',body)}, 401],
+  ['/v1/tasks', {method:'POST',body:'{}',headers:headers('POST','/v1/tasks',Buffer.from('{}'))}, 400],
+ ];
+ for (const [path, init, status] of cases) {
+  const response = await fetch(base + path, init);
+  assert.equal(response.status,status,path);
+  assert.equal(response.headers.get('access-control-allow-origin'),null);
+  await response.body?.cancel();
+ }
+ // Oversize input is disconnected by the byte limit; it must not dispatch.
+ await assert.rejects(() => fetch(base+'/v1/tasks', {
+  method:'POST',body:Buffer.alloc(8193),headers:headers('POST','/v1/tasks',Buffer.alloc(8193)),
+ }));
+ assert.equal(upstream,0);
+});
+
 test('shared nonce store prevents cross-instance replay',async(t)=>{
  const reserved=new Set(); let up=0;
  const fetcher=async(url)=>{

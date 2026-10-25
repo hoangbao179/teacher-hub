@@ -86,3 +86,13 @@ test('explicit public-HMAC mode signs both reads and writes without Authorizatio
  assert.equal(unapproved.configured, false);
  assert.equal(await unapproved.ready(), false);
 });
+
+test('IAM mode rejects an empty token before sending a signed request', async t => {
+ const original = globalThis.fetch; t.after(() => { globalThis.fetch = original; });
+ let calls = 0;
+ globalThis.fetch = async () => { calls++; return Response.json(readyQueue()); };
+ const provider = new GatewayPdfProvider(GATEWAY, WORKER, 'ab'.repeat(32), true, async () => '');
+ assert.equal(await provider.ready(), false);
+ await assert.rejects(() => provider.task(payload.jobId), /PDF_CLOUD_UNAVAILABLE/);
+ assert.equal(calls, 0);
+});

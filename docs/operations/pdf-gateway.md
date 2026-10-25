@@ -36,6 +36,11 @@ Disable producer first; revoke the shared secret, stop gateway dispatch and sche
 
 Both `server/src/container.ts`, `server/src/public-pdf-container.ts` and `server/src/scripts/reconcile-pdf.ts` use `loadApprovedPdfGateway()`. In absence of a review-approved file, all keep `DisabledPdfProvider`. The environment variable `PDF_GATEWAY_APPROVAL_FILE` is an absolute path to a private (Linux mode 0600) local JSON document containing EXACTLY `kind: "pdf_gateway_v1"`, `gatewayURL`, `workerBaseURL`, `hmacKeyHex`, `activationApproved: true`, and `recoveryVerified: true`, plus the exact `federation` object documented in the activation runbook. **Do not provision production `approval.json` before all production gates are satisfied**; private rehearsal uses a separate file injected only into a controlled test process as described in the activation runbook; this is operator attestation, NOT automatic verification. Secrets must never appear in shell history, images, Git, logs or client data. File provision/rotation and per-host ownership must be reviewed before deployment.
 
+For option B, replace `federation` with exactly `authMode: "hmac_public_v1"` as
+documented in the [public-HMAC schema](pdf-vps-hmac-public.md). URL/key fields must
+be JSON strings without surrounding whitespace; arrays are not coerced. An empty
+IAM supplier token fails before a signed network request can be sent.
+
 ### Status and caveats
 
 - Gateway uses `pipeline` to stop streaming on client disconnect or deadline, and caps one active download per process. Token buckets limit local rates per instance; actual global rate limits still depend on Cloud Run instance count and infrastructure controls.

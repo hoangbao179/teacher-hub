@@ -20,8 +20,10 @@ export class GatewayPdfProvider implements PdfProvider {
     private readonly authMode: 'iam_hmac_v1' | 'hmac_public_v1' = 'iam_hmac_v1') {
     // Public HMAC is an explicit, review-approved opt-in. The default stays
     // IAM + HMAC, and a missing IAM token never downgrades authentication.
-    this.configured = approved && gateway.test(url) && worker.test(workerURL) &&
-      /^[a-f0-9]{64}$/.test(keyHex) &&
+    this.configured = approved === true &&
+      typeof url === 'string' && url.trim() === url && gateway.test(url) &&
+      typeof workerURL === 'string' && workerURL.trim() === workerURL && worker.test(workerURL) &&
+      typeof keyHex === 'string' && keyHex.length === 64 && /^[a-f0-9]{64}$/.test(keyHex) &&
       (authMode === 'hmac_public_v1' || (authMode === 'iam_hmac_v1' && typeof idToken === 'function'));
     this.key = this.configured ? Buffer.from(keyHex,'hex') : null;
   }
@@ -35,6 +37,8 @@ export class GatewayPdfProvider implements PdfProvider {
     const sign = gatewaySignature(this.key,method,path,stamp,nonce,bytes);
     try {
       const token = this.authMode === 'iam_hmac_v1' ? await this.idToken!(signal) : undefined;
+      if (this.authMode === 'iam_hmac_v1' &&
+        (typeof token !== 'string' || !token || token.trim() !== token)) throw new PdfCloudError();
       const response=await fetch(this.url+path, {method,redirect:'error',signal,
         headers:{...(token ? {Authorization:`Bearer ${token}`} : {}),
           'X-PDF-Timestamp':stamp,'X-PDF-Nonce':nonce,'X-PDF-Signature':sign,

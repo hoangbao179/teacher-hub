@@ -39,6 +39,9 @@ export function loadApprovedPdfGateway(env: NodeJS.ProcessEnv = process.env): Ap
     if (config.kind !== 'pdf_gateway_v1' ||
       !(privateIAM || publicHmac) ||
       config.activationApproved !== true || config.recoveryVerified !== true ||
+      typeof config.gatewayURL !== 'string' || config.gatewayURL.trim() !== config.gatewayURL ||
+      typeof config.workerBaseURL !== 'string' || config.workerBaseURL.trim() !== config.workerBaseURL ||
+      typeof config.hmacKeyHex !== 'string' || config.hmacKeyHex.length !== 64 ||
       !/^https:\/\/teacher-pdf-gateway-[a-z0-9-]+\.[a-z0-9-]+\.run\.app$/.test(config.gatewayURL) ||
       !/^https:\/\/teacher-pdf-worker-[a-z0-9-]+\.[a-z0-9-]+\.run\.app$/.test(config.workerBaseURL) ||
       !/^[a-f0-9]{64}$/.test(config.hmacKeyHex)) return undefined;

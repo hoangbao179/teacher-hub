@@ -11,14 +11,20 @@ recovery timer. Use this only after a security/operational review.
   Cloud Run Invoker IAM check. **Worker remains IAM-private** and is invoked
   exclusively by Cloud Tasks using the existing dedicated invoker identity.
 - The Cloud Run Gateway application still requires HMAC-SHA256 over exact
-  method, path, timestamp (60-second window), nonce and SHA256(raw body).
+  method, path, timestamp (at most 60 seconds past or future), nonce and SHA256(raw body).
   Requests lacking a valid signature are denied *before* Cloud Tasks/GCS calls.
   Nonces are atomically reserved in GCS; replay is denied across instances.
+  Retain reservations beyond 120 seconds from first acceptance, plus operational
+  clock-skew margin: a future-dated request may first arrive 60 seconds early.
 - Backend `GatewayPdfProvider` opts into `hmac_public_v1` **only via an exact
   approved private file**, never based on a failed token exchange or environment
   boolean. The existing private IAM + HMAC file contract continues to work.
 - No HMAC or approval document may be exposed to the browser, logs, Git,
   Docker image, GitHub Actions, or command history. HTTPS is mandatory.
+- HMAC authorizes the trusted producer for every allowlisted PDF job/object;
+  per-user ownership and one-use tickets stay in the website API. CORS is not
+  authentication. Gateway has no browser CORS access and accepts no arbitrary
+  upstream host, queue, bucket, worker URL, invoker or object name from callers.
 - **Significant tradeoff:** disabling Cloud Run IAM allows *anyone* to send
   network requests to the Gateway, including abusive/unsigned requests that
   can incur Cloud Run charges. HMAC is application authentication, not DDoS
@@ -34,6 +40,8 @@ recovery timer. Use this only after a security/operational review.
    pass. Check secret rotation/revocation procedure and nonce lifecycle: objects
    must remain at least the full HMAC replay/timestamp window. Verify Gateway
    IAM scopes remain least-privilege and Worker IAM remains enabled.
+   Verify no effective public `allUsers` invoker grant exists before exposure;
+   restoring the IAM-check flag alone must not leave another public access path.
 2. Merge/deploy backend code with the public PDF flag **disabled** and without
    an `approval.json` file. Verify old website features and API availability.
    Preserve existing MySQL data, migration state and rollback image SHA.
@@ -77,6 +85,10 @@ recovery timer. Use this only after a security/operational review.
    Exactly these seven keys are accepted; `federation`, `subjectTokenFile`,
    user-supplied gateway URLs, API keys and service-account JSON keys are
    prohibited. Approval flags attest operator review; they are not evidence.
+   URLs and the HMAC key must be JSON strings, not arrays or coerced values, and
+   must not contain surrounding whitespace. Protect the containing directory
+   from untrusted writes; file permission checks alone do not establish ownership
+   or protect a writable parent directory. Windows tests do not verify Linux modes.
 5. In the isolated rehearsal, confirm HMAC-only GET queue, enqueue, Worker OIDC,
    result.json, authorized PDF download and one-use ticket. Check five links,
    browser closed, retry/replay, cross-device download, 24-hour expiry and VPS
@@ -94,9 +106,8 @@ recovery timer. Use this only after a security/operational review.
 
 ## Emergency rollback
 
-First set `PDF_API_ENABLED=false`, recreate only the API, and stop the PDF
-recovery timer. Re-enable Gateway IAM immediately if unexpected abuse or a
-credential compromise is suspected:
+If abuse or credential compromise is suspected, contain the public Gateway first
+by re-enabling IAM; disabling the website alone does not stop direct Gateway calls:
 
 ```bash
 gcloud run services update teacher-pdf-gateway \
@@ -104,9 +115,13 @@ gcloud run services update teacher-pdf-gateway \
   --invoker-iam-check
 ```
 
-Do not make Worker public or delete jobs/results. Re-enable Cloud Run IAM
-**before** trusting that exposed credentials or stale HMAC signatures have
-been contained; rotate/revoke the shared HMAC secret through the existing
+Verify effective IAM has no public invoker binding and an unauthenticated request
+is rejected by Cloud Run (not merely the application's HMAC check). The two public
+access mechanisms and restore flag are described in
+[Google's Cloud Run authentication documentation](https://docs.cloud.google.com/run/docs/authenticating/public).
+Then set `PDF_API_ENABLED=false`, recreate only the API, and stop both the recovery
+timer and any running recovery service. Do not make Worker public or delete
+jobs/results. Rotate/revoke the shared HMAC secret through the existing
 reviewed process if compromised. Roll back VPS API image to its recorded
 previous SHA if the code itself regresses. See `pdf-vps-activation.md`
 for Compose/timer details.
@@ -115,6 +130,13 @@ for Compose/timer details.
 
 Node unit tests exercise the exact public-HMAC approval contract and signed
 outbound requests. Existing Gateway tests cover signature/nonce/rate limits.
+The local HTTP transport test connects the real provider/runtime to the real
+Gateway handler with Google endpoints faked; it covers queue, enqueue, task,
+result/claim and PDF stream. Negative tests cover body/path/method tampering,
+timestamp bounds, preflight, malformed tasks and byte overflow before Google calls.
+Private staging/readiness scripts deliberately still require IAM-private services;
+they cannot certify option B after public exposure. Do not weaken those gates or
+interpret their expected rejection as a reason to alter Worker IAM.
 PR CI and FakeCloud are not evidence of real public Gateway abuse resistance,
 billing limits, remote IAM policy, or a real VPS-originated E2E. Those remain
 operator-controlled gates.
