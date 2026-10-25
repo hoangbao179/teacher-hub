@@ -1,6 +1,6 @@
 export type PdfJobStatus = 'ENQUEUE_PENDING' | 'ENQUEUE_RETRY' | 'QUEUED' | 'COMPLETED' |
   'FAILED' | 'RETRY_EXHAUSTED' | 'RESULT_UNCONFIRMED' | 'EXPIRED';
-export interface CreatePdfBatchRequest { links: string[]; rightsConfirmed: true }
+export interface CreatePdfBatchRequest { links: string[] }
 export interface PdfCapabilities {
   submitEnabled: boolean; downloadEnabled: boolean; unavailableReason: string | null;
   maxLinksPerBatch: number; maxActiveJobs: number; maxBatchesPerHour: number;

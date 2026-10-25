@@ -20,12 +20,16 @@ export class PdfService {
   private id(id: string) { if (!uuid(id)) throw pdfError(400,'PDF_INVALID_REQUEST'); }
   async create(owner: number, key: unknown, body: unknown, publicSessionId?: string) {
     await this.available();
-    if (!uuid(key) || !body || typeof body !== 'object' || Array.isArray(body) ||
-      Object.keys(body).sort().join() !== 'links,rightsConfirmed') throw pdfError(400,'PDF_INVALID_REQUEST');
-    const value = body as { links: unknown; rightsConfirmed: unknown };
-    if (value.rightsConfirmed !== true || !Array.isArray(value.links) || !value.links.length || value.links.length>this.cfg.maxLinks) throw pdfError(400,'PDF_INVALID_REQUEST');
+    if (!uuid(key) || !body || typeof body !== 'object' || Array.isArray(body)) throw pdfError(400,'PDF_INVALID_REQUEST');
+    const value = body as { links: unknown; rightsConfirmed?: unknown };
+    const fields = Object.keys(body).sort().join();
+    // Accept in-flight legacy clients; new UI does not claim download rights.
+    if (!(fields === 'links' || (fields === 'links,rightsConfirmed' && value.rightsConfirmed === true)) ||
+      !Array.isArray(value.links) || !value.links.length || value.links.length>this.cfg.maxLinks)
+      throw pdfError(400,'PDF_INVALID_REQUEST');
     const files = value.links.map(driveFileId);
     if (new Set(files).size !== files.length) throw pdfError(400,'PDF_DUPLICATE_SOURCE');
+    // Keep historical request hashes/idempotency keys stable across frontend rollout.
     const hash = digest(JSON.stringify({ files,rightsConfirmed:true }));
     const id = await this.repo.create(owner,key,hash,files,this.cfg,publicSessionId);
     await this.tick(owner,id);
