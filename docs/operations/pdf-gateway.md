@@ -42,3 +42,7 @@ Both `server/src/container.ts`, `server/src/public-pdf-container.ts` and `server
 ### Cloud Tasks duplicate responses
 
 The Gateway returns TASK_ALREADY_EXISTS only if Cloud Tasks responds with HTTP 409 and the Google error details identify ALREADY_EXISTS (code 409). All other 409 responses fail closed as 503 and cannot be treated by the producer as successful enqueue. Unit tests cover this transport boundary; verify Cloud Tasks behavior with a controlled task in approved cloud E2E.
+
+### Private staging helper
+
+The operator-only [one-shot private rollout](pdf-cloud-rollout.md) stages immutable Worker and Gateway revisions with no traffic transfer; existing private services and Secret Manager IAM must be verified first. Staging does not make Gateway publicly callable by VPS, grant permissions, provision secrets, modify traffic or enable PDF submissions. Live authentication, Tasks and GCS E2E remain activation gates.
