@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControlLabel, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, CircularProgress, Paper, Stack, TextField, Typography } from "@mui/material";
 import { DownloadRounded, RefreshRounded, ReplayRounded } from "@mui/icons-material";
 import type { PdfBatch, PdfBatchList, PdfCapabilities, PdfJob, PdfJobStatus } from "@teacher/shared";
 import { pdfApi, pdfDriveId } from "../api/pdf";
@@ -12,6 +12,14 @@ const statuses: Record<PdfJobStatus,string> = {
   RESULT_UNCONFIRMED:"Chưa xác nhận kết quả",EXPIRED:"Hết hạn",
 };
 const ongoing = ["ENQUEUE_PENDING","ENQUEUE_RETRY","QUEUED","RESULT_UNCONFIRMED","RETRY_EXHAUSTED"];
+const failureReasons: Record<string,string> = {
+  ACCESS_DENIED: "Không truy cập được tài liệu, hoặc Google Drive không cho phép in/tải.",
+  UNSUPPORTED_SOURCE: "Không lấy được bản PDF hợp lệ từ liên kết này.",
+  INVALID_PDF: "Nguồn trả về không phải PDF hợp lệ.",
+  FILE_TOO_LARGE: "Tệp lớn hơn giới hạn xử lý.",
+  PAGE_LIMIT_EXCEEDED: "Tài liệu có quá nhiều trang.",
+  JOB_EXPIRED: "Công việc đã hết hạn.",
+};
 const date = (d:string) => new Intl.DateTimeFormat("vi-VN",{timeZone:"Asia/Ho_Chi_Minh",
   day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(d));
 function message(error:unknown):string {
@@ -32,7 +40,6 @@ export function PublicPdfTool() {
   const [history,setHistory]=useState<PdfBatchList|null>(null);
   const [details,setDetails]=useState<Record<string,PdfBatch>>({});
   const [links,setLinks]=useState("");
-  const [rights,setRights]=useState(false);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
@@ -94,17 +101,17 @@ export function PublicPdfTool() {
     return ()=>{mounted.current=false;window.clearInterval(timer);};
   },[refresh,page]);
   async function submit(){
-    if(busy||!enabled||invalid||!rights)return;
+    if(busy||!enabled||invalid)return;
     setBusy(true);setError("");setNotice("");
     const fingerprint=JSON.stringify(parts);
     const key=createAttempt.current?.fingerprint===fingerprint?createAttempt.current.key:crypto.randomUUID();
     createAttempt.current={fingerprint,key};
     try{
       await pdfApi.session();
-      const batch=await pdfApi.create({links:parts,rightsConfirmed:true},key);
+      const batch=await pdfApi.create({links:parts},key);
       createAttempt.current=null;
       setNotice("Đã ghi nhận "+batch.jobs.length+" tài liệu. Có thể đóng trang và quay lại xem kết quả.");
-      setLinks("");setRights(false);setPage(1);
+      setLinks("");setPage(1);
       await refresh(1);
     }catch(e){setError(message(e));}
     finally{setBusy(false);}
@@ -145,9 +152,7 @@ export function PublicPdfTool() {
         placeholder="https://drive.google.com/file/d/…/view" value={links} disabled={!enabled||busy}
         onChange={e=>setLinks(e.target.value)} helperText="Tối đa 5 liên kết, mỗi dòng một link."/>
       {enabled&&links.trim()&&invalid&&<Typography role="alert" sx={{fontSize:13,color:"#b3261e",mt:1}}>{invalid}</Typography>}
-      <FormControlLabel control={<Checkbox checked={rights} disabled={!enabled||busy} onChange={e=>setRights(e.target.checked)}/>}
-        label={<Typography sx={{fontSize:13.5}}>Tôi có quyền tải xuống và sử dụng các tài liệu này.</Typography>} sx={{mt:1}}/>
-      <Button data-testid="pdf-submit" fullWidth variant="contained" disabled={!enabled||busy||!!invalid||!rights}
+      <Button data-testid="pdf-submit" fullWidth variant="contained" disabled={!enabled||busy||!!invalid}
         onClick={()=>void submit()} sx={{mt:2,minHeight:48,bgcolor:"#b96d8d","&:hover":{bgcolor:"#985170"}}}>
         {busy?"Đang thực hiện…":"Tạo PDF"}
       </Button>
@@ -174,7 +179,8 @@ export function PublicPdfTool() {
                   </Box>
                   <Chip size="small" color={completed?"success":"default"} label={expired?"Hết hạn":statuses[job.status]}/>
                 </Stack>
-                {job.status==="RESULT_UNCONFIRMED"&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Chưa xác nhận được kết quả. Hệ thống đang tiếp tục kiểm tra.</Typography>}
+                {job.status==="FAILED"&&job.errorCode&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>{failureReasons[job.errorCode]??"Không thể xử lý tài liệu này."}</Typography>}
+                {job.status==="RESULT_UNCONFIRMED"&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Chưa xác nhận được kết quả. Hệ thống đang tiếp tục kiểm tra.</Typography>
                 {ongoing.includes(job.status)&&!expired&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>Có thể đóng trang trong khi chờ.</Typography>}
                 <Stack component="div" direction="row" sx={{mt:1,gap:1,flexWrap:"wrap"}}>
                   {completed&&<Button data-testid="pdf-download" startIcon={<DownloadRounded/>} disabled={busy||caps?.downloadEnabled!==true}

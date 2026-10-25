@@ -56,8 +56,9 @@ try {
   for(const value of ["invalid",Array(6).fill(link).join("\n"),[link,link].join("\n")]) {
     await input.fill(value);assert.equal(await submit.isDisabled(),true);
   }
-  await input.fill(link);assert.equal(await submit.isDisabled(),true);
-  await page.getByRole("checkbox",{name:/có quyền tải xuống/}).check();await submit.click();
+  await input.fill(link);assert.equal(await submit.isDisabled(),false);
+  assert.equal(await page.getByRole("checkbox",{name:/có quyền tải xuống/}).count(),0);
+  await submit.click();
   await page.getByTestId("pdf-job").waitFor();
   const batch=await repo.batch(owner,(await guests.publicList(1)).items[0].id),job=batch.jobs[0];
   await page.close(); // Recovery proceeds with no live page from the submitter.

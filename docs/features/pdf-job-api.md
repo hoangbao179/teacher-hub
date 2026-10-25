@@ -23,7 +23,7 @@ do not present submission/download actions as working while the gate is closed.
 1. GET capabilities. Limits default to five links/batch, ten active jobs, ten
    batches/hour and fifty job creations/hour including manual retries.
 2. POST batches with `Idempotency-Key: <lowercase UUID-v4>` and
-   `{links:["https://drive.google.com/file/d/FILE_ID/view"],rightsConfirmed:true}`.
+   `{links:["https://drive.google.com/file/d/FILE_ID/view"]}`. Older clients may send `rightsConfirmed:true` for compatibility.
    Also accepted: `https://drive.google.com/open?id=FILE_ID`. Only these exact
    shapes are supported; no extra query, resource key, credential, fragment,
    confirmation/download URL or native Docs URL is accepted. Duplicate normalized
@@ -52,8 +52,7 @@ do not present submission/download actions as working while the gate is closed.
    or earlier job expiration. Attachments use application/pdf, nosniff and no-store.
    Interrupted streams require a fresh ticket; partial files must be discarded.
 
-Batch creation stores server timestamp, confirmed rights and terms version. This
-audit assertion does not establish document rights or bypass Google restrictions.
+Batch creation stores the server timestamp; legacy `rights_confirmed_at` remains as a database/DTO field but is **not evidence of confirmed rights**. New clients do not assert download permission, and Google permissions still apply.
 Only normalized fileId is persisted; no raw link, cloud token, signed URL or PDF
 bytes enter MySQL. Ticket storage contains only a SHA-256 token hash.
 

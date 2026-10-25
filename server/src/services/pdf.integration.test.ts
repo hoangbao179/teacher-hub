@@ -55,13 +55,14 @@ integration('PDF MySQL outbox, recovery, result validation, retry, ownership and
   assert.equal((await call('/capabilities',undefined,'')).status,401);
   assert.equal((await call('/capabilities',undefined,jwt.sign({id:owner,role:'STUDENT'},config.jwt.secret))).status,403);
   assert.equal((await call('/batches',{links:[link],rightsConfirmed:false})).status,400);
+  assert.equal((await call('/batches',{links:[link],other:true})).status,400);
   assert.equal((await call('/batches',{links:Array(6).fill(link),rightsConfirmed:true})).status,400);
   assert.equal((await call('/batches',{links:[link+'?resourcekey=private'],rightsConfirmed:true})).status,400);
-  const key=randomUUID();const batch=await service.create(owner,key,{links:[link],rightsConfirmed:true});let job=batch.jobs[0];
+  const key=randomUUID();const batch=await service.create(owner,key,{links:[link]});let job=batch.jobs[0];
   assert.equal(job.status,'QUEUED');assert.equal(cloud.tasks.size,1);
-  const repeats=await Promise.all([service.create(owner,key,{links:[link],rightsConfirmed:true}),service.create(owner,key,{links:[link],rightsConfirmed:true})]);
+  const repeats=await Promise.all([service.create(owner,key,{links:[link]}),service.create(owner,key,{links:[link]})]);
   assert.equal(repeats[0].id,batch.id);assert.equal(repeats[1].jobs.length,1);
-  await assert.rejects(service.create(owner,key,{links:['https://drive.google.com/open?id=another_fixture_123'],rightsConfirmed:true}),{code:'PDF_IDEMPOTENCY_CONFLICT'});
+  await assert.rejects(service.create(owner,key,{links:['https://drive.google.com/open?id=another_fixture_123']}),{code:'PDF_IDEMPOTENCY_CONFLICT'});
   await assert.rejects(repo.batch(owner+100000,batch.id),{code:'PDF_NOT_FOUND'});
   // Transaction rolls back an already-inserted first job if the second insert fails.
   const [before]=await pool.query<RowDataPacket[]>('SELECT COUNT(*) n FROM pdf_batches WHERE owner_id=?',[owner]);

@@ -64,10 +64,10 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [links, rightsConfirmed]
+              required: [links]
               properties:
                 links: {type: array, minItems: 1, maxItems: 5, items: {type: string, format: uri, maxLength: 512}}
-                rightsConfirmed: {type: boolean, enum: [true]}
+                rightsConfirmed: {type: boolean, enum: [true], deprecated: true}
       responses:
         '201': {description: Batch accepted, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
         default: {$ref: '#/components/responses/PdfError'}
@@ -124,10 +124,10 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [links, rightsConfirmed]
+              required: [links]
               properties:
                 links: {type: array, minItems: 1, maxItems: 5, items: {type: string, format: uri, maxLength: 512}}
-                rightsConfirmed: {type: boolean, enum: [true]}
+                rightsConfirmed: {type: boolean, enum: [true], deprecated: true}
       responses:
         '201': {description: Batch tồn tại hoặc đã tạo; chưa đồng nghĩa PDF thành công, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
         default: {$ref: '#/components/responses/PdfError'}

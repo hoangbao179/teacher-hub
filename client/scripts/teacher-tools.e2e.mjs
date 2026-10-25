@@ -77,7 +77,7 @@ try {
     if (pathname === "/api/public/pdf/session" && request.method() === "POST") return route.fulfill({ json:{data:{available:true}} });
     if (pathname === "/api/public/pdf/batches" && request.method() === "POST") {
       const body=request.postDataJSON();
-      assert.equal(body.rightsConfirmed,true);
+      assert.deepEqual(Object.keys(body),["links"]);
       assert.equal(body.links.length,1);
       assert.match(request.headers()["idempotency-key"], /^[0-9a-f-]{36}$/);
       guestSubmitted=true;
@@ -205,7 +205,7 @@ try {
   pdfEnabled=true;
   await page.goto(origin+"/tools");
   await page.getByTestId("pdf-links").locator("textarea").first().fill("https://drive.google.com/file/d/owned_fixture_12345/view");
-  await page.getByRole("checkbox",{name:/có quyền tải xuống/}).check();
+  assert.equal(await page.getByRole("checkbox",{name:/có quyền tải xuống/}).count(),0);
   await page.getByTestId("pdf-submit").click();
   await page.getByTestId("pdf-download").waitFor();
   assert.equal(guestSubmitted,true);
