@@ -29,6 +29,10 @@ test('gateway config file fail-closed and shared bootstrap', t => {
     {activationApproved:false},{recoveryVerified:false},{hmacKeyHex:'invalid'},
     {gatewayURL:'https://attacker.example.com'},{workerBaseURL:'http://localhost:8080'},
     {extra:'unsafe'},
+    {gatewayURL:[valid().gatewayURL]}, {workerBaseURL:[valid().workerBaseURL]},
+    {hmacKeyHex:[valid().hmacKeyHex]},
+    {federation:{...valid().federation,audience:[valid().federation.audience]}},
+    {federation:{...valid().federation,serviceAccount:[valid().federation.serviceAccount]}},
     {federation:undefined},{federation:{type:'service_account',private_key:'rejected'}},
   ]) {
     writeFileSync(file,JSON.stringify({...valid(),...patch}));
@@ -41,4 +45,41 @@ test('gateway config file fail-closed and shared bootstrap', t => {
     chmodSync(file,0o644);
     assert.equal(loadApprovedPdfGateway(env),undefined);
   }
+});
+
+test('public-HMAC approval needs an exact explicit mode and never a federation fallback', t => {
+ const dir = mkdtempSync(join(tmpdir(), 'teacher-pdf-hmac-'));
+ t.after(() => rmSync(dir, {recursive: true, force: true}));
+ const file = join(dir, 'approval.json');
+ const env = {PDF_GATEWAY_APPROVAL_FILE: file};
+ const publicConfig = {
+  kind: 'pdf_gateway_v1',
+  gatewayURL: 'https://teacher-pdf-gateway-851777150171.asia-southeast1.run.app',
+  workerBaseURL: 'https://teacher-pdf-worker-851777150171.asia-southeast1.run.app',
+  hmacKeyHex: 'ab'.repeat(32),
+  authMode: 'hmac_public_v1',
+  activationApproved: true,
+  recoveryVerified: true,
+ };
+ const read = (value: unknown) => {
+  writeFileSync(file, JSON.stringify(value), {mode: 0o600});
+  chmodSync(file, 0o600);
+  return loadApprovedPdfGateway(env);
+ };
+ assert.deepEqual(read(publicConfig), Object.fromEntries(
+  Object.entries(publicConfig).filter(([key]) => key !== 'kind')));
+ for (const patch of [
+  {authMode: undefined}, {authMode: 'iam_hmac_v1'},
+  {federation: valid().federation}, {activationApproved: false},
+  {recoveryVerified: false}, {hmacKeyHex: 'invalid'}, {extra: true},
+  {gatewayURL: 'https://attacker.invalid'},
+  {gatewayURL: [publicConfig.gatewayURL]},
+  {workerBaseURL: [publicConfig.workerBaseURL]},
+  {hmacKeyHex: [publicConfig.hmacKeyHex]},
+  {gatewayURL: publicConfig.gatewayURL + '\n'},
+  {workerBaseURL: publicConfig.workerBaseURL + '\n'},
+  {hmacKeyHex: publicConfig.hmacKeyHex + '\n'},
+ ]) {
+  assert.equal(read({...publicConfig, ...patch}), undefined, JSON.stringify(patch));
+ }
 });

@@ -11,6 +11,8 @@ export type GatewayIdToken = (signal: AbortSignal) => Promise<string>;
 
 export function validGatewayFederation(value: GatewayFederation): boolean {
   return !!value && Object.keys(value).sort().join(',') === 'audience,serviceAccount,subjectTokenFile' &&
+    typeof value.audience === 'string' && value.audience.trim() === value.audience &&
+    typeof value.serviceAccount === 'string' && value.serviceAccount.trim() === value.serviceAccount &&
     /^\/\/iam.googleapis.com\/projects\/851777150171\/locations\/global\/workloadIdentityPools\/[a-z0-9-]+\/providers\/[a-z0-9-]+$/.test(value.audience) &&
     /^[a-z][a-z0-9-]+@teacher-hub-pdf\.iam\.gserviceaccount\.com$/.test(value.serviceAccount) &&
     typeof value.subjectTokenFile === 'string' && isAbsolute(value.subjectTokenFile);

@@ -80,11 +80,15 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 - **PDF job API - production fail-closed**: migrations `0027`/`0028` cover
   jobs/outbox, ticket hashes and public history. API/CLI share a private approval
   loader. Gateway supports issuer JWT -> STS -> Google ID token plus HMAC,
-  with no JSON key/ADC or HMAC-only fallback. Compose provides outbound networking
+  or explicit `hmac_public_v1` via a distinct exact private approval file,
+  with no JSON key/ADC or HMAC-only fallback on identity failure. Empty IAM tokens
+  and non-string approval credentials are rejected before dispatch. Compose provides outbound networking
   and read-only host configuration; PDF remains disabled by default. A one-minute
   systemd timer runs recovery in the existing API container; installation and live
-  recovery are not yet verified. No VPS issuer is confirmed. See
-  [activation runbook](../operations/pdf-vps-activation.md).
+  recovery are not yet verified. No VPS issuer is confirmed; public-HMAC mode
+  instead requires separate approval of Gateway exposure and abuse/cost risk. See
+  [private activation](../operations/pdf-vps-activation.md) and
+  [public-HMAC gates](../operations/pdf-vps-hmac-public.md).
 - **Cloud Run PDF worker/Gateway**: operator reports Worker
   `teacher-pdf-worker-00003-6m4` and Gateway `teacher-pdf-gateway-00003-s6v`
   at 100% traffic; Tasks -> Worker -> PDF and HMAC -> nonce -> Tasks PASS.

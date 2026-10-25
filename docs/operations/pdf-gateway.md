@@ -1,4 +1,9 @@
-# PDF Gateway - private IAM and HMAC
+# PDF Gateway - IAM + HMAC (option A) or explicit public HMAC (option B)
+
+The optional public-HMAC integration is documented in
+[pdf-vps-hmac-public.md](pdf-vps-hmac-public.md). It is **not** enabled by source
+deployment; Cloud Run IAM remains on unless an operator deliberately changes the
+Gateway service setting after security review. The Worker always remains private.
 
 The existing Cloud Run Gateway serves the VPS integration. Operator reports private cloud processing PASS; website activation remains blocked. See [VPS activation](pdf-vps-activation.md) for the current IAM flow, host configuration, rehearsal, timer and rollback. It accepts HMAC-SHA256 signed requests (timestamp, nonce, method, path, raw body) and calls only explicitly allowlisted Cloud Tasks and GCS endpoints with its own workload identity. Worker remains private; API/CLI use a shared file-only approval loader and remain disabled until explicit operator provisioning.
 
@@ -30,6 +35,11 @@ Disable producer first; revoke the shared secret, stop gateway dispatch and sche
 ### Shared bootstrap (HTTP + CLI)
 
 Both `server/src/container.ts`, `server/src/public-pdf-container.ts` and `server/src/scripts/reconcile-pdf.ts` use `loadApprovedPdfGateway()`. In absence of a review-approved file, all keep `DisabledPdfProvider`. The environment variable `PDF_GATEWAY_APPROVAL_FILE` is an absolute path to a private (Linux mode 0600) local JSON document containing EXACTLY `kind: "pdf_gateway_v1"`, `gatewayURL`, `workerBaseURL`, `hmacKeyHex`, `activationApproved: true`, and `recoveryVerified: true`, plus the exact `federation` object documented in the activation runbook. **Do not provision production `approval.json` before all production gates are satisfied**; private rehearsal uses a separate file injected only into a controlled test process as described in the activation runbook; this is operator attestation, NOT automatic verification. Secrets must never appear in shell history, images, Git, logs or client data. File provision/rotation and per-host ownership must be reviewed before deployment.
+
+For option B, replace `federation` with exactly `authMode: "hmac_public_v1"` as
+documented in the [public-HMAC schema](pdf-vps-hmac-public.md). URL/key fields must
+be JSON strings without surrounding whitespace; arrays are not coerced. An empty
+IAM supplier token fails before a signed network request can be sent.
 
 ### Status and caveats
 

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash, createHmac } from 'node:crypto';
 import { GatewayPdfProvider } from './pdf-gateway-provider';
 import { pdfQueue } from './pdf-provider';
 const GATEWAY='https://teacher-pdf-gateway-851777150171.asia-southeast1.run.app';
@@ -52,4 +53,46 @@ test('missing IAM supplier and failed token exchange cannot dispatch HMAC-only r
  const failed=new GatewayPdfProvider(GATEWAY,WORKER,'ab'.repeat(32),true,async()=>{throw Error('secret');});
  assert.equal(await failed.ready(),false);
  await assert.rejects(()=>failed.enqueue(payload),/PDF_CLOUD_UNAVAILABLE/);
+});
+
+test('explicit public-HMAC mode signs both reads and writes without Authorization header', async t => {
+ const original = globalThis.fetch; t.after(() => { globalThis.fetch = original; });
+ const provider = new GatewayPdfProvider(GATEWAY, WORKER, 'ab'.repeat(32), true, undefined, 'hmac_public_v1');
+ assert.equal(provider.configured, true);
+ let seen = 0;
+ globalThis.fetch = async (input, init) => {
+  const route = new URL(String(input)).pathname;
+  const headers = init?.headers as Record<string, string>;
+  assert.equal(Object.hasOwn(headers, 'Authorization'), false);
+  assert.equal(Object.hasOwn(headers, 'authorization'), false);
+  const timestamp = headers['X-PDF-Timestamp'], nonce = headers['X-PDF-Nonce'];
+  assert.match(timestamp, /^[1-9][0-9]{9}$/);
+  assert.match(nonce, /^[a-f0-9]{32}$/);
+  const bytes = init?.body ? Buffer.from(init.body as Uint8Array) : Buffer.alloc(0);
+  const canonical = ['v1', String(init?.method), route, timestamp, nonce,
+    createHash('sha256').update(bytes).digest('hex')].join('\n');
+  assert.equal(headers['X-PDF-Signature'],
+    createHmac('sha256', Buffer.from('ab'.repeat(32), 'hex')).update(canonical).digest('hex'));
+  seen++;
+  if (route === '/v1/queue') return Response.json(readyQueue());
+  assert.equal(route, '/v1/tasks');
+  assert.equal(init?.method, 'POST');
+  return new Response('{}', {status: 200});
+ };
+ assert.equal(await provider.ready(), true);
+ await provider.enqueue(payload);
+ assert.equal(seen, 2);
+ const unapproved = new GatewayPdfProvider(GATEWAY, WORKER, 'ab'.repeat(32), false, undefined, 'hmac_public_v1');
+ assert.equal(unapproved.configured, false);
+ assert.equal(await unapproved.ready(), false);
+});
+
+test('IAM mode rejects an empty token before sending a signed request', async t => {
+ const original = globalThis.fetch; t.after(() => { globalThis.fetch = original; });
+ let calls = 0;
+ globalThis.fetch = async () => { calls++; return Response.json(readyQueue()); };
+ const provider = new GatewayPdfProvider(GATEWAY, WORKER, 'ab'.repeat(32), true, async () => '');
+ assert.equal(await provider.ready(), false);
+ await assert.rejects(() => provider.task(payload.jobId), /PDF_CLOUD_UNAVAILABLE/);
+ assert.equal(calls, 0);
 });

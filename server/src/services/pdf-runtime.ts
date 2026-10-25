@@ -5,14 +5,16 @@ import { PdfService } from './pdf.service';
 import { GatewayPdfProvider } from './pdf-gateway-provider';
 import { gatewayIdToken, type GatewayFederation } from './pdf-gateway-identity';
 
-export interface ApprovedGatewayRuntime {
+export type ApprovedGatewayRuntime = {
   gatewayURL: string;
   workerBaseURL: string;
   hmacKeyHex: string;
-  federation: GatewayFederation;
   activationApproved: true;
   recoveryVerified: true;
-}
+} & (
+  | { federation: GatewayFederation; authMode?: never }
+  | { authMode: 'hmac_public_v1'; federation?: never }
+);
 
 export interface ApprovedPdfRuntime {
   identity: VerifiedPdfIdentity;
@@ -27,7 +29,9 @@ export function createPdfRuntime(approved?: ApprovedPdfRuntime | ApprovedGateway
   const permitted = approved?.activationApproved === true && approved.recoveryVerified === true;
   const provider = permitted && approved && 'gatewayURL' in approved
     ? new GatewayPdfProvider(approved.gatewayURL, approved.workerBaseURL, approved.hmacKeyHex, true,
-      gatewayIdToken(approved.federation, approved.gatewayURL))
+      approved.authMode === 'hmac_public_v1' ? undefined :
+        gatewayIdToken(approved.federation!, approved.gatewayURL),
+      approved.authMode === 'hmac_public_v1' ? 'hmac_public_v1' : 'iam_hmac_v1')
     : permitted && approved && 'identity' in approved
       ? new RestPdfProvider(approved.identity, approved.workerBaseURL, true)
       : new DisabledPdfProvider();

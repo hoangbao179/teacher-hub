@@ -1,6 +1,10 @@
-# PDF on tienganhcovy.com — private Gateway activation
+# PDF on tienganhcovy.com — private Gateway activation (option A)
 
-Source integration is complete; activation is **blocked by the absence of a
+For the separately approved **option B (public HTTPS Gateway + HMAC, private Worker)**,
+see [the public-HMAC operator runbook](pdf-vps-hmac-public.md). No Cloud Run
+authentication setting or PDF API is changed merely by merging that code.
+
+Source integration for option A is complete; activation is **blocked by the absence of a
 confirmed VPS OIDC issuer**. Do not redeploy the existing Google Cloud services.
 The owner reports Worker `teacher-pdf-worker-00003-6m4` and Gateway
 `teacher-pdf-gateway-00003-s6v` at 100% traffic, real Tasks → PDF and
