@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test checks.test.mjs linux-metrics.test.mjs browser-limits.test.mjs",
-    "check": "node --check benchmark.mjs && node --check linux-benchmark.mjs && node --check linux-measure.mjs && node --check browser-capture.mjs && node --check browser-quality.mjs && node --check browser-linux-benchmark.mjs"
+    "test": "node --test checks.test.mjs linux-metrics.test.mjs browser-limits.test.mjs && node --test anonymous-print-policy.test.mjs",
+    "check": "node --check benchmark.mjs && node --check linux-benchmark.mjs && node --check linux-measure.mjs && node --check browser-capture.mjs && node --check browser-quality.mjs && node --check browser-linux-benchmark.mjs && node --check anonymous-print.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "1.0.13",
