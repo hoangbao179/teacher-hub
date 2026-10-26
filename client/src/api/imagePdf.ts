@@ -1,3 +1,5 @@
+import { inspectImageFile, MAX_SOURCE_IMAGE_PIXELS } from './imageDimensions.ts';
+
 /** Browser-only PDF assembly from page images supplied by the user. No network uploads. */
 export const MAX_IMAGE_PAGES = 40;
 export const MAX_IMAGE_PDF_BYTES = 20 * 1024 * 1024;
@@ -7,6 +9,7 @@ const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const encoder = new TextEncoder();
 
 export interface JpegPage { bytes: Uint8Array<ArrayBuffer>; width: number; height: number }
+export interface ImagePdfProgress { processed: number; total: number; minDpi: number }
 
 export function sortImagePages<T extends { name: string }>(files: readonly T[]): T[] {
   const collator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' });
@@ -30,7 +33,8 @@ function pagePlacement(w: number, h: number) {
   const margin = 12;
   const scale = Math.min((paperW - margin * 2) / w, (paperH - margin * 2) / h);
   const drawW = w * scale, drawH = h * scale;
-  return { paperW, paperH, x: (paperW - drawW) / 2, y: (paperH - drawH) / 2, drawW, drawH };
+  return { paperW, paperH, x: (paperW - drawW) / 2, y: (paperH - drawH) / 2, drawW, drawH,
+    dpi: Math.min(w * 72 / drawW, h * 72 / drawH) };
 }
 
 /** Build a standards-compliant, unencrypted PDF without adding a client dependency. */
@@ -74,14 +78,18 @@ export function pdfFromJpegPages(pages: readonly JpegPage[]): Blob {
 }
 
 async function canvasJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
-  return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Không thể mã hóa ảnh trang.')), 'image/jpeg', quality));
+  return new Promise((resolve, reject) => canvas.toBlob(blob => blob?.type === 'image/jpeg' ? resolve(blob) : reject(new Error('Trình duyệt không thể mã hóa ảnh JPEG.')), 'image/jpeg', quality));
 }
 
 async function compressPage(file: File, budget: number): Promise<JpegPage> {
+  // Reject forged MIME and oversized pixel dimensions before allocating a decoded image.
+  const declared = await inspectImageFile(file);
   const image = await createImageBitmap(file, { imageOrientation: 'from-image' });
   try {
     const sourceW = image.width, sourceH = image.height;
-    if (!sourceW || !sourceH) throw new Error('Ảnh trang bị lỗi.');
+    // EXIF orientation can swap dimensions, but must not change pixel count.
+    if (!sourceW || !sourceH || sourceW * sourceH !== declared.width * declared.height ||
+      sourceW * sourceH > MAX_SOURCE_IMAGE_PIXELS) throw new Error('Kích thước ảnh không khớp với nội dung.');
     let scale = Math.min(1, Math.sqrt(MAX_PIXELS / (sourceW * sourceH)), 2800 / Math.max(sourceW, sourceH));
     for (let attempt = 0; attempt < 6; attempt++) {
       const width = Math.max(1, Math.round(sourceW * scale));
@@ -105,11 +113,17 @@ async function compressPage(file: File, budget: number): Promise<JpegPage> {
 }
 
 /** Files stay on-device; each page is converted sequentially to bound memory use. */
-export async function createPdfFromImages(files: readonly File[]): Promise<Blob> {
+export async function createPdfFromImages(files: readonly File[], onProgress?: (value: ImagePdfProgress) => void): Promise<Blob> {
   validateImageFiles(files);
   const sorted = sortImagePages(files);
   const perPageBudget = Math.floor((MAX_IMAGE_PDF_BYTES - 8192 * (sorted.length + 1)) / sorted.length);
   const pages: JpegPage[] = [];
-  for (const file of sorted) pages.push(await compressPage(file, perPageBudget));
+  let minDpi = Infinity;
+  for (const file of sorted) {
+    const page = await compressPage(file, perPageBudget);
+    pages.push(page);
+    minDpi = Math.min(minDpi, pagePlacement(page.width,page.height).dpi);
+    onProgress?.({processed:pages.length,total:sorted.length,minDpi:Math.floor(minDpi)});
+  }
   return pdfFromJpegPages(pages);
 }

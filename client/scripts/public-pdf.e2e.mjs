@@ -1,8 +1,9 @@
-/* global process, console, document, localStorage, sessionStorage */
+/* global process, console, document, localStorage, sessionStorage, HTMLInputElement, DataTransfer, File, Event */
 // Synthetic MySQL/FakeCloud fixture only. No production identity or PDF source access.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { Buffer } from "node:buffer";
+import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { once } from "node:events";
@@ -97,6 +98,39 @@ try {
   await b.reload();await b.getByTestId("pdf-job").first().waitFor();
   const a2=await A.newPage();await a2.goto(origin+"/tools");await a2.getByTestId("pdf-job").first().waitFor();
   assert.equal(await a2.getByTestId("pdf-job").count(),await b.getByTestId("pdf-job").count());
+  // Real browser image -> PDF workflow: local PNGs, natural ordering,
+  // binary output, page orientation, print DPI warning and reset.
+  await b.evaluate(async () => {
+    const fileInput=document.querySelector('[data-testid="image-pdf-files"]');
+    if (!(fileInput instanceof HTMLInputElement)) throw Error('missing-image-input');
+    const dt=new DataTransfer();
+    for (const [name,w,h] of [['page-10.png',240,150],['page-2.png',150,240]]) {
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext('2d');
+      if (!ctx) throw Error('no-canvas');
+      ctx.fillStyle=name==='page-2.png'?'#ffffff':'#dfeaf1';
+      ctx.fillRect(0,0,w,h);
+      ctx.fillStyle='#000000';ctx.font='20px sans-serif';ctx.fillText(name,8,40);
+      const blob=await new Promise((resolve,reject)=>canvas.toBlob(v=>v?resolve(v):reject(Error('png-failed')),'image/png'));
+      dt.items.add(new File([blob],name,{type:'image/png'}));
+    }
+    fileInput.files=dt.files;
+    fileInput.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  await b.getByText('2 ảnh (tối đa 40 trang):').waitFor();
+  const imageDownload=b.waitForEvent('download');
+  await b.getByTestId('image-pdf-submit').click();
+  const saved=await imageDownload;
+  assert.equal(saved.suggestedFilename(),'tai-lieu-tu-anh.pdf');
+  const localPdf=await readFile(await saved.path());
+  const pdfText=localPdf.toString('latin1');
+  assert.ok(pdfText.startsWith('%PDF-1.4'), 'local PDF magic');
+  assert.ok(pdfText.includes('/Count 2'));
+  const boxes=[...pdfText.matchAll(/\/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/g)].map(x=>x[1]+' '+x[2]);
+  assert.deepEqual(boxes,['595.28 841.89','841.89 595.28']);
+  await b.getByTestId('image-pdf-quality-warning').waitFor();
+  assert.equal(await b.getByTestId('image-pdf-submit').isDisabled(),true);
   // Exercise real binary client helper in Vite, preserving both storage modes on public 401.
   await B.route(url=>url.pathname.endsWith("/download"),r=>r.fulfill({status:401,json:{error:{code:"UNAUTHORIZED"}}}));
   const sessionResults=await b.evaluate(async()=>{
