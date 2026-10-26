@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
 import { JobError, type Limits } from './contract.ts';
 import { assertPrintAction, printPageSize } from './print-policy.ts';
-import { captureViewerPage } from './capture-page.ts';
+import { captureViewerPage, observeViewerBitmaps, disposeViewerBitmaps } from './capture-page.ts';
 import { withViewerAbort } from './viewer-ready.ts';
 
 type ViewerAssemblyMode = 'print-gated' | 'view-only';
@@ -81,40 +81,45 @@ async function assembleViewerImagePdf(
   }
 
   const count = await readViewerPageCount(page, cap);
-  await setViewerZoom(page, signal);
+  const observation = await observeViewerBitmaps(page);
+  try {
+    await setViewerZoom(page, signal);
+    // Even a maximum-resolution bitmap must settle after the zoom UI completes.
+    await observation.evaluate(state => { state.changedAt = performance.now(); });
 
-  const doc = await PDFDocument.create();
-  sharp.cache(false);
-  sharp.concurrency(1);
-  const maxCaptures = 32 * 1048576;
-  let capturedBytes = 0, embeddedBytes = 0;
-  for (let index = 1; index <= count; index++) {
+    const doc = await PDFDocument.create();
+    sharp.cache(false);
+    sharp.concurrency(1);
+    const maxCaptures = 32 * 1048576;
+    let capturedBytes = 0, embeddedBytes = 0;
+    for (let index = 1; index <= count; index++) {
+      signal.throwIfAborted();
+      if (checkPrint) await checkPrint();
+      const captured = await captureViewerPage(page, index, count, maxCaptures - capturedBytes, observation, signal);
+      signal.throwIfAborted();
+      const paper = printPageSize(captured.width, captured.height);
+      capturedBytes += captured.png.length;
+      if (capturedBytes > maxCaptures) throw new JobError('FILE_TOO_LARGE');
+      const jpeg = await sharp(captured.png).jpeg({ quality: 93, chromaSubsampling: '4:4:4' }).toBuffer();
+      embeddedBytes += jpeg.length;
+      if (embeddedBytes > cap.maxBytes) throw new JobError('FILE_TOO_LARGE');
+      const embedded = await doc.embedJpg(jpeg);
+      const pdfPage = doc.addPage([paper.pageWidth, paper.pageHeight]);
+      pdfPage.drawImage(embedded, { x: paper.x, y: paper.y, width: paper.width, height: paper.height });
+      await doc.flush();
+    }
     signal.throwIfAborted();
     if (checkPrint) await checkPrint();
-    const captured = await captureViewerPage(page, index, count, maxCaptures - capturedBytes);
+    const finalLabels = await page.locator('h2').allTextContents();
+    if (finalLabels.some(label => {
+      const match = /\d+\s*\/\s*(\d+)\s*$/.exec(label);
+      return match && Number(match[1]) !== count;
+    })) throw new JobError('UNSUPPORTED_SOURCE');
+    const bytes = await doc.save();
+    if (bytes.length > cap.maxBytes) throw new JobError('FILE_TOO_LARGE');
     signal.throwIfAborted();
-    const paper = printPageSize(captured.width, captured.height);
-    capturedBytes += captured.png.length;
-    if (capturedBytes > maxCaptures) throw new JobError('FILE_TOO_LARGE');
-    const jpeg = await sharp(captured.png).jpeg({ quality: 93, chromaSubsampling: '4:4:4' }).toBuffer();
-    embeddedBytes += jpeg.length;
-    if (embeddedBytes > cap.maxBytes) throw new JobError('FILE_TOO_LARGE');
-    const embedded = await doc.embedJpg(jpeg);
-    const pdfPage = doc.addPage([paper.pageWidth, paper.pageHeight]);
-    pdfPage.drawImage(embedded, { x: paper.x, y: paper.y, width: paper.width, height: paper.height });
-    await doc.flush();
-  }
-  signal.throwIfAborted();
-  if (checkPrint) await checkPrint();
-  const finalLabels = await page.locator('h2').allTextContents();
-  if (finalLabels.some(label => {
-    const match = /\d+\s*\/\s*(\d+)\s*$/.exec(label);
-    return match && Number(match[1]) !== count;
-  })) throw new JobError('UNSUPPORTED_SOURCE');
-  const bytes = await doc.save();
-  if (bytes.length > cap.maxBytes) throw new JobError('FILE_TOO_LARGE');
-  signal.throwIfAborted();
-  await writeFile(path, bytes, { flag: 'wx', mode: 0o600, signal });
+    await writeFile(path, bytes, { flag: 'wx', mode: 0o600, signal });
+  } finally { await disposeViewerBitmaps(observation); }
 }
 
 /** Cloud Run renderer stage when Print is enabled. Caller owns the bounded browser. */

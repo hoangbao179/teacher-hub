@@ -77,6 +77,27 @@ by the remaining job AbortSignal; cancellation closes the disposable page.
 The quiet toolbar heuristic cannot prove that Drive will never add controls
 later; authorized real-Viewer coverage is still required.
 
+Bitmap observation begins before zoom and remains active throughout assembly.
+Capture requires 750ms without relevant DOM/image-state changes or visible busy
+indicators after zoom UI completion, scrolling and decode. It tracks source,
+native dimensions, loaded/decoded state and recycled image-node/page bindings.
+An unchanged native bitmap is allowed after settling; images are never upscaled.
+Headings must uniquely match the requested numeric index and total. Lookup stays
+within the existing heading-wrapper/page-image subtree (at most three ancestors),
+allows nested image wrappers and stops at document/toolbar landmarks or another
+page heading. Multiple images/headings fail as `UNSUPPORTED_SOURCE`; missing,
+unreadable or unresolved images fail as retryable `SOURCE_UNAVAILABLE` within the
+existing 15s per-page bound and whole-job cancellation. Association is rechecked
+after decode and immediately before synchronous canvas capture. Identical pixel
+content on distinct pages remains valid; no duplicate-hash rejection is applied.
+Offline fixtures verify an already-printable ~220 DPI preview replaced after
+zoom by ~290 DPI native detail, lazy low-resolution replacement, unchanged native
+detail, delayed decode, DOM recreation, recycled nodes, ambiguity, ordered page
+pixels/dimensions, blank/landscape pages, identical pages and source failures.
+This stability strategy cannot detect an unannounced replacement scheduled after
+the quiet window or prove content identity from third-party markup alone. Real
+authorized Drive layouts, zoom/loading signals and print quality remain unproven.
+
 The previous 22s Worker job deadline is still the default; explicitly enabling
 `PDF_PRINT_FALLBACK_ENABLED` allows up to 120s. Screen capture alone neither
 enters browser fallback nor extends that deadline. The Gateway and API producer now support an

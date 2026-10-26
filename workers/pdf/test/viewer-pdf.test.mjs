@@ -19,7 +19,8 @@ test('owned local Viewer produces one ordered image-only PDF and retains all per
   await page.setContent('<button>Print</button><input role="combobox" value="100%"><div style="background:red">Toolbar</div><main></main>');
   await page.evaluate(async () => {
     for (const [index, width, height, color] of [
-      [1, 1800, 2547, 'green'], [2, 1800, 2547, 'white'], [3, 2400, 1696, 'blue'],
+      [1, 1770, 2503, 'red'], [2, 1800, 2547, 'white'], [3, 2400, 1696, 'blue'],
+      [4, 2334, 3301, 'green'],
     ]) {
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
@@ -27,13 +28,22 @@ test('owned local Viewer produces one ordered image-only PDF and retains all per
       context.fillStyle = color; context.fillRect(0, 0, width, height);
       const blob = await new Promise(resolve => canvas.toBlob(resolve));
       const section = document.createElement('section');
-      section.innerHTML = `<div><h2>Page ${index} / 3</h2></div><img style="width:300px">`;
+      section.innerHTML = `<div><h2>Page ${index} / 4</h2></div><img style="width:300px">`;
       document.querySelector('main').append(section);
       const image = section.querySelector('img');
       image.src = URL.createObjectURL(blob);
       await image.decode();
       canvas.width = canvas.height = 1;
     }
+    document.querySelector('input').addEventListener('keydown', event => {
+      if (event.key !== 'Enter') return;
+      // The old red preview is already ~220 DPI. The new green native bitmap
+      // (~290 DPI) arrives after Task 1's zoom UI settling window.
+      setTimeout(() => {
+        const images = document.querySelectorAll('section img');
+        images[0].src = images[3].src;
+      }, 600);
+    }, { once: true });
   });
   const cap = limits({ PDF_PRINT_FALLBACK_ENABLED: 'true' });
   const path = join(root, 'owned-output.pdf');
@@ -41,9 +51,10 @@ test('owned local Viewer produces one ordered image-only PDF and retains all per
   const bytes = await readFile(path);
   assert.ok(bytes.length <= cap.maxBytes);
   const pdf = await PDFDocument.load(bytes);
-  assert.equal(pdf.getPageCount(), 3);
+  assert.equal(pdf.getPageCount(), 4);
   for (const [index, width, height, expected] of [
-    [0, 1800, 2547, [0, 128, 0]], [1, 1800, 2547, [255, 255, 255]], [2, 2400, 1696, [0, 0, 255]],
+    [0, 2334, 3301, [0, 128, 0]], [1, 1800, 2547, [255, 255, 255]], [2, 2400, 1696, [0, 0, 255]],
+    [3, 2334, 3301, [0, 128, 0]],
   ]) {
     const outputPage = pdf.getPage(index);
     assert.equal(outputPage.getWidth() > outputPage.getHeight(), index === 2);
