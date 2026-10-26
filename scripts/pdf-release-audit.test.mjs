@@ -12,7 +12,7 @@ function fixture(name){
     {name:'PDF_WORKER_IAM_READY',value:'true'},
     {name:'PDF_TEMP_ROOT',value:'/tmp/pdf-worker'},
     {name:'PDF_PRINT_FALLBACK_ENABLED',value:'true'},
-    {name:'PDF_VIEWER_SCREEN_CAPTURE_ENABLED',value:'false'}
+    {name:'PDF_VIEWER_SCREEN_CAPTURE_ENABLED',value:'true'}
   ]:[
     {name:'PDF_GATEWAY_ENABLED',value:'true'},
     {name:'PDF_LONG_PRINT_TASKS_ENABLED',value:'true'},
@@ -53,7 +53,7 @@ test('exact staged evidence passes; no writes to Cloud Run',()=>{
   assert.equal(out.audit,'PASS');assert.equal(out.services.length,2);
   assert.equal(out.activationAllowed,false);assert.equal(calls.length,8);
   assert.deepEqual(out.services.map(s=>s.gates),[
-    {PDF_PROCESSING_ENABLED:'true',PDF_WORKER_IAM_READY:'true',PDF_PRINT_FALLBACK_ENABLED:'true',PDF_VIEWER_SCREEN_CAPTURE_ENABLED:'false'},
+    {PDF_PROCESSING_ENABLED:'true',PDF_WORKER_IAM_READY:'true',PDF_PRINT_FALLBACK_ENABLED:'true',PDF_VIEWER_SCREEN_CAPTURE_ENABLED:'true'},
     {PDF_GATEWAY_ENABLED:'true',PDF_LONG_PRINT_TASKS_ENABLED:'true'}
   ]);
   assert.equal(calls.some(x=>/\bdeploy\b|\bupdate\b|set-iam-policy/.test(x.join(' '))),false);

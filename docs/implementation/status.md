@@ -102,7 +102,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
     thứ tự, nét chữ, timeout/RAM trên revision chạy thật.
   - **Rủi ro đã biết:** lazy-load Viewer (`capture-page.ts`); smoke không xác minh
     mode đã chạy, luôn báo view-only `NOT_VERIFIED`, không suy thành công từ env.
-  - **Rollout:** staging `--no-traffic` có thể đặt capture=false để giữ hành vi cũ;
+  - **Rollout:** staging `--no-traffic` đặt `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true`
+    (script `pdf-cloud-stage.mjs`); revision cũ trên Cloud vẫn có thể còn `false` đến khi stage lại;
     Gateway long tasks=true; cần promote dịch vụ tương thích trước khi bật
     producer 180s. Merge API/Web với flag thiếu tiếp tục gửi 30s.
   - **Vận hành:** `submitEnabled` VPS có thể OFF; cờ trên revision live chưa xác minh.
@@ -153,7 +154,10 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   chuyển ngày và server integration vẫn chạy độc lập với trạng thái giao diện.
   Suite smoke mặc định gồm Tools, public PDF với hai browser context/MySQL/FakeCloud,
   Homepage và auth session. PDF regression kiểm tra đóng browser/recovery, phân tách
-  public/private, ticket một lần, FAILED/EXPIRED retry, binary 401 và polling có chọn lọc; các suite E2E
+  public/private, ticket một lần, FAILED/EXPIRED retry, binary 401 và polling có chọn lọc.
+  Fixture FakeCloud dùng cùng một mốc thời gian cho claim TTL đúng 24 giờ, xác minh
+  schema trước recovery và trạng thái COMPLETED trước khi chờ nút tải; lỗi fixture
+  không bị che thành browser timeout. Các suite E2E
   quản trị nghiệp vụ còn lại cần giao diện legacy, không dùng để xác minh Tools.
 
 - **Vocabulary public game**: `VOCABULARY_GAMES_ENABLED = false`. Các route `/play/*`

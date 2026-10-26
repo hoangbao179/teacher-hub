@@ -49,7 +49,7 @@ export function evaluateStaged(name,sha,service,policy,revision,image){
        env(c,'PDF_WORKER_IAM_READY')!=='true'||
        env(c,'PDF_TEMP_ROOT')!=='/tmp/pdf-worker'||
        env(c,'PDF_PRINT_FALLBACK_ENABLED')!=='true'||
-       env(c,'PDF_VIEWER_SCREEN_CAPTURE_ENABLED')!=='false')fail('WORKER_FEATURE_GATE_DRIFT');
+       env(c,'PDF_VIEWER_SCREEN_CAPTURE_ENABLED')!=='true')fail('WORKER_FEATURE_GATE_DRIFT');
     const mounted=c?.volumeMounts?.some(v=>v.name==='pdf-temp'&&v.mountPath==='/tmp/pdf-worker');
     const vol=spec?.volumes?.some(v=>v.name==='pdf-temp'&&v.emptyDir?.medium==='Memory'&&
       v.emptyDir?.sizeLimit==='32Mi');

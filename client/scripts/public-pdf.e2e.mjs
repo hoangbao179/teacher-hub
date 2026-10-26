@@ -35,7 +35,7 @@ try {
   const {PublicPdfController}=await import("../../server/src/controllers/public-pdf.controller.ts");
   const {createRouter}=await import("../../server/src/routes/index.ts");
   const {errorHandler}=await import("../../server/src/middleware/error-handler.ts");
-  const {digest}=await import("../../server/src/services/pdf-validation.ts");
+  const {digest,validatePdfResult}=await import("../../server/src/services/pdf-validation.ts");
   const {runPdfRecovery}=await import("../../server/src/scripts/reconcile-pdf.ts");
   const [user]=await pool.execute("INSERT INTO users(username,password_hash,display_name) VALUES(?,'synthetic-fixture','Public PDF fixture')",["pdf-browser-"+randomUUID()]);
   const owner=user.insertId,repo=new PdfRepository(),guests=new PdfGuestRepository();
@@ -62,11 +62,16 @@ try {
   await page.getByTestId("pdf-job").waitFor();
   const batch=await repo.batch(owner,(await guests.publicList(1)).items[0].id),job=batch.jobs[0];
   await page.close(); // Recovery proceeds with no live page from the submitter.
-  const now=new Date().toISOString(),expiresAt=new Date(Date.now()+86400000).toISOString();
+  // The Worker contract requires an exact 24-hour claim. Read the clock once:
+  // two separate reads can cross a millisecond and make recovery reject the fixture.
+  const createdMs=Date.now(),now=new Date(createdMs).toISOString(),expiresAt=new Date(createdMs+86400000).toISOString();
   results.set(job.id,{claim:{version:1,sourceHash:digest(JSON.stringify({provider:"google_drive",fileId:job.fileId})),createdAt:now,expiresAt},
     result:{version:1,jobId:job.id,status:"COMPLETED",completedAt:now,expiresAt,objectName:`jobs/${job.id}/output.pdf`,bytes:bytes.length,pages:1,sha256:digest(bytes.toString())}});
+  validatePdfResult(job,results.get(job.id),Date.now());
   await pool.execute("UPDATE pdf_jobs SET next_action_at=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND WHERE id=?",[job.id]);
   await runPdfRecovery({},new PdfService(new PdfRepository(),cloud,{enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2}));
+  const recovered=await repo.get(owner,job.id);
+  assert.equal(recovered.status,"COMPLETED",`Fixture recovery failed: ${recovered.cloudErrorCode}`);
   const b=await B.newPage();await b.goto(origin+"/tools");await b.getByTestId("pdf-download").waitFor();
   assert.equal((await B.cookies()).length,0,"Reader must not need the submitting cookie");
   for(const width of [360,390,430,1440]) {
