@@ -3,14 +3,15 @@
 > **Lưu ý bắt buộc:** đây là **hành vi v1 hiện tại**, không phải mục tiêu
 > sản phẩm. [PDF Viewer product contract](../product-spec/pdf-viewer-links.md)
 > yêu cầu tiếp nhận link có quyền Viewer và xuất PDF khi được phép; v1 chỉ
-> hoạt động nếu Google Drive cho phép tải trực tiếp. Viewer nhưng bị tắt
+> ưu tiên tải trực tiếp, có fallback thử nghiệm cho Viewer được phép in. Viewer bị tắt
 > tải/copy/print không được đi vòng bằng chụp/scrape. Tính năng đầy đủ
 > chưa được chứng minh bằng E2E trên fixture Viewer khác Owner.
 
 The standalone `workers/pdf` service copies an authorized, anonymously downloadable
 Google Drive PDF into private result storage. It retains the original PDF bytes,
-vector text and embedded image quality. It does not run the browser research
-pipeline or change Teacher Tools, the VPS, MySQL, client or Teacher Hub API.
+vector text and embedded image quality on the direct path. Eligible download
+failures can use the isolated anonymous renderer below. This does not change
+Teacher Tools, VPS resources, MySQL, client or Teacher Hub API contracts.
 See the [v1 integration contract](../api/pdf-worker-v1.md) for Task 2 and the
 [operator runbook](../operations/cloud-run-pdf-worker.md) for activation gates.
 
@@ -39,9 +40,12 @@ direct-only behavior. If direct source retrieval fails with
 Print button is enabled**, capture each rendered page, fit onto an A4 image-only
 PDF, validate with qpdf and persist to the existing job output in GCS.
 No OCR/searchable text is required. When Print is missing or disabled,
-`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` is **on by default** (`false` opts out);
-the renderer captures visible viewer tile bitmaps in `view-only` mode without
-requiring an enabled Print action. Google-login-only files stay unsupported.
+`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` is **off by default**, requiring exact
+`true`; false, missing or invalid values retain the Print gate. The experimental
+view-only path can capture without enabled Print, so production and staging must
+keep it off pending authorized real-Viewer validation and permission review.
+A flag does not authorize bypassing owner/admin restrictions.
+Google-login-only files stay unsupported.
 This does not prove quality on every Drive variant until real Viewer E2E passes.
 
 The renderer uses Playwright + pdf-lib + sharp in the **Cloud Run worker image
@@ -66,7 +70,7 @@ Viewer initialization waits up to 15s for a recognizable page count, a unique
 usable zoom control, no visible busy/progress indicator and 500ms of stable
 toolbar controls. This distinguishes loading from absent Print without waiting
 15s for a missing button. Enabled Print keeps print-gated capture; disabled or
-absent Print uses view-only capture when screen capture is enabled (default).
+absent Print can enter view-only capture only with explicit experimental opt-in.
 Ambiguous Print controls fail with `UNSUPPORTED_SOURCE` in either mode. With
 `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false`, disabled Print remains `ACCESS_DENIED`
 and absent Print `PRINT_UNAVAILABLE`; unresolved loading is retryable
@@ -122,18 +126,23 @@ accounting, JPEG versus final-PDF overflow, changed totals (including during
 serialization, rechecked before writing), stage/write aborts,
 browser termination, low-DPI timeout and absence of partial output/upload.
 
-The previous 22s Worker job deadline is still the default; explicitly enabling
-`PDF_PRINT_FALLBACK_ENABLED` allows up to 120s. Screen capture alone neither
+Worker fallback defaults to on with a 120s ceiling;
+`PDF_PRINT_FALLBACK_ENABLED=false` restores direct-only behavior and 22s. Screen capture alone neither
 enters browser fallback nor extends that deadline. The Gateway and API producer now support an
 explicit `PDF_LONG_PRINT_TASKS_ENABLED=true` gate for **180s** Cloud Tasks
-dispatch deadlines. Both gates are **off** by default; the staged Worker
+dispatch deadlines. API/Gateway long-task gates are **off** by default; the staged Worker
 template uses a 180s Cloud Run request timeout, while Gateway remains 30s
 because it only enqueues tasks. Current live production traffic and task
 deadlines are unchanged. Rendering requires a **coordinated review and activation
 of Worker + producer + Gateway flags**; enabling the Worker flag alone
 will not work with live 30s tasks.
 
-**Before release:** keep flag OFF, perform authorized real-viewer E2E in an
+Staging explicitly sets Worker fallback=true, view-only capture=false and Gateway
+long tasks=true, with `--no-traffic` on both deployments. Audit requires those exact
+values. Promote compatible Worker/Gateway revisions before enabling API long tasks.
+
+**Before release:** keep view-only OFF and fallback disabled on any live Worker
+still receiving 30s tasks. Perform authorized real-viewer E2E in an
 isolated revision, review Chromium sandbox/egress, cost, image size,
 RAM/CPU, 150dpi rejection threshold, existing Cloud Tasks and Gateway
 allowlist constraints, partial-job cleanup, and rollback. Prefer direct PDF
@@ -160,8 +169,9 @@ by this PR.
 Permanent source/validation errors persist FAILED. Transport, deadline and storage
 errors leave the task retryable. The claim is not a distributed lease: concurrent
 attempts may duplicate bounded download work but cannot overwrite objects. First
-terminal result wins. Native Docs, login-only sources, print-only/download-disabled
-sources and confirmation pages have no fallback route.
+terminal result wins. Login-only sources remain unsupported. Eligible direct
+download errors can reach permission-gated fallback, not a general Docs export
+or permission to bypass source restrictions.
 
 ## Acceptance and limits
 
@@ -172,11 +182,11 @@ timeouts, size/page bounds, permissions, SSRF, generation conflicts, duplicate
 delivery and a successful upload followed by failed result persistence.
 
 Node 24 strips erasable TypeScript at runtime. `.mjs` is limited to the HTTP
-lifecycle and test/automation adapters. There are no runtime npm dependencies;
-qpdf and existing util-linux supply the isolated parser. `tsc --noEmit` and pinned
+lifecycle and test/automation adapters. Playwright, pdf-lib and Sharp are runtime
+dependencies; qpdf and util-linux supply the isolated parser. `tsc --noEmit` and pinned
 Node types are dev-only dependencies in the worker's separate lockfile.
 
-The current limits (10 MiB, 40 pages, 22 seconds, 32 MiB tmpfs) are conservative
+The limits (10 MiB, 40 pages, 22s direct-only / 120s fallback, 32 MiB tmpfs) are conservative
 rejection thresholds, not a validated capacity/SLA promise. Synthetic blank-page
 fixtures do not benchmark complex textbooks, compressed streams, scanned pages or
 100–300-page files. PDF validation is not antivirus or sanitization. A killed

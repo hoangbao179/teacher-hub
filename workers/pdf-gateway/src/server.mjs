@@ -16,7 +16,7 @@ const ERROR = JSON.stringify({ error: 'PDF_GATEWAY_UNAVAILABLE' });
 const FORBIDDEN = JSON.stringify({ error: 'UNAUTHORIZED' });
 
 function longPrintTasksEnabled(env) {
-  return env.PDF_LONG_PRINT_TASKS_ENABLED !== 'false';
+  return env.PDF_LONG_PRINT_TASKS_ENABLED === 'true';
 }
 
 export function signature(key, method, path, timestamp, nonce, body) {

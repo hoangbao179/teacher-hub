@@ -84,13 +84,13 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   hạn chế sao chép/in do chủ file/admin đặt — hai khái niệm tách trong
   [product contract](../product-spec/pdf-viewer-links.md).
 
-  **Source (sau `d118fbc`; env Cloud Run production chưa audit trong repo):**
+  **Cấu hình source (env Cloud Run production chưa xác minh):**
 
   | Cờ | Mặc định | Tác dụng |
   | --- | --- | --- |
   | `PDF_PRINT_FALLBACK_ENABLED` | Bật (`false` tắt) | Sau lỗi `download.ts`, Worker chạy `renderer.ts` ghép bitmap → PDF ảnh A4 |
-  | `PDF_LONG_PRINT_TASKS_ENABLED` | Bật API/Gateway (`false` → 30s) | Dispatch Cloud Tasks tối đa 180s cho job in ảnh |
-  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | **Bật** (`false` tắt) | Chế độ `view-only` chụp tile khi Print thiếu/khóa — **chưa E2E nghiệm thu** |
+  | `PDF_LONG_PRINT_TASKS_ENABLED` | Tắt API/Gateway (chỉ `true` → 180s) | Mặc định 30s tương thích Gateway cũ |
+  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | **Tắt** (chỉ `true` bật; staging giữ `false`) | Code thử nghiệm `view-only` — **chưa E2E nghiệm thu**, không cho phép vượt hạn chế owner/admin |
 
   **Luồng mặc định:** (1) tải trực tiếp `uc?export=download`; (2) nếu lỗi phù hợp →
   Viewer ẩn danh; (3) **`print-gated`:** chỉ chụp tile khi nút In/Print **bật** trong
@@ -98,12 +98,15 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   thuộc phạm vi đường này — đây là cách hiện tại tạo PDF ảnh không cần file tải được.
 
   **Vì sao chưa DONE:**
-  - **Chủ file khóa Print (yêu cầu 26/10):** source **mặc định** bật screen capture
-    (`view-only`); vẫn **chưa DONE** vì thiếu E2E Drive thật và rủi ro lazy-load/quality.
+  - **Chủ file khóa Print (yêu cầu 26/10):** chưa được hỗ trợ hợp lệ. View-only
+    mặc định tắt và staging tắt; cần nguồn có quyền và E2E được cho phép.
   - **Thiếu E2E Drive thật:** test chủ yếu fixture offline; chưa chứng minh đủ trang,
     thứ tự, nét chữ, timeout/RAM trên revision chạy thật.
-  - **Rủi ro đã biết:** lazy-load Viewer (`capture-page.ts`); smoke authorized viewer
-    có thể gắn nhãn sai nếu bật screen capture toàn cục.
+  - **Rủi ro đã biết:** lazy-load Viewer (`capture-page.ts`); smoke không xác minh
+    mode đã chạy, luôn báo view-only `NOT_VERIFIED`, không suy thành công từ env.
+  - **Rollout:** staging `--no-traffic` đặt Worker fallback=true, capture=false,
+    Gateway long tasks=true; cần promote dịch vụ tương thích trước khi bật
+    producer 180s. Merge API/Web với flag thiếu tiếp tục gửi 30s.
   - **Vận hành:** `submitEnabled` VPS có thể OFF; cờ trên revision live chưa xác minh.
 
   Chi tiết: [pdf-worker](../features/pdf-worker.md),

@@ -34,6 +34,19 @@ test('real-renderer entry point validates PDF, passes bounded caps, deletes outp
   await assert.rejects(stat(destination),{code:'ENOENT'});
 });
 
+test('enabled capture configuration is not evidence that view-only rendering succeeded',async()=>{
+  for(const flag of [undefined,'false','true']){
+    const result=await runViewerSmoke(id,{
+      env:{PDF_VIEWER_SCREEN_CAPTURE_ENABLED:flag},
+      render:async()=>{},
+      validate:async()=>({pages:1,bytes:13,sha256:'a'.repeat(64)})
+    });
+    assert.equal(result.viewerScreenCapture,'NOT_VERIFIED');
+    assert.equal(result.printRestrictedViewer,'NOT_SUPPORTED');
+    assert.equal(result.cloudE2E,false);
+  }
+});
+
 test('failed render or invalid PDF cannot pass and temporary PDF is always removed',async()=>{
   let destination;
   await assert.rejects(runViewerSmoke(id,{

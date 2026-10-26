@@ -506,15 +506,16 @@ the job ceiling to 120s for browser fallback after direct download errors.
 No Google login/OAuth or browser cookies are supplied.
 
 **Do not enable on the current 30-second Cloud Run revision.** This branch
-long-task contract (on by default; set `PDF_LONG_PRINT_TASKS_ENABLED=false`
-on API and Gateway to revert to 30s dispatch):
-- The API `GatewayPdfProvider` sends `dispatchDeadline:'180s'` unless
-  `PDF_LONG_PRINT_TASKS_ENABLED=false` on the VPS API container.
-- The Gateway accepts signed 180s requests unless
-  `PDF_LONG_PRINT_TASKS_ENABLED=false` on the Gateway. Its own HTTP timeout
-  stays 30s.
+long-task contract requires explicit activation on each service:
+- The API sends `30s` by default; only `PDF_LONG_PRINT_TASKS_ENABLED=true`
+  sends `180s`. Missing, false or invalid values keep compatibility with the
+  old 30s-only Gateway after the automatic API/Web deployment.
+- The Gateway always accepts signed 30s requests and accepts 180s only with
+  `PDF_LONG_PRINT_TASKS_ENABLED=true`. Its own HTTP timeout stays 30s.
 - The no-traffic staging template sets Worker timeout to 180s and enables
-  print fallback plus long tasks on Worker/Gateway.
+  `PDF_PRINT_FALLBACK_ENABLED=true` on Worker and long tasks=true on Gateway.
+  Worker `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false` is explicit. Staging
+  does not promote revisions or activate the VPS producer.
 - The Worker uses `PDF_DEADLINE_MS=120000` (default when fallback is on) within
   the 180s request/dispatch budgets.
 

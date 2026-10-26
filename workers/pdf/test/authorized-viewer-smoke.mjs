@@ -23,10 +23,6 @@ export function viewerConfig(env) {
   return {fileId};
 }
 
-function screenCaptureOn(env) {
-  return env.PDF_VIEWER_SCREEN_CAPTURE_ENABLED !== 'false';
-}
-
 export async function runViewerSmoke(fileId, ops={}) {
   if (typeof fileId !== 'string' || !IDENTIFIER.test(fileId))
     throw Error('PDF_VIEWER_SMOKE_FILE_ID_REQUIRED');
@@ -47,12 +43,10 @@ export async function runViewerSmoke(fileId, ops={}) {
       !Number.isInteger(result.bytes) || result.bytes<1 || result.bytes>CAP.maxBytes ||
       !/^[a-f0-9]{64}$/.test(result.sha256))
       throw Error('PDF_VIEWER_SMOKE_INVALID_PDF_RESULT');
-    const env = ops.env ?? process.env;
-    const capture = screenCaptureOn(env);
     return {status:'AUTHORIZED_VIEWER_RENDER_OK',pages:result.pages,bytes:result.bytes,
       sha256:result.sha256,outputRetained:false,cloudE2E:false,
-      viewerScreenCapture:capture ? 'DEFAULT_ON' : 'OFF',
-      printRestrictedViewer:capture ? 'VIEW_ONLY_PATH_ALLOWED' : 'NOT_SUPPORTED'};
+      viewerScreenCapture:'NOT_VERIFIED',
+      printRestrictedViewer:'NOT_SUPPORTED'};
   } finally {
     clearTimeout(timeout);
     await remove(directory,{recursive:true,force:true});

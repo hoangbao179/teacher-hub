@@ -97,7 +97,7 @@ test('IAM mode rejects an empty token before sending a signed request', async t 
  assert.equal(calls, 0);
 });
 
-test('long print tasks use 180s by default and 30s when explicitly disabled',async t=>{
+test('long print tasks require explicit true; missing and false keep 30s',async t=>{
  const original=globalThis.fetch;
  const previous=process.env.PDF_LONG_PRINT_TASKS_ENABLED;
  t.after(()=>{
@@ -119,7 +119,9 @@ test('long print tasks use 180s by default and 30s when explicitly disabled',asy
  const args=[GATEWAY,WORKER,'ab'.repeat(32),true,undefined,'hmac_public_v1'] as const;
  delete process.env.PDF_LONG_PRINT_TASKS_ENABLED;
  await new GatewayPdfProvider(...args).enqueue(payload);
+ process.env.PDF_LONG_PRINT_TASKS_ENABLED='true';
+ await new GatewayPdfProvider(...args).enqueue(payload);
  process.env.PDF_LONG_PRINT_TASKS_ENABLED='false';
  await new GatewayPdfProvider(...args).enqueue(payload);
- assert.deepEqual(deadlines,['180s','30s']);
+ assert.deepEqual(deadlines,['30s','180s','30s']);
 });

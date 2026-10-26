@@ -8,7 +8,8 @@ import { Readable } from 'node:stream';
 import { Resolver } from 'node:dns/promises';
 import test from 'node:test';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { JobError, limits, parseJob } from '../src/contract.ts';
+import { JobError, limits, parseJob, printFallbackEnabled, viewerScreenCaptureEnabled } from '../src/contract.ts';
+import { selectViewerMode } from '../src/viewer-ready.ts';
 import { download, openSource, sourceURL, publicAddress } from '../src/download.ts';
 import { processJob } from '../src/processor.ts';
 import { validatePDF } from '../src/pdf.ts';
@@ -122,14 +123,31 @@ test('print fallback extends deadline unless explicitly disabled', () => {
   assert.equal(limits({}).deadlineMs,120000);
   assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'false'}).deadlineMs,22000);
   assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'true'}).deadlineMs,120000);
-  for (const fallback of ['false', 'true']) for (const capture of ['false', 'true']) {
+  for (const fallback of [undefined, 'false', 'true']) for (const capture of [undefined, 'false', 'true', 'invalid']) {
     const env = { PDF_PRINT_FALLBACK_ENABLED: fallback, PDF_VIEWER_SCREEN_CAPTURE_ENABLED: capture };
+    assert.equal(printFallbackEnabled(env), fallback !== 'false');
+    assert.equal(viewerScreenCaptureEnabled(env), capture === 'true');
     assert.equal(limits(env).deadlineMs, fallback === 'false' ? 22000 : 120000);
     assert.throws(() => limits({ ...env, PDF_DEADLINE_MS: String(fallback === 'false' ? 22001 : 120001) }),
       { code: 'SERVICE_UNAVAILABLE' });
   }
   assert.throws(()=>limits({PDF_PRINT_FALLBACK_ENABLED:'true',PDF_DEADLINE_MS:'120001'}),{code:'SERVICE_UNAVAILABLE'});
   assert.throws(()=>limits({PDF_PRINT_FALLBACK_ENABLED:'false',PDF_DEADLINE_MS:'120000'}),{code:'SERVICE_UNAVAILABLE'});
+});
+
+test('Viewer mode selection requires explicit capture gate for absent or disabled Print', async () => {
+  for (const flag of [undefined, 'false', 'true', 'invalid']) {
+    const capture = viewerScreenCaptureEnabled({PDF_VIEWER_SCREEN_CAPTURE_ENABLED:flag});
+    for (const [count, enabled, code] of [[1,true,null],[0,false,'PRINT_UNAVAILABLE'],[1,false,'ACCESS_DENIED'],[2,true,'UNSUPPORTED_SOURCE']]) {
+      const page = {
+        evaluateHandle: async () => ({dispose:async()=>{}}), waitForFunction:async()=>{},
+        getByRole: () => ({count:async()=>count,isVisible:async()=>true,isEnabled:async()=>enabled}),
+      };
+      const selection = selectViewerMode(page,capture,signal());
+      if (code && (!capture || count>1)) await assert.rejects(selection,{code});
+      else assert.equal(await selection, code ? 'view-only' : 'print-gated');
+    }
+  }
 });
 
 test('render failures clean partial files and cannot reach PDF validation or result upload', async t => {
@@ -234,6 +252,28 @@ test('concurrent generation conflicts produce a single terminal result', async t
   for (const result of results) assert.deepEqual(result, results[0]);
   assert.equal(store.objects.size, 3);
   assert.deepEqual(await readdir(root), []);
+});
+
+test('HTTP fallback honors default, enable and opt-out regardless of capture flag', async t => {
+  const root = await directory(t);
+  for (const fallback of [undefined,'true','false']) for (const capture of ['true','false']) {
+    let rendered=0;
+    const server=createWorkerServer({
+      store:new MemoryStore(),tempRoot:root,
+      download:async()=>{throw new JobError('ACCESS_DENIED');},
+      render:async(...args)=>{rendered++;await fixtureDownload(...args);},
+      validate:fakeValidation,
+    },{PDF_PROCESSING_ENABLED:'true',PDF_PRINT_FALLBACK_ENABLED:fallback,PDF_VIEWER_SCREEN_CAPTURE_ENABLED:capture});
+    server.listen(0,'127.0.0.1');await once(server,'listening');
+    try {
+      const response=await fetch(`http://127.0.0.1:${server.address().port}/jobs`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(job)
+      });
+      assert.equal(response.status,200);
+      assert.equal((await response.json()).status,fallback==='false'?'FAILED':'COMPLETED');
+      assert.equal(rendered,fallback==='false'?0:1);
+    } finally { server.closeAllConnections();await new Promise(resolve=>server.close(resolve)); }
+  }
 });
 
 test('HTTP gating, validation, permanent ACK and transient non-2xx', async t => {

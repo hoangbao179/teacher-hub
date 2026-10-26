@@ -60,6 +60,7 @@ test('deploy args are fixed, immutable, no-traffic, no IAM mutation, bounded',()
  assert(w.includes('--memory=2Gi')&&w.includes('--concurrency=1')&&w.includes('--max=3'));
  assert(w.includes('--timeout=180'));
  assert(w.some(x=>x.includes('PDF_PRINT_FALLBACK_ENABLED=true')));
+ assert(w.includes('--set-env-vars=PDF_PROCESSING_ENABLED=true,PDF_WORKER_IAM_READY=true,PDF_TEMP_ROOT=/tmp/pdf-worker,PDF_PRINT_FALLBACK_ENABLED=true,PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false'));
  assert(g.includes('--memory=256Mi')&&g.includes('--max=1'));
  assert(g.includes('--timeout=30'));
  assert(g.some(x=>x.includes('PDF_LONG_PRINT_TASKS_ENABLED=true')));

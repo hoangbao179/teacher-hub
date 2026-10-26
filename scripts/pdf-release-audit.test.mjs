@@ -11,7 +11,8 @@ function fixture(name){
     {name:'PDF_PROCESSING_ENABLED',value:'true'},
     {name:'PDF_WORKER_IAM_READY',value:'true'},
     {name:'PDF_TEMP_ROOT',value:'/tmp/pdf-worker'},
-    {name:'PDF_PRINT_FALLBACK_ENABLED',value:'true'}
+    {name:'PDF_PRINT_FALLBACK_ENABLED',value:'true'},
+    {name:'PDF_VIEWER_SCREEN_CAPTURE_ENABLED',value:'false'}
   ]:[
     {name:'PDF_GATEWAY_ENABLED',value:'true'},
     {name:'PDF_LONG_PRINT_TASKS_ENABLED',value:'true'},
@@ -51,6 +52,10 @@ test('exact staged evidence passes; no writes to Cloud Run',()=>{
   const out=auditStaged({PDF_STAGED_SHA:sha},run);
   assert.equal(out.audit,'PASS');assert.equal(out.services.length,2);
   assert.equal(out.activationAllowed,false);assert.equal(calls.length,8);
+  assert.deepEqual(out.services.map(s=>s.gates),[
+    {PDF_PROCESSING_ENABLED:'true',PDF_WORKER_IAM_READY:'true',PDF_PRINT_FALLBACK_ENABLED:'true',PDF_VIEWER_SCREEN_CAPTURE_ENABLED:'false'},
+    {PDF_GATEWAY_ENABLED:'true',PDF_LONG_PRINT_TASKS_ENABLED:'true'}
+  ]);
   assert.equal(calls.some(x=>/\bdeploy\b|\bupdate\b|set-iam-policy/.test(x.join(' '))),false);
   assert.equal(main(['--delete'],{PDF_STAGED_SHA:sha},run),2);
   assert.equal(calls.length,8);
@@ -76,6 +81,19 @@ test('reject public Worker, private Gateway, changes to image, gate, traffic, re
       reject(y=>{y.service.metadata.annotations['run.googleapis.com/invoker-iam-disabled']='false';});
       reject(y=>{y.revision.spec.containers[0].env[1].value='false';});
       reject(y=>{y.revision.spec.containers[0].env[3]={name:'PDF_GATEWAY_HMAC_KEY',value:'key'};});
+    }
+  }
+});
+test('every required feature flag rejects missing and non-exact values',()=>{
+  for(const name of [CLOUD.worker,CLOUD.gateway]){
+    const base=fixture(name);
+    const flags=base.revision.spec.containers[0].env.filter(e=>['true','false'].includes(e.value));
+    for(const flag of flags) for(const value of [undefined,'','TRUE','invalid',flag.value==='true'?'false':'true']){
+      const x=structuredClone(base), c=x.revision.spec.containers[0];
+      if(value===undefined)c.env=c.env.filter(e=>e.name!==flag.name);
+      else c.env.find(e=>e.name===flag.name).value=value;
+      assert.throws(()=>evaluateStaged(name,sha,x.service,x.policy,x.revision,x.image),/FEATURE_GATE_DRIFT/,
+        `${flag.name}=${value}`);
     }
   }
 });

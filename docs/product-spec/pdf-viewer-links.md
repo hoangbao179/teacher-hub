@@ -14,15 +14,14 @@ không thể coi việc chạy Chromium hoặc tạo PDF với file đã mở Pr
 nghiệm thu trường hợp này. Đây là **khoảng cách giữa yêu cầu và sản phẩm**,
 không phải chức năng đã hoàn tất.
 
-**Quyết định triển khai (chủ dự án, sau 26/10/2026):** với link Viewer ẩn danh,
-khi Print bị khóa hoặc không có, Worker **mặc định** dùng chụp tile preview
-(`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` bật; `false` để tắt). Không dùng cookie,
-session người dùng, OAuth hay URL tùy ý — chỉ bitmap hiển thị trong Viewer
-mà Worker truy cập ẩn danh. Vẫn **chưa nghiệm thu** cho đến khi có E2E Drive
-thật (đủ trang, thứ tự, nét in, timeout/RAM). Nếu không tìm thấy nút Print,
-trình xem có thể đang tải hoặc giao diện khác; không kết luận chắc chắn chủ
-file cấm in chỉ từ timeout. Fallback ảnh do người dùng chọn trên `/tools`
-vẫn dùng khi job server thất bại hoặc người dùng có ảnh trang riêng.
+**Giới hạn triển khai cho rollout an toàn:** view-only capture là code thử
+nghiệm, mặc định tắt; chỉ `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` mới bật.
+Production và staging phải giữ tắt trong khi chưa xác minh quyền và E2E
+Viewer thật được cho phép. Flag không cấp quyền vượt hạn chế tải/copy/print
+của owner/admin. Trường hợp Print bị khóa vẫn là nhu cầu chưa được hỗ trợ
+hợp lệ; cần chủ file cấp quyền hoặc bản nguồn được phép xuất.
+Không thấy Print có thể do UI đang tải/thay đổi, không tự chứng minh chủ file
+cấm in. Fallback ảnh người dùng cung cấp trên `/tools` vẫn giữ nguyên.
 
 **Đây là nguồn chuẩn về mục đích tính năng.** Nếu Worker, API, test hay các
 tài liệu cũ giả định "chỉ nhận file đã tải trực tiếp được", phải ghi rõ đó là
@@ -110,9 +109,9 @@ bằng chứng file thuộc phạm vi v1. Tự động hóa phải thử từ m�
 - **Chia sẻ Viewer + mở ẩn danh** là đầu vào mục tiêu; Worker thử tải trực tiếp
   rồi (mặc định) fallback renderer ghép **PDF ảnh** khi được phép theo chế độ
   `print-gated` (Print hoạt động trong Viewer).
-- **Chủ file khóa Print/Copy** (Viewer + không in trong UI): Worker mặc định
-  chế độ `view-only` tile capture (`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` bật);
-  **chưa DONE** cho đến khi E2E và chất lượng in được chứng minh trên Drive thật.
+- **Chủ file khóa Print/Copy**: không bypass. View-only mặc định tắt và staging
+  tắt; flag thử nghiệm không thay đổi quy tắc quyền. **Chưa DONE**; cần nguồn
+  được phép và E2E/chất lượng in trên Drive thật.
 
 - `workers/pdf/src/download.ts` hiện chỉ gọi
   `https://drive.google.com/uc?export=download&id=...` với allowlist redirect;

@@ -7,9 +7,9 @@ const gateway = /^https:\/\/teacher-pdf-gateway-[a-z0-9-]+\.[a-z0-9-]+\.run\.app
 const worker = /^https:\/\/teacher-pdf-worker-[a-z0-9-]+\.[a-z0-9-]+\.run\.app$/;
 const invoker = 'teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com';
 
-/** 180s Cloud Tasks dispatch for browser print fallback; opt out with `false`. */
+/** Enable only after the live Gateway and Worker support long tasks. */
 export function longPrintTasksEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.PDF_LONG_PRINT_TASKS_ENABLED !== 'false';
+  return env.PDF_LONG_PRINT_TASKS_ENABLED === 'true';
 }
 
 export function gatewaySignature(key: Buffer, method: string, path: string, timestamp: string, nonce: string, body: Buffer) {

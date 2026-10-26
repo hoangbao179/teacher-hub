@@ -32,6 +32,33 @@ test('long print-task dispatch deadline requires explicit server-side gate',()=>
  assert.equal(route('POST','/v1/tasks',Buffer.from(JSON.stringify(long)),WORKER,true),null);
 });
 
+test('configured Gateway accepts 30s always and 180s only with explicit true',async t=>{
+ for(const flag of [undefined,'false','true','invalid']){
+  let tasks=0;
+  const env={PDF_GATEWAY_ENABLED:'true',PDF_GATEWAY_HMAC_KEY:KEY,PDF_GATEWAY_WORKER_URL:WORKER};
+  if(flag!==undefined)env.PDF_LONG_PRINT_TASKS_ENABLED=flag;
+  const s=createGatewayServer({env,fetcher:async url=>{
+    if(url.startsWith('http://metadata.google.internal'))
+      return new Response(JSON.stringify({access_token:'a'.repeat(40)}),{headers:{'Metadata-Flavor':'Google'}});
+    if(url.includes('cloudtasks.googleapis.com'))tasks++;
+    return new Response('{}');
+  }});
+  await new Promise(resolve=>s.listen(0,'127.0.0.1',resolve));
+  t.after(()=>{s.closeAllConnections();s.close();});
+  for(const [index,deadline] of ['30s','180s','181s'].entries()){
+    const task=JSON.parse(body);task.task.dispatchDeadline=deadline;
+    const bytes=Buffer.from(JSON.stringify(task)),stamp=String(Math.floor(Date.now()/1000)),nonce=String(index+1).repeat(32);
+    const response=await fetch('http://127.0.0.1:'+s.address().port+'/v1/tasks',{
+      method:'POST',body:bytes,headers:{'X-PDF-Timestamp':stamp,'X-PDF-Nonce':nonce,
+        'X-PDF-Signature':signature(Buffer.from(KEY,'hex'),'POST','/v1/tasks',stamp,nonce,bytes)}
+    });
+    assert.equal(response.status,deadline==='30s'||(deadline==='180s'&&flag==='true')?200:400,`${flag}/${deadline}`);
+    await response.body?.cancel();
+  }
+  assert.equal(tasks,flag==='true'?2:1);
+ }
+});
+
 test('HMAC binds body method path timestamp and nonce',()=>{
  const k=Buffer.from(KEY,'hex');const stamp='1792850000',nonce='a'.repeat(32);
  const a=signature(k,'POST','/v1/tasks',stamp,nonce,body);
