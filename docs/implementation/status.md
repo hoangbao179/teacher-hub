@@ -23,7 +23,6 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 ### ACTIVE — dùng thực tế
 
 - **Góc công cụ public**: Nút Công cụ màu hồng pastel dẫn tới `/tools`, không yêu cầu đăng nhập. Form nhận tối đa 5 liên kết Google Drive dạng Viewer (`/file/d/…/view` hoặc `/open?id=…`); **không** còn checkbox xác nhận quyền tải (API vẫn chấp nhận `rightsConfirmed:true` từ client cũ để idempotency ổn định). Luồng server PDF ảnh từ link vẫn **DEVELOPING** — xem mục PDF Viewer bên dưới. Lịch sử public dùng chung trên mọi thiết bị; xem/retry/download không cần cookie thiết bị tạo. Cookie chỉ phục vụ submit/idempotency. Batch/job/liên kết public được ghi nguyên tử; danh sách và tổng số batch admin loại trừ public. UI dùng tên tạm theo mã Drive, ticket POST một lần và thời hạn tải 24 giờ; không upload vào Google Drive cô Vy. Polling bỏ qua chi tiết terminal, giữ theo dõi kết quả muộn và refresh thủ công. `submitEnabled` vẫn fail-closed cho đến khi xác minh identity VPS và recovery production.
-- **PDF ảnh cục bộ tại /tools**: chọn ảnh JPG/PNG/WebP được phép sử dụng, tối đa 40 trang, 15 MiB/ảnh và 20 MiB/PDF; kiểm tra header trước giải mã, giới hạn ảnh nguồn 24 triệu điểm ảnh, nén tuần tự thành PDF A4 ngay trong trình duyệt, cảnh báo trang thấp hơn 150 DPI. Không upload lên API/GCS, không lưu lịch sử server. Đây không phải cách bypass chủ file đã tắt Download/Print/Copy; liên kết bị khóa Print vẫn là mục tiêu sản phẩm chưa được hỗ trợ tự động.
 - **Teacher Tools quản trị (giao diện mặc định sau đăng nhập)**: `/admin/tools` cùng toàn bộ `/admin/*` tiếp tục nằm trong auth boundary hiện hành. Khi legacy tắt, các route quản trị cũ chuyển về `/admin/tools` sau khi xác thực; khách vẫn được đưa tới `/admin/login`. Trang public `/tools` không thay thế màn đăng nhập hay trang công cụ quản trị.
 
 - **Lớp và học sinh**: quản lý lớp 1–1/lớp nhóm, học sinh, enrollment, khoảng hiệu
@@ -90,7 +89,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   | --- | --- | --- |
   | `PDF_PRINT_FALLBACK_ENABLED` | Bật (`false` tắt) | Sau lỗi `download.ts`, Worker chạy `renderer.ts` ghép bitmap → PDF ảnh A4 |
   | `PDF_LONG_PRINT_TASKS_ENABLED` | Tắt API/Gateway (chỉ `true` → 180s) | Mặc định 30s tương thích Gateway cũ |
-  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | **Tắt** (chỉ `true` bật; staging giữ `false`) | Code thử nghiệm `view-only` — **chưa E2E nghiệm thu**, không cho phép vượt hạn chế owner/admin |
+  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | Ignored (deprecated) | Print must be enabled for all Viewer capture |
 
   **Luồng mặc định:** (1) tải trực tiếp `uc?export=download`; (2) nếu lỗi phù hợp →
   Viewer ẩn danh; (3) **`print-gated`:** chỉ chụp tile khi nút In/Print **bật** trong
@@ -99,7 +98,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
   **Vì sao chưa DONE:**
   - **Chủ file khóa Print (yêu cầu 26/10):** chưa được hỗ trợ hợp lệ. View-only
-    mặc định tắt và staging tắt; cần nguồn có quyền và E2E được cho phép.
+    đã bị loại bỏ khỏi pipeline; cần nguồn có quyền và E2E được cho phép.
   - **Thiếu E2E Drive thật:** test chủ yếu fixture offline; chưa chứng minh đủ trang,
     thứ tự, nét chữ, timeout/RAM trên revision chạy thật.
   - **Rủi ro đã biết:** lazy-load Viewer (`capture-page.ts`); smoke không xác minh

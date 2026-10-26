@@ -553,6 +553,28 @@ Worker Linux image with current source mounted read-only, network disabled and
 1 CPU / 2 GiB limits. This local-container result includes real qpdf parsing but
 does not certify the image build, active Cloud Run revision or cloud performance.
 
+## Diagnosing a failed source without guessing
+
+Read logs on the **traffic revision**, filtering `jsonPayload.event="pdf-stage-failed"`
+and the job UUID (or claim `sourceHash`). Compare both direct and Viewer events;
+`UNSUPPORTED_SOURCE` alone does not prove an owner restriction. `html-response`
+means the direct endpoint returned HTML; `print-disabled` means the anonymous
+Viewer explicitly disabled Print and capture stopped. Missing Print remains
+`PRINT_UNAVAILABLE`, not proof of a restriction. Earlier revisions without these
+events cannot retrospectively identify the failure stage.
+
+The deprecated `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` flag no longer permits
+view-only capture. Keep staging's explicit `false` for compatibility with older
+images. The new Worker always requires enabled Print and rechecks it during
+assembly. No IAM or production flags are changed by this source update.
+
+For compatibility, inspect service traffic and then `run revisions describe` for
+that exact revision's flags and `timeoutSeconds`; the latest service template may
+belong to a no-traffic revision. Confirm Worker request timeout, producer task
+deadline and Gateway's allowed deadlines together before any separate rollout.
+The direct Cloud Tasks provider remains 30s; the reviewed 180s gate applies to
+the Gateway provider. Local Linux tests do not establish Cloud Run performance.
+
 ## Docker build-context regression prevention
 
 The Chromium Worker Dockerfile runs `COPY package.json package-lock.json ./`

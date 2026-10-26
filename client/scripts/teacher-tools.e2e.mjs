@@ -103,6 +103,8 @@ try {
   await page.reload({ waitUntil: "networkidle" });
   await page.getByTestId("public-tools-page").waitFor();
   assert.equal(await page.getByRole("button", { name: "Đăng xuất" }).count(), 0);
+  assert.equal(await page.locator('input[type="file"]').count(), 0);
+  assert.equal(await page.getByTestId("image-pdf-tool").count(), 0);
   assert.equal(await page.getByTestId("pdf-submit").count(), 1);
   assert.equal(await page.getByTestId("pdf-submit").isDisabled(), true);
   assert.match(await page.title(), /Góc công cụ của cô Vy/);

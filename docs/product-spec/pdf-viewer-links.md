@@ -14,40 +14,17 @@ không thể coi việc chạy Chromium hoặc tạo PDF với file đã mở Pr
 nghiệm thu trường hợp này. Đây là **khoảng cách giữa yêu cầu và sản phẩm**,
 không phải chức năng đã hoàn tất.
 
-**Giới hạn triển khai cho rollout an toàn:** view-only capture là code thử
-nghiệm, mặc định tắt; chỉ `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` mới bật.
-Production và staging phải giữ tắt trong khi chưa xác minh quyền và E2E
-Viewer thật được cho phép. Flag không cấp quyền vượt hạn chế tải/copy/print
+**Giới hạn triển khai cho rollout an toàn:** Worker luôn yêu cầu Print bật;
+`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` đã ngừng tác dụng, kể cả khi đặt `true`.
+Flag không cấp quyền vượt hạn chế tải/copy/print
 của owner/admin. Trường hợp Print bị khóa vẫn là nhu cầu chưa được hỗ trợ
 hợp lệ; cần chủ file cấp quyền hoặc bản nguồn được phép xuất.
 Không thấy Print có thể do UI đang tải/thay đổi, không tự chứng minh chủ file
-cấm in. Fallback ảnh người dùng cung cấp trên `/tools` vẫn giữ nguyên.
+cấm in. `/tools` chỉ nhận liên kết; không yêu cầu chọn hoặc upload ảnh.
 
 **Đây là nguồn chuẩn về mục đích tính năng.** Nếu Worker, API, test hay các
 tài liệu cũ giả định "chỉ nhận file đã tải trực tiếp được", phải ghi rõ đó là
 **giới hạn implementation**, không sửa ngược yêu cầu sản phẩm cho khớp code.
-
-## Đường PDF từ ảnh trang người dùng cung cấp (fallback cục bộ)
-
-Khi nguồn không thể xuất/in qua Drive, trang `/tools` có thêm thao tác chọn
-các ảnh JPG/PNG/WebP **mà người dùng có quyền chuyển đổi**. Trình duyệt sắp
-thứ tự theo số trong tên tệp (ví dụ trang-2 trước trang-10), giải mã lần lượt,
-nén JPEG với nhiều mức chất lượng và giảm kích thước khi vượt ngân sách,
-rồi tạo một PDF ảnh A4 theo chiều trang. Không upload ảnh lên API/GCS, không
-phụ thuộc trạng thái Cloud Run và không thêm thư viện vào frontend.
-
-Giới hạn: tối đa 40 ảnh, mỗi ảnh tối đa 15 MiB, đầu ra tối đa 20 MiB.
-Khổ A4 không kéo giãn sai tỷ lệ; giảm chất lượng để đạt dung lượng có thể
-làm giảm độ nét. Đây là đường nhập ảnh **do người dùng cung cấp**, không
-tự chụp Google Drive và không vượt hạn chế Print/Copy của chủ tài liệu.
-Kết quả không đi vào lịch sử PDF server, được tải trực tiếp trên thiết bị.
-PDF đầu ra không chứa OCR hay text layer. Ngoài MIME và dung lượng, client
-đọc tối đa 256 KiB phần đầu file để kiểm tra magic bytes và kích thước thật
-PNG/JPEG/WebP **trước khi giải mã**, chặn ảnh có trên 24 triệu điểm ảnh để
-giảm rủi ro chiếm RAM trên mobile. PDF vẫn tối đa 20 MiB; giao diện cho biết
-số trang đang xử lý và DPI hiệu dụng thấp nhất sau khi nén, cảnh báo dưới
-150 DPI. DPI không khôi phục được nét của ảnh nguồn và là ước lượng theo
-khổ A4 khi in, không phải đo bằng máy in thực.
 
 ## 0. Quyết định phạm vi ưu tiên: bản PDF **để in**, nguồn công khai không đăng nhập
 
@@ -109,15 +86,16 @@ bằng chứng file thuộc phạm vi v1. Tự động hóa phải thử từ m�
 - **Chia sẻ Viewer + mở ẩn danh** là đầu vào mục tiêu; Worker thử tải trực tiếp
   rồi (mặc định) fallback renderer ghép **PDF ảnh** khi được phép theo chế độ
   `print-gated` (Print hoạt động trong Viewer).
-- **Chủ file khóa Print/Copy**: không bypass. View-only mặc định tắt và staging
-  tắt; flag thử nghiệm không thay đổi quy tắc quyền. **Chưa DONE**; cần nguồn
+- **Chủ file khóa Print/Copy**: không bypass. View-only đã bị loại khỏi pipeline;
+  flag cũ không thay đổi quy tắc quyền. **Chưa DONE**; cần nguồn
   được phép và E2E/chất lượng in trên Drive thật.
 
-- `workers/pdf/src/download.ts` hiện chỉ gọi
+- `workers/pdf/src/download.ts` gọi
   `https://drive.google.com/uc?export=download&id=...` với allowlist redirect;
-  không dùng Drive API metadata/capabilities, không render/chụp preview Drive.
-- `workers/pdf/src/processor.ts` nhận PDF gốc, xác minh bằng qpdf rồi lưu
-  bytes giữ nguyên. E2E với một file tải trực tiếp thành công **không chứng
+  không dùng Drive API metadata/capabilities. Sau lỗi tải phù hợp hoặc HTML,
+  `processor.ts` gọi renderer ẩn danh, bắt buộc Print bật và kiểm tra lại khi ghép.
+- `workers/pdf/src/processor.ts` xác minh PDF gốc hoặc PDF ảnh bằng qpdf rồi lưu
+  kết quả. PDF mã hóa không được chuyển sang renderer. E2E với một file tải trực tiếp thành công **không chứng
   minh** E2E Viewer bị chặn tải thành công.
 - `client/src/components/PublicPdfTool.tsx` hiện **đã bỏ checkbox quyền tải**;
   API chấp nhận trường `rightsConfirmed:true` tương thích ngược nhưng không

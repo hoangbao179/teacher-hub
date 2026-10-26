@@ -61,7 +61,21 @@ unsafe redirect, encrypted PDF), `INVALID_PDF`, `FILE_TOO_LARGE`,
 Transient 503 codes: `SERVICE_UNAVAILABLE` (gate/config/permissions),
 `SOURCE_UNAVAILABLE` (429/5xx), `STORAGE_UNAVAILABLE`, `TIMEOUT`, `INTERNAL_ERROR`
 (sanitized unexpected I/O, DNS or transport error). No stack, source URL or provider
-diagnostic is returned or logged. A worker timeout is not persisted as permanent.
+diagnostic text is returned or logged. Fixed, allowlisted diagnostic classifications
+are logged internally as described below. A worker timeout is not persisted as permanent.
+
+## Safe internal diagnostics
+
+Worker emits JSON `event=pdf-stage-failed` for a direct failure before fallback
+and for the final processing failure. Fields are `jobId`, SHA-256 `sourceHash`
+(same claim hash), `stage`, `fallbackEnabled`, allowlisted `code`/`reason`, and
+`retryable`. Stages distinguish direct download/validation, Viewer render/validation
+and storage. Reasons distinguish HTML, encryption, redirects, HTTP access and
+missing/ambiguous/disabled Print. Unknown details become `unclassified` or
+`INTERNAL_ERROR` in logs; result/retry semantics retain the existing contract.
+No source ID/URL, body, cookies, tokens, parser stderr or stack is logged.
+Encrypted PDF validation never triggers Viewer fallback. A failed logging sink
+cannot prevent result persistence. No diagnostic field is added to HTTP/GCS results.
 
 ## Durable objects and result schema
 

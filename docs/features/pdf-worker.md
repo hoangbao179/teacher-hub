@@ -40,11 +40,9 @@ direct-only behavior. If direct source retrieval fails with
 Print button is enabled**, capture each rendered page, fit onto an A4 image-only
 PDF, validate with qpdf and persist to the existing job output in GCS.
 No OCR/searchable text is required. When Print is missing or disabled,
-`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` is **off by default**, requiring exact
-`true`; false, missing or invalid values retain the Print gate. The experimental
-view-only path can capture without enabled Print, so production and staging must
-keep it off pending authorized real-Viewer validation and permission review.
-A flag does not authorize bypassing owner/admin restrictions.
+the Worker always stops. The deprecated
+`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` flag is ignored even when true; the
+view-only assembly path has been removed. No flag authorizes bypassing restrictions.
 Google-login-only files stay unsupported.
 This does not prove quality on every Drive variant until real Viewer E2E passes.
 
@@ -69,10 +67,7 @@ and a revoked Print action. It never requests a third-party document.
 Viewer initialization waits up to 15s for a recognizable page count, a unique
 usable zoom control, no visible busy/progress indicator and 500ms of stable
 toolbar controls. This distinguishes loading from absent Print without waiting
-15s for a missing button. Enabled Print keeps print-gated capture; disabled or
-absent Print can enter view-only capture only with explicit experimental opt-in.
-Ambiguous Print controls fail with `UNSUPPORTED_SOURCE` in either mode. With
-`PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false`, disabled Print remains `ACCESS_DENIED`
+15s for a missing button. Enabled Print permits capture. Disabled Print remains `ACCESS_DENIED`
 and absent Print `PRINT_UNAVAILABLE`; unresolved loading is retryable
 `SOURCE_UNAVAILABLE`.
 Zoom waits for a unique editable input, submits 300%, blurs it and observes the

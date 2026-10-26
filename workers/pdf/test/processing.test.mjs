@@ -75,7 +75,7 @@ test('bounded direct download, redirects, forbidden/login, HTML and byte limits'
   // HTML is not accepted as a PDF by the real validator, regardless of MIME type.
   const html = join(root, 'html.pdf');
   await download(job.source.fileId, html, cap, signal(), async () => response('<html>Login or confirm download</html>', 200, { 'content-type': 'application/pdf' }));
-  await assert.rejects(validatePDF(html, cap, signal()), { code: 'UNSUPPORTED_SOURCE' });
+  await assert.rejects(validatePDF(html, cap, signal()), { code: 'UNSUPPORTED_SOURCE', reason: 'html-response' });
 });
 
 test('DNS-resolved private addresses fail before connecting, including mixed answers', async t => {
@@ -126,7 +126,7 @@ test('print fallback extends deadline unless explicitly disabled', () => {
   for (const fallback of [undefined, 'false', 'true']) for (const capture of [undefined, 'false', 'true', 'invalid']) {
     const env = { PDF_PRINT_FALLBACK_ENABLED: fallback, PDF_VIEWER_SCREEN_CAPTURE_ENABLED: capture };
     assert.equal(printFallbackEnabled(env), fallback !== 'false');
-    assert.equal(viewerScreenCaptureEnabled(env), capture === 'true');
+    assert.equal(viewerScreenCaptureEnabled(env), false);
     assert.equal(limits(env).deadlineMs, fallback === 'false' ? 22000 : 120000);
     assert.throws(() => limits({ ...env, PDF_DEADLINE_MS: String(fallback === 'false' ? 22001 : 120001) }),
       { code: 'SERVICE_UNAVAILABLE' });
@@ -135,7 +135,7 @@ test('print fallback extends deadline unless explicitly disabled', () => {
   assert.throws(()=>limits({PDF_PRINT_FALLBACK_ENABLED:'false',PDF_DEADLINE_MS:'120000'}),{code:'SERVICE_UNAVAILABLE'});
 });
 
-test('Viewer mode selection requires explicit capture gate for absent or disabled Print', async () => {
+test('Viewer mode selection never bypasses absent or disabled Print for any legacy flag', async () => {
   for (const flag of [undefined, 'false', 'true', 'invalid']) {
     const capture = viewerScreenCaptureEnabled({PDF_VIEWER_SCREEN_CAPTURE_ENABLED:flag});
     for (const [count, enabled, code] of [[1,true,null],[0,false,'PRINT_UNAVAILABLE'],[1,false,'ACCESS_DENIED'],[2,true,'UNSUPPORTED_SOURCE']]) {
@@ -144,8 +144,8 @@ test('Viewer mode selection requires explicit capture gate for absent or disable
         getByRole: () => ({count:async()=>count,isVisible:async()=>true,isEnabled:async()=>enabled}),
       };
       const selection = selectViewerMode(page,capture,signal());
-      if (code && (!capture || count>1)) await assert.rejects(selection,{code});
-      else assert.equal(await selection, code ? 'view-only' : 'print-gated');
+      if (code) await assert.rejects(selection,{code});
+      else assert.equal(await selection, 'print-gated');
     }
   }
 });
@@ -376,5 +376,5 @@ test('local HTTP-to-download-to-qpdf-to-fake-GCS end-to-end, byte identity', { s
   assert.equal((await validatePDF(original, cap, signal())).pages, 40);
   const encrypted = join(root, 'encrypted.pdf');
   execFileSync('qpdf', ['--encrypt', 'test-only-user', 'test-only-owner', '256', '--', original, encrypted]);
-  await assert.rejects(validatePDF(encrypted, cap, signal()), { code: 'UNSUPPORTED_SOURCE' });
+  await assert.rejects(validatePDF(encrypted, cap, signal()), { code: 'UNSUPPORTED_SOURCE', reason: 'encrypted-pdf' });
 });

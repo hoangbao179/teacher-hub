@@ -26,8 +26,7 @@ test('offline Viewer initialization and zoom readiness', { timeout: 30000 }, asy
       await t.test(`${code}; screen capture=${flag}`, async t => {
         const page = await fixture(t, viewer + html);
         const selection = selectViewerMode(page, flag, AbortSignal.timeout(3000));
-        if (flag && code !== 'UNSUPPORTED_SOURCE') assert.equal(await selection, 'view-only');
-        else await assert.rejects(selection, { code });
+        await assert.rejects(selection, { code });
       });
     }
   }
@@ -51,7 +50,7 @@ test('offline Viewer initialization and zoom readiness', { timeout: 30000 }, asy
   });
   await t.test('absent Print finishes without waiting for the 15s ceiling', async t => {
     const page = await fixture(t, viewer);
-    assert.equal(await selectViewerMode(page, true, AbortSignal.timeout(2000)), 'view-only');
+    await assert.rejects(selectViewerMode(page, true, AbortSignal.timeout(2000)), { code: 'PRINT_UNAVAILABLE' });
   });
   await t.test('explicit cancellation during toolbar settling does not select view-only', async t => {
     const page = await fixture(t, viewer);

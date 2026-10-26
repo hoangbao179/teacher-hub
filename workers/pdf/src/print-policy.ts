@@ -17,9 +17,9 @@ export function allowedPrintRequest(raw: string, fileId: string, navigation: boo
  * An explicitly disabled Print action is a known restriction; never bypass it.
  */
 export function assertPrintAction(count: number, enabled?: boolean): void {
-  if (count === 0) throw new JobError('PRINT_UNAVAILABLE');
-  if (count !== 1) throw new JobError('UNSUPPORTED_SOURCE');
-  if (enabled !== true) throw new JobError('ACCESS_DENIED');
+  if (count === 0) throw new JobError('PRINT_UNAVAILABLE', false, 'print-missing');
+  if (count !== 1) throw new JobError('UNSUPPORTED_SOURCE', false, 'print-ambiguous');
+  if (enabled !== true) throw new JobError('ACCESS_DENIED', false, 'print-disabled');
 }
 
 export function printPageSize(w: number, h: number) {
