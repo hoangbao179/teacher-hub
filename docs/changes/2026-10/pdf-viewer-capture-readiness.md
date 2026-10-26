@@ -18,6 +18,17 @@ Image `complete` only describes the current bitmap, not whether the viewer has
 finished replacing it after zoom. Final-output size checking also occurs too late
 to bound cumulative JPEG payload held by pdf-lib during assembly.
 
+The first PR quality run also exposed a clean-runner setup gap: npm installs the
+Playwright library, not its browser binary. The local development machine and
+Worker image already contained Chromium, masking the missing CI prerequisite.
+Both new browser tests failed before loading any page because
+`chromium_headless_shell-1228` was absent.
+The focused Linux reproduction then exposed a fixture-only hang while decoding
+an intentionally oversized 4000x4000 bitmap. That decode is outside the canvas
+preflight being tested; the boundary case now supplies oversized intrinsic
+dimension metadata on an already decoded owned image, and the browser fixture
+has a 45-second test timeout. Actual page-content tests still use real bitmaps.
+
 ## Decision
 
 Wait for a unique native page bitmap providing >=200 effective DPI at the existing
@@ -37,6 +48,13 @@ checks, byte/page limits and abort checks. This permits an offline owned Viewer
 fixture to validate the actual assembly code without any Google document access.
 Zoom control matching is strict; multiple comboboxes fail instead of selecting
 an arbitrary first control. Final file writing also observes the abort signal.
+The Fast quality job now installs Chromium headless shell and Linux dependencies
+from the Worker's locked Playwright CLI before running the unchanged Worker tests.
+`--no-install` prevents npx from fetching a different CLI version; `--only-shell`
+avoids downloading browsers the headless suite does not use. No test is skipped
+and no production runtime, permissions or deployment behavior changes.
+The oversized-canvas assertion remains required, without an unnecessary 16 MP
+fixture decode that can stall before the assertion is reached.
 
 ## Verification
 
@@ -49,6 +67,13 @@ current source/tests mounted read-only. The Linux invocation ran
 skipped, including actual qpdf validation, missing-parser handling and
 HTTP-to-PDF-to-fake-GCS integration. The prior Windows-only qpdf skips are now
 covered by this Linux run.
+
+CI setup correction checks: workflow YAML parsing/order validation, actionlint,
+locked Playwright install dry-run and documentation links pass. After replacing
+the oversized-decode fixture case, both previously failing browser fixtures pass
+in the offline 1 CPU / 2 GiB Linux container (2 passed, zero skipped). The GitHub
+runner must still execute the new installation step and the remaining quality
+commands; local checks alone do not prove a green CI run.
 
 The disposable local container had network disabled, one CPU, 2 GiB memory/swap
 ceiling, read-only root/source/tests, 128 MiB /tmp and 128 MiB shared memory.

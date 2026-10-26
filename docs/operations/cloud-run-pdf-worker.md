@@ -163,7 +163,8 @@ References: [bounded Cloud Run memory volumes](https://docs.cloud.google.com/run
 
 GitHub Actions supports only manual **verify-wif**, using the verifier identity.
 There is no deployment mode, image build/push, IAM mutation or Cloud Run call.
-Run local checks without cloud authentication, MySQL or browser:
+Run local checks without cloud authentication or MySQL. Browser fixtures use only
+owned offline images, but require the matching Playwright headless shell:
 
 ```bash
 node --test scripts/validate-pdf-environment.test.cjs
@@ -176,6 +177,12 @@ bash scripts/deploy-pdf-worker.test.sh
 
 The Bash regression mocks all cloud/container calls. It is not a cloud dry run.
 Install standalone dev tooling first with `npm ci --prefix workers/pdf`.
+Before running browser fixtures on Linux, run
+`npx --no-install playwright install --with-deps --only-shell chromium` from
+`workers/pdf`. The Fast quality job performs this after installing locked npm
+dependencies and before the Worker test suite. Installing the Playwright package
+alone does not install its browser binary; a development browser cache or the
+Cloud Run image must not be assumed present on a fresh CI runner.
 For native Linux tests, install `qpdf` and `util-linux` and verify both `qpdf` and
 `prlimit` are executable before E2E. The Fast quality gate installs and probes
 these dependencies explicitly; a generic Ubuntu runner is not the worker image.

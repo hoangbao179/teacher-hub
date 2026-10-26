@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import sharp from 'sharp';
 import { captureViewerPage } from '../src/capture-page.ts';
 
-test('browser capture waits for zoom detail, preserves blank/landscape pages and excludes toolbar', async t => {
+test('browser capture waits for zoom detail, preserves blank/landscape pages and excludes toolbar', { timeout: 45000 }, async t => {
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage();
@@ -55,7 +55,14 @@ test('browser capture waits for zoom detail, preserves blank/landscape pages and
     }
   }
   await assert.rejects(captureViewerPage(page, 1, 3, 10), { code: 'FILE_TOO_LARGE' });
-  await page.evaluate(() => window.replaceBitmap(1, 4000, 4000, 'white'));
+  // Exercise the canvas preflight without making Chromium allocate/decode a
+  // deliberately oversized image (which can stall independently of our guard).
+  await page.evaluate(() => {
+    const image = document.querySelector('[data-page="1"] img');
+    Object.defineProperties(image, {
+      naturalWidth: { value: 4000 }, naturalHeight: { value: 4000 },
+    });
+  });
   await assert.rejects(captureViewerPage(page, 1, 3, 32 * 1048576), { code: 'UNSUPPORTED_SOURCE' });
   await page.evaluate(() => document.querySelector('main').append(document.querySelector('section').cloneNode(true)));
   await assert.rejects(captureViewerPage(page, 1, 3, 32 * 1048576), /strict mode violation/);
