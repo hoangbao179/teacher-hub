@@ -138,6 +138,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   IAM-private; cloud services are not redeployed. VPS identity/renewal, live
   recovery, second-device download/24h expiry and VPS headroom remain activation gates.
 
+- **PDF Cloud Run release readiness tools**: Đã bổ sung các script `pdf-release-audit`, `pdf-local-runtime-audit` và `pdf-release-one-shot` từ nhánh review #22 lên nền main sau #24. Script hỗ trợ staging immutable no-traffic, smoke PDF ảnh offline và kiểm tra IAM/digest/revision/traffic, có unit tests CI. Chưa chạy audit với Cloud Run thật và chưa chứng minh Viewer E2E; không bật production hoặc thay đổi quyền/traffic từ PR này. Xem [runbook](../operations/pdf-release-audit.md).
 - **Account settings**: trang tài khoản hiện có tên hiển thị, username, trạng thái
   đăng nhập và đăng xuất. Đổi mật khẩu/cập nhật thông tin trong UI chưa hoàn thiện;
   trang không hiển thị action giả.
