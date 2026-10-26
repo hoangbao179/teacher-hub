@@ -89,21 +89,20 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   | --- | --- | --- |
   | `PDF_PRINT_FALLBACK_ENABLED` | Bật (`false` tắt) | Sau lỗi `download.ts`, Worker chạy `renderer.ts` ghép bitmap → PDF ảnh A4 |
   | `PDF_LONG_PRINT_TASKS_ENABLED` | Tắt API/Gateway (chỉ `true` → 180s) | Mặc định 30s tương thích Gateway cũ |
-  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | Ignored (deprecated) | Print must be enabled for all Viewer capture |
+  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | Bật (`false` tắt) | Khi Print tắt/thiếu, cho phép ghép PDF ảnh từ tile Viewer (`view-only`) |
 
   **Luồng mặc định:** (1) tải trực tiếp `uc?export=download`; (2) nếu lỗi phù hợp →
-  Viewer ẩn danh; (3) **`print-gated`:** chỉ chụp tile khi nút In/Print **bật** trong
-  UI Drive (`viewer-pdf.ts`). Link **chỉ Viewer** nhưng vẫn **cho in trong preview**
-  thuộc phạm vi đường này — đây là cách hiện tại tạo PDF ảnh không cần file tải được.
+  Viewer ẩn danh; (3) **`print-gated`** khi nút In/Print bật, hoặc **`view-only`**
+  khi Print tắt/thiếu và screen capture không bị tắt (`viewer-pdf.ts`).
 
   **Vì sao chưa DONE:**
-  - **Chủ file khóa Print (yêu cầu 26/10):** chưa được hỗ trợ hợp lệ. View-only
-    đã bị loại bỏ khỏi pipeline; cần nguồn có quyền và E2E được cho phép.
+  - **Chủ file khóa Print:** có nhánh `view-only` trong code nhưng chưa E2E Drive
+    thật chứng minh đủ trang, nét in và hành vi restriction của Google.
   - **Thiếu E2E Drive thật:** test chủ yếu fixture offline; chưa chứng minh đủ trang,
     thứ tự, nét chữ, timeout/RAM trên revision chạy thật.
   - **Rủi ro đã biết:** lazy-load Viewer (`capture-page.ts`); smoke không xác minh
     mode đã chạy, luôn báo view-only `NOT_VERIFIED`, không suy thành công từ env.
-  - **Rollout:** staging `--no-traffic` đặt Worker fallback=true, capture=false,
+  - **Rollout:** staging `--no-traffic` có thể đặt capture=false để giữ hành vi cũ;
     Gateway long tasks=true; cần promote dịch vụ tương thích trước khi bật
     producer 180s. Merge API/Web với flag thiếu tiếp tục gửi 30s.
   - **Vận hành:** `submitEnabled` VPS có thể OFF; cờ trên revision live chưa xác minh.
