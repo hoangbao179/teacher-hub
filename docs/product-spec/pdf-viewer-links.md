@@ -5,6 +5,26 @@ thiết kế triển khai bên dưới là đề xuất kỹ thuật cần thử
 hiểu đây là tính năng đã hoàn thiện, cam kết mọi liên kết đều tải được, hoặc
 là cho phép vượt hạn chế của chủ tài liệu.**
 
+## Cập nhật yêu cầu người dùng ngày 26/10/2026
+
+Người dùng đã xác nhận rõ **trường hợp cần giải quyết chính là liên kết
+Google Drive chỉ xem được, trong khi chủ tài liệu khóa cả In/Print**.
+Mục tiêu sản phẩm vẫn là PDF mới chỉ chứa ảnh, đủ trang và rõ chữ để in;
+không thể coi việc chạy Chromium hoặc tạo PDF với file đã mở Print là
+nghiệm thu trường hợp này. Đây là **khoảng cách giữa yêu cầu và sản phẩm**,
+không phải chức năng đã hoàn tất.
+
+Giới hạn hiện hành: Worker không được phép sử dụng trang preview để vô hiệu
+hóa / đi vòng một hạn chế sao chép hoặc in do chủ tài liệu đặt ra. Khi
+Print bị vô hiệu hóa, yêu cầu sẽ không được hoàn thành từ link đó nếu
+chưa có quyền hoặc bản nguồn được phép xuất. Nếu không tìm thấy nút Print,
+trình xem có thể bị giới hạn, thay đổi giao diện hoặc chưa tải đầy đủ;
+không được kết luận chắc chắn là chủ file cấm in chỉ từ timeout.
+Hướng hợp lệ là chủ file cho phép xuất/in, hoặc người dùng cung cấp tài liệu/
+ảnh trang mà họ có quyền chuyển thành PDF. **Không thay đổi im lặng yêu cầu
+khóa in thành yêu cầu "chỉ file Print-enabled"**; ghi rõ rằng nhu cầu này
+vẫn chưa được hỗ trợ và không bật production như thể đã đạt nghiệm thu.
+
 **Đây là nguồn chuẩn về mục đích tính năng.** Nếu Worker, API, test hay các
 tài liệu cũ giả định "chỉ nhận file đã tải trực tiếp được", phải ghi rõ đó là
 **giới hạn implementation**, không sửa ngược yêu cầu sản phẩm cho khớp code.

@@ -77,6 +77,22 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### DEVELOPING
 
+- **PDF Viewer: tình huống chủ file đã khóa Print là yêu cầu chưa đạt (26/10/2026).**
+  Người dùng muốn tạo PDF ảnh mới từ link chỉ xem, kể cả khi nút in bị
+  khóa; Worker hiện phải tôn trọng hạn chế xuất/in của chủ tài liệu nên
+  **không tạo bản sao từ trường hợp này**. Không được gọi thành công của
+  Docker/Chromium hoặc staging Cloud Run là nghiệm thu chức năng này.
+  Owner đã xác nhận trong PowerShell: image Worker 1 CPU/2 GiB chạy
+  Chromium thành công (`PDF_BROWSER_OK`), mã nguồn `f93c25d` Worker và
+  Gateway đã staging **no-traffic** thành công; thử link
+  `1_ArvHdCmU5958R5Le27wjNsRiI5ynzIr` báo `ACCESS_DENIED`
+  do gate Print hiện tại. Chưa bật traffic, tính năng PDF ảnh vẫn OFF.
+  Phân loại lỗi Print thiếu/đang bị vô hiệu hóa được cải thiện trong
+  source mới nhưng không chứng minh việc lấy được nội dung ở trạng thái
+  hạn chế. Xem [product contract](../product-spec/pdf-viewer-links.md).
+
+
+
 - **Anonymous PDF print fallback — experimental Worker code:** `workers/pdf/src/renderer.ts`
   and print policy are optional and disabled by default. A job can try the
   public/anonymous Print-enabled Drive viewer when direct download fails,

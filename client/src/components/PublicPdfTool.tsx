@@ -13,7 +13,8 @@ const statuses: Record<PdfJobStatus,string> = {
 };
 const ongoing = ["ENQUEUE_PENDING","ENQUEUE_RETRY","QUEUED","RESULT_UNCONFIRMED","RETRY_EXHAUSTED"];
 const failureReasons: Record<string,string> = {
-  ACCESS_DENIED: "Không truy cập được tài liệu, hoặc Google Drive không cho phép in/tải.",
+  ACCESS_DENIED: "Không truy cập được tài liệu hoặc chức năng in bị vô hiệu hóa. Hãy xin bản sao được phép sử dụng từ chủ file.",
+  PRINT_UNAVAILABLE: "Trình xem không hiển thị chức năng in. Có thể tài liệu bị hạn chế hoặc giao diện Google Drive đã thay đổi; chưa thể tạo PDF.",
   UNSUPPORTED_SOURCE: "Không lấy được bản PDF hợp lệ từ liên kết này.",
   INVALID_PDF: "Nguồn trả về không phải PDF hợp lệ.",
   FILE_TOO_LARGE: "Tệp lớn hơn giới hạn xử lý.",

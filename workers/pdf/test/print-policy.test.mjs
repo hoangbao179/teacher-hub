@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allowedPrintRequest, printPageSize } from '../src/print-policy.ts';
+import { allowedPrintRequest, assertPrintAction, printPageSize } from '../src/print-policy.ts';
 
 const id = '1_ArvHdCmU5958R5Le27wjNsRiI5ynzIr';
 test('anonymous print browser navigation cannot reach login or arbitrary URLs', () => {
@@ -25,4 +25,11 @@ test('native images fit A4 portrait/landscape without stretching', () => {
   for(const [w,h] of [[0,300],[300000,300000],[1.5,200],[20,20]]) {
     assert.throws(()=>printPageSize(w,h));
   }
+});
+
+test('missing Print UI is not misreported as definitive access denial', () => {
+  assert.doesNotThrow(() => assertPrintAction(1, true));
+  assert.throws(() => assertPrintAction(0), { code: 'PRINT_UNAVAILABLE', retryable: false });
+  assert.throws(() => assertPrintAction(1, false), { code: 'ACCESS_DENIED', retryable: false });
+  assert.throws(() => assertPrintAction(2), { code: 'UNSUPPORTED_SOURCE', retryable: false });
 });

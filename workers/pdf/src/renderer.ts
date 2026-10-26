@@ -1,9 +1,9 @@
 import { writeFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
+import { chromium, errors as playwrightErrors } from 'playwright';
 import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
 import { JobError, type Limits } from './contract.ts';
-import { allowedPrintRequest, printPageSize } from './print-policy.ts';
+import { allowedPrintRequest, assertPrintAction, printPageSize } from './print-policy.ts';
 
 // Anonymous, print-enabled Drive viewer ONLY.  Never accepts an arbitrary URL,
 // credentials, storage state or a login-only document. The browser is disposable.
@@ -41,10 +41,15 @@ export async function renderPrintablePdf(fileId: string, path: string, cap: Limi
       {waitUntil:'domcontentloaded',timeout:30000});
     signal.throwIfAborted();
     const print = page.getByRole('button', {name:/^(In|Print)$/i});
+    // No Print control may mean an owner restriction, a changed UI, or a
+    // partially loaded Viewer. Never report a definitive denial from a timeout.
     await print.first().waitFor({state:'visible',timeout:15000})
-      .catch(() => { throw new JobError('ACCESS_DENIED'); });
-    if (await print.count() !== 1 || !(await print.isEnabled()))
-      throw new JobError('ACCESS_DENIED');
+      .catch((error: unknown) => {
+        if (error instanceof playwrightErrors.TimeoutError) throw new JobError('PRINT_UNAVAILABLE');
+        throw error; // Crashed or closed browser is not a policy/permission verdict.
+      });
+    const printCount = await print.count();
+    assertPrintAction(printCount, printCount === 1 && await print.first().isEnabled());
 
     await page.locator('h2').filter({hasText:/1\s*\/\s*\d+\s*$/}).first().waitFor();
     const labels = await page.locator('h2').allTextContents();
