@@ -1,5 +1,9 @@
+# Worker image is intentionally self-contained: do not ship tests, caches or
+# source maps, but include both manifests needed by Dockerfile's npm ci.
 *
 !Dockerfile
+!package.json
+!package-lock.json
 !src/
 !src/*.mjs
 !src/*.ts
