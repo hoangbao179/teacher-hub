@@ -1,4 +1,4 @@
-/* global process, console, document, localStorage, sessionStorage */
+/* global process, console, document, localStorage, sessionStorage, HTMLInputElement, DataTransfer, File, Event */
 // Synthetic MySQL/FakeCloud fixture only. No production identity or PDF source access.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
