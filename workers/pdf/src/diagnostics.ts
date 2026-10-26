@@ -4,7 +4,10 @@ export type Stage = 'direct-download' | 'direct-validation' | 'viewer-render' | 
 const codes = new Set(['ACCESS_DENIED', 'PRINT_UNAVAILABLE', 'UNSUPPORTED_SOURCE', 'INVALID_PDF',
   'FILE_TOO_LARGE', 'PAGE_LIMIT_EXCEEDED', 'SOURCE_UNAVAILABLE', 'TIMEOUT', 'SERVICE_UNAVAILABLE', 'STORAGE_UNAVAILABLE']);
 const reasons = new Set(['redirect-policy', 'redirect-limit', 'login-redirect', 'http-access', 'http-status',
-  'html-response', 'encrypted-pdf', 'print-missing', 'print-ambiguous', 'print-disabled', 'viewer-readiness']);
+  'html-response', 'encrypted-pdf', 'print-missing', 'print-ambiguous', 'print-disabled', 'viewer-readiness',
+  'invalid-file-id', 'page-count-unreadable', 'page-total-mismatch', 'assembled-page-mismatch',
+  'duplicate-page-heading', 'ambiguous-page-layout', 'bitmap-oversized', 'bitmap-dimensions-invalid',
+  'bitmap-dpi-low']);
 
 /** Only fixed classifications and validated correlation fields; never provider text. */
 export function diagnostic(jobId: string, sourceHash: string, stage: Stage, fallbackEnabled: boolean,

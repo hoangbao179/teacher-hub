@@ -24,7 +24,7 @@ export function assertPrintAction(count: number, enabled?: boolean): void {
 
 export function printPageSize(w: number, h: number) {
   if (!Number.isSafeInteger(w) || !Number.isSafeInteger(h) ||
-      w < 1 || h < 1 || w * h > 12_000_000) throw new JobError('UNSUPPORTED_SOURCE');
+      w < 1 || h < 1 || w * h > 12_000_000) throw new JobError('UNSUPPORTED_SOURCE', false, 'bitmap-dimensions-invalid');
   const landscape = w > h;
   const pageWidth = landscape ? 841.89 : 595.28;
   const pageHeight = landscape ? 595.28 : 841.89;
@@ -32,6 +32,6 @@ export function printPageSize(w: number, h: number) {
   const scale = Math.min((pageWidth-2*margin)/w, (pageHeight-2*margin)/h);
   const width = w*scale, height = h*scale;
   const dpi = Math.min(w*72/width, h*72/height);
-  if (dpi < 150) throw new JobError('UNSUPPORTED_SOURCE');
+  if (dpi < 150) throw new JobError('UNSUPPORTED_SOURCE', false, 'bitmap-dpi-low');
   return {pageWidth,pageHeight,x:(pageWidth-width)/2,y:(pageHeight-height)/2,width,height,dpi};
 }

@@ -70,8 +70,9 @@ Worker emits JSON `event=pdf-stage-failed` for a direct failure before fallback
 and for the final processing failure. Fields are `jobId`, SHA-256 `sourceHash`
 (same claim hash), `stage`, `fallbackEnabled`, allowlisted `code`/`reason`, and
 `retryable`. Stages distinguish direct download/validation, Viewer render/validation
-and storage. Reasons distinguish HTML, encryption, redirects, HTTP access and
-missing/ambiguous/disabled Print. Unknown details become `unclassified` or
+and storage. Reasons distinguish HTML, encryption, redirects, HTTP access,
+missing/ambiguous/disabled Print, unreadable page totals, ambiguous Viewer layout,
+oversized/low-DPI bitmaps and assembled page-count drift. Unknown details become `unclassified` or
 `INTERNAL_ERROR` in logs; result/retry semantics retain the existing contract.
 No source ID/URL, body, cookies, tokens, parser stderr or stack is logged.
 Encrypted PDF validation never triggers Viewer fallback. A failed logging sink

@@ -6,6 +6,7 @@ import { JobError, type Limits } from './contract.ts';
 import { assertPrintAction, printPageSize } from './print-policy.ts';
 import { captureViewerPage, observeViewerBitmaps, disposeViewerBitmaps } from './capture-page.ts';
 import { withViewerAbort } from './viewer-ready.ts';
+import { PAGE_INDICATOR_LOCATOR, parsePageIndicator } from './viewer-page-indicator.ts';
 
 type ViewerAssemblyMode = 'print-gated' | 'view-only';
 
@@ -30,11 +31,11 @@ export function addImageBytes(used: number, next: number, ceiling: number): numb
 }
 
 async function readViewerPageCount(page: Page, cap: Limits): Promise<number> {
-  await page.locator('h2').filter({ hasText: /1\s*\/\s*\d+\s*$/ }).first().waitFor();
+  await page.locator('h2').filter({ hasText: PAGE_INDICATOR_LOCATOR }).first().waitFor();
   const labels = await page.locator('h2').allTextContents();
-  const first = labels.map(s => /(?:^|\D)1\s*\/\s*(\d+)\s*$/.exec(s)).find(Boolean);
-  const count = Number(first?.[1]);
-  if (!Number.isInteger(count) || count < 1) throw new JobError('UNSUPPORTED_SOURCE');
+  const first = labels.map(s => parsePageIndicator(s)).find(p => p?.index === 1);
+  const count = first?.total ?? NaN;
+  if (!Number.isInteger(count) || count < 1) throw new JobError('UNSUPPORTED_SOURCE', false, 'page-count-unreadable');
   if (count > cap.maxPages) throw new JobError('PAGE_LIMIT_EXCEEDED');
   return count;
 }
@@ -43,30 +44,45 @@ export async function setViewerZoom(page: Page, signal: AbortSignal): Promise<vo
   await withViewerAbort(page, signal, async () => {
     const end = Date.now() + 15000;
     const remaining = () => Math.max(1, end - Date.now());
-    const zoom = page.getByRole('combobox');
+    const zoom = page.locator('[role="combobox"], select').first();
     await page.waitForFunction(() => {
-      const inputs = document.querySelectorAll('[role="combobox"]');
+      const inputs = document.querySelectorAll('[role="combobox"], select');
       const input = inputs[0];
-      return inputs.length === 1 && input instanceof HTMLInputElement &&
-        input.getClientRects().length > 0 && getComputedStyle(input).visibility !== 'hidden' &&
-        !input.disabled && !input.readOnly && input.getAttribute('aria-disabled') !== 'true';
+      if (inputs.length !== 1 || !input) return false;
+      const visible = input.getClientRects().length > 0 && getComputedStyle(input).visibility !== 'hidden';
+      if (!visible) return false;
+      if (input instanceof HTMLSelectElement) return !input.disabled;
+      if (input instanceof HTMLInputElement) {
+        return !input.disabled && !input.readOnly && input.getAttribute('aria-disabled') !== 'true';
+      }
+      return input instanceof HTMLElement && input.getAttribute('aria-disabled') !== 'true';
     }, undefined, { timeout: remaining(), polling: 'raf' });
-    // Locator actionability waits for a unique, visible, enabled/editable input.
-    await zoom.fill('300%', { timeout: remaining() });
-    await zoom.press('Enter', { timeout: remaining() });
-    // Filling alone changes value. Observe it after Enter and blur so a rejected
-    // or normalized zoom cannot be mistaken for acceptance. Bitmap readiness is
-    // still the responsibility of the per-page capture stage.
-    await zoom.blur({ timeout: remaining() });
+    const control = await zoom.evaluateHandle(el => el);
+    const tag = await control.evaluate(el => el.tagName);
+    await control.dispose();
+    if (tag === 'SELECT') {
+      try {
+        await zoom.selectOption({ label: '300%' }, { timeout: remaining() });
+      } catch {
+        await zoom.selectOption({ value: '300%' }, { timeout: remaining() });
+      }
+    } else {
+      await zoom.fill('300%', { timeout: remaining() });
+      await zoom.press('Enter', { timeout: remaining() });
+      await zoom.blur({ timeout: remaining() });
+    }
     const state = await page.evaluateHandle(() => ({ since: performance.now() }));
     try {
       await page.waitForFunction(state => {
-        const inputs = document.querySelectorAll('[role="combobox"]');
+        const inputs = document.querySelectorAll('[role="combobox"], select');
         const input = inputs[0];
         const busy = [...document.querySelectorAll('[aria-busy="true"], [role="progressbar"]')]
           .some(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
-        const settled = inputs.length === 1 && input instanceof HTMLInputElement &&
-          /^300\s*%?$/.test(input.value.trim()) && document.activeElement !== input && !busy;
+        const zoomAccepted = input instanceof HTMLSelectElement
+          ? /300\s*%/.test(input.options[input.selectedIndex]?.text ?? '')
+          : input instanceof HTMLInputElement && /^300\s*%?$/.test(input.value.trim());
+        const settled = inputs.length === 1 && zoomAccepted &&
+          !(input instanceof HTMLElement && document.activeElement === input) && !busy;
         if (!settled) state.since = performance.now();
         return settled && performance.now() - state.since >= 250;
       }, state, { timeout: remaining(), polling: 'raf' });
@@ -91,7 +107,7 @@ async function assembleViewerImagePdf(
     };
     await checkPrint();
   } else {
-    await page.locator('h2').filter({ hasText: /1\s*\/\s*\d+\s*$/ }).first()
+    await page.locator('h2').filter({ hasText: PAGE_INDICATOR_LOCATOR }).first()
       .waitFor({ timeout: 30000 })
       .catch((error: unknown) => {
         if (error instanceof playwrightErrors.TimeoutError) throw new JobError('SOURCE_UNAVAILABLE', true);
@@ -136,12 +152,12 @@ async function assembleViewerImagePdf(
     if (checkPrint) await checkPrint();
     const checkTotal = async () => {
       const labels = await page.locator('h2').allTextContents();
-      const totals = labels.map(label => /\d+\s*\/\s*(\d+)\s*$/.exec(label)).filter(Boolean);
+      const totals = labels.map(label => parsePageIndicator(label)).filter(Boolean);
       if (!totals.length) throw new JobError('SOURCE_UNAVAILABLE', true);
-      if (totals.some(match => Number(match![1]) !== count)) throw new JobError('UNSUPPORTED_SOURCE');
+      if (totals.some(page => page!.total !== count)) throw new JobError('UNSUPPORTED_SOURCE', false, 'page-total-mismatch');
     };
     await checkTotal();
-    if (doc.getPageCount() !== count) throw new JobError('UNSUPPORTED_SOURCE');
+    if (doc.getPageCount() !== count) throw new JobError('UNSUPPORTED_SOURCE', false, 'assembled-page-mismatch');
     const bytes = await runStage(signal, () => doc.save());
     if (bytes.length > cap.maxBytes) throw new JobError('FILE_TOO_LARGE');
     await checkTotal(); // Serialization can yield while the Viewer changes.

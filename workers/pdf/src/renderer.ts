@@ -7,7 +7,7 @@ import { assemblePrintableViewer, assembleViewOnlyViewer } from './viewer-pdf.ts
 // Anonymous Google Drive viewer ONLY. Never accepts an arbitrary URL,
 // credentials, storage state or a login-only document. The browser is disposable.
 export async function renderPrintablePdf(fileId: string, path: string, cap: Limits, signal: AbortSignal): Promise<void> {
-  if (!/^[A-Za-z0-9_-]{10,128}$/.test(fileId)) throw new JobError('UNSUPPORTED_SOURCE');
+  if (!/^[A-Za-z0-9_-]{10,128}$/.test(fileId)) throw new JobError('UNSUPPORTED_SOURCE', false, 'invalid-file-id');
   signal.throwIfAborted();
   const maxWireBytes = 64 * 1048576;
   let ctx: Awaited<ReturnType<Awaited<ReturnType<typeof chromium.launch>>['newContext']>> | undefined;
