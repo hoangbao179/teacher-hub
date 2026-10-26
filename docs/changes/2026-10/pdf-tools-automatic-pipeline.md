@@ -32,6 +32,11 @@ Không suy cấu hình revision live từ service template hoặc mặc định 
 
 ## Decision and changes
 
+Fixture kiểm tra Worker claim xuyên service phải dành stdout cho JSON kết quả;
+log chẩn đoán được inject sang stderr và assert riêng stage/code/job/hash. Nếu
+dùng sink mặc định trong subprocess, log JSON và result JSON nối nhau khiến
+`JSON.parse(child.stdout)` thất bại. Không thay hoặc tắt log production để sửa test.
+
 - Xóa UI chọn ảnh, state/handler, helper `imagePdf.ts`, test và npm script riêng
   của tính năng đã bỏ. E2E vẫn kiểm tra không còn file input và giữ submit/download.
 - Giữ direct PDF trước, fallback Viewer sau lỗi tải phù hợp hoặc HTML; PDF mã hóa
@@ -51,6 +56,8 @@ Targeted checks passed:
 - `npm.cmd -w server run typecheck`; `npm.cmd --prefix workers/pdf run check`.
 - Client Tools/polling unit: 6 tests; API Gateway/transport/Print classification:
   8 tests; Gateway: 15 tests.
+- `pdf.service.test.ts`: 10 tests, gồm subprocess claim/result với log chẩn đoán
+  tách riêng; tái hiện lỗi parse stdout trước khi sửa fixture.
 - `npm.cmd -w client run test:e2e:tools`: public/admin routing, flags, mobile,
   submit/reload/download, không còn chọn ảnh.
 - `node --env-file=server/.env --import tsx client/scripts/public-pdf.e2e.mjs`:

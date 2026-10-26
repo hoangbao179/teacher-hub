@@ -47,6 +47,7 @@ test('Worker claim is accepted by real API validator with a ticking clock', () =
     const store=new MemoryStore(); const original=Date.now; let i=0;
     Date.now=()=>original()-500+(++i);
     const result=await processJob(job,limits({}),AbortSignal.timeout(10000),{
+      log:value=>process.stderr.write(value+'\\n'),
       store,download:async()=>{throw new JobError('ACCESS_DENIED');}
     });
     process.stdout.write(JSON.stringify({claim:store.objects.get('jobs/'+job.jobId+'/request.json').json,result,job}));
@@ -54,7 +55,13 @@ test('Worker claim is accepted by real API validator with a ticking clock', () =
   const child=spawnSync(process.execPath,['--input-type=module','-e',program,workerURL,fixtureURL,contractURL],
     {encoding:'utf8',timeout:12000,maxBuffer:16384});
   assert.equal(child.status,0,child.stderr);
+  const diagnostic=JSON.parse(child.stderr.trim());
+  assert.equal(diagnostic.event,'pdf-stage-failed');
+  assert.equal(diagnostic.stage,'direct-download');
+  assert.equal(diagnostic.code,'ACCESS_DENIED');
   const data=JSON.parse(child.stdout);
+  assert.equal(diagnostic.jobId,data.job.jobId);
+  assert.equal(diagnostic.sourceHash,data.claim.sourceHash);
   const {validatePdfResult}=require('./pdf-validation') as typeof import('./pdf-validation');
   const normalized=validatePdfResult(
     {id:data.job.jobId,fileId:data.job.source.fileId,createdAt:data.claim.createdAt} as any,
