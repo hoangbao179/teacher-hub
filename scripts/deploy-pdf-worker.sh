@@ -74,9 +74,11 @@ gcloud run deploy "$service" "${cloud[@]}" \
   --image="${image%:*}@$digest" --service-account="$runtime_sa" \
   --cpu=1 --memory=2Gi --concurrency=1 \
   --min=0 --max=3 --min-instances=0 --max-instances=3 \
-  --no-cpu-boost --cpu-throttling --timeout=30 --port=8080 \
+  --no-cpu-boost --cpu-throttling --timeout=180 --port=8080 \
   --ingress=all \
   --startup-probe='httpGet.path=/health,httpGet.port=8080,periodSeconds=5,timeoutSeconds=2,failureThreshold=3' \
+  --set-env-vars=PDF_PROCESSING_ENABLED=true,PDF_WORKER_IAM_READY=true,PDF_TEMP_ROOT=/tmp/pdf-worker,PDF_PRINT_FALLBACK_ENABLED=true,PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true \
+  --add-volume=name=pdf-temp,type=in-memory,size-limit=32Mi,mount-path=/tmp/pdf-worker \
   --labels="component=pdf-worker,source-sha=$SOURCE_SHA" --quiet
 check_private_service
 echo 'Health-only revision deployed. Operator must still verify anonymous denial and authorized invocation.'
