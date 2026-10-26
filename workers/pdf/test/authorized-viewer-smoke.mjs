@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Opt-in, operator-only, anonymous Google Drive Viewer E2E.
- * Uses the real Worker renderer (print-gated or view-only per env). This
+ * Uses the real Worker renderer with mandatory enabled Print. This
  * never changes cloud traffic, server flags, permissions or IAM.
  * The temporary PDF is validated and deleted, not published or retained.
  */

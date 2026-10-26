@@ -6,12 +6,14 @@ import { JobError, type Job, type Limits, type Result } from './contract.ts';
 import { download } from './download.ts';
 import { validatePDF } from './pdf.ts';
 import type { Store } from './storage.ts';
+import { diagnostic, type Stage } from './diagnostics.ts';
 
 interface Claim { version: 1; sourceHash: string; createdAt: string; expiresAt: string }
 export interface Dependencies {
   store: Store; download?: typeof download; validate?: typeof validatePDF;
   render?: (fileId: string, path: string, cap: Limits, signal: AbortSignal) => Promise<void>;
   enablePrintFallback?: boolean; tempRoot?: string;
+  log?: (value: string) => void;
 }
 export async function processJob(job: Job, cap: Limits, signal: AbortSignal, deps: Dependencies): Promise<Result> {
   const { store } = deps;
@@ -64,31 +66,41 @@ export async function processJob(job: Job, cap: Limits, signal: AbortSignal, dep
   const recovered = await recover();
   if (recovered) return recovered;
   const dir = await mkdtemp(join(deps.tempRoot ?? tmpdir(), 'teacher-pdf-'));
+  let stage: Stage = 'direct-download';
+  const logFailure = (error: unknown) => diagnostic(job.jobId, sourceHash, stage,
+    deps.enablePrintFallback === true, error, deps.log);
   try {
     const path = join(dir, 'source.pdf');
     try {
       let info: Awaited<ReturnType<typeof validatePDF>>;
       try {
         await (deps.download ?? download)(job.source.fileId, path, cap, signal);
+        stage = 'direct-validation';
         info = await (deps.validate ?? validatePDF)(path, cap, signal);
       } catch (sourceError) {
         const fallback = deps.enablePrintFallback === true &&
           sourceError instanceof JobError && !sourceError.retryable &&
-          ['ACCESS_DENIED','UNSUPPORTED_SOURCE'].includes(sourceError.code);
+          ['ACCESS_DENIED','UNSUPPORTED_SOURCE'].includes(sourceError.code) &&
+          (stage === 'direct-download' || sourceError.reason === 'html-response');
         if (!fallback || signal.aborted) throw sourceError;
+        logFailure(sourceError);
         // The direct endpoint may have produced HTML or partial bytes; never
         // mistake them for an output or let them survive the second attempt.
         await rm(path, { force:true });
+        stage = 'viewer-render';
         const render = deps.render ?? (await import('./renderer.ts')).renderPrintablePdf;
         await render(job.source.fileId, path, cap, signal);
+        stage = 'viewer-validation';
         info = await (deps.validate ?? validatePDF)(path, cap, signal);
       }
+      stage = 'storage';
       await store.create(`${prefix}output.pdf`, { path, metadata: { sourceHash, ...Object.fromEntries(
         Object.entries(info).map(([k, v]) => [k, String(v)])), completedAt: new Date().toISOString() } }, signal);
       const result = await recover();
       if (!result) throw new JobError('STORAGE_UNAVAILABLE', true);
       return result;
     } catch (error) {
+      logFailure(error);
       if (!(error instanceof JobError) || error.retryable || signal.aborted) throw error;
       // Await persistence before entering async cleanup, so a rejected write is
       // immediately observed and reaches HTTP as retryable instead of unhandled.

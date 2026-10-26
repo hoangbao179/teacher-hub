@@ -1,7 +1,10 @@
 export class JobError extends Error {
   code: string;
   retryable: boolean;
-  constructor(code: string, retryable = false) { super(code); this.code = code; this.retryable = retryable; }
+  reason?: string;
+  constructor(code: string, retryable = false, reason?: string) {
+    super(code); this.code = code; this.retryable = retryable; this.reason = reason;
+  }
 }
 export interface Job { version: 1; jobId: string; source: { provider: 'google_drive'; fileId: string } }
 export interface Result {
@@ -28,9 +31,10 @@ export interface Limits { maxBytes: number; maxPages: number; deadlineMs: number
 export function printFallbackEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.PDF_PRINT_FALLBACK_ENABLED !== 'false';
 }
-/** Experimental capture: explicit opt-in only, pending authorized Viewer validation. */
+/** Deprecated flag: source restrictions always require enabled Print. */
 export function viewerScreenCaptureEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.PDF_VIEWER_SCREEN_CAPTURE_ENABLED === 'true';
+  void env;
+  return false;
 }
 export function limits(env: NodeJS.ProcessEnv = process.env): Limits {
   const number = (key: string, fallback: number, max: number) => {

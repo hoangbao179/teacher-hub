@@ -11,7 +11,7 @@ export async function validatePDF(path: string, cap: Limits, signal: AbortSignal
   try {
     const prefix = Buffer.alloc(512);
     await file.read(prefix, 0, 512, 0);
-    if (/^\s*(?:<!doctype\s+html|<html)/i.test(prefix.toString('utf8'))) throw new JobError('UNSUPPORTED_SOURCE');
+    if (/^\s*(?:<!doctype\s+html|<html)/i.test(prefix.toString('utf8'))) throw new JobError('UNSUPPORTED_SOURCE', false, 'html-response');
     if (!/^%PDF-[12]\.\d/.test(prefix.toString('ascii'))) throw new JobError('INVALID_PDF');
   } finally { await file.close(); }
   const run = (args: string[], allowedCodes: number[] = []) => new Promise<string>((resolve, reject) => {
@@ -31,7 +31,7 @@ export async function validatePDF(path: string, cap: Limits, signal: AbortSignal
   });
   // qpdf exit 3 (recovered/warnings) is rejected too; never silently repair input.
   // --is-encrypted returns 0 when encrypted, 2 when not; it needs no PDF password.
-  if (await run(['--is-encrypted'], [2]) !== '2') throw new JobError('UNSUPPORTED_SOURCE');
+  if (await run(['--is-encrypted'], [2]) !== '2') throw new JobError('UNSUPPORTED_SOURCE', false, 'encrypted-pdf');
   await run(['--check']);
   const pages = Number(await run(['--show-npages']));
   if (!Number.isInteger(pages) || pages < 1) throw new JobError('INVALID_PDF');
