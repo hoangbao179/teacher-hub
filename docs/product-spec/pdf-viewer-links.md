@@ -43,8 +43,13 @@ Khổ A4 không kéo giãn sai tỷ lệ; giảm chất lượng để đạt du
 làm giảm độ nét. Đây là đường nhập ảnh **do người dùng cung cấp**, không
 tự chụp Google Drive và không vượt hạn chế Print/Copy của chủ tài liệu.
 Kết quả không đi vào lịch sử PDF server, được tải trực tiếp trên thiết bị.
-PDF đầu ra không chứa OCR hay text layer. Các file ảnh chỉ được kiểm tra
-MIME/kích thước ở giao diện; nội dung phải giải mã được trong trình duyệt.
+PDF đầu ra không chứa OCR hay text layer. Ngoài MIME và dung lượng, client
+đọc tối đa 256 KiB phần đầu file để kiểm tra magic bytes và kích thước thật
+PNG/JPEG/WebP **trước khi giải mã**, chặn ảnh có trên 24 triệu điểm ảnh để
+giảm rủi ro chiếm RAM trên mobile. PDF vẫn tối đa 20 MiB; giao diện cho biết
+số trang đang xử lý và DPI hiệu dụng thấp nhất sau khi nén, cảnh báo dưới
+150 DPI. DPI không khôi phục được nét của ảnh nguồn và là ước lượng theo
+khổ A4 khi in, không phải đo bằng máy in thực.
 
 ## 0. Quyết định phạm vi ưu tiên: bản PDF **để in**, nguồn công khai không đăng nhập
 

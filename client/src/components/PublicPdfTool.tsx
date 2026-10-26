@@ -44,6 +44,8 @@ export function PublicPdfTool() {
   const [links,setLinks]=useState("");
   const [images,setImages]=useState<File[]>([]);
   const [localBusy,setLocalBusy]=useState(false);
+  const [imageProgress,setImageProgress]=useState("");
+  const [imageQualityWarning,setImageQualityWarning]=useState("");
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
@@ -107,23 +109,29 @@ export function PublicPdfTool() {
   function selectImages(files: FileList | null) {
     const chosen=sortImagePages(Array.from(files??[]));
     if(!chosen.length){setImages([]);return;}
-    try { validateImageFiles(chosen); setImages(chosen); setError(""); }
+    try { validateImageFiles(chosen); setImages(chosen); setError(""); setImageQualityWarning(""); }
     catch(e) { setImages([]); setError(e instanceof Error?e.message:"Ảnh trang không hợp lệ."); }
   }
   async function createFromImages() {
     if(localBusy||busy||!images.length)return;
-    setLocalBusy(true);setError("");setNotice("");
+    setLocalBusy(true);setError("");setNotice("");setImageQualityWarning("");
+    setImageProgress("Đang kiểm tra ảnh…");
     try {
-      const pdf=await createPdfFromImages(images);
+      let lowestDpi=0;
+      const pdf=await createPdfFromImages(images,({processed,total,minDpi})=>{
+        lowestDpi=minDpi;
+        setImageProgress("Đang tạo trang "+processed+"/"+total+"…");
+      });
       const url=URL.createObjectURL(pdf);
       const anchor=document.createElement("a");
       anchor.href=url;anchor.download="tai-lieu-tu-anh.pdf";document.body.append(anchor);
       anchor.click();anchor.remove();
       window.setTimeout(()=>URL.revokeObjectURL(url),1000);
-      setNotice("Đã tạo PDF "+images.length+" trang ("+(pdf.size/1048576).toFixed(2)+" MB) ngay trên thiết bị. Không tải ảnh lên máy chủ.");
+      setNotice("Đã tạo PDF "+images.length+" trang ("+(pdf.size/1048576).toFixed(2)+" MB), độ phân giải trang thấp nhất khoảng "+lowestDpi+" DPI. Không tải ảnh lên máy chủ.");
+      if(lowestDpi<150)setImageQualityWarning("Có trang dưới 150 DPI sau khi nén. Nội dung có thể mờ khi in; hãy cung cấp ảnh rõ hơn nếu cần.");
       setImages([]);
     }catch(e){setError(e instanceof Error?e.message:"Không thể tạo PDF từ ảnh.");}
-    finally{setLocalBusy(false);}
+    finally{setLocalBusy(false);setImageProgress("");}
   }
   async function submit(){
     if(busy||!enabled||invalid)return;
@@ -168,6 +176,7 @@ export function PublicPdfTool() {
   return <Box data-testid="public-pdf-tool" sx={{maxWidth:820,mx:"auto",color:"#563c49"}}>
     {error&&<Alert severity="error" role="alert" sx={{mb:2}}>{error}</Alert>}
     {notice&&<Alert severity="success" sx={{mb:2}}>{notice}</Alert>}
+    {imageQualityWarning&&<Alert severity="warning" data-testid="image-pdf-quality-warning" sx={{mb:2}}>{imageQualityWarning}</Alert>}
     <Paper elevation={0} sx={{p:{xs:2.5,sm:3},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff"}}>
       <Typography component="h2" sx={{fontWeight:800,fontSize:21,mb:1}}>Tạo tài liệu PDF</Typography>
       <Typography sx={{fontSize:14,color:"#866a77"}}>Dán link Google Drive, mỗi dòng một link. Có thể mở lại trang trên thiết bị khác để xem kết quả.</Typography>
@@ -191,9 +200,10 @@ export function PublicPdfTool() {
         Việc tạo PDF diễn ra ngay trên thiết bị, không cần dịch vụ PDF trực tuyến.
       </Typography>
       <Box component="input" type="file" accept="image/jpeg,image/png,image/webp" multiple
-        aria-label="Chọn ảnh trang để tạo PDF" data-testid="image-pdf-files"
+        aria-label="Chọn ảnh trang để tạo PDF" data-testid="image-pdf-files" disabled={localBusy}
         onChange={e=>{selectImages(e.currentTarget.files);e.currentTarget.value="";}}
         sx={{display:"block",mt:2,maxWidth:"100%",fontSize:14}}/>
+      {imageProgress&&<Typography role="status" data-testid="image-pdf-progress" sx={{fontSize:13,mt:1,color:"#866a77"}}>{imageProgress}</Typography>}
       {images.length>0&&<Typography sx={{fontSize:12,mt:1,color:"#866a77",overflowWrap:"anywhere"}}>
         {images.length} ảnh (tối đa 40 trang): {images.slice(0,4).map(f=>f.name).join(", ")}{images.length>4?"…":""}
       </Typography>}
@@ -203,7 +213,7 @@ export function PublicPdfTool() {
         {localBusy?"Đang tối ưu ảnh…":"Tạo và tải PDF từ ảnh"}
       </Button>
       <Typography sx={{fontSize:12,color:"#866a77",mt:1}}>
-        Tối đa 40 ảnh, 20 MB/PDF. Tự động nén JPEG và thu nhỏ ảnh khi cần; ảnh mờ sẵn không thể khôi phục độ nét để in.
+        Tối đa 40 ảnh, 24 triệu điểm ảnh mỗi ảnh, 20 MB/PDF. Tự động nén JPEG và thu nhỏ khi cần; sẽ cảnh báo nếu độ phân giải hiệu dụng dưới 150 DPI. Không thể khôi phục độ nét của ảnh đã mờ.
       </Typography>
     </Paper>
     <Paper component="section" elevation={0} sx={{mt:3,p:{xs:2.5,sm:3},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff"}}>
