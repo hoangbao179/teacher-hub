@@ -8,7 +8,8 @@ import { Readable } from 'node:stream';
 import { Resolver } from 'node:dns/promises';
 import test from 'node:test';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { JobError, limits, parseJob } from '../src/contract.ts';
+import { JobError, limits, parseJob, printFallbackEnabled, viewerScreenCaptureEnabled } from '../src/contract.ts';
+import { selectViewerMode } from '../src/viewer-ready.ts';
 import { download, openSource, sourceURL, publicAddress } from '../src/download.ts';
 import { processJob } from '../src/processor.ts';
 import { validatePDF } from '../src/pdf.ts';
@@ -39,7 +40,8 @@ test('strict versioned contract, UUID-v4, Drive ID and configurable conservative
     assert.throws(() => parseJob(value), { code: 'INVALID_REQUEST' });
   }
   assert.equal(limits({ PDF_MAX_PAGES: '3' }).maxPages, 3);
-  for (const env of [{ PDF_MAX_BYTES: '10485761' }, { PDF_MAX_PAGES: '100' }, { PDF_DEADLINE_MS: '30000' }, { PDF_MAX_BYTES: 'NaN' }]) {
+  for (const env of [{ PDF_MAX_BYTES: '10485761' }, { PDF_MAX_PAGES: '100' },
+    { PDF_PRINT_FALLBACK_ENABLED: 'false', PDF_DEADLINE_MS: '30000' }, { PDF_MAX_BYTES: 'NaN' }]) {
     assert.throws(() => limits(env), { code: 'SERVICE_UNAVAILABLE' });
   }
 });
@@ -83,7 +85,7 @@ test('DNS-resolved private addresses fail before connecting, including mixed ans
   await assert.rejects(openSource(new URL('https://drive.google.com/uc?id=owned'), signal()), { code: 'UNSUPPORTED_SOURCE' });
 });
 
-test('print fallback is off by default and only handles an eligible direct-download error', async t => {
+test('print fallback can be disabled and only handles an eligible direct-download error', async t => {
   const root = await directory(t);
   let rendered = 0;
   const create = (error, enabled, render = async (_id, path) => {
@@ -96,7 +98,7 @@ test('print fallback is off by default and only handles an eligible direct-downl
   });
   const denied = await create(new JobError('ACCESS_DENIED'), false);
   assert.equal(denied.status, 'FAILED');
-  assert.equal(rendered, 0, 'fallback must be strictly opt-in');
+  assert.equal(rendered, 0, 'fallback disabled when enablePrintFallback is false');
 
   const result = await create(new JobError('ACCESS_DENIED'), true);
   assert.equal(result.status, 'COMPLETED');
@@ -117,18 +119,35 @@ test('print fallback is off by default and only handles an eligible direct-downl
   assert.deepEqual(await readdir(root),[]);
 });
 
-test('print mode extends deadline only with explicit feature gate', () => {
-  assert.equal(limits({}).deadlineMs,22000);
+test('print fallback extends deadline unless explicitly disabled', () => {
+  assert.equal(limits({}).deadlineMs,120000);
   assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'false'}).deadlineMs,22000);
   assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'true'}).deadlineMs,120000);
-  for (const fallback of ['false', 'true']) for (const capture of ['false', 'true']) {
+  for (const fallback of [undefined, 'false', 'true']) for (const capture of [undefined, 'false', 'true', 'invalid']) {
     const env = { PDF_PRINT_FALLBACK_ENABLED: fallback, PDF_VIEWER_SCREEN_CAPTURE_ENABLED: capture };
-    assert.equal(limits(env).deadlineMs, fallback === 'true' ? 120000 : 22000);
-    assert.throws(() => limits({ ...env, PDF_DEADLINE_MS: String(fallback === 'true' ? 120001 : 22001) }),
+    assert.equal(printFallbackEnabled(env), fallback !== 'false');
+    assert.equal(viewerScreenCaptureEnabled(env), capture === 'true');
+    assert.equal(limits(env).deadlineMs, fallback === 'false' ? 22000 : 120000);
+    assert.throws(() => limits({ ...env, PDF_DEADLINE_MS: String(fallback === 'false' ? 22001 : 120001) }),
       { code: 'SERVICE_UNAVAILABLE' });
   }
   assert.throws(()=>limits({PDF_PRINT_FALLBACK_ENABLED:'true',PDF_DEADLINE_MS:'120001'}),{code:'SERVICE_UNAVAILABLE'});
-  assert.throws(()=>limits({PDF_DEADLINE_MS:'120000'}),{code:'SERVICE_UNAVAILABLE'});
+  assert.throws(()=>limits({PDF_PRINT_FALLBACK_ENABLED:'false',PDF_DEADLINE_MS:'120000'}),{code:'SERVICE_UNAVAILABLE'});
+});
+
+test('Viewer mode selection requires explicit capture gate for absent or disabled Print', async () => {
+  for (const flag of [undefined, 'false', 'true', 'invalid']) {
+    const capture = viewerScreenCaptureEnabled({PDF_VIEWER_SCREEN_CAPTURE_ENABLED:flag});
+    for (const [count, enabled, code] of [[1,true,null],[0,false,'PRINT_UNAVAILABLE'],[1,false,'ACCESS_DENIED'],[2,true,'UNSUPPORTED_SOURCE']]) {
+      const page = {
+        evaluateHandle: async () => ({dispose:async()=>{}}), waitForFunction:async()=>{},
+        getByRole: () => ({count:async()=>count,isVisible:async()=>true,isEnabled:async()=>enabled}),
+      };
+      const selection = selectViewerMode(page,capture,signal());
+      if (code && (!capture || count>1)) await assert.rejects(selection,{code});
+      else assert.equal(await selection, code ? 'view-only' : 'print-gated');
+    }
+  }
 });
 
 test('render failures clean partial files and cannot reach PDF validation or result upload', async t => {
@@ -235,9 +254,32 @@ test('concurrent generation conflicts produce a single terminal result', async t
   assert.deepEqual(await readdir(root), []);
 });
 
+test('HTTP fallback honors default, enable and opt-out regardless of capture flag', async t => {
+  const root = await directory(t);
+  for (const fallback of [undefined,'true','false']) for (const capture of ['true','false']) {
+    let rendered=0;
+    const server=createWorkerServer({
+      store:new MemoryStore(),tempRoot:root,
+      download:async()=>{throw new JobError('ACCESS_DENIED');},
+      render:async(...args)=>{rendered++;await fixtureDownload(...args);},
+      validate:fakeValidation,
+    },{PDF_PROCESSING_ENABLED:'true',PDF_PRINT_FALLBACK_ENABLED:fallback,PDF_VIEWER_SCREEN_CAPTURE_ENABLED:capture});
+    server.listen(0,'127.0.0.1');await once(server,'listening');
+    try {
+      const response=await fetch(`http://127.0.0.1:${server.address().port}/jobs`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(job)
+      });
+      assert.equal(response.status,200);
+      assert.equal((await response.json()).status,fallback==='false'?'FAILED':'COMPLETED');
+      assert.equal(rendered,fallback==='false'?0:1);
+    } finally { server.closeAllConnections();await new Promise(resolve=>server.close(resolve)); }
+  }
+});
+
 test('HTTP gating, validation, permanent ACK and transient non-2xx', async t => {
   const store = new MemoryStore();
-  const server = createWorkerServer({ store, download: async () => { throw new JobError('ACCESS_DENIED'); } }, { PDF_PROCESSING_ENABLED: 'true' });
+  const server = createWorkerServer({ store, download: async () => { throw new JobError('ACCESS_DENIED'); } },
+    { PDF_PROCESSING_ENABLED: 'true', PDF_PRINT_FALLBACK_ENABLED: 'false' });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   t.after(() => new Promise(resolve => server.close(resolve)));
   const post = value => fetch(`http://127.0.0.1:${server.address().port}/jobs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
@@ -261,7 +303,7 @@ test('HTTP never ACKs a permanent failure until its result is stored, and retrie
   let transient = true;
   const server = createWorkerServer({ store, download: async () => {
     throw new JobError(transient ? 'SOURCE_UNAVAILABLE' : 'ACCESS_DENIED', transient);
-  } }, { PDF_PROCESSING_ENABLED: 'true' });
+  } }, { PDF_PROCESSING_ENABLED: 'true', PDF_PRINT_FALLBACK_ENABLED: 'false' });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   t.after(() => new Promise(resolve => server.close(resolve)));
   const post = () => fetch(`http://127.0.0.1:${server.address().port}/jobs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(job) });

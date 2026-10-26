@@ -7,8 +7,11 @@ The operator successfully staged Worker and Gateway images from SHA
 a local Chromium launch with 1 CPU and 2 GiB reported `PDF_BROWSER_OK`.
 This is **not proof** that a Google Drive Viewer with disabled Print can be
 reconstructed. The product requirement remains unmet for such documents.
-The staged images have their Print/long-task feature gates OFF, and no
-production traffic was changed. A separate explicit authorization and
+That historical staging used Print/long-task gates OFF. New staging uses
+Worker fallback=true, Worker view-only capture=false and Gateway long tasks=true.
+The audit requires these exact values; missing/invalid values fail. It reports
+individual flag values, not a generic OFF marker. No production traffic is
+changed by staging or audit. A separate explicit authorization and
 real-cloud E2E would be required for promotion of supported documents.
 
 ## One-time operator audit — no production modifications
@@ -19,7 +22,7 @@ From Windows PowerShell (operator workstation with gcloud and Docker):
 cd D:\Code\teacher-hub
 git switch main
 git pull --ff-only
-$env:PDF_STAGED_SHA = "f93c25d84d83cdc1cb5cfd70649f2ff582735ea0"
+$env:PDF_STAGED_SHA = "REPLACE_WITH_NEW_STAGED_FULL_SHA"
 node scripts/pdf-release-audit.mjs --check
 node scripts/pdf-local-runtime-audit.mjs --smoke
 ```
@@ -106,8 +109,11 @@ npm --prefix workers/pdf run test:viewer:authorized
 unset PDF_AUTHORIZED_VIEWER_E2E_APPROVED PDF_AUTHORIZED_VIEWER_FILE_ID
 ```
 
-It enforces 120s, 40 pages, 10 MiB; the Worker must see its normal enabled
-Print action, and qpdf must validate the result. Temporary PDF output is
+It enforces 120s, 40 pages, 10 MiB; keep
+`PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false` for this print-permitted smoke.
+qpdf must validate the result. The smoke reports capture `NOT_VERIFIED` and
+restricted Viewer `NOT_SUPPORTED` regardless of env: a successful render does
+not identify which renderer path ran. Temporary PDF output is
 always deleted; status, page count, bytes and SHA-256 only are printed.
 This smoke is **never run automatically** by CI or on production startup;
 CI tests only its strict opt-in gate and cleanup with fake dependencies.

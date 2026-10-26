@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Opt-in, operator-only, anonymous Google Drive Viewer E2E.
- * Uses the real Worker renderer, which refuses absent/disabled Print. This
+ * Uses the real Worker renderer (print-gated or view-only per env). This
  * never changes cloud traffic, server flags, permissions or IAM.
  * The temporary PDF is validated and deleted, not published or retained.
  */
@@ -45,6 +45,7 @@ export async function runViewerSmoke(fileId, ops={}) {
       throw Error('PDF_VIEWER_SMOKE_INVALID_PDF_RESULT');
     return {status:'AUTHORIZED_VIEWER_RENDER_OK',pages:result.pages,bytes:result.bytes,
       sha256:result.sha256,outputRetained:false,cloudE2E:false,
+      viewerScreenCapture:'NOT_VERIFIED',
       printRestrictedViewer:'NOT_SUPPORTED'};
   } finally {
     clearTimeout(timeout);
@@ -59,7 +60,7 @@ export async function main(argv=process.argv.slice(2), env=process.env, ops={}) 
   }
   try {
     const {fileId}=viewerConfig(env);
-    const result=await runViewerSmoke(fileId,ops);
+    const result=await runViewerSmoke(fileId,{...ops,env});
     console.log(JSON.stringify(result));
     return 0;
   } catch(error) {

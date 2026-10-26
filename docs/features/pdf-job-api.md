@@ -1,12 +1,11 @@
 # PDF job API — Task 2
 
-> **Product requirement (chưa triển khai đủ):**
+> **Product requirement (chưa nghiệm thu E2E):**
 > [PDF từ liên kết Viewer](../product-spec/pdf-viewer-links.md).
-> Form chuẩn tương lai là **dán link → Tạo PDF**, không checkbox xác
-> nhận quyền tải. Hợp đồng API hiện còn `rightsConfirmed:true`,
-> lưu legacy `rights_confirmed_at`; không xem đó là quyết định UX được
-> chủ dự án duyệt. Một PR code riêng phải đồng bộ shared contract,
-> OpenAPI, API validation, UI, tests và bảo toàn compatibility/idempotency.
+> UI public `/tools` đã gửi `{ links: [...] }` không checkbox. API vẫn
+> chấp nhận body chỉ `links` hoặc `links` + `rightsConfirmed:true` (legacy);
+> hash idempotency nội bộ vẫn gắn `rightsConfirmed:true` để không đổi batch
+> đã tạo. Trạng thái Worker, cờ và gap nghiệm thu: [status](../implementation/status.md).
 
 Status: backend implemented for local/fake verification; production unavailable.
 The public `/tools` UI uses the public endpoints described below. Use [OpenAPI](../api/openapi.yaml), shared

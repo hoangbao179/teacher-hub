@@ -14,16 +14,14 @@ không thể coi việc chạy Chromium hoặc tạo PDF với file đã mở Pr
 nghiệm thu trường hợp này. Đây là **khoảng cách giữa yêu cầu và sản phẩm**,
 không phải chức năng đã hoàn tất.
 
-Giới hạn hiện hành: Worker không được phép sử dụng trang preview để vô hiệu
-hóa / đi vòng một hạn chế sao chép hoặc in do chủ tài liệu đặt ra. Khi
-Print bị vô hiệu hóa, yêu cầu sẽ không được hoàn thành từ link đó nếu
-chưa có quyền hoặc bản nguồn được phép xuất. Nếu không tìm thấy nút Print,
-trình xem có thể bị giới hạn, thay đổi giao diện hoặc chưa tải đầy đủ;
-không được kết luận chắc chắn là chủ file cấm in chỉ từ timeout.
-Hướng hợp lệ là chủ file cho phép xuất/in, hoặc người dùng cung cấp tài liệu/
-ảnh trang mà họ có quyền chuyển thành PDF. **Không thay đổi im lặng yêu cầu
-khóa in thành yêu cầu "chỉ file Print-enabled"**; ghi rõ rằng nhu cầu này
-vẫn chưa được hỗ trợ và không bật production như thể đã đạt nghiệm thu.
+**Giới hạn triển khai cho rollout an toàn:** view-only capture là code thử
+nghiệm, mặc định tắt; chỉ `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` mới bật.
+Production và staging phải giữ tắt trong khi chưa xác minh quyền và E2E
+Viewer thật được cho phép. Flag không cấp quyền vượt hạn chế tải/copy/print
+của owner/admin. Trường hợp Print bị khóa vẫn là nhu cầu chưa được hỗ trợ
+hợp lệ; cần chủ file cấp quyền hoặc bản nguồn được phép xuất.
+Không thấy Print có thể do UI đang tải/thay đổi, không tự chứng minh chủ file
+cấm in. Fallback ảnh người dùng cung cấp trên `/tools` vẫn giữ nguyên.
 
 **Đây là nguồn chuẩn về mục đích tính năng.** Nếu Worker, API, test hay các
 tài liệu cũ giả định "chỉ nhận file đã tải trực tiếp được", phải ghi rõ đó là
@@ -105,6 +103,15 @@ bằng chứng file thuộc phạm vi v1. Tự động hóa phải thử từ m�
   dùng vào form hoặc job.
 
 ## 2. Sự thật của phiên bản đang chạy (không nhầm với yêu cầu)
+
+**Phân biệt nhanh (cập nhật theo source, xem [status](../implementation/status.md)):**
+
+- **Chia sẻ Viewer + mở ẩn danh** là đầu vào mục tiêu; Worker thử tải trực tiếp
+  rồi (mặc định) fallback renderer ghép **PDF ảnh** khi được phép theo chế độ
+  `print-gated` (Print hoạt động trong Viewer).
+- **Chủ file khóa Print/Copy**: không bypass. View-only mặc định tắt và staging
+  tắt; flag thử nghiệm không thay đổi quy tắc quyền. **Chưa DONE**; cần nguồn
+  được phép và E2E/chất lượng in trên Drive thật.
 
 - `workers/pdf/src/download.ts` hiện chỉ gọi
   `https://drive.google.com/uc?export=download&id=...` với allowlist redirect;

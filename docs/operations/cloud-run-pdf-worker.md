@@ -501,25 +501,23 @@ The existing report still returns `activationAllowed=false` even when all resour
 
 The source image includes pinned Playwright, Chromium headless shell, pdf-lib and
 Sharp for a *print-enabled* anonymous Google Drive Viewer. Runtime
-`PDF_PRINT_FALLBACK_ENABLED` defaults to false, keeping direct-only behavior
-and the 22-second job ceiling. Only when explicitly enabled can the Worker
-attempt render fallback after direct download errors; no Google login/OAuth
-or browser cookies are supplied.
+`PDF_PRINT_FALLBACK_ENABLED` defaults to on (`false` opts out), extending
+the job ceiling to 120s for browser fallback after direct download errors.
+No Google login/OAuth or browser cookies are supplied.
 
 **Do not enable on the current 30-second Cloud Run revision.** This branch
-adds a *disabled by default* long-task contract:
-- The API `GatewayPdfProvider` sends `dispatchDeadline:'180s'` **only when**
-  `PDF_LONG_PRINT_TASKS_ENABLED=true` on the VPS API container; otherwise
-  it continues to send `30s`.
-- The Gateway accepts signed 180s requests **only when**
-  `PDF_LONG_PRINT_TASKS_ENABLED=true` on the Gateway; otherwise the former
-  exact-30s policy remains. Its own HTTP timeout stays 30s.
-- The operator-only no-traffic staging template sets the Worker Cloud Run
-  request timeout to 180s and explicitly sets both service flags to `false`.
-  No task flag or Worker screenshot renderer is enabled simply by staging.
-- The Worker needs `PDF_PRINT_FALLBACK_ENABLED=true` and
-  `PDF_DEADLINE_MS=120000` to process a large print job within its 180s
-  request/dispatch budgets.
+long-task contract requires explicit activation on each service:
+- The API sends `30s` by default; only `PDF_LONG_PRINT_TASKS_ENABLED=true`
+  sends `180s`. Missing, false or invalid values keep compatibility with the
+  old 30s-only Gateway after the automatic API/Web deployment.
+- The Gateway always accepts signed 30s requests and accepts 180s only with
+  `PDF_LONG_PRINT_TASKS_ENABLED=true`. Its own HTTP timeout stays 30s.
+- The no-traffic staging template sets Worker timeout to 180s and enables
+  `PDF_PRINT_FALLBACK_ENABLED=true` on Worker and long tasks=true on Gateway.
+  Worker `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false` is explicit. Staging
+  does not promote revisions or activate the VPS producer.
+- The Worker uses `PDF_DEADLINE_MS=120000` (default when fallback is on) within
+  the 180s request/dispatch budgets.
 
 **Activation order (separately approved operational work, not this PR):**
 stage new private Worker and HMAC Gateway revisions without traffic and review

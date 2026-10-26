@@ -24,16 +24,23 @@ export function parseJob(value: unknown): Job {
     source: { provider: 'google_drive', fileId: value.source.fileId } };
 }
 export interface Limits { maxBytes: number; maxPages: number; deadlineMs: number; redirects: number }
+/** Anonymous browser fallback after direct download fails; opt out with `false`. */
+export function printFallbackEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.PDF_PRINT_FALLBACK_ENABLED !== 'false';
+}
+/** Experimental capture: explicit opt-in only, pending authorized Viewer validation. */
+export function viewerScreenCaptureEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.PDF_VIEWER_SCREEN_CAPTURE_ENABLED === 'true';
+}
 export function limits(env: NodeJS.ProcessEnv = process.env): Limits {
   const number = (key: string, fallback: number, max: number) => {
     const raw = env[key] ?? String(fallback);
     if (!/^\d+$/.test(raw) || Number(raw) < 1 || Number(raw) > max) throw new JobError('SERVICE_UNAVAILABLE', true);
     return Number(raw);
   };
-  // The existing 22s ceiling is unchanged unless the operator explicitly
-  // enables the experimental anonymous browser fallback. Screen capture alone
-  // cannot enter that fallback and must not extend the job deadline.
-  const browserJob = env.PDF_PRINT_FALLBACK_ENABLED === 'true';
+  // Direct download stays first; when fallback is on, allow the longer browser budget.
+  // Screen capture alone cannot enter that fallback and must not extend the job deadline.
+  const browserJob = printFallbackEnabled(env);
   return { maxBytes: number('PDF_MAX_BYTES', 10 * 1024 * 1024, 10 * 1024 * 1024),
     maxPages: number('PDF_MAX_PAGES', 40, 40),
     deadlineMs: number('PDF_DEADLINE_MS', browserJob ? 120000 : 22000, browserJob ? 120000 : 22000),

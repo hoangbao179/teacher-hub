@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { JobError, limits, parseJob } from './contract.ts';
+import { JobError, limits, parseJob, printFallbackEnabled } from './contract.ts';
 import { processJob, type Dependencies } from './processor.ts';
 import { GCSStore } from './storage.ts';
 import { access, statfs } from 'node:fs/promises';
@@ -57,7 +57,7 @@ export function jobHandler(deps?: Dependencies, env: NodeJS.ProcessEnv = process
       }
       const runtime = deps ?? { store: new GCSStore(), tempRoot: '/tmp/pdf-worker' };
       const result = await processJob(job, cap, controller.signal, {
-        ...runtime, enablePrintFallback: env.PDF_PRINT_FALLBACK_ENABLED === 'true',
+        ...runtime, enablePrintFallback: printFallbackEnabled(env),
       });
       reply(200, result);
     } catch (error) {
