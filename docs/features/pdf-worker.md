@@ -37,8 +37,12 @@ It is **disabled by default**. If direct source retrieval fails with
 the Worker can attempt to open a **public/anonymous Google Drive viewer whose
 Print button is enabled**, capture each rendered page, fit onto an A4 image-only
 PDF, validate with qpdf and persist to the existing job output in GCS.
-No OCR/searchable text is required. Owner-disabled Print and Google-login-only
-files are unsupported, not targets for bypass.
+No OCR/searchable text is required. Owner-disabled Print and Google-login-only files stay unsupported unless the
+operator also sets `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true`. With both
+`PDF_PRINT_FALLBACK_ENABLED` and that flag, the renderer captures the same
+visible viewer tile bitmaps when Print is missing or disabled, without
+requiring an enabled Print action. This remains experimental, off by default,
+and does not prove quality on every Drive variant.
 
 The renderer uses Playwright + pdf-lib + sharp in the **Cloud Run worker image
 only**, not in the VPS API. Limits include: <=40 pages, 12 MP/page, total

@@ -100,6 +100,9 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   producing image-only A4 PDF and using the same qpdf/GCS result path.
   Capture waits for native bitmap detail meeting 200 effective DPI at the fitted
   A4 size; it bounds canvas/capture/embedded bytes and rechecks Print during capture.
+  Opt-in `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` (with print fallback) adds a
+  view-only assembly path when Print is disabled or absent; still DEVELOPING and
+  not production-active.
   A local browser fixture covers lazy zoom, blank/landscape pages and page identity;
   this does not verify third-party Viewer or Cloud Run execution. Complete
   page assembly is isolated in `workers/pdf/src/viewer-pdf.ts`, retaining the

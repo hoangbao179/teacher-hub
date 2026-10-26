@@ -121,6 +121,7 @@ test('print mode extends deadline only with explicit feature gate', () => {
   assert.equal(limits({}).deadlineMs,22000);
   assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'false'}).deadlineMs,22000);
   assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'true'}).deadlineMs,120000);
+  assert.equal(limits({PDF_VIEWER_SCREEN_CAPTURE_ENABLED:'true'}).deadlineMs,120000);
   assert.throws(()=>limits({PDF_PRINT_FALLBACK_ENABLED:'true',PDF_DEADLINE_MS:'120001'}),{code:'SERVICE_UNAVAILABLE'});
   assert.throws(()=>limits({PDF_DEADLINE_MS:'120000'}),{code:'SERVICE_UNAVAILABLE'});
 });
