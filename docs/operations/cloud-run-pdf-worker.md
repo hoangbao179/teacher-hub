@@ -533,3 +533,19 @@ and cost review. Screenshot capture requires the Viewer Print action to be
 enabled; owner/admin restrictions must not be circumvented. Validate an
 authorized external Viewer link, all pages and actual paper print quality.
 No changes to VPS/credentials/recovery/traffic are made in the source-only PR.
+
+## Docker build-context regression prevention
+
+The Chromium Worker Dockerfile runs `COPY package.json package-lock.json ./`
+and `npm ci`. The old `workers/pdf/.dockerignore` denied every path except
+Dockerfile and source; an operator `--stage` build failed at
+`WORKER_DOCKER_BUILD` with `"/package.json": not found` before image push.
+The Worker context now explicitly allows **both npm manifests**, along with
+runtime source; tests and `node_modules` stay excluded. The
+`workers/pdf/test/docker-context.test.mjs` CI test guards these exact inputs.
+
+After merging this fix, update local `main`, reset `SOURCE_SHA`, and use the
+existing public-HMAC `--stage` script; no IAM, HMAC secret, queue, VPS or
+Cloud Run traffic change is needed for this **build-only** correction. Docker
+images and Cloud Run deployment still need successful operator-side execution
+and real print-enabled Viewer E2E before enabling the fallback.
