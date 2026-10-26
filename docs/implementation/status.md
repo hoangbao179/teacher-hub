@@ -97,7 +97,14 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 - **Anonymous PDF print fallback — experimental Worker code:** `workers/pdf/src/renderer.ts`
   and print policy are optional and disabled by default. A job can try the
   public/anonymous Print-enabled Drive viewer when direct download fails,
-  producing image-only A4 PDF and using the same qpdf/GCS result path. Production
+  producing image-only A4 PDF and using the same qpdf/GCS result path.
+  Capture waits for native bitmap detail meeting 200 effective DPI at the fitted
+  A4 size; it bounds canvas/capture/embedded bytes and rechecks Print during capture.
+  A local browser fixture covers lazy zoom, blank/landscape pages and page identity;
+  this does not verify third-party Viewer or Cloud Run execution. Complete
+  page assembly is isolated in `workers/pdf/src/viewer-pdf.ts`, retaining the
+  Print gate so owned offline fixtures can exercise the complete image-PDF stage.
+  Production
   still uses 30s Cloud Tasks dispatch deadlines and a 30s Cloud Run timeout on
   the existing live revision. New source includes strictly opt-in 180s task
   support in the API producer/Gateway and a 180s no-traffic Worker staging

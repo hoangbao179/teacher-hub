@@ -45,6 +45,19 @@ only**, not in the VPS API. Limits include: <=40 pages, 12 MP/page, total
 captured PNG <=32 MiB, output <=10 MiB, bounded requests/observed wire bytes,
 only Google Drive/Docs/static domains and no arbitrary navigation. This code
 does not prove print quality or readiness for all Drive viewer variants.
+Capture waits for at least 200 effective DPI at the fitted A4 size, rather than
+accepting the first complete blob after zoom. It captures a unique page bitmap
+without toolbar content, keeps blank pages and orientation, rejects oversized
+canvases/base64 before transfer to Node, and bounds cumulative embedded JPEG bytes
+before final serialization. Print permission is rechecked during capture and before
+output; a changed viewer page total fails the job. A local anonymous-browser
+fixture covers lazy bitmap replacement, page identity, blank/landscape pages and
+capture bounds. It is not evidence of real third-party Viewer or Cloud Run E2E.
+The browser lifecycle/Google network boundary stays in `renderer.ts`; the
+permission-gated page-to-PDF stage is in `viewer-pdf.ts`. An owned, offline Viewer
+fixture exercises that stage through an actual browser into one PDF, including
+embedded page-image identity, blank/landscape pages, byte/page limits, cancellation
+and a revoked Print action. It never requests a third-party document.
 The previous 22s Worker job deadline is still the default; explicitly enabling
 the flag allows up to 120s. The Gateway and API producer now support an
 explicit `PDF_LONG_PRINT_TASKS_ENABLED=true` gate for **180s** Cloud Tasks
