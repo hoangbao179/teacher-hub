@@ -186,3 +186,31 @@ A successful return reports `mode:public-hmac-gateway`,
 producer, Gateway and Worker opt-in flags for longer PDF jobs stay disabled.
 Do not assume `--no-traffic` itself verifies runtime readiness, cold-start
 memory, Chromium sandbox or the provided Google Drive file.
+
+### Windows preflight and safe step-by-step failures
+
+If `--stage` emitted only `PDF_CLOUD_PUBLIC_HMAC_STAGE_FAILED`,
+update to the revision with staged diagnostics and **run the read-only
+preflight first**:
+
+```powershell
+git pull --ff-only
+$env:SOURCE_SHA = (git rev-parse HEAD).Trim()
+$env:PDF_GATEWAY_SECRET_VERSION = "teacher-pdf-gateway-hmac:1"
+node scripts/pdf-cloud-stage-public-hmac.mjs --preflight
+```
+
+This validates exact clean Git SHA, Worker IAM-private, Gateway public-HMAC,
+Docker daemon availability and only **Secret Manager metadata** (not secret
+payload). It does not build, push, deploy, mutate IAM, or change traffic.
+Progress prints `[pdf-stage] GIT`, `WORKER_IAM`, `GATEWAY_HMAC`,
+`DOCKER_DAEMON`, `SECRET_METADATA`. Failures report a sanitized
+`PDF_CLOUD_STEP_<name>_...`, not gcloud credential/error output.
+
+The `--stage` command uses the same preflight, then prints each Docker
+build/push, image-digest, private/public-policy verification and no-traffic
+deploy step. Chromium image builds may exceed the former buffered three-minute
+limit; image build and push now stream **Docker's own progress** and permit
+up to 15 minutes each. Keep review/approval flags restricted to actual
+operator acceptance; these flags do not change cloud IAM or install secrets.
+
