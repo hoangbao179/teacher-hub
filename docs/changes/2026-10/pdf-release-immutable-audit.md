@@ -25,3 +25,9 @@ Cloud Run/VPS activation is claimed.
 
 **Rollback:** Remove the audit command and CI additions if necessary;
 services, IAM, GCS data, queue, VPS and traffic are unchanged.
+
+**One-shot follow-up:** Add an operator-only `--stage-and-verify` command
+that composes reviewed staging, offline PDF smoke and live immutable
+revision audit in that order. It deliberately never switches traffic or
+activates the blocked Print-disabled use case. The checks run after
+merging on the authorized GCP/Docker operator machine, not in CI.

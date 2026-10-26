@@ -63,3 +63,29 @@ only**, not deployment commands.
 
 Never interpret an image build, health response or green local smoke as
 permission to switch production traffic.
+
+## One-shot staging + complete operator verification
+
+After a fresh `main` merge and an IAM/HMAC security and billing review,
+the operator may run the existing explicit approval flags and one command:
+
+```powershell
+git switch main
+git pull --ff-only
+$env:SOURCE_SHA = (git rev-parse HEAD).Trim()
+$env:PDF_GATEWAY_SECRET_VERSION = "teacher-pdf-gateway-hmac:1"
+$env:PDF_CLOUD_IAM_REVIEWED = "true"
+$env:PDF_CLOUD_HMAC_REVIEWED = "true"
+$env:PDF_CLOUD_PUBLIC_HMAC_STAGE_APPROVED = "public-hmac-no-traffic"
+node scripts/pdf-release-one-shot.mjs --stage-and-verify
+```
+
+The review variables must only be set if the real operator has completed
+those checks; the values do not themselves prove IAM or HMAC safety. The
+command invokes existing `--stage` (build, Artifact Registry push,
+immutable **no-traffic** Cloud Run deployments), then the **network-disabled
+local PDF runtime smoke**, then the **read-only live revision audit**.
+Each stage fails closed; no automatic activation, IAM changes, VPS changes,
+Task submission or promotion. It reports
+`printRestrictedViewer: NOT_SUPPORTED` deliberately, even if all checks
+pass. Never use it as a substitute for authorized source/print E2E.

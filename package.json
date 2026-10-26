@@ -46,7 +46,7 @@
     "check:shared": "npm run build:shared",
     "package:source": "node scripts/package-source.mjs",
     "check:package": "node scripts/check-package.mjs",
-    "check:pdf-cloud-readiness": "node --test scripts/pdf-release-audit.test.mjs scripts/pdf-local-runtime-audit.test.mjs && node --test scripts/pdf-cloud-readiness.test.mjs scripts/pdf-cloud-stage.test.mjs && node --test workers/pdf-gateway/server.test.mjs",
+    "check:pdf-cloud-readiness": "node --test scripts/pdf-release-audit.test.mjs scripts/pdf-local-runtime-audit.test.mjs scripts/pdf-release-one-shot.test.mjs && node --test scripts/pdf-cloud-readiness.test.mjs scripts/pdf-cloud-stage.test.mjs && node --test workers/pdf-gateway/server.test.mjs",
     "check:ci": "node --test scripts/pdf-cloud-stage-public-hmac.test.mjs && node --check scripts/pdf-poc/anonymous-print.mjs && node --test scripts/pdf-poc/anonymous-print-policy.test.mjs && node --test scripts/nginx-redirect.test.mjs && npm run check:pdf-cloud-readiness && npm run build:shared && npm run typecheck:apps && npm run lint && npm run test && npm run build:apps && npm run check:repo && npm run check:docs",
     "check:fast": "npm run check:ci",
     "check:full": "npm run check:ci && npm run test:integration && npm run test:e2e:full",
