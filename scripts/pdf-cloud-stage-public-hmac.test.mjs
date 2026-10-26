@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CLOUD } from './pdf-cloud-stage.mjs';
-import { checkPolicy, stagePublicHmac, main } from './pdf-cloud-stage-public-hmac.mjs';
+import { checkPolicy, stagePublicHmac, preflightPublicHmac, safeStep, main } from './pdf-cloud-stage-public-hmac.mjs';
 
 const SHA='a'.repeat(40), DIGEST='sha256:'+'b'.repeat(64);
 const env={SOURCE_SHA:SHA,PDF_GATEWAY_SECRET_VERSION:'teacher-pdf-gateway-hmac:1',
@@ -30,10 +30,11 @@ function runner({badPolicy=false,drift=false,badDigest=false,failedBuild=false}=
     if(cmd==='git')return args[0]==='rev-parse'?SHA+'\n':'';
     if(cmd==='docker') {
       if(failedBuild && args[0]==='build')throw Error('Docker failed');
-      return '';
+      return args[0]==='version' ? '26.1.0' : '';
     }
     if(cmd!=='gcloud')throw Error('unexpected shell command');
     if(args[0]==='artifacts')return JSON.stringify({image_summary:{digest:badDigest?'bad-digest':DIGEST}});
+    if(args[0]==='secrets')return JSON.stringify({state:'ENABLED'});
     if(args[0]==='run'&&args[1]==='deploy')return '';
     if(args[0]==='run'&&args[1]==='services'&&args[2]==='describe'){
       const isGateway=args[3]===CLOUD.gateway;
@@ -93,4 +94,22 @@ test('script rejects unintended operations and does not reveal secrets',()=>{
   const r=runner();
   assert.equal(main(['--delete'],env,r.run),2);
   assert.equal(r.commands.length,0);
+});
+
+test('read-only preflight gives clear checkpoints and never deploys',()=>{
+ const r=runner(); const checkpoints=[];
+ assert.deepEqual(preflightPublicHmac(env,r.run,step=>checkpoints.push(step)),{
+  preflight:true,worker:'IAM_PRIVATE',gateway:'PUBLIC_HMAC',
+  docker:'READY',secret:'ENABLED',traffic:'not_modified'});
+ assert.deepEqual(checkpoints,['GIT','WORKER_IAM','GATEWAY_HMAC','DOCKER_DAEMON','SECRET_METADATA']);
+ assert.equal(r.commands.filter(x=>x[0]==='docker').length,1);
+ assert.equal(r.commands.some(x=>x[1]==='run'&&x[2]==='deploy'),false);
+});
+test('expected operator errors are stage-specific and raw exceptions are never exposed',()=>{
+ assert.throws(()=>safeStep('DOCKER_DAEMON',()=>{throw Error('secret-runner-diagnostics');}),
+   {message:'PDF_CLOUD_STEP_DOCKER_DAEMON_COMMAND_FAILED'});
+ assert.throws(()=>safeStep('WORKER_IAM',()=>{throw Error('PDF_CLOUD_WORKER_MUST_REMAIN_IAM_PRIVATE');}),
+   {message:'PDF_CLOUD_STEP_WORKER_IAM_WORKER_MUST_REMAIN_IAM_PRIVATE'});
+ const r=runner({failedBuild:true});
+ assert.throws(()=>stagePublicHmac(env,r.run), /PDF_CLOUD_STEP_WORKER_DOCKER_BUILD_COMMAND_FAILED/);
 });
