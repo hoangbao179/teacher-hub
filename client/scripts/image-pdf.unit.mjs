@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import test from 'node:test';
 import { pdfFromJpegPages, sortImagePages, validateImageFiles } from '../src/api/imagePdf.ts';
 
