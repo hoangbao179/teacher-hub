@@ -7,6 +7,8 @@ import { assertPrintAction, printPageSize } from './print-policy.ts';
 import { captureViewerPage, observeViewerBitmaps, disposeViewerBitmaps } from './capture-page.ts';
 import { withViewerAbort } from './viewer-ready.ts';
 
+type ViewerAssemblyMode = 'print-gated' | 'view-only';
+
 // Abort stops awaiting a stage; native libvips and pdf-lib work may finish in
 // the background. Always attach rejection handlers and never publish its result.
 async function runStage<T>(signal: AbortSignal, work: () => Promise<T>, cancel = () => {}): Promise<T> {
@@ -73,19 +75,29 @@ export async function setViewerZoom(page: Page, signal: AbortSignal): Promise<vo
 }
 
 async function assembleViewerImagePdf(
-  page: Page, path: string, cap: Limits, signal: AbortSignal,
+  page: Page, path: string, cap: Limits, signal: AbortSignal, mode: ViewerAssemblyMode,
 ): Promise<void> {
   signal.throwIfAborted();
   const print = page.getByRole('button', { name: /^(In|Print)$/i });
-  await print.first().waitFor({ state: 'visible', timeout: 15000 }).catch((error: unknown) => {
-    if (error instanceof playwrightErrors.TimeoutError) throw new JobError('PRINT_UNAVAILABLE');
-    throw error;
-  });
-  const checkPrint = async () => {
-    const count = await print.count();
-    assertPrintAction(count, count === 1 && await print.first().isEnabled());
-  };
-  await checkPrint();
+  let checkPrint: (() => Promise<void>) | undefined;
+  if (mode === 'print-gated') {
+    await print.first().waitFor({ state: 'visible', timeout: 15000 }).catch((error: unknown) => {
+      if (error instanceof playwrightErrors.TimeoutError) throw new JobError('PRINT_UNAVAILABLE');
+      throw error;
+    });
+    checkPrint = async () => {
+      const count = await print.count();
+      assertPrintAction(count, count === 1 && await print.first().isEnabled());
+    };
+    await checkPrint();
+  } else {
+    await page.locator('h2').filter({ hasText: /1\s*\/\s*\d+\s*$/ }).first()
+      .waitFor({ timeout: 30000 })
+      .catch((error: unknown) => {
+        if (error instanceof playwrightErrors.TimeoutError) throw new JobError('SOURCE_UNAVAILABLE', true);
+        throw error;
+      });
+  }
 
   const count = await readViewerPageCount(page, cap);
   const observation = await observeViewerBitmaps(page);
@@ -101,7 +113,7 @@ async function assembleViewerImagePdf(
     let capturedBytes = 0, embeddedBytes = 0;
     for (let index = 1; index <= count; index++) {
       signal.throwIfAborted();
-      await checkPrint();
+      if (checkPrint) await checkPrint();
       const captured = await captureViewerPage(page, index, count, maxCaptures - capturedBytes, observation, signal);
       signal.throwIfAborted();
       const paper = printPageSize(captured.width, captured.height);
@@ -121,7 +133,7 @@ async function assembleViewerImagePdf(
       await runStage(signal, () => doc.flush());
     }
     signal.throwIfAborted();
-    await checkPrint();
+    if (checkPrint) await checkPrint();
     const checkTotal = async () => {
       const labels = await page.locator('h2').allTextContents();
       const totals = labels.map(label => /\d+\s*\/\s*(\d+)\s*$/.exec(label)).filter(Boolean);
@@ -149,5 +161,10 @@ async function assembleViewerImagePdf(
 
 /** Cloud Run renderer stage when Print is enabled. Caller owns the bounded browser. */
 export async function assemblePrintableViewer(page: Page, path: string, cap: Limits, signal: AbortSignal): Promise<void> {
-  await withViewerAbort(page, signal, () => assembleViewerImagePdf(page, path, cap, signal));
+  await withViewerAbort(page, signal, () => assembleViewerImagePdf(page, path, cap, signal, 'print-gated'));
+}
+
+/** Image-only PDF from visible viewer tiles when Print is missing or disabled. */
+export async function assembleViewOnlyViewer(page: Page, path: string, cap: Limits, signal: AbortSignal): Promise<void> {
+  await withViewerAbort(page, signal, () => assembleViewerImagePdf(page, path, cap, signal, 'view-only'));
 }

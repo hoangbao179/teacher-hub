@@ -36,14 +36,14 @@ The Worker uses anonymous browser fallback when direct download fails.
 `PDF_PRINT_FALLBACK_ENABLED` is **on by default**; set `false` to keep
 direct-only behavior. If direct source retrieval fails with
 `ACCESS_DENIED` or `UNSUPPORTED_SOURCE`, the Worker can attempt to open a
-**public/anonymous Google Drive viewer whose
-Print button is enabled**, capture each rendered page, fit onto an A4 image-only
-PDF, validate with qpdf and persist to the existing job output in GCS.
-No OCR/searchable text is required. When Print is missing or disabled,
-the Worker always stops. The deprecated
-`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` flag is ignored even when true; the
-view-only assembly path has been removed. No flag authorizes bypassing restrictions.
-Google-login-only files stay unsupported.
+**public/anonymous Google Drive viewer**, capture each rendered page bitmap,
+fit onto an A4 image-only PDF, validate with qpdf and persist to the existing
+job output in GCS. No OCR/searchable text is required. When Print is enabled,
+assembly is `print-gated` and rechecks Print during capture. When Print is
+missing or disabled, `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` (default on, opt out
+with `false`) selects `view-only` tile capture without Print rechecks. Ambiguous
+Print controls still fail. No flag bypasses login-only sources or Google byte
+download restrictions. Google-login-only files stay unsupported.
 This does not prove quality on every Drive variant until real Viewer E2E passes.
 
 The renderer uses Playwright + pdf-lib + sharp in the **Cloud Run worker image
@@ -67,9 +67,10 @@ and a revoked Print action. It never requests a third-party document.
 Viewer initialization waits up to 15s for a recognizable page count, a unique
 usable zoom control, no visible busy/progress indicator and 500ms of stable
 toolbar controls. This distinguishes loading from absent Print without waiting
-15s for a missing button. Enabled Print permits capture. Disabled Print remains `ACCESS_DENIED`
-and absent Print `PRINT_UNAVAILABLE`; unresolved loading is retryable
-`SOURCE_UNAVAILABLE`.
+15s for a missing button. Enabled Print uses print-gated capture. Disabled or
+absent Print uses view-only capture when screen capture is enabled; with capture
+off, disabled Print is `ACCESS_DENIED` and absent Print `PRINT_UNAVAILABLE`.
+Unresolved loading is retryable `SOURCE_UNAVAILABLE`.
 Zoom waits for a unique editable input, submits 300%, blurs it and observes the
 accepted value with no visible busy indicator for 250ms. This is UI stability,
 not proof that every page bitmap has finished updating. Both waits are bounded

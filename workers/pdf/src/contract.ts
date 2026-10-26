@@ -31,10 +31,9 @@ export interface Limits { maxBytes: number; maxPages: number; deadlineMs: number
 export function printFallbackEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.PDF_PRINT_FALLBACK_ENABLED !== 'false';
 }
-/** Deprecated flag: source restrictions always require enabled Print. */
+/** Bitmap tile assembly when Print is missing/disabled; opt out with `false`. */
 export function viewerScreenCaptureEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  void env;
-  return false;
+  return env.PDF_VIEWER_SCREEN_CAPTURE_ENABLED !== 'false';
 }
 export function limits(env: NodeJS.ProcessEnv = process.env): Limits {
   const number = (key: string, fallback: number, max: number) => {

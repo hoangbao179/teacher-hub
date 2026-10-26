@@ -16,8 +16,7 @@ export async function withViewerAbort<T>(page: Page, signal: AbortSignal, work: 
   }
 }
 
-export async function selectViewerMode(page: Page, screenCapture: boolean, signal: AbortSignal): Promise<'print-gated'> {
-  void screenCapture; // Legacy argument cannot authorize capture without Print.
+export async function selectViewerMode(page: Page, screenCapture: boolean, signal: AbortSignal): Promise<'print-gated' | 'view-only'> {
   return withViewerAbort(page, signal, async () => {
     // DOMContentLoaded is only the shell. Require page identity, a usable zoom
     // control, no visible loading indicator, and a short quiet toolbar window.
@@ -44,9 +43,8 @@ export async function selectViewerMode(page: Page, screenCapture: boolean, signa
     const print = page.getByRole('button', { name: /^(In|Print)$/i });
     const count = await print.count();
     const enabled = count === 1 && await print.isVisible() && await print.isEnabled();
-    if (enabled) return 'print-gated' as const;
-    // Ambiguous controls are not evidence for either supported mode.
-    assertPrintAction(count, enabled);
-    return 'print-gated' as const;
+    if (enabled) return 'print-gated';
+    if (count > 1 || !screenCapture) assertPrintAction(count, enabled);
+    return 'view-only';
   });
 }

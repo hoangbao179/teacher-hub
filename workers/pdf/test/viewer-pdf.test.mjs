@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 import { PDFDocument, PDFDict, PDFName, PDFNumber, PDFRawStream } from 'pdf-lib';
 import sharp from 'sharp';
 import { limits } from '../src/contract.ts';
-import { addImageBytes, assemblePrintableViewer } from '../src/viewer-pdf.ts';
+import { addImageBytes, assemblePrintableViewer, assembleViewOnlyViewer } from '../src/viewer-pdf.ts';
 
 test('owned local Viewer produces one ordered image-only PDF and retains all permission gates', async t => {
   const root = await mkdtemp(join(tmpdir(), 'owned-viewer-pdf-'));
@@ -215,4 +215,33 @@ test('assembly rejects disabled Print before reading any bitmap', async t => {
   await page.setContent('<button disabled>Print</button>');
   await assert.rejects(assemblePrintableViewer(page, '/tmp/forbidden-output.pdf', limits({}), AbortSignal.timeout(3000)),
     { code: 'ACCESS_DENIED' });
+});
+
+test('view-only assembly captures tiles without an enabled Print control', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'owned-viewer-view-only-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const browser = await chromium.launch({ headless: true });
+  t.after(() => browser.close());
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.abort());
+  await page.setContent('<button disabled>Print</button><input role="combobox" value="100%"><main></main>');
+  await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1800; canvas.height = 2547;
+    const context = canvas.getContext('2d');
+    context.fillStyle = 'purple'; context.fillRect(0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve));
+    const section = document.createElement('section');
+    section.innerHTML = '<div><h2>Page 1 / 1</h2></div><img style="width:300px">';
+    document.querySelector('main').append(section);
+    const image = section.querySelector('img');
+    image.src = URL.createObjectURL(blob);
+    await image.decode();
+    canvas.width = canvas.height = 1;
+  });
+  const cap = limits({});
+  const path = join(root, 'view-only-output.pdf');
+  await assembleViewOnlyViewer(page, path, cap, AbortSignal.timeout(30000));
+  const pdf = await PDFDocument.load(await readFile(path));
+  assert.equal(pdf.getPageCount(), 1);
 });

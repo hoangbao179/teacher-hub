@@ -14,13 +14,17 @@ không thể coi việc chạy Chromium hoặc tạo PDF với file đã mở Pr
 nghiệm thu trường hợp này. Đây là **khoảng cách giữa yêu cầu và sản phẩm**,
 không phải chức năng đã hoàn tất.
 
-**Giới hạn triển khai cho rollout an toàn:** Worker luôn yêu cầu Print bật;
-`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` đã ngừng tác dụng, kể cả khi đặt `true`.
-Flag không cấp quyền vượt hạn chế tải/copy/print
-của owner/admin. Trường hợp Print bị khóa vẫn là nhu cầu chưa được hỗ trợ
-hợp lệ; cần chủ file cấp quyền hoặc bản nguồn được phép xuất.
-Không thấy Print có thể do UI đang tải/thay đổi, không tự chứng minh chủ file
-cấm in. `/tools` chỉ nhận liên kết; không yêu cầu chọn hoặc upload ảnh.
+**Triển khai Worker (cập nhật 26/10/2026):** sau khi tải trực tiếp thất bại,
+Worker mở Viewer ẩn danh. Nếu nút Print **bật**, ghép PDF ảnh theo chế độ
+`print-gated` (kiểm tra Print trong suốt quá trình). Nếu Print **tắt hoặc không
+có** nhưng Viewer đã sẵn sàng, Worker có thể ghép PDF ảnh từ tile hiển thị khi
+`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` không phải `false` (mặc định bật). Cờ này
+**không** vượt hạn chế đăng nhập, link riêng tư, hay chặn tải byte gốc của
+Google; chỉ bật/tắt nhánh chụp tile khi Print không dùng được. Ambiguous Print
+(ví dụ hai nút) vẫn `UNSUPPORTED_SOURCE`. Không thấy Print có thể do UI đang
+tải/thay đổi, không tự chứng minh chủ file cấm in. `/tools` chỉ nhận liên kết;
+không yêu cầu chọn hoặc upload ảnh. E2E Drive thật và chất lượng in vẫn chưa
+đủ để coi rollout production hoàn tất.
 
 **Đây là nguồn chuẩn về mục đích tính năng.** Nếu Worker, API, test hay các
 tài liệu cũ giả định "chỉ nhận file đã tải trực tiếp được", phải ghi rõ đó là
