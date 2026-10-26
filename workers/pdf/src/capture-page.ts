@@ -1,4 +1,4 @@
-import { errors, type Page } from 'playwright';
+import type { Page } from 'playwright';
 import { JobError } from './contract.ts';
 import { withViewerAbort } from './viewer-ready.ts';
 
@@ -82,8 +82,9 @@ export async function disposeViewerBitmaps(state: Awaited<ReturnType<typeof obse
 export async function captureViewerPage(page: Page, index: number, total: number, remainingBytes: number,
   observation?: Awaited<ReturnType<typeof observeViewerBitmaps>>, signal: AbortSignal = new AbortController().signal) {
   return withViewerAbort(page, signal, async () => {
-    const state = observation ?? await observeViewerBitmaps(page);
+    let state = observation;
     try {
+      state ??= await observeViewerBitmaps(page);
       // Scroll while polling: virtualized headings/images may disappear/reappear.
       const handle = await page.waitForFunction(({ state, index, total, remainingBytes }) => {
         const candidate = state.resolve(index, total);
@@ -121,25 +122,30 @@ export async function captureViewerPage(page: Page, index: number, total: number
         canvas.width = width; canvas.height = height;
         try {
           const context = canvas.getContext('2d');
-          if (!context) return { error: 'UNSUPPORTED_SOURCE' };
+          if (!context) return { error: 'SOURCE_UNAVAILABLE' };
           context.drawImage(image, 0, 0);
           const png = canvas.toDataURL('image/png');
           const encoded = png.slice('data:image/png;base64,'.length);
           const bytes = encoded.length * 3 / 4 - (encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0);
           if (bytes > remainingBytes) return { error: 'FILE_TOO_LARGE' };
           return { width, height, encoded };
-        } catch { return { error: 'UNSUPPORTED_SOURCE' }; }
+        } catch { return { error: 'SOURCE_UNAVAILABLE' }; }
         finally { canvas.width = canvas.height = 1; }
       }, { state, index, total, remainingBytes }, { timeout: 15000, polling: 'raf' });
       try {
         const captured = await handle.jsonValue();
         if (!captured) throw new JobError('SOURCE_UNAVAILABLE', true);
         if ('error' in captured) throw new JobError(captured.error!, captured.error === 'SOURCE_UNAVAILABLE');
-        return { width: captured.width!, height: captured.height!, png: Buffer.from(captured.encoded!, 'base64') };
+        const png = Buffer.from(captured.encoded!, 'base64');
+        captured.encoded = '';
+        return { width: captured.width!, height: captured.height!, png };
       } finally { await handle.dispose(); }
     } catch (error) {
-      if (error instanceof errors.TimeoutError) throw new JobError('SOURCE_UNAVAILABLE', true);
-      throw error;
-    } finally { if (!observation) await disposeViewerBitmaps(state); }
+      if (signal.aborted) throw signal.reason;
+      if (error instanceof JobError) throw error;
+      // Timeout, closed browser and lost execution context are not permanent
+      // evidence against the source document.
+      throw new JobError('SOURCE_UNAVAILABLE', true);
+    } finally { if (!observation && state) await disposeViewerBitmaps(state); }
   });
 }

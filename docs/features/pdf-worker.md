@@ -98,6 +98,29 @@ This stability strategy cannot detect an unannounced replacement scheduled after
 the quiet window or prove content identity from third-party markup alone. Real
 authorized Drive layouts, zoom/loading signals and print quality remain unproven.
 
+Assembly keeps the existing 12 MP/page, cumulative 32 MiB captured PNG and
+10 MiB JPEG/PDF bounds. Canvas read/context failures and lost browser contexts
+are retryable `SOURCE_UNAVAILABLE`, not proof of an unsupported document. PNG
+references are cleared after encoding, Sharp input has the same 12 MP guard,
+and each encoder is destroyed after use. Canvas backing storage and browser
+result handles are released per capture; Viewer-owned blobs are left alone.
+JPEG remains quality 93 with 4:4:4 chroma, without resizing or extra compression.
+`doc.flush()` releases image embedders, but pdf-lib retains document streams
+until serialization and the final PDF buffer adds another allocation; this is
+not constant-memory assembly and no new memory benchmark is claimed.
+The job AbortSignal now covers initialization, encoding and pdf-lib stages.
+Aborting stops awaiting/publishing and destroys the Sharp stream; in-process
+native encoding and pdf-lib work cannot be forcibly preempted and may finish in
+the background. Per-page 15s waits do not reserve 15s for every page: the original
+whole-job signal can stop the sequence at any point. Forty pages completing
+within 120s is not an established SLA. Partial writes are removed only after
+exclusive creation succeeds; pre-existing output files are never overwritten or
+deleted. The processor still validates the completed PDF before GCS upload and
+cleans the private job directory on failure. Offline fault tests cover byte
+accounting, JPEG versus final-PDF overflow, changed totals (including during
+serialization, rechecked before writing), stage/write aborts,
+browser termination, low-DPI timeout and absence of partial output/upload.
+
 The previous 22s Worker job deadline is still the default; explicitly enabling
 `PDF_PRINT_FALLBACK_ENABLED` allows up to 120s. Screen capture alone neither
 enters browser fallback nor extends that deadline. The Gateway and API producer now support an

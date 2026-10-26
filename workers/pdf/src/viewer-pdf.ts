@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises';
+import { open, rm } from 'node:fs/promises';
 import { errors as playwrightErrors, type Page } from 'playwright';
 import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
@@ -8,6 +8,26 @@ import { captureViewerPage, observeViewerBitmaps, disposeViewerBitmaps } from '.
 import { withViewerAbort } from './viewer-ready.ts';
 
 type ViewerAssemblyMode = 'print-gated' | 'view-only';
+
+// Abort stops awaiting a stage; native libvips and pdf-lib work may finish in
+// the background. Always attach rejection handlers and never publish its result.
+async function runStage<T>(signal: AbortSignal, work: () => Promise<T>, cancel = () => {}): Promise<T> {
+  signal.throwIfAborted();
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => { cancel(); reject(signal.reason); };
+    signal.addEventListener('abort', abort, { once: true });
+    Promise.resolve().then(() => { signal.throwIfAborted(); return work(); }).then(
+      value => { signal.removeEventListener('abort', abort); if (signal.aborted) reject(signal.reason); else resolve(value); },
+      error => { signal.removeEventListener('abort', abort); reject(error); },
+    );
+  });
+}
+
+/** Byte accounting is cumulative; PDF metadata/structure is checked separately after save. */
+export function addImageBytes(used: number, next: number, ceiling: number): number {
+  if (next > ceiling - used) throw new JobError('FILE_TOO_LARGE');
+  return used + next;
+}
 
 async function readViewerPageCount(page: Page, cap: Limits): Promise<number> {
   await page.locator('h2').filter({ hasText: /1\s*\/\s*\d+\s*$/ }).first().waitFor();
@@ -98,36 +118,54 @@ async function assembleViewerImagePdf(
       const captured = await captureViewerPage(page, index, count, maxCaptures - capturedBytes, observation, signal);
       signal.throwIfAborted();
       const paper = printPageSize(captured.width, captured.height);
-      capturedBytes += captured.png.length;
-      if (capturedBytes > maxCaptures) throw new JobError('FILE_TOO_LARGE');
-      const jpeg = await sharp(captured.png).jpeg({ quality: 93, chromaSubsampling: '4:4:4' }).toBuffer();
-      embeddedBytes += jpeg.length;
-      if (embeddedBytes > cap.maxBytes) throw new JobError('FILE_TOO_LARGE');
-      const embedded = await doc.embedJpg(jpeg);
+      capturedBytes = addImageBytes(capturedBytes, captured.png.length, maxCaptures);
+      const encoder = sharp(captured.png, { limitInputPixels: 12_000_000 })
+        .jpeg({ quality: 93, chromaSubsampling: '4:4:4' });
+      let jpeg: Buffer;
+      try { jpeg = await runStage(signal, () => encoder.toBuffer(), () => { encoder.destroy(); }); }
+      finally {
+        encoder.destroy();
+        captured.png = Buffer.alloc(0); // Release PNG before pdf-lib embedding/next capture.
+      }
+      embeddedBytes = addImageBytes(embeddedBytes, jpeg.length, cap.maxBytes);
+      const embedded = await runStage(signal, () => doc.embedJpg(jpeg));
       const pdfPage = doc.addPage([paper.pageWidth, paper.pageHeight]);
       pdfPage.drawImage(embedded, { x: paper.x, y: paper.y, width: paper.width, height: paper.height });
-      await doc.flush();
+      await runStage(signal, () => doc.flush());
     }
     signal.throwIfAborted();
     if (checkPrint) await checkPrint();
-    const finalLabels = await page.locator('h2').allTextContents();
-    if (finalLabels.some(label => {
-      const match = /\d+\s*\/\s*(\d+)\s*$/.exec(label);
-      return match && Number(match[1]) !== count;
-    })) throw new JobError('UNSUPPORTED_SOURCE');
-    const bytes = await doc.save();
+    const checkTotal = async () => {
+      const labels = await page.locator('h2').allTextContents();
+      const totals = labels.map(label => /\d+\s*\/\s*(\d+)\s*$/.exec(label)).filter(Boolean);
+      if (!totals.length) throw new JobError('SOURCE_UNAVAILABLE', true);
+      if (totals.some(match => Number(match![1]) !== count)) throw new JobError('UNSUPPORTED_SOURCE');
+    };
+    await checkTotal();
+    if (doc.getPageCount() !== count) throw new JobError('UNSUPPORTED_SOURCE');
+    const bytes = await runStage(signal, () => doc.save());
     if (bytes.length > cap.maxBytes) throw new JobError('FILE_TOO_LARGE');
+    await checkTotal(); // Serialization can yield while the Viewer changes.
     signal.throwIfAborted();
-    await writeFile(path, bytes, { flag: 'wx', mode: 0o600, signal });
+    const file = await open(path, 'wx', 0o600);
+    try {
+      await file.writeFile(bytes, { signal });
+      await file.close();
+      signal.throwIfAborted();
+    } catch (error) {
+      await file.close().catch(() => {});
+      await rm(path, { force: true }); // Only remove a file this invocation created.
+      throw error;
+    }
   } finally { await disposeViewerBitmaps(observation); }
 }
 
 /** Cloud Run renderer stage when Print is enabled. Caller owns the bounded browser. */
 export async function assemblePrintableViewer(page: Page, path: string, cap: Limits, signal: AbortSignal): Promise<void> {
-  await assembleViewerImagePdf(page, path, cap, signal, 'print-gated');
+  await withViewerAbort(page, signal, () => assembleViewerImagePdf(page, path, cap, signal, 'print-gated'));
 }
 
 /** Image-only PDF from visible viewer tiles when Print is disabled or missing. */
 export async function assembleViewOnlyViewer(page: Page, path: string, cap: Limits, signal: AbortSignal): Promise<void> {
-  await assembleViewerImagePdf(page, path, cap, signal, 'view-only');
+  await withViewerAbort(page, signal, () => assembleViewerImagePdf(page, path, cap, signal, 'view-only'));
 }

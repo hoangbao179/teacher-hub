@@ -131,6 +131,25 @@ test('print mode extends deadline only with explicit feature gate', () => {
   assert.throws(()=>limits({PDF_DEADLINE_MS:'120000'}),{code:'SERVICE_UNAVAILABLE'});
 });
 
+test('render failures clean partial files and cannot reach PDF validation or result upload', async t => {
+  const root = await directory(t);
+  for (const code of ['SOURCE_UNAVAILABLE', 'TIMEOUT']) {
+    const store = new MemoryStore();
+    await assert.rejects(processJob(job, cap, signal(), {
+      store, tempRoot: root, enablePrintFallback: true,
+      download: async () => { throw new JobError('ACCESS_DENIED'); },
+      render: async (_id, path) => {
+        await writeFile(path, '%PDF-partial');
+        throw new JobError(code, true);
+      },
+      validate: () => assert.fail('failed render must never reach validation'),
+    }), { code, retryable: true });
+    assert.deepEqual(await readdir(root), []);
+    assert.equal(store.objects.has(output), false);
+    assert.equal(store.objects.has(`jobs/${job.jobId}/result.json`), false);
+  }
+});
+
 test('deadline aborts a stalled response and processor removes partial temporary data', async t => {
   const root = await directory(t);
   const store = new MemoryStore();
