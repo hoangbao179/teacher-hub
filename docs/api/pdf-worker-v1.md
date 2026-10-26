@@ -52,8 +52,10 @@ validate before enqueue, cap queue attempts/retry duration, reconcile exhausted
 tasks in MySQL and never enqueue while the activation gate is closed. No worker
 2xx is sent for an unpersisted transient error. A dropped connection also retries.
 
-Permanent processing codes stored as FAILED: `ACCESS_DENIED` (401/403/404 or
-login redirect), `UNSUPPORTED_SOURCE` (HTML/confirmation/native-document response,
+Permanent processing codes stored as FAILED: `ACCESS_DENIED` (401/403/404,
+login redirect or explicitly disabled Print control), `PRINT_UNAVAILABLE`
+(no visible matching Print control; restriction vs UI mismatch is unverified),
+`UNSUPPORTED_SOURCE` (HTML/confirmation/native-document response,
 unsafe redirect, encrypted PDF), `INVALID_PDF`, `FILE_TOO_LARGE`,
 `PAGE_LIMIT_EXCEEDED`, `JOB_EXPIRED`.
 Transient 503 codes: `SERVICE_UNAVAILABLE` (gate/config/permissions),

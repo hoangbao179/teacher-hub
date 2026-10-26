@@ -39,6 +39,6 @@ export function validatePdfResult(job: PdfJob, pair: { claim: any; result: any }
       r.objectName !== `jobs/${job.id}/output.pdf` || !Number.isInteger(r.bytes) || r.bytes < 1 || r.bytes > 10485760 ||
       !Number.isInteger(r.pages) || r.pages < 1 || r.pages > 40 || !/^[a-f0-9]{64}$/.test(r.sha256 ?? '')) fail();
   } else if (r.status !== 'FAILED' || Object.keys(r).sort().join() !== ['version','jobId','status','errorCode','completedAt','expiresAt'].sort().join() ||
-    !['ACCESS_DENIED','UNSUPPORTED_SOURCE','INVALID_PDF','FILE_TOO_LARGE','PAGE_LIMIT_EXCEEDED','JOB_EXPIRED'].includes(r.errorCode)) fail();
+    !['ACCESS_DENIED','PRINT_UNAVAILABLE','UNSUPPORTED_SOURCE','INVALID_PDF','FILE_TOO_LARGE','PAGE_LIMIT_EXCEEDED','JOB_EXPIRED'].includes(r.errorCode)) fail();
   return r;
 }

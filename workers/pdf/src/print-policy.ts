@@ -12,6 +12,16 @@ export function allowedPrintRequest(raw: string, fileId: string, navigation: boo
     h === 'googleusercontent.com' || h.endsWith('.googleusercontent.com');
 }
 
+/**
+ * Missing/ambiguous Print UI does not prove that Google denied access.
+ * An explicitly disabled Print action is a known restriction; never bypass it.
+ */
+export function assertPrintAction(count: number, enabled?: boolean): void {
+  if (count === 0) throw new JobError('PRINT_UNAVAILABLE');
+  if (count !== 1) throw new JobError('UNSUPPORTED_SOURCE');
+  if (enabled !== true) throw new JobError('ACCESS_DENIED');
+}
+
 export function printPageSize(w: number, h: number) {
   if (!Number.isSafeInteger(w) || !Number.isSafeInteger(h) ||
       w < 1 || h < 1 || w * h > 12_000_000) throw new JobError('UNSUPPORTED_SOURCE');

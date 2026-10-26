@@ -14,6 +14,21 @@ pipeline or change Teacher Tools, the VPS, MySQL, client or Teacher Hub API.
 See the [v1 integration contract](../api/pdf-worker-v1.md) for Task 2 and the
 [operator runbook](../operations/cloud-run-pdf-worker.md) for activation gates.
 
+## Print-locked viewer — product gap, not a finished feature
+
+Ngày 26/10/2026, chủ dự án làm rõ tình huống chính cần xử lý là một file
+Viewer có nút Print bị chủ sở hữu khóa. **Image-only PDF** là định dạng
+mong muốn, nhưng định dạng đầu ra không cấp quyền vượt khóa sao chép/in.
+Worker hiện chưa giải quyết được link đó; việc staging no-traffic và
+`PDF_BROWSER_OK` chỉ xác nhận image build/runtime. Không tự tắt gate,
+đánh tráo preview hoặc báo COMPLETED đối với nguồn bị chặn; cần sự cho
+phép của chủ file hoặc bản nguồn được cấp quyền.
+
+Nếu không thấy nút Print, `PRINT_UNAVAILABLE` thể hiện giao diện thiếu
+điều khiển, không chứng minh người sở hữu đã cấm in. Nếu nút có mặt nhưng
+vô hiệu hóa, `ACCESS_DENIED` là giới hạn rõ ràng. Hai trường hợp được
+phân loại riêng trong Worker và phản ánh trong thông báo giao diện.
+
 ## Experimental anonymous print fallback (code, not production-active)
 
 The Worker now contains an opt-in `PDF_PRINT_FALLBACK_ENABLED=true` mode.
