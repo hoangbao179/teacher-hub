@@ -211,6 +211,6 @@ The `--stage` command uses the same preflight, then prints each Docker
 build/push, image-digest, private/public-policy verification and no-traffic
 deploy step. Chromium image builds may exceed the former buffered three-minute
 limit; image build and push now stream **Docker's own progress** and permit
-up to 15 minutes each. Keep review/approval flags restricted to actual
+up to 900 seconds each. Keep review/approval flags restricted to actual
 operator acceptance; these flags do not change cloud IAM or install secrets.
 
