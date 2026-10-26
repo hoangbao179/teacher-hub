@@ -81,8 +81,10 @@ done
 : > "$MOCK_LOG"
 bash scripts/deploy-pdf-worker.sh > "$tmpdir/output" 2>&1
 for expected in '--cpu=1' '--memory=2Gi' '--concurrency=1' '--min=0' '--max=3' \
-  '--min-instances=0' '--max-instances=3' \
+  '--min-instances=0' '--max-instances=3' '--timeout=180' \
   '--service-account=teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com' \
+  'PDF_PRINT_FALLBACK_ENABLED=true' 'PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true' \
+  'mount-path=/tmp/pdf-worker' \
   'teacher-pdf-worker@sha256:' 'docker rm -f'; do
   grep -qF -- "$expected" "$MOCK_LOG"
 done
