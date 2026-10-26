@@ -112,10 +112,10 @@ bằng chứng file thuộc phạm vi v1. Tự động hóa phải thử từ m�
 - `workers/pdf/src/processor.ts` nhận PDF gốc, xác minh bằng qpdf rồi lưu
   bytes giữ nguyên. E2E với một file tải trực tiếp thành công **không chứng
   minh** E2E Viewer bị chặn tải thành công.
-- `client/src/components/PublicPdfTool.tsx` hiện vẫn chứa checkbox xác nhận
-  quyền tải; `shared/src/contracts/pdf.ts` và `server/src/services/pdf.service.ts`
-  còn yêu cầu `rightsConfirmed:true`. Đây là **khoảng cách so với UX mục tiêu**,
-  không phải quy định mới mà người dùng đã đồng ý.
+- `client/src/components/PublicPdfTool.tsx` hiện **đã bỏ checkbox quyền tải**;
+  API chấp nhận trường `rightsConfirmed:true` tương thích ngược nhưng không
+  bắt buộc cho form public. UX này không chứng minh quyền tải Google Drive;
+  Worker vẫn phải tuân thủ restriction của nguồn.
 - Hai job FAILED từ giao diện production cần đọc `errorCode` /
   `cloudErrorCode` và result tương ứng trước khi gán nguyên nhân.
   Không tự kết luận do PDF bị cấm tải nếu chưa có bằng chứng.

@@ -1,0 +1,116 @@
+# PDF staged release audit — evidence before activation
+
+## Purpose and current release state
+
+The operator successfully staged Worker and Gateway images from SHA
+`f93c25d84d83cdc1cb5cfd70649f2ff582735ea0` with `--no-traffic`;
+a local Chromium launch with 1 CPU and 2 GiB reported `PDF_BROWSER_OK`.
+This is **not proof** that a Google Drive Viewer with disabled Print can be
+reconstructed. The product requirement remains unmet for such documents.
+The staged images have their Print/long-task feature gates OFF, and no
+production traffic was changed. A separate explicit authorization and
+real-cloud E2E would be required for promotion of supported documents.
+
+## One-time operator audit — no production modifications
+
+From Windows PowerShell (operator workstation with gcloud and Docker):
+
+```powershell
+cd D:\Code\teacher-hub
+git switch main
+git pull --ff-only
+$env:PDF_STAGED_SHA = "f93c25d84d83cdc1cb5cfd70649f2ff582735ea0"
+node scripts/pdf-release-audit.mjs --check
+node scripts/pdf-local-runtime-audit.mjs --smoke
+```
+
+`PDF_STAGED_SHA` refers to the **already staged image** and does not have
+to equal the latest source `main` SHA after follow-up documentation changes.
+For any new image revision, set it to the exact newly built/staged full SHA.
+
+The read-only audit checks both services independently, the existing
+private Worker/public-HMAC Gateway IAM modes, immutable Artifact Registry
+digests matched to Cloud Run's latest created Ready revision, correct
+runtime service accounts, source-only feature flags, bounded 1 CPU / 2 GiB
+Worker and Gateway limits, temporary volume, and that staged revisions
+receive **zero production traffic**. It **does not** get secret values,
+update IAM, publish new images, call Cloud Tasks, submit jobs, or activate PDF.
+Missing evidence and configuration drift fail closed.
+
+The local smoke runs the tagged Worker image **offline** (no network)
+with 1 CPU, 2 GiB RAM, limited PIDs, read-only filesystem and bounded
+temporary directory. It checks Chromium startup, Sharp/JPEG, pdf-lib
+two-page portrait/landscape image-only PDF, and `qpdf --check`. It does
+not read or copy any third-party document and **does not** establish
+Google Drive Viewer quality or permissions.
+
+Expected success markers: `"audit":"PASS"` and
+`"status":"PDF_IMAGE_RUNTIME_OK"`. If the image is not available in local
+Docker, the smoke fails without an implicit pull; use the already staged
+image from the operator's successful build/push. These are **verification
+only**, not deployment commands.
+
+## Remaining activation blockers
+
+- Authorized print/export-enabled Viewer E2E, including number and order
+  of pages, image readability and a rendered PDF through actual Cloud Run
+  Worker/OIDC/Cloud Tasks/GCS/website ticket path
+- Chromium/browser sandbox and egress isolation review for untrusted files
+- Explicit Cloud Run long-task / Worker fallback / VPS producer activation
+  and rollback under owner review
+- The originally requested owner's **Print-disabled** Viewer link is
+  unsupported; do not attempt to bypass owner's copying/printing settings.
+
+Never interpret an image build, health response or green local smoke as
+permission to switch production traffic.
+
+## One-shot staging + complete operator verification
+
+After a fresh `main` merge and an IAM/HMAC security and billing review,
+the operator may run the existing explicit approval flags and one command:
+
+```powershell
+git switch main
+git pull --ff-only
+$env:SOURCE_SHA = (git rev-parse HEAD).Trim()
+$env:PDF_GATEWAY_SECRET_VERSION = "teacher-pdf-gateway-hmac:1"
+$env:PDF_CLOUD_IAM_REVIEWED = "true"
+$env:PDF_CLOUD_HMAC_REVIEWED = "true"
+$env:PDF_CLOUD_PUBLIC_HMAC_STAGE_APPROVED = "public-hmac-no-traffic"
+node scripts/pdf-release-one-shot.mjs --stage-and-verify
+```
+
+The review variables must only be set if the real operator has completed
+those checks; the values do not themselves prove IAM or HMAC safety. The
+command invokes existing `--stage` (build, Artifact Registry push,
+immutable **no-traffic** Cloud Run deployments), then the **network-disabled
+local PDF runtime smoke**, then the **read-only live revision audit**.
+Each stage fails closed; no automatic activation, IAM changes, VPS changes,
+Task submission or promotion. It reports
+`printRestrictedViewer: NOT_SUPPORTED` deliberately, even if all checks
+pass. Never use it as a substitute for authorized source/print E2E.
+
+## Authorized Viewer E2E smoke (opt-in; not production activation)
+
+On an isolated Linux operator host with Worker npm dependencies, Chromium,
+`qpdf` and `prlimit`, use a **real anonymous Viewer file with owner permission
+to print**. Verify separately it is a Viewer fixture, not a file owned by the
+operator; do not use Print-disabled sources. This test reuses the production
+Worker renderer and PDF validator (not the synthetic image generator), without
+Google credentials, cookies, or any cloud traffic/IAM mutations.
+
+```bash
+export PDF_AUTHORIZED_VIEWER_FILE_ID='YOUR_PUBLIC_PRINT_PERMITTED_FILE_ID'
+export PDF_AUTHORIZED_VIEWER_E2E_APPROVED=true
+npm --prefix workers/pdf run test:viewer:authorized
+unset PDF_AUTHORIZED_VIEWER_E2E_APPROVED PDF_AUTHORIZED_VIEWER_FILE_ID
+```
+
+It enforces 120s, 40 pages, 10 MiB; the Worker must see its normal enabled
+Print action, and qpdf must validate the result. Temporary PDF output is
+always deleted; status, page count, bytes and SHA-256 only are printed.
+This smoke is **never run automatically** by CI or on production startup;
+CI tests only its strict opt-in gate and cleanup with fake dependencies.
+A PASS is local authorized Viewer rendering evidence, NOT full Cloud Run →
+Cloud Tasks → GCS → website E2E or 200–300 DPI/paper-quality acceptance.
+Do not activate production from this result alone.
