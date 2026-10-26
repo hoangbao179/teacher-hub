@@ -38,12 +38,11 @@ direct-only behavior. If direct source retrieval fails with
 **public/anonymous Google Drive viewer whose
 Print button is enabled**, capture each rendered page, fit onto an A4 image-only
 PDF, validate with qpdf and persist to the existing job output in GCS.
-No OCR/searchable text is required. Owner-disabled Print and Google-login-only files stay unsupported unless the
-operator also sets `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true`. With both
-`PDF_PRINT_FALLBACK_ENABLED` and that flag, the renderer captures the same
-visible viewer tile bitmaps when Print is missing or disabled, without
-requiring an enabled Print action. This remains experimental, off by default,
-and does not prove quality on every Drive variant.
+No OCR/searchable text is required. When Print is missing or disabled,
+`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` is **on by default** (`false` opts out);
+the renderer captures visible viewer tile bitmaps in `view-only` mode without
+requiring an enabled Print action. Google-login-only files stay unsupported.
+This does not prove quality on every Drive variant until real Viewer E2E passes.
 
 The renderer uses Playwright + pdf-lib + sharp in the **Cloud Run worker image
 only**, not in the VPS API. Limits include: <=40 pages, 12 MP/page, total
@@ -67,10 +66,11 @@ Viewer initialization waits up to 15s for a recognizable page count, a unique
 usable zoom control, no visible busy/progress indicator and 500ms of stable
 toolbar controls. This distinguishes loading from absent Print without waiting
 15s for a missing button. Enabled Print keeps print-gated capture; disabled or
-absent Print uses view-only capture only with its existing flag. Ambiguous Print
-controls fail with `UNSUPPORTED_SOURCE` in either mode. With screen capture off,
-disabled Print remains `ACCESS_DENIED` and absent Print `PRINT_UNAVAILABLE`;
-unresolved loading is retryable `SOURCE_UNAVAILABLE`.
+absent Print uses view-only capture when screen capture is enabled (default).
+Ambiguous Print controls fail with `UNSUPPORTED_SOURCE` in either mode. With
+`PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false`, disabled Print remains `ACCESS_DENIED`
+and absent Print `PRINT_UNAVAILABLE`; unresolved loading is retryable
+`SOURCE_UNAVAILABLE`.
 Zoom waits for a unique editable input, submits 300%, blurs it and observes the
 accepted value with no visible busy indicator for 250ms. This is UI stability,
 not proof that every page bitmap has finished updating. Both waits are bounded

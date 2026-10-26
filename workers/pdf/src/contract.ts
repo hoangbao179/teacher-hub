@@ -28,6 +28,10 @@ export interface Limits { maxBytes: number; maxPages: number; deadlineMs: number
 export function printFallbackEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.PDF_PRINT_FALLBACK_ENABLED !== 'false';
 }
+/** Tile capture when Print is missing/disabled in Viewer; opt out with `false`. */
+export function viewerScreenCaptureEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.PDF_VIEWER_SCREEN_CAPTURE_ENABLED !== 'false';
+}
 export function limits(env: NodeJS.ProcessEnv = process.env): Limits {
   const number = (key: string, fallback: number, max: number) => {
     const raw = env[key] ?? String(fallback);

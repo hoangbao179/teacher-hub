@@ -22,7 +22,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### ACTIVE — dùng thực tế
 
-- **Góc công cụ public**: Nút Công cụ màu hồng pastel dẫn tới `/tools`, không yêu cầu đăng nhập. Form nhận tối đa 5 link PDF được phép tải và xác nhận quyền sử dụng. Lịch sử public dùng chung trên mọi thiết bị; xem/retry/download không cần cookie thiết bị tạo. Cookie chỉ phục vụ submit/idempotency. Batch/job/liên kết public được ghi nguyên tử; danh sách và tổng số batch admin loại trừ public. UI dùng tên tạm theo mã Drive, ticket POST một lần và thời hạn tải 24 giờ; không upload vào Google Drive cô Vy. Polling bỏ qua chi tiết terminal, giữ theo dõi kết quả muộn và refresh thủ công. Capabilities remain unavailable pending confirmed VPS identity and production recovery verification.
+- **Góc công cụ public**: Nút Công cụ màu hồng pastel dẫn tới `/tools`, không yêu cầu đăng nhập. Form nhận tối đa 5 liên kết Google Drive dạng Viewer (`/file/d/…/view` hoặc `/open?id=…`); **không** còn checkbox xác nhận quyền tải (API vẫn chấp nhận `rightsConfirmed:true` từ client cũ để idempotency ổn định). Luồng server PDF ảnh từ link vẫn **DEVELOPING** — xem mục PDF Viewer bên dưới. Lịch sử public dùng chung trên mọi thiết bị; xem/retry/download không cần cookie thiết bị tạo. Cookie chỉ phục vụ submit/idempotency. Batch/job/liên kết public được ghi nguyên tử; danh sách và tổng số batch admin loại trừ public. UI dùng tên tạm theo mã Drive, ticket POST một lần và thời hạn tải 24 giờ; không upload vào Google Drive cô Vy. Polling bỏ qua chi tiết terminal, giữ theo dõi kết quả muộn và refresh thủ công. `submitEnabled` vẫn fail-closed cho đến khi xác minh identity VPS và recovery production.
 - **PDF ảnh cục bộ tại /tools**: chọn ảnh JPG/PNG/WebP được phép sử dụng, tối đa 40 trang, 15 MiB/ảnh và 20 MiB/PDF; kiểm tra header trước giải mã, giới hạn ảnh nguồn 24 triệu điểm ảnh, nén tuần tự thành PDF A4 ngay trong trình duyệt, cảnh báo trang thấp hơn 150 DPI. Không upload lên API/GCS, không lưu lịch sử server. Đây không phải cách bypass chủ file đã tắt Download/Print/Copy; liên kết bị khóa Print vẫn là mục tiêu sản phẩm chưa được hỗ trợ tự động.
 - **Teacher Tools quản trị (giao diện mặc định sau đăng nhập)**: `/admin/tools` cùng toàn bộ `/admin/*` tiếp tục nằm trong auth boundary hiện hành. Khi legacy tắt, các route quản trị cũ chuyển về `/admin/tools` sau khi xác thực; khách vẫn được đưa tới `/admin/login`. Trang public `/tools` không thay thế màn đăng nhập hay trang công cụ quản trị.
 
@@ -78,56 +78,36 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### DEVELOPING
 
-- **PDF Viewer: tình huống chủ file đã khóa Print là yêu cầu chưa đạt (26/10/2026).**
-  Người dùng muốn tạo PDF ảnh mới từ link chỉ xem, kể cả khi nút in bị
-  khóa; Worker hiện phải tôn trọng hạn chế xuất/in của chủ tài liệu nên
-  **không tạo bản sao từ trường hợp này**. Không được gọi thành công của
-  Docker/Chromium hoặc staging Cloud Run là nghiệm thu chức năng này.
-  Owner đã xác nhận trong PowerShell: image Worker 1 CPU/2 GiB chạy
-  Chromium thành công (`PDF_BROWSER_OK`), mã nguồn `f93c25d` Worker và
-  Gateway đã staging **no-traffic** thành công; thử link
-  `1_ArvHdCmU5958R5Le27wjNsRiI5ynzIr` báo `ACCESS_DENIED`
-  do gate Print hiện tại. Chưa bật traffic, tính năng PDF ảnh vẫn OFF.
-  Phân loại lỗi Print thiếu/đang bị vô hiệu hóa được cải thiện trong
-  source mới nhưng không chứng minh việc lấy được nội dung ở trạng thái
-  hạn chế. Xem [product contract](../product-spec/pdf-viewer-links.md).
-
-
-
-- **Anonymous PDF print fallback — experimental Worker code:** `workers/pdf/src/renderer.ts`
-  and print policy run after direct download unless `PDF_PRINT_FALLBACK_ENABLED=false`.
-  A job can try the
-  public/anonymous Print-enabled Drive viewer when direct download fails,
-  producing image-only A4 PDF and using the same qpdf/GCS result path.
-  Capture waits for native bitmap detail meeting 200 effective DPI at the fitted
-  A4 size; it bounds canvas/capture/embedded bytes and rechecks Print during capture.
-  Opt-in `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` (with print fallback) adds a
-  view-only assembly path when Print is disabled or absent; still DEVELOPING and
-  not production-active.
-  A local browser fixture covers lazy zoom, blank/landscape pages and page identity;
-  this does not verify third-party Viewer or Cloud Run execution. Complete
-  page assembly is isolated in `workers/pdf/src/viewer-pdf.ts`, retaining the
-  Print gate so owned offline fixtures can exercise the complete image-PDF stage.
-  Production
-  still uses 30s Cloud Tasks dispatch deadlines and a 30s Cloud Run timeout on
-  the existing live revision. New source includes strictly opt-in 180s task
-  support in the API producer/Gateway and a 180s no-traffic Worker staging
-  template; **none is activated**. The feature is **not verified** against
-  the user-provided Drive link; coordinated promotion and quality testing are
-  still required.
-  See [Worker feature](../features/pdf-worker.md).
-
-
-- **Khoảng cách yêu cầu PDF Viewer:** nghiệp vụ chuẩn đã được xác nhận là
-  **dán link Google Drive có quyền Viewer → Tạo PDF**, không cần checkbox
-  xác nhận quyền tải. Xem
+- **PDF từ link Viewer — chưa DONE (nghiệm thu):** Mục tiêu sản phẩm là
+  **dán link Google Drive chia sẻ Viewer (mở được ẩn danh) → một PDF ảnh để in**,
+  không cần quyền Owner/Editor hay tải bytes PDF gốc. Đó **không** đồng nghĩa vượt
+  hạn chế sao chép/in do chủ file/admin đặt — hai khái niệm tách trong
   [product contract](../product-spec/pdf-viewer-links.md).
-  Hiện tại `workers/pdf/src/download.ts` chỉ lấy URL download trực tiếp;
-  `PublicPdfTool` và API/shared contract còn yêu cầu xác nhận
-  `rightsConfirmed:true`. Đây là behavior đang có, **chưa đáp ứng toàn
-  bộ mục tiêu Viewer**. E2E thành công với fixture PDF public tải trực tiếp
-  không thay cho E2E bằng tài khoản Viewer khác owner. Link có lệnh cấm
-  tải/copy/print phải được từ chối minh bạch thay vì cố bypass.
+
+  **Source (sau `d118fbc`; env Cloud Run production chưa audit trong repo):**
+
+  | Cờ | Mặc định | Tác dụng |
+  | --- | --- | --- |
+  | `PDF_PRINT_FALLBACK_ENABLED` | Bật (`false` tắt) | Sau lỗi `download.ts`, Worker chạy `renderer.ts` ghép bitmap → PDF ảnh A4 |
+  | `PDF_LONG_PRINT_TASKS_ENABLED` | Bật API/Gateway (`false` → 30s) | Dispatch Cloud Tasks tối đa 180s cho job in ảnh |
+  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | **Bật** (`false` tắt) | Chế độ `view-only` chụp tile khi Print thiếu/khóa — **chưa E2E nghiệm thu** |
+
+  **Luồng mặc định:** (1) tải trực tiếp `uc?export=download`; (2) nếu lỗi phù hợp →
+  Viewer ẩn danh; (3) **`print-gated`:** chỉ chụp tile khi nút In/Print **bật** trong
+  UI Drive (`viewer-pdf.ts`). Link **chỉ Viewer** nhưng vẫn **cho in trong preview**
+  thuộc phạm vi đường này — đây là cách hiện tại tạo PDF ảnh không cần file tải được.
+
+  **Vì sao chưa DONE:**
+  - **Chủ file khóa Print (yêu cầu 26/10):** source **mặc định** bật screen capture
+    (`view-only`); vẫn **chưa DONE** vì thiếu E2E Drive thật và rủi ro lazy-load/quality.
+  - **Thiếu E2E Drive thật:** test chủ yếu fixture offline; chưa chứng minh đủ trang,
+    thứ tự, nét chữ, timeout/RAM trên revision chạy thật.
+  - **Rủi ro đã biết:** lazy-load Viewer (`capture-page.ts`); smoke authorized viewer
+    có thể gắn nhãn sai nếu bật screen capture toàn cục.
+  - **Vận hành:** `submitEnabled` VPS có thể OFF; cờ trên revision live chưa xác minh.
+
+  Chi tiết: [pdf-worker](../features/pdf-worker.md),
+  [cloud-run-pdf-worker](../operations/cloud-run-pdf-worker.md).
 
 
 - **PDF job API - production fail-closed**: migrations `0027`/`0028` cover

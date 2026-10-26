@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Opt-in, operator-only, anonymous Google Drive Viewer E2E.
- * Uses the real Worker renderer, which refuses absent/disabled Print. This
+ * Uses the real Worker renderer (print-gated or view-only per env). This
  * never changes cloud traffic, server flags, permissions or IAM.
  * The temporary PDF is validated and deleted, not published or retained.
  */
@@ -21,6 +21,10 @@ export function viewerConfig(env) {
   if (typeof fileId !== 'string' || !IDENTIFIER.test(fileId))
     throw Error('PDF_VIEWER_SMOKE_FILE_ID_REQUIRED');
   return {fileId};
+}
+
+function screenCaptureOn(env) {
+  return env.PDF_VIEWER_SCREEN_CAPTURE_ENABLED !== 'false';
 }
 
 export async function runViewerSmoke(fileId, ops={}) {
@@ -43,9 +47,12 @@ export async function runViewerSmoke(fileId, ops={}) {
       !Number.isInteger(result.bytes) || result.bytes<1 || result.bytes>CAP.maxBytes ||
       !/^[a-f0-9]{64}$/.test(result.sha256))
       throw Error('PDF_VIEWER_SMOKE_INVALID_PDF_RESULT');
+    const env = ops.env ?? process.env;
+    const capture = screenCaptureOn(env);
     return {status:'AUTHORIZED_VIEWER_RENDER_OK',pages:result.pages,bytes:result.bytes,
       sha256:result.sha256,outputRetained:false,cloudE2E:false,
-      printRestrictedViewer:'NOT_SUPPORTED'};
+      viewerScreenCapture:capture ? 'DEFAULT_ON' : 'OFF',
+      printRestrictedViewer:capture ? 'VIEW_ONLY_PATH_ALLOWED' : 'NOT_SUPPORTED'};
   } finally {
     clearTimeout(timeout);
     await remove(directory,{recursive:true,force:true});
@@ -59,7 +66,7 @@ export async function main(argv=process.argv.slice(2), env=process.env, ops={}) 
   }
   try {
     const {fileId}=viewerConfig(env);
-    const result=await runViewerSmoke(fileId,ops);
+    const result=await runViewerSmoke(fileId,{...ops,env});
     console.log(JSON.stringify(result));
     return 0;
   } catch(error) {
