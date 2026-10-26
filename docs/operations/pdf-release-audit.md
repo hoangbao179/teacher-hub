@@ -89,3 +89,28 @@ Each stage fails closed; no automatic activation, IAM changes, VPS changes,
 Task submission or promotion. It reports
 `printRestrictedViewer: NOT_SUPPORTED` deliberately, even if all checks
 pass. Never use it as a substitute for authorized source/print E2E.
+
+## Authorized Viewer E2E smoke (opt-in; not production activation)
+
+On an isolated Linux operator host with Worker npm dependencies, Chromium,
+`qpdf` and `prlimit`, use a **real anonymous Viewer file with owner permission
+to print**. Verify separately it is a Viewer fixture, not a file owned by the
+operator; do not use Print-disabled sources. This test reuses the production
+Worker renderer and PDF validator (not the synthetic image generator), without
+Google credentials, cookies, or any cloud traffic/IAM mutations.
+
+```bash
+export PDF_AUTHORIZED_VIEWER_FILE_ID='YOUR_PUBLIC_PRINT_PERMITTED_FILE_ID'
+export PDF_AUTHORIZED_VIEWER_E2E_APPROVED=true
+npm --prefix workers/pdf run test:viewer:authorized
+unset PDF_AUTHORIZED_VIEWER_E2E_APPROVED PDF_AUTHORIZED_VIEWER_FILE_ID
+```
+
+It enforces 120s, 40 pages, 10 MiB; the Worker must see its normal enabled
+Print action, and qpdf must validate the result. Temporary PDF output is
+always deleted; status, page count, bytes and SHA-256 only are printed.
+This smoke is **never run automatically** by CI or on production startup;
+CI tests only its strict opt-in gate and cleanup with fake dependencies.
+A PASS is local authorized Viewer rendering evidence, NOT full Cloud Run →
+Cloud Tasks → GCS → website E2E or 200–300 DPI/paper-quality acceptance.
+Do not activate production from this result alone.
