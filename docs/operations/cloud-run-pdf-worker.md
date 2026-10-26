@@ -534,6 +534,20 @@ enabled; owner/admin restrictions must not be circumvented. Validate an
 authorized external Viewer link, all pages and actual paper print quality.
 No changes to VPS/credentials/recovery/traffic are made in the source-only PR.
 
+The capture path now waits for >=200 effective DPI at the fitted A4 placement.
+If Google never supplies that detail, the bounded wait fails; it never upsizes a
+preview and labels it printable detail. PNG transfer remains capped at 32 MiB in
+total and JPEG payload accumulation is rejected above the existing 10 MiB output
+cap (final PDF overhead is checked separately). These checks reduce premature
+capture and memory accumulation, but are not a Cloud Run RAM benchmark. No memory,
+CPU, image, IAM, task deadline, billing configuration or activation gate is changed.
+The local browser regression uses owned synthetic blob images without Google
+network access; external Viewer E2E and print-quality review remain activation gates.
+The complete assembly fixture and processing regressions also pass in the existing
+Worker Linux image with current source mounted read-only, network disabled and
+1 CPU / 2 GiB limits. This local-container result includes real qpdf parsing but
+does not certify the image build, active Cloud Run revision or cloud performance.
+
 ## Docker build-context regression prevention
 
 The Chromium Worker Dockerfile runs `COPY package.json package-lock.json ./`
