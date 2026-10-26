@@ -121,8 +121,33 @@ test('print mode extends deadline only with explicit feature gate', () => {
   assert.equal(limits({}).deadlineMs,22000);
   assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'false'}).deadlineMs,22000);
   assert.equal(limits({PDF_PRINT_FALLBACK_ENABLED:'true'}).deadlineMs,120000);
+  for (const fallback of ['false', 'true']) for (const capture of ['false', 'true']) {
+    const env = { PDF_PRINT_FALLBACK_ENABLED: fallback, PDF_VIEWER_SCREEN_CAPTURE_ENABLED: capture };
+    assert.equal(limits(env).deadlineMs, fallback === 'true' ? 120000 : 22000);
+    assert.throws(() => limits({ ...env, PDF_DEADLINE_MS: String(fallback === 'true' ? 120001 : 22001) }),
+      { code: 'SERVICE_UNAVAILABLE' });
+  }
   assert.throws(()=>limits({PDF_PRINT_FALLBACK_ENABLED:'true',PDF_DEADLINE_MS:'120001'}),{code:'SERVICE_UNAVAILABLE'});
   assert.throws(()=>limits({PDF_DEADLINE_MS:'120000'}),{code:'SERVICE_UNAVAILABLE'});
+});
+
+test('render failures clean partial files and cannot reach PDF validation or result upload', async t => {
+  const root = await directory(t);
+  for (const code of ['SOURCE_UNAVAILABLE', 'TIMEOUT']) {
+    const store = new MemoryStore();
+    await assert.rejects(processJob(job, cap, signal(), {
+      store, tempRoot: root, enablePrintFallback: true,
+      download: async () => { throw new JobError('ACCESS_DENIED'); },
+      render: async (_id, path) => {
+        await writeFile(path, '%PDF-partial');
+        throw new JobError(code, true);
+      },
+      validate: () => assert.fail('failed render must never reach validation'),
+    }), { code, retryable: true });
+    assert.deepEqual(await readdir(root), []);
+    assert.equal(store.objects.has(output), false);
+    assert.equal(store.objects.has(`jobs/${job.jobId}/result.json`), false);
+  }
 });
 
 test('deadline aborts a stalled response and processor removes partial temporary data', async t => {

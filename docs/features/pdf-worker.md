@@ -37,8 +37,12 @@ It is **disabled by default**. If direct source retrieval fails with
 the Worker can attempt to open a **public/anonymous Google Drive viewer whose
 Print button is enabled**, capture each rendered page, fit onto an A4 image-only
 PDF, validate with qpdf and persist to the existing job output in GCS.
-No OCR/searchable text is required. Owner-disabled Print and Google-login-only
-files are unsupported, not targets for bypass.
+No OCR/searchable text is required. Owner-disabled Print and Google-login-only files stay unsupported unless the
+operator also sets `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true`. With both
+`PDF_PRINT_FALLBACK_ENABLED` and that flag, the renderer captures the same
+visible viewer tile bitmaps when Print is missing or disabled, without
+requiring an enabled Print action. This remains experimental, off by default,
+and does not prove quality on every Drive variant.
 
 The renderer uses Playwright + pdf-lib + sharp in the **Cloud Run worker image
 only**, not in the VPS API. Limits include: <=40 pages, 12 MP/page, total
@@ -58,8 +62,68 @@ permission-gated page-to-PDF stage is in `viewer-pdf.ts`. An owned, offline View
 fixture exercises that stage through an actual browser into one PDF, including
 embedded page-image identity, blank/landscape pages, byte/page limits, cancellation
 and a revoked Print action. It never requests a third-party document.
+Viewer initialization waits up to 15s for a recognizable page count, a unique
+usable zoom control, no visible busy/progress indicator and 500ms of stable
+toolbar controls. This distinguishes loading from absent Print without waiting
+15s for a missing button. Enabled Print keeps print-gated capture; disabled or
+absent Print uses view-only capture only with its existing flag. Ambiguous Print
+controls fail with `UNSUPPORTED_SOURCE` in either mode. With screen capture off,
+disabled Print remains `ACCESS_DENIED` and absent Print `PRINT_UNAVAILABLE`;
+unresolved loading is retryable `SOURCE_UNAVAILABLE`.
+Zoom waits for a unique editable input, submits 300%, blurs it and observes the
+accepted value with no visible busy indicator for 250ms. This is UI stability,
+not proof that every page bitmap has finished updating. Both waits are bounded
+by the remaining job AbortSignal; cancellation closes the disposable page.
+The quiet toolbar heuristic cannot prove that Drive will never add controls
+later; authorized real-Viewer coverage is still required.
+
+Bitmap observation begins before zoom and remains active throughout assembly.
+Capture requires 750ms without relevant DOM/image-state changes or visible busy
+indicators after zoom UI completion, scrolling and decode. It tracks source,
+native dimensions, loaded/decoded state and recycled image-node/page bindings.
+An unchanged native bitmap is allowed after settling; images are never upscaled.
+Headings must uniquely match the requested numeric index and total. Lookup stays
+within the existing heading-wrapper/page-image subtree (at most three ancestors),
+allows nested image wrappers and stops at document/toolbar landmarks or another
+page heading. Multiple images/headings fail as `UNSUPPORTED_SOURCE`; missing,
+unreadable or unresolved images fail as retryable `SOURCE_UNAVAILABLE` within the
+existing 15s per-page bound and whole-job cancellation. Association is rechecked
+after decode and immediately before synchronous canvas capture. Identical pixel
+content on distinct pages remains valid; no duplicate-hash rejection is applied.
+Offline fixtures verify an already-printable ~220 DPI preview replaced after
+zoom by ~290 DPI native detail, lazy low-resolution replacement, unchanged native
+detail, delayed decode, DOM recreation, recycled nodes, ambiguity, ordered page
+pixels/dimensions, blank/landscape pages, identical pages and source failures.
+This stability strategy cannot detect an unannounced replacement scheduled after
+the quiet window or prove content identity from third-party markup alone. Real
+authorized Drive layouts, zoom/loading signals and print quality remain unproven.
+
+Assembly keeps the existing 12 MP/page, cumulative 32 MiB captured PNG and
+10 MiB JPEG/PDF bounds. Canvas read/context failures and lost browser contexts
+are retryable `SOURCE_UNAVAILABLE`, not proof of an unsupported document. PNG
+references are cleared after encoding, Sharp input has the same 12 MP guard,
+and each encoder is destroyed after use. Canvas backing storage and browser
+result handles are released per capture; Viewer-owned blobs are left alone.
+JPEG remains quality 93 with 4:4:4 chroma, without resizing or extra compression.
+`doc.flush()` releases image embedders, but pdf-lib retains document streams
+until serialization and the final PDF buffer adds another allocation; this is
+not constant-memory assembly and no new memory benchmark is claimed.
+The job AbortSignal now covers initialization, encoding and pdf-lib stages.
+Aborting stops awaiting/publishing and destroys the Sharp stream; in-process
+native encoding and pdf-lib work cannot be forcibly preempted and may finish in
+the background. Per-page 15s waits do not reserve 15s for every page: the original
+whole-job signal can stop the sequence at any point. Forty pages completing
+within 120s is not an established SLA. Partial writes are removed only after
+exclusive creation succeeds; pre-existing output files are never overwritten or
+deleted. The processor still validates the completed PDF before GCS upload and
+cleans the private job directory on failure. Offline fault tests cover byte
+accounting, JPEG versus final-PDF overflow, changed totals (including during
+serialization, rechecked before writing), stage/write aborts,
+browser termination, low-DPI timeout and absence of partial output/upload.
+
 The previous 22s Worker job deadline is still the default; explicitly enabling
-the flag allows up to 120s. The Gateway and API producer now support an
+`PDF_PRINT_FALLBACK_ENABLED` allows up to 120s. Screen capture alone neither
+enters browser fallback nor extends that deadline. The Gateway and API producer now support an
 explicit `PDF_LONG_PRINT_TASKS_ENABLED=true` gate for **180s** Cloud Tasks
 dispatch deadlines. Both gates are **off** by default; the staged Worker
 template uses a 180s Cloud Run request timeout, while Gateway remains 30s
