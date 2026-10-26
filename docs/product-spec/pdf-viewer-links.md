@@ -29,6 +29,23 @@ vẫn chưa được hỗ trợ và không bật production như thể đã đ�
 tài liệu cũ giả định "chỉ nhận file đã tải trực tiếp được", phải ghi rõ đó là
 **giới hạn implementation**, không sửa ngược yêu cầu sản phẩm cho khớp code.
 
+## Đường PDF từ ảnh trang người dùng cung cấp (fallback cục bộ)
+
+Khi nguồn không thể xuất/in qua Drive, trang `/tools` có thêm thao tác chọn
+các ảnh JPG/PNG/WebP **mà người dùng có quyền chuyển đổi**. Trình duyệt sắp
+thứ tự theo số trong tên tệp (ví dụ trang-2 trước trang-10), giải mã lần lượt,
+nén JPEG với nhiều mức chất lượng và giảm kích thước khi vượt ngân sách,
+rồi tạo một PDF ảnh A4 theo chiều trang. Không upload ảnh lên API/GCS, không
+phụ thuộc trạng thái Cloud Run và không thêm thư viện vào frontend.
+
+Giới hạn: tối đa 40 ảnh, mỗi ảnh tối đa 15 MiB, đầu ra tối đa 20 MiB.
+Khổ A4 không kéo giãn sai tỷ lệ; giảm chất lượng để đạt dung lượng có thể
+làm giảm độ nét. Đây là đường nhập ảnh **do người dùng cung cấp**, không
+tự chụp Google Drive và không vượt hạn chế Print/Copy của chủ tài liệu.
+Kết quả không đi vào lịch sử PDF server, được tải trực tiếp trên thiết bị.
+PDF đầu ra không chứa OCR hay text layer. Các file ảnh chỉ được kiểm tra
+MIME/kích thước ở giao diện; nội dung phải giải mã được trong trình duyệt.
+
 ## 0. Quyết định phạm vi ưu tiên: bản PDF **để in**, nguồn công khai không đăng nhập
 
 **Chủ dự án xác nhận:**
