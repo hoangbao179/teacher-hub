@@ -1,4 +1,4 @@
-import { inspectImageFile, MAX_SOURCE_IMAGE_PIXELS } from './imageDimensions';
+import { inspectImageFile, MAX_SOURCE_IMAGE_PIXELS } from './imageDimensions.ts';
 
 /** Browser-only PDF assembly from page images supplied by the user. No network uploads. */
 export const MAX_IMAGE_PAGES = 40;
