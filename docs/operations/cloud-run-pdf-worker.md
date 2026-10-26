@@ -514,7 +514,7 @@ long-task contract requires explicit activation on each service:
   `PDF_LONG_PRINT_TASKS_ENABLED=true`. Its own HTTP timeout stays 30s.
 - The no-traffic staging template sets Worker timeout to 180s and enables
   `PDF_PRINT_FALLBACK_ENABLED=true` on Worker and long tasks=true on Gateway.
-  Worker `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false` is explicit. Staging
+  Worker `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` is explicit. Staging
   does not promote revisions or activate the VPS producer.
 - The Worker uses `PDF_DEADLINE_MS=120000` (default when fallback is on) within
   the 180s request/dispatch budgets.
@@ -563,10 +563,10 @@ Viewer explicitly disabled Print and capture stopped. Missing Print remains
 `PRINT_UNAVAILABLE`, not proof of a restriction. Earlier revisions without these
 events cannot retrospectively identify the failure stage.
 
-The deprecated `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` flag no longer permits
-view-only capture. Keep staging's explicit `false` for compatibility with older
-images. The new Worker always requires enabled Print and rechecks it during
-assembly. No IAM or production flags are changed by this source update.
+Staging sets `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` so view-only tile capture
+is available when Print is missing or disabled (opt out with `false` on a
+revision). Print-gated assembly still rechecks Print when the control is enabled.
+No IAM or production traffic flags are changed by this source update.
 
 For compatibility, inspect service traffic and then `run revisions describe` for
 that exact revision's flags and `timeoutSeconds`; the latest service template may

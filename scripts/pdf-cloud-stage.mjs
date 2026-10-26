@@ -43,7 +43,7 @@ export function stagedDeployArgs(service, image, secretVersion) {
   if (service==='worker') return ['run','deploy',CLOUD.worker,...common,
     '--service-account='+CLOUD.workerSA,'--memory=2Gi','--concurrency=1',
     '--max=3','--max-instances=3','--timeout=180',
-    '--set-env-vars=PDF_PROCESSING_ENABLED=true,PDF_WORKER_IAM_READY=true,PDF_TEMP_ROOT=/tmp/pdf-worker,PDF_PRINT_FALLBACK_ENABLED=true,PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false',
+    '--set-env-vars=PDF_PROCESSING_ENABLED=true,PDF_WORKER_IAM_READY=true,PDF_TEMP_ROOT=/tmp/pdf-worker,PDF_PRINT_FALLBACK_ENABLED=true,PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true',
     '--add-volume=name=pdf-temp,type=in-memory,size-limit=32Mi,mount-path=/tmp/pdf-worker'];
   if(!RE_SECRET.test(secretVersion??''))throw Error('PDF_CLOUD_SECRET_REFERENCE_REQUIRED');
   return ['run','deploy',CLOUD.gateway,...common,
