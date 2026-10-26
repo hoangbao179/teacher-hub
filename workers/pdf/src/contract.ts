@@ -31,9 +31,9 @@ export function limits(env: NodeJS.ProcessEnv = process.env): Limits {
     return Number(raw);
   };
   // The existing 22s ceiling is unchanged unless the operator explicitly
-  // enables the experimental anonymous browser fallback or view-only capture.
-  const browserJob = env.PDF_PRINT_FALLBACK_ENABLED === 'true' ||
-    env.PDF_VIEWER_SCREEN_CAPTURE_ENABLED === 'true';
+  // enables the experimental anonymous browser fallback. Screen capture alone
+  // cannot enter that fallback and must not extend the job deadline.
+  const browserJob = env.PDF_PRINT_FALLBACK_ENABLED === 'true';
   return { maxBytes: number('PDF_MAX_BYTES', 10 * 1024 * 1024, 10 * 1024 * 1024),
     maxPages: number('PDF_MAX_PAGES', 40, 40),
     deadlineMs: number('PDF_DEADLINE_MS', browserJob ? 120000 : 22000, browserJob ? 120000 : 22000),

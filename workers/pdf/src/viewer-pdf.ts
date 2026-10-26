@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { JobError, type Limits } from './contract.ts';
 import { assertPrintAction, printPageSize } from './print-policy.ts';
 import { captureViewerPage } from './capture-page.ts';
+import { withViewerAbort } from './viewer-ready.ts';
 
 type ViewerAssemblyMode = 'print-gated' | 'view-only';
 
@@ -18,11 +19,39 @@ async function readViewerPageCount(page: Page, cap: Limits): Promise<number> {
   return count;
 }
 
-async function setViewerZoom(page: Page): Promise<void> {
-  const zoom = page.getByRole('combobox');
-  if (await zoom.count() !== 1) throw new JobError('UNSUPPORTED_SOURCE');
-  await zoom.fill('300%');
-  await zoom.press('Enter');
+export async function setViewerZoom(page: Page, signal: AbortSignal): Promise<void> {
+  await withViewerAbort(page, signal, async () => {
+    const end = Date.now() + 15000;
+    const remaining = () => Math.max(1, end - Date.now());
+    const zoom = page.getByRole('combobox');
+    await page.waitForFunction(() => {
+      const inputs = document.querySelectorAll('[role="combobox"]');
+      const input = inputs[0];
+      return inputs.length === 1 && input instanceof HTMLInputElement &&
+        input.getClientRects().length > 0 && getComputedStyle(input).visibility !== 'hidden' &&
+        !input.disabled && !input.readOnly && input.getAttribute('aria-disabled') !== 'true';
+    }, undefined, { timeout: remaining(), polling: 'raf' });
+    // Locator actionability waits for a unique, visible, enabled/editable input.
+    await zoom.fill('300%', { timeout: remaining() });
+    await zoom.press('Enter', { timeout: remaining() });
+    // Filling alone changes value. Observe it after Enter and blur so a rejected
+    // or normalized zoom cannot be mistaken for acceptance. Bitmap readiness is
+    // still the responsibility of the per-page capture stage.
+    await zoom.blur({ timeout: remaining() });
+    const state = await page.evaluateHandle(() => ({ since: performance.now() }));
+    try {
+      await page.waitForFunction(state => {
+        const inputs = document.querySelectorAll('[role="combobox"]');
+        const input = inputs[0];
+        const busy = [...document.querySelectorAll('[aria-busy="true"], [role="progressbar"]')]
+          .some(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
+        const settled = inputs.length === 1 && input instanceof HTMLInputElement &&
+          /^300\s*%?$/.test(input.value.trim()) && document.activeElement !== input && !busy;
+        if (!settled) state.since = performance.now();
+        return settled && performance.now() - state.since >= 250;
+      }, state, { timeout: remaining(), polling: 'raf' });
+    } finally { await state.dispose(); }
+  });
 }
 
 async function assembleViewerImagePdf(
@@ -52,7 +81,7 @@ async function assembleViewerImagePdf(
   }
 
   const count = await readViewerPageCount(page, cap);
-  await setViewerZoom(page);
+  await setViewerZoom(page, signal);
 
   const doc = await PDFDocument.create();
   sharp.cache(false);

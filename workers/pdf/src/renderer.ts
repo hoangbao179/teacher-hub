@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { JobError, type Limits } from './contract.ts';
-import { allowedPrintRequest, assertPrintAction } from './print-policy.ts';
+import { allowedPrintRequest } from './print-policy.ts';
+import { selectViewerMode } from './viewer-ready.ts';
 import { assemblePrintableViewer, assembleViewOnlyViewer } from './viewer-pdf.ts';
 
 function viewOnlyScreenCaptureEnabled(): boolean {
@@ -39,15 +40,11 @@ export async function renderPrintablePdf(fileId: string, path: string, cap: Limi
     await page.goto(`https://drive.google.com/file/d/${fileId}/view`,
       {waitUntil:'domcontentloaded',timeout:30000});
     signal.throwIfAborted();
-    const print = page.getByRole('button', { name: /^(In|Print)$/i });
-    const printCount = await print.count();
-    const printEnabled = printCount === 1 && await print.first().isEnabled().catch(() => false);
-    if (printEnabled) {
+    const mode = await selectViewerMode(page, viewOnlyScreenCaptureEnabled(), signal);
+    if (mode === 'print-gated') {
       await assemblePrintableViewer(page, path, cap, signal);
-    } else if (viewOnlyScreenCaptureEnabled()) {
-      await assembleViewOnlyViewer(page, path, cap, signal);
     } else {
-      assertPrintAction(printCount, printEnabled ? true : printCount === 1 ? false : undefined);
+      await assembleViewOnlyViewer(page, path, cap, signal);
     }
   } catch (e) {
     if (signal.aborted) throw new JobError('TIMEOUT',true);

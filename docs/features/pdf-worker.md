@@ -62,8 +62,24 @@ permission-gated page-to-PDF stage is in `viewer-pdf.ts`. An owned, offline View
 fixture exercises that stage through an actual browser into one PDF, including
 embedded page-image identity, blank/landscape pages, byte/page limits, cancellation
 and a revoked Print action. It never requests a third-party document.
+Viewer initialization waits up to 15s for a recognizable page count, a unique
+usable zoom control, no visible busy/progress indicator and 500ms of stable
+toolbar controls. This distinguishes loading from absent Print without waiting
+15s for a missing button. Enabled Print keeps print-gated capture; disabled or
+absent Print uses view-only capture only with its existing flag. Ambiguous Print
+controls fail with `UNSUPPORTED_SOURCE` in either mode. With screen capture off,
+disabled Print remains `ACCESS_DENIED` and absent Print `PRINT_UNAVAILABLE`;
+unresolved loading is retryable `SOURCE_UNAVAILABLE`.
+Zoom waits for a unique editable input, submits 300%, blurs it and observes the
+accepted value with no visible busy indicator for 250ms. This is UI stability,
+not proof that every page bitmap has finished updating. Both waits are bounded
+by the remaining job AbortSignal; cancellation closes the disposable page.
+The quiet toolbar heuristic cannot prove that Drive will never add controls
+later; authorized real-Viewer coverage is still required.
+
 The previous 22s Worker job deadline is still the default; explicitly enabling
-the flag allows up to 120s. The Gateway and API producer now support an
+`PDF_PRINT_FALLBACK_ENABLED` allows up to 120s. Screen capture alone neither
+enters browser fallback nor extends that deadline. The Gateway and API producer now support an
 explicit `PDF_LONG_PRINT_TASKS_ENABLED=true` gate for **180s** Cloud Tasks
 dispatch deadlines. Both gates are **off** by default; the staged Worker
 template uses a 180s Cloud Run request timeout, while Gateway remains 30s
