@@ -59,10 +59,10 @@ test('deploy args are fixed, immutable, no-traffic, no IAM mutation, bounded',()
  assert(w.includes('--add-volume=name=pdf-temp,type=in-memory,size-limit=32Mi,mount-path=/tmp/pdf-worker'));
  assert(w.includes('--memory=2Gi')&&w.includes('--concurrency=1')&&w.includes('--max=3'));
  assert(w.includes('--timeout=180'));
- assert(w.some(x=>x.includes('PDF_PRINT_FALLBACK_ENABLED=false')));
+ assert(w.some(x=>x.includes('PDF_PRINT_FALLBACK_ENABLED=true')));
  assert(g.includes('--memory=256Mi')&&g.includes('--max=1'));
  assert(g.includes('--timeout=30'));
- assert(g.some(x=>x.includes('PDF_LONG_PRINT_TASKS_ENABLED=false')));
+ assert(g.some(x=>x.includes('PDF_LONG_PRINT_TASKS_ENABLED=true')));
  assert(g.includes('--set-secrets=PDF_GATEWAY_HMAC_KEY='+secret));
  assert(!w.concat(g).some(x=>/allow-unauthenticated|set-iam-policy|add-iam-policy|pdf_api_enabled/i.test(x)));
  assert.throws(()=>stagedDeployArgs('gateway',CLOUD.registry+'/'+CLOUD.gateway+'@'+DIGEST,'key:latest'),/SECRET_REFERENCE/);

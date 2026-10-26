@@ -7,6 +7,11 @@ const gateway = /^https:\/\/teacher-pdf-gateway-[a-z0-9-]+\.[a-z0-9-]+\.run\.app
 const worker = /^https:\/\/teacher-pdf-worker-[a-z0-9-]+\.[a-z0-9-]+\.run\.app$/;
 const invoker = 'teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com';
 
+/** 180s Cloud Tasks dispatch for browser print fallback; opt out with `false`. */
+export function longPrintTasksEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.PDF_LONG_PRINT_TASKS_ENABLED !== 'false';
+}
+
 export function gatewaySignature(key: Buffer, method: string, path: string, timestamp: string, nonce: string, body: Buffer) {
   return createHmac('sha256',key).update(['v1',method,path,timestamp,nonce,
     createHash('sha256').update(body).digest('hex')].join('\n')).digest('hex');
@@ -18,7 +23,7 @@ export class GatewayPdfProvider implements PdfProvider {
   constructor(private url: string, private workerURL: string, keyHex: string, approved = false,
     private idToken?: GatewayIdToken,
     private readonly authMode: 'iam_hmac_v1' | 'hmac_public_v1' = 'iam_hmac_v1',
-    private readonly longPrintTasks = process.env.PDF_LONG_PRINT_TASKS_ENABLED === 'true') {
+    private readonly longPrintTasks = longPrintTasksEnabled()) {
     // Public HMAC is an explicit, review-approved opt-in. The default stays
     // IAM + HMAC, and a missing IAM token never downgrades authentication.
     this.configured = approved === true &&

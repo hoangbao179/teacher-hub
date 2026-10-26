@@ -31,10 +31,11 @@ phân loại riêng trong Worker và phản ánh trong thông báo giao diện.
 
 ## Experimental anonymous print fallback (code, not production-active)
 
-The Worker now contains an opt-in `PDF_PRINT_FALLBACK_ENABLED=true` mode.
-It is **disabled by default**. If direct source retrieval fails with
-`ACCESS_DENIED` or `UNSUPPORTED_SOURCE`, and only with this explicit flag,
-the Worker can attempt to open a **public/anonymous Google Drive viewer whose
+The Worker uses anonymous browser fallback when direct download fails.
+`PDF_PRINT_FALLBACK_ENABLED` is **on by default**; set `false` to keep
+direct-only behavior. If direct source retrieval fails with
+`ACCESS_DENIED` or `UNSUPPORTED_SOURCE`, the Worker can attempt to open a
+**public/anonymous Google Drive viewer whose
 Print button is enabled**, capture each rendered page, fit onto an A4 image-only
 PDF, validate with qpdf and persist to the existing job output in GCS.
 No OCR/searchable text is required. Owner-disabled Print and Google-login-only files stay unsupported unless the

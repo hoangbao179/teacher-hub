@@ -48,14 +48,14 @@ export function evaluateStaged(name,sha,service,policy,revision,image){
     if(env(c,'PDF_PROCESSING_ENABLED')!=='true'||
        env(c,'PDF_WORKER_IAM_READY')!=='true'||
        env(c,'PDF_TEMP_ROOT')!=='/tmp/pdf-worker'||
-       env(c,'PDF_PRINT_FALLBACK_ENABLED')!=='false')fail('WORKER_FEATURE_GATE_DRIFT');
+       env(c,'PDF_PRINT_FALLBACK_ENABLED')==='false')fail('WORKER_FEATURE_GATE_DRIFT');
     const mounted=c?.volumeMounts?.some(v=>v.name==='pdf-temp'&&v.mountPath==='/tmp/pdf-worker');
     const vol=spec?.volumes?.some(v=>v.name==='pdf-temp'&&v.emptyDir?.medium==='Memory'&&
       v.emptyDir?.sizeLimit==='32Mi');
     if(!mounted||!vol)fail('WORKER_TEMP_VOLUME_DRIFT');
   } else {
     if(env(c,'PDF_GATEWAY_ENABLED')!=='true'||
-       env(c,'PDF_LONG_PRINT_TASKS_ENABLED')!=='false'||
+       env(c,'PDF_LONG_PRINT_TASKS_ENABLED')==='false'||
        env(c,'PDF_GATEWAY_WORKER_URL')!==CLOUD.workerURL||
        !c.env?.some(v=>v.name==='PDF_GATEWAY_HMAC_KEY'&&v.value===undefined&&
          v.valueFrom?.secretKeyRef))fail('GATEWAY_FEATURE_GATE_DRIFT');

@@ -95,7 +95,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 
 - **Anonymous PDF print fallback — experimental Worker code:** `workers/pdf/src/renderer.ts`
-  and print policy are optional and disabled by default. A job can try the
+  and print policy run after direct download unless `PDF_PRINT_FALLBACK_ENABLED=false`.
+  A job can try the
   public/anonymous Print-enabled Drive viewer when direct download fails,
   producing image-only A4 PDF and using the same qpdf/GCS result path.
   Capture waits for native bitmap detail meeting 200 effective DPI at the fitted

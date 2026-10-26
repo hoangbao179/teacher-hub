@@ -11,10 +11,10 @@ function fixture(name){
     {name:'PDF_PROCESSING_ENABLED',value:'true'},
     {name:'PDF_WORKER_IAM_READY',value:'true'},
     {name:'PDF_TEMP_ROOT',value:'/tmp/pdf-worker'},
-    {name:'PDF_PRINT_FALLBACK_ENABLED',value:'false'}
+    {name:'PDF_PRINT_FALLBACK_ENABLED',value:'true'}
   ]:[
     {name:'PDF_GATEWAY_ENABLED',value:'true'},
-    {name:'PDF_LONG_PRINT_TASKS_ENABLED',value:'false'},
+    {name:'PDF_LONG_PRINT_TASKS_ENABLED',value:'true'},
     {name:'PDF_GATEWAY_WORKER_URL',value:CLOUD.workerURL},
     {name:'PDF_GATEWAY_HMAC_KEY',valueFrom:{secretKeyRef:{name:'secret',key:'1'}}}
   ];
@@ -70,11 +70,11 @@ test('reject public Worker, private Gateway, changes to image, gate, traffic, re
     reject(y=>{y.service.status.latestCreatedRevisionName='unknown';});
     if(name===CLOUD.worker){
       reject(y=>{y.service.metadata.annotations['run.googleapis.com/invoker-iam-disabled']='true';});
-      reject(y=>{y.revision.spec.containers[0].env[3].value='true';});
+      reject(y=>{y.revision.spec.containers[0].env[3].value='false';});
       reject(y=>{y.revision.spec.volumes=[];});
     }else{
       reject(y=>{y.service.metadata.annotations['run.googleapis.com/invoker-iam-disabled']='false';});
-      reject(y=>{y.revision.spec.containers[0].env[1].value='true';});
+      reject(y=>{y.revision.spec.containers[0].env[1].value='false';});
       reject(y=>{y.revision.spec.containers[0].env[3]={name:'PDF_GATEWAY_HMAC_KEY',value:'key'};});
     }
   }

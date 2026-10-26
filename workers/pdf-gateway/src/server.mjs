@@ -15,6 +15,10 @@ const digest = b => createHash('sha256').update(b).digest('hex');
 const ERROR = JSON.stringify({ error: 'PDF_GATEWAY_UNAVAILABLE' });
 const FORBIDDEN = JSON.stringify({ error: 'UNAUTHORIZED' });
 
+function longPrintTasksEnabled(env) {
+  return env.PDF_LONG_PRINT_TASKS_ENABLED !== 'false';
+}
+
 export function signature(key, method, path, timestamp, nonce, body) {
   const data = ['v1', method, path, timestamp, nonce, digest(body)].join('\n');
   return createHmac('sha256', key).update(data).digest('hex');
@@ -149,7 +153,7 @@ export function createGatewayServer({
       reply(401,FORBIDDEN); return;
     }
     const target = route(req.method,req.url,body,workerURL,
-      env.PDF_LONG_PRINT_TASKS_ENABLED === 'true');
+      longPrintTasksEnabled(env));
     if (!target) { reply(400,ERROR); return; }
     const kind = req.method==='POST' ? 'enqueue' : target.binary ? 'download' : 'read';
     if (target.binary && activeStreams >= 1) { reply(429,ERROR); return; }

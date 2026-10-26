@@ -43,13 +43,13 @@ export function stagedDeployArgs(service, image, secretVersion) {
   if (service==='worker') return ['run','deploy',CLOUD.worker,...common,
     '--service-account='+CLOUD.workerSA,'--memory=2Gi','--concurrency=1',
     '--max=3','--max-instances=3','--timeout=180',
-    '--set-env-vars=PDF_PROCESSING_ENABLED=true,PDF_WORKER_IAM_READY=true,PDF_TEMP_ROOT=/tmp/pdf-worker,PDF_PRINT_FALLBACK_ENABLED=false',
+    '--set-env-vars=PDF_PROCESSING_ENABLED=true,PDF_WORKER_IAM_READY=true,PDF_TEMP_ROOT=/tmp/pdf-worker,PDF_PRINT_FALLBACK_ENABLED=true',
     '--add-volume=name=pdf-temp,type=in-memory,size-limit=32Mi,mount-path=/tmp/pdf-worker'];
   if(!RE_SECRET.test(secretVersion??''))throw Error('PDF_CLOUD_SECRET_REFERENCE_REQUIRED');
   return ['run','deploy',CLOUD.gateway,...common,
     '--service-account='+CLOUD.gatewaySA,'--memory=256Mi','--concurrency=10',
     '--max=1','--max-instances=1','--timeout=30',
-    '--set-env-vars=PDF_GATEWAY_ENABLED=true,PDF_LONG_PRINT_TASKS_ENABLED=false,PDF_GATEWAY_WORKER_URL='+CLOUD.workerURL,
+    '--set-env-vars=PDF_GATEWAY_ENABLED=true,PDF_LONG_PRINT_TASKS_ENABLED=true,PDF_GATEWAY_WORKER_URL='+CLOUD.workerURL,
     '--set-secrets=PDF_GATEWAY_HMAC_KEY='+secretVersion];
 }
 
