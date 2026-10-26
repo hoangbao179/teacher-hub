@@ -53,7 +53,7 @@ test('inspect PNG/JPEG/WebP headers without decoding compressed pixel data', asy
   assert.deepEqual(encodedImageDimensions(png,'image/png'),{width:1280,height:1800});
   assert.deepEqual(await inspectImageFile(new Blob([png],{type:'image/png'})),{width:1280,height:1800});
 
-  const jpeg=Uint8Array.from([255,216,255,224,0,4,0,0,255,192,0,17,8,0,4,0,3,0,1,0,0,0,0,0,0,0,0,0]);
+  const jpeg=Uint8Array.from([255,216,255,224,0,4,0,0,255,192,0,17,8,4,0,3,0,0,1,0,0,0,0,0,0,0,0,0]);
   assert.deepEqual(encodedImageDimensions(jpeg,'image/jpeg'),{width:768,height:1024});
 
   const webp=new Uint8Array(30);
