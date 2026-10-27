@@ -10,6 +10,18 @@ Status: implemented for local fixture verification; production processing disabl
 No Teacher Hub API, database, queue dispatch or teacher download authorization is
 implemented here. Task 2 consumes this contract; Task 3 and cloud E2E remain gates.
 
+### Compression and byte budgets
+
+The v1 transport/result schema is unchanged. Product limits come from
+`shared/src/pdf-limits.ts`: source download and output are independent 20 MiB
+bounds; `PDF_SOURCE_MAX_BYTES` and `PDF_MAX_BYTES` may only lower their respective
+ceilings. A direct PDF must pass both. Viewer capture holds one PNG at a time
+(32 MiB encoded-PNG bound, distinct from decoded native memory), enforces 12 MP
+and >=200 effective DPI, then tries JPEG 90/85/80 from native PNG with 4:4:4 chroma.
+500 KB/page is a soft target, never a new failure code or per-page cap. Existing
+`FILE_TOO_LARGE` output/embedded accounting and final qpdf validation remain.
+The active page ceiling stays 40; 150 MiB and 200 pages are not accepted by v1.
+
 ## Transport and request
 
 Cloud Tasks sends `POST SERVICE_BASE_URL/jobs`, `Content-Type: application/json`:

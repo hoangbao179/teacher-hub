@@ -74,9 +74,11 @@ export async function processJob(job: Job, cap: Limits, signal: AbortSignal, dep
     try {
       let info: Awaited<ReturnType<typeof validatePDF>>;
       try {
-        await (deps.download ?? download)(job.source.fileId, path, cap, signal);
+        const sourceCap = { ...cap, maxBytes: cap.maxSourceBytes ?? cap.maxBytes };
+        await (deps.download ?? download)(job.source.fileId, path, sourceCap, signal);
         stage = 'direct-validation';
-        info = await (deps.validate ?? validatePDF)(path, cap, signal);
+        // Unchanged direct bytes must satisfy both source and output limits.
+        info = await (deps.validate ?? validatePDF)(path, { ...sourceCap, maxBytes: Math.min(sourceCap.maxBytes, cap.maxBytes) }, signal);
       } catch (sourceError) {
         const fallback = deps.enablePrintFallback === true &&
           sourceError instanceof JobError && !sourceError.retryable &&

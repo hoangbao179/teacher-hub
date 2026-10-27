@@ -50,7 +50,8 @@ export function jobHandler(deps?: Dependencies, env: NodeJS.ProcessEnv = process
         try {
           const fs = await statfs('/tmp/pdf-worker');
           await access('/tmp/pdf-worker', constants.W_OK);
-          if (fs.type !== 0x01021994 || fs.blocks * fs.bsize > 32 * 1024 * 1024 || fs.bavail * fs.bsize < cap.maxBytes) {
+          if (fs.type !== 0x01021994 || fs.blocks * fs.bsize > 32 * 1024 * 1024 ||
+            fs.bavail * fs.bsize < Math.max(cap.maxBytes, cap.maxSourceBytes ?? cap.maxBytes)) {
             throw new Error('volume');
           }
         } catch { throw new JobError('SERVICE_UNAVAILABLE', true); }

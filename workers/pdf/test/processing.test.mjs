@@ -30,6 +30,26 @@ function response(body, status = 200, headers = {}) {
 const fixtureDownload = async (_id, path, _cap, abort) => { abort.throwIfAborted(); await writeFile(path, syntheticPDF()); };
 const fakeValidation = async () => ({ bytes: syntheticPDF().length, pages: 2, sha256: 'a'.repeat(64) });
 
+test('source validation and output validation use independent byte ceilings', async t => {
+  const root = await directory(t);
+  const run = async (maxSourceBytes, maxBytes) => {
+    const observed = [];
+    const result = await processJob(job, { ...cap, maxSourceBytes, maxBytes }, signal(), {
+      store: new MemoryStore(), tempRoot: root,
+      download: async (_id, path, downloadCap) => {
+        observed.push(downloadCap.maxBytes); await writeFile(path, syntheticPDF());
+      },
+      validate: async (_path, validationCap) => { observed.push(validationCap.maxBytes); return fakeValidation(); },
+    });
+    assert.equal(result.status, 'COMPLETED');
+    assert.deepEqual(observed, [maxSourceBytes, Math.min(maxSourceBytes, maxBytes)]);
+  };
+  await run(1000000, 2000000);
+  await run(2000000, 1000000);
+  assert.equal(limits({ PDF_SOURCE_MAX_BYTES: '1024' }).maxSourceBytes, 1024);
+  assert.throws(() => limits({ PDF_SOURCE_MAX_BYTES: '20971521' }), { code: 'SERVICE_UNAVAILABLE' });
+});
+
 test('strict versioned contract, UUID-v4, Drive ID and configurable conservative ceilings', () => {
   assert.deepEqual(parseJob(job), job);
   assert.equal(JSON.stringify(parseJob({ source: { fileId: job.source.fileId, provider: 'google_drive' }, jobId: job.jobId, version: 1 })), JSON.stringify(job));

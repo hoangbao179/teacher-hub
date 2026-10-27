@@ -105,7 +105,12 @@ are retryable `SOURCE_UNAVAILABLE`, not proof of an unsupported document. PNG
 references are cleared after encoding, Sharp input has the same 12 MP guard,
 and each encoder is destroyed after use. Canvas backing storage and browser
 result handles are released per capture; Viewer-owned blobs are left alone.
-JPEG remains quality 93 with 4:4:4 chroma, without resizing or extra compression.
+JPEG uses adaptive quality 90 → 85 → 80 with 4:4:4 chroma, without resizing.
+Each candidate is encoded from the original native PNG, never from a previous JPEG.
+The 500,000-byte/page target is soft: a detailed page above it remains valid if
+the cumulative embedded-byte and final output bounds permit it. Encoding stops
+as soon as the target and remaining document budget are met; otherwise it keeps
+the smallest candidate after quality 80. No lower quality or DPI fallback is used.
 `doc.flush()` releases image embedders, but pdf-lib retains document streams
 until serialization and the final PDF buffer adds another allocation; this is
 not constant-memory assembly and no new memory benchmark is claimed.
@@ -190,3 +195,32 @@ instance loses its temporary filesystem; if a process survives a hard kill of a
 job, residual data stays inside the capped volume and may require instance restart.
 No production processing is approved until Tasks 2/3, reviewed IAM/mount/config,
 authorized real Drive fixtures and private cloud E2E are complete.
+
+## Long-document upgrade: compression foundation only
+
+`shared/src/pdf-limits.ts` owns source bytes (20 MiB), output bytes (20 MiB),
+page count (40), PNG working set (32 MiB), 12 MP/image, minimum 200 effective DPI,
+JPEG qualities and soft page target. `PDF_SOURCE_MAX_BYTES` can lower the source
+bound independently of `PDF_MAX_BYTES`; both reject values above their shared
+ceiling. Direct bytes must satisfy both bounds. Capture and placement use the
+same DPI constant. Gateway/API/client retain their existing output validation.
+No runtime image, infrastructure resource quota or request deadline is raised.
+
+The requested 200-page support is **not enabled** by the compression change.
+`test/compression-benchmark.mjs` accepts 17/50/100/200 only as an offline capacity
+probe, outside the processing entry point. It exercises codec + existing pdf-lib
+assembly, writes a temporary PDF, validates qpdf count/structure and every embedded
+page's original hash/order, then removes the directory. It does not exercise
+Viewer loading, a queue, resumable chunks, download transport or paper print quality.
+The production 40-page/20 MiB guards remain enforced.
+
+The next queue PR must use distinct deterministic tasks per part, not spend the
+existing queue's five retry attempts advancing a document's ten 20-page parts.
+Persist an immutable source-bound manifest and chunk results in GCS, publish each
+part only after validation, reconcile duplicate delivery using generation
+preconditions, and perform ordered final assembly separately. A source identity
+and page-total change across parts must invalidate the job. The API outbox should
+dispatch continuations; the current Worker identity has no Tasks-create permission
+and this work does not grant one. Progress UI/E2E follows in a separate PR.
+Admission, task/part deadlines, bounded merge memory, output/source/tmpfs budgets,
+retention and queue cost limits need validation together before enabling >40 pages.
