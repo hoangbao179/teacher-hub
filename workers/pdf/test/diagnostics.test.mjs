@@ -45,6 +45,13 @@ test('encrypted PDFs do not reach Viewer fallback', async () => {
   assert.equal(renders, 0);
 });
 
+test('viewer assembly reasons are allowlisted in stage diagnostics', () => {
+  const events = [];
+  diagnostic(job.jobId, 'a'.repeat(64), 'viewer-render', true,
+    new JobError('UNSUPPORTED_SOURCE', false, 'ambiguous-page-layout'), value => events.push(JSON.parse(value)));
+  assert.equal(events[0].reason, 'ambiguous-page-layout');
+});
+
 test('diagnostics discard untrusted error details and tolerate logging failures', () => {
   const events = [];
   const error = new JobError('https://secret.invalid/token', true, 'provider private text');

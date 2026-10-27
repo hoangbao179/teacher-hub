@@ -85,6 +85,11 @@ test('offline Viewer initialization and zoom readiness', { timeout: 30000 }, asy
     await setViewerZoom(page, AbortSignal.timeout(3000));
     assert.equal(await page.locator('body').getAttribute('data-zoom-accepted'), '300%');
   });
+  await t.test('select zoom control accepts 300%', async t => {
+    const page = await fixture(t, '<h2>Page 1 of 1</h2><select><option value="100%">100%</option><option value="300%">300%</option></select>');
+    await setViewerZoom(page, AbortSignal.timeout(3000));
+    assert.equal(await page.locator('select').inputValue(), '300%');
+  });
   await t.test('zoom waits for duplicate controls to resolve', async t => {
     const page = await fixture(t, viewer + '<input role="combobox">');
     await page.evaluate(() => setTimeout(() => document.querySelectorAll('input')[1].remove(), 150));

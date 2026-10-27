@@ -29,7 +29,7 @@ export async function selectViewerMode(page: Page, screenCapture: boolean, signa
         const zoom = controls.filter(el => el.matches('[role="combobox"], select'));
         const headings = [...document.querySelectorAll('h2')].filter(visible);
         const busy = [...document.querySelectorAll('[aria-busy="true"], [role="progressbar"]')].some(visible);
-        const ready = headings.some(el => /(?:^|\D)1\s*\/\s*\d+\s*$/.test(el.textContent ?? '')) &&
+        const ready = headings.some(el => /(?:^|\D)1\s*(?:\/|of)\s*\d+\s*$/i.test(el.textContent ?? '')) &&
           zoom.length === 1 && !zoom[0].matches(':disabled, [aria-disabled="true"], [readonly]') && !busy;
         const signature = JSON.stringify([ready, controls.map(el => el.outerHTML), headings.map(el => el.textContent)]);
         if (signature !== state.signature) { state.signature = signature; state.since = performance.now(); }

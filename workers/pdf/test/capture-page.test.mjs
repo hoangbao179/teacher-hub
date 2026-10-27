@@ -63,9 +63,37 @@ test('browser capture waits for zoom detail, preserves blank/landscape pages and
       naturalWidth: { value: 4000 }, naturalHeight: { value: 4000 },
     });
   });
-  await assert.rejects(captureViewerPage(page, 1, 3, 32 * 1048576), { code: 'UNSUPPORTED_SOURCE' });
+  await assert.rejects(captureViewerPage(page, 1, 3, 32 * 1048576),
+    { code: 'UNSUPPORTED_SOURCE', reason: 'bitmap-oversized' });
+  await page.evaluate(() => {
+    const image = document.querySelector('[data-page="1"] img');
+    delete image.naturalWidth;
+    delete image.naturalHeight;
+  });
   await page.evaluate(() => document.querySelector('main').append(document.querySelector('section').cloneNode(true)));
-  await assert.rejects(captureViewerPage(page, 1, 3, 32 * 1048576), { code: 'UNSUPPORTED_SOURCE' });
+  await assert.rejects(captureViewerPage(page, 1, 3, 32 * 1048576),
+    { code: 'UNSUPPORTED_SOURCE', reason: 'duplicate-page-heading' });
+});
+
+test('page indicator "of" separator and non-toolbar controls do not block capture', { timeout: 30000 }, async t => {
+  const browser = await chromium.launch({ headless: true });
+  t.after(() => browser.close());
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.abort());
+  await page.setContent('<main><section><div><h2>Page 1 of 2</h2><button type="button" hidden>hidden</button></div><img style="width:300px"></section></main>');
+  await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1800; canvas.height = 2547;
+    const context = canvas.getContext('2d');
+    context.fillStyle = 'orange'; context.fillRect(0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve));
+    const image = document.querySelector('img');
+    image.src = URL.createObjectURL(blob);
+    await image.decode();
+    canvas.width = canvas.height = 1;
+  });
+  const capture = await captureViewerPage(page, 1, 2, 32 * 1048576);
+  assert.equal(capture.width, 1800);
 });
 
 test('offline bitmap synchronization, recreation and identity failures', { timeout: 45000 }, async t => {

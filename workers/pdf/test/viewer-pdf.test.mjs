@@ -131,7 +131,7 @@ test('assembly failures and cancellation never leave a new output file', { timeo
     await page.getByRole('combobox').evaluate(input => input.addEventListener('keydown', event => {
       if (event.key === 'Enter') document.querySelector('h2').textContent = 'Page 1 / 2';
     }));
-    await assert.rejects(render(), { code: 'UNSUPPORTED_SOURCE' });
+    await assert.rejects(render(), { code: 'UNSUPPORTED_SOURCE', reason: 'page-total-mismatch' });
     assert.deepEqual(await readdir(root), []);
   });
   await t.test('deadline also interrupts the initial page-heading wait', async t => {
@@ -148,7 +148,7 @@ test('assembly failures and cancellation never leave a new output file', { timeo
       await page.locator('h2').evaluate(heading => { heading.textContent = 'Page 1 / 2'; });
       return bytes;
     });
-    await assert.rejects(render(), { code: 'UNSUPPORTED_SOURCE' });
+    await assert.rejects(render(), { code: 'UNSUPPORTED_SOURCE', reason: 'page-total-mismatch' });
     assert.deepEqual(await readdir(root), []);
   });
   for (const stage of ['encoding', 'PDF save']) {

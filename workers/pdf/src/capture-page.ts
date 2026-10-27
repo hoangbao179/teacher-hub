@@ -20,26 +20,33 @@ export async function observeViewerBitmaps(page: Page) {
         return 0;
       },
       resolve(index: number, total: number) {
+        const pageLabel = /(?:^|\D)(\d+)\s*(?:\/|of)\s*(\d+)\s*$/i;
+        const parseLabel = (text: string) => {
+          const match = pageLabel.exec(text.trim());
+          if (!match) return null;
+          const pageIndex = Number(match[1]);
+          const pageTotal = Number(match[2]);
+          if (!Number.isInteger(pageIndex) || !Number.isInteger(pageTotal) || pageIndex < 1 || pageTotal < 1) return null;
+          return { index: pageIndex, total: pageTotal };
+        };
+        const visibleToolbar = (root: ParentNode) => [...root.querySelectorAll('[role="toolbar"]')]
+          .some(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
         const headings = [...document.querySelectorAll('h2')];
-        const sameIndex = headings.filter(h => {
-          const match = /(?:^|\D)(\d+)\s*\/\s*(\d+)\s*$/.exec(h.textContent ?? '');
-          return match && Number(match[1]) === index;
-        });
-        if (sameIndex.length > 1) return { error: 'UNSUPPORTED_SOURCE' } as const;
+        const sameIndex = headings.filter(h => parseLabel(h.textContent ?? '')?.index === index);
+        if (sameIndex.length > 1) return { error: 'UNSUPPORTED_SOURCE', reason: 'duplicate-page-heading' } as const;
         const heading = sameIndex[0];
         if (!heading) return {};
-        if (Number(/\/\s*(\d+)\s*$/.exec(heading.textContent ?? '')?.[1]) !== total)
-          return { error: 'UNSUPPORTED_SOURCE' } as const;
+        if (parseLabel(heading.textContent ?? '')?.total !== total)
+          return { error: 'UNSUPPORTED_SOURCE', reason: 'page-total-mismatch' } as const;
         // Known heading-wrapper + bitmap layout, allowing nested image wrappers.
-        // Stop at any other page heading or toolbar; never widen to the document.
+        // Stop at document landmarks or a visible toolbar; never widen to the document.
         let container = heading.parentElement;
         for (let depth = 0; container && depth < 3; depth++, container = container.parentElement) {
           if (container.matches('body, html, main, header, nav, aside, [role="toolbar"]')) return {};
-          if (container.querySelectorAll('h2').length !== 1 ||
-              container.querySelector('button, [role="button"], [role="toolbar"]'))
-            return { error: 'UNSUPPORTED_SOURCE' } as const;
+          if (container.querySelectorAll('h2').length !== 1 || visibleToolbar(container))
+            return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-page-layout' } as const;
           const images = container.querySelectorAll('img');
-          if (images.length > 1) return { error: 'UNSUPPORTED_SOURCE' } as const;
+          if (images.length > 1) return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-page-layout' } as const;
           if (images.length === 1) {
             const image = images[0];
             const key = `${index}/${total}`;
@@ -58,8 +65,9 @@ export async function observeViewerBitmaps(page: Page) {
         return {};
       },
       scan() {
+        const pageLabel = /(?:^|\D)(\d+)\s*(?:\/|of)\s*(\d+)\s*$/i;
         for (const heading of document.querySelectorAll('h2')) {
-          const match = /(?:^|\D)(\d+)\s*\/\s*(\d+)\s*$/.exec(heading.textContent ?? '');
+          const match = pageLabel.exec((heading.textContent ?? '').trim());
           if (match) state.resolve(Number(match[1]), Number(match[2]));
         }
       },
@@ -88,7 +96,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
       // Scroll while polling: virtualized headings/images may disappear/reappear.
       const handle = await page.waitForFunction(({ state, index, total, remainingBytes }) => {
         const candidate = state.resolve(index, total);
-        if ('error' in candidate) return { error: candidate.error };
+        if ('error' in candidate) return { error: candidate.error, reason: candidate.reason };
         if (!candidate.image) return null;
         const { image, heading, container } = candidate;
         if (!image.getClientRects().length || getComputedStyle(image).visibility === 'hidden') return null;
@@ -102,7 +110,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
           .some(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
         if (busy) { state.changedAt = performance.now(); return null; }
         const { naturalWidth: width, naturalHeight: height } = image;
-        if (width * height > 12_000_000) return { error: 'UNSUPPORTED_SOURCE' };
+        if (width * height > 12_000_000) return { error: 'UNSUPPORTED_SOURCE', reason: 'bitmap-oversized' };
         if (image.complete && (!width || !height) && performance.now() - state.changedAt >= 750)
           return { error: 'SOURCE_UNAVAILABLE' };
         if (!image.complete || !image.src.startsWith('blob:') || !width || !height) return null;
@@ -114,7 +122,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
         if (!decoded || candidate.stale || 72 / scale < 200 || performance.now() - state.changedAt < 750) return null;
         // decode() may finish after a source/node/heading replacement.
         const current = state.resolve(index, total);
-        if ('error' in current) return { error: current.error };
+        if ('error' in current) return { error: current.error, reason: current.reason };
         if (current.image !== image || current.heading !== heading || current.container !== container ||
             current.signature !== candidate.signature || current.stale || !image.isConnected ||
             performance.now() - state.changedAt < 750) return null;
@@ -135,7 +143,10 @@ export async function captureViewerPage(page: Page, index: number, total: number
       try {
         const captured = await handle.jsonValue();
         if (!captured) throw new JobError('SOURCE_UNAVAILABLE', true);
-        if ('error' in captured) throw new JobError(captured.error!, captured.error === 'SOURCE_UNAVAILABLE');
+        if ('error' in captured) {
+          const reason = typeof captured.reason === 'string' ? captured.reason : undefined;
+          throw new JobError(captured.error!, captured.error === 'SOURCE_UNAVAILABLE', reason);
+        }
         const png = Buffer.from(captured.encoded!, 'base64');
         captured.encoded = '';
         return { width: captured.width!, height: captured.height!, png };
