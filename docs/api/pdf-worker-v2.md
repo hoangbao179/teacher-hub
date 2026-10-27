@@ -49,8 +49,9 @@ address-space cap and can have its own native allocations/caches.
 Direct PDF <=50 pages can complete in discovery with original bytes, satisfying
 source/output caps. Long direct PDFs are split from the same checksum-verified
 GCS snapshot. Viewer discovery and every part use a fresh anonymous browser,
-strict enabled Print, >=200 native effective DPI and first-page PNG fingerprint;
-changed totals/anchor fail. No v2 view-only bypass or Google login/session replay.
+the same print-gated or view-only tile capture as v1 when screen capture is
+enabled, >=200 native effective DPI and a first-page PNG fingerprint; changed
+totals/anchor fail. No Google login/session replay.
 The anchor cannot prove that a later page did not change while count/page one
 stayed identical. Immutable direct bytes are preferred when available; real
 Viewer mutation/layout/virtualization behavior needs authorized E2E.

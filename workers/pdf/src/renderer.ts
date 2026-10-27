@@ -8,14 +8,14 @@ import type { Page } from 'playwright';
 // Anonymous Google Drive viewer ONLY. Never accepts an arbitrary URL,
 // credentials, storage state or a login-only document. The browser is disposable.
 export async function renderPrintablePdf(fileId: string, path: string, cap: Limits, signal: AbortSignal): Promise<void> {
-  await withDriveViewer(fileId,cap,signal, async page => {
+  await withDriveViewer(fileId, cap, signal, async page => {
     const mode = await selectViewerMode(page, viewerScreenCaptureEnabled(), signal);
     if (mode === 'print-gated') await assemblePrintableViewer(page, path, cap, signal);
     else await assembleViewOnlyViewer(page, path, cap, signal);
-  }, false);
+  });
 }
 
-export async function withDriveViewer<T>(fileId: string, cap: Limits, signal: AbortSignal, work: (page: Page)=>Promise<T>, requirePrint = true): Promise<T> {
+export async function withDriveViewer<T>(fileId: string, cap: Limits, signal: AbortSignal, work: (page: Page)=>Promise<T>): Promise<T> {
   if (!/^[A-Za-z0-9_-]{10,128}$/.test(fileId)) throw new JobError('UNSUPPORTED_SOURCE', false, 'invalid-file-id');
   signal.throwIfAborted();
   const maxWireBytes = 64 * 1048576;
@@ -45,7 +45,6 @@ export async function withDriveViewer<T>(fileId: string, cap: Limits, signal: Ab
     await page.goto(`https://drive.google.com/file/d/${fileId}/view`,
       {waitUntil:'domcontentloaded',timeout:30000});
     signal.throwIfAborted();
-    if (requirePrint) await selectViewerMode(page, false, signal); // v2 never captures explicitly restricted sources.
     return await work(page);
   } catch (e) {
     if (signal.aborted) throw new JobError('TIMEOUT',true);

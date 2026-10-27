@@ -8,7 +8,7 @@ import { PDFDocument, PDFDict, PDFName, PDFRawStream } from 'pdf-lib';
 import sharp from 'sharp';
 import { captureViewerChunk, seekViewerPage } from '../src/viewer-chunk.ts';
 import { longCap } from './chunk-fixture.mjs';
-test('real anonymous browser captures requested noninitial range, preserves native images and rejects changed source/permission',async t=>{
+test('real anonymous browser captures requested noninitial range, preserves native images, rejects changed anchor and still captures when Print is disabled',async t=>{
  const root=await mkdtemp(join(tmpdir(),'viewer-chunk-'));t.after(()=>rm(root,{recursive:true,force:true}));
  const browser=await chromium.launch({headless:true});t.after(()=>browser.close());const page=await browser.newPage();
  await page.route('**/*',r=>r.abort());
@@ -35,8 +35,10 @@ test('real anonymous browser captures requested noninitial range, preserves nati
  }
  await assert.rejects(captureViewerChunk(page,join(root,'wrong.pdf'),longCap,signal(),{firstPage:11,lastPage:12},{...m,fingerprint:'b'.repeat(64)}),{code:'UNSUPPORTED_SOURCE'});
  await page.getByRole('button',{name:'Print'}).evaluate(el=>{el.disabled=true;});
- await assert.rejects(captureViewerChunk(page,join(root,'restricted.pdf'),longCap,signal(),{firstPage:11,lastPage:12},m),{code:'ACCESS_DENIED'});
- assert.deepEqual(await readdir(root),['part.pdf']);
+ const restricted=join(root,'restricted.pdf');
+ await captureViewerChunk(page,restricted,longCap,signal(),{firstPage:11,lastPage:12},m);
+ assert.equal((await PDFDocument.load(await readFile(restricted))).getPageCount(),2);
+ assert.deepEqual(await readdir(root),['part.pdf','restricted.pdf']);
 });
 
 test('virtualized late headings are reached by bounded scroll, without an off-screen extraction endpoint',async t=>{

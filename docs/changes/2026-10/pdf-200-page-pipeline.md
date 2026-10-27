@@ -20,8 +20,9 @@ nhầm INVALID_PDF khi subprocess bị signal; benchmark đã tái hiện lỗi 
   GCS create-only checkpoints, source-bound fingerprints/hash/range/expiry. API
   reconciler hiện có phát phần tiếp theo, không thêm Tasks permission cho Worker.
 - Writer image-only PDF ghi từng JPEG xuống file, xref nhỏ; qpdf merge từ file.
-  Source direct dài được snapshot GCS; Viewer luôn kiểm tra Print, >=200 DPI,
-  PNG/native size và anchor. Không dùng view-only để vượt hạn chế trong v2.
+  Source direct dài được snapshot GCS; Viewer dùng cùng lựa chọn `print-gated` /
+  `view-only` như v1 (`PDF_VIEWER_SCREEN_CAPTURE_ENABLED`), >=200 DPI, PNG/native
+  size và anchor trang 1.
 - Migration 0029 giữ phiên bản job và progress cache; DB lease bảo vệ write cũ.
   GET/refresh đọc tiến độ đã lưu. Phần trăm tối đa 99 trước khi publish kết quả.
 - Gate v2 mặc định tắt, source 20 MiB tách output 150 MiB; scratch yêu cầu operator
