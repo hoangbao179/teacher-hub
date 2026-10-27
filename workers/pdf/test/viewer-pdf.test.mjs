@@ -148,7 +148,8 @@ test('assembly failures and cancellation never leave a new output file', { timeo
     const { render } = await fixture(t);
     const save = PDFDocument.prototype.save;
     t.mock.method(PDFDocument.prototype, 'save', async function (...args) {
-      return Buffer.concat([await save.apply(this, args), Buffer.alloc(1)]);
+      const bytes = await save.apply(this, args);
+      return Buffer.alloc(Math.max(bytes.length, cap.maxBytes) + 1);
     });
     await assert.rejects(render(), { code: 'FILE_TOO_LARGE', reason: 'output-pdf-bytes' });
     assert.deepEqual(await readdir(root), []);
