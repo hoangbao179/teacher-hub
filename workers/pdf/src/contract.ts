@@ -4,13 +4,20 @@ export class JobError extends Error {
   reason?: string;
   pageIndex?: number;
   ancestorLevel?: number;
+  usedBytes?: number;
+  limitBytes?: number;
   constructor(code: string, retryable = false, reason?: string,
-    capture?: { pageIndex?: number; ancestorLevel?: number }) {
+    capture?: { pageIndex?: number; ancestorLevel?: number; usedBytes?: number; limitBytes?: number }) {
     super(code); this.code = code; this.retryable = retryable; this.reason = reason;
     if (Number.isInteger(capture?.pageIndex) && capture!.pageIndex! >= 1 && capture!.pageIndex! <= 40)
       this.pageIndex = capture!.pageIndex;
     if (Number.isInteger(capture?.ancestorLevel) && capture!.ancestorLevel! >= 0 && capture!.ancestorLevel! < 8)
       this.ancestorLevel = capture!.ancestorLevel;
+    const maxByteField = 64 * 1048576;
+    if (Number.isInteger(capture?.usedBytes) && capture!.usedBytes! >= 1 && capture!.usedBytes! <= maxByteField)
+      this.usedBytes = capture!.usedBytes;
+    if (Number.isInteger(capture?.limitBytes) && capture!.limitBytes! >= 1 && capture!.limitBytes! <= maxByteField)
+      this.limitBytes = capture!.limitBytes;
   }
 }
 export interface Job { version: 1; jobId: string; source: { provider: 'google_drive'; fileId: string } }

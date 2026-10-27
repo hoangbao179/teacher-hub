@@ -72,12 +72,15 @@ export async function download(fileId: string, path: string, cap: Limits, signal
     const length = response.headers['content-length'];
     if ((length && (!/^\d+$/.test(length) || Number(length) > cap.maxBytes)) ||
       (response.headers['content-encoding'] && response.headers['content-encoding'] !== 'identity')) {
-      response.destroy(); throw new JobError('FILE_TOO_LARGE');
+      response.destroy();
+      throw new JobError('FILE_TOO_LARGE', false, 'direct-download-bytes', { limitBytes: cap.maxBytes });
     }
     let bytes = 0;
     const bound = new Transform({ transform(chunk: Buffer, _encoding, callback) {
       bytes += chunk.length;
-      callback(bytes > cap.maxBytes ? new JobError('FILE_TOO_LARGE') : null, chunk);
+      callback(bytes > cap.maxBytes
+        ? new JobError('FILE_TOO_LARGE', false, 'direct-download-bytes',
+          { usedBytes: bytes, limitBytes: cap.maxBytes }) : null, chunk);
     } });
     await pipeline(response, bound, createWriteStream(path, { flags: 'wx', mode: 0o600 }), { signal });
     return;

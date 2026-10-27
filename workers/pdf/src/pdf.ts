@@ -6,7 +6,10 @@ import { JobError, type Limits } from './contract.ts';
 
 export async function validatePDF(path: string, cap: Limits, signal: AbortSignal) {
   const size = (await stat(path)).size;
-  if (size > cap.maxBytes) throw new JobError('FILE_TOO_LARGE');
+  if (size > cap.maxBytes) {
+    throw new JobError('FILE_TOO_LARGE', false, 'validated-pdf-bytes',
+      { usedBytes: size, limitBytes: cap.maxBytes });
+  }
   const file = await open(path, 'r');
   try {
     const prefix = Buffer.alloc(512);

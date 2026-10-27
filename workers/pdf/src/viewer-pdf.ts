@@ -24,10 +24,31 @@ async function runStage<T>(signal: AbortSignal, work: () => Promise<T>, cancel =
   });
 }
 
+/** Working-set budget for decoded PNG tiles before JPEG encoding. */
+export const INTERMEDIATE_PNG_BUDGET = 32 * 1048576;
+
+/** pdf-lib catalog/pages/xref overhead excluded from raw JPEG embed budget. */
+export function pdfStructureOverhead(pageCount: number): number {
+  return 65536 + pageCount * 8192;
+}
+
+/** Keep embedded JPEG sum inside the final PDF byte cap after structure overhead. */
+export function embeddedJpegCeiling(outputBytes: number, pageCount: number): number {
+  return Math.max(1, outputBytes - pdfStructureOverhead(pageCount));
+}
+
 /** Byte accounting is cumulative; PDF metadata/structure is checked separately after save. */
-export function addImageBytes(used: number, next: number, ceiling: number): number {
-  if (next > ceiling - used) throw new JobError('FILE_TOO_LARGE');
-  return used + next;
+export function addImageBytes(used: number, next: number, ceiling: number, reason: string,
+  detail?: { pageIndex?: number }): number {
+  const attempted = used + next;
+  if (next > ceiling - used) {
+    throw new JobError('FILE_TOO_LARGE', false, reason, {
+      pageIndex: detail?.pageIndex,
+      usedBytes: attempted,
+      limitBytes: ceiling,
+    });
+  }
+  return attempted;
 }
 
 async function readViewerPageCount(page: Page, cap: Limits): Promise<number> {
@@ -125,7 +146,8 @@ async function assembleViewerImagePdf(
     const doc = await PDFDocument.create();
     sharp.cache(false);
     sharp.concurrency(1);
-    const maxCaptures = 32 * 1048576;
+    const maxCaptures = INTERMEDIATE_PNG_BUDGET;
+    const maxEmbedded = embeddedJpegCeiling(cap.maxBytes, count);
     let capturedBytes = 0, embeddedBytes = 0;
     for (let index = 1; index <= count; index++) {
       signal.throwIfAborted();
@@ -133,7 +155,8 @@ async function assembleViewerImagePdf(
       const captured = await captureViewerPage(page, index, count, maxCaptures - capturedBytes, observation, signal);
       signal.throwIfAborted();
       const paper = printPageSize(captured.width, captured.height);
-      capturedBytes = addImageBytes(capturedBytes, captured.png.length, maxCaptures);
+      capturedBytes = addImageBytes(capturedBytes, captured.png.length, maxCaptures, 'intermediate-png-total',
+        { pageIndex: index });
       const encoder = sharp(captured.png, { limitInputPixels: 12_000_000 })
         .jpeg({ quality: 93, chromaSubsampling: '4:4:4' });
       let jpeg: Buffer;
@@ -142,7 +165,8 @@ async function assembleViewerImagePdf(
         encoder.destroy();
         captured.png = Buffer.alloc(0); // Release PNG before pdf-lib embedding/next capture.
       }
-      embeddedBytes = addImageBytes(embeddedBytes, jpeg.length, cap.maxBytes);
+      embeddedBytes = addImageBytes(embeddedBytes, jpeg.length, maxEmbedded, 'embedded-jpeg-total',
+        { pageIndex: index });
       const embedded = await runStage(signal, () => doc.embedJpg(jpeg));
       const pdfPage = doc.addPage([paper.pageWidth, paper.pageHeight]);
       pdfPage.drawImage(embedded, { x: paper.x, y: paper.y, width: paper.width, height: paper.height });
@@ -159,7 +183,10 @@ async function assembleViewerImagePdf(
     await checkTotal();
     if (doc.getPageCount() !== count) throw new JobError('UNSUPPORTED_SOURCE', false, 'assembled-page-mismatch');
     const bytes = await runStage(signal, () => doc.save());
-    if (bytes.length > cap.maxBytes) throw new JobError('FILE_TOO_LARGE');
+    if (bytes.length > cap.maxBytes) {
+      throw new JobError('FILE_TOO_LARGE', false, 'output-pdf-bytes',
+        { usedBytes: bytes.length, limitBytes: cap.maxBytes });
+    }
     await checkTotal(); // Serialization can yield while the Viewer changes.
     signal.throwIfAborted();
     const file = await open(path, 'wx', 0o600);

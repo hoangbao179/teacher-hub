@@ -73,7 +73,11 @@ and for the final processing failure. Fields are `jobId`, SHA-256 `sourceHash`
 and storage. Reasons distinguish HTML, encryption, redirects, HTTP access,
 missing/ambiguous/disabled Print, unreadable page totals, ambiguous Viewer layout
 (multiple visible headings/images or a visible toolbar in the page wrapper),
-oversized/low-DPI bitmaps and assembled page-count drift. Layout failures may
+oversized/low-DPI bitmaps and assembled page-count drift. `FILE_TOO_LARGE` reasons
+distinguish per-page PNG budget, cumulative PNG (32 MiB working set), embedded
+JPEG total (within output cap minus structure headroom), serialized PDF output,
+direct download and post-validation size. Byte-budget failures may include
+allowlisted `pageIndex`, `usedBytes` and `limitBytes`. Layout failures may
 include allowlisted `pageIndex` and `ancestorLevel` (wrapper depth). Unknown details become `unclassified` or
 `INTERNAL_ERROR` in logs; result/retry semantics retain the existing contract.
 No source ID/URL, body, cookies, tokens, parser stderr or stack is logged.

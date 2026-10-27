@@ -7,7 +7,8 @@ import { chromium } from 'playwright';
 import { PDFDocument, PDFDict, PDFName, PDFNumber, PDFRawStream } from 'pdf-lib';
 import sharp from 'sharp';
 import { limits } from '../src/contract.ts';
-import { addImageBytes, assemblePrintableViewer, assembleViewOnlyViewer } from '../src/viewer-pdf.ts';
+import { addImageBytes, assemblePrintableViewer, assembleViewOnlyViewer, embeddedJpegCeiling,
+  INTERMEDIATE_PNG_BUDGET, pdfStructureOverhead } from '../src/viewer-pdf.ts';
 
 test('owned local Viewer produces one ordered image-only PDF and retains all permission gates', async t => {
   const root = await mkdtemp(join(tmpdir(), 'owned-viewer-pdf-'));
@@ -92,10 +93,28 @@ test('owned local Viewer produces one ordered image-only PDF and retains all per
 });
 
 test('cumulative PNG and embedded JPEG budgets reject overflow without changing ceilings', () => {
-  for (const ceiling of [32 * 1048576, 10 * 1048576]) {
-    assert.equal(addImageBytes(ceiling - 100, 100, ceiling), ceiling);
-    assert.throws(() => addImageBytes(ceiling - 100, 101, ceiling), { code: 'FILE_TOO_LARGE' });
+  for (const [ceiling, reason] of [[INTERMEDIATE_PNG_BUDGET, 'intermediate-png-total'], [10 * 1048576, 'embedded-jpeg-total']]) {
+    assert.equal(addImageBytes(ceiling - 100, 100, ceiling, reason), ceiling);
+    assert.throws(() => addImageBytes(ceiling - 100, 101, ceiling, reason), err => {
+      assert.equal(err.code, 'FILE_TOO_LARGE');
+      assert.equal(err.reason, reason);
+      assert.equal(err.usedBytes, ceiling + 1);
+      assert.equal(err.limitBytes, ceiling);
+      return true;
+    });
   }
+});
+
+test('embedded JPEG budget reserves pdf-lib structure overhead before the output cap', () => {
+  const outputCap = 10 * 1048576;
+  const pages = 3;
+  const embedCap = embeddedJpegCeiling(outputCap, pages);
+  assert.equal(embedCap, outputCap - pdfStructureOverhead(pages));
+  assert.throws(() => addImageBytes(embedCap - 1, 2, embedCap, 'embedded-jpeg-total', { pageIndex: 3 }), err => {
+    assert.equal(err.reason, 'embedded-jpeg-total');
+    assert.equal(err.pageIndex, 3);
+    return true;
+  });
 });
 
 test('assembly failures and cancellation never leave a new output file', { timeout: 30000 }, async t => {
@@ -119,13 +138,22 @@ test('assembly failures and cancellation never leave a new output file', { timeo
     return { page, path, render: (override = cap, signal = AbortSignal.timeout(5000)) =>
       assemblePrintableViewer(page, path, override, signal) };
   }
-  for (const [stage, maxBytes] of [['embedded JPEG', jpeg.length - 1], ['serialized PDF', jpeg.length + 10]]) {
-    await t.test(`${stage} byte limit`, async t => {
-      const { render } = await fixture(t);
-      await assert.rejects(render({ ...cap, maxBytes }), { code: 'FILE_TOO_LARGE' });
-      assert.deepEqual(await readdir(root), []);
+  await t.test('embedded JPEG byte limit', async t => {
+    const { render } = await fixture(t);
+    await assert.rejects(render({ ...cap, maxBytes: jpeg.length - 1 }),
+      { code: 'FILE_TOO_LARGE', reason: 'embedded-jpeg-total' });
+    assert.deepEqual(await readdir(root), []);
+  });
+  await t.test('serialized PDF byte limit', async t => {
+    const { render } = await fixture(t);
+    const save = PDFDocument.prototype.save;
+    t.mock.method(PDFDocument.prototype, 'save', async function (...args) {
+      const bytes = await save.apply(this, args);
+      return Buffer.alloc(Math.max(bytes.length, cap.maxBytes) + 1);
     });
-  }
+    await assert.rejects(render(), { code: 'FILE_TOO_LARGE', reason: 'output-pdf-bytes' });
+    assert.deepEqual(await readdir(root), []);
+  });
   await t.test('page total changes during zoom', async t => {
     const { page, render } = await fixture(t);
     await page.getByRole('combobox').evaluate(input => input.addEventListener('keydown', event => {
