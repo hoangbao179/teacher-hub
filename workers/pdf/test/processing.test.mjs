@@ -157,7 +157,7 @@ test('print fallback extends deadline unless explicitly disabled', () => {
   for (const fallback of [undefined, 'false', 'true']) for (const capture of [undefined, 'false', 'true', 'invalid']) {
     const env = { PDF_PRINT_FALLBACK_ENABLED: fallback, PDF_VIEWER_SCREEN_CAPTURE_ENABLED: capture };
     assert.equal(printFallbackEnabled(env), fallback !== 'false');
-    assert.equal(viewerScreenCaptureEnabled(env), capture !== 'false');
+    assert.equal(viewerScreenCaptureEnabled(env), true);
     assert.equal(limits(env).deadlineMs, fallback === 'false' ? 22000 : 120000);
     assert.throws(() => limits({ ...env, PDF_DEADLINE_MS: String(fallback === 'false' ? 22001 : 120001) }),
       { code: 'SERVICE_UNAVAILABLE' });
@@ -167,18 +167,16 @@ test('print fallback extends deadline unless explicitly disabled', () => {
 });
 
 test('Viewer mode selection uses view-only capture unless Print is enabled or controls are ambiguous', async () => {
-  for (const flag of [undefined, 'false', 'true', 'invalid']) {
-    const capture = viewerScreenCaptureEnabled({ PDF_VIEWER_SCREEN_CAPTURE_ENABLED: flag });
-    for (const [count, enabled, code] of [[1, true, null], [0, false, 'PRINT_UNAVAILABLE'],
-      [1, false, 'ACCESS_DENIED'], [2, true, 'UNSUPPORTED_SOURCE']]) {
-      const page = {
-        evaluateHandle: async () => ({ dispose: async () => {} }), waitForFunction: async () => {},
-        getByRole: () => ({ count: async () => count, isVisible: async () => true, isEnabled: async () => enabled }),
-      };
-      const selection = selectViewerMode(page, capture, signal());
-      if (code && (!capture || count > 1)) await assert.rejects(selection, { code });
-      else assert.equal(await selection, code ? 'view-only' : 'print-gated');
-    }
+  assert.equal(viewerScreenCaptureEnabled({ PDF_VIEWER_SCREEN_CAPTURE_ENABLED: 'false' }), true);
+  for (const [count, enabled, code] of [[1, true, null], [0, false, null],
+    [1, false, null], [2, true, 'UNSUPPORTED_SOURCE']]) {
+    const page = {
+      evaluateHandle: async () => ({ dispose: async () => {} }), waitForFunction: async () => {},
+      getByRole: () => ({ count: async () => count, isVisible: async () => true, isEnabled: async () => enabled }),
+    };
+    const selection = selectViewerMode(page, true, signal());
+    if (code) await assert.rejects(selection, { code });
+    else assert.equal(await selection, enabled ? 'print-gated' : 'view-only');
   }
 });
 
