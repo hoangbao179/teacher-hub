@@ -43,9 +43,9 @@ export function parseJob(value: unknown): Job {
     source: { provider: 'google_drive', fileId: value.source.fileId } };
 }
 export interface Limits { maxBytes: number; maxSourceBytes?: number; maxPages: number; deadlineMs: number; redirects: number }
-/** Anonymous browser fallback after direct download fails; opt out with `false`. */
-export function printFallbackEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.PDF_PRINT_FALLBACK_ENABLED !== 'false';
+/** Anonymous Viewer after direct download fails; env cannot disable this path. */
+export function printFallbackEnabled(_env: NodeJS.ProcessEnv = process.env): boolean {
+  return true;
 }
 /** Viewer-only links must capture tiles when Print is off; env cannot disable this path. */
 export function viewerScreenCaptureEnabled(_env: NodeJS.ProcessEnv = process.env): boolean {

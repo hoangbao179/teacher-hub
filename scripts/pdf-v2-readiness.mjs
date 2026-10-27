@@ -1,0 +1,76 @@
+// Read-only deployment gate. Deliberately separate from the older v1 staging tools.
+import {pathToFileURL} from 'node:url';
+import {CLOUD, cliCall} from './pdf-cloud-stage.mjs';
+import {checkPolicy} from './pdf-cloud-stage-public-hmac.mjs';
+
+export const RELEASE = Object.freeze({
+  worker: {revision:'teacher-pdf-worker-00017-guf', digest:'sha256:268d956e8a2329fea192ffa4e7b6d3b0fd2a548679e35256dfa9ae48d34f804d'},
+  gateway: {revision:'teacher-pdf-gateway-00013-gej', digest:'sha256:5adfd3d41adf82dde6158e9b0c97acbaebb173837cdf7cee99f9680009e1744f'},
+});
+const requireCheck = (ok, code) => { if (!ok) throw Error('PDF_V2_'+code); };
+const env = (c,n) => c?.env?.find(e=>e.name===n)?.value;
+const ready = s => s?.conditions?.some(c=>c.type==='Ready'&&c.status==='True');
+
+export function evaluateService(kind, service, revision, policy) {
+  const worker=kind==='worker', name=worker?CLOUD.worker:CLOUD.gateway, expected=RELEASE[kind];
+  requireCheck(!!expected,'UNKNOWN_SERVICE');
+  checkPolicy(name,service,policy);
+  if(worker) requireCheck(policy.bindings?.some(b=>b.role==='roles/run.invoker' && !b.condition &&
+    b.members?.includes('serviceAccount:teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com')),'TASK_INVOKER_UNVERIFIED');
+  requireCheck(service.metadata?.name===name && ready(service.status) &&
+    service.status?.observedGeneration===service.metadata?.generation,'SERVICE_NOT_READY');
+  const routes=service.status?.traffic;
+  requireCheck(Array.isArray(routes) && routes.reduce((n,r)=>n+(r.percent??0),0)===100 &&
+    routes.every(r=>(r.percent??0)===0 || r.revisionName===expected.revision),'TRAFFIC_MISMATCH');
+  const spec=revision?.spec, c=spec?.containers?.[0];
+  const scale=service.spec?.template?.metadata?.annotations;
+  requireCheck(scale?.['autoscaling.knative.dev/maxScale']==='1' &&
+    (scale?.['autoscaling.knative.dev/minScale']??'0')==='0','SCALING_DRIFT');
+  const image=CLOUD.registry+'/'+name+'@'+expected.digest;
+  requireCheck(revision?.metadata?.name===expected.revision && ready(revision.status) &&
+    c?.image===image && [image,expected.digest].includes(revision.status?.imageDigest),'REVISION_DIGEST_MISMATCH');
+  requireCheck(spec?.serviceAccountName===(worker?CLOUD.workerSA:CLOUD.gatewaySA) &&
+    Number(spec.timeoutSeconds)>=180 && Number(spec.containerConcurrency)===(worker?1:10) &&
+    c.resources?.limits?.cpu==='1' && c.resources?.limits?.memory===(worker?'2Gi':'256Mi'),'RESOURCE_DRIFT');
+  requireCheck(env(c,'PDF_CHUNKED_JOBS_ENABLED')==='true','CHUNKS_DISABLED');
+  if(worker) {
+    requireCheck(['PDF_PROCESSING_ENABLED','PDF_WORKER_IAM_READY','PDF_PRINT_FALLBACK_ENABLED'].every(n=>env(c,n)==='true'),'WORKER_DISABLED');
+    const mount=c.volumeMounts?.find(v=>v.mountPath==='/tmp/pdf-worker');
+    const volume=spec.volumes?.find(v=>v.name===mount?.name);
+    requireCheck(mount && volume?.emptyDir?.medium==='Memory' && volume.emptyDir.sizeLimit==='384Mi' &&
+      env(c,'PDF_TEMP_ROOT')==='/tmp/pdf-worker','SCRATCH_DRIFT');
+  } else {
+    requireCheck(env(c,'PDF_GATEWAY_ENABLED')==='true' && env(c,'PDF_LONG_PRINT_TASKS_ENABLED')==='true' &&
+      env(c,'PDF_GATEWAY_WORKER_URL')===CLOUD.workerURL &&
+      c.env?.some(e=>e.name==='PDF_GATEWAY_HMAC_KEY' && e.value===undefined && e.valueFrom?.secretKeyRef),'GATEWAY_DRIFT');
+  }
+  return {revision:expected.revision,digest:expected.digest};
+}
+
+export function audit(sourceSha, run=cliCall) {
+  requireCheck(/^[a-f0-9]{40}$/.test(sourceSha??''),'SOURCE_SHA_REQUIRED');
+  const common=['--project='+CLOUD.project,'--region='+CLOUD.region,'--format=json'];
+  const read=args=>JSON.parse(run('gcloud',args));
+  const services={};
+  for(const kind of ['worker','gateway']) {
+    const name=CLOUD[kind];
+    services[kind]=evaluateService(kind,
+      read(['run','services','describe',name,...common]),
+      read(['run','revisions','describe',RELEASE[kind].revision,...common]),
+      read(['run','services','get-iam-policy',name,...common]));
+  }
+  const q=read(['tasks','queues','describe','teacher-pdf-queue','--project='+CLOUD.project,'--location='+CLOUD.region,'--format=json']);
+  requireCheck(q.name===`projects/${CLOUD.project}/locations/${CLOUD.region}/queues/teacher-pdf-queue` &&
+    q.state==='RUNNING' && !q.httpTarget && q.rateLimits?.maxConcurrentDispatches===1 &&
+    q.rateLimits.maxDispatchesPerSecond>0 && q.rateLimits.maxDispatchesPerSecond<=1 &&
+    q.retryConfig?.maxAttempts===5 && q.retryConfig.maxRetryDuration==='3600s' &&
+    q.retryConfig.minBackoff==='10s' && q.retryConfig.maxBackoff==='300s','QUEUE_DRIFT');
+  return {version:1,sourceSha,checkedAt:new Date().toISOString(),workerURL:CLOUD.workerURL,
+    gatewayURL:'https://teacher-pdf-gateway-851777150171.asia-southeast1.run.app',services,result:'PASS'};
+}
+
+if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
+  try { console.log(JSON.stringify(audit(process.argv[2]))); }
+  catch(e) { console.error(/^PDF_(V2|CLOUD)_[A-Z0-9_]+$/.test(e.message)?e.message:
+    'PDF_V2_CLOUD_READ_BLOCKED: check verifier permissions; no IAM or traffic changes attempted'); process.exitCode=1; }
+}

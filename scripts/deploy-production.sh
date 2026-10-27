@@ -28,6 +28,8 @@ if [[ ! -f "$APP_DIR/deploy-env.sh" ]]; then
 fi
 # shellcheck source=deploy-env.sh
 source "$APP_DIR/deploy-env.sh"
+# shellcheck source=pdf-v2-deploy.sh
+source "$APP_DIR/pdf-v2-deploy.sh"
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE. Create it from .env.deploy.example on the VPS."
   exit 2
@@ -147,6 +149,8 @@ fi
 check_storage_headroom
 
 deployment_changed=0
+pdf_activation_changed=0
+pdf_rollback_env=""
 temporary_backup=""
 rollback_env="$(mktemp "$APP_DIR/.env.rollback.XXXXXX")"
 if ! cp --preserve=mode "$ENV_FILE" "$rollback_env"; then
@@ -164,6 +168,24 @@ rollback() {
     rm -f "$temporary_backup"
   fi
   echo "Deployment failed at line $line. The database will not be rolled back automatically."
+  # Never disable continuation or downgrade an API while newly admitted v2 jobs
+  # might be running. An unavailable DB is treated as unknown, not as zero jobs.
+  if [[ "$pdf_activation_changed" == 1 ]]; then
+    active_v2="$(compose exec -T api node --max-old-space-size=64 -e '
+      const {pool}=require("./dist/db/pool");
+      pool.query("SELECT COUNT(*) AS n FROM pdf_jobs WHERE worker_version=2 AND expires_at>UTC_TIMESTAMP(3) AND status NOT IN (\u0027FAILED\u0027,\u0027EXPIRED\u0027)")
+        .then(([r])=>console.log(r[0].n)).catch(()=>{process.exitCode=1}).finally(()=>pool.end());
+      setTimeout(()=>process.exit(1),10000).unref();' 2>/dev/null)"
+    if [[ "$active_v2" != 0 ]]; then
+      echo 'PDF_V2_ROLLBACK_BLOCKED: active/unknown v2 jobs; keep compatible API, flags and recovery. Fix forward; do not downgrade Cloud Run.'
+      rm -f "$rollback_env" "$pdf_rollback_env"
+      exit "$exit_code"
+    fi
+  fi
+  if [[ -n "$pdf_rollback_env" && -f "$pdf_rollback_env" ]]; then
+    mv -f "$pdf_rollback_env" "$APP_DIR/pdf-runtime/runtime.env"
+    pdf_rollback_env=""
+  fi
   if [[ -n "$rollback_env" && -f "$rollback_env" ]]; then
     if mv -f "$rollback_env" "$ENV_FILE"; then
       rollback_env=""
@@ -178,6 +200,7 @@ rollback() {
     compose up -d --remove-orphans
     wait_for_healthy api 30
     wait_for_healthy web 30
+    compose exec -T web nginx -s reload
   else
     echo "No previous immutable image tag is available for automatic image rollback."
   fi
@@ -185,6 +208,10 @@ rollback() {
 }
 trap 'rollback "$?" "$LINENO"' ERR
 
+if [[ -f "$APP_DIR/.env.next" ]]; then
+  deploy_validate_env_file "$APP_DIR/.env.next"
+  mv -f "$APP_DIR/.env.next" "$ENV_FILE"
+fi
 deploy_set_image_tag "$ENV_FILE" "$NEW_IMAGE_TAG"
 deployment_changed=1
 
@@ -226,17 +253,33 @@ else
 fi
 
 compose pull
+pdf_v2_preflight
 compose run --rm --no-deps api node dist/db/migrate.js
+pdf_v2_verify_candidate
 compose up -d --remove-orphans
 wait_for_healthy api 60
 wait_for_healthy web 60
 wait_for_healthy caddy 30
 wait_for_readiness
+pdf_v2_install_recovery
+pdf_rollback_env="$(mktemp "$APP_DIR/pdf-runtime/.runtime.rollback.XXXXXX")"
+cp --preserve=mode "$APP_DIR/pdf-runtime/runtime.env" "$pdf_rollback_env"
+pdf_v2_enable_env
+pdf_activation_changed=1
+compose up -d --no-deps --force-recreate api
+wait_for_healthy api 60
+# Nginx resolves the API upstream at config load; refresh it after API recreation.
+compose exec -T web nginx -s reload
+pdf_v2_verify_live
 
 # Readiness commits the application deployment. Maintenance failures after this point
 # must be visible to CI, but must never roll a healthy deployment back.
 trap - ERR
 maintenance_failed=0
+if ! rm -f "$pdf_rollback_env" "$APP_DIR/pdf-v2-readiness.json"; then
+  echo 'Could not remove temporary PDF readiness/config snapshot.'
+  maintenance_failed=1
+fi
 if ! rm -f "$rollback_env"; then
   echo "Could not remove the deployment env rollback snapshot."
   maintenance_failed=1

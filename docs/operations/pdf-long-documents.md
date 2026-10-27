@@ -1,9 +1,70 @@
 # PDF long documents: activation and rollback
 
-Source implementation is complete across Worker/Gateway/API/Tools; production v2
-activation is **not performed** here. Do not use offline benchmarks to certify
+Worker/Gateway/API/Tools support v2; activation is managed by the production
+Actions pipeline described below. A successful deployment gate is not real-Drive
+E2E acceptance. Do not use offline benchmarks to certify
 Google Drive/Cloud Run capacity, every Viewer layout or paper print quality.
 See the [v2 contract](../api/pdf-worker-v2.md) for protocol and fixed budgets.
+
+## Automated production activation
+
+After main CI passes, `deploy.yml` dispatches `pdf-worker.yml` on main with the
+exact source SHA and a unique run/attempt ID, waits for its successful conclusion,
+and retrieves only that run's nonsecret readiness evidence. This preserves the
+existing WIF condition (manual-dispatch event, exact workflow/main/environment);
+there is no new GCP credential, IAM change, Cloud Run deployment or traffic switch.
+The reusable deployment caller grants `actions: write` to dispatch this workflow.
+Both workflows serialize their respective production/cloud verification runs.
+
+`pdf-v2-readiness.mjs` pins the reviewed Worker `00017-guf` and Gateway `00013-gej`
+**and their immutable image digests**. It checks Ready, reconciled service state,
+100% live traffic (zero-traffic tags are allowed), dedicated identities, chunk
+gates, timeout >=180s, CPU/memory/concurrency, Worker tmpfs 384 MiB, max instances 1,
+private Worker IAM including Tasks invoker, public-HMAC Gateway mode/secret
+reference, canonical Worker routing and the queue retry/rate policy without an
+HTTP target override. A future cloud release requires a reviewed pin update;
+the gate never moves traffic or relaxes security to make itself pass.
+
+On the VPS, the existing deployment lock covers configuration snapshots,
+`.env.next` validation/installation and migrations. Existing pre-migration backup,
+disk/inode headroom and immutable image retention still apply. The candidate
+image validates readiness evidence for the same SHA (<=30 minutes old), existing
+runtime config and noninteractive root/sudo/systemd availability. Missing WIF,
+GCP read permissions, evidence, sudo or private approval is a visible blocker.
+
+The normal ledger-based migration runner applies pending migrations once. Before
+activation, `verify-pdf-v2` checks ledger 0029 and actual column types/nullability,
+including `worker_version` default **1**. A candidate one-shot API process then
+uses the unchanged private `approval.json` loader and authenticated Gateway
+queue/v2 capabilities checks with the three v2 flags supplied only to that process.
+Credentials are never transferred to Actions or printed. No existing job is
+upgraded and no migration file is edited.
+
+After normal Web/API health/readiness passes, Actions installs the existing
+systemd units idempotently and enables the one-minute timer. Only then it atomically
+updates `PDF_API_ENABLED`, `PDF_CHUNKED_JOBS_ENABLED` and
+`PDF_LONG_PRINT_TASKS_ENABLED` to `true` in `pdf-runtime/runtime.env`, preserving
+all other lines and file permissions. Only API is recreated for this flag change.
+It verifies API health, schema/authenticated Gateway, a real successful systemd
+recovery invocation, enabled/active timer, public capabilities (`submitEnabled`,
+`downloadEnabled`, `maxPages: 200`) and `/tools`. Subsequent deploys repeat the
+same gates and retain v2; there is no manual SSH/env/timer/migration activation.
+
+Failure before activation restores application env/images and leaves PDF runtime
+unchanged. Failure after flag activation restores runtime/config and previous
+images **only when there are no unexpired v2 jobs/results**. If such jobs/results
+exist, or their state cannot be read, it fails visibly and keeps compatible API,
+v2 flags and recovery for fix-forward. This conservative exception protects
+continuation and downloads. It never disables the timer, downgrades Cloud Run,
+deletes jobs/checkpoints or rolls back additive schema. Checkpoint/object lifecycle
+remains unchanged. Temporary config snapshots/evidence are removed after success.
+
+The readiness artifact is a nonsecret deployment input, retained for one day;
+it is not a screenshot or test log. No artifact is committed. Production acceptance
+still requires permitted Drive fixtures at 3/35/>50/200 pages, real Tasks dispatch,
+10-page progress, ordered merge/download, closed-browser recovery, permission
+rejection and v1 compatibility. Missing fixtures must be reported as NOT RUN;
+`maxPages: 200` alone never proves these cases.
 
 ## Operational review before any separately approved activation
 
@@ -41,9 +102,9 @@ See the [v2 contract](../api/pdf-worker-v2.md) for protocol and fixed budgets.
    retention/storage budget, logs/image retention and nonce cleanup. Local scratch
    is cleaned after each invocation; remote checkpoints are intentionally retained
    until lifecycle cleanup. Downloads expire after 24h regardless of lifecycle.
-8. Only after separate operational approval: enable API chunk gate in the existing
-   host-owned `pdf-runtime/runtime.env` and recovery CLI environment; keep the
-   approval file/credentials unchanged. No secret value belongs in Git or logs.
+8. The approved rollout is performed by the automated pipeline above. The existing
+   private approval file remains mandatory and unchanged; runtime flags are not
+   a replacement for that boundary. No secret value belongs in Git or logs.
 
 The one-minute reconciler can introduce approximately one minute between parts;
 a 200-page Viewer job may take roughly 22 scheduling intervals plus actual work.

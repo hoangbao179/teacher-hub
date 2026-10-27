@@ -97,10 +97,22 @@ jobs:
       - publish-web
     runs-on: ubuntu-24.04
     environment: production
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.source_sha }}
+      - name: Dispatch and await WIF-approved PDF Cloud readiness
+        uses: actions/github-script@v8
+        env:
+          PDF_SOURCE_SHA: ${{ inputs.source_sha }}
+        with:
+          script: await require('./scripts/dispatch-pdf-v2-readiness.cjs')(github, context, core);
+      - name: Extract nonsecret Cloud readiness evidence
+        run: unzip -p "$RUNNER_TEMP/pdf-v2-readiness.zip" pdf-v2-readiness.json > "$RUNNER_TEMP/pdf-v2-readiness.json"
       - name: Copy deployment files and deploy
         shell: bash
         env:
@@ -274,6 +286,7 @@ jobs:
             -o "UserKnownHostsFile=$known_hosts_file" \
             docker-compose.deploy.yml Caddyfile scripts/deploy-production.sh scripts/deploy-env.sh \
             scripts/pdf-recovery.sh scripts/teacher-pdf-recovery.service scripts/teacher-pdf-recovery.timer \
+            scripts/pdf-v2-deploy.sh "$RUNNER_TEMP/pdf-v2-readiness.json" \
             "$PROD_USER@$PROD_HOST:/opt/teacher-hub/"
           ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \
             'install -m 600 /dev/null /opt/teacher-hub/.env.next'
@@ -286,9 +299,9 @@ jobs:
             -o "UserKnownHostsFile=$known_hosts_file" \
             "$production_env" \
             "$PROD_USER@$PROD_HOST:/opt/teacher-hub/.env.next"
-          # pdf-runtime/ is operator-managed; never transfer HMAC/subject tokens or
-          # overwrite its runtime.env. Timer installation/activation is operator-only.
+          # Approval/credentials stay on VPS. The locked deploy manages only three
+          # runtime feature flags after Cloud/schema/approved-Gateway verification.
           # IMAGE_TAG is deliberately expanded locally after the full-SHA validation above.
           # shellcheck disable=SC2029
           ssh "${ssh_options[@]}" "$PROD_USER@$PROD_HOST" \
-            "cd /opt/teacher-hub && chmod 600 .env.next && chmod 700 deploy-production.sh deploy-env.sh && ./deploy-env.sh validate .env.next && mv -f .env.next .env && ./deploy-production.sh '$IMAGE_TAG'"
+            "cd /opt/teacher-hub && chmod 600 .env.next && chmod 700 deploy-production.sh deploy-env.sh && ./deploy-env.sh validate .env.next && ./deploy-production.sh '$IMAGE_TAG'"

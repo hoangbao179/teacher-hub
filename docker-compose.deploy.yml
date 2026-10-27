@@ -39,7 +39,8 @@ services:
     image: ghcr.io/${GHCR_OWNER:?required}/teacher-hub-api:${IMAGE_TAG:?required}
     restart: unless-stopped
     mem_limit: 384m
-    # Host-owned configuration survives Actions deployments; absent means disabled.
+    # Credentials remain host-owned. Actions manages only three PDF flags after
+    # Cloud, schema, approval and recovery gates; absent config means disabled.
     env_file:
       - path: ./pdf-runtime/runtime.env
         required: false

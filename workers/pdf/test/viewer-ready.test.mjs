@@ -19,7 +19,7 @@ test('offline Viewer initialization and zoom readiness', { timeout: 30000 }, asy
   for (const flag of [false, true]) {
     await t.test(`immediate Viewer and enabled Print; screen capture=${flag}`, async t => {
       const page = await fixture(t, viewer + '<button>Print</button>');
-      assert.equal(await selectViewerMode(page, flag, AbortSignal.timeout(3000)), 'print-gated');
+      assert.equal(await selectViewerMode(page, flag, AbortSignal.timeout(3000)), flag ? 'view-only' : 'print-gated');
     });
     for (const [html, code] of [['<button disabled>Print</button>', 'ACCESS_DENIED'], ['', 'PRINT_UNAVAILABLE'],
       ['<button>Print</button><button>In</button>', 'UNSUPPORTED_SOURCE']]) {
@@ -40,14 +40,14 @@ test('offline Viewer initialization and zoom readiness', { timeout: 30000 }, asy
         document.querySelector('main').removeAttribute('aria-busy');
       }, 800);
     }, viewer);
-    assert.equal(await selectViewerMode(page, true, AbortSignal.timeout(3000)), 'print-gated');
+    assert.equal(await selectViewerMode(page, true, AbortSignal.timeout(3000)), 'view-only');
   });
-  await t.test('late Print during toolbar settling keeps print-gated mode', async t => {
+  await t.test('late Print during toolbar settling still uses view-only when capture is enabled', async t => {
     const page = await fixture(t, viewer);
     await page.evaluate(() => setTimeout(() => {
       document.body.insertAdjacentHTML('beforeend', '<button>Print</button>');
     }, 200));
-    assert.equal(await selectViewerMode(page, true, AbortSignal.timeout(3000)), 'print-gated');
+    assert.equal(await selectViewerMode(page, true, AbortSignal.timeout(3000)), 'view-only');
   });
   await t.test('absent Print selects view-only when capture is enabled', async t => {
     const page = await fixture(t, viewer);

@@ -1,7 +1,17 @@
 name: pdf-worker-manual
+run-name: ${{ inputs.activation_request && format('PDF v2 readiness {0}', inputs.activation_request) || 'PDF Worker manual verification' }}
 
 on:
   workflow_dispatch:
+    inputs:
+      activation_request:
+        description: Internal deployment correlation ID (empty keeps manual verification)
+        type: string
+        default: ''
+      source_sha:
+        description: Exact production source SHA to bind readiness evidence
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -12,7 +22,7 @@ concurrency:
 
 jobs:
   verify-wif:
-    if: github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.activation_request == ''
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     # Read-only verification; provider and IAM restrictions are independent gates.
@@ -70,3 +80,49 @@ jobs:
           gcloud artifacts repositories describe teacher-pdf \
             --project="$GCP_PROJECT_ID" --location="$GCP_REGION" --format='value(name)'
           echo 'WIF impersonation and repository read succeeded; deployment permissions are not proven.' >> "$GITHUB_STEP_SUMMARY"
+
+  v2-readiness:
+    if: github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.activation_request != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: pdf-worker
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Validate exact deployment request
+        env:
+          REQUEST: ${{ inputs.activation_request }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          [[ "$REQUEST" =~ ^[0-9]+-[0-9]+$ ]]
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.18.0
+      - name: Validate WIF environment protection
+        uses: actions/github-script@v8
+        with:
+          script: await require('./scripts/validate-pdf-environment.cjs')(github, context);
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_VERIFIER_SA }}
+          project_id: teacher-hub-pdf
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Verify live revisions, digests, IAM, resources and queue
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: node scripts/pdf-v2-readiness.mjs "$SOURCE_SHA" > "$RUNNER_TEMP/pdf-v2-readiness.json"
+      # Nonsecret machine input, not a test log/screenshot. Expires after one day;
+      # VPS additionally requires source SHA equality and freshness <=30 minutes.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdf-v2-readiness-${{ inputs.activation_request }}
+          path: ${{ runner.temp }}/pdf-v2-readiness.json
+          retention-days: 1
