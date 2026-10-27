@@ -7,6 +7,15 @@ import { constants } from 'node:fs';
 import { isPdfChunkJob, pdfChunkingEnabled, PDF_LONG_MAX_PAGES, PDF_LONG_OUTPUT_MAX_BYTES, PDF_LONG_TEMP_BYTES, PDF_CHUNK_DEADLINE_MS, type PdfChunkJob } from '@teacher/shared';
 import { processChunkJob } from './chunk-processor.ts';
 
+/** V2 revisions may also receive persisted v1 jobs while traffic is moved.
+ * Preserve the 32 MiB mount cap on v1-only revisions; let v1 payloads
+ * share the reviewed 384 MiB scratch mount when the v2 gate is enabled.
+ * Per-job output/source/page limits still follow the payload version.
+ */
+export function scratchVolumeLimitBytes(env: NodeJS.ProcessEnv, chunked: boolean): number {
+  return chunked || pdfChunkingEnabled(env) ? PDF_LONG_TEMP_BYTES : 32*1024*1024;
+}
+
 export function jobHandler(deps?: Dependencies, env: NodeJS.ProcessEnv = process.env) {
   let busy = false;
   return async (req: IncomingMessage, res: ServerResponse) => {
@@ -58,7 +67,7 @@ export function jobHandler(deps?: Dependencies, env: NodeJS.ProcessEnv = process
         try {
           const fs = await statfs('/tmp/pdf-worker');
           await access('/tmp/pdf-worker', constants.W_OK);
-          const scratch = chunked ? PDF_LONG_TEMP_BYTES : 32*1024*1024;
+          const scratch = scratchVolumeLimitBytes(env, chunked);
           const required = chunked ? 2*PDF_LONG_OUTPUT_MAX_BYTES+(cap.maxSourceBytes ?? cap.maxBytes) : Math.max(cap.maxBytes, cap.maxSourceBytes ?? cap.maxBytes);
           if (fs.type !== 0x01021994 || fs.blocks * fs.bsize > scratch || fs.bavail * fs.bsize < required) {
             throw new Error('volume');

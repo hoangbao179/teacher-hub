@@ -14,6 +14,7 @@ import { download, openSource, sourceURL, publicAddress } from '../src/download.
 import { processJob } from '../src/processor.ts';
 import { validatePDF } from '../src/pdf.ts';
 import { createWorkerServer } from '../src/server.mjs';
+import { scratchVolumeLimitBytes } from '../src/http.ts';
 import { job, MemoryStore, syntheticPDF } from './fixtures.mjs';
 
 const signal = () => AbortSignal.timeout(10000);
@@ -29,6 +30,16 @@ function response(body, status = 200, headers = {}) {
 }
 const fixtureDownload = async (_id, path, _cap, abort) => { abort.throwIfAborted(); await writeFile(path, syntheticPDF()); };
 const fakeValidation = async () => ({ bytes: syntheticPDF().length, pages: 2, sha256: 'a'.repeat(64) });
+
+test('v1 remains compatible with a v2 Worker scratch mount during rollout', () => {
+  const v1 = 32 * 1024 * 1024;
+  const v2 = 384 * 1024 * 1024;
+  assert.equal(scratchVolumeLimitBytes({}, false), v1);
+  assert.equal(scratchVolumeLimitBytes({ PDF_CHUNKED_JOBS_ENABLED: 'false' }, false), v1);
+  assert.equal(scratchVolumeLimitBytes({ PDF_CHUNKED_JOBS_ENABLED: 'true' }, false), v2);
+  assert.equal(scratchVolumeLimitBytes({ PDF_CHUNKED_JOBS_ENABLED: 'true' }, true), v2);
+  assert.equal(scratchVolumeLimitBytes({}, true), v2);
+});
 
 test('source validation and output validation use independent byte ceilings', async t => {
   const root = await directory(t);
