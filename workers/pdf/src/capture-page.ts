@@ -29,8 +29,14 @@ export async function observeViewerBitmaps(page: Page) {
           if (!Number.isInteger(pageIndex) || !Number.isInteger(pageTotal) || pageIndex < 1 || pageTotal < 1) return null;
           return { index: pageIndex, total: pageTotal };
         };
+        const visible = (el: Element) => {
+          if (el instanceof HTMLElement && el.hidden) return false;
+          const style = getComputedStyle(el);
+          if (style.visibility === 'hidden' || style.display === 'none') return false;
+          return el.getClientRects().length > 0;
+        };
         const visibleToolbar = (root: ParentNode) => [...root.querySelectorAll('[role="toolbar"]')]
-          .some(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
+          .some(el => visible(el));
         const headings = [...document.querySelectorAll('h2')];
         const sameIndex = headings.filter(h => parseLabel(h.textContent ?? '')?.index === index);
         if (sameIndex.length > 1) return { error: 'UNSUPPORTED_SOURCE', reason: 'duplicate-page-heading' } as const;
@@ -43,11 +49,18 @@ export async function observeViewerBitmaps(page: Page) {
         let container = heading.parentElement;
         for (let depth = 0; container && depth < 3; depth++, container = container.parentElement) {
           if (container.matches('body, html, main, header, nav, aside, [role="toolbar"]')) return {};
-          if (container.querySelectorAll('h2').length !== 1 || visibleToolbar(container))
-            return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-page-layout' } as const;
-          const images = container.querySelectorAll('img');
-          if (images.length > 1) return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-page-layout' } as const;
-          if (images.length === 1) {
+          const headingsInContainer = [...container.querySelectorAll('h2')].filter(visible);
+          if (headingsInContainer.length > 1) {
+            return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-layout-multiple-headings', ancestorLevel: depth } as const;
+          }
+          if (visibleToolbar(container)) {
+            return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-layout-toolbar-visible', ancestorLevel: depth } as const;
+          }
+          const images = [...container.querySelectorAll('img')].filter(visible);
+          if (images.length > 1) {
+            return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-layout-multiple-images', ancestorLevel: depth } as const;
+          }
+          if (images.length === 1 && headingsInContainer.length === 1) {
             const image = images[0];
             const key = `${index}/${total}`;
             const source = `${image.src}|${image.srcset}`;
@@ -95,9 +108,22 @@ export async function captureViewerPage(page: Page, index: number, total: number
       state ??= await observeViewerBitmaps(page);
       // Scroll while polling: virtualized headings/images may disappear/reappear.
       const handle = await page.waitForFunction(({ state, index, total, remainingBytes }) => {
-        const candidate = state.resolve(index, total);
-        if ('error' in candidate) return { error: candidate.error, reason: candidate.reason };
-        if (!candidate.image) return null;
+        const layoutReasons = new Set(['ambiguous-layout-multiple-headings', 'ambiguous-layout-multiple-images',
+          'ambiguous-layout-toolbar-visible']);
+        const settleLayout = (candidate: {
+          error?: string; reason?: string; ancestorLevel?: number;
+          image?: HTMLImageElement; heading?: HTMLElement; container?: HTMLElement;
+          stale?: boolean; signature?: string;
+        }) => {
+          if (!('error' in candidate)) return candidate;
+          const reason = typeof candidate.reason === 'string' ? candidate.reason : '';
+          if (layoutReasons.has(reason) && performance.now() - state.changedAt < 750) return null;
+          return { error: candidate.error, reason: candidate.reason, ancestorLevel: candidate.ancestorLevel };
+        };
+        const candidate = settleLayout(state.resolve(index, total));
+        if (!candidate) return null;
+        if ('error' in candidate) return candidate;
+        if (!candidate.image || !candidate.heading) return null;
         const { image, heading, container } = candidate;
         if (!image.getClientRects().length || getComputedStyle(image).visibility === 'hidden') return null;
         const rect = heading.getBoundingClientRect();
@@ -114,15 +140,16 @@ export async function captureViewerPage(page: Page, index: number, total: number
         if (image.complete && (!width || !height) && performance.now() - state.changedAt >= 750)
           return { error: 'SOURCE_UNAVAILABLE' };
         if (!image.complete || !image.src.startsWith('blob:') || !width || !height) return null;
-        const decoded = state.decoded(image, candidate.signature);
+        const decoded = state.decoded(image, candidate.signature ?? '');
         if (decoded < 0) return { error: 'SOURCE_UNAVAILABLE' };
         const landscape = width > height;
         const scale = Math.min(((landscape ? 841.89 : 595.28) - 16) / width,
           ((landscape ? 595.28 : 841.89) - 16) / height);
         if (!decoded || candidate.stale || 72 / scale < 200 || performance.now() - state.changedAt < 750) return null;
         // decode() may finish after a source/node/heading replacement.
-        const current = state.resolve(index, total);
-        if ('error' in current) return { error: current.error, reason: current.reason };
+        const current = settleLayout(state.resolve(index, total));
+        if (!current) return null;
+        if ('error' in current) return current;
         if (current.image !== image || current.heading !== heading || current.container !== container ||
             current.signature !== candidate.signature || current.stale || !image.isConnected ||
             performance.now() - state.changedAt < 750) return null;
@@ -141,15 +168,19 @@ export async function captureViewerPage(page: Page, index: number, total: number
         finally { canvas.width = canvas.height = 1; }
       }, { state, index, total, remainingBytes }, { timeout: 15000, polling: 'raf' });
       try {
-        const captured = await handle.jsonValue();
+        const captured = await handle.jsonValue() as Record<string, unknown> | null;
         if (!captured) throw new JobError('SOURCE_UNAVAILABLE', true);
-        if ('error' in captured) {
+        if ('error' in captured && typeof captured.error === 'string') {
           const reason = typeof captured.reason === 'string' ? captured.reason : undefined;
-          throw new JobError(captured.error!, captured.error === 'SOURCE_UNAVAILABLE', reason);
+          const ancestorLevel = typeof captured.ancestorLevel === 'number' ? captured.ancestorLevel : undefined;
+          throw new JobError(captured.error, captured.error === 'SOURCE_UNAVAILABLE', reason,
+            { pageIndex: index, ancestorLevel });
         }
-        const png = Buffer.from(captured.encoded!, 'base64');
-        captured.encoded = '';
-        return { width: captured.width!, height: captured.height!, png };
+        const encoded = typeof captured.encoded === 'string' ? captured.encoded : '';
+        const width = typeof captured.width === 'number' ? captured.width : 0;
+        const height = typeof captured.height === 'number' ? captured.height : 0;
+        const png = Buffer.from(encoded, 'base64');
+        return { width, height, png };
       } finally { await handle.dispose(); }
     } catch (error) {
       if (signal.aborted) throw signal.reason;

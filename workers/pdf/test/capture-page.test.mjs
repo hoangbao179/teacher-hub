@@ -189,16 +189,53 @@ test('offline bitmap synchronization, recreation and identity failures', { timeo
     });
     await verify(await captureViewerPage(page, 2, 2, budget, observation), 2334, 3301, [0, 128, 0]);
   });
-  for (const duplicate of ['heading', 'image']) {
+  for (const [duplicate, reason] of [
+    ['heading', 'duplicate-page-heading'], ['image', 'ambiguous-layout-multiple-images'],
+  ]) {
     await t.test(`ambiguous ${duplicate} fails explicitly`, async t => {
       const page = await fixture(t);
       await page.evaluate(duplicate => {
         const element = document.querySelector(duplicate === 'heading' ? 'section' : 'img');
         element.parentElement.append(element.cloneNode(true));
       }, duplicate);
-      await assert.rejects(captureViewerPage(page, 1, 2, budget), { code: 'UNSUPPORTED_SOURCE' });
+      await assert.rejects(captureViewerPage(page, 1, 2, budget), { code: 'UNSUPPORTED_SOURCE', reason });
     });
   }
+  await t.test('hidden sibling page headings do not fail layout resolution', async t => {
+    const page = await fixture(t);
+    await page.evaluate(() => {
+      const offscreen = document.createElement('div');
+      offscreen.style.display = 'none';
+      offscreen.innerHTML = '<h2>Page 2 / 2</h2>';
+      document.querySelector('main').append(offscreen);
+    });
+    await verify(await captureViewerPage(page, 1, 2, budget), 1770, 2503, [255, 0, 0]);
+  });
+  await t.test('transient duplicate visible images during zoom settle without failing', async t => {
+    const page = await fixture(t);
+    const observation = await observeViewerBitmaps(page);
+    t.after(() => disposeViewerBitmaps(observation));
+    await page.evaluate(() => {
+      const extra = document.createElement('img');
+      extra.style.cssText = 'width:1px;height:1px';
+      extra.src = document.querySelector('img').src;
+      document.querySelector('.bitmap').append(extra);
+      setTimeout(() => extra.remove(), 400);
+    });
+    await verify(await captureViewerPage(page, 1, 2, budget, observation), 1770, 2503, [255, 0, 0]);
+  });
+  await t.test('visible toolbar inside page wrapper reports toolbar reason', async t => {
+    const page = await fixture(t);
+    await page.evaluate(() => {
+      const toolbar = document.createElement('div');
+      toolbar.setAttribute('role', 'toolbar');
+      toolbar.textContent = 'zoom';
+      document.querySelector('section').append(toolbar);
+    });
+    await assert.rejects(captureViewerPage(page, 1, 2, budget), {
+      code: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-layout-toolbar-visible',
+    });
+  });
   await t.test('unreadable blob is an explicit retryable source failure', async t => {
     const page = await fixture(t);
     await page.evaluate(() => { document.querySelector('img').src = 'blob:null/missing'; });

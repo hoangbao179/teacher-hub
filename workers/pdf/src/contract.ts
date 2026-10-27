@@ -2,8 +2,15 @@ export class JobError extends Error {
   code: string;
   retryable: boolean;
   reason?: string;
-  constructor(code: string, retryable = false, reason?: string) {
+  pageIndex?: number;
+  ancestorLevel?: number;
+  constructor(code: string, retryable = false, reason?: string,
+    capture?: { pageIndex?: number; ancestorLevel?: number }) {
     super(code); this.code = code; this.retryable = retryable; this.reason = reason;
+    if (Number.isInteger(capture?.pageIndex) && capture!.pageIndex! >= 1 && capture!.pageIndex! <= 40)
+      this.pageIndex = capture!.pageIndex;
+    if (Number.isInteger(capture?.ancestorLevel) && capture!.ancestorLevel! >= 0 && capture!.ancestorLevel! < 8)
+      this.ancestorLevel = capture!.ancestorLevel;
   }
 }
 export interface Job { version: 1; jobId: string; source: { provider: 'google_drive'; fileId: string } }
