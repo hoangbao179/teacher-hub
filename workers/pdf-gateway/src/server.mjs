@@ -1,3 +1,4 @@
+import { PDF_OUTPUT_MAX_BYTES } from '../../../shared/dist/esm/pdf-limits.js';
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
@@ -222,7 +223,7 @@ export function createGatewayServer({
         const limiter = new Transform({
           transform(chunk, _encoding, next) {
             total += chunk.length;
-            if (total > 10485760) next(new Error('PDF_TOO_LARGE'));
+            if (total > PDF_OUTPUT_MAX_BYTES) next(new Error('PDF_TOO_LARGE'));
             else next(null,chunk);
           }
         });

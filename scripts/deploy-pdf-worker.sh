@@ -47,7 +47,7 @@ NODE
 }
 check_private_service
 
-docker build --pull --platform linux/amd64 -t "$image" workers/pdf
+docker build --pull --platform linux/amd64 -f workers/pdf/Dockerfile -t "$image" .
 docker run -d --name "$container" --cpus=1 --memory=2g --memory-swap=2g \
   --read-only --cap-drop=ALL --security-opt=no-new-privileges \
   -p 127.0.0.1::8080 "$image" > /dev/null

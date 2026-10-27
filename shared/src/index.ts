@@ -1,6 +1,7 @@
 export * from "./contracts/common.js";
 export * from "./contracts/auth.js";
 export * from "./contracts/pdf.js";
+export * from "./pdf-limits.js";
 export * from "./contracts/classes.js";
 export * from "./contracts/combined-class-groups.js";
 export * from "./contracts/students.js";

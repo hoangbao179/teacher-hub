@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { PDF_OUTPUT_MAX_BYTES } from '../../shared/dist/esm/pdf-limits.js';
 import { createGatewayServer, route, signature } from './src/server.mjs';
 
 const WORKER = 'https://teacher-pdf-worker-851777150171.asia-southeast1.run.app';
@@ -309,9 +310,11 @@ test('oversized and upstream-truncated PDFs cannot finish as successful download
    if(url.includes('output.pdf')){
      attempt++;
      if(attempt===1){
+       const chunk=2*1024*1024;
+       const chunks=Math.ceil(PDF_OUTPUT_MAX_BYTES/chunk)+1;
        let sent=0;
        return new Response(new ReadableStream({pull(controller){
-         if(sent++<6)controller.enqueue(new Uint8Array(2*1024*1024));
+         if(sent++<chunks)controller.enqueue(new Uint8Array(chunk));
          else controller.close();
        }}));
      }

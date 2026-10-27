@@ -26,7 +26,7 @@ try {
       pixels[p]=(p/3)%255;pixels[p+1]=80;pixels[p+2]=150;
     }
     const jpg=await sharp(pixels,{raw:{width:w,height:h,channels:3}})
-      .jpeg({quality:93,chromaSubsampling:'4:4:4'}).toBuffer();
+      .jpeg({quality:88,chromaSubsampling:'4:4:4'}).toBuffer();
     const img=await pdf.embedJpg(jpg);
     const pw=w>h?841.89:595.28,ph=w>h?595.28:841.89;
     const k=Math.min((pw-16)/w,(ph-16)/h);
@@ -34,7 +34,7 @@ try {
   }
   const path=join(directory,'image-only.pdf');
   const bytes=await pdf.save();
-  assert(bytes.length>500&&bytes.length<10485760);
+  assert(bytes.length>500&&bytes.length<20971520);
   await writeFile(path,bytes,{flag:'wx',mode:0o600});
   execFileSync('qpdf',['--check',path],{stdio:'pipe',timeout:12000});
   assert.equal(execFileSync('qpdf',['--show-npages',path],{encoding:'utf8',timeout:12000}).trim(),'2');

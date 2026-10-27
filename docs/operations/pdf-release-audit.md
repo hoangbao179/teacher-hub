@@ -109,7 +109,7 @@ npm --prefix workers/pdf run test:viewer:authorized
 unset PDF_AUTHORIZED_VIEWER_E2E_APPROVED PDF_AUTHORIZED_VIEWER_FILE_ID
 ```
 
-It enforces 120s, 40 pages, 10 MiB. Staged Worker revisions should match the
+It enforces 120s, 40 pages, 20 MiB output (`PDF_OUTPUT_MAX_BYTES` in `@teacher/shared`). Staged Worker revisions should match the
 staging template (`PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` unless explicitly
 opted out for a narrower smoke).
 qpdf must validate the result. The smoke reports capture `NOT_VERIFIED` and

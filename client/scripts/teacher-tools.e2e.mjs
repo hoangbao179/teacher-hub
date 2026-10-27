@@ -73,7 +73,7 @@ try {
       return route.fulfill({ status: 401, json: { error: { code: "UNAUTHORIZED", message: "Expired fixture" } } });
     }
     if (pathname === "/api/auth/logout") return route.fulfill({ status: 204 });
-    if (pathname === "/api/public/pdf/capabilities") return route.fulfill({ json: { data: { submitEnabled: pdfEnabled, downloadEnabled: pdfEnabled, unavailableReason: "PDF_SERVICE_UNAVAILABLE", maxLinksPerBatch: 5, maxActiveJobs: 10, maxBatchesPerHour: 10, maxRetries: 2, maxBytes: 10485760, maxPages: 40, ticketTtlSeconds: 120 } } });
+    if (pathname === "/api/public/pdf/capabilities") return route.fulfill({ json: { data: { submitEnabled: pdfEnabled, downloadEnabled: pdfEnabled, unavailableReason: "PDF_SERVICE_UNAVAILABLE", maxLinksPerBatch: 5, maxActiveJobs: 10, maxBatchesPerHour: 10, maxRetries: 2, maxBytes: 20971520, maxPages: 40, ticketTtlSeconds: 120 } } });
     if (pathname === "/api/public/pdf/session" && request.method() === "POST") return route.fulfill({ json:{data:{available:true}} });
     if (pathname === "/api/public/pdf/batches" && request.method() === "POST") {
       const body=request.postDataJSON();

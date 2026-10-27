@@ -128,7 +128,7 @@ Before activation, after Tasks 2/3 and private cloud E2E:
    and finally `PDF_PROCESSING_ENABLED=true` only after all activation gates pass.
    Cloud Run supplies `K_SERVICE`. Default processing remains 404; enabled but
    unready returns 503. `PDF_MAX_BYTES`, `PDF_MAX_PAGES`, `PDF_DEADLINE_MS` can only
-   lower the 10 MiB/40 pages/22 seconds ceilings.
+   lower the 20 MiB/40 pages/22 seconds ceilings.
 5. Keep 1 vCPU / 2 GiB / concurrency 1 / min 0 / max 3 / request timeout 30 seconds.
    Larger PDFs require benchmark/review, not automatic resource/timeout changes.
    Cloud Run's root is not made read-only by this code; local smoke verifies
@@ -541,9 +541,10 @@ No changes to VPS/credentials/recovery/traffic are made in the source-only PR.
 
 The capture path now waits for >=200 effective DPI at the fitted A4 placement.
 If Google never supplies that detail, the bounded wait fails; it never upsizes a
-preview and labels it printable detail. PNG transfer remains capped at 32 MiB in
-total and JPEG payload accumulation is rejected above the existing 10 MiB output
-cap (final PDF overhead is checked separately). These checks reduce premature
+preview and labels it printable detail. Peak decoded PNG per page remains capped at
+32 MiB (working set, not cumulative across pages) and JPEG payload accumulation is
+rejected above the 20 MiB output cap from `@teacher/shared` (final PDF overhead is
+checked separately). These checks reduce premature
 capture and memory accumulation, but are not a Cloud Run RAM benchmark. No memory,
 CPU, image, IAM, task deadline, billing configuration or activation gate is changed.
 The local browser regression uses owned synthetic blob images without Google

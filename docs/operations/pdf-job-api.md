@@ -143,7 +143,7 @@ two; rate includes retry job creations. Tickets capped at 20 per owner and clean
 when issuing another; only expired authorization rows are deleted, never history.
 
 No qpdf/Chromium/rendering, PDF buffer/file, image layer or new container is added to
-the VPS. Streaming uses backpressure with one download/process and a 10 MiB byte
+the VPS. Streaming uses backpressure with one download/process and a 20 MiB byte
 bound; memory scales with chunks/socket buffers, not entire PDF. No production
 RAM/CPU benchmark has been performed. MySQL adds bounded-width rows/indexes and
 short transactions. At maximum default hourly usage 1200 new jobs/day is possible;

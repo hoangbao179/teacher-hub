@@ -47,7 +47,7 @@ do not present submission/download actions as working while the gate is closed.
    ticket, downloadPath and expiresAt. POST that path with `{ticket}` and Bearer
    auth, consume the binary response as a download. Ticket TTL <=120 seconds and
    <=job expiry. Do not put tickets in URLs/storage/logs. Streaming is bounded to
-   validated bytes (<=10 MiB), one concurrent stream per process and <=30 seconds
+   validated bytes (<=20 MiB, `@teacher/shared` `PDF_OUTPUT_MAX_BYTES`), one concurrent stream per process and <=30 seconds
    or earlier job expiration. Attachments use application/pdf, nosniff and no-store.
    Interrupted streams require a fresh ticket; partial files must be discarded.
 

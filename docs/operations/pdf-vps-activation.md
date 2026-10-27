@@ -124,7 +124,7 @@ unchanged. Do not rerun applied SQL manually or restore a production dump for te
 Use the same API image and a disposable database with a synthetic teacher for
 private end-to-end rehearsal. Inject `PDF_API_ENABLED=true` and the rehearsal
 approval path **only into that test process**, never the public API container.
-Use an owner-authorized, public direct-download Drive PDF <=10 MiB. The local
+Use an owner-authorized, public direct-download Drive PDF <=20 MiB. The local
 fixture suites use fake cloud services and cannot prove real cloud connectivity.
 
 1. Confirm correct IAM + HMAC reaches `/v1/queue`; IAM-only, HMAC-only, expired

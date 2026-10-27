@@ -2,6 +2,7 @@ import type { Request,Response,NextFunction } from 'express';
 import { Readable,Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { PdfService } from '../services/pdf.service';
+import { PDF_OUTPUT_MAX_BYTES } from '@teacher/shared';
 import { pdfError } from '../services/pdf-validation';
 
 export class PdfController {
@@ -30,7 +31,7 @@ export class PdfController {
         'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store','Content-Length':String(file.bytes) });
       let bytes=0;
       const bound = new Transform({ transform(chunk: Buffer,_enc,cb) {
-        bytes+=chunk.length; cb(bytes>file.bytes || bytes>10485760 ? new Error('PDF_STREAM_LIMIT') : null,chunk);
+        bytes+=chunk.length; cb(bytes>file.bytes || bytes>PDF_OUTPUT_MAX_BYTES ? new Error('PDF_STREAM_LIMIT') : null,chunk);
       },flush(cb) { cb(bytes!==file.bytes ? new Error('PDF_STREAM_TRUNCATED') : null); } });
       await pipeline(Readable.from(file.stream),bound,res,{ signal:abort.signal });
     } catch (e) { if (res.headersSent || res.destroyed) res.destroy(); else throw e; }

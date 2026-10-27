@@ -1,4 +1,5 @@
 import type { ApiEnvelope } from "@teacher/shared";
+import { PDF_OUTPUT_MAX_BYTES } from "@teacher/shared";
 import { clearToken, getToken } from "../auth/authStorage";
 import { parseRetryAfterSeconds } from "../auth/retryAfter";
 
@@ -123,7 +124,7 @@ export async function apiPostPdfBlob(path: string, payload: unknown, signal?: Ab
     await response.body?.cancel();
     throw new ApiError(502, "PDF_INVALID_DOWNLOAD", "Tệp trả về không phải PDF.");
   }
-  const maxBytes = 10 * 1024 * 1024;
+  const maxBytes = PDF_OUTPUT_MAX_BYTES;
   const reported = Number(response.headers.get("content-length"));
   if (reported > maxBytes) {
     await response.body.cancel();

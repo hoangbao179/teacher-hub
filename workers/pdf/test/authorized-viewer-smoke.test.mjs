@@ -18,7 +18,7 @@ test('real-renderer entry point validates PDF, passes bounded caps, deletes outp
   const result=await runViewerSmoke(id,{
     render:async(fileId,path,cap,signal)=>{
       assert.equal(fileId,id);assert.equal(signal.aborted,false);
-      assert.equal(cap.maxBytes,10*1048576);assert.equal(cap.maxPages,40);
+      assert.equal(cap.maxBytes,20*1048576);assert.equal(cap.maxPages,40);
       destination=path;ran++;
       await writeFile(path,'%PDF-1.4 test');
     },
