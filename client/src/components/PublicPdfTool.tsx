@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Box, Button, Chip, CircularProgress, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, CircularProgress, LinearProgress, Paper, Stack, TextField, Typography } from "@mui/material";
 import { DownloadRounded, RefreshRounded, ReplayRounded } from "@mui/icons-material";
 import type { PdfBatch, PdfBatchList, PdfCapabilities, PdfJob, PdfJobStatus } from "@teacher/shared";
 import { pdfApi, pdfDriveId } from "../api/pdf";
@@ -55,7 +55,7 @@ export function PublicPdfTool() {
   const parts=useMemo(()=>links.split(/\r?\n/).map(s=>s.trim()).filter(Boolean),[links]);
   const invalid=useMemo(()=>{
     if(!parts.length)return "Vui lòng nhập ít nhất một liên kết.";
-    if(parts.length>(caps?.maxLinksPerBatch??5))return "Chỉ nhận tối đa 5 liên kết/lần.";
+    if(parts.length>(caps?.maxLinksPerBatch??5))return `Chỉ nhận tối đa ${caps?.maxLinksPerBatch??5} liên kết/lần.`;
     const ids=parts.map(pdfDriveId);
     if(ids.some(id=>!id))return "Chỉ hỗ trợ liên kết Drive /file/d/…/view hoặc /open?id=…";
     if(new Set(ids).size!==ids.length)return "Danh sách chứa liên kết trùng nhau.";
@@ -130,6 +130,7 @@ export function PublicPdfTool() {
     setBusy(true);setError("");setNotice("");
     try{
       const grant=await pdfApi.ticket(job.id);
+      if(job.workerVersion===2){pdfApi.downloadNative(grant.downloadPath,grant.ticket);setNotice("Trình duyệt đang tải PDF. Nếu tải bị gián đoạn, hãy nhấn Tải PDF để thử lại.");return;}
       const controller=new AbortController();
       const timer=window.setTimeout(()=>controller.abort(),30000);
       let blob:Blob;
@@ -151,7 +152,10 @@ export function PublicPdfTool() {
         !enabled?<Alert severity="info" sx={{mt:2}}>Công cụ PDF đang được chuẩn bị. Chưa thể tạo tài liệu lúc này.</Alert>:null}
       <TextField label="Liên kết Google Drive" data-testid="pdf-links" fullWidth multiline minRows={3} maxRows={8} sx={{mt:2}}
         placeholder="https://drive.google.com/file/d/…/view" value={links} disabled={!enabled||busy}
-        onChange={e=>setLinks(e.target.value)} helperText="Tối đa 5 liên kết, mỗi dòng một link."/>
+        onChange={e=>setLinks(e.target.value)} helperText={`Tối đa ${caps?.maxLinksPerBatch??5} liên kết, mỗi dòng một link.${caps?.maxPages ? ` Tối đa ${caps.maxPages} trang/tài liệu.` : ''}`}/>
+      {caps?.maxSourceBytes&&caps.maxBytes?<Typography sx={{fontSize:12,color:"#866a77",mt:1}}>
+        PDF nguồn tối đa {caps.maxSourceBytes/1048576} MiB · PDF kết quả tối đa {caps.maxBytes/1048576} MiB.
+      </Typography>:null}
       {enabled&&links.trim()&&invalid&&<Typography role="alert" sx={{fontSize:13,color:"#b3261e",mt:1}}>{invalid}</Typography>}
       <Button data-testid="pdf-submit" fullWidth variant="contained" disabled={!enabled||busy||!!invalid}
         onClick={()=>void submit()} sx={{mt:2,minHeight:48,bgcolor:"#b96d8d","&:hover":{bgcolor:"#985170"}}}>
@@ -180,8 +184,17 @@ export function PublicPdfTool() {
                   </Box>
                   <Chip size="small" color={completed?"success":"default"} label={expired?"Hết hạn":statuses[job.status]}/>
                 </Stack>
+                {job.progress&&!expired&&<Box data-testid="pdf-progress" sx={{mt:1.5}}>
+                  <Typography sx={{fontSize:12,mb:0.5}} aria-live="polite">
+                    {completed ? "Hoàn thành · 100%" : job.progress.stage==="DISCOVERING" ? "Đang kiểm tra số trang" :
+                      `${job.progress.processedPages}/${job.progress.totalPages} trang · ${job.progress.percent}%${job.progress.stage==="MERGING" ? " · Đang ghép PDF" : ""}`}
+                  </Typography>
+                  <LinearProgress variant={job.progress.totalPages===null&&!completed ? "indeterminate" : "determinate"}
+                    value={completed?100:job.progress.percent} aria-label="Tiến độ tạo PDF" sx={{height:6,borderRadius:3}}/>
+                </Box>}
                 {job.status==="FAILED"&&job.errorCode&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>{failureReasons[job.errorCode]??"Không thể xử lý tài liệu này."}</Typography>}
                 {job.status==="RESULT_UNCONFIRMED"&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Chưa xác nhận được kết quả. Hệ thống đang tiếp tục kiểm tra.</Typography>}
+                {job.cloudErrorCode&&ongoing.includes(job.status)&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Hệ thống đang thử kết nối lại. Tiến độ đã lưu vẫn được giữ.</Typography>}
                 {ongoing.includes(job.status)&&!expired&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>Có thể đóng trang trong khi chờ.</Typography>}
                 <Stack component="div" direction="row" sx={{mt:1,gap:1,flexWrap:"wrap"}}>
                   {completed&&<Button data-testid="pdf-download" startIcon={<DownloadRounded/>} disabled={busy||caps?.downloadEnabled!==true}

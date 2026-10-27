@@ -4,6 +4,8 @@ import { processJob, type Dependencies } from './processor.ts';
 import { GCSStore } from './storage.ts';
 import { access, statfs } from 'node:fs/promises';
 import { constants } from 'node:fs';
+import { isPdfChunkJob, pdfChunkingEnabled, PDF_LONG_MAX_PAGES, PDF_LONG_OUTPUT_MAX_BYTES, PDF_LONG_TEMP_BYTES, PDF_CHUNK_DEADLINE_MS, type PdfChunkJob } from '@teacher/shared';
+import { processChunkJob } from './chunk-processor.ts';
 
 export function jobHandler(deps?: Dependencies, env: NodeJS.ProcessEnv = process.env) {
   let busy = false;
@@ -21,7 +23,7 @@ export function jobHandler(deps?: Dependencies, env: NodeJS.ProcessEnv = process
     res.once('close', disconnected);
     let timer: NodeJS.Timeout | undefined;
     try {
-      const cap = limits(env);
+      let cap = limits(env);
       timer = setTimeout(() => controller.abort(), cap.deadlineMs);
       const chunks: Buffer[] = [];
       let size = 0;
@@ -45,21 +47,30 @@ export function jobHandler(deps?: Dependencies, env: NodeJS.ProcessEnv = process
       } finally { controller.signal.removeEventListener('abort', onAbort); }
       let raw: unknown;
       try { raw = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new JobError('INVALID_REQUEST'); }
-      const job = parseJob(raw);
+      const chunked = isPdfChunkJob(raw);
+      if (chunked && !pdfChunkingEnabled(env)) throw new JobError('SERVICE_UNAVAILABLE',true);
+      const job = chunked ? raw : parseJob(raw);
+      if (chunked) {
+        cap = { ...cap, maxBytes:PDF_LONG_OUTPUT_MAX_BYTES,maxPages:PDF_LONG_MAX_PAGES,deadlineMs:PDF_CHUNK_DEADLINE_MS };
+        clearTimeout(timer);timer=setTimeout(()=>controller.abort(),cap.deadlineMs);
+      }
       if (!deps) {
         try {
           const fs = await statfs('/tmp/pdf-worker');
           await access('/tmp/pdf-worker', constants.W_OK);
-          if (fs.type !== 0x01021994 || fs.blocks * fs.bsize > 32 * 1024 * 1024 ||
-            fs.bavail * fs.bsize < Math.max(cap.maxBytes, cap.maxSourceBytes ?? cap.maxBytes)) {
+          const scratch = chunked ? PDF_LONG_TEMP_BYTES : 32*1024*1024;
+          const required = chunked ? 2*PDF_LONG_OUTPUT_MAX_BYTES+(cap.maxSourceBytes ?? cap.maxBytes) : Math.max(cap.maxBytes, cap.maxSourceBytes ?? cap.maxBytes);
+          if (fs.type !== 0x01021994 || fs.blocks * fs.bsize > scratch || fs.bavail * fs.bsize < required) {
             throw new Error('volume');
           }
         } catch { throw new JobError('SERVICE_UNAVAILABLE', true); }
       }
       const runtime = deps ?? { store: new GCSStore(), tempRoot: '/tmp/pdf-worker' };
-      const result = await processJob(job, cap, controller.signal, {
+      const result = await (chunked ? processChunkJob(job as PdfChunkJob, cap, controller.signal, {
         ...runtime, enablePrintFallback: printFallbackEnabled(env),
-      });
+      }) : processJob(job as ReturnType<typeof parseJob>, cap, controller.signal, {
+        ...runtime, enablePrintFallback: printFallbackEnabled(env),
+      }));
       reply(200, result);
     } catch (error) {
       const safe = controller.signal.aborted ? new JobError('TIMEOUT', true) :

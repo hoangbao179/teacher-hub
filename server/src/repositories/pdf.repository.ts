@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { PoolConnection, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
-import type { PdfJob, PdfJobStatus, PdfBatch, PdfBatchList } from '@teacher/shared';
+import type { PdfJob, PdfJobStatus, PdfBatch, PdfBatchList, PdfProgress } from '@teacher/shared';
 import { pool } from '../db/pool';
 import { pdfError } from '../services/pdf-validation';
 import type { PdfSettings } from '../config/pdf-settings';
@@ -11,6 +11,8 @@ const nullableDate = (v: string | null) => v ? date(v) : null;
 export interface PdfWork extends PdfJob { lease: string }
 function job(r: RowDataPacket): PdfJob {
   return { id: r.id, batchId: r.batch_id, fileId: r.file_id, status: r.status,
+    workerVersion: r.worker_version === 2 ? 2 : 1,
+    progress: typeof r.progress_json === 'string' ? JSON.parse(r.progress_json) : r.progress_json ?? null,
     createdAt: date(r.created_at), updatedAt: date(r.updated_at), enqueuedAt: nullableDate(r.enqueued_at),
     completedAt: nullableDate(r.completed_at), expiresAt: date(r.expires_at), errorCode: r.error_code,
     cloudErrorCode: r.cloud_error_code, bytes: r.bytes, pages: r.pages, retryOf: r.retry_of,
@@ -40,11 +42,11 @@ export class PdfRepository {
     const [recent] = await c.execute<RowDataPacket[]>('SELECT COUNT(*) n FROM pdf_jobs WHERE owner_id=? AND created_at>UTC_TIMESTAMP(3)-INTERVAL 1 HOUR', [owner]);
     if (Number(active[0].n) + count > cfg.maxActive || Number(recent[0].n) + count > cfg.maxHourly * cfg.maxLinks) throw pdfError(429, 'PDF_RATE_LIMITED');
   }
-  private async insert(c: PoolConnection, owner: number, batch: string, file: string, retry?: PdfJob, key?: string) {
+  private async insert(c: PoolConnection, owner: number, batch: string, file: string, retry?: PdfJob, key?: string, chunked = false) {
     const id = randomUUID();
-    await c.execute(`INSERT INTO pdf_jobs(id,batch_id,owner_id,file_id,created_at,updated_at,expires_at,next_action_at,retry_of,retry_attempts,retry_key)
-      VALUES(?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),UTC_TIMESTAMP(3)+INTERVAL 24 HOUR,UTC_TIMESTAMP(3),?,?,?)`,
-    [id,batch,owner,file,retry?.id ?? null,retry ? retry.retryAttempts+1 : 0,key ?? null]);
+    await c.execute(`INSERT INTO pdf_jobs(id,batch_id,owner_id,file_id,created_at,updated_at,expires_at,next_action_at,retry_of,retry_attempts,retry_key,worker_version)
+      VALUES(?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),UTC_TIMESTAMP(3)+INTERVAL 24 HOUR,UTC_TIMESTAMP(3),?,?,?,?)`,
+    [id,batch,owner,file,retry?.id ?? null,retry ? retry.retryAttempts+1 : 0,key ?? null,chunked ? 2 : 1]);
     return id;
   }
   async create(owner: number, key: string, hash: string, files: string[], cfg: PdfSettings, publicSessionId?: string) {
@@ -68,7 +70,7 @@ export class PdfRepository {
       if (Number(rate[0].n) >= cfg.maxHourly) throw pdfError(429, 'PDF_RATE_LIMITED');
       const id = randomUUID();
       await c.execute('INSERT INTO pdf_batches(id,owner_id,idempotency_key,request_hash,rights_confirmed_at,created_at) VALUES(?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))', [id,owner,key,hash]);
-      for (const file of files) await this.insert(c,owner,id,file);
+      for (const file of files) await this.insert(c,owner,id,file,undefined,undefined,cfg.chunked);
       if (publicSessionId) {
         await c.execute('INSERT INTO pdf_guest_batches(batch_id,session_id) VALUES(?,?)', [id,publicSessionId]);
       }
@@ -91,7 +93,7 @@ export class PdfRepository {
       const [children] = await c.execute<RowDataPacket[]>('SELECT id FROM pdf_jobs WHERE retry_of=?', [id]);
       if (children.length) throw pdfError(409,'PDF_RETRY_ALREADY_CREATED');
       await this.capacity(c,owner,1,cfg);
-      return this.insert(c,owner,old.batchId,old.fileId,old,key);
+      return this.insert(c,owner,old.batchId,old.fileId,old,key,cfg.chunked);
     });
   }
   async get(owner: number, id: string): Promise<PdfJob> {
@@ -123,14 +125,15 @@ export class PdfRepository {
       return { ...job(rows[0]),lease:token };
     });
   }
-  async save(work: PdfWork, status: PdfJobStatus, cloudError: string | null, result?: ValidPdfResult, enqueueAttempted = false) {
+  async save(work: PdfWork, status: PdfJobStatus, cloudError: string | null, result?: ValidPdfResult, enqueueAttempted = false, progress?: PdfProgress) {
     await pool.execute(`UPDATE pdf_jobs SET status=?,cloud_error_code=?,updated_at=UTC_TIMESTAMP(3),
       enqueued_at=CASE WHEN ?='QUEUED' THEN COALESCE(enqueued_at,UTC_TIMESTAMP(3)) ELSE enqueued_at END,
-      enqueue_attempts=enqueue_attempts+?,next_action_at=UTC_TIMESTAMP(3)+INTERVAL 15 SECOND,lease_token=NULL,lease_until=NULL,
+      enqueue_attempts=CASE WHEN ? THEN ? ELSE enqueue_attempts+? END,progress_json=COALESCE(?,progress_json),
+      next_action_at=UTC_TIMESTAMP(3)+INTERVAL 15 SECOND,lease_token=NULL,lease_until=NULL,
       completed_at=COALESCE(?,completed_at),expires_at=COALESCE(?,expires_at),error_code=COALESCE(?,error_code),
       object_name=COALESCE(?,object_name),bytes=COALESCE(?,bytes),pages=COALESCE(?,pages),sha256=COALESCE(?,sha256)
       WHERE id=? AND lease_token=?`, [status,cloudError,status,
-      enqueueAttempted ? 1 : 0,
+      !!progress && progress.nextStep !== work.progress?.nextStep,enqueueAttempted ? 1 : 0,enqueueAttempted ? 1 : 0,progress ? JSON.stringify(progress) : null,
       result ? new Date(result.completedAt) : null,result ? new Date(result.expiresAt) : null,result?.errorCode ?? null,
       result?.objectName ?? null,result?.bytes ?? null,result?.pages ?? null,result?.sha256 ?? null,work.id,work.lease]);
   }

@@ -1,4 +1,6 @@
 import { PDF_OUTPUT_MAX_BYTES } from '../../../shared/dist/esm/pdf-limits.js';
+import { PDF_LONG_OUTPUT_MAX_BYTES, PDF_LONG_DOWNLOAD_MS, PDF_MAX_STEPS, PDF_CHUNK_DISPATCH_SECONDS, PDF_LONG_MAX_PAGES, PDF_CHUNK_PAGES } from '../../../shared/dist/esm/pdf-limits.js';
+import { isPdfChunkJob, pdfChunkingEnabled } from '../../../shared/dist/esm/pdf-pipeline.js';
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
@@ -25,7 +27,15 @@ export function signature(key, method, path, timestamp, nonce, body) {
   return createHmac('sha256', key).update(data).digest('hex');
 }
 
-export function route(method, path, body, workerURL, longPrintTasks = false) {
+export function route(method, path, body, workerURL, longPrintTasks = false, chunked = false) {
+  if (method==='GET' && path==='/v2/capabilities' && chunked && longPrintTasks)
+    return {local:{version:2,maxPages:PDF_LONG_MAX_PAGES,maxBytes:PDF_LONG_OUTPUT_MAX_BYTES,chunkPages:PDF_CHUNK_PAGES},method};
+  if (chunked && method === 'GET') {
+    const task = path.match(new RegExp('^/v2/tasks/('+UUID+')/(\\d{1,2})$'));
+    if (task && Number(task[2]) <= PDF_MAX_STEPS) return {url:'https://cloudtasks.googleapis.com/v2/'+QUEUE+'/tasks/pdf-'+task[1]+'-s'+Number(task[2]),method};
+    const object = path.match(new RegExp('^/v2/objects/('+UUID+')/(manifest\\.json|parts/([1-9][0-9]?)\\.json)$'));
+    if (object && (!object[3] || Number(object[3])<=Math.ceil(PDF_LONG_MAX_PAGES/PDF_CHUNK_PAGES))) return {url:'https://storage.googleapis.com/storage/v1/b/'+BUCKET+'/o/'+encodeURIComponent('jobs/'+object[1]+'/'+object[2])+'?alt=media',method};
+  }
   if (method === 'GET' && path === '/v1/queue')
     return { url: 'https://cloudtasks.googleapis.com/v2/' + QUEUE, method };
   if (method === 'POST' && path === '/v1/tasks') {
@@ -38,7 +48,7 @@ export function route(method, path, body, workerURL, longPrintTasks = false) {
       Object.keys(task).sort().join(',') !== 'dispatchDeadline,httpRequest,name' ||
       !request || Object.keys(request).sort().join(',') !== 'body,headers,httpMethod,oidcToken,url' ||
       typeof task.name !== 'string' ||
-      !new RegExp('^' + QUEUE + '/tasks/pdf-' + UUID + '$').test(task.name) ||
+      !new RegExp('^' + QUEUE + '/tasks/pdf-' + UUID + (chunked ? '(?:-s[0-9]{1,2})?' : '') + '$').test(task.name) ||
       !(task.dispatchDeadline === '30s' ||
         (longPrintTasks === true && task.dispatchDeadline === '180s')) ||
       request.httpMethod !== 'POST' ||
@@ -51,6 +61,9 @@ export function route(method, path, body, workerURL, longPrintTasks = false) {
     if (bytes.length > 4096 || bytes.toString('base64') !== request.body) return null;
     let payload;
     try { payload = JSON.parse(bytes.toString('utf8')); } catch { return null; }
+    if (chunked && longPrintTasks && isPdfChunkJob(payload) && task.dispatchDeadline === PDF_CHUNK_DISPATCH_SECONDS+'s' &&
+      task.name === QUEUE+'/tasks/pdf-'+payload.jobId+'-s'+payload.step)
+      return {url:'https://cloudtasks.googleapis.com/v2/'+QUEUE+'/tasks',method,body,contentType:'application/json'};
     if (!payload || Object.keys(payload).sort().join(',') !== 'jobId,source,version' ||
       payload.version !== 1 || typeof payload.jobId !== 'string' ||
       !new RegExp('^'+UUID+'$').test(payload.jobId) ||
@@ -98,7 +111,7 @@ async function readLimited(response, limit) {
 export function createGatewayServer({
   env = process.env, fetcher = fetch, now = () => Date.now(),
   // Injectable only through trusted server construction (tests), never HTTP/env.
-  deadlines = { ordinary: 8000, download: 25000 },
+  deadlines = { ordinary: 8000, download: pdfChunkingEnabled(env) ? PDF_LONG_DOWNLOAD_MS : 25000 },
 } = {}) {
   const enabled = env.PDF_GATEWAY_ENABLED === 'true';
   const keyHex = env.PDF_GATEWAY_HMAC_KEY ?? '';
@@ -134,7 +147,8 @@ export function createGatewayServer({
     if (!configured) { reply(503,ERROR); return; }
     if (!req.url || req.url.includes('?') || !req.method) { reply(404,ERROR); return; }
     if (!(req.method === 'POST' && req.url === '/v1/tasks') &&
-      !(req.method === 'GET' && (req.url==='/v1/queue' || TASK.test(req.url) || OBJECT.test(req.url)))) {
+      !(req.method === 'GET' && (req.url==='/v1/queue' || TASK.test(req.url) || OBJECT.test(req.url) ||
+        (pdfChunkingEnabled(env) && route('GET',req.url,Buffer.alloc(0),workerURL,true,true))))) {
       reply(404,ERROR); return;
     }
     let body;
@@ -154,7 +168,7 @@ export function createGatewayServer({
       reply(401,FORBIDDEN); return;
     }
     const target = route(req.method,req.url,body,workerURL,
-      longPrintTasksEnabled(env));
+      longPrintTasksEnabled(env),pdfChunkingEnabled(env));
     if (!target) { reply(400,ERROR); return; }
     const kind = req.method==='POST' ? 'enqueue' : target.binary ? 'download' : 'read';
     if (target.binary && activeStreams >= 1) { reply(429,ERROR); return; }
@@ -191,6 +205,7 @@ export function createGatewayServer({
       }
       if (!reserve.ok) { await reserve.body?.cancel(); throw new Error('NONCE_STORAGE_UNAVAILABLE'); }
       await reserve.body?.cancel();
+      if (target.local) { reply(200,JSON.stringify(target.local)); return; }
       const response = await fetcher(target.url, {
         method:target.method, headers:{ Authorization:'Bearer '+token,
           ...(target.contentType?{'Content-Type':target.contentType}:{}) },
@@ -223,7 +238,7 @@ export function createGatewayServer({
         const limiter = new Transform({
           transform(chunk, _encoding, next) {
             total += chunk.length;
-            if (total > PDF_OUTPUT_MAX_BYTES) next(new Error('PDF_TOO_LARGE'));
+            if (total > (pdfChunkingEnabled(env) ? PDF_LONG_OUTPUT_MAX_BYTES : PDF_OUTPUT_MAX_BYTES)) next(new Error('PDF_TOO_LARGE'));
             else next(null,chunk);
           }
         });

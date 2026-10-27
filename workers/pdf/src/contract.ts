@@ -1,4 +1,4 @@
-import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES, PDF_SOURCE_MAX_BYTES } from '@teacher/shared';
+import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES, PDF_SOURCE_MAX_BYTES, PDF_LONG_MAX_PAGES } from '@teacher/shared';
 
 export class JobError extends Error {
   code: string;
@@ -11,7 +11,7 @@ export class JobError extends Error {
   constructor(code: string, retryable = false, reason?: string,
     capture?: { pageIndex?: number; ancestorLevel?: number; usedBytes?: number; limitBytes?: number }) {
     super(code); this.code = code; this.retryable = retryable; this.reason = reason;
-    if (Number.isInteger(capture?.pageIndex) && capture!.pageIndex! >= 1 && capture!.pageIndex! <= 40)
+    if (Number.isInteger(capture?.pageIndex) && capture!.pageIndex! >= 1 && capture!.pageIndex! <= PDF_LONG_MAX_PAGES)
       this.pageIndex = capture!.pageIndex;
     if (Number.isInteger(capture?.ancestorLevel) && capture!.ancestorLevel! >= 0 && capture!.ancestorLevel! < 8)
       this.ancestorLevel = capture!.ancestorLevel;

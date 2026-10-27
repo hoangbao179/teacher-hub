@@ -312,6 +312,12 @@ async function recoverV20fFallback(connection: PoolConnection): Promise<void> {
 export async function recoverInterruptedMigrations(
   connection: PoolConnection,
 ): Promise<void> {
+  // MySQL DDL commits before schema_migrations INSERT; recover this atomic ALTER after a crash.
+  const pdfVersion='0029_pdf_chunk_progress.sql';
+  if (!await migrationApplied(connection,pdfVersion) && await tableExists(connection,'pdf_jobs') &&
+    await columnExists(connection,'pdf_jobs','worker_version') && await columnExists(connection,'pdf_jobs','progress_json')) {
+    await connection.query('INSERT IGNORE INTO schema_migrations(version) VALUES (?)',[pdfVersion]);
+  }
   if (!await migrationApplied(connection, V20F_STABILIZATION)
       && await hasPartialV20fStabilization(connection)) {
     await recoverV20fStabilization(connection);

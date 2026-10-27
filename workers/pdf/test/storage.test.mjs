@@ -1,10 +1,19 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { GCSStore, boundedJSON } from '../src/storage.ts';
 import { BUCKET } from '../src/contract.ts';
+
+test('checkpoint PDF downloads stream with byte bounds, cancellation and exclusive file ownership',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'gcs-download-'));t.after(()=>rm(root,{recursive:true,force:true}));
+ const store=new GCSStore();let body='valid-pdf';t.mock.method(globalThis,'fetch',async()=>new Response(body));
+ const path=join(root,'out.pdf');await store.download('jobs/fixture/part.pdf',path,100,AbortSignal.timeout(5000));assert.equal(await readFile(path,'utf8'),body);
+ await assert.rejects(store.download('jobs/fixture/part.pdf',path,100,AbortSignal.timeout(5000)),{code:'EEXIST'});assert.equal(await readFile(path,'utf8'),body);
+ await rm(path);body='x'.repeat(101);await assert.rejects(store.download('jobs/fixture/part.pdf',path,100,AbortSignal.timeout(5000)),{code:'FILE_TOO_LARGE'});assert.deepEqual(await readdir(root),[]);
+ await assert.rejects(store.download('jobs/fixture/part.pdf',path,100,AbortSignal.abort()));assert.deepEqual(await readdir(root),[]);
+});
 
 test('GCS REST fixed bucket, metadata auth, preconditions, streaming upload and read recovery', async t => {
   const root = await mkdtemp(join(tmpdir(), 'gcs-test-'));

@@ -1,0 +1,13 @@
+import { execFile } from 'node:child_process';
+import { JobError } from './contract.ts';
+/** qpdf copies compressed streams from files; no image decoding or Node PDF buffering. */
+export async function qpdfParts(inputs: { path: string; range?: string }[], output: string, signal: AbortSignal) {
+  signal.throwIfAborted();
+  const args = ['--as=536870912', '--cpu=25', '--', 'qpdf', '--empty', '--stream-data=preserve', '--pages',
+    ...inputs.flatMap(i=>[i.path, i.range ?? '1-z']), '--', output];
+  await new Promise<void>((resolve, reject) => execFile('prlimit', args,
+    {signal,timeout:30000,killSignal:'SIGKILL',maxBuffer:16384}, error => {
+      if (!error) resolve();
+      else reject(new JobError(signal.aborted || error.killed ? 'TIMEOUT' : 'SERVICE_UNAVAILABLE', true));
+    }));
+}

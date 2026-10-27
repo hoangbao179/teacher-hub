@@ -1,10 +1,15 @@
 import { createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 import { randomUUID } from 'node:crypto';
+import { createWriteStream } from 'node:fs';
+import { rm } from 'node:fs/promises';
+import { pipeline } from 'node:stream/promises';
+import { Transform } from 'node:stream';
 import { BUCKET, JobError } from './contract.ts';
 
 export interface Stored { metadata: Record<string, string>; generation: string }
 export interface Store {
+  download?(name: string, path: string, maxBytes: number, signal: AbortSignal): Promise<void>;
   ready(signal: AbortSignal): Promise<void>;
   json<T>(name: string, signal: AbortSignal): Promise<T | null>;
   head(name: string, signal: AbortSignal): Promise<Stored | null>;
@@ -63,6 +68,18 @@ export class GCSStore implements Store {
     const r = await this.call(`${this.base}/o/${encodeURIComponent(name)}?fields=metadata,generation`, { signal });
     if (r.status === 404) { await r.body?.cancel(); return null; }
     return boundedJSON<Stored>(r);
+  }
+  async download(name: string, path: string, maxBytes: number, signal: AbortSignal) {
+    const r = await this.call(`${this.base}/o/${encodeURIComponent(name)}?alt=media`, { signal });
+    if (!r.ok || !r.body) { await r.body?.cancel(); throw new JobError('STORAGE_UNAVAILABLE', true); }
+    let bytes = 0, owned = false;
+    const destination = createWriteStream(path, { flags: 'wx', mode: 0o600 });
+    destination.once('open', () => { owned = true; });
+    try {
+      await pipeline(Readable.fromWeb(r.body as never), new Transform({ transform(chunk, _encoding, done) {
+        bytes += chunk.length; done(bytes > maxBytes ? new JobError('FILE_TOO_LARGE') : null, chunk);
+      } }), destination, { signal });
+    } catch (e) { if (owned) await rm(path, { force: true }); throw e; }
   }
   async create(name: string, body: { json: unknown } | { path: string; metadata: Record<string, string> }, signal: AbortSignal) {
     const boundary = `pdf-${randomUUID()}`;

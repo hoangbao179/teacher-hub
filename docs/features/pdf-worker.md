@@ -196,31 +196,22 @@ job, residual data stays inside the capped volume and may require instance resta
 No production processing is approved until Tasks 2/3, reviewed IAM/mount/config,
 authorized real Drive fixtures and private cloud E2E are complete.
 
-## Long-document upgrade: compression foundation only
+## Long-document pipeline v2
 
-`shared/src/pdf-limits.ts` owns source bytes (20 MiB), output bytes (20 MiB),
-page count (40), PNG working set (32 MiB), 12 MP/image, minimum 200 effective DPI,
-JPEG qualities and soft page target. `PDF_SOURCE_MAX_BYTES` can lower the source
-bound independently of `PDF_MAX_BYTES`; both reject values above their shared
-ceiling. Direct bytes must satisfy both bounds. Capture and placement use the
-same DPI constant. Gateway/API/client retain their existing output validation.
-No runtime image, infrastructure resource quota or request deadline is raised.
+The opt-in v2 pipeline is implemented across Worker, Gateway, API outbox/MySQL and
+public Tools. It accepts up to 200 pages with a 150 MiB final cap, 10-page parts,
+20 MiB source bound, sequential native PNG to adaptive JPEG to streaming image-PDF,
+and file-based qpdf merge. Direct PDFs up to 50 pages can complete in discovery;
+long direct PDFs use an immutable GCS source snapshot. Viewer jobs always use small
+parts because browser resource usage is less predictable. v1 remains compatible
+with its original 40-page/20 MiB contract when the new gate is off.
 
-The requested 200-page support is **not enabled** by the compression change.
-`test/compression-benchmark.mjs` accepts 17/50/100/200 only as an offline capacity
-probe, outside the processing entry point. It exercises codec + existing pdf-lib
-assembly, writes a temporary PDF, validates qpdf count/structure and every embedded
-page's original hash/order, then removes the directory. It does not exercise
-Viewer loading, a queue, resumable chunks, download transport or paper print quality.
-The production 40-page/20 MiB guards remain enforced.
+Progress survives browser refresh and service restart. The independent reconciler
+creates deterministic next-step Tasks from immutable GCS checkpoints, then caches
+validated progress in MySQL. There is no Worker-to-Tasks permission grant and no
+HTTP request spanning the whole document. Only completed PDF results are downloadable.
 
-The next queue PR must use distinct deterministic tasks per part, not spend the
-existing queue's five retry attempts advancing a document's ten 20-page parts.
-Persist an immutable source-bound manifest and chunk results in GCS, publish each
-part only after validation, reconcile duplicate delivery using generation
-preconditions, and perform ordered final assembly separately. A source identity
-and page-total change across parts must invalidate the job. The API outbox should
-dispatch continuations; the current Worker identity has no Tasks-create permission
-and this work does not grant one. Progress UI/E2E follows in a separate PR.
-Admission, task/part deadlines, bounded merge memory, output/source/tmpfs budgets,
-retention and queue cost limits need validation together before enabling >40 pages.
+See [v2 contract and resource review](../api/pdf-worker-v2.md) and the
+[operator activation/rollback gates](../operations/pdf-long-documents.md).
+Production activation and real authorized Viewer/Cloud Run E2E remain unverified;
+offline 200-page evidence is not a claim of universal Drive compatibility.

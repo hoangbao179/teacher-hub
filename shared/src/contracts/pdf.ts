@@ -2,11 +2,13 @@ export type PdfJobStatus = 'ENQUEUE_PENDING' | 'ENQUEUE_RETRY' | 'QUEUED' | 'COM
   'FAILED' | 'RETRY_EXHAUSTED' | 'RESULT_UNCONFIRMED' | 'EXPIRED';
 export interface CreatePdfBatchRequest { links: string[] }
 export interface PdfCapabilities {
+  maxSourceBytes?: number;
   submitEnabled: boolean; downloadEnabled: boolean; unavailableReason: string | null;
   maxLinksPerBatch: number; maxActiveJobs: number; maxBatchesPerHour: number;
   maxRetries: number; maxBytes: number; maxPages: number; ticketTtlSeconds: number;
 }
 export interface PdfJob {
+  workerVersion?: 1 | 2; progress?: import('../pdf-pipeline.js').PdfProgress | null;
   id: string; batchId: string; fileId: string; status: PdfJobStatus;
   createdAt: string; enqueuedAt: string | null; updatedAt: string;
   completedAt: string | null; expiresAt: string; errorCode: string | null;

@@ -1,5 +1,18 @@
 # PDF từ liên kết Google Drive có quyền xem — product contract
 
+## Yêu cầu tài liệu dài được duyệt ngày 27/10/2026
+
+Tối đa 200 trang; JPEG thích ứng 90/85/80, mục tiêu trung bình mềm 500 KB/trang,
+không giảm dưới 200 DPI hoặc bỏ/đổi thứ tự trang để đạt dung lượng. Tài liệu dài
+phải dùng task theo phần, checkpoint bền vững và phục hồi khi đóng trang/Worker
+lỗi. `/tools` hiển thị số trang, phần trăm, trạng thái và tải khi hoàn thành.
+Cap v2 150 MiB chỉ áp dụng sau resource/streaming/timeout/cost review và kích hoạt
+đồng bộ riêng; source 20 MiB là giới hạn độc lập. V1 giữ 40 trang/20 MiB trong
+lúc v2 chưa được operator bật. Chi tiết triển khai và giới hạn E2E:
+[contract v2](../api/pdf-worker-v2.md). Quy tắc quyền bên dưới vẫn bắt buộc;
+Viewer mở được không cho phép vượt Print/Download bị khóa. Các đoạn lịch sử
+v1 bên dưới không được dùng để tuyên bố nghiệm thu 200 trang.
+
 **Trạng thái:** Yêu cầu sản phẩm đã được chủ dự án xác nhận ngày 25/10/2026;
 thiết kế triển khai bên dưới là đề xuất kỹ thuật cần thử nghiệm. **Không được
 hiểu đây là tính năng đã hoàn thiện, cam kết mọi liên kết đều tải được, hoặc
@@ -174,7 +187,7 @@ vòng chế độ tắt tải, mở quyền Worker public hoặc bypass captcha.
 | `resourcekey`, redirect hợp lệ hoặc loại Drive được hỗ trợ | Không âm thầm loại bỏ key; hoặc hỗ trợ đúng với quyền hợp lệ, hoặc giải thích hạn chế |
 | File không phải PDF / Google Workspace native | Chỉ hỗ trợ export nếu được cho phép và có thiết kế/test riêng; khác thì báo không hỗ trợ |
 | HTML login, CAPTCHA, confirmation page | Không ghi nhận HTML/ảnh sai làm PDF thành công |
-| Link mơ hồ, quá 5 file, >20 MiB, >40 trang | Từ chối rõ ràng; không vượt resource cap |
+| Link mơ hồ, quá capability batch, source >20 MiB, hoặc >200 trang ở v2 | Từ chối rõ ràng; v1 vẫn 40 trang/20 MiB khi v2 tắt |
 | 5-link batch rồi đóng trình duyệt | Recovery vẫn xử lý job hợp lệ, lịch sử/terminal state chính xác |
 | PDF hoàn thành, mở thiết bị khác, tải 2 lần bằng một ticket | Lượt đầu đúng bytes/hash; ticket đã dùng bị từ chối; hết hạn không tải |
 | Kết nối Cloud Tasks/GCS lỗi, timeout, replay | Không báo COMPLETED sai, retry giới hạn, không leak secret |

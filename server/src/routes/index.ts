@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, urlencoded } from "express";
 import { publicPdfController } from "../public-pdf-container";
 import { controllers } from "../container";
 import { requireAuth } from "../middleware/auth";
@@ -92,7 +92,7 @@ export function createRouter(publicPdf = publicPdfController): Router {
   router.post("/api/public/pdf/batches",guestSubmitLimit,asyncHandler(publicPdf.create));
   router.post("/api/public/pdf/jobs/:id/retry",guestSubmitLimit,asyncHandler(publicPdf.retry));
   router.post("/api/public/pdf/jobs/:id/download-ticket",asyncHandler(publicPdf.ticket));
-  router.post("/api/public/pdf/jobs/:id/download",asyncHandler(publicPdf.download));
+  router.post("/api/public/pdf/jobs/:id/download",urlencoded({extended:false,limit:'1kb',parameterLimit:1}),asyncHandler(publicPdf.download));
   router.use("/api", requireAuth);
   router.use("/api/pdf", asyncHandler(controllers.pdf.guard));
   router.get("/api/pdf/capabilities", asyncHandler(controllers.pdf.capabilities));

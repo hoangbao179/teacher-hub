@@ -3,6 +3,7 @@ import { open, stat } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { JobError, type Limits } from './contract.ts';
+import { PDF_OUTPUT_MAX_BYTES, PDF_MAX_PAGES, PDF_LONG_PARSER_CPU_SECONDS, PDF_LONG_PARSER_WALL_MS } from '@teacher/shared';
 
 export async function validatePDF(path: string, cap: Limits, signal: AbortSignal) {
   const size = (await stat(path)).size;
@@ -19,16 +20,17 @@ export async function validatePDF(path: string, cap: Limits, signal: AbortSignal
   } finally { await file.close(); }
   const run = (args: string[], allowedCodes: number[] = []) => new Promise<string>((resolve, reject) => {
     // Linux production: bound parser address space, CPU, wall time and diagnostic output.
-    execFile('prlimit', ['--as=536870912', '--cpu=5', '--', 'qpdf', ...args, path],
-      { signal, timeout: 6000, killSignal: 'SIGKILL', maxBuffer: 16384, encoding: 'utf8' }, (error, stdout) => {
+    const large=cap.maxBytes>PDF_OUTPUT_MAX_BYTES || cap.maxPages>PDF_MAX_PAGES;
+    execFile('prlimit', ['--as=536870912', `--cpu=${large ? PDF_LONG_PARSER_CPU_SECONDS : 5}`, '--', 'qpdf', ...args, path],
+      { signal, timeout: large ? PDF_LONG_PARSER_WALL_MS : 6000, killSignal: 'SIGKILL', maxBuffer: 16384, encoding: 'utf8' }, (error, stdout) => {
         // qpdf uses 0/2/3. Launcher failure (including qpdf missing behind prlimit)
         // is infrastructure failure, never evidence that the document is invalid.
         const unavailable = error && (error.code === 'ENOENT' || error.code === 'EACCES' ||
           (typeof error.code === 'number' && [1, 126, 127].includes(error.code)));
         if (error && typeof error.code === 'number' && allowedCodes.includes(error.code)) resolve(String(error.code));
-        else if (error) reject(new JobError(signal.aborted || error.killed ? 'TIMEOUT' :
+        else if (error) reject(new JobError(signal.aborted || error.killed || error.signal ? 'TIMEOUT' :
           unavailable ? 'SERVICE_UNAVAILABLE' : 'INVALID_PDF',
-          signal.aborted || error.killed || !!unavailable));
+          signal.aborted || error.killed || !!error.signal || !!unavailable));
         else resolve(stdout.trim());
       });
   });

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { PdfCapabilities, PdfDownloadTicket } from '@teacher/shared';
-import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES } from '@teacher/shared';
+import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES, PDF_SOURCE_MAX_BYTES, PDF_LONG_MAX_PAGES, PDF_LONG_OUTPUT_MAX_BYTES, PDF_LONG_DOWNLOAD_MS, type PdfChunkJob } from '@teacher/shared';
 import { PdfRepository } from '../repositories/pdf.repository';
 import type { PdfProvider } from './pdf-provider';
 import type { PdfSettings } from '../config/pdf-settings';
@@ -12,10 +12,10 @@ export class PdfService {
   constructor(private repo: PdfRepository, private provider: PdfProvider, private cfg: PdfSettings) {}
   async authorize(owner: number) { await this.repo.authorize(owner); }
   async capabilities(signal?: AbortSignal): Promise<PdfCapabilities> {
-    const enabled = this.cfg.enabled && this.provider.configured && await this.provider.ready(signal).catch(()=>false);
+    const enabled = this.cfg.enabled && this.provider.configured && (!this.cfg.chunked || this.provider.chunked === true) && await this.provider.ready(signal).catch(()=>false);
     return { submitEnabled:enabled,downloadEnabled:enabled,unavailableReason:enabled ? null : 'PDF_SERVICE_UNAVAILABLE',
-      maxLinksPerBatch:this.cfg.maxLinks,maxActiveJobs:this.cfg.maxActive,maxBatchesPerHour:this.cfg.maxHourly,
-      maxRetries:this.cfg.maxRetries,maxBytes:PDF_OUTPUT_MAX_BYTES,maxPages:PDF_MAX_PAGES,ticketTtlSeconds:120 };
+      maxLinksPerBatch:this.cfg.maxLinks,maxActiveJobs:this.cfg.maxActive,maxBatchesPerHour:this.cfg.maxHourly,maxSourceBytes:PDF_SOURCE_MAX_BYTES,
+      maxRetries:this.cfg.maxRetries,maxBytes:this.cfg.chunked ? PDF_LONG_OUTPUT_MAX_BYTES : PDF_OUTPUT_MAX_BYTES,maxPages:this.cfg.chunked ? PDF_LONG_MAX_PAGES : PDF_MAX_PAGES,ticketTtlSeconds:120 };
   }
   private async available() { if (!(await this.capabilities()).submitEnabled) throw pdfError(503,'PDF_SERVICE_UNAVAILABLE'); }
   private id(id: string) { if (!uuid(id)) throw pdfError(400,'PDF_INVALID_REQUEST'); }
@@ -66,6 +66,23 @@ export class PdfService {
         if (pair) {
           const result = validatePdfResult(work,pair,Date.now());
           await this.repo.save(work,Date.parse(result.expiresAt)<=Date.now() ? 'EXPIRED' : result.status,null,result);
+        } else if (work.workerVersion === 2) {
+          if (!this.provider.chunked || !this.provider.progress) throw new Error('PDF_CHUNKS_DISABLED');
+          const progress = await this.provider.progress(work,signal);
+          const sameStep = progress.nextStep === (work.progress?.nextStep ?? 0);
+          const task = sameStep ? await this.provider.task(work.id,signal,progress.nextStep) : 'MISSING';
+          if (task === 'EXHAUSTED' || (sameStep && task==='MISSING' && work.status==='RETRY_EXHAUSTED')) {
+            await this.repo.save(work,'RETRY_EXHAUSTED','PDF_QUEUE_RETRY_EXHAUSTED',undefined,false,progress);
+          } else if (task === 'WAITING') {
+            await this.repo.save(work,'QUEUED',null,undefined,false,progress);
+          } else if (sameStep && work.enqueueAttempts>=8) {
+            await this.repo.save(work,'RESULT_UNCONFIRMED','PDF_ENQUEUE_UNCONFIRMED',undefined,false,progress);
+          } else {
+            const payload: PdfChunkJob={...workerPayload(work.id,work.fileId),version:2,step:progress.nextStep};
+            enqueueAttempted=true;
+            await this.provider.enqueue(payload,signal);
+            await this.repo.save(work,'QUEUED',null,undefined,true,progress);
+          }
         } else if (['ENQUEUE_PENDING','ENQUEUE_RETRY'].includes(work.status)) {
           if (work.enqueueAttempts>=8) { await this.repo.save(work,'RESULT_UNCONFIRMED','PDF_ENQUEUE_UNCONFIRMED'); continue; }
           enqueueAttempted = true;
@@ -106,7 +123,9 @@ export class PdfService {
     try {
       await this.repo.consume(owner,id,digest(token));
       const stream = await this.provider.open(id,signal);
-      return { stream,bytes:job.bytes!,expiresAt:job.expiresAt,release:() => { this.downloading=false; } };
+      return { stream,bytes:job.bytes!,expiresAt:job.expiresAt,
+        maxBytes:job.workerVersion===2 ? PDF_LONG_OUTPUT_MAX_BYTES : PDF_OUTPUT_MAX_BYTES,
+        timeoutMs:job.workerVersion===2 ? PDF_LONG_DOWNLOAD_MS : 30000,release:() => { this.downloading=false; } };
     } catch (e) { this.downloading=false; if (e instanceof AppError) throw e; throw pdfError(503,'PDF_DOWNLOAD_UNAVAILABLE'); }
   }
 }

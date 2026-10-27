@@ -12,6 +12,21 @@ const body=Buffer.from(JSON.stringify({task:{name:QUEUE+'/tasks/pdf-'+ID,dispatc
   body:Buffer.from(JSON.stringify({version:1,jobId:ID,source:{provider:'google_drive',fileId:'abcdefghijklmno'}})).toString('base64'),
   oidcToken:{serviceAccountEmail:'teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com',audience:WORKER}
 }}}));
+
+test('v2 exact steps and checkpoint reads require chunk gate; task names cannot select another step/source',()=>{
+  const task=JSON.parse(body);task.task.dispatchDeadline='180s';task.task.name+='-s1';
+  const payload={version:2,jobId:ID,source:{provider:'google_drive',fileId:'abcdefghijklmno'},step:1};
+  task.task.httpRequest.body=Buffer.from(JSON.stringify(payload)).toString('base64');
+  const encoded=()=>Buffer.from(JSON.stringify(task));
+  assert.equal(route('POST','/v1/tasks',encoded(),WORKER,true,false),null);
+  assert.equal(route('POST','/v1/tasks',encoded(),WORKER,false,true),null);
+  assert.equal(route('POST','/v1/tasks',encoded(),WORKER,true,true)?.method,'POST');
+  task.task.name=QUEUE+'/tasks/pdf-'+ID+'-s2';assert.equal(route('POST','/v1/tasks',encoded(),WORKER,true,true),null);
+  for(const name of ['manifest.json','parts/1.json','parts/20.json']) assert.ok(route('GET',`/v2/objects/${ID}/${name}`,Buffer.alloc(0),WORKER,true,true));
+  for(const name of ['source.pdf','parts/1.pdf','parts/21.json','../secret']) assert.equal(route('GET',`/v2/objects/${ID}/${name}`,Buffer.alloc(0),WORKER,true,true),null);
+  assert.ok(route('GET',`/v2/tasks/${ID}/21`,Buffer.alloc(0),WORKER,true,true));
+  assert.equal(route('GET',`/v2/tasks/${ID}/22`,Buffer.alloc(0),WORKER,true,true),null);
+});
 test('restrict upstream routes and exact task contract',()=>{
   assert.equal(route('POST','/v1/tasks',body,WORKER)?.method,'POST');
   assert.equal(route('GET','/v1/queue',Buffer.alloc(0),WORKER)?.method,'GET');
@@ -67,6 +82,35 @@ test('HMAC binds body method path timestamp and nonce',()=>{
  assert.notEqual(a,signature(k,'GET','/v1/tasks',stamp,nonce,body));
  assert.notEqual(a,signature(k,'POST','/v1/queue',stamp,nonce,body));
  assert.notEqual(a,signature(k,'POST','/v1/tasks',stamp,nonce,Buffer.alloc(0)));
+});
+
+test('v2 capabilities and checkpoint HTTP reads pass through HMAC and durable nonce reservation',async t=>{
+ const env={PDF_GATEWAY_ENABLED:'true',PDF_GATEWAY_HMAC_KEY:KEY,PDF_GATEWAY_WORKER_URL:WORKER,PDF_LONG_PRINT_TASKS_ENABLED:'true',PDF_CHUNKED_JOBS_ENABLED:'true'};
+ let reservations=0,reads=0;
+ const s=createGatewayServer({env,fetcher:async url=>{
+  if(String(url).startsWith('http://metadata.'))return new Response(JSON.stringify({access_token:'a'.repeat(40)}),{headers:{'Metadata-Flavor':'Google'}});
+  if(String(url).includes('uploadType=media')){reservations++;return new Response('{}');}
+  reads++;return new Response(JSON.stringify({version:2}));
+ }});await new Promise(resolve=>s.listen(0,'127.0.0.1',resolve));t.after(()=>{s.closeAllConnections();s.close();});
+ for(const [i,path] of ['/v2/capabilities',`/v2/objects/${ID}/manifest.json`].entries()){
+  const stamp=String(Math.floor(Date.now()/1000)),nonce=String(i+1).repeat(32);
+  const r=await fetch('http://127.0.0.1:'+s.address().port+path,{headers:{'X-PDF-Timestamp':stamp,'X-PDF-Nonce':nonce,'X-PDF-Signature':signature(Buffer.from(KEY,'hex'),'GET',path,stamp,nonce,Buffer.alloc(0))}});
+  assert.equal(r.status,200);const data=await r.json();assert.equal(data.version,2);if(i===0)assert.equal(data.maxBytes,150*1048576);
+ }
+ assert.equal(reservations,2);assert.equal(reads,1);
+});
+
+test('v2 streams exactly 150 MiB with bounded chunks and no response buffering',async t=>{
+ const size=150*1048576,env={PDF_GATEWAY_ENABLED:'true',PDF_GATEWAY_HMAC_KEY:KEY,PDF_GATEWAY_WORKER_URL:WORKER,PDF_LONG_PRINT_TASKS_ENABLED:'true',PDF_CHUNKED_JOBS_ENABLED:'true'};
+ const s=createGatewayServer({env,fetcher:async url=>{
+  if(String(url).startsWith('http://metadata.'))return new Response(JSON.stringify({access_token:'a'.repeat(40)}),{headers:{'Metadata-Flavor':'Google'}});
+  if(String(url).includes('uploadType=media'))return new Response('{}');
+  let remaining=size;
+  return new Response(new ReadableStream({pull(c){if(!remaining){c.close();return;}const n=Math.min(remaining,65536);remaining-=n;c.enqueue(new Uint8Array(n).fill(37));}}),{headers:{'Content-Length':String(size),'Content-Type':'application/pdf'}});
+ }});await new Promise(resolve=>s.listen(0,'127.0.0.1',resolve));t.after(()=>{s.closeAllConnections();s.close();});
+ const path=`/v1/objects/${ID}/output.pdf`,stamp=String(Math.floor(Date.now()/1000)),nonce='d'.repeat(32);
+ const r=await fetch('http://127.0.0.1:'+s.address().port+path,{headers:{'X-PDF-Timestamp':stamp,'X-PDF-Nonce':nonce,'X-PDF-Signature':signature(Buffer.from(KEY,'hex'),'GET',path,stamp,nonce,Buffer.alloc(0))}});
+ assert.equal(r.status,200);let received=0;for await(const chunk of r.body){received+=chunk.length;assert.equal(chunk[0],37);}assert.equal(received,size);
 });
 test('fail-closed, valid request, invalid signature, replay and timestamp',async(t)=>{
  const now=Date.now();

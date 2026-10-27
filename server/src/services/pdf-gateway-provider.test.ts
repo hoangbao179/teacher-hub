@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash, createHmac } from 'node:crypto';
 import { GatewayPdfProvider } from './pdf-gateway-provider';
 import { pdfQueue } from './pdf-provider';
+import { pdfProgress, type PdfJob, type PdfManifest } from '@teacher/shared';
 const GATEWAY='https://teacher-pdf-gateway-851777150171.asia-southeast1.run.app';
 const WORKER='https://teacher-pdf-worker-851777150171.asia-southeast1.run.app';
 const payload={version:1 as const,jobId:'55b797f0-e128-4525-8df5-c3cb92163167',
@@ -12,6 +13,32 @@ function readyQueue(){
  rateLimits:{maxConcurrentDispatches:1,maxDispatchesPerSecond:1},
  retryConfig:{maxAttempts:5,maxRetryDuration:'3600s',minBackoff:'10s',maxBackoff:'300s'}};
 }
+
+test('v2 producer reads source-bound contiguous checkpoints and creates deterministic next-step task',async t=>{
+ const original=globalThis.fetch;t.after(()=>{globalThis.fetch=original});
+ const provider=new GatewayPdfProvider(GATEWAY,WORKER,'ab'.repeat(32),true,undefined,'hmac_public_v1',true,true);
+ const now=new Date().toISOString(),expiresAt=new Date(Date.parse(now)+86400000).toISOString();
+ const sourceHash=createHash('sha256').update(JSON.stringify(payload.source)).digest('hex');
+ const manifest:PdfManifest={version:2,jobId:payload.jobId,sourceHash,expiresAt,totalPages:200,mode:'viewer',fingerprint:'a'.repeat(64)};
+ let corruption=false,created:any;
+ globalThis.fetch=async(input,init)=>{
+  const url=String(input);let value:any;
+  if(url.endsWith('/v1/queue'))value=readyQueue();
+  else if(url.endsWith('/v2/capabilities'))value={version:2,maxPages:200,maxBytes:150*1048576,chunkPages:10};
+  else if(url.endsWith('/request.json'))value={version:1,sourceHash,createdAt:now,expiresAt};
+  else if(url.endsWith('/manifest.json'))value=manifest;
+  else if(url.endsWith('/parts/1.json'))value={version:2,jobId:payload.jobId,sourceHash,expiresAt,fingerprint:corruption?'b'.repeat(64):manifest.fingerprint,index:1,firstPage:1,lastPage:10,bytes:1000,sha256:'c'.repeat(64)};
+  else if(url.endsWith('/parts/2.json'))return new Response('{}',{status:404});
+  else if(url.endsWith('/v1/tasks')){created=JSON.parse(Buffer.from(init!.body as Uint8Array).toString());value={};}
+  else throw Error('unexpected route');
+  return new Response(JSON.stringify(value));
+ };
+ const work={id:payload.jobId,fileId:payload.source.fileId,createdAt:now,workerVersion:2} as PdfJob;
+ assert.deepEqual(await provider.progress(work),pdfProgress(manifest,1));
+ await provider.enqueue({...payload,version:2,step:2});
+ assert.equal(created.task.name,pdfQueue+'/tasks/pdf-'+payload.jobId+'-s2');assert.equal(created.task.dispatchDeadline,'180s');
+ corruption=true;await assert.rejects(provider.progress(work),/PDF_CLOUD_UNAVAILABLE/);
+});
 test('HTTP 409 only means duplicate when explicit TASK_ALREADY_EXISTS; authorization failure rejects',async t=>{
  const original=globalThis.fetch;t.after(()=>{globalThis.fetch=original});
  for(const error of ['UNAUTHORIZED','NOT_FOUND','TASK_ALREADY_EXISTS']){

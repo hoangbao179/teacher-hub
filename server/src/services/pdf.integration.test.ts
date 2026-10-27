@@ -17,9 +17,20 @@ import { errorHandler } from '../middleware/error-handler';
 import type { PdfProvider,PdfPayload } from './pdf-provider';
 import { digest } from './pdf-validation';
 import { runPdfRecovery } from '../scripts/reconcile-pdf';
+import { pdfProgress, type PdfManifest, type PdfChunkJob } from '@teacher/shared';
+import { recoverInterruptedMigrations } from '../db/migration-recovery';
 
 const integration=process.env.RUN_MYSQL_INTEGRATION==='1'?test:test.skip;
 after(()=>pool.end());
+integration('atomic PDF ALTER is recovered if process dies before migration ledger insert',async()=>{
+ const connection=await pool.getConnection();
+ try{
+  await connection.execute("DELETE FROM schema_migrations WHERE version='0029_pdf_chunk_progress.sql'");
+  await recoverInterruptedMigrations(connection);
+  const [rows]=await connection.query<RowDataPacket[]>("SELECT version FROM schema_migrations WHERE version='0029_pdf_chunk_progress.sql'");assert.equal(rows.length,1);
+  const [columns]=await connection.query<RowDataPacket[]>("SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pdf_jobs' AND column_name IN ('worker_version','progress_json')");assert.equal(columns.length,2);
+ }finally{connection.release();}
+});
 const settings={enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2};
 class FakeCloud implements PdfProvider {
   configured=true; available=true; failEnqueue=false; failRead=false; timeoutAfterCreate=false;
@@ -39,6 +50,28 @@ function completed(job:any,cloud:FakeCloud,status='COMPLETED'){
     result:{version:1,jobId:job.id,status,completedAt:now,expiresAt,...(status==='COMPLETED'?
       {objectName:`jobs/${job.id}/output.pdf`,bytes:cloud.bytes.length,pages:1,sha256:digest(cloud.bytes.toString())}:{errorCode:'ACCESS_DENIED'})}};
 }
+
+integration('v2 progress survives service restart, outbox advances distinct steps and accepts 200-page result',async t=>{
+  const [insert]=await pool.execute<ResultSetHeader>("INSERT INTO users(username,password_hash,display_name) VALUES(?,'synthetic-fixture','Chunk fixture')",[`chunk-${randomUUID()}`]);
+  const owner=insert.insertId,repo=new PdfRepository();
+  t.after(async()=>{await pool.execute('DELETE FROM pdf_jobs WHERE owner_id=?',[owner]);await pool.execute('DELETE FROM pdf_batches WHERE owner_id=?',[owner]);await pool.execute('DELETE FROM users WHERE id=?',[owner]);});
+  let progress=pdfProgress(null);let pair:any=null;const tasks:PdfChunkJob[]=[];
+  const cloud:PdfProvider={configured:true,chunked:true,ready:async()=>true,progress:async()=>progress,
+    enqueue:async p=>{tasks.push(p as PdfChunkJob);},result:async()=>pair,task:async()=>tasks.some(p=>p.step===progress.nextStep)?'WAITING':'MISSING',
+    open:async()=>{throw Error('not used');}};
+  const cfg={...settings,chunked:true};const service=new PdfService(repo,cloud,cfg);
+  const batch=await service.create(owner,randomUUID(),{links:[link]});const j=batch.jobs[0];
+  assert.equal(j.workerVersion,2);assert.equal(tasks[0].step,0);assert.equal(j.progress?.stage,'DISCOVERING');
+  const now=new Date().toISOString(),expiresAt=new Date(Date.parse(now)+86400000).toISOString();
+  const manifest:PdfManifest={version:2,jobId:j.id,sourceHash:digest(JSON.stringify({provider:'google_drive',fileId:j.fileId})),expiresAt,totalPages:200,mode:'viewer',fingerprint:'a'.repeat(64)};
+  progress=pdfProgress(manifest,1);await due(j.id);
+  await new PdfService(new PdfRepository(),cloud,cfg).tick(owner,batch.id);
+  const restored=(await new PdfRepository().batch(owner,batch.id)).jobs[0];
+  assert.equal(restored.progress?.processedPages,10);assert.equal(restored.progress?.nextStep,2);assert.equal(restored.enqueueAttempts,1);assert.equal(tasks.at(-1)?.step,2);
+  await due(j.id);await service.tick(owner,batch.id);assert.equal(tasks.length,2,'waiting step is not enqueued repeatedly');
+  pair={claim:{version:1,sourceHash:manifest.sourceHash,createdAt:now,expiresAt},result:{version:1,jobId:j.id,status:'COMPLETED',completedAt:now,expiresAt,objectName:`jobs/${j.id}/output.pdf`,bytes:100000000,pages:200,sha256:'b'.repeat(64)}};
+  await due(j.id);await service.tick(owner,batch.id);assert.equal((await repo.get(owner,j.id)).pages,200);
+});
 integration('PDF MySQL outbox, recovery, result validation, retry, ownership and bounded authenticated download',async t=>{
   const [insert]=await pool.execute<ResultSetHeader>("INSERT INTO users(username,password_hash,display_name) VALUES(?, 'synthetic-fixture', 'PDF fixture')",[`pdf-${randomUUID()}`]);
   const owner=insert.insertId; const repo=new PdfRepository(); const cloud=new FakeCloud(); const service=new PdfService(repo,cloud,settings);
