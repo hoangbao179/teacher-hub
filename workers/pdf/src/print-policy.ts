@@ -1,4 +1,5 @@
 import { JobError } from './contract.ts';
+import { PDF_VIEWER_MIN_DPI, PDF_VIEWER_MAX_PIXELS } from '@teacher/shared';
 
 export function allowedPrintRequest(raw: string, fileId: string, navigation: boolean): boolean {
   let u: URL;
@@ -24,7 +25,7 @@ export function assertPrintAction(count: number, enabled?: boolean): void {
 
 export function printPageSize(w: number, h: number) {
   if (!Number.isSafeInteger(w) || !Number.isSafeInteger(h) ||
-      w < 1 || h < 1 || w * h > 12_000_000) throw new JobError('UNSUPPORTED_SOURCE', false, 'bitmap-dimensions-invalid');
+      w < 1 || h < 1 || w * h > PDF_VIEWER_MAX_PIXELS) throw new JobError('UNSUPPORTED_SOURCE', false, 'bitmap-dimensions-invalid');
   const landscape = w > h;
   const pageWidth = landscape ? 841.89 : 595.28;
   const pageHeight = landscape ? 595.28 : 841.89;
@@ -32,6 +33,6 @@ export function printPageSize(w: number, h: number) {
   const scale = Math.min((pageWidth-2*margin)/w, (pageHeight-2*margin)/h);
   const width = w*scale, height = h*scale;
   const dpi = Math.min(w*72/width, h*72/height);
-  if (dpi < 150) throw new JobError('UNSUPPORTED_SOURCE', false, 'bitmap-dpi-low');
+  if (dpi < PDF_VIEWER_MIN_DPI) throw new JobError('UNSUPPORTED_SOURCE', false, 'bitmap-dpi-low');
   return {pageWidth,pageHeight,x:(pageWidth-width)/2,y:(pageHeight-height)/2,width,height,dpi};
 }

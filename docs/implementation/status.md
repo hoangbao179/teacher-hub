@@ -83,6 +83,12 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   hạn chế sao chép/in do chủ file/admin đặt — hai khái niệm tách trong
   [product contract](../product-spec/pdf-viewer-links.md).
 
+  Nén Viewer dùng JPEG thích ứng 90/85/80, 4:4:4 và mục tiêu mềm 500 KB/trang,
+  không resize; capture/placement dùng chung ngưỡng >=200 DPI. Source cap và
+  output cap độc lập (đều 20 MiB hiện tại). Giới hạn sản phẩm vẫn **40 trang**;
+  chưa có chunk queue/progress cho 200 trang hoặc cap 150 MiB. Benchmark codec
+  tổng hợp 17/50/100/200 là kiểm tra capacity offline, không chứng minh Drive E2E.
+
   **Cấu hình source (env Cloud Run production chưa xác minh):**
 
   | Cờ | Mặc định | Tác dụng |

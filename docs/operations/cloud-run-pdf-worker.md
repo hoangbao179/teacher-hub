@@ -578,6 +578,31 @@ the Gateway provider. Local Linux tests do not establish Cloud Run performance.
 
 ## Docker build-context regression prevention
 
+### Adaptive compression verification and rollback
+
+Compression policy is shared, not a Cloud Run environment override: native PNG
+→ JPEG 90/85/80, 4:4:4, soft 500,000 bytes/page, no resizing and >=200 DPI.
+Source streaming has an independent `PDF_SOURCE_MAX_BYTES` ceiling of 20 MiB;
+lower values are supported. Output remains 20 MiB and page count remains 40.
+The existing 32 MiB job tmpfs and all request/queue concurrency/deadline limits
+are unchanged. A PNG byte cap is not a cap on decoded pixels, Chromium or RSS.
+
+Run `node test/compression-benchmark.mjs N` from the Worker directory in a
+disposable offline Linux container (1 CPU, 2 GiB, no swap, concurrency one), for
+N=17/50/100/200. Mount the test directory read-only, make only `/tmp` writable
+(256 MiB experimental tmpfs), and set `XDG_CACHE_HOME=/tmp/cache`. This probe
+explicitly bypasses product admission for research; **do not use its 256 MiB
+tmpfs or 150 MiB comparison as production configuration**. It deletes output
+and emits sanitized aggregate metrics. Cgroup peak includes verification and
+tmpfs; Node RSS has different accounting. Keep runs sequential and retain
+optional local logs only under `.artifacts/`. The probe has no browser or Drive
+network and cannot approve capacity or print quality for production.
+
+Deploy/traffic/IAM changes require separate authorization. If a later approved
+rollout regresses compression, restore the prior immutable Worker revision;
+API/Gateway contracts and existing GCS results need no rollback or data migration.
+Do not raise file/page/tmpfs limits to make a failing job complete.
+
 The Chromium Worker Dockerfile runs `COPY package.json package-lock.json ./`
 and `npm ci`. The old `workers/pdf/.dockerignore` denied every path except
 Dockerfile and source; an operator `--stage` build failed at

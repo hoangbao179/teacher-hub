@@ -1,4 +1,4 @@
-import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES } from '@teacher/shared';
+import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES, PDF_SOURCE_MAX_BYTES } from '@teacher/shared';
 
 export class JobError extends Error {
   code: string;
@@ -42,7 +42,7 @@ export function parseJob(value: unknown): Job {
   return { version: 1, jobId: value.jobId,
     source: { provider: 'google_drive', fileId: value.source.fileId } };
 }
-export interface Limits { maxBytes: number; maxPages: number; deadlineMs: number; redirects: number }
+export interface Limits { maxBytes: number; maxSourceBytes?: number; maxPages: number; deadlineMs: number; redirects: number }
 /** Anonymous browser fallback after direct download fails; opt out with `false`. */
 export function printFallbackEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.PDF_PRINT_FALLBACK_ENABLED !== 'false';
@@ -61,6 +61,7 @@ export function limits(env: NodeJS.ProcessEnv = process.env): Limits {
   // Screen capture alone cannot enter that fallback and must not extend the job deadline.
   const browserJob = printFallbackEnabled(env);
   return { maxBytes: number('PDF_MAX_BYTES', PDF_OUTPUT_MAX_BYTES, PDF_OUTPUT_MAX_BYTES),
+    maxSourceBytes: number('PDF_SOURCE_MAX_BYTES', PDF_SOURCE_MAX_BYTES, PDF_SOURCE_MAX_BYTES),
     maxPages: number('PDF_MAX_PAGES', PDF_MAX_PAGES, PDF_MAX_PAGES),
     deadlineMs: number('PDF_DEADLINE_MS', browserJob ? 120000 : 22000, browserJob ? 120000 : 22000),
     redirects: 3 };

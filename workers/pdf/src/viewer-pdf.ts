@@ -2,7 +2,8 @@ import { open, rm } from 'node:fs/promises';
 import { errors as playwrightErrors, type Page } from 'playwright';
 import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
-import { PDF_INTERMEDIATE_PNG_PEAK_BYTES, PDF_VIEWER_JPEG_QUALITY } from '@teacher/shared';
+import { PDF_INTERMEDIATE_PNG_PEAK_BYTES } from '@teacher/shared';
+import { encodeViewerJpeg } from './jpeg.ts';
 import { JobError, type Limits } from './contract.ts';
 import { assertPrintAction, printPageSize } from './print-policy.ts';
 import { captureViewerPage, observeViewerBitmaps, disposeViewerBitmaps } from './capture-page.ts';
@@ -160,12 +161,9 @@ async function assembleViewerImagePdf(
         throw new JobError('FILE_TOO_LARGE', false, 'intermediate-png-page',
           { pageIndex: index, usedBytes: captured.png.length, limitBytes: peakPngBytes });
       }
-      const encoder = sharp(captured.png, { limitInputPixels: 12_000_000 })
-        .jpeg({ quality: PDF_VIEWER_JPEG_QUALITY, chromaSubsampling: '4:4:4' });
       let jpeg: Buffer;
-      try { jpeg = await runStage(signal, () => encoder.toBuffer(), () => { encoder.destroy(); }); }
+      try { jpeg = await runStage(signal, () => encodeViewerJpeg(captured.png, signal, maxEmbedded - embeddedBytes)); }
       finally {
-        encoder.destroy();
         captured.png = Buffer.alloc(0); // Release PNG before pdf-lib embedding/next capture.
       }
       embeddedBytes = addImageBytes(embeddedBytes, jpeg.length, maxEmbedded, 'embedded-jpeg-total',

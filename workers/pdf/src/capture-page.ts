@@ -1,6 +1,7 @@
 import type { Page } from 'playwright';
 import { JobError } from './contract.ts';
 import { withViewerAbort } from './viewer-ready.ts';
+import { PDF_VIEWER_MIN_DPI, PDF_VIEWER_MAX_PIXELS } from '@teacher/shared';
 
 /** Start BEFORE zoom so DOM replacements and recycled image nodes are observable. */
 export async function observeViewerBitmaps(page: Page) {
@@ -107,7 +108,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
     try {
       state ??= await observeViewerBitmaps(page);
       // Scroll while polling: virtualized headings/images may disappear/reappear.
-      const handle = await page.waitForFunction(({ state, index, total, remainingBytes }) => {
+      const handle = await page.waitForFunction(({ state, index, total, remainingBytes, minDpi, maxPixels }) => {
         const layoutReasons = new Set(['ambiguous-layout-multiple-headings', 'ambiguous-layout-multiple-images',
           'ambiguous-layout-toolbar-visible']);
         const settleLayout = (candidate: {
@@ -136,7 +137,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
           .some(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
         if (busy) { state.changedAt = performance.now(); return null; }
         const { naturalWidth: width, naturalHeight: height } = image;
-        if (width * height > 12_000_000) return { error: 'UNSUPPORTED_SOURCE', reason: 'bitmap-oversized' };
+        if (width * height > maxPixels) return { error: 'UNSUPPORTED_SOURCE', reason: 'bitmap-oversized' };
         if (image.complete && (!width || !height) && performance.now() - state.changedAt >= 750)
           return { error: 'SOURCE_UNAVAILABLE' };
         if (!image.complete || !image.src.startsWith('blob:') || !width || !height) return null;
@@ -145,7 +146,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
         const landscape = width > height;
         const scale = Math.min(((landscape ? 841.89 : 595.28) - 16) / width,
           ((landscape ? 595.28 : 841.89) - 16) / height);
-        if (!decoded || candidate.stale || 72 / scale < 200 || performance.now() - state.changedAt < 750) return null;
+        if (!decoded || candidate.stale || 72 / scale < minDpi || performance.now() - state.changedAt < 750) return null;
         // decode() may finish after a source/node/heading replacement.
         const current = settleLayout(state.resolve(index, total));
         if (!current) return null;
@@ -168,7 +169,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
           return { width, height, encoded };
         } catch { return { error: 'SOURCE_UNAVAILABLE' }; }
         finally { canvas.width = canvas.height = 1; }
-      }, { state, index, total, remainingBytes }, { timeout: 15000, polling: 'raf' });
+      }, { state, index, total, remainingBytes, minDpi: PDF_VIEWER_MIN_DPI, maxPixels: PDF_VIEWER_MAX_PIXELS }, { timeout: 15000, polling: 'raf' });
       try {
         const captured = await handle.jsonValue() as Record<string, unknown> | null;
         if (!captured) throw new JobError('SOURCE_UNAVAILABLE', true);
