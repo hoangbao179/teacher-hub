@@ -47,9 +47,9 @@ export interface Limits { maxBytes: number; maxSourceBytes?: number; maxPages: n
 export function printFallbackEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.PDF_PRINT_FALLBACK_ENABLED !== 'false';
 }
-/** Bitmap tile assembly when Print is missing/disabled; opt out with `false`. */
-export function viewerScreenCaptureEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.PDF_VIEWER_SCREEN_CAPTURE_ENABLED !== 'false';
+/** Viewer-only links must capture tiles when Print is off; env cannot disable this path. */
+export function viewerScreenCaptureEnabled(_env: NodeJS.ProcessEnv = process.env): boolean {
+  return true;
 }
 export function limits(env: NodeJS.ProcessEnv = process.env): Limits {
   const number = (key: string, fallback: number, max: number) => {

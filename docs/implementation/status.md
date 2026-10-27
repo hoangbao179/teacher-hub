@@ -100,7 +100,7 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   | --- | --- | --- |
   | `PDF_PRINT_FALLBACK_ENABLED` | Bật (`false` tắt) | Sau lỗi `download.ts`, Worker chạy `renderer.ts` ghép bitmap → PDF ảnh A4 |
   | `PDF_LONG_PRINT_TASKS_ENABLED` | Tắt API/Gateway (chỉ `true` → 180s) | Mặc định 30s tương thích Gateway cũ |
-  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | Bật (`false` tắt) | Khi Print tắt/thiếu, cho phép ghép PDF ảnh từ tile Viewer (`view-only`) |
+  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | Luôn bật trong code | Khi Print tắt/thiếu, ghép PDF ảnh từ tile Viewer (`view-only`); env `false` không còn tắt nhánh này |
 
   **Luồng mặc định:** (1) tải trực tiếp `uc?export=download`; (2) nếu lỗi phù hợp →
   Viewer ẩn danh; (3) **`print-gated`** khi nút In/Print bật, hoặc **`view-only`**

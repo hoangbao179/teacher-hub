@@ -31,9 +31,9 @@ không phải chức năng đã hoàn tất.
 Worker mở Viewer ẩn danh. Nếu nút Print **bật**, ghép PDF ảnh theo chế độ
 `print-gated` (kiểm tra Print trong suốt quá trình). Nếu Print **tắt hoặc không
 có** nhưng Viewer đã sẵn sàng, Worker có thể ghép PDF ảnh từ tile hiển thị khi
-`PDF_VIEWER_SCREEN_CAPTURE_ENABLED` không phải `false` (mặc định bật). Cờ này
-**không** vượt hạn chế đăng nhập, link riêng tư, hay chặn tải byte gốc của
-Google; chỉ bật/tắt nhánh chụp tile khi Print không dùng được. Ambiguous Print
+Worker luôn bật nhánh chụp tile khi Print không dùng được (`view-only`). Env
+`PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false` **không** còn tắt hành vi này trên
+Worker. Không vượt hạn chế đăng nhập, link riêng tư, hay chặn tải byte gốc của Google. Ambiguous Print
 (ví dụ hai nút) vẫn `UNSUPPORTED_SOURCE`. Không thấy Print có thể do UI đang
 tải/thay đổi, không tự chứng minh chủ file cấm in. `/tools` chỉ nhận liên kết;
 không yêu cầu chọn hoặc upload ảnh. E2E Drive thật và chất lượng in vẫn chưa
