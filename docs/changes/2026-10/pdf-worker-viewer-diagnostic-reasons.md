@@ -40,7 +40,16 @@ sửa dựa trên phân tích code và regression offline.
 - `npm --prefix workers/pdf test` — 87 pass, 2 skip
 - `npm --prefix workers/pdf run test:docker` — PASS (image `teacher-pdf-worker:local-processing-v1`)
 
+## Follow-up (2026-10-27)
+
+- Tách `ambiguous-page-layout` thành `ambiguous-layout-multiple-headings`,
+  `ambiguous-layout-multiple-images`, `ambiguous-layout-toolbar-visible`.
+- Log an toàn thêm `pageIndex` và `ancestorLevel` khi capture layout fail.
+- Đếm chỉ `h2`/`img` hiển thị trong wrapper; chờ quiet 750ms trước khi fail layout
+  trong lúc zoom/lazy-load (tránh false positive từ DOM tạm).
+
 ## Remaining risks
 
-- Cần retry job trên revision mới để đọc `reason` thực tế; vẫn cần E2E Drive
-  ẩn danh cho chất lượng in và markup lạ.
+- Job `1_ArvHdCmU5958R5Le27wjNsRiI5ynzIr` chưa được E2E lại sau sửa; giả thuyết
+  chính là heading ẩn/virtualized trong cùng wrapper. Cần retry trên revision mới
+  để đọc `reason` + `ancestorLevel` thực tế.

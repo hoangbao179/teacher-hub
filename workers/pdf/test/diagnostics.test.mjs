@@ -48,8 +48,20 @@ test('encrypted PDFs do not reach Viewer fallback', async () => {
 test('viewer assembly reasons are allowlisted in stage diagnostics', () => {
   const events = [];
   diagnostic(job.jobId, 'a'.repeat(64), 'viewer-render', true,
-    new JobError('UNSUPPORTED_SOURCE', false, 'ambiguous-page-layout'), value => events.push(JSON.parse(value)));
-  assert.equal(events[0].reason, 'ambiguous-page-layout');
+    new JobError('UNSUPPORTED_SOURCE', false, 'ambiguous-layout-multiple-images', { pageIndex: 2, ancestorLevel: 1 }),
+    value => events.push(JSON.parse(value)));
+  assert.equal(events[0].reason, 'ambiguous-layout-multiple-images');
+  assert.deepEqual([events[0].pageIndex, events[0].ancestorLevel], [2, 1]);
+});
+
+test('capture diagnostics omit invalid pageIndex and ancestorLevel', () => {
+  const events = [];
+  diagnostic(job.jobId, 'a'.repeat(64), 'viewer-render', true,
+    new JobError('UNSUPPORTED_SOURCE', false, 'ambiguous-layout-multiple-headings',
+      { pageIndex: 0, ancestorLevel: 99 }), value => events.push(JSON.parse(value)));
+  assert.equal(events[0].reason, 'ambiguous-layout-multiple-headings');
+  assert.equal(events[0].pageIndex, undefined);
+  assert.equal(events[0].ancestorLevel, undefined);
 });
 
 test('diagnostics discard untrusted error details and tolerate logging failures', () => {
