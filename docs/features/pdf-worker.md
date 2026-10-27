@@ -202,8 +202,9 @@ The opt-in v2 pipeline is implemented across Worker, Gateway, API outbox/MySQL a
 public Tools. It accepts up to 200 pages with a 150 MiB final cap, 10-page parts,
 20 MiB source bound, sequential native PNG to adaptive JPEG to streaming image-PDF,
 and file-based qpdf merge. Direct PDFs up to 50 pages can complete in discovery;
-long direct PDFs use an immutable GCS source snapshot. Viewer jobs always use small
-parts because browser resource usage is less predictable. v1 remains compatible
+long direct PDFs use an immutable GCS source snapshot. Viewer jobs use the same
+print-gated or view-only capture as v1 and always use small parts because browser
+resource usage is less predictable. v1 remains compatible
 with its original 40-page/20 MiB contract when the new gate is off.
 
 Progress survives browser refresh and service restart. The independent reconciler

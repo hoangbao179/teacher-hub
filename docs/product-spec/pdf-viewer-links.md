@@ -103,9 +103,9 @@ bằng chứng file thuộc phạm vi v1. Tự động hóa phải thử từ m�
 - **Chia sẻ Viewer + mở ẩn danh** là đầu vào mục tiêu; Worker thử tải trực tiếp
   rồi (mặc định) fallback renderer ghép **PDF ảnh** khi được phép theo chế độ
   `print-gated` (Print hoạt động trong Viewer).
-- **Chủ file khóa Print/Copy**: không bypass. View-only đã bị loại khỏi pipeline;
-  flag cũ không thay đổi quy tắc quyền. **Chưa DONE**; cần nguồn
-  được phép và E2E/chất lượng in trên Drive thật.
+- **Chủ file khóa Print/Copy**: v1 và v2 (khi bật) dùng nhánh `view-only` chụp
+  tile Viewer khi `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` không tắt; không bypass
+  đăng nhập hay link riêng tư. **Chưa DONE** E2E/chất lượng in trên Drive thật.
 
 - `workers/pdf/src/download.ts` gọi
   `https://drive.google.com/uc?export=download&id=...` với allowlist redirect;

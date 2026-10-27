@@ -107,8 +107,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   khi Print tắt/thiếu và screen capture không bị tắt (`viewer-pdf.ts`).
 
   **Vì sao chưa DONE:**
-  - **Chủ file khóa Print:** có nhánh `view-only` trong code nhưng chưa E2E Drive
-    thật chứng minh đủ trang, nét in và hành vi restriction của Google.
+  - **Chủ file khóa Print:** nhánh `view-only` áp dụng cả v1 và v2 (khi bật);
+    chưa E2E Drive thật chứng minh đủ trang, nét in và hành vi restriction của Google.
   - **Thiếu E2E Drive thật:** test chủ yếu fixture offline; chưa chứng minh đủ trang,
     thứ tự, nét chữ, timeout/RAM trên revision chạy thật.
   - **Rủi ro đã biết:** lazy-load Viewer (`capture-page.ts`); smoke không xác minh
