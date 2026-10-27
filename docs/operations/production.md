@@ -8,7 +8,9 @@ Production chạy trên một VPS Ubuntu bằng bốn container: Caddy → Web/N
 MySQL. GitHub Actions kiểm tra source, build hai image, đẩy lên GHCR, sinh runtime
 `.env` từ GitHub Repository Secrets rồi SSH vào VPS để chạy script triển khai. VPS
 không cần source, Node.js hoặc npm; mỗi lần deploy chỉ nhận `.env` mới,
-`docker-compose.deploy.yml`, `Caddyfile`, `deploy-production.sh` và `deploy-env.sh`.
+`docker-compose.deploy.yml`, `Caddyfile` và các deployment/recovery helper. Thông tin
+Cloud readiness không bí mật cũng được chuyển theo SHA; credential/approval PDF
+hiện có được giữ tại VPS.
 
 ## Production VPS capacity and resource budget
 

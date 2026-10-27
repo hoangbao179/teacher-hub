@@ -85,7 +85,9 @@ test('rejects tags named main and other run contexts before any API call', async
 
 test('workflow guards main branch/manual event and validates protection before auth', () => {
   const workflow = readFileSync(`${__dirname}/../.github/workflows/pdf-worker.yml`, 'utf8');
-  const condition = workflow.match(/^    if: (.+)$/m)[1];
+  const conditions = [...workflow.matchAll(/^    if: (.+)$/gm)].map(m => m[1]);
+  assert.equal(conditions.length, 2);
+  for (const [index, condition] of conditions.entries()) {
   for (const [ref, event_name, repository, expected] of [
     ['refs/heads/main', 'workflow_dispatch', 'hoangbao179/teacher-hub', true],
     ['refs/tags/main', 'workflow_dispatch', 'hoangbao179/teacher-hub', false],
@@ -94,7 +96,11 @@ test('workflow guards main branch/manual event and validates protection before a
     ['refs/heads/main', 'workflow_dispatch', 'other/teacher-hub', false],
   ]) {
     // This condition uses only equality and boolean operators shared by JS/Actions.
-    assert.equal(runInNewContext(condition, { github: { ref, event_name, repository } }), expected);
+    assert.equal(runInNewContext(condition, { github: { ref, event_name, repository },
+      inputs: { activation_request: index === 0 ? '' : '123-1' } }), expected);
+    assert.equal(runInNewContext(condition, { github: { ref, event_name, repository },
+      inputs: { activation_request: index === 0 ? '123-1' : '' } }), false);
+  }
   }
   assert.match(workflow, /environment: pdf-worker/);
   assert.match(workflow, /actions: read/);
@@ -105,11 +111,20 @@ test('workflow guards main branch/manual event and validates protection before a
 
 test('workflow authenticates only the verifier and has no deployment path', () => {
   const workflow = readFileSync(`${__dirname}/../.github/workflows/pdf-worker.yml`, 'utf8');
-  assert.match(workflow, /on:\s+workflow_dispatch:\s+permissions:/);
+  const trigger = workflow.split('\npermissions:')[0].split('\non:')[1];
+  assert.match(trigger, /^\s+workflow_dispatch:\s+inputs:/);
+  assert.doesNotMatch(trigger, /^  (?!workflow_dispatch:)[\w-]+:/m);
+  assert.deepEqual([...trigger.matchAll(/^      ([\w-]+):$/gm)].map(m => m[1]), ['activation_request', 'source_sha']);
   assert.match(workflow, /service_account: \$\{\{ vars.GCP_VERIFIER_SA \}\}/);
   assert.match(workflow, /test "\$GCP_VERIFIER_SA" = teacher-pdf-verifier@teacher-hub-pdf\.iam\.gserviceaccount\.com/);
-  assert.doesNotMatch(workflow, /GCP_DEPLOYER_SA|teacher-pdf-deployer|inputs\.|credentials_json|docker (build|push)|run deploy|run: bash scripts\/deploy-pdf-worker\.sh/);
-  assert.deepEqual([...workflow.matchAll(/^  ([\w-]+):$/gm)].map(m => m[1]), ['workflow_dispatch', 'verify-wif']);
+  assert.doesNotMatch(workflow, /GCP_DEPLOYER_SA|teacher-pdf-deployer|credentials_json|docker (build|push)|run deploy|run: bash scripts\/deploy-pdf-worker\.sh/);
+  assert.deepEqual([...workflow.matchAll(/^  ([\w-]+):$/gm)].map(m => m[1]), ['workflow_dispatch', 'verify-wif', 'v2-readiness']);
+  for (const job of workflow.split(/^  (?:verify-wif|v2-readiness):$/m).slice(1)) {
+    assert.match(job, /environment: pdf-worker/);
+    assert.match(job, /service_account: \$\{\{ vars.GCP_VERIFIER_SA \}\}/);
+    const validation = job.indexOf("await require('./scripts/validate-pdf-environment.cjs')(github, context)");
+    assert.ok(validation > 0 && validation < job.indexOf('uses: google-github-actions/auth@v3'));
+  }
   assert.deepEqual(workflow.match(/^          gcloud .+$/gm).map(s => s.trim()), [
     'gcloud auth print-access-token >/dev/null',
     'gcloud artifacts repositories describe teacher-pdf \\',
