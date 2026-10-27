@@ -138,12 +138,13 @@ deadlines are unchanged. Rendering requires a **coordinated review and activatio
 of Worker + producer + Gateway flags**; enabling the Worker flag alone
 will not work with live 30s tasks.
 
-Staging explicitly sets Worker fallback=true, view-only capture=false and Gateway
-long tasks=true, with `--no-traffic` on both deployments. Audit requires those exact
-values. Promote compatible Worker/Gateway revisions before enabling API long tasks.
+Staging sets Worker fallback=true, view-only tile capture on (product default) and
+Gateway long tasks=true, with `--no-traffic` on both deployments. Audit requires
+`PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` on Worker revisions. Promote compatible
+Worker/Gateway revisions before enabling API long tasks.
 
-**Before release:** keep view-only OFF and fallback disabled on any live Worker
-still receiving 30s tasks. Perform authorized real-viewer E2E in an
+**Before release:** keep fallback disabled on any live Worker still receiving 30s
+tasks without a coordinated long-task gate. Perform authorized real-viewer E2E in an
 isolated revision, review Chromium sandbox/egress, cost, image size,
 RAM/CPU, 150dpi rejection threshold, existing Cloud Tasks and Gateway
 allowlist constraints, partial-job cleanup, and rollback. Prefer direct PDF
