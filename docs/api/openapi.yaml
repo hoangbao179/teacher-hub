@@ -195,7 +195,7 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}}}
       responses:
         '200':
-          description: PDF tối đa 10 MiB; deadline 30 giây hoặc expiresAt sớm hơn; stream lỗi sẽ đóng kết nối
+          description: PDF tối đa 20 MiB; deadline 30 giây hoặc expiresAt sớm hơn; stream lỗi sẽ đóng kết nối
           headers:
             Content-Disposition: {schema: {type: string}, description: attachment}
             X-Content-Type-Options: {schema: {type: string, enum: [nosniff]}}
@@ -1262,7 +1262,7 @@ components:
         maxActiveJobs: {type: integer, maximum: 20}
         maxBatchesPerHour: {type: integer, maximum: 30}
         maxRetries: {type: integer, enum: [2]}
-        maxBytes: {type: integer, enum: [10485760]}
+        maxBytes: {type: integer, enum: [20971520]}
         maxPages: {type: integer, enum: [40]}
         ticketTtlSeconds: {type: integer, enum: [120]}
     PdfJob:
@@ -1281,7 +1281,7 @@ components:
         expiresAt: {type: string, format: date-time}
         errorCode: {type: string, nullable: true}
         cloudErrorCode: {type: string, nullable: true}
-        bytes: {type: integer, maximum: 10485760, nullable: true}
+        bytes: {type: integer, maximum: 20971520, nullable: true}
         pages: {type: integer, maximum: 40, nullable: true}
         retryOf: {type: string, format: uuid, nullable: true}
         retryAttempts: {type: integer, minimum: 0, maximum: 2}
@@ -2545,7 +2545,7 @@ components:
               required: [name, size, sha256]
               properties:
                 name: {type: string}
-                size: {type: integer, maximum: 10485760}
+                size: {type: integer, maximum: 20971520}
                 sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
             lessons: {type: array, items: {type: object}}
             tuitionRows: {type: array, items: {type: object}}

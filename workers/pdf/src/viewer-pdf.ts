@@ -2,6 +2,7 @@ import { open, rm } from 'node:fs/promises';
 import { errors as playwrightErrors, type Page } from 'playwright';
 import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
+import { PDF_INTERMEDIATE_PNG_PEAK_BYTES, PDF_VIEWER_JPEG_QUALITY } from '@teacher/shared';
 import { JobError, type Limits } from './contract.ts';
 import { assertPrintAction, printPageSize } from './print-policy.ts';
 import { captureViewerPage, observeViewerBitmaps, disposeViewerBitmaps } from './capture-page.ts';
@@ -24,8 +25,8 @@ async function runStage<T>(signal: AbortSignal, work: () => Promise<T>, cancel =
   });
 }
 
-/** Working-set budget for decoded PNG tiles before JPEG encoding. */
-export const INTERMEDIATE_PNG_BUDGET = 32 * 1048576;
+/** Peak working-set budget for one decoded PNG tile (from shared product limits). */
+export const INTERMEDIATE_PNG_PEAK_BYTES = PDF_INTERMEDIATE_PNG_PEAK_BYTES;
 
 /** pdf-lib catalog/pages/xref overhead excluded from raw JPEG embed budget. */
 export function pdfStructureOverhead(pageCount: number): number {
@@ -146,19 +147,21 @@ async function assembleViewerImagePdf(
     const doc = await PDFDocument.create();
     sharp.cache(false);
     sharp.concurrency(1);
-    const maxCaptures = INTERMEDIATE_PNG_BUDGET;
+    const peakPngBytes = INTERMEDIATE_PNG_PEAK_BYTES;
     const maxEmbedded = embeddedJpegCeiling(cap.maxBytes, count);
-    let capturedBytes = 0, embeddedBytes = 0;
+    let embeddedBytes = 0;
     for (let index = 1; index <= count; index++) {
       signal.throwIfAborted();
       if (checkPrint) await checkPrint();
-      const captured = await captureViewerPage(page, index, count, maxCaptures - capturedBytes, observation, signal);
+      const captured = await captureViewerPage(page, index, count, peakPngBytes, observation, signal);
       signal.throwIfAborted();
       const paper = printPageSize(captured.width, captured.height);
-      capturedBytes = addImageBytes(capturedBytes, captured.png.length, maxCaptures, 'intermediate-png-total',
-        { pageIndex: index });
+      if (captured.png.length > peakPngBytes) {
+        throw new JobError('FILE_TOO_LARGE', false, 'intermediate-png-page',
+          { pageIndex: index, usedBytes: captured.png.length, limitBytes: peakPngBytes });
+      }
       const encoder = sharp(captured.png, { limitInputPixels: 12_000_000 })
-        .jpeg({ quality: 93, chromaSubsampling: '4:4:4' });
+        .jpeg({ quality: PDF_VIEWER_JPEG_QUALITY, chromaSubsampling: '4:4:4' });
       let jpeg: Buffer;
       try { jpeg = await runStage(signal, () => encoder.toBuffer(), () => { encoder.destroy(); }); }
       finally {

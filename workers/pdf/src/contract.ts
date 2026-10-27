@@ -1,3 +1,5 @@
+import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES } from '@teacher/shared';
+
 export class JobError extends Error {
   code: string;
   retryable: boolean;
@@ -58,8 +60,8 @@ export function limits(env: NodeJS.ProcessEnv = process.env): Limits {
   // Direct download stays first; when fallback is on, allow the longer browser budget.
   // Screen capture alone cannot enter that fallback and must not extend the job deadline.
   const browserJob = printFallbackEnabled(env);
-  return { maxBytes: number('PDF_MAX_BYTES', 10 * 1024 * 1024, 10 * 1024 * 1024),
-    maxPages: number('PDF_MAX_PAGES', 40, 40),
+  return { maxBytes: number('PDF_MAX_BYTES', PDF_OUTPUT_MAX_BYTES, PDF_OUTPUT_MAX_BYTES),
+    maxPages: number('PDF_MAX_PAGES', PDF_MAX_PAGES, PDF_MAX_PAGES),
     deadlineMs: number('PDF_DEADLINE_MS', browserJob ? 120000 : 22000, browserJob ? 120000 : 22000),
     redirects: 3 };
 }

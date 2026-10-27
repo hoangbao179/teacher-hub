@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { PdfCapabilities, PdfDownloadTicket } from '@teacher/shared';
+import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES } from '@teacher/shared';
 import { PdfRepository } from '../repositories/pdf.repository';
 import type { PdfProvider } from './pdf-provider';
 import type { PdfSettings } from '../config/pdf-settings';
@@ -14,7 +15,7 @@ export class PdfService {
     const enabled = this.cfg.enabled && this.provider.configured && await this.provider.ready(signal).catch(()=>false);
     return { submitEnabled:enabled,downloadEnabled:enabled,unavailableReason:enabled ? null : 'PDF_SERVICE_UNAVAILABLE',
       maxLinksPerBatch:this.cfg.maxLinks,maxActiveJobs:this.cfg.maxActive,maxBatchesPerHour:this.cfg.maxHourly,
-      maxRetries:this.cfg.maxRetries,maxBytes:10485760,maxPages:40,ticketTtlSeconds:120 };
+      maxRetries:this.cfg.maxRetries,maxBytes:PDF_OUTPUT_MAX_BYTES,maxPages:PDF_MAX_PAGES,ticketTtlSeconds:120 };
   }
   private async available() { if (!(await this.capabilities()).submitEnabled) throw pdfError(503,'PDF_SERVICE_UNAVAILABLE'); }
   private id(id: string) { if (!uuid(id)) throw pdfError(400,'PDF_INVALID_REQUEST'); }

@@ -53,7 +53,7 @@ test('Worker claim is accepted by real API validator with a ticking clock', () =
     process.stdout.write(JSON.stringify({claim:store.objects.get('jobs/'+job.jobId+'/request.json').json,result,job}));
   `;
   const child=spawnSync(process.execPath,['--input-type=module','-e',program,workerURL,fixtureURL,contractURL],
-    {encoding:'utf8',timeout:12000,maxBuffer:16384});
+    {encoding:'utf8',timeout:12000,maxBuffer:16384,env:{...process.env,NODE_NO_WARNINGS:'1'}});
   assert.equal(child.status,0,child.stderr);
   const diagnostic=JSON.parse(child.stderr.trim());
   assert.equal(diagnostic.event,'pdf-stage-failed');

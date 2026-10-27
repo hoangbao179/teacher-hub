@@ -174,7 +174,7 @@ vòng chế độ tắt tải, mở quyền Worker public hoặc bypass captcha.
 | `resourcekey`, redirect hợp lệ hoặc loại Drive được hỗ trợ | Không âm thầm loại bỏ key; hoặc hỗ trợ đúng với quyền hợp lệ, hoặc giải thích hạn chế |
 | File không phải PDF / Google Workspace native | Chỉ hỗ trợ export nếu được cho phép và có thiết kế/test riêng; khác thì báo không hỗ trợ |
 | HTML login, CAPTCHA, confirmation page | Không ghi nhận HTML/ảnh sai làm PDF thành công |
-| Link mơ hồ, quá 5 file, >10 MiB, >40 trang | Từ chối rõ ràng; không vượt resource cap |
+| Link mơ hồ, quá 5 file, >20 MiB, >40 trang | Từ chối rõ ràng; không vượt resource cap |
 | 5-link batch rồi đóng trình duyệt | Recovery vẫn xử lý job hợp lệ, lịch sử/terminal state chính xác |
 | PDF hoàn thành, mở thiết bị khác, tải 2 lần bằng một ticket | Lượt đầu đúng bytes/hash; ticket đã dùng bị từ chối; hết hạn không tải |
 | Kết nối Cloud Tasks/GCS lỗi, timeout, replay | Không báo COMPLETED sai, retry giới hạn, không leak secret |

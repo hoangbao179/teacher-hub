@@ -10,13 +10,16 @@ const info = JSON.parse(capture(['context', 'inspect', context]))[0];
 if (!/^(npipe:\/\/|unix:\/\/)/.test(info.Endpoints.docker.Host) || process.env.DOCKER_HOST || process.env.DOCKER_CONTEXT) {
   throw new Error('Use a local Docker context without endpoint overrides');
 }
-const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const workerRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const repoRoot = resolve(workerRoot, '../..');
 const image = 'teacher-pdf-worker:local-processing-v1';
 const docker = args => run(['--context', context, ...args]);
-docker(['build', '--platform', 'linux/amd64', '-t', image, root]);
+execFileSync('npm', ['run', 'build:shared'], { cwd: repoRoot, stdio: 'inherit', shell: true });
+const dockerfile = resolve(repoRoot, 'workers/pdf/Dockerfile');
+docker(['build', '--platform', 'linux/amd64', '-f', dockerfile, '-t', image, repoRoot]);
 docker(['run', '--rm', '--platform', 'linux/amd64', '--network', 'none', '--cpus=1', '--memory=2g', '--memory-swap=2g',
   '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--pids-limit=128',
   '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=32m,mode=1777',
-  '--mount', `type=bind,source=${resolve(root, 'test')},target=/app/test,readonly`,
+  '--mount', `type=bind,source=${resolve(workerRoot, 'test')},target=/app/worker/test,readonly`,
   image, 'node', 'test/linux-run.mjs']);
 console.log(capture(['--context', context, 'image', 'inspect', image, '--format', '{{.Id}} {{.Size}}']));

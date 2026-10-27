@@ -150,7 +150,7 @@ Do not remove claims/results independently while queue deliveries remain possibl
 
 | Limit | Default / hard ceiling |
 | --- | --- |
-| PDF_MAX_BYTES | 10485760 (10 MiB), may only be lowered |
+| PDF_MAX_BYTES | 20971520 (20 MiB product default from `@teacher/shared`), may only be lowered |
 | PDF_MAX_PAGES | 40, may only be lowered |
 | PDF_DEADLINE_MS | 22000 ms, may only be lowered; includes body/storage/source/parser |
 | Redirects | 3; bodies discarded without following HTML links/forms |

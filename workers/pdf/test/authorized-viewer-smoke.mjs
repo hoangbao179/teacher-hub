@@ -13,7 +13,7 @@ import { renderPrintablePdf } from '../src/renderer.ts';
 import { validatePDF } from '../src/pdf.ts';
 
 const IDENTIFIER = /^[A-Za-z0-9_-]{10,128}$/;
-const CAP = Object.freeze({maxBytes:10*1048576,maxPages:40,deadlineMs:120000,redirects:3});
+const CAP = Object.freeze({maxBytes:20*1048576,maxPages:40,deadlineMs:120000,redirects:3});
 
 export function viewerConfig(env) {
   if (env.PDF_AUTHORIZED_VIEWER_E2E_APPROVED !== 'true') throw Error('PDF_VIEWER_SMOKE_EXPLICIT_APPROVAL_REQUIRED');

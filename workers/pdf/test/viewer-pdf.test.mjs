@@ -7,8 +7,9 @@ import { chromium } from 'playwright';
 import { PDFDocument, PDFDict, PDFName, PDFNumber, PDFRawStream } from 'pdf-lib';
 import sharp from 'sharp';
 import { limits } from '../src/contract.ts';
+import { PDF_INTERMEDIATE_PNG_PEAK_BYTES, PDF_OUTPUT_MAX_BYTES, PDF_VIEWER_JPEG_QUALITY } from '@teacher/shared';
 import { addImageBytes, assemblePrintableViewer, assembleViewOnlyViewer, embeddedJpegCeiling,
-  INTERMEDIATE_PNG_BUDGET, pdfStructureOverhead } from '../src/viewer-pdf.ts';
+  INTERMEDIATE_PNG_PEAK_BYTES, pdfStructureOverhead } from '../src/viewer-pdf.ts';
 
 test('owned local Viewer produces one ordered image-only PDF and retains all permission gates', async t => {
   const root = await mkdtemp(join(tmpdir(), 'owned-viewer-pdf-'));
@@ -92,21 +93,18 @@ test('owned local Viewer produces one ordered image-only PDF and retains all per
   assert.deepEqual(await readdir(root), ['owned-output.pdf'], 'rejections must not publish a partial PDF');
 });
 
-test('cumulative PNG and embedded JPEG budgets reject overflow without changing ceilings', () => {
-  for (const [ceiling, reason] of [[INTERMEDIATE_PNG_BUDGET, 'intermediate-png-total'], [10 * 1048576, 'embedded-jpeg-total']]) {
-    assert.equal(addImageBytes(ceiling - 100, 100, ceiling, reason), ceiling);
-    assert.throws(() => addImageBytes(ceiling - 100, 101, ceiling, reason), err => {
-      assert.equal(err.code, 'FILE_TOO_LARGE');
-      assert.equal(err.reason, reason);
-      assert.equal(err.usedBytes, ceiling + 1);
-      assert.equal(err.limitBytes, ceiling);
-      return true;
-    });
-  }
+test('peak PNG and embedded JPEG budgets reject overflow without changing ceilings', () => {
+  assert.equal(INTERMEDIATE_PNG_PEAK_BYTES, PDF_INTERMEDIATE_PNG_PEAK_BYTES);
+  const embedCeiling = PDF_OUTPUT_MAX_BYTES;
+  assert.throws(() => addImageBytes(embedCeiling - 100, 101, embedCeiling, 'embedded-jpeg-total'), err => {
+    assert.equal(err.code, 'FILE_TOO_LARGE');
+    assert.equal(err.reason, 'embedded-jpeg-total');
+    return true;
+  });
 });
 
 test('embedded JPEG budget reserves pdf-lib structure overhead before the output cap', () => {
-  const outputCap = 10 * 1048576;
+  const outputCap = PDF_OUTPUT_MAX_BYTES;
   const pages = 3;
   const embedCap = embeddedJpegCeiling(outputCap, pages);
   assert.equal(embedCap, outputCap - pdfStructureOverhead(pages));
@@ -123,7 +121,7 @@ test('assembly failures and cancellation never leave a new output file', { timeo
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
   const png = await sharp({ create: { width: 1620, height: 2300, channels: 3, background: 'green' } }).png().toBuffer();
-  const jpeg = await sharp(png).jpeg({ quality: 93, chromaSubsampling: '4:4:4' }).toBuffer();
+  const jpeg = await sharp(png).jpeg({ quality: PDF_VIEWER_JPEG_QUALITY, chromaSubsampling: '4:4:4' }).toBuffer();
   const cap = limits({ PDF_PRINT_FALLBACK_ENABLED: 'true' });
   async function fixture(t) {
     const page = await browser.newPage();

@@ -14,8 +14,9 @@ test('Docker build context includes npm package manifests and runtime source', a
   for(const expected of ['!Dockerfile','!package.json','!package-lock.json',
     '!src/','!src/*.mjs','!src/*.ts'])
     assert.ok(ignore.includes(expected),'missing allowlist rule '+expected);
-  assert.match(dockerfile,/COPY package\.json package-lock\.json \.\//);
-  assert.match(dockerfile,/COPY --chown=node:node src\/ \.\/src\//);
+  assert.match(dockerfile,/COPY workers\/pdf\/package\.json workers\/pdf\/package-lock\.json \.\//);
+  assert.match(dockerfile,/COPY workers\/pdf\/src\/ \.\/src\//);
+  assert.match(dockerfile,/COPY shared\/dist/);
   for(const name of ['package.json','package-lock.json','src/server.mjs','src/renderer.ts'])
     assert.ok((await read(name)).length>0, 'missing Docker COPY input '+name);
   assert.ok(!ignore.includes('!node_modules'),'never copy host dependencies');

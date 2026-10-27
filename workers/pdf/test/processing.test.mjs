@@ -40,7 +40,7 @@ test('strict versioned contract, UUID-v4, Drive ID and configurable conservative
     assert.throws(() => parseJob(value), { code: 'INVALID_REQUEST' });
   }
   assert.equal(limits({ PDF_MAX_PAGES: '3' }).maxPages, 3);
-  for (const env of [{ PDF_MAX_BYTES: '10485761' }, { PDF_MAX_PAGES: '100' },
+  for (const env of [{ PDF_MAX_BYTES: '20971521' }, { PDF_MAX_PAGES: '100' },
     { PDF_PRINT_FALLBACK_ENABLED: 'false', PDF_DEADLINE_MS: '30000' }, { PDF_MAX_BYTES: 'NaN' }]) {
     assert.throws(() => limits(env), { code: 'SERVICE_UNAVAILABLE' });
   }

@@ -43,6 +43,9 @@ jobs:
           node-version: 24.18.0
       - name: Worker targeted checks
         run: |
+          npm ci
+          npm run build:shared
+          npm ci --prefix workers/pdf
           npm --prefix workers/pdf run check
           npm --prefix workers/pdf test
           node --test scripts/validate-pdf-environment.test.cjs

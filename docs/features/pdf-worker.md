@@ -48,7 +48,7 @@ This does not prove quality on every Drive variant until real Viewer E2E passes.
 
 The renderer uses Playwright + pdf-lib + sharp in the **Cloud Run worker image
 only**, not in the VPS API. Limits include: <=40 pages, 12 MP/page, total
-captured PNG <=32 MiB, output <=10 MiB, bounded requests/observed wire bytes,
+captured PNG peak <=32 MiB working set, output <=20 MiB (`@teacher/shared`), bounded requests/observed wire bytes,
 only Google Drive/Docs/static domains and no arbitrary navigation. This code
 does not prove print quality or readiness for all Drive viewer variants.
 Capture waits for at least 200 effective DPI at the fitted A4 size, rather than
@@ -100,7 +100,7 @@ the quiet window or prove content identity from third-party markup alone. Real
 authorized Drive layouts, zoom/loading signals and print quality remain unproven.
 
 Assembly keeps the existing 12 MP/page, cumulative 32 MiB captured PNG and
-10 MiB JPEG/PDF bounds. Canvas read/context failures and lost browser contexts
+20 MiB JPEG/PDF bounds (product default). Canvas read/context failures and lost browser contexts
 are retryable `SOURCE_UNAVAILABLE`, not proof of an unsupported document. PNG
 references are cleared after encoding, Sharp input has the same 12 MP guard,
 and each encoder is destroyed after use. Canvas backing storage and browser
@@ -182,7 +182,7 @@ lifecycle and test/automation adapters. Playwright, pdf-lib and Sharp are runtim
 dependencies; qpdf and util-linux supply the isolated parser. `tsc --noEmit` and pinned
 Node types are dev-only dependencies in the worker's separate lockfile.
 
-The limits (10 MiB, 40 pages, 22s direct-only / 120s fallback, 32 MiB tmpfs) are conservative
+The limits (20 MiB output, 40 pages, 22s direct-only / 120s fallback, 32 MiB tmpfs peak PNG) are conservative
 rejection thresholds, not a validated capacity/SLA promise. Synthetic blank-page
 fixtures do not benchmark complex textbooks, compressed streams, scanned pages or
 100–300-page files. PDF validation is not antivirus or sanitization. A killed
