@@ -54,7 +54,13 @@ test('browser capture waits for zoom detail, preserves blank/landscape pages and
       }
     }
   }
-  await assert.rejects(captureViewerPage(page, 1, 3, 10), { code: 'FILE_TOO_LARGE' });
+  await assert.rejects(captureViewerPage(page, 1, 3, 10), err => {
+    assert.equal(err.code, 'FILE_TOO_LARGE');
+    assert.equal(err.reason, 'intermediate-png-page');
+    assert.equal(err.pageIndex, 1);
+    assert.ok(err.usedBytes > err.limitBytes);
+    return true;
+  });
   // Exercise the canvas preflight without making Chromium allocate/decode a
   // deliberately oversized image (which can stall independently of our guard).
   await page.evaluate(() => {

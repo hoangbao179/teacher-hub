@@ -54,6 +54,15 @@ test('viewer assembly reasons are allowlisted in stage diagnostics', () => {
   assert.deepEqual([events[0].pageIndex, events[0].ancestorLevel], [2, 1]);
 });
 
+test('FILE_TOO_LARGE diagnostics include byte budgets when validated', () => {
+  const events = [];
+  diagnostic(job.jobId, 'a'.repeat(64), 'viewer-render', true,
+    new JobError('FILE_TOO_LARGE', false, 'embedded-jpeg-total',
+      { pageIndex: 2, usedBytes: 10_500_000, limitBytes: 10_485_760 }), value => events.push(JSON.parse(value)));
+  assert.deepEqual([events[0].reason, events[0].pageIndex, events[0].usedBytes, events[0].limitBytes],
+    ['embedded-jpeg-total', 2, 10_500_000, 10_485_760]);
+});
+
 test('capture diagnostics omit invalid pageIndex and ancestorLevel', () => {
   const events = [];
   diagnostic(job.jobId, 'a'.repeat(64), 'viewer-render', true,

@@ -8,7 +8,9 @@ const reasons = new Set(['redirect-policy', 'redirect-limit', 'login-redirect', 
   'invalid-file-id', 'page-count-unreadable', 'page-total-mismatch', 'assembled-page-mismatch',
   'duplicate-page-heading', 'ambiguous-page-layout', 'ambiguous-layout-multiple-headings',
   'ambiguous-layout-multiple-images', 'ambiguous-layout-toolbar-visible', 'bitmap-oversized',
-  'bitmap-dimensions-invalid', 'bitmap-dpi-low']);
+  'bitmap-dimensions-invalid', 'bitmap-dpi-low', 'intermediate-png-page', 'intermediate-png-total',
+  'embedded-jpeg-total', 'output-pdf-bytes', 'direct-download-bytes', 'validated-pdf-bytes']);
+const maxDiagnosticBytes = 64 * 1048576;
 
 /** Only fixed classifications and validated correlation fields; never provider text. */
 export function diagnostic(jobId: string, sourceHash: string, stage: Stage, fallbackEnabled: boolean,
@@ -20,9 +22,15 @@ export function diagnostic(jobId: string, sourceHash: string, stage: Stage, fall
     error.pageIndex! >= 1 && error.pageIndex! <= 40 ? error.pageIndex : undefined;
   const ancestorLevel = error instanceof JobError && Number.isInteger(error.ancestorLevel) &&
     error.ancestorLevel! >= 0 && error.ancestorLevel! < 8 ? error.ancestorLevel : undefined;
+  const usedBytes = error instanceof JobError && Number.isInteger(error.usedBytes) &&
+    error.usedBytes! >= 1 && error.usedBytes! <= maxDiagnosticBytes ? error.usedBytes : undefined;
+  const limitBytes = error instanceof JobError && Number.isInteger(error.limitBytes) &&
+    error.limitBytes! >= 1 && error.limitBytes! <= maxDiagnosticBytes ? error.limitBytes : undefined;
   // Observability must not alter persistence/retry behavior if the sink fails.
   try { write(JSON.stringify({ event: 'pdf-stage-failed', jobId, sourceHash, stage, fallbackEnabled,
     code, reason, retryable: error instanceof JobError ? error.retryable : true,
     ...(pageIndex !== undefined ? { pageIndex } : {}),
-    ...(ancestorLevel !== undefined ? { ancestorLevel } : {}) })); } catch { /* best effort */ }
+    ...(ancestorLevel !== undefined ? { ancestorLevel } : {}),
+    ...(usedBytes !== undefined ? { usedBytes } : {}),
+    ...(limitBytes !== undefined ? { limitBytes } : {}) })); } catch { /* best effort */ }
 }

@@ -162,7 +162,9 @@ export async function captureViewerPage(page: Page, index: number, total: number
           const png = canvas.toDataURL('image/png');
           const encoded = png.slice('data:image/png;base64,'.length);
           const bytes = encoded.length * 3 / 4 - (encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0);
-          if (bytes > remainingBytes) return { error: 'FILE_TOO_LARGE' };
+          if (bytes > remainingBytes) {
+            return { error: 'FILE_TOO_LARGE', reason: 'intermediate-png-page', usedBytes: bytes, limitBytes: remainingBytes };
+          }
           return { width, height, encoded };
         } catch { return { error: 'SOURCE_UNAVAILABLE' }; }
         finally { canvas.width = canvas.height = 1; }
@@ -173,8 +175,10 @@ export async function captureViewerPage(page: Page, index: number, total: number
         if ('error' in captured && typeof captured.error === 'string') {
           const reason = typeof captured.reason === 'string' ? captured.reason : undefined;
           const ancestorLevel = typeof captured.ancestorLevel === 'number' ? captured.ancestorLevel : undefined;
+          const usedBytes = typeof captured.usedBytes === 'number' ? captured.usedBytes : undefined;
+          const limitBytes = typeof captured.limitBytes === 'number' ? captured.limitBytes : undefined;
           throw new JobError(captured.error, captured.error === 'SOURCE_UNAVAILABLE', reason,
-            { pageIndex: index, ancestorLevel });
+            { pageIndex: index, ancestorLevel, usedBytes, limitBytes });
         }
         const encoded = typeof captured.encoded === 'string' ? captured.encoded : '';
         const width = typeof captured.width === 'number' ? captured.width : 0;
