@@ -53,7 +53,7 @@ export function addImageBytes(used: number, next: number, ceiling: number, reaso
   return attempted;
 }
 
-async function readViewerPageCount(page: Page, cap: Limits): Promise<number> {
+export async function readViewerPageCount(page: Page, cap: Limits): Promise<number> {
   await page.locator('h2').filter({ hasText: PAGE_INDICATOR_LOCATOR }).first().waitFor();
   const labels = await page.locator('h2').allTextContents();
   const first = labels.map(s => parsePageIndicator(s)).find(p => p?.index === 1);

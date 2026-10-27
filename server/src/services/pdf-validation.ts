@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { PdfJob } from '@teacher/shared';
-import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES } from '@teacher/shared';
+import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES, PDF_LONG_MAX_PAGES, PDF_LONG_OUTPUT_MAX_BYTES } from '@teacher/shared';
 import { AppError } from '../errors/app-error';
 import type { PdfPayload } from './pdf-provider';
 
@@ -37,8 +37,8 @@ export function validatePdfResult(job: PdfJob, pair: { claim: any; result: any }
     Date.parse(r.completedAt) < Date.parse(c.createdAt) || Date.parse(r.completedAt) > now + 60000) fail();
   if (r.status === 'COMPLETED') {
     if (Object.keys(r).sort().join() !== ['version','jobId','status','objectName','bytes','sha256','pages','completedAt','expiresAt'].sort().join() ||
-      r.objectName !== `jobs/${job.id}/output.pdf` || !Number.isInteger(r.bytes) || r.bytes < 1 || r.bytes > PDF_OUTPUT_MAX_BYTES ||
-      !Number.isInteger(r.pages) || r.pages < 1 || r.pages > PDF_MAX_PAGES || !/^[a-f0-9]{64}$/.test(r.sha256 ?? '')) fail();
+      r.objectName !== `jobs/${job.id}/output.pdf` || !Number.isInteger(r.bytes) || r.bytes < 1 || r.bytes > (job.workerVersion === 2 ? PDF_LONG_OUTPUT_MAX_BYTES : PDF_OUTPUT_MAX_BYTES) ||
+      !Number.isInteger(r.pages) || r.pages < 1 || r.pages > (job.workerVersion === 2 ? PDF_LONG_MAX_PAGES : PDF_MAX_PAGES) || !/^[a-f0-9]{64}$/.test(r.sha256 ?? '')) fail();
   } else if (r.status !== 'FAILED' || Object.keys(r).sort().join() !== ['version','jobId','status','errorCode','completedAt','expiresAt'].sort().join() ||
     !['ACCESS_DENIED','PRINT_UNAVAILABLE','UNSUPPORTED_SOURCE','INVALID_PDF','FILE_TOO_LARGE','PAGE_LIMIT_EXCEEDED','JOB_EXPIRED'].includes(r.errorCode)) fail();
   return r;

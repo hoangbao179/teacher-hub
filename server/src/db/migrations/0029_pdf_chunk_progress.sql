@@ -1,0 +1,3 @@
+ALTER TABLE pdf_jobs
+  ADD COLUMN worker_version TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  ADD COLUMN progress_json JSON NULL;

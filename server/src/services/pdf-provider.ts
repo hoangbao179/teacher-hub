@@ -5,11 +5,13 @@ export interface PdfPayload { version: 1; jobId: string; source: { provider: 'go
 export const taskName = (id: string) => `${pdfQueue}/tasks/pdf-${id}`;
 export class PdfCloudError extends Error { constructor() { super('PDF_CLOUD_UNAVAILABLE'); } }
 export interface PdfProvider {
+  readonly chunked?: boolean;
+  progress?(job: import('@teacher/shared').PdfJob, signal?: AbortSignal): Promise<import('@teacher/shared').PdfProgress>;
   readonly configured: boolean;
   ready(signal?: AbortSignal): Promise<boolean>;
-  enqueue(payload: PdfPayload, signal?: AbortSignal): Promise<void>;
+  enqueue(payload: PdfPayload | import('@teacher/shared').PdfChunkJob, signal?: AbortSignal): Promise<void>;
   result(id: string, signal?: AbortSignal): Promise<{ claim: unknown; result: unknown } | null>;
-  task(id: string, signal?: AbortSignal): Promise<'WAITING' | 'MISSING' | 'EXHAUSTED'>;
+  task(id: string, signal?: AbortSignal, step?: number): Promise<'WAITING' | 'MISSING' | 'EXHAUSTED'>;
   open(id: string, signal: AbortSignal): Promise<AsyncIterable<Uint8Array>>;
 }
 export class DisabledPdfProvider implements PdfProvider {

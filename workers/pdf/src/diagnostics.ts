@@ -1,4 +1,5 @@
 import { JobError } from './contract.ts';
+import { PDF_LONG_MAX_PAGES } from '@teacher/shared';
 
 export type Stage = 'direct-download' | 'direct-validation' | 'viewer-render' | 'viewer-validation' | 'storage';
 const codes = new Set(['ACCESS_DENIED', 'PRINT_UNAVAILABLE', 'UNSUPPORTED_SOURCE', 'INVALID_PDF',
@@ -19,7 +20,7 @@ export function diagnostic(jobId: string, sourceHash: string, stage: Stage, fall
   const code = error instanceof JobError && codes.has(error.code) ? error.code : 'INTERNAL_ERROR';
   const reason = error instanceof JobError && reasons.has(error.reason ?? '') ? error.reason : 'unclassified';
   const pageIndex = error instanceof JobError && Number.isInteger(error.pageIndex) &&
-    error.pageIndex! >= 1 && error.pageIndex! <= 40 ? error.pageIndex : undefined;
+    error.pageIndex! >= 1 && error.pageIndex! <= PDF_LONG_MAX_PAGES ? error.pageIndex : undefined;
   const ancestorLevel = error instanceof JobError && Number.isInteger(error.ancestorLevel) &&
     error.ancestorLevel! >= 0 && error.ancestorLevel! < 8 ? error.ancestorLevel : undefined;
   const usedBytes = error instanceof JobError && Number.isInteger(error.usedBytes) &&

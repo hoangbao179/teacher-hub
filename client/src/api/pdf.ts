@@ -17,6 +17,13 @@ export const pdfApi = {
     method: "POST", headers: { "Idempotency-Key": key },
   }),
   ticket: (id: string) => api<PdfDownloadTicket>(root + "/jobs/" + id + "/download-ticket", { method: "POST" }),
+  downloadNative: (path: string, ticket: string) => {
+    if (!/^\/api\/public\/pdf\/jobs\/[0-9a-f-]{36}\/download$/.test(path) || !/^[A-Za-z0-9_-]{43}$/.test(ticket)) throw new Error("Invalid PDF download grant");
+    const form=document.createElement('form'); form.method='POST'; form.action=path;
+    const input=document.createElement('input'); input.type='hidden'; input.name='ticket'; input.value=ticket;
+    form.append(input); document.body.append(form);
+    try { form.submit(); } finally { form.remove(); }
+  },
   download: (path: string, ticket: string, signal?: AbortSignal) => {
     if (!/^\/api\/public\/pdf\/jobs\/[0-9a-f-]{36}\/download$/.test(path)) throw new Error("Invalid PDF download path");
     return apiPostPdfBlob(path, { ticket }, signal);

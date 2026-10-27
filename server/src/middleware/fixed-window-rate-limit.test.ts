@@ -48,7 +48,8 @@ test("Caddy -> Nginx -> API keeps independent client quotas and replaces spoofed
   assert.match(readFileSync(path.join(root, "Caddyfile"), "utf8"), /header_up X-Forwarded-For \{remote_host\}/);
   const nginx = readFileSync(path.join(root, "deploy/nginx.conf"), "utf8");
   assert.doesNotMatch(nginx, /\$proxy_add_x_forwarded_for/);
-  assert.equal((nginx.match(/proxy_set_header X-Forwarded-For \$http_x_forwarded_for;/g) ?? []).length, 2);
+  assert.equal((nginx.match(/proxy_set_header X-Forwarded-For \$http_x_forwarded_for;/g) ?? []).length, 3);
+  assert.match(nginx, /proxy_buffering off;/);
   assert.match(readFileSync(path.join(root, "server/src/app.ts"), "utf8"), /app.set\("trust proxy", 1\)/);
   const compose = readFileSync(path.join(root, "docker-compose.deploy.yml"), "utf8");
   for (const name of ["api", "web"]) {

@@ -26,12 +26,12 @@ export class PdfController {
     let release: (() => void) | undefined;
     try {
       const file = await this.service.download(owner,String(req.params.id),req.body?.ticket,abort.signal); release=file.release;
-      clearTimeout(timer); timer=setTimeout(()=>abort.abort(),Math.max(1,Math.min(30000,Date.parse(file.expiresAt)-Date.now())));
+      clearTimeout(timer); timer=setTimeout(()=>abort.abort(),Math.max(1,Math.min(file.timeoutMs ?? 30000,Date.parse(file.expiresAt)-Date.now())));
       res.set({ 'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="pdf-${req.params.id}.pdf"`,
         'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store','Content-Length':String(file.bytes) });
       let bytes=0;
       const bound = new Transform({ transform(chunk: Buffer,_enc,cb) {
-        bytes+=chunk.length; cb(bytes>file.bytes || bytes>PDF_OUTPUT_MAX_BYTES ? new Error('PDF_STREAM_LIMIT') : null,chunk);
+        bytes+=chunk.length; cb(bytes>file.bytes || bytes>(file.maxBytes ?? PDF_OUTPUT_MAX_BYTES) ? new Error('PDF_STREAM_LIMIT') : null,chunk);
       },flush(cb) { cb(bytes!==file.bytes ? new Error('PDF_STREAM_TRUNCATED') : null); } });
       await pipeline(Readable.from(file.stream),bound,res,{ signal:abort.signal });
     } catch (e) { if (res.headersSent || res.destroyed) res.destroy(); else throw e; }

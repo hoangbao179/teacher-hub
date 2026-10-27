@@ -103,7 +103,11 @@ paths:
       summary: One-use ticket PDF attachment streaming for public-tool job
       description: Requires exact Origin and an unexpired ticket in the POST body; no login or submitting-browser cookie. Tickets must not appear in URLs or browser storage.
       parameters: [{$ref: '#/components/parameters/PdfId'}]
-      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}}}
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}
+          application/x-www-form-urlencoded: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}
       responses:
         '200': {description: PDF stream, content: {application/pdf: {schema: {type: string, format: binary}}}}
         default: {$ref: '#/components/responses/PdfError'}
@@ -195,7 +199,7 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}}}
       responses:
         '200':
-          description: PDF tối đa 20 MiB; deadline 30 giây hoặc expiresAt sớm hơn; stream lỗi sẽ đóng kết nối
+          description: v1 tối đa 20 MiB/30s; v2 tối đa 150 MiB/180s; expiresAt sớm hơn thắng, stream lỗi đóng kết nối
           headers:
             Content-Disposition: {schema: {type: string}, description: attachment}
             X-Content-Type-Options: {schema: {type: string, enum: [nosniff]}}
@@ -1262,14 +1266,25 @@ components:
         maxActiveJobs: {type: integer, maximum: 20}
         maxBatchesPerHour: {type: integer, maximum: 30}
         maxRetries: {type: integer, enum: [2]}
-        maxBytes: {type: integer, enum: [20971520]}
-        maxPages: {type: integer, enum: [40]}
+        maxBytes: {type: integer, enum: [20971520, 157286400]}
+        maxSourceBytes: {type: integer, enum: [20971520]}
+        maxPages: {type: integer, enum: [40, 200]}
         ticketTtlSeconds: {type: integer, enum: [120]}
     PdfJob:
       type: object
       description: 'Worker result hợp lệ xác nhận COMPLETED/FAILED. Task MISSING chỉ thành RESULT_UNCONFIRMED; RETRY_EXHAUSTED cần bằng chứng mạnh và vẫn poll result muộn đến expiry. ENUM/payload giữ tương thích.'
       required: [id, batchId, fileId, status, createdAt, updatedAt, enqueuedAt, completedAt, expiresAt, errorCode, cloudErrorCode, bytes, pages, retryOf, retryAttempts, enqueueAttempts]
       properties:
+        workerVersion: {type: integer, enum: [1, 2]}
+        progress:
+          type: object
+          nullable: true
+          properties:
+            stage: {type: string, enum: [DISCOVERING, RENDERING, MERGING]}
+            processedPages: {type: integer, minimum: 0, maximum: 200}
+            totalPages: {type: integer, minimum: 1, maximum: 200, nullable: true}
+            percent: {type: integer, minimum: 0, maximum: 99}
+            nextStep: {type: integer, minimum: 0, maximum: 21}
         id: {type: string, format: uuid}
         batchId: {type: string, format: uuid}
         fileId: {type: string, pattern: '^[A-Za-z0-9_-]{10,128}$'}
@@ -1281,8 +1296,8 @@ components:
         expiresAt: {type: string, format: date-time}
         errorCode: {type: string, nullable: true}
         cloudErrorCode: {type: string, nullable: true}
-        bytes: {type: integer, maximum: 20971520, nullable: true}
-        pages: {type: integer, maximum: 40, nullable: true}
+        bytes: {type: integer, maximum: 157286400, nullable: true}
+        pages: {type: integer, maximum: 200, nullable: true}
         retryOf: {type: string, format: uuid, nullable: true}
         retryAttempts: {type: integer, minimum: 0, maximum: 2}
         enqueueAttempts: {type: integer, minimum: 0}

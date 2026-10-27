@@ -40,9 +40,11 @@ try {
   const [user]=await pool.execute("INSERT INTO users(username,password_hash,display_name) VALUES(?,'synthetic-fixture','Public PDF fixture')",["pdf-browser-"+randomUUID()]);
   const owner=user.insertId,repo=new PdfRepository(),guests=new PdfGuestRepository();
   const bytes=Buffer.from("%PDF-synthetic-fixture"),results=new Map(),tasks=new Map();
-  const cloud={configured:true,ready:async()=>true,enqueue:async p=>{tasks.set(p.jobId,p);},
+  let chunkProgress={stage:"DISCOVERING",processedPages:0,totalPages:null,percent:0,nextStep:0};
+  const cloud={configured:true,chunked:true,progress:async()=>chunkProgress,ready:async()=>true,enqueue:async p=>{tasks.set(p.jobId,p);},
     result:async id=>results.get(id)??null,task:async()=>"WAITING",open:async()=> (async function*(){yield bytes;})()};
-  const service=new PdfService(repo,cloud,{enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2});
+  const settings={enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2,chunked:false};
+  const service=new PdfService(repo,cloud,settings);
   const app=express();app.use(express.json());app.use(createRouter(new PublicPdfController(service)));app.use(errorHandler);
   vite=await createServer({root:path.join(root,"client"),define:{"import.meta.env.VITE_API_BASE_URL":JSON.stringify("")},
     server:{middlewareMode:true,hmr:false},appType:"spa"});app.use(vite.middlewares);
@@ -119,6 +121,25 @@ try {
     client.setUnauthorizedHandler(null);return {outcomes,unauthorized};
   });
   assert.deepEqual(sessionResults,{outcomes:[true,false,true,false],unauthorized:2});
+  // Real MySQL progress + recovery and native POST download for a v2 job.
+  settings.chunked=true;
+  const C=await browser.newContext();
+  assert.equal((await C.request.post(origin+apiRoot+"/session",{headers:{Origin:origin}})).status(),200);
+  const guest=await guests.find((await C.cookies()).find(c=>c.name==="teacher_pdf_guest").value);
+  // Seed a public v2 batch without spending another submit token after the rate-limit/retry scenarios.
+  const longBatch=await service.create(owner,randomUUID(),{links:["https://drive.google.com/file/d/long_fixture_12345/view"]},guest.id),longJob=longBatch.jobs[0];
+  const cp=await C.newPage();await cp.goto(origin+"/tools");await cp.getByTestId("pdf-progress").first().waitFor();
+  chunkProgress={stage:"RENDERING",processedPages:100,totalPages:200,percent:49,nextStep:11};
+  await pool.execute("UPDATE pdf_jobs SET next_action_at=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND WHERE id=?",[longJob.id]);
+  await new PdfService(new PdfRepository(),cloud,settings).tick(owner,longBatch.id);
+  await cp.reload();await cp.getByTestId("pdf-progress").filter({hasText:"100/200 trang"}).waitFor();
+  const lm=Date.now(),lc=new Date(lm).toISOString(),le=new Date(lm+86400000).toISOString();
+  results.set(longJob.id,{claim:{version:1,sourceHash:digest(JSON.stringify({provider:"google_drive",fileId:longJob.fileId})),createdAt:lc,expiresAt:le},
+    result:{version:1,jobId:longJob.id,status:"COMPLETED",completedAt:lc,expiresAt:le,objectName:`jobs/${longJob.id}/output.pdf`,bytes:bytes.length,pages:200,sha256:digest(bytes.toString())}});
+  await pool.execute("UPDATE pdf_jobs SET next_action_at=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND WHERE id=?",[longJob.id]);await service.tick(owner,longBatch.id);
+  await cp.reload();await cp.getByTestId("pdf-progress").filter({hasText:"100%"}).waitFor();
+  const nativeDownload=cp.waitForEvent("download");await cp.getByTestId("pdf-job").filter({hasText:"long_fixture"}).getByTestId("pdf-download").click();
+  assert.equal(await (await nativeDownload).failure(),null);assert.match(cp.url(),/tools/);
   // A full page of terminal batches must not generate 20 detail reads every tick.
   const polling=await browser.newContext(),pollPage=await polling.newPage();
   await pollPage.clock.install();
@@ -142,7 +163,7 @@ try {
   await pollPage.getByRole("button",{name:"Làm mới"}).click();await refreshed;
   assert.equal(detailReads,44,"Manual refresh must include cached terminal batches");
   passed=true;
-  console.log("Public PDF MySQL/FakeCloud browser E2E passed: two contexts, close/recovery, public/private history, retry FAILED/EXPIRED, ticket replay, expiry, mobile layout, public/private binary 401, selective polling/manual refresh.");
+  console.log("Public PDF MySQL/FakeCloud browser E2E passed: close/recovery, v2 persisted progress/refresh/100%/native POST download, public/private history, retry FAILED/EXPIRED, ticket replay, expiry, mobile layout, binary 401, selective polling/manual refresh.");
 } finally {
   try {await finalizePlaywrightArtifacts(browser,policy,passed);} finally {
     await browser?.close();await vite?.close();

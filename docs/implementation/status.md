@@ -85,9 +85,14 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
   Nén Viewer dùng JPEG thích ứng 90/85/80, 4:4:4 và mục tiêu mềm 500 KB/trang,
   không resize; capture/placement dùng chung ngưỡng >=200 DPI. Source cap và
-  output cap độc lập (đều 20 MiB hiện tại). Giới hạn sản phẩm vẫn **40 trang**;
-  chưa có chunk queue/progress cho 200 trang hoặc cap 150 MiB. Benchmark codec
-  tổng hợp 17/50/100/200 là kiểm tra capacity offline, không chứng minh Drive E2E.
+  output cap độc lập. Pipeline v2 đã có task riêng từng phần 10 trang, checkpoint
+  GCS bất biến, reconciler API điều phối, tiến độ lưu MySQL và hiển thị trên `/tools`.
+  V2 tối đa **200 trang/150 MiB**, source riêng 20 MiB; writer ghi JPEG từng trang
+  xuống file, qpdf ghép, API/Gateway stream và trình duyệt tải native. V2 mặc định
+  tắt qua `PDF_CHUNKED_JOBS_ENABLED`; khi chưa bật, v1 vẫn **40 trang/20 MiB**.
+  Chưa đổi Cloud Run/IAM/traffic hoặc runtime.env VPS. Benchmark pipeline tổng hợp
+  17/50/100/200 và E2E Tools local không chứng minh Drive/Cloud Run thật;
+  xem [contract v2](../api/pdf-worker-v2.md).
 
   **Cấu hình source (env Cloud Run production chưa xác minh):**
 
