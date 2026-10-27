@@ -129,7 +129,13 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   or explicit `hmac_public_v1` via a distinct exact private approval file,
   with no JSON key/ADC or HMAC-only fallback on identity failure. Empty IAM tokens
   and non-string approval credentials are rejected before dispatch. Compose provides outbound networking
-  and read-only host configuration; PDF remains disabled by default. A one-minute
+  and read-only host configuration; PDF remains disabled by default. Production
+  Actions orchestrates read-only Cloud v2 verification through the existing
+  WIF-approved dispatch workflow, validates schema/approved Gateway, manages only
+  the three runtime PDF flags and installs/verifies systemd recovery. All gates
+  repeat on subsequent deploys; failure preserves in-flight v2 processing/results.
+  See [automated activation](../operations/pdf-long-documents.md#automated-production-activation).
+  This mechanism is not proof of real-Drive 200-page E2E acceptance. A one-minute
   systemd timer runs recovery in the existing API container; installation and live
   recovery are not yet verified. No VPS issuer is confirmed; public-HMAC mode
   instead requires separate approval of Gateway exposure and abuse/cost risk. See

@@ -320,15 +320,19 @@ Push vào `main` chỉ gọi production deploy sau khi cả bốn job bắt bu�
    và tag tiện ích `latest`;
 2. job `deploy` chờ đủ hai image;
 3. đọc `IMAGE_TAG` cũ, sinh runtime env từ Repository Secrets, copy thành `.env.next`,
-   xác thực nội dung, đặt mode `600` rồi `mv` nguyên tử thành `/opt/teacher-hub/.env`;
-   đồng thời copy Compose, Caddyfile và hai deployment script qua SSH host key đã pin;
+   xác thực nội dung, đặt mode `600`; script chỉ thay `/opt/teacher-hub/.env` sau
+   khi lấy lock và snapshot cấu hình cũ. Copy Compose, Caddyfile, các deployment/
+   recovery helper qua SSH host key đã pin;
 4. gọi script với SHA mới; script khóa deploy bằng `flock`, dọn các application SHA cũ
    nhưng giữ image active, kiểm tra disk/inode headroom, snapshot env, ghi SHA mới an
    toàn và khởi động/kiểm tra MySQL;
 5. tạo và kiểm tra backup nén trước migration; sau khi V20 enable, recovery set
    bắt buộc gồm cả MySQL và `vocabulary-media` theo tài liệu backup;
 6. pull đúng SHA, chạy `node dist/db/migrate.js` đúng một lần bằng one-off API container;
-7. restart stack, kiểm tra health container và public `/ready`;
+7. restart stack, kiểm tra health container và public `/ready`; PDF v2 còn phải
+   vượt [Cloud/schema/Gateway/recovery gates](pdf-long-documents.md#automated-production-activation)
+   trước khi cập nhật ba cờ runtime và recreate riêng API, reload Nginx, kiểm tra
+   capabilities public. Workflow tự dispatch bước Cloud audit theo WIF hiện có;
 8. sau readiness, giữ backup pre-migration 14 ngày; với mỗi repository API/Web chỉ giữ
    SHA vừa deploy và SHA active ngay trước đó để rollback, rồi prune dangling image.
 
@@ -341,7 +345,9 @@ chiếu không bị cưỡng chế xóa. Nếu maintenance sau readiness lỗi, 
 Nếu có lỗi sau khi đổi tag, script khôi phục nguyên snapshot env rồi đưa API/Web về full
 SHA trước đó và trả exit code khác 0. Nếu thao tác ghi file tạm thất bại (kể cả
 `ENOSPC`), file env active không bị thay bằng nội dung dở dang. Script không tự rollback
-database hoặc media. Nếu migration không tương thích ngược,
+database hoặc media. Nếu còn job/kết quả v2 chưa hết hạn hoặc không đọc được trạng
+thái, rollback không tắt cờ v2/recovery hay hạ API: workflow báo lỗi và giữ runtime
+tương thích để sửa tiếp, tránh làm hỏng continuation/download. Nếu migration không tương thích ngược,
 dừng ghi, restore cả recovery set vào database/volume cô lập, kiểm tra rồi mới chuyển
 dịch vụ theo quy trình phục hồi. Lần deploy đầu không có image cũ nên không thể rollback
 image tự động.

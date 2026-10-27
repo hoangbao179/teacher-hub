@@ -44,14 +44,17 @@ test('durable chunks survive lost checkpoint, duplicate delivery, failure, resta
   const result=await f.run(4);assert.equal(result.status,'COMPLETED');assert.equal(result.pages,23);
   await verifyOutput(f.store,f.identities,f.dimensions);assert.deepEqual(await readdir(f.temp),[]);
 });
-test('direct 50 pages use normal path; direct 51 uses immutable source and real qpdf parts',async t=>{
+test('direct 3/35/50 pages keep normal path; 51/200 pages checkpoint and merge exact page count',async t=>{
   if(process.platform!=='linux'){t.skip('Linux qpdf');return;}
-  for(const pages of [50,51]){
+  for(const pages of [3,35,50,51,200]){
     const root=await mkdtemp(join(tmpdir(),'chunk-direct-'));t.after(()=>rm(root,{recursive:true,force:true}));const f=await fixture(root,pages);
     f.deps.download=async(_id,path)=>writeFile(path,syntheticPDF(pages));
     const initial=await f.run(0);
-    if(pages===50){assert.equal(initial.status,'COMPLETED');continue;}
-    for(let step=1;step<=pdfPartCount(pages);step++)await f.run(step);
+    if(pages<=50){assert.equal(initial.status,'COMPLETED');assert.equal(initial.pages,pages);continue;}
+    for(let step=1;step<=pdfPartCount(pages);step++){
+      await f.run(step);
+      assert.ok(await f.store.head(`jobs/${job.jobId}/parts/${step}.json`),'each ten-page checkpoint is durable');
+    }
     const result=await f.run(pdfPartCount(pages)+1);assert.equal(result.pages,pages);assert.equal(result.status,'COMPLETED');
     assert.equal(Number(execFileSync('qpdf',['--show-npages',f.store.path(`jobs/${job.jobId}/output.pdf`)],{encoding:'utf8'})),pages);
   }

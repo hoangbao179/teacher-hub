@@ -19,6 +19,7 @@ import { digest } from './pdf-validation';
 import { runPdfRecovery } from '../scripts/reconcile-pdf';
 import { pdfProgress, type PdfManifest, type PdfChunkJob } from '@teacher/shared';
 import { recoverInterruptedMigrations } from '../db/migration-recovery';
+import { verifySchema } from '../scripts/verify-pdf-v2';
 
 const integration=process.env.RUN_MYSQL_INTEGRATION==='1'?test:test.skip;
 after(()=>pool.end());
@@ -29,6 +30,7 @@ integration('atomic PDF ALTER is recovered if process dies before migration ledg
   await recoverInterruptedMigrations(connection);
   const [rows]=await connection.query<RowDataPacket[]>("SELECT version FROM schema_migrations WHERE version='0029_pdf_chunk_progress.sql'");assert.equal(rows.length,1);
   const [columns]=await connection.query<RowDataPacket[]>("SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pdf_jobs' AND column_name IN ('worker_version','progress_json')");assert.equal(columns.length,2);
+  await verifySchema();
  }finally{connection.release();}
 });
 const settings={enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2};
