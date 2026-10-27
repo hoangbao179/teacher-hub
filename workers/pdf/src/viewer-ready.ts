@@ -43,8 +43,13 @@ export async function selectViewerMode(page: Page, screenCapture: boolean, signa
     const print = page.getByRole('button', { name: /^(In|Print)$/i });
     const count = await print.count();
     const enabled = count === 1 && await print.isVisible() && await print.isEnabled();
+    // Tile capture does not require Print; avoid print-gated rechecks that surface ACCESS_DENIED.
+    if (screenCapture) {
+      if (count > 1) assertPrintAction(count, enabled);
+      return 'view-only';
+    }
     if (enabled) return 'print-gated';
-    if (count > 1 || !screenCapture) assertPrintAction(count, enabled);
+    assertPrintAction(count, enabled);
     return 'view-only';
   });
 }
