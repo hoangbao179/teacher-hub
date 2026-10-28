@@ -13,6 +13,13 @@ lúc v2 chưa được operator bật. Chi tiết triển khai và giới hạn 
 Viewer mở được không cho phép vượt Print/Download bị khóa. Các đoạn lịch sử
 v1 bên dưới không được dùng để tuyên bố nghiệm thu 200 trang.
 
+Hạn mức tiếp nhận v2 mặc định/tối đa: **20 lượt tạo job/giờ, 3 job active,
+1 link/batch**; manual retry tính một lượt mới, gửi lại idempotency không tạo
+thêm job. Giới hạn theo owner, dùng chung public/private và job v1 còn tồn tại.
+Active gồm chờ enqueue/retry, queued/đang xử lý và chờ xác nhận kết quả theo
+chính sách hiện tại. Cấu hình operator thấp hơn vẫn có hiệu lực. **Chỉ 1 Worker
+thực thi cùng lúc**; không tăng tài nguyên hay thay đổi 200 trang/150 MiB.
+
 **Trạng thái:** Yêu cầu sản phẩm đã được chủ dự án xác nhận ngày 25/10/2026;
 thiết kế triển khai bên dưới là đề xuất kỹ thuật cần thử nghiệm. **Không được
 hiểu đây là tính năng đã hoàn thiện, cam kết mọi liên kết đều tải được, hoặc

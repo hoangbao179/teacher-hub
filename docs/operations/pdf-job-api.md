@@ -141,6 +141,11 @@ Runtime defaults: PDF_BATCH_LIMIT=5 (ceiling 5), PDF_ACTIVE_LIMIT=10 (ceiling 20
 PDF_HOURLY_LIMIT=10 (ceiling 30). Invalid settings fail closed. Manual retries max
 two; rate includes retry job creations. Tickets capped at 20 per owner and cleaned
 when issuing another; only expired authorization rows are deleted, never history.
+These defaults are for v1. With the v2 chunk gate, defaults/ceilings become
+1 link, 3 active jobs and 20 creations/hour; explicit lower overrides still apply.
+Public IP guards are 60 session requests/hour and a separate 60 combined
+submit/retry requests/hour. See the [v2 limits and cost runbook](pdf-long-documents.md#api-admission-limits)
+before rollout; Worker execution remains serialized.
 
 No qpdf/Chromium/rendering, PDF buffer/file, image layer or new container is added to
 the VPS. Streaming uses backpressure with one download/process and a 20 MiB byte

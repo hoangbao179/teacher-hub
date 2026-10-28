@@ -170,23 +170,117 @@ a 200-page Viewer job may take roughly 22 scheduling intervals plus actual work.
 That is an asynchronous job, not an HTTP latency SLA. Each request is <=120s.
 Do not substitute the benchmark's immediate local dispatch for real queue latency.
 
+## API admission limits
+
+V2 defaults/ceilings are 20 creations per rolling hour, 3 unexpired active jobs,
+1 link/batch; 200 pages/150 MiB output and 20 MiB source stay unchanged.
+V1 defaults remain 5/10/10 for links/active/hourly. The repository serializes
+admission with the existing owner row lock. Counts include public/private jobs,
+old worker versions and manual retry children; Task step retries do not create
+API jobs. Idempotency is checked before capacity. Active states are
+`ENQUEUE_PENDING`, `ENQUEUE_RETRY`, `QUEUED` (also while executing) and
+`RESULT_UNCONFIRMED`; expiry/terminal semantics are unchanged.
+In the current single-teacher product, public sessions resolve to that same
+teacher owner, so devices share the 20/hour and 3-active allowance.
+
+Public routes allow 60 session requests/IP/hour and a separate shared 60
+submit/retry requests/IP/hour. These fixed windows count all attempts, including
+replays and invalid requests, and return 429 `PDF_RATE_LIMITED` with `Retry-After`.
+The 3x hourly headroom avoids the old 5-submit/10-session bottleneck for a normal
+20-job flow. It is not a promise for unlimited refresh/retry or all users behind
+one NAT. Counters remain process-local; DB quota remains authoritative across
+restarts. IP proxy trust and access/origin policy are unchanged.
+
+Before an owner-approved application rollout, inspect effective overrides without
+printing secrets. `PDF_CHUNKED_JOBS_ENABLED=true` selects these defaults. If
+`PDF_HOURLY_LIMIT=10` is explicitly configured, it still yields 10; use the
+existing configuration process to approve `PDF_BATCH_LIMIT=1`,
+`PDF_ACTIVE_LIMIT=3`, `PDF_HOURLY_LIMIT=20` (or remove overrides for defaults).
+Invalid values still fail closed. This code change does not edit any env file.
+After rollout, require `/api/public/pdf/capabilities` to show
+`maxBatchesPerHour:20`, `maxActiveJobs:3`, `maxLinksPerBatch:1`, `maxPages:200`,
+`maxBytes:157286400` and the existing enabled/readiness gates. Verify the 21st
+creation and fourth active job reject using synthetic fixtures, without deleting
+real history. Keep queue max concurrent dispatches 1, Worker max instances 1,
+concurrency 1, 1 CPU/2 GiB and min instances 0; no cloud or VPS edits here.
+
 ## Cost review (estimate, not measured billing)
 
-Rates checked 2026-10-27: the official [Cloud Run request pricing table](https://cloud.google.com/run/pricing)
-lists reference active CPU $0.000024/vCPU-s and memory $0.0000025/GiB-s. At those
-reference rates, 1 CPU/2 GiB costs $0.000029/active second before free tier. The
-96.48s offline 200-page run would correspond to about $0.0028 **if** it were
-equivalent active cloud time; it excludes browser launches/network/queue cold
-starts and is **not** a Cloud Run price measurement. An illustrative worst case
-of 22 steps × 5 attempts × 120s is 13,200 active seconds, about $0.383 compute/job
-at the same rates. Actual queue throughput, expiry and admission further constrain
-load. Confirm selected-region SKUs/billing before approval; no budget guarantee.
+Checked 2026-10-28 against the official [Cloud Run pricing](https://cloud.google.com/run/pricing)
+regional tables (including the embedded Singapore table): `asia-southeast1` is
+Tier 2. Request-based active CPU is $0.0000336/vCPU-second, RAM
+$0.0000035/GiB-second, requests $0.40/million. Assumptions: 1 CPU/2 GiB per Worker,
+request billing, min instances 0, no free tier/credits/CUD/tax. Startup/shutdown
+and extra attempts add billable time; queue/reconciler waiting is not active
+Worker time. No live billing or production utilization was read.
 
-Also account for Tasks requests, Gateway/nonce/metadata operations, seven-day GCS
-retention (potentially ~105 GiB at admission ceiling), registry/build cache/logs
-and outbound transfer to the VPS/user. [Storage billing](https://cloud.google.com/storage/pricing)
-depends on storage class/location, operations and transfer; free tier must not be
-assumed to cover this workload. No purchase or cloud configuration change was made.
+Computed rate: `(0.0000336 + 2 × 0.0000035) = $0.0000406/active second`.
+The following is a sensitivity comparison, **not authorization to change scaling**:
+
+| Simultaneously busy Workers | Compute per continuously busy hour | Compute per 720 busy hours | Same 1000 jobs × 600 active seconds |
+| --- | ---: | ---: | ---: |
+| 1 (current) | $0.14616 | $105.24 | $24.36 |
+| 3 (hypothetical) | $0.43848 | $315.71 | $24.36 |
+| 5 (hypothetical) | $0.73080 | $526.18 | $24.36 |
+
+Equal work has approximately equal compute cost if per-job time/retries do not
+change; more busy instances increase spend per wall-clock hour and may add cold
+starts/failed work. Merely increasing a maximum with scale-to-zero does not bill
+all instances continuously. A 600-second job costs ~$0.02436; 20% extra active
+time makes it ~$0.02923. A deliberately pessimistic envelope of 22 steps ×
+5 attempts × 120 seconds costs ~$0.53592/job, excluding startup/cleanup. This is
+not a guaranteed maximum bill or a measured 200-page runtime.
+
+Additional budget, independent of instance count for equal work:
+
+- [Cloud Tasks](https://cloud.google.com/tasks/pricing): $0.40/million billable
+  operations beyond the account free allowance; assume no allowance. For <=32 KiB
+  payloads, 22 steps × (one create + one delivery) = 44 ops, ~$0.0000176/job;
+  five deliveries/step gives 132 ops, ~$0.0000528. Task reads/reconciliation add
+  operations. Worker request charges add ~$0.0000088 or ~$0.000044 respectively.
+- [GCS pricing](https://cloud.google.com/storage/pricing), Singapore regional
+  Standard flat namespace: $0.020/GiB-month; Class A $0.005/1000, B $0.0004/1000.
+  Example 50 writes + 200 reads/job is ~$0.00033, not a measured operation count.
+  320 MiB retained seven days is ~$0.00146/job using a 30-day planning month.
+  At 20 jobs/hour for one owner, 168-hour retention is ~1050 GiB live data,
+  ~$21/month at steady state, before lifecycle lag, soft-delete retention,
+  metadata/nonces and other owners. One Worker may process much less than intake.
+- Data path is GCS → Gateway → VPS → browser. Same-region GCS/Cloud Run transfer
+  avoids an extra internet hop charge. [Cloud Run outbound pricing](https://cloud.google.com/run/pricing)
+  uses [Premium network rates](https://cloud.google.com/vpc/network-pricing).
+  At an illustrative $0.12/GiB to an Asian VPS (excluding higher-priced destinations),
+  each full 150 MiB download adds ~$0.01758; 1000 such downloads ~$17.58.
+  Confirm the VPS destination SKU/tier; repeated/interrupted downloads consume
+  bytes again. VPS → browser traffic depends on the host plan. Do not charge the
+  same bytes as both GCS internet egress and Gateway internet egress.
+- Gateway is separate compute: assuming the reviewed 1 CPU/256 MiB, its active
+  rate is ~$0.000034475/second plus requests. If aggregate Gateway active instance
+  time is 60 seconds/job, budget ~$0.00207/job. Use measured aggregate instance
+  time, not the sum of overlapping request durations. HMAC/nonce operations,
+  polling and slow download time also count. Include registry image/build cache,
+  logging, network overhead and retained MySQL history/backups in actual bills;
+  these are not measured here and this task does not change their retention.
+
+Illustration: 1000 jobs, 600 Worker seconds/job, 22 steps, 320 MiB retained seven
+days, one full 150 MiB download/job, 50 A/200 B ops and 60 Gateway active seconds/job
+sum to roughly **$45.82 plus Gateway request charges, extra polling/nonce/Tasks
+operations, logs/build/images and host traffic**, before any discounts. This same
+workload baseline applies to 1/3/5 Workers, not three different throughput promises.
+20/hour is an admission allowance, not guaranteed completion throughput: 600 busy
+seconds/job implies at most 6/18/30 jobs/hour for 1/3/5 Workers before scheduling
+gaps. Three active jobs for one owner cannot use five Workers simultaneously.
+
+Keep one Worker now. Collect at least a representative week of arrivals,
+p50/p95 queue delay and completion time, active instance time, CPU/RAM peaks,
+429 reasons, retry/error rate, GCS bytes/operations, download traffic and actual
+daily spend. Only propose three if sustained backlog breaches an owner-approved
+wait target while the Worker is demonstrably busy (rather than idle between
+one-minute reconciliation sweeps), and measured per-job cost fits an approved
+budget. Five requires evidence that three would still saturate, enough independent
+active jobs, and a separate review of admission, queue, Gateway, VPS streaming,
+Google source throttling and security/resource budgets. No evidence currently
+justifies either expansion. Any scaling/readiness/queue change requires separate
+owner approval; budget alerts do not enforce a hard spend cap.
 
 ## Reproduce offline benchmark
 

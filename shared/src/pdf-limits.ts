@@ -24,7 +24,8 @@ export const PDF_CHUNK_DEADLINE_MS = 120_000;
 export const PDF_CHUNK_DISPATCH_SECONDS = 180;
 export const PDF_MAX_STEPS = Math.ceil(PDF_LONG_MAX_PAGES / PDF_CHUNK_PAGES) + 1;
 export const PDF_LONG_MAX_LINKS = 1;
-export const PDF_LONG_MAX_ACTIVE = 2;
-export const PDF_LONG_MAX_HOURLY = 2;
+/** API admission only; Cloud Tasks dispatch and Worker instance limits remain independent. */
+export const PDF_LONG_MAX_ACTIVE = 3;
+export const PDF_LONG_MAX_HOURLY = 20;
 export const PDF_LONG_PARSER_CPU_SECONDS = 45;
 export const PDF_LONG_PARSER_WALL_MS = 50_000;

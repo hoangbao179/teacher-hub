@@ -83,8 +83,10 @@ export function createRouter(publicPdf = publicPdfController): Router {
     asyncHandler(controllers.vocabularyGames.complete),
   );
 
-  const guestSubmitLimit=fixedWindowRateLimit({limit:5,windowMs:3600000,code:"PDF_RATE_LIMITED"});
-  const guestSessionLimit=fixedWindowRateLimit({limit:10,windowMs:3600000,code:"PDF_RATE_LIMITED"});
+  // IP abuse guard, with headroom for session refreshes and idempotent replays.
+  // The transactional per-owner quota remains authoritative for actual job creations.
+  const guestSubmitLimit=fixedWindowRateLimit({limit:60,windowMs:3600000,code:"PDF_RATE_LIMITED"});
+  const guestSessionLimit=fixedWindowRateLimit({limit:60,windowMs:3600000,code:"PDF_RATE_LIMITED"});
   router.get("/api/public/pdf/capabilities",asyncHandler(publicPdf.capabilities));
   router.post("/api/public/pdf/session",guestSessionLimit,asyncHandler(publicPdf.session));
   router.get("/api/public/pdf/batches",asyncHandler(publicPdf.list));

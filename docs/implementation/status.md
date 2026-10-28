@@ -90,6 +90,10 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   V2 tối đa **200 trang/150 MiB**, source riêng 20 MiB; writer ghi JPEG từng trang
   xuống file, qpdf ghép, API/Gateway stream và trình duyệt tải native. V2 mặc định
   tắt qua `PDF_CHUNKED_JOBS_ENABLED`; khi chưa bật, v1 vẫn **40 trang/20 MiB**.
+  Khi bật v2, mặc định/tối đa 20 lượt tạo job/giờ (gồm manual retry), 3 job active,
+  1 link/batch; cấu hình operator thấp hơn vẫn được giữ. IP guard riêng cho session
+  60 request/giờ, submit và retry dùng chung 60 request/giờ. API admission 3 job
+  không tăng queue dispatch, Worker concurrency hoặc max instances (vẫn 1).
   Chưa đổi Cloud Run/IAM/traffic hoặc runtime.env VPS. Benchmark pipeline tổng hợp
   17/50/100/200 và E2E Tools local không chứng minh Drive/Cloud Run thật;
   xem [contract v2](../api/pdf-worker-v2.md).

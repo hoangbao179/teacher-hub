@@ -100,7 +100,7 @@ for attachments with 190s idle headroom, avoiding VPS temporary PDF spooling.
 | qpdf validation | 512 MiB address space; v2 45 CPU s / 50s per call, whole-task 120s |
 | qpdf merge | 512 MiB address space; 25 CPU s / 30s wall |
 | Queue retries | existing 5 attempts / 3600s per independently named step |
-| API admission | at most 1 link/batch, 2 active jobs, 2 creations/hour, including retries |
+| API admission | default/ceiling 1 link/batch, 3 active jobs, 20 creations/hour, including manual retries; lower operator limits respected |
 
 All CPU deadlines include cancellation and cleanup. Signals and CPU kills are
 transient TIMEOUT, not proof of malformed PDF. No memory/container/VPS quota was
@@ -115,8 +115,20 @@ leaves only bounded ephemeral storage. Durable checkpoints intentionally remain
 for recovery and are inaccessible through public download routes. Existing bucket
 seven-day lifecycle supplies eventual remote cleanup, while application access
 expires after 24h. No delete/list IAM grant or lifecycle mutation is added.
-At the configured intake ceiling, seven-day retained data can approach 105 GiB
-(2 jobs/hour × 168h × 320 MiB), plus small checkpoint/nonces/logs. Operator must
+Admission is per owner across public/private jobs and existing worker versions,
+not per browser or IP. Active means unexpired `ENQUEUE_PENDING`, `ENQUEUE_RETRY`,
+`QUEUED` (including Worker execution) or `RESULT_UNCONFIRMED`. Idempotent replays
+return existing jobs before capacity checks. A manual retry creates a new job and
+consumes the rolling-hour job allowance; automatic Task step redelivery does not.
+The batch count is also bounded at 20/hour. No history is reset or removed.
+Three admitted jobs do not mean three executing Workers: queue dispatch, Worker
+concurrency and max instances remain 1. IP guards allow 60 session requests/hour
+and 60 combined submit/retry requests/hour, including failed requests/replays.
+
+At one owner's configured intake ceiling, seven-day retained data can approach 1050 GiB
+(20 jobs/hour × 168h × 320 MiB), plus small checkpoint/nonces/logs. This is an
+intake envelope, not demonstrated single-Worker throughput or a global cost cap;
+multiple owners, soft delete and lifecycle lag can increase storage. Operator must
 verify lifecycle, storage spend/retention and concurrent-instance limits before
 activation; shortening lifecycle needs a separate operational change.
 
