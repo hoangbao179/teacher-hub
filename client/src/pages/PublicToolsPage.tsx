@@ -25,7 +25,7 @@ function GardenSprig() {
 export function PublicToolsPage() {
   return (
     <Box data-testid="public-tools-page" sx={{ minHeight: "100svh", bgcolor: "#fffcf7", color: "#393348", display: "flex", flexDirection: "column" }}>
-      <Container component="header" maxWidth="md" sx={{ pt: "max(16px, env(safe-area-inset-top))" }}>
+      <Container component="header" maxWidth={false} sx={{ maxWidth: 1128, pt: "max(16px, env(safe-area-inset-top))" }}>
         <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", gap: 1 }}>
           <Button component={Link} to="/" startIcon={<ArrowBackRounded />} sx={{ minHeight: 48, color: "#5b4b75", borderRadius: 3 }}>Trang chủ</Button>
           <Typography sx={{ fontWeight: 700, fontSize: 13, color: "#6b6077" }}>Lớp học cô Vy</Typography>
