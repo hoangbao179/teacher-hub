@@ -196,7 +196,10 @@ try {
   const header = page.locator("header");
   await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).waitFor({ state: "attached" });
   assert(await header.getByText("Lớp tiếng Anh cô Vy", { exact: true }).isHidden(), "Mobile header brand text must be hidden");
-  assert(await header.locator('img[src="/favicon.svg"]').count() === 1, "Header must contain one small brand mark");
+  assert(await header.locator('img[src="/favicon.svg?v=book-rose-2"]').count() === 1, "Header must load the versioned book-and-rose mark instead of a cached favicon");
+  const headerMarkResponse = await fetch(`${origin}/favicon.svg?v=book-rose-2`);
+  assert(headerMarkResponse.ok, "Versioned header mark failed to load");
+  assert((await headerMarkResponse.text()).includes("sách mở và hoa hồng"), "Header mark must contain the new book-and-rose artwork");
   assert(await header.locator('img[src="/logo-covy.svg"]').count() === 0, "Stacked wordmark must not appear in the Header");
   assert(await page.getByTestId("header-home").count() === 0, "Redundant Home button remains in the Header");
   assert(await header.getByRole("link", { name: "Góc học", exact: true }).count() === 0, "Learning link must stay out of the Homepage Header");
