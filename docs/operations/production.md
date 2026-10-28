@@ -1,8 +1,9 @@
 # Production deployment
 
-Nền tảng PDF worker bên ngoài có [runbook Cloud Run riêng](cloud-run-pdf-worker.md).
-Workflow đó chỉ chạy thủ công, chưa được triển khai trong task chuẩn bị; không thay
-thế pipeline VPS dưới đây và không đưa Chromium hoặc PDF processing vào API.
+Hệ thống PDF có [runbook riêng](cloud-run-pdf-worker.md): Cloud Run deployment
+Worker/Gateway do operator thực hiện riêng; pipeline VPS lấy readiness chỉ đọc,
+kiểm schema/Gateway/recovery rồi quản lý cờ runtime. Không đưa Chromium hoặc xử
+lý PDF nặng vào API. Trạng thái live theo [status](../implementation/status.md).
 
 Production chạy trên một VPS Ubuntu bằng bốn container: Caddy → Web/Nginx → API →
 MySQL. GitHub Actions kiểm tra source, build hai image, đẩy lên GHCR, sinh runtime
@@ -41,9 +42,10 @@ proxy hop. Keep API and Web ports unpublished as in Compose; only Caddy exposes
 untrusted ingress directly into Web/API. Changing topology requires reviewing
 this boundary and its regression tests first.
 
-The public PDF limits remain five combined submission/retry requests and ten
-session requests per client IP/hour; durable owner-wide job quotas also apply.
-In-process counters reset on API restart and are not a distributed quota.
+Giới hạn PDF public theo IP: session 60 request/giờ; submit và retry dùng chung
+60 request/giờ. Quota owner bền vững áp dụng độc lập; v2 mặc định/tối đa 20 job/giờ
+và 3 active, operator có thể hạ. Bộ đếm IP process-local reset khi API restart,
+không phải quota phân tán. Xem [đặc tả](../features/pdf-job-api.md).
 The proxy regression uses two HTTP proxy hops, independent client socket IPs and
 spoofed headers; real deployed ingress still needs an operator smoke before activation.
 
@@ -332,7 +334,7 @@ Push vào `main` chỉ gọi production deploy sau khi cả bốn job bắt bu�
    bắt buộc gồm cả MySQL và `vocabulary-media` theo tài liệu backup;
 6. pull đúng SHA, chạy `node dist/db/migrate.js` đúng một lần bằng one-off API container;
 7. restart stack, kiểm tra health container và public `/ready`; PDF v2 còn phải
-   vượt [Cloud/schema/Gateway/recovery gates](pdf-long-documents.md#automated-production-activation)
+   vượt [Cloud/schema/Gateway/recovery gates](cloud-run-pdf-worker.md#chuỗi-cicd-thực-tế)
    trước khi cập nhật ba cờ runtime và recreate riêng API, reload Nginx, kiểm tra
    capabilities public. Workflow tự dispatch bước Cloud audit theo WIF hiện có;
 8. sau readiness, giữ backup pre-migration 14 ngày; với mỗi repository API/Web chỉ giữ
@@ -378,6 +380,9 @@ Chỉ Caddy publish TCP 80/443 và UDP 443. MySQL, API và Web không publish po
 trong Web tiếp tục là điểm proxy duy nhất cho `/api`, `/health` và `/ready`; Caddy chỉ
 terminate HTTPS và chuyển toàn bộ request sang Web nên không tạo vòng proxy.
 
-## PDF VPS integration
+## Tích hợp PDF trên VPS
 
-See [private Gateway activation](pdf-vps-activation.md) for IAM + HMAC, host-owned secret configuration, outbound API networking, the one-minute systemd recovery timer and rollback. PDF stays disabled until the existing-issuer and live recovery gates pass; no new VPS container or resource increase is introduced.
+Cấu hình host-owned read-only hỗ trợ IAM+HMAC hoặc public-HMAC được duyệt riêng.
+Readiness cloud, schema, Gateway và recovery systemd là gate của pipeline; không
+suy deploy thành công từ việc copy unit hoặc push image. Chi tiết và rollback giữ
+job/output v2 ở [runbook PDF](cloud-run-pdf-worker.md). Không tăng tài nguyên VPS.
