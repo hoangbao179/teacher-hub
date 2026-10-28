@@ -100,8 +100,9 @@ and `sudo -n systemctl start teacher-pdf-recovery.service`; grant only these exa
 commands in host sudoers, never sudo ALL. All systemd state reads run as deploy.
 Unit changes and daemon reload remain root provisioning tasks; uploaded templates
 do not modify installed units. Only then it atomically
-updates `PDF_API_ENABLED`, `PDF_CHUNKED_JOBS_ENABLED` and
-`PDF_LONG_PRINT_TASKS_ENABLED` to `true` in `pdf-runtime/runtime.env`, preserving
+updates `PDF_API_ENABLED` and `PDF_CHUNKED_JOBS_ENABLED` to `true` in
+`pdf-runtime/runtime.env` (may still write legacy `PDF_LONG_PRINT_TASKS_ENABLED=true`;
+API/Gateway always use 180s dispatch regardless), preserving
 all other lines and file permissions. Only API is recreated for this flag change.
 It verifies API health, schema/authenticated Gateway, a real successful systemd
 recovery invocation, enabled/active timer, public capabilities (`submitEnabled`,

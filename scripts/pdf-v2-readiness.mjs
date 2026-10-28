@@ -72,7 +72,7 @@ export function evaluateService(kind, service, revision, policy) {
     requireCheck(mount && volume?.emptyDir?.medium==='Memory' && volume.emptyDir.sizeLimit==='384Mi' &&
       env(c,'PDF_TEMP_ROOT')==='/tmp/pdf-worker','SCRATCH_DRIFT');
   } else {
-    requireCheck(env(c,'PDF_GATEWAY_ENABLED')==='true' && env(c,'PDF_LONG_PRINT_TASKS_ENABLED')==='true' &&
+    requireCheck(env(c,'PDF_GATEWAY_ENABLED')==='true' &&
       env(c,'PDF_GATEWAY_WORKER_URL')===CLOUD.workerURL &&
       c.env?.some(e=>e.name==='PDF_GATEWAY_HMAC_KEY' && e.value===undefined && e.valueFrom?.secretKeyRef),'GATEWAY_DRIFT');
   }

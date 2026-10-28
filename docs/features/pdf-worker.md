@@ -127,7 +127,8 @@ browser termination, low-DPI timeout and absence of partial output/upload.
 Worker fallback defaults to on with a 120s ceiling;
 `PDF_PRINT_FALLBACK_ENABLED=false` restores direct-only behavior and 22s. Screen capture alone neither
 enters browser fallback nor extends that deadline. The Gateway and API producer now support an
-explicit `PDF_LONG_PRINT_TASKS_ENABLED=true` gate for **180s** Cloud Tasks
+Long Viewer/chunk jobs always use **180s** Cloud Tasks dispatch in code; legacy
+`PDF_LONG_PRINT_TASKS_ENABLED` on VPS no longer disables that path.
 dispatch deadlines. API/Gateway long-task gates are **off** by default; the staged Worker
 template uses a 180s Cloud Run request timeout, while Gateway remains 30s
 because it only enqueues tasks. Current live production traffic and task

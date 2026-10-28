@@ -56,7 +56,6 @@ export function evaluateStaged(name,sha,service,policy,revision,image){
     if(!mounted||!vol)fail('WORKER_TEMP_VOLUME_DRIFT');
   } else {
     if(env(c,'PDF_GATEWAY_ENABLED')!=='true'||
-       env(c,'PDF_LONG_PRINT_TASKS_ENABLED')!=='true'||
        env(c,'PDF_GATEWAY_WORKER_URL')!==CLOUD.workerURL||
        !c.env?.some(v=>v.name==='PDF_GATEWAY_HMAC_KEY'&&v.value===undefined&&
          v.valueFrom?.secretKeyRef))fail('GATEWAY_FEATURE_GATE_DRIFT');
@@ -65,7 +64,7 @@ export function evaluateStaged(name,sha,service,policy,revision,image){
     iam:worker?'PRIVATE':'PUBLIC_HMAC',ready:true,receivingTraffic:false,
     gates:Object.fromEntries((worker
       ? ['PDF_PROCESSING_ENABLED','PDF_WORKER_IAM_READY','PDF_PRINT_FALLBACK_ENABLED','PDF_VIEWER_SCREEN_CAPTURE_ENABLED']
-      : ['PDF_GATEWAY_ENABLED','PDF_LONG_PRINT_TASKS_ENABLED']).map(key=>[key,env(c,key)])),
+      : ['PDF_GATEWAY_ENABLED']).map(key=>[key,env(c,key)])),
     resourceLimits:'VERIFIED'};
 }
 export function auditStaged(values=process.env,run=cliCall,progress=()=>{}){

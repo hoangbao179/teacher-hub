@@ -18,8 +18,9 @@ const digest = b => createHash('sha256').update(b).digest('hex');
 const ERROR = JSON.stringify({ error: 'PDF_GATEWAY_UNAVAILABLE' });
 const FORBIDDEN = JSON.stringify({ error: 'UNAUTHORIZED' });
 
-function longPrintTasksEnabled(env) {
-  return env.PDF_LONG_PRINT_TASKS_ENABLED === 'true';
+/** Chunked Viewer jobs need 180s dispatch; env cannot disable this path. */
+function longPrintTasksEnabled(_env) {
+  return true;
 }
 
 export function signature(key, method, path, timestamp, nonce, body) {

@@ -124,14 +124,9 @@ test('IAM mode rejects an empty token before sending a signed request', async t 
  assert.equal(calls, 0);
 });
 
-test('long print tasks require explicit true; missing and false keep 30s',async t=>{
+test('long print tasks always enqueue with 180s dispatch deadline',async t=>{
  const original=globalThis.fetch;
- const previous=process.env.PDF_LONG_PRINT_TASKS_ENABLED;
- t.after(()=>{
-  globalThis.fetch=original;
-  if(previous===undefined) delete process.env.PDF_LONG_PRINT_TASKS_ENABLED;
-  else process.env.PDF_LONG_PRINT_TASKS_ENABLED=previous;
- });
+ t.after(()=>{globalThis.fetch=original;});
  const deadlines:string[]=[];
  globalThis.fetch=async (input,init)=>{
   const url=String(input);
@@ -144,11 +139,9 @@ test('long print tasks require explicit true; missing and false keep 30s',async 
   throw Error('unrecognized URL');
  };
  const args=[GATEWAY,WORKER,'ab'.repeat(32),true,undefined,'hmac_public_v1'] as const;
- delete process.env.PDF_LONG_PRINT_TASKS_ENABLED;
- await new GatewayPdfProvider(...args).enqueue(payload);
- process.env.PDF_LONG_PRINT_TASKS_ENABLED='true';
- await new GatewayPdfProvider(...args).enqueue(payload);
  process.env.PDF_LONG_PRINT_TASKS_ENABLED='false';
  await new GatewayPdfProvider(...args).enqueue(payload);
- assert.deepEqual(deadlines,['30s','180s','30s']);
+ delete process.env.PDF_LONG_PRINT_TASKS_ENABLED;
+ await new GatewayPdfProvider(...args).enqueue(payload);
+ assert.deepEqual(deadlines,['180s','180s']);
 });
