@@ -18,6 +18,20 @@ function fixture(kind) {
           volumeMounts:[{name:'scratch',mountPath:'/tmp/pdf-worker'}]}],volumes:[{name:'scratch',emptyDir:{medium:'Memory',sizeLimit:'384Mi'}}]}},policy:{bindings:worker?[{role:'roles/run.invoker',members:['serviceAccount:teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com']}]:[]}};
 }
 const evaluate=f=>evaluateService(f.kind,f.service,f.revision,f.policy);
+test('Worker pin matches reviewed live revision and linux/amd64 manifest, Gateway stays unchanged',()=>{
+  assert.deepEqual(RELEASE,{
+    worker:{revision:'teacher-pdf-worker-00020-fiv',digest:'sha256:7b0e5d6bcd5ce4aa449939ddf3e31d8f93fd4b6e88c20922850810c06009f5cb'},
+    gateway:{revision:'teacher-pdf-gateway-00013-gej',digest:'sha256:5adfd3d41adf82dde6158e9b0c97acbaebb173837cdf7cee99f9680009e1744f'},
+  });
+});
+test('Worker rejects superseded traffic and registry index instead of the reviewed platform manifest',()=>{
+  const old=fixture('worker');old.service.status.traffic[1].revisionName='teacher-pdf-worker-00017-guf';
+  assert.throws(()=>evaluate(old),/TRAFFIC_MISMATCH/);
+  const index=fixture('worker');
+  const image=CLOUD.registry+'/'+CLOUD.worker+'@sha256:75357d6f5062ccb3a120e21271a0a9367616dbd2365d4d2df256ce6e7e520b9b';
+  index.revision.spec.containers[0].image=image;index.revision.status.imageDigest=image;
+  assert.throws(()=>evaluate(index),/REVISION_DIGEST_MISMATCH/);
+});
 for(const kind of ['worker','gateway']) {
   test(kind+': accepts pinned live image and ignores zero-traffic tags',()=>assert.deepEqual(evaluate(fixture(kind)),RELEASE[kind]));
   for(const [label,mutate] of [

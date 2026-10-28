@@ -4,7 +4,7 @@ import {CLOUD, cliCall} from './pdf-cloud-stage.mjs';
 import {checkPolicy} from './pdf-cloud-stage-public-hmac.mjs';
 
 export const RELEASE = Object.freeze({
-  worker: {revision:'teacher-pdf-worker-00017-guf', digest:'sha256:268d956e8a2329fea192ffa4e7b6d3b0fd2a548679e35256dfa9ae48d34f804d'},
+  worker: {revision:'teacher-pdf-worker-00020-fiv', digest:'sha256:7b0e5d6bcd5ce4aa449939ddf3e31d8f93fd4b6e88c20922850810c06009f5cb'},
   gateway: {revision:'teacher-pdf-gateway-00013-gej', digest:'sha256:5adfd3d41adf82dde6158e9b0c97acbaebb173837cdf7cee99f9680009e1744f'},
 });
 const requireCheck = (ok, code) => { if (!ok) throw Error('PDF_V2_'+code); };
