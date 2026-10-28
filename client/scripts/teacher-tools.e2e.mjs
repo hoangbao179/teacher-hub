@@ -48,17 +48,13 @@ async function checkPdfLayout(page, width) {
   const input = await page.getByTestId("pdf-links").boundingBox();
   assert(Math.abs(form.x - history.x) <= 1 && Math.abs(form.width - history.width) <= 1, "PDF cards must have matching widths");
   assert(Math.abs(history.y - form.y - form.height - 24) <= 1, "History must sit 24px below the form");
+  assert(input.width >= form.width - 66, "Textarea should fill the card");
+  assert.equal(await page.getByText("Lưu ý nhỏ",{exact:true}).count(),0);
+  assert.equal(await page.getByText("Trạng thái công cụ",{exact:true}).count(),0);
   if (width >= 1024) {
     const inputArea = await page.getByTestId("pdf-input-area").boundingBox();
-    const support = await page.getByTestId("pdf-support-area").boundingBox();
-    const privacy = await page.getByTestId("pdf-privacy-note").boundingBox();
-    const status = await page.getByTestId("pdf-tool-status").boundingBox();
     const submit = await page.getByTestId("pdf-submit").boundingBox();
-    assert(Math.abs(inputArea.y - support.y) <= 1, "Desktop regions must align at the top");
-    assert(Math.abs(support.x - inputArea.x - inputArea.width - 24) <= 1, "Desktop regions must have a 24px gap");
-    assert(Math.abs(inputArea.width / support.width - 1.6) < 0.02, "Desktop form/support ratio must be 1.6:1");
-    assert(Math.abs(input.width - inputArea.width) <= 1, "Textarea must fill the left region");
-    assert(status.y >= privacy.y + privacy.height, "Status must sit below the privacy note");
+    assert(Math.abs(input.width - inputArea.width) <= 1, "Textarea must fill the form");
     assert(Math.abs(submit.x + submit.width - input.x - input.width) <= 1, "Submit must align with textarea right edge");
     const textarea = await page.getByTestId("pdf-links").locator(".MuiInputBase-root").boundingBox();
     assert(textarea.height >= 130 && textarea.height <= 150, "Desktop textarea should be 130–150px tall");
@@ -72,8 +68,6 @@ async function checkPdfLayout(page, width) {
     }
   } else {
     assert(input.width >= form.width - 66, "Textarea should fill the card below desktop breakpoint");
-    const privacy = await page.getByTestId("pdf-privacy-note").boundingBox();
-    assert(privacy.y < input.y, "Mobile privacy note must remain before the textarea");
     if (width < 600) {
       const submit = await page.getByTestId("pdf-submit").boundingBox();
       assert(Math.abs(submit.width - input.width) <= 1, "Mobile submit should fill the form");
