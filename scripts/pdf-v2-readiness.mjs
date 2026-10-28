@@ -11,6 +11,38 @@ const requireCheck = (ok, code) => { if (!ok) throw Error('PDF_V2_'+code); };
 const env = (c,n) => c?.env?.find(e=>e.name===n)?.value;
 const ready = s => s?.conditions?.some(c=>c.type==='Ready'&&c.status==='True');
 
+// Only locally constructed diagnostics reach stderr. Never forward command args,
+// stdout, stderr or Error.message: gcloud can include credentials and payloads.
+class ReadinessDiagnostic extends Error {}
+function commandFailure(step, error) {
+  const detail = [error?.stderr, error?.message].map(v=>
+    typeof v==='string' || Buffer.isBuffer(v) ? String(v) : '').join('\n');
+  const reason = error?.code==='ENOENT' ? 'GCLOUD_NOT_FOUND' :
+    error?.code==='ETIMEDOUT' ? 'COMMAND_TIMEOUT' :
+    error?.code==='ENOBUFS' ? 'OUTPUT_LIMIT_EXCEEDED' :
+    /SERVICE_DISABLED|API has not been used|API.*disabled/i.test(detail) ? 'API_DISABLED' :
+    /UNAUTHENTICATED|invalid_grant|invalid credentials|reauthentication|no active account|do not currently have an active account/i.test(detail) ? 'UNAUTHENTICATED' :
+    /PERMISSION_DENIED|permission[^\n]*denied|does not have permission/i.test(detail) ? 'PERMISSION_DENIED' :
+    /NOT_FOUND|was not found|does not exist/i.test(detail) ? 'NOT_FOUND' :
+    /DEADLINE_EXCEEDED|timed out/i.test(detail) ? 'DEADLINE_EXCEEDED' :
+    /UNAVAILABLE|connection|name resolution/i.test(detail) ? 'UNAVAILABLE' : 'COMMAND_FAILED';
+  const permission = ['run.services.getIamPolicy','run.services.get','run.revisions.get','cloudtasks.queues.get',
+    'iam.serviceAccounts.getAccessToken','iam.serviceAccounts.getOpenIdToken','serviceusage.services.use']
+    .find(p=>detail.includes(p));
+  const status = Number.isInteger(error?.status) && error.status>=0 && error.status<=255
+    ? ' exit='+error.status : '';
+  const signal = ['SIGTERM','SIGKILL','SIGINT'].includes(error?.signal) ? ' signal='+error.signal : '';
+  return new ReadinessDiagnostic('PDF_V2_'+step+'_READ_FAILED: reason='+reason+
+    (permission ? ' permission='+permission : '')+status+signal);
+}
+function readCloud(step, args, run) {
+  let raw;
+  try { raw=run('gcloud',args); }
+  catch(error) { throw commandFailure(step,error); }
+  try { return JSON.parse(raw); }
+  catch { throw new ReadinessDiagnostic('PDF_V2_'+step+'_READ_FAILED: reason=INVALID_JSON'); }
+}
+
 export function evaluateService(kind, service, revision, policy) {
   const worker=kind==='worker', name=worker?CLOUD.worker:CLOUD.gateway, expected=RELEASE[kind];
   requireCheck(!!expected,'UNKNOWN_SERVICE');
@@ -50,17 +82,21 @@ export function evaluateService(kind, service, revision, policy) {
 export function audit(sourceSha, run=cliCall) {
   requireCheck(/^[a-f0-9]{40}$/.test(sourceSha??''),'SOURCE_SHA_REQUIRED');
   const common=['--project='+CLOUD.project,'--region='+CLOUD.region,'--format=json'];
-  const read=args=>JSON.parse(run('gcloud',args));
   const services={};
   for(const kind of ['worker','gateway']) {
     const name=CLOUD[kind];
-    services[kind]=evaluateService(kind,
-      read(['run','services','describe',name,...common]),
-      read(['run','revisions','describe',RELEASE[kind].revision,...common]),
-      read(['run','services','get-iam-policy',name,...common]));
+    const step=kind.toUpperCase();
+    const service=readCloud(step+'_SERVICE',['run','services','describe',name,...common],run);
+    const revision=readCloud(step+'_REVISION',['run','revisions','describe',RELEASE[kind].revision,...common],run);
+    const policy=readCloud(step+'_IAM',['run','services','get-iam-policy',name,...common],run);
+    try { services[kind]=evaluateService(kind,service,revision,policy); }
+    catch(error) {
+      const code=/^PDF_(V2|CLOUD)_[A-Z0-9_]+$/.test(error?.message) ? error.message : 'INVALID_RESPONSE';
+      throw new ReadinessDiagnostic('PDF_V2_'+step+'_VALIDATION_FAILED: '+code);
+    }
   }
-  const q=read(['tasks','queues','describe','teacher-pdf-queue','--project='+CLOUD.project,'--location='+CLOUD.region,'--format=json']);
-  requireCheck(q.name===`projects/${CLOUD.project}/locations/${CLOUD.region}/queues/teacher-pdf-queue` &&
+  const q=readCloud('QUEUE',['tasks','queues','describe','teacher-pdf-queue','--project='+CLOUD.project,'--location='+CLOUD.region,'--format=json'],run);
+  requireCheck(q?.name===`projects/${CLOUD.project}/locations/${CLOUD.region}/queues/teacher-pdf-queue` &&
     q.state==='RUNNING' && !q.httpTarget && q.rateLimits?.maxConcurrentDispatches===1 &&
     q.rateLimits.maxDispatchesPerSecond>0 && q.rateLimits.maxDispatchesPerSecond<=1 &&
     q.retryConfig?.maxAttempts===5 && q.retryConfig.maxRetryDuration==='3600s' &&
@@ -69,8 +105,12 @@ export function audit(sourceSha, run=cliCall) {
     gatewayURL:'https://teacher-pdf-gateway-851777150171.asia-southeast1.run.app',services,result:'PASS'};
 }
 
-if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
-  try { console.log(JSON.stringify(audit(process.argv[2]))); }
-  catch(e) { console.error(/^PDF_(V2|CLOUD)_[A-Z0-9_]+$/.test(e.message)?e.message:
-    'PDF_V2_CLOUD_READ_BLOCKED: check verifier permissions; no IAM or traffic changes attempted'); process.exitCode=1; }
+export function main(argv=process.argv.slice(2),run=cliCall,output=console) {
+  try { output.log(JSON.stringify(audit(argv[0],run))); return 0; }
+  catch(e) {
+    output.error(e instanceof ReadinessDiagnostic || ['PDF_V2_SOURCE_SHA_REQUIRED','PDF_V2_QUEUE_DRIFT'].includes(e?.message)
+      ? e.message : 'PDF_V2_READINESS_FAILED: reason=UNEXPECTED_ERROR');
+    return 1;
+  }
 }
+if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href)process.exitCode=main();
