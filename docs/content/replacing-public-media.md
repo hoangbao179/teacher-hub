@@ -38,6 +38,11 @@ Nguồn vector:
 
 Không dùng chân dung làm favicon và không thêm font file vào asset SVG.
 
+`media.headerMark` dùng `/favicon.svg?v=book-rose-2` để header tải nhận diện sách
+và hoa mới thay vì dùng lại ảnh cũ trong cache. Khi đổi SVG này, tăng version
+trong URL header và đồng bộ assertion Homepage E2E; favicon tab vẫn dùng URL
+chuẩn `/favicon.svg`.
+
 Biểu tượng sách mở và hoa hồng pastel được dùng chung cho header, favicon và
 logo có chữ. Khi chỉ thay nhận diện, sinh lại sáu PNG thương hiệu mà không
 ghi lại ảnh giáo viên bằng:

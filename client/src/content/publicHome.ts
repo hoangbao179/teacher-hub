@@ -130,7 +130,7 @@ export const publicHomeContent = {
     teacherPhotoFocalPosition: "center 42%",
     logo: "/logo-covy.svg",
     logoAlt: "Logo Lớp tiếng Anh cô Vy",
-    headerMark: "/favicon.svg",
+    headerMark: "/favicon.svg?v=book-rose-2",
   },
   contact: {
     zaloUrl: "https://zalo.me/0971697759",
