@@ -1,4 +1,4 @@
-# Đồng bộ readiness với Worker đang nhận production traffic
+# Đồng bộ readiness pin và recovery smoke fixture
 
 ## Task level
 
@@ -19,11 +19,25 @@ thấy `teacher-pdf-worker-00020-fiv` đang nhận 100% traffic. Revision 00017 
 tag nhưng không nhận traffic phần trăm. Gateway 00013-gej khớp pin hiện có.
 Gate chặn đúng điều kiện, không phải lỗi test hoặc quyền WIF.
 
+Khi kiểm tra PR sửa pin, [smoke 40700037443](https://github.com/hoangbao179/teacher-hub/actions/runs/40700037443)
+lộ race độc lập trong PDF fixture: assertion recovery nhận QUEUED/cloudErrorCode
+null. Đóng tab không đồng nghĩa controller detail/poll đã hoàn tất phía server.
+Một poll đã đọc result=null có thể còn giữ lease hoặc ghi lại next_action_at sau
+khi fixture đặt job đến hạn; sweep một lần không còn job eligible để nhận result.
+Đây là race điều phối fixture; không đổi production state machine/lease/recovery.
+
 ## Decision và changes
 
 Cập nhật đúng một Worker revision/digest trong `RELEASE`, giữ strict checks và
 Gateway pin. Không lấy latest tự động, không bỏ gate hoặc dùng index digest thay
 platform digest. Thêm regression pin và reject traffic cũ/index digest.
+
+`client/scripts/public-pdf.e2e.mjs` theo dõi promise controller create/detail/retry
+trong fixture, chờ các HTTP handler trước lúc đặt result/due cho sweep độc lập.
+Test cố ý giữ một poll tại FakeCloud.task sau khi đọc result thiếu, đóng tab,
+thả poll và drain handler, rồi mới seed result/chạy recovery thật. Không dùng
+sleep để đoán trạng thái, không bỏ assertion hoặc tăng timeout của production.
+Barrier có timeout và được release trong finally để tránh treo test khi lỗi.
 
 Mapping đã đọc từ Cloud Run/Artifact Registry/OCI index:
 
@@ -52,8 +66,9 @@ Việc rollout Worker có metadata là thao tác riêng theo runbook sau API.
   revision/digest/IAM, resources/gates/scratch/scaling và queue.
 - Không ghi token/env/policy đầy đủ/log tạm vào repository. Không dispatch lại
   deployment đã lỗi vì rerun đó có thể triển khai production.
-- Không chạy DB/browser/full regression: diff chỉ đổi release pin, regression và
-  tài liệu; kiểm tích hợp liên quan là live readiness chỉ đọc.
+- PASS targeted browser MySQL/FakeCloud E2E với poll đang giữ lease lúc đóng tab;
+  lint client và guards. Không chạy full regression local vì không đổi business
+  logic; PR CI chạy quality/integration/smoke đầy đủ.
 
 ## Documentation updated
 

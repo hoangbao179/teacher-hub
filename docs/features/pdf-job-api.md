@@ -124,6 +124,11 @@ không xóa nghiệp vụ. GCS lifecycle và TTL tải là hai cơ chế riêng.
 ## UI, polling và tải
 
 UI lấy capabilities/list song song; chi tiết đọc tối đa 4 request cùng lúc.
+Fixture browser/recovery phải đợi các controller request đã bắt đầu hoàn tất
+trước khi seed result và đặt next_action_at đến hạn: đóng tab không hủy ngay
+HTTP handler phía server. Nếu không, poll cũ có thể ghi lịch +15 giây hoặc còn
+giữ lease làm sweep fixture không thấy job eligible. Browser regression chủ động
+giữ một poll qua thời điểm đóng tab để bảo vệ việc đồng bộ này.
 Polling 5 giây khi có job recoverable chưa hết hạn, còn lại 15 giây; ngừng khi tab
 ẩn. Terminal cache chỉ đọc lại khi cần hoặc Làm mới. Key create/retry giữ trong
 ref khi mạng lỗi, không bền qua reload. V2 progress DISCOVERING/RENDERING/MERGING,

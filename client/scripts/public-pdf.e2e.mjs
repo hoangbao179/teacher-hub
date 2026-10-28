@@ -1,4 +1,4 @@
-/* global process, console, document, localStorage, sessionStorage */
+/* global process, console, document, localStorage, sessionStorage, fetch */
 // Synthetic MySQL/FakeCloud fixture only. No production identity or PDF source access.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -6,6 +6,7 @@ import { Buffer } from "node:buffer";
 import { URL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { once } from "node:events";
+import { setTimeout, clearTimeout } from "node:timers";
 import path from "node:path";
 import express from "express";
 import mysql from "mysql2/promise";
@@ -57,7 +58,16 @@ try {
     result:async id=>results.get(id)??null,task:async()=>"WAITING",open:async()=> (async function*(){yield bytes;})()};
   const settings={enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2,chunked:false};
   const service=new PdfService(repo,cloud,settings);
-  const app=express();app.use(express.json());app.use(createRouter(new PublicPdfController(service)));app.use(errorHandler);
+  const controller=new PublicPdfController(service),pendingPdfRequests=new Set();
+  for(const name of ['create','detail','retry']) {
+    const handle=controller[name];
+    controller[name]=(...args)=>{
+      const pending=handle(...args);pendingPdfRequests.add(pending);
+      void pending.then(()=>pendingPdfRequests.delete(pending),()=>pendingPdfRequests.delete(pending));
+      return pending;
+    };
+  }
+  const app=express();app.use(express.json());app.use(createRouter(controller));app.use(errorHandler);
   vite=await createServer({root:path.join(root,"client"),define:{"import.meta.env.VITE_API_BASE_URL":JSON.stringify("")},
     server:{middlewareMode:true,hmr:false},appType:"spa"});app.use(vite.middlewares);
   server=app.listen(5197,"127.0.0.1");await once(server,"listening");
@@ -77,7 +87,25 @@ try {
   await submit.click();
   await page.getByTestId("pdf-job").waitFor();
   const batch=await repo.batch(owner,(await guests.publicList(1)).items[0].id),job=batch.jobs[0];
-  await page.close(); // Recovery proceeds with no live page from the submitter.
+  while(pendingPdfRequests.size)await Promise.all([...pendingPdfRequests]);
+  // Reproduce a poll that has already read a missing result and still owns its
+  // lease when the tab closes. Closing a tab does not await its HTTP handler.
+  let releasePoll,observedPoll;
+  const heldPoll=new Promise(resolve=>{releasePoll=resolve;});
+  const pollStarted=new Promise(resolve=>{observedPoll=resolve;});
+  cloud.task=async()=>{observedPoll();await heldPoll;return 'WAITING';};
+  await pool.execute("UPDATE pdf_jobs SET next_action_at=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND WHERE id=?",[job.id]);
+  await page.evaluate(id=>{void fetch('/api/public/pdf/batches/'+id).catch(()=>{});},batch.id);
+  let pollTimeout;
+  try {
+    await Promise.race([pollStarted,new Promise((_,reject)=>{pollTimeout=setTimeout(()=>reject(Error('Expected an in-flight PDF poll')),10000);})]);
+    assert(pendingPdfRequests.size>0,'the held poll must still have an active HTTP handler');
+    await page.close(); // Recovery proceeds with no live page from the submitter.
+  } finally {clearTimeout(pollTimeout);releasePoll();}
+  while(pendingPdfRequests.size)await Promise.all([...pendingPdfRequests]);
+  cloud.task=async()=> 'WAITING';
+  // The completed poll may have postponed next_action_at by 15 seconds. Seed
+  // the result and make recovery due only after every pre-close handler settles.
   // The Worker contract requires an exact 24-hour claim. Read the clock once:
   // two separate reads can cross a millisecond and make recovery reject the fixture.
   const createdMs=Date.now(),now=new Date(createdMs).toISOString(),expiresAt=new Date(createdMs+86400000).toISOString();
