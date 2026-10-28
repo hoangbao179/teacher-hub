@@ -507,11 +507,10 @@ No Google login/OAuth or browser cookies are supplied.
 
 **Do not enable on the current 30-second Cloud Run revision.** This branch
 long-task contract requires explicit activation on each service:
-- The API sends `30s` by default; only `PDF_LONG_PRINT_TASKS_ENABLED=true`
-  sends `180s`. Missing, false or invalid values keep compatibility with the
-  old 30s-only Gateway after the automatic API/Web deployment.
-- The Gateway always accepts signed 30s requests and accepts 180s only with
-  `PDF_LONG_PRINT_TASKS_ENABLED=true`. Its own HTTP timeout stays 30s.
+- The API and Gateway always enqueue Cloud Tasks with **180s** dispatch
+  (`PDF_LONG_PRINT_TASKS_ENABLED` in env is legacy; code ignores `false`).
+- The Gateway accepts signed **30s** or **180s** task requests. Its own HTTP
+  timeout stays 30s for proxy reads; Worker request timeout should stay **180s**.
 - The no-traffic staging template sets Worker timeout to 180s and enables
   `PDF_PRINT_FALLBACK_ENABLED=true` on Worker and long tasks=true on Gateway.
   Worker `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` is explicit. Staging

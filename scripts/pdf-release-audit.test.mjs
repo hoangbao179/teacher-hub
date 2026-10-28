@@ -54,7 +54,7 @@ test('exact staged evidence passes; no writes to Cloud Run',()=>{
   assert.equal(out.activationAllowed,false);assert.equal(calls.length,8);
   assert.deepEqual(out.services.map(s=>s.gates),[
     {PDF_PROCESSING_ENABLED:'true',PDF_WORKER_IAM_READY:'true',PDF_PRINT_FALLBACK_ENABLED:'true',PDF_VIEWER_SCREEN_CAPTURE_ENABLED:'true'},
-    {PDF_GATEWAY_ENABLED:'true',PDF_LONG_PRINT_TASKS_ENABLED:'true'}
+    {PDF_GATEWAY_ENABLED:'true'}
   ]);
   assert.equal(calls.some(x=>/\bdeploy\b|\bupdate\b|set-iam-policy/.test(x.join(' '))),false);
   assert.equal(main(['--delete'],{PDF_STAGED_SHA:sha},run),2);
@@ -79,7 +79,7 @@ test('reject public Worker, private Gateway, changes to image, gate, traffic, re
       reject(y=>{y.revision.spec.volumes=[];});
     }else{
       reject(y=>{y.service.metadata.annotations['run.googleapis.com/invoker-iam-disabled']='false';});
-      reject(y=>{y.revision.spec.containers[0].env[1].value='false';});
+      reject(y=>{y.revision.spec.containers[0].env.find(e=>e.name==='PDF_GATEWAY_ENABLED').value='false';});
       reject(y=>{y.revision.spec.containers[0].env[3]={name:'PDF_GATEWAY_HMAC_KEY',value:'key'};});
     }
   }
@@ -87,7 +87,8 @@ test('reject public Worker, private Gateway, changes to image, gate, traffic, re
 test('every required feature flag rejects missing and non-exact values',()=>{
   for(const name of [CLOUD.worker,CLOUD.gateway]){
     const base=fixture(name);
-    const flags=base.revision.spec.containers[0].env.filter(e=>['true','false'].includes(e.value));
+    const flags=base.revision.spec.containers[0].env.filter(e=>['true','false'].includes(e.value) &&
+      (name===CLOUD.worker || e.name==='PDF_GATEWAY_ENABLED'));
     for(const flag of flags) for(const value of [undefined,'','TRUE','invalid',flag.value==='true'?'false':'true']){
       const x=structuredClone(base), c=x.revision.spec.containers[0];
       if(value===undefined)c.env=c.env.filter(e=>e.name!==flag.name);

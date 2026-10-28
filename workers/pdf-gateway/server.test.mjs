@@ -48,7 +48,7 @@ test('long print-task dispatch deadline requires explicit server-side gate',()=>
  assert.equal(route('POST','/v1/tasks',Buffer.from(JSON.stringify(long)),WORKER,true),null);
 });
 
-test('configured Gateway accepts 30s always and 180s only with explicit true',async t=>{
+test('configured Gateway accepts 30s and 180s dispatch deadlines',async t=>{
  for(const flag of [undefined,'false','true','invalid']){
   let tasks=0;
   const env={PDF_GATEWAY_ENABLED:'true',PDF_GATEWAY_HMAC_KEY:KEY,PDF_GATEWAY_WORKER_URL:WORKER};
@@ -68,10 +68,10 @@ test('configured Gateway accepts 30s always and 180s only with explicit true',as
       method:'POST',body:bytes,headers:{'X-PDF-Timestamp':stamp,'X-PDF-Nonce':nonce,
         'X-PDF-Signature':signature(Buffer.from(KEY,'hex'),'POST','/v1/tasks',stamp,nonce,bytes)}
     });
-    assert.equal(response.status,deadline==='30s'||(deadline==='180s'&&flag==='true')?200:400,`${flag}/${deadline}`);
+    assert.equal(response.status,deadline==='30s'||deadline==='180s'?200:400,`${flag}/${deadline}`);
     await response.body?.cancel();
   }
-  assert.equal(tasks,flag==='true'?2:1);
+  assert.equal(tasks,2);
  }
 });
 
