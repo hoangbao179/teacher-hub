@@ -1,11 +1,10 @@
 import { createHash } from 'node:crypto';
 import { errors as playwrightErrors, type Page } from 'playwright';
 import { PDF_CHUNK_PAGES, PDF_INTERMEDIATE_PNG_PEAK_BYTES, type PdfManifest } from '@teacher/shared';
-import { JobError, type Limits, viewerScreenCaptureEnabled } from './contract.ts';
+import { JobError, type Limits } from './contract.ts';
 import { captureViewerPage, observeViewerBitmaps, disposeViewerBitmaps } from './capture-page.ts';
 import { readViewerPageCount, setViewerZoom } from './viewer-pdf.ts';
 import { encodeViewerJpeg } from './jpeg.ts';
-import { assertPrintAction } from './print-policy.ts';
 import { ImagePdfWriter } from './image-pdf-writer.ts';
 import { PAGE_INDICATOR_LOCATOR, parsePageIndicator } from './viewer-page-indicator.ts';
 import { selectViewerMode } from './viewer-ready.ts';
@@ -35,27 +34,13 @@ export async function seekViewerPage(page: Page, index: number, total: number, s
 
 export async function captureViewerChunk(page: Page, path: string | null, cap: Limits, signal: AbortSignal,
   range?: { firstPage: number; lastPage: number }, expected?: PdfManifest) {
-  const mode = await selectViewerMode(page, viewerScreenCaptureEnabled(), signal);
-  const print = page.getByRole('button', { name: /^(In|Print)$/i });
-  let checkPrint: (() => Promise<void>) | undefined;
-  if (mode === 'print-gated') {
-    await print.first().waitFor({ state: 'visible', timeout: 15000 }).catch((error: unknown) => {
-      if (error instanceof playwrightErrors.TimeoutError) throw new JobError('PRINT_UNAVAILABLE');
+  await selectViewerMode(page, true, signal);
+  await page.locator('h2').filter({ hasText: PAGE_INDICATOR_LOCATOR }).first()
+    .waitFor({ timeout: 30000 })
+    .catch((error: unknown) => {
+      if (error instanceof playwrightErrors.TimeoutError) throw new JobError('SOURCE_UNAVAILABLE', true);
       throw error;
     });
-    checkPrint = async () => {
-      const count = await print.count();
-      assertPrintAction(count, count === 1 && await print.first().isEnabled());
-    };
-    await checkPrint();
-  } else {
-    await page.locator('h2').filter({ hasText: PAGE_INDICATOR_LOCATOR }).first()
-      .waitFor({ timeout: 30000 })
-      .catch((error: unknown) => {
-        if (error instanceof playwrightErrors.TimeoutError) throw new JobError('SOURCE_UNAVAILABLE', true);
-        throw error;
-      });
-  }
   const totalPages = await readViewerPageCount(page, cap);
   if (expected && totalPages !== expected.totalPages) throw new JobError('UNSUPPORTED_SOURCE', false, 'page-total-mismatch');
   if (range && (range.firstPage < 1 || range.lastPage > totalPages || range.lastPage - range.firstPage >= PDF_CHUNK_PAGES)) throw new JobError('INVALID_REQUEST');
@@ -71,14 +56,12 @@ export async function captureViewerChunk(page: Page, path: string | null, cap: L
     if (path && range) {
       writer = await ImagePdfWriter.create(path, cap.maxBytes, signal);
       for (let index = range.firstPage; index <= range.lastPage; index++) {
-        if (checkPrint) await checkPrint();
         signal.throwIfAborted();
         await seekViewerPage(page,index,totalPages,signal);
         const image = await captureViewerPage(page,index,totalPages,PDF_INTERMEDIATE_PNG_PEAK_BYTES,observation,signal);
         try { const jpeg = await encodeViewerJpeg(image.png,signal,cap.maxBytes); await writer.page(jpeg,image.width,image.height); }
         finally { image.png = Buffer.alloc(0); }
       }
-      if (checkPrint) await checkPrint();
       const labels=(await page.locator('h2').allTextContents()).map(parsePageIndicator).filter(Boolean);
       if (!labels.length) throw new JobError('SOURCE_UNAVAILABLE',true);
       if (labels.some(label=>label!.total!==totalPages)) throw new JobError('UNSUPPORTED_SOURCE',false,'page-total-mismatch');

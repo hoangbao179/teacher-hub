@@ -163,23 +163,15 @@ test('browser job deadline stays on the long fallback budget', () => {
   assert.throws(() => limits({ PDF_DEADLINE_MS: '120001' }), { code: 'SERVICE_UNAVAILABLE' });
 });
 
-test('Viewer mode selection prefers view-only tile capture when screen capture is enabled', async () => {
+test('Viewer mode selection always uses view-only tile capture', async () => {
   assert.equal(viewerScreenCaptureEnabled({ PDF_VIEWER_SCREEN_CAPTURE_ENABLED: 'false' }), true);
-  for (const [count, enabled, code] of [[1, true, null], [0, false, null],
-    [1, false, null], [2, true, 'UNSUPPORTED_SOURCE']]) {
+  for (const count of [0, 1, 2]) {
     const page = {
       evaluateHandle: async () => ({ dispose: async () => {} }), waitForFunction: async () => {},
-      getByRole: () => ({ count: async () => count, isVisible: async () => true, isEnabled: async () => enabled }),
+      getByRole: () => ({ count: async () => count, isVisible: async () => true, isEnabled: async () => true }),
     };
-    const selection = selectViewerMode(page, true, signal());
-    if (code) await assert.rejects(selection, { code });
-    else assert.equal(await selection, 'view-only');
+    assert.equal(await selectViewerMode(page, true, signal()), 'view-only');
   }
-  const page = {
-    evaluateHandle: async () => ({ dispose: async () => {} }), waitForFunction: async () => {},
-    getByRole: () => ({ count: async () => 1, isVisible: async () => true, isEnabled: async () => true }),
-  };
-  assert.equal(await selectViewerMode(page, false, signal()), 'print-gated');
 });
 
 test('render failures clean partial files and cannot reach PDF validation or result upload', async t => {

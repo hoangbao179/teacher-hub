@@ -25,7 +25,7 @@ Worker hiện chưa giải quyết được link đó; việc staging no-traffic
 đánh tráo preview hoặc báo COMPLETED đối với nguồn bị chặn; cần sự cho
 phép của chủ file hoặc bản nguồn được cấp quyền.
 
-Khi Viewer mở được ẩn danh, Worker ưu tiên chụp tile (`view-only`) thay vì
+Khi Viewer mở được ẩn danh, Worker **luôn** chụp tile (`view-only`) thay vì
 chặn vì nút In tắt. `PRINT_UNAVAILABLE` vẫn dùng khi legacy test tắt chụp
 hoặc giao diện không đọc được; `ACCESS_DENIED` trên `/tools` vẫn gom nhiều
 nguyên nhân (đăng nhập, HTTP 403, v.v.), không chỉ In tắt.
@@ -37,8 +37,9 @@ env cannot disable it. If direct source retrieval fails with `ACCESS_DENIED` or
 `UNSUPPORTED_SOURCE`, the Worker opens a **public/anonymous Google Drive viewer**,
 captures each rendered page bitmap, fits onto an A4 image-only PDF, validates with
 qpdf and persists to the existing job output in GCS. No OCR/searchable text is
-required. Production assembly uses **`view-only` tile capture** (no Print rechecks
-that map disabled Print to `ACCESS_DENIED`). Ambiguous Print controls still fail.
+required. Production assembly always uses **`view-only` tile capture** (no Print rechecks
+that map disabled Print to `ACCESS_DENIED`). Legacy `print-gated` assembly remains only in
+tests via `assemblePrintableViewer`. Ambiguous Print controls in that legacy path still fail.
 No flag bypasses login-only sources or Google byte download restrictions.
 Google-login-only files stay unsupported.
 This does not prove quality on every Drive variant until real Viewer E2E passes.

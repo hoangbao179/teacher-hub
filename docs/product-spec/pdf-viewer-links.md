@@ -100,8 +100,8 @@ bằng chứng file thuộc phạm vi v1. Tự động hóa phải thử từ m�
 **Phân biệt nhanh (cập nhật theo source, xem [status](../implementation/status.md)):**
 
 - **Chia sẻ Viewer + mở ẩn danh** là đầu vào mục tiêu; Worker thử tải trực tiếp
-  rồi (mặc định) fallback renderer ghép **PDF ảnh** khi được phép theo chế độ
-  `print-gated` (Print hoạt động trong Viewer).
+  rồi (mặc định) fallback renderer ghép **PDF ảnh** (`view-only`, chụp tile Viewer);
+  không phụ thuộc nút In/Print trên luồng production.
 - **Chủ file khóa Print/Copy**: v1 và v2 (khi bật) dùng nhánh `view-only` chụp
   tile Viewer khi `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` không tắt; không bypass
   đăng nhập hay link riêng tư. **Chưa DONE** E2E/chất lượng in trên Drive thật.

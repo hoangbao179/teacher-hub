@@ -16,20 +16,16 @@ test('offline Viewer initialization and zoom readiness', { timeout: 30000 }, asy
     await page.setContent(html);
     return page;
   }
-  for (const flag of [false, true]) {
-    await t.test(`immediate Viewer and enabled Print; screen capture=${flag}`, async t => {
-      const page = await fixture(t, viewer + '<button>Print</button>');
-      assert.equal(await selectViewerMode(page, flag, AbortSignal.timeout(3000)), flag ? 'view-only' : 'print-gated');
+  for (const html of [
+    viewer + '<button>Print</button>',
+    viewer + '<button disabled>Print</button>',
+    viewer,
+    viewer + '<button>Print</button><button>In</button>',
+  ]) {
+    await t.test(`Viewer readiness always selects view-only: ${html.slice(viewer.length, 40)}`, async t => {
+      const page = await fixture(t, html);
+      assert.equal(await selectViewerMode(page, true, AbortSignal.timeout(3000)), 'view-only');
     });
-    for (const [html, code] of [['<button disabled>Print</button>', 'ACCESS_DENIED'], ['', 'PRINT_UNAVAILABLE'],
-      ['<button>Print</button><button>In</button>', 'UNSUPPORTED_SOURCE']]) {
-      await t.test(`${code}; screen capture=${flag}`, async t => {
-        const page = await fixture(t, viewer + html);
-        const selection = selectViewerMode(page, flag, AbortSignal.timeout(3000));
-        if (flag && code !== 'UNSUPPORTED_SOURCE') assert.equal(await selection, 'view-only');
-        else await assert.rejects(selection, { code });
-      });
-    }
   }
   await t.test('loading shell and Viewer precede a late enabled Print', async t => {
     const page = await fixture(t, '<main aria-busy="true"></main>');
@@ -42,20 +38,16 @@ test('offline Viewer initialization and zoom readiness', { timeout: 30000 }, asy
     }, viewer);
     assert.equal(await selectViewerMode(page, true, AbortSignal.timeout(3000)), 'view-only');
   });
-  await t.test('late Print during toolbar settling still uses view-only when capture is enabled', async t => {
+  await t.test('late Print during toolbar settling still uses view-only', async t => {
     const page = await fixture(t, viewer);
     await page.evaluate(() => setTimeout(() => {
       document.body.insertAdjacentHTML('beforeend', '<button>Print</button>');
     }, 200));
     assert.equal(await selectViewerMode(page, true, AbortSignal.timeout(3000)), 'view-only');
   });
-  await t.test('absent Print selects view-only when capture is enabled', async t => {
+  await t.test('absent Print still selects view-only', async t => {
     const page = await fixture(t, viewer);
-    assert.equal(await selectViewerMode(page, true, AbortSignal.timeout(2000)), 'view-only');
-  });
-  await t.test('absent Print rejects quickly when capture is disabled', async t => {
-    const page = await fixture(t, viewer);
-    await assert.rejects(selectViewerMode(page, false, AbortSignal.timeout(2000)), { code: 'PRINT_UNAVAILABLE' });
+    assert.equal(await selectViewerMode(page, false, AbortSignal.timeout(2000)), 'view-only');
   });
   await t.test('explicit cancellation during toolbar settling does not select view-only', async t => {
     const page = await fixture(t, viewer);

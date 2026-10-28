@@ -1,17 +1,16 @@
 import { chromium } from 'playwright';
-import { JobError, type Limits, viewerScreenCaptureEnabled } from './contract.ts';
+import { JobError, type Limits } from './contract.ts';
 import { allowedPrintRequest } from './print-policy.ts';
 import { selectViewerMode } from './viewer-ready.ts';
-import { assemblePrintableViewer, assembleViewOnlyViewer } from './viewer-pdf.ts';
+import { assembleViewOnlyViewer } from './viewer-pdf.ts';
 import type { Page } from 'playwright';
 
 // Anonymous Google Drive viewer ONLY. Never accepts an arbitrary URL,
 // credentials, storage state or a login-only document. The browser is disposable.
 export async function renderPrintablePdf(fileId: string, path: string, cap: Limits, signal: AbortSignal): Promise<void> {
   await withDriveViewer(fileId, cap, signal, async page => {
-    const mode = await selectViewerMode(page, viewerScreenCaptureEnabled(), signal);
-    if (mode === 'print-gated') await assemblePrintableViewer(page, path, cap, signal);
-    else await assembleViewOnlyViewer(page, path, cap, signal);
+    await selectViewerMode(page, true, signal);
+    await assembleViewOnlyViewer(page, path, cap, signal);
   });
 }
 
