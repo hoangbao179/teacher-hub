@@ -20,6 +20,7 @@ import { runPdfRecovery } from '../scripts/reconcile-pdf';
 import { pdfProgress, type PdfManifest, type PdfChunkJob } from '@teacher/shared';
 import { recoverInterruptedMigrations } from '../db/migration-recovery';
 import { verifySchema } from '../scripts/verify-pdf-v2';
+import { pdfSettings } from '../config/pdf-settings';
 
 const integration=process.env.RUN_MYSQL_INTEGRATION==='1'?test:test.skip;
 after(()=>pool.end());
@@ -34,6 +35,53 @@ integration('atomic PDF ALTER is recovered if process dies before migration ledg
  }finally{connection.release();}
 });
 const settings={enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2};
+integration('v2 admits three mixed active jobs and twenty creations including retry without clearing history', async t => {
+  const [insert] = await pool.execute<ResultSetHeader>("INSERT INTO users(username,password_hash,display_name) VALUES(?,'synthetic-fixture','PDF limits fixture')", [`limits-${randomUUID()}`]);
+  const owner = insert.insertId, repo = new PdfRepository();
+  const cfg = pdfSettings({ PDF_API_ENABLED:'true', PDF_CHUNKED_JOBS_ENABLED:'true' });
+  t.after(async () => {
+    await pool.execute('UPDATE pdf_jobs SET retry_of=NULL WHERE owner_id=?', [owner]);
+    await pool.execute('DELETE FROM pdf_jobs WHERE owner_id=?', [owner]);
+    await pool.execute('DELETE FROM pdf_batches WHERE owner_id=?', [owner]);
+    await pool.execute('DELETE FROM users WHERE id=?', [owner]);
+  });
+  const create = (key = randomUUID()) => repo.create(owner, key, 'fixture-hash', ['owned_fixture_12345'], cfg);
+  const ids: string[] = [];
+  const key = randomUUID();
+  const first = await create(key); ids.push((await repo.batch(owner, first)).jobs[0].id);
+  for (let i = 0; i < 2; i++) ids.push((await repo.batch(owner, await create())).jobs[0].id);
+  // Existing v1 jobs and unconfirmed results also consume v2 admission capacity.
+  await pool.execute("UPDATE pdf_jobs SET status='QUEUED',worker_version=1 WHERE id=?", [ids[1]]);
+  await pool.execute("UPDATE pdf_jobs SET status='RESULT_UNCONFIRMED' WHERE id=?", [ids[2]]);
+  await assert.rejects(create(), { code:'PDF_RATE_LIMITED' });
+  assert.equal(await create(key), first, 'idempotent create bypasses full active quota');
+  await pool.execute("UPDATE pdf_jobs SET status='FAILED' WHERE id=?", [ids[0]]);
+  const retryKey = randomUUID();
+  const child = await repo.retry(owner, ids[0], retryKey, cfg);
+  assert.equal(await repo.retry(owner, ids[0], retryKey, cfg), child);
+  await pool.execute("UPDATE pdf_jobs SET status='FAILED' WHERE id=?", [ids[1]]);
+  const fifth = await create(); // third active slot is free again
+  await assert.rejects(repo.retry(owner, ids[1], randomUUID(), cfg), { code:'PDF_RATE_LIMITED' });
+  await pool.execute("UPDATE pdf_jobs SET status='FAILED' WHERE owner_id=?", [owner]);
+  for (let n = 5; n < 20; n++) {
+    const batch = await create();
+    await pool.execute("UPDATE pdf_jobs SET status='FAILED' WHERE batch_id=?", [batch]);
+  }
+  await assert.rejects(create(), { code:'PDF_RATE_LIMITED' });
+  const retrySource = (await repo.batch(owner, fifth)).jobs[0].id;
+  await assert.rejects(repo.retry(owner, retrySource, randomUUID(), cfg), { code:'PDF_RATE_LIMITED' });
+  assert.equal(await create(key), first, 'idempotency survives exhausted hourly quota');
+  assert.equal(await repo.retry(owner, ids[0], retryKey, cfg), child);
+  await assert.rejects(repo.create(owner, key, 'different-hash', ['owned_fixture_12345'], cfg), { code:'PDF_IDEMPOTENCY_CONFLICT' });
+  const [counts] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) n FROM pdf_jobs WHERE owner_id=?', [owner]);
+  assert.equal(Number(counts[0].n), 20, 'old jobs and retry history are retained');
+  // Synthetic fixture timestamps only: an aged-out row releases rolling-hour quota without deletion.
+  await pool.execute('UPDATE pdf_jobs SET created_at=UTC_TIMESTAMP(3)-INTERVAL 61 MINUTE WHERE id=?', [ids[0]]);
+  await pool.execute('UPDATE pdf_batches SET created_at=UTC_TIMESTAMP(3)-INTERVAL 61 MINUTE WHERE id=?', [first]);
+  await create();
+  const [retained] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) n FROM pdf_jobs WHERE owner_id=?', [owner]);
+  assert.equal(Number(retained[0].n), 21);
+});
 class FakeCloud implements PdfProvider {
   configured=true; available=true; failEnqueue=false; failRead=false; timeoutAfterCreate=false;
   tasks=new Map<string,PdfPayload>(); results=new Map<string,any>(); state:'WAITING'|'MISSING'|'EXHAUSTED'='WAITING';

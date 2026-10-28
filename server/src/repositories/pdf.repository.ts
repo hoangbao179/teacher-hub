@@ -37,6 +37,8 @@ export class PdfRepository {
       WHERE expires_at<=UTC_TIMESTAMP(3) AND status<>'EXPIRED' ${owner ? 'AND owner_id=?' : ''}`, owner ? [owner] : []);
   }
   private async capacity(c: PoolConnection, owner: number, count: number, cfg: PdfSettings) {
+    // QUEUED also covers executing Worker steps; RESULT_UNCONFIRMED still reserves capacity.
+    // Count every creation (including retries and old worker versions); never clear history for quota.
     const [active] = await c.execute<RowDataPacket[]>(`SELECT COUNT(*) n FROM pdf_jobs WHERE owner_id=?
       AND status IN ('ENQUEUE_PENDING','ENQUEUE_RETRY','QUEUED','RESULT_UNCONFIRMED') AND expires_at>UTC_TIMESTAMP(3)`, [owner]);
     const [recent] = await c.execute<RowDataPacket[]>('SELECT COUNT(*) n FROM pdf_jobs WHERE owner_id=? AND created_at>UTC_TIMESTAMP(3)-INTERVAL 1 HOUR', [owner]);
