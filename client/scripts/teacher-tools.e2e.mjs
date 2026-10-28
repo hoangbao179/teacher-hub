@@ -13,6 +13,7 @@ const policy = createArtifactPolicy(root, "teacher-tools");
 const user = { id: 1, username: "tools-fixture", displayName: "Cô Vy", role: "TEACHER" };
 const token = "teacher-tools-browser-fixture";
 const legacyRoutes = ["/admin", "/admin/classes", "/admin/students", "/admin/tuition", "/admin/account", "/admin/not-found"];
+const pdfHelperText = "Tối đa 5 liên kết, mỗi dòng một link. Tối đa 200 trang/tài liệu.";
 let browser;
 let passed = false;
 const web = spawn(process.execPath, [path.join(root, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1", "--port", "5196", "--strictPort"], {
@@ -147,7 +148,8 @@ try {
   assert.equal(await page.locator("#public-home-structured-data").count(), 0);
   assert(calls.every(path => path.startsWith("/api/public/pdf/")), "Public Tools requested teacher auth data");
   await page.getByText("Chưa có tài liệu nào được xử lý", { exact: true }).waitFor();
-  assert.match(await page.getByTestId("pdf-links").textContent(), /Tối đa 5 liên kết.*40 trang/);
+  await page.getByText(pdfHelperText,{exact:true}).waitFor();
+  assert.equal(await page.getByText(/PDF nguồn tối đa|PDF kết quả tối đa/).count(),0);
   for (const width of [360, 375, 390, 393, 400, 412, 430, 768, 1023, 1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     await checkPdfLayout(page, width);
@@ -262,8 +264,8 @@ try {
   guestJob.progress={stage:"COMPLETED",processedPages:200,totalPages:200,percent:100};
   await page.reload({waitUntil:"networkidle"});
   await page.getByTestId("pdf-progress").waitFor();
-  assert.match(await page.getByTestId("pdf-links").textContent(), /Tối đa 1 liên kết.*200 trang/);
-  await page.getByText("PDF nguồn tối đa 20 MiB · PDF kết quả tối đa 150 MiB.", {exact:true}).waitFor();
+  await page.getByText(pdfHelperText,{exact:true}).waitFor();
+  assert.equal(await page.getByText(/PDF nguồn tối đa|PDF kết quả tối đa/).count(),0);
   assert.equal(await page.getByText("Đang chuẩn bị", {exact:true}).count(),0);
   for(const width of [360,390,430,768,1024,1280,1440]) {
     await page.setViewportSize({width,height:844});
@@ -272,7 +274,7 @@ try {
   await page.getByLabel("Liên kết Google Drive").fill("https://drive.google.com/file/d/owned_fixture_12345/view\nhttps://drive.google.com/file/d/other_fixture_12345/view");
   assert.equal(await page.getByTestId("pdf-submit").isDisabled(),true);
   await page.getByText("Chỉ nhận tối đa 1 liên kết/lần.", {exact:true}).waitFor();
-  // Hold capabilities to observe loading, then fail it: neither state claims limits or empty history.
+  // Loading/failure retain the fixed helper while keeping submission disabled and history distinct from empty.
   let releaseCapabilities;
   const capabilitiesGate=new Promise(resolve=>{releaseCapabilities=resolve;});
   await page.route("**/api/public/pdf/capabilities",async route=>{
@@ -282,12 +284,12 @@ try {
   await page.reload({waitUntil:"domcontentloaded"});
   await page.getByText("Đang kiểm tra công cụ…",{exact:true}).waitFor();
   await page.getByText("Đang tải tài liệu…",{exact:true}).waitFor();
-  assert.doesNotMatch(await page.getByTestId("pdf-links").textContent(),/Tối đa/);
+  await page.getByText(pdfHelperText,{exact:true}).waitFor();
   assert.equal(await page.getByTestId("pdf-submit").isDisabled(),true);
   releaseCapabilities();
   await page.getByText("Chưa tải được lịch sử tài liệu. Nhấn Làm mới để thử lại.",{exact:true}).waitFor();
   assert.equal(await page.getByText("Chưa có tài liệu nào được xử lý",{exact:true}).count(),0);
-  assert.doesNotMatch(await page.getByTestId("pdf-links").textContent(),/Tối đa/);
+  await page.getByText(pdfHelperText,{exact:true}).waitFor();
   assert.equal(await page.getByTestId("pdf-submit").isDisabled(),true);
   assert.deepEqual(errors, []);
   passed = true;

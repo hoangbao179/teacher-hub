@@ -59,8 +59,10 @@ Form dùng toàn chiều rộng card, không có hai khối hỗ trợ “Lưu �
 “Trạng thái công cụ”. Textarea cao khoảng 144px khi trống trên desktop.
 Loading/lỗi kiểm tra/chưa khả dụng chỉ hiện thông báo ngắn; khi enabled không
 hiện thông báo trạng thái bổ sung. Lịch sử public vẫn dùng chung giữa thiết bị.
-Giới hạn link, trang, nguồn và kết quả chỉ
-hiển thị từ capabilities đã tải; không dùng số mặc định khi chưa xác minh.
+Helper text là câu cố định theo yêu cầu UI: “Tối đa 5 liên kết, mỗi dòng một
+link. Tối đa 200 trang/tài liệu.” Không hiển thị dòng dung lượng nguồn/kết quả.
+Câu hướng dẫn này không thay đổi validation/quota hoặc cấu hình xử lý: API
+capabilities vẫn quyết định giới hạn thực tế, gồm v2 có thể chỉ nhận 1 link.
 Trạng thái kiểm tra công cụ, chưa khả dụng và lỗi tải được phân biệt; lịch sử
 chỉ hiện empty state sau khi tải thành công và không có tài liệu.
 

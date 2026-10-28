@@ -169,10 +169,7 @@ export function PublicPdfTool() {
       <Typography sx={{order:1,fontSize:14,color:"#726070",lineHeight:1.7}}>Dán link Google Drive, mỗi dòng một link.</Typography>
       <TextField label="Liên kết Google Drive" data-testid="pdf-links" fullWidth multiline minRows={4} maxRows={8} sx={{order:4,mt:3,"& .MuiOutlinedInput-root":{borderRadius:3},"& .MuiFormHelperText-root":{color:"#726070",lineHeight:1.7},"@media (min-width:1024px)":{mt:1.5,"& textarea:not([aria-hidden])":{minHeight:112}}}}
         placeholder="https://drive.google.com/file/d/…/view" value={links} disabled={!enabled||busy}
-        onChange={e=>setLinks(e.target.value)} helperText={caps?`Tối đa ${caps.maxLinksPerBatch} liên kết, mỗi dòng một link.${caps.maxPages ? ` Tối đa ${caps.maxPages} trang/tài liệu.` : ''}`:"Mỗi dòng một link. Giới hạn sẽ hiển thị sau khi kiểm tra công cụ."}/>
-      {caps&&<Typography sx={{order:5,fontSize:13,color:"#726070",mt:1,lineHeight:1.7}}>
-        {caps.maxSourceBytes?`PDF nguồn tối đa ${caps.maxSourceBytes/1048576} MiB · `:""}PDF kết quả tối đa {caps.maxBytes/1048576} MiB.
-      </Typography>}
+        onChange={e=>setLinks(e.target.value)} helperText="Tối đa 5 liên kết, mỗi dòng một link. Tối đa 200 trang/tài liệu."/>
       {enabled&&links.trim()&&invalid&&<Typography role="alert" sx={{order:6,fontSize:13,color:"#b3261e",mt:1}}>{invalid}</Typography>}
       <Box sx={{order:7,display:"flex",justifyContent:"flex-end",mt:2.5}}>
       <Button data-testid="pdf-submit" variant="contained" disabled={!enabled||busy||!!invalid}
