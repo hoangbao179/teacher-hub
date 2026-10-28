@@ -77,7 +77,12 @@ On the VPS, the existing deployment lock covers configuration snapshots,
 `.env.next` validation/installation and migrations. Existing pre-migration backup,
 disk/inode headroom and immutable image retention still apply. The candidate
 image validates readiness evidence for the same SHA (<=30 minutes old), existing
-runtime config and noninteractive root/sudo/systemd availability. Missing WIF,
+runtime config and preinstalled systemd units. Deployment must run as `deploy`.
+Root must install/reload both units beforehand, with `User=deploy` on the service.
+Preflight checks loaded state, no pending daemon reload, effective service user,
+and root ownership plus absence of deploy write access for each unit fragment,
+drop-in and all parent directories (including resolved symlink targets).
+Missing WIF,
 GCP read permissions, evidence, sudo or private approval is a visible blocker.
 
 The normal ledger-based migration runner applies pending migrations once. Before
@@ -88,8 +93,13 @@ queue/v2 capabilities checks with the three v2 flags supplied only to that proce
 Credentials are never transferred to Actions or printed. No existing job is
 upgraded and no migration file is edited.
 
-After normal Web/API health/readiness passes, Actions installs the existing
-systemd units idempotently and enables the one-minute timer. Only then it atomically
+After normal Web/API health/readiness passes, Actions enables the preinstalled
+one-minute timer. Deployment never installs units or calls `daemon-reload`.
+Its only privileged commands are `sudo -n systemctl enable --now teacher-pdf-recovery.timer`
+and `sudo -n systemctl start teacher-pdf-recovery.service`; grant only these exact
+commands in host sudoers, never sudo ALL. All systemd state reads run as deploy.
+Unit changes and daemon reload remain root provisioning tasks; uploaded templates
+do not modify installed units. Only then it atomically
 updates `PDF_API_ENABLED`, `PDF_CHUNKED_JOBS_ENABLED` and
 `PDF_LONG_PRINT_TASKS_ENABLED` to `true` in `pdf-runtime/runtime.env`, preserving
 all other lines and file permissions. Only API is recreated for this flag change.
