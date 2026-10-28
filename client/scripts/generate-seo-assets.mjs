@@ -31,16 +31,18 @@ async function renderImage(page, source, width, height, type, quality = 0.86) {
 const browser = await chromium.launch({ headless: true, executablePath: chrome });
 try {
   const page = await browser.newPage();
-  const teacherSource = await toDataUrl(path.join(publicRoot, "images", "covy-image-master-1536x1152.png"), "image/png");
-  for (const width of [480, 768, 1200]) {
-    const height = Math.round(width * 1086 / 1448);
-    const output = await renderImage(page, teacherSource, width, height, "image/webp", 0.84);
-    await fs.writeFile(path.join(publicRoot, "images", `covy-image-v2-${width}.webp`), output);
+  if (!process.argv.includes("--brand-only")) {
+    const teacherSource = await toDataUrl(path.join(publicRoot, "images", "covy-image-master-1536x1152.png"), "image/png");
+    for (const width of [480, 768, 1200]) {
+      const height = Math.round(width * 1086 / 1448);
+      const output = await renderImage(page, teacherSource, width, height, "image/webp", 0.84);
+      await fs.writeFile(path.join(publicRoot, "images", `covy-image-v2-${width}.webp`), output);
+    }
+    await fs.writeFile(
+      path.join(publicRoot, "images", "covy-image-v2-1200.jpg"),
+      await renderImage(page, teacherSource, 1200, 900, "image/jpeg", 0.86),
+    );
   }
-  await fs.writeFile(
-    path.join(publicRoot, "images", "covy-image-v2-1200.jpg"),
-    await renderImage(page, teacherSource, 1200, 900, "image/jpeg", 0.86),
-  );
 
   const faviconSource = await toDataUrl(path.join(publicRoot, "favicon.svg"), "image/svg+xml");
   for (const [name, size] of [["favicon-48.png", 48], ["favicon-96.png", 96], ["apple-touch-icon.png", 180], ["icon-192.png", 192], ["icon-512.png", 512]]) {

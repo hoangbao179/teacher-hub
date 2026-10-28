@@ -38,6 +38,14 @@ Nguồn vector:
 
 Không dùng chân dung làm favicon và không thêm font file vào asset SVG.
 
+Biểu tượng sách mở và hoa hồng pastel được dùng chung cho header, favicon và
+logo có chữ. Khi chỉ thay nhận diện, sinh lại sáu PNG thương hiệu mà không
+ghi lại ảnh giáo viên bằng:
+
+```bash
+npm -w client run assets:seo -- --brand-only
+```
+
 ## Video và phản hồi
 
 Video hiện tại là tài liệu học tiếng Anh tham khảo bên ngoài. Player
