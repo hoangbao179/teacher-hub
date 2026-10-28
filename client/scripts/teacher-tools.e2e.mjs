@@ -27,7 +27,7 @@ async function checkLayout(page, width) {
   await page.evaluate(() => document.fonts.ready);
   const layout = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    controls: [...document.querySelectorAll("header a, [data-testid=teacher-tools-page] a, [data-testid=teacher-tools-page] button, [data-testid=public-tools-page] a")]
+    controls: [...document.querySelectorAll("header a, [data-testid=teacher-tools-page] a, [data-testid=teacher-tools-page] button, [data-testid=public-tools-page] a, [data-testid=public-tools-page] button")]
       .filter((element) => element.getBoundingClientRect().width > 0)
       .map((element) => {
         const rect = element.getBoundingClientRect();
@@ -38,6 +38,26 @@ async function checkLayout(page, width) {
   for (const control of layout.controls) {
     assert(control.height >= 44 && control.width >= 44, `Small touch target ${control.text} at ${width}px`);
     assert(control.left >= 0 && control.right <= width && !control.clipped, `Clipped control ${control.text} at ${width}px`);
+  }
+}
+
+async function checkPdfLayout(page, width) {
+  await checkLayout(page, width);
+  const form = await page.getByTestId("pdf-create-card").boundingBox();
+  const history = await page.getByTestId("pdf-history-card").boundingBox();
+  const input = await page.getByTestId("pdf-links").boundingBox();
+  assert(Math.abs(form.x - history.x) <= 1 && Math.abs(form.width - history.width) <= 1, "PDF cards must have matching widths");
+  assert(Math.abs(history.y - form.y - form.height - 24) <= 1, "History must sit 24px below the form");
+  assert(input.width >= form.width - 66, "Textarea should fill the card");
+  if (width >= 1024) {
+    for (const locator of [page.getByRole("heading", { level: 1 }), page.getByTestId("tools-description")]) {
+      const lines = await locator.evaluate(element => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return range.getClientRects().length;
+      });
+      assert.equal(lines, 1, "Desktop hero text must occupy one line");
+    }
   }
 }
 
@@ -53,6 +73,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   const calls = [];
   let pdfEnabled = false;
+  let pdfV2 = false;
   let guestSubmitted = false;
   const guestBatchId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const guestJobId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -73,7 +94,7 @@ try {
       return route.fulfill({ status: 401, json: { error: { code: "UNAUTHORIZED", message: "Expired fixture" } } });
     }
     if (pathname === "/api/auth/logout") return route.fulfill({ status: 204 });
-    if (pathname === "/api/public/pdf/capabilities") return route.fulfill({ json: { data: { submitEnabled: pdfEnabled, downloadEnabled: pdfEnabled, unavailableReason: "PDF_SERVICE_UNAVAILABLE", maxLinksPerBatch: 5, maxActiveJobs: 10, maxBatchesPerHour: 10, maxRetries: 2, maxBytes: 20971520, maxPages: 40, ticketTtlSeconds: 120 } } });
+    if (pathname === "/api/public/pdf/capabilities") return route.fulfill({ json: { data: { submitEnabled: pdfEnabled, downloadEnabled: pdfEnabled, unavailableReason: pdfEnabled ? null : "PDF_SERVICE_UNAVAILABLE", maxLinksPerBatch: pdfV2 ? 1 : 5, maxActiveJobs: pdfV2 ? 3 : 10, maxBatchesPerHour: pdfV2 ? 20 : 10, maxRetries: 2, maxSourceBytes: 20971520, maxBytes: pdfV2 ? 157286400 : 20971520, maxPages: pdfV2 ? 200 : 40, ticketTtlSeconds: 120 } } });
     if (pathname === "/api/public/pdf/session" && request.method() === "POST") return route.fulfill({ json:{data:{available:true}} });
     if (pathname === "/api/public/pdf/batches" && request.method() === "POST") {
       const body=request.postDataJSON();
@@ -111,9 +132,11 @@ try {
   assert.equal(await page.locator('link[rel="canonical"]').getAttribute("href"), "https://tienganhcovy.com/tools");
   assert.equal(await page.locator("#public-home-structured-data").count(), 0);
   assert(calls.every(path => path.startsWith("/api/public/pdf/")), "Public Tools requested teacher auth data");
-  for (const width of [360, 375, 390, 393, 400, 412, 430, 768, 1440]) {
+  await page.getByText("Chưa có tài liệu nào được xử lý", { exact: true }).waitFor();
+  assert.match(await page.getByTestId("pdf-links").textContent(), /Tối đa 5 liên kết.*40 trang/);
+  for (const width of [360, 375, 390, 393, 400, 412, 430, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 844 });
-    await checkLayout(page, width);
+    await checkPdfLayout(page, width);
     if (width === 360 || width === 1440) await page.screenshot({ path: path.join(policy.runDir, `public-tools-${width}.png`), fullPage: true });
   }
   for (const [name, route] of [["Góc học miễn phí", "/hoc"], ["Tủ sách tiếng Anh", "/sach"]]) {
@@ -219,6 +242,39 @@ try {
   assert.match(downloaded.suggestedFilename(),/\.pdf$/);
   assert(calls.includes("/api/public/pdf/session"));
   assert(calls.includes("/api/public/pdf/jobs/"+guestJobId+"/download"));
+  // Separate v2 capabilities fixture; retain the v1 assertions and download flow above.
+  pdfV2=true;
+  guestJob.filename="Tài liệu tiếng Anh với tên rất dài dành cho bài giảng của cô Vy ".repeat(5)+".pdf";
+  guestJob.progress={stage:"COMPLETED",processedPages:200,totalPages:200,percent:100};
+  await page.reload({waitUntil:"networkidle"});
+  await page.getByTestId("pdf-progress").waitFor();
+  assert.match(await page.getByTestId("pdf-links").textContent(), /Tối đa 1 liên kết.*200 trang/);
+  await page.getByText("PDF nguồn tối đa 20 MiB · PDF kết quả tối đa 150 MiB.", {exact:true}).waitFor();
+  assert.equal(await page.getByText("Đang chuẩn bị", {exact:true}).count(),0);
+  for(const width of [360,390,768,1024,1440]) {
+    await page.setViewportSize({width,height:844});
+    await checkPdfLayout(page,width);
+  }
+  await page.getByLabel("Liên kết Google Drive").fill("https://drive.google.com/file/d/owned_fixture_12345/view\nhttps://drive.google.com/file/d/other_fixture_12345/view");
+  assert.equal(await page.getByTestId("pdf-submit").isDisabled(),true);
+  await page.getByText("Chỉ nhận tối đa 1 liên kết/lần.", {exact:true}).waitFor();
+  // Hold capabilities to observe loading, then fail it: neither state claims limits or empty history.
+  let releaseCapabilities;
+  const capabilitiesGate=new Promise(resolve=>{releaseCapabilities=resolve;});
+  await page.route("**/api/public/pdf/capabilities",async route=>{
+    await capabilitiesGate;
+    await route.fulfill({status:503,json:{error:{code:"PDF_SERVICE_UNAVAILABLE",message:"Fixture unavailable"}}});
+  });
+  await page.reload({waitUntil:"domcontentloaded"});
+  await page.getByText("Đang kiểm tra công cụ…",{exact:true}).waitFor();
+  await page.getByText("Đang tải tài liệu…",{exact:true}).waitFor();
+  assert.doesNotMatch(await page.getByTestId("pdf-links").textContent(),/Tối đa/);
+  assert.equal(await page.getByTestId("pdf-submit").isDisabled(),true);
+  releaseCapabilities();
+  await page.getByText("Chưa tải được lịch sử tài liệu. Nhấn Làm mới để thử lại.",{exact:true}).waitFor();
+  assert.equal(await page.getByText("Chưa có tài liệu nào được xử lý",{exact:true}).count(),0);
+  assert.doesNotMatch(await page.getByTestId("pdf-links").textContent(),/Tối đa/);
+  assert.equal(await page.getByTestId("pdf-submit").isDisabled(),true);
   assert.deepEqual(errors, []);
   passed = true;
   console.log("Teacher Tools browser smoke passed: public tools/reload/navigation, protected admin/login/refresh/redirects/logout; mobile/tablet/desktop. Auth API mocked; no backend verification.");

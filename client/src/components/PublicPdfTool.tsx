@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Button, Chip, CircularProgress, LinearProgress, Paper, Stack, TextField, Typography } from "@mui/material";
-import { DownloadRounded, RefreshRounded, ReplayRounded } from "@mui/icons-material";
+import { DescriptionRounded, DownloadRounded, InfoOutlined, LocalFloristRounded, RefreshRounded, ReplayRounded } from "@mui/icons-material";
 import { pdfFilename } from "@teacher/shared";
 import type { PdfBatch, PdfBatchList, PdfCapabilities, PdfJob, PdfJobStatus } from "@teacher/shared";
 import { pdfApi, pdfDriveId } from "../api/pdf";
@@ -155,31 +155,47 @@ export function PublicPdfTool() {
   return <Box data-testid="public-pdf-tool" sx={{color:"#563c49",minWidth:0}}>
     {error&&<Alert severity="error" role="alert" sx={{mb:2}}>{error}</Alert>}
     {notice&&<Alert severity="success" sx={{mb:2}}>{notice}</Alert>}
-    <Box sx={{display:"grid",gridTemplateColumns:"minmax(0, 1fr)",gap:3,alignItems:"start","@media (min-width:1024px)":{gridTemplateColumns:"minmax(0, 0.85fr) minmax(0, 1.65fr)"}}}>
-    <Paper elevation={0} sx={{p:{xs:2,sm:3},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff"}}>
-      <Typography component="h2" sx={{fontWeight:800,fontSize:21,mb:1}}>Tạo tài liệu PDF</Typography>
-      <Typography sx={{fontSize:14,color:"#866a77"}}>Dán link Google Drive, mỗi dòng một link. Lịch sử và tên tài liệu hiển thị công khai trên các thiết bị. Chỉ gửi tài liệu phù hợp để chia sẻ công khai.</Typography>
-      {loading?<Stack component="div" direction="row" spacing={1} sx={{mt:2,alignItems:"center"}}><CircularProgress size={20}/><Typography>Đang kiểm tra công cụ…</Typography></Stack>:
+    <Box sx={{display:"grid",gridTemplateColumns:"minmax(0, 1fr)",gap:3,alignItems:"start"}}>
+    <Paper component="section" aria-labelledby="pdf-create-heading" data-testid="pdf-create-card" elevation={0} sx={{minWidth:0,p:{xs:2.5,sm:4},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff",boxShadow:"0 6px 24px #b96d8d08"}}>
+      <Stack direction="row" sx={{alignItems:"center",gap:1.5,mb:1.5,flexWrap:"wrap"}}>
+        <Box sx={{display:"flex",p:1,bgcolor:"#fff1f5",color:"#b96d8d",borderRadius:2}}><DescriptionRounded aria-hidden="true"/></Box>
+        <Typography id="pdf-create-heading" component="h2" sx={{fontWeight:800,fontSize:{xs:21,sm:24}}}>Tạo tài liệu PDF</Typography>
+        {!loading&&caps&&!enabled&&<Chip size="small" label="Đang chuẩn bị" sx={{bgcolor:"#fff3d5",color:"#745532"}}/>}
+      </Stack>
+      <Typography sx={{fontSize:14,color:"#726070",lineHeight:1.7}}>Dán link Google Drive, mỗi dòng một link.</Typography>
+      <Alert severity="info" icon={<InfoOutlined fontSize="small"/>} sx={{mt:2,bgcolor:"#fff5f8",color:"#726070",borderRadius:3,"& .MuiAlert-icon":{color:"#b96d8d"}}}>
+        Lịch sử và tên tài liệu hiển thị công khai trên các thiết bị. Chỉ gửi tài liệu phù hợp để chia sẻ công khai, không chứa thông tin riêng tư.
+      </Alert>
+      {loading?<Stack role="status" direction="row" spacing={1} sx={{mt:2,alignItems:"center"}}><CircularProgress size={20}/><Typography>Đang kiểm tra công cụ…</Typography></Stack>:
+        !caps?<Typography role="status" sx={{mt:2,color:"#726070"}}>Chưa kiểm tra được công cụ. Bạn có thể nhấn Làm mới để thử lại.</Typography>:
         !enabled?<Alert severity="info" sx={{mt:2}}>Công cụ PDF đang được chuẩn bị. Chưa thể tạo tài liệu lúc này.</Alert>:null}
-      <TextField label="Liên kết Google Drive" data-testid="pdf-links" fullWidth multiline minRows={3} maxRows={8} sx={{mt:2}}
+      <TextField label="Liên kết Google Drive" data-testid="pdf-links" fullWidth multiline minRows={4} maxRows={8} sx={{mt:3,"& .MuiOutlinedInput-root":{borderRadius:3},"& .MuiFormHelperText-root":{color:"#726070",lineHeight:1.7}}}
         placeholder="https://drive.google.com/file/d/…/view" value={links} disabled={!enabled||busy}
-        onChange={e=>setLinks(e.target.value)} helperText={`Tối đa ${caps?.maxLinksPerBatch??5} liên kết, mỗi dòng một link.${caps?.maxPages ? ` Tối đa ${caps.maxPages} trang/tài liệu.` : ''}`}/>
-      {caps?.maxSourceBytes&&caps.maxBytes?<Typography sx={{fontSize:12,color:"#866a77",mt:1}}>
-        PDF nguồn tối đa {caps.maxSourceBytes/1048576} MiB · PDF kết quả tối đa {caps.maxBytes/1048576} MiB.
-      </Typography>:null}
+        onChange={e=>setLinks(e.target.value)} helperText={caps?`Tối đa ${caps.maxLinksPerBatch} liên kết, mỗi dòng một link.${caps.maxPages ? ` Tối đa ${caps.maxPages} trang/tài liệu.` : ''}`:"Mỗi dòng một link. Giới hạn sẽ hiển thị sau khi kiểm tra công cụ."}/>
+      {caps&&<Typography sx={{fontSize:13,color:"#726070",mt:1,lineHeight:1.7}}>
+        {caps.maxSourceBytes?`PDF nguồn tối đa ${caps.maxSourceBytes/1048576} MiB · `:""}PDF kết quả tối đa {caps.maxBytes/1048576} MiB.
+      </Typography>}
       {enabled&&links.trim()&&invalid&&<Typography role="alert" sx={{fontSize:13,color:"#b3261e",mt:1}}>{invalid}</Typography>}
-      <Button data-testid="pdf-submit" fullWidth variant="contained" disabled={!enabled||busy||!!invalid}
-        onClick={()=>void submit()} sx={{mt:2,minHeight:48,bgcolor:"#b96d8d","&:hover":{bgcolor:"#985170"}}}>
+      <Box sx={{display:"flex",justifyContent:"flex-end",mt:2.5}}>
+      <Button data-testid="pdf-submit" variant="contained" disabled={!enabled||busy||!!invalid}
+        onClick={()=>void submit()} sx={{width:{xs:"100%",sm:200},minHeight:48,borderRadius:3,bgcolor:"#b96d8d",boxShadow:"none","&:hover":{bgcolor:"#985170",boxShadow:"0 4px 12px #b96d8d26"}}}>
         {busy?"Đang thực hiện…":"Tạo PDF"}
       </Button>
+      </Box>
     </Paper>
-    <Paper component="section" elevation={0} sx={{minWidth:0,p:{xs:2,sm:3},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff"}}>
+    <Paper component="section" aria-labelledby="pdf-history-heading" data-testid="pdf-history-card" elevation={0} sx={{minWidth:0,p:{xs:2.5,sm:4},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff",boxShadow:"0 6px 24px #b96d8d08"}}>
       <Stack component="div" direction="row" spacing={1} sx={{alignItems:"center",justifyContent:"space-between",flexWrap:"wrap"}}>
-        <Typography component="h2" sx={{fontWeight:800,fontSize:19}}>Tài liệu đã xử lý</Typography>
+        <Typography id="pdf-history-heading" component="h2" sx={{fontWeight:800,fontSize:{xs:19,sm:22}}}>Tài liệu đã xử lý</Typography>
         <Button startIcon={<RefreshRounded/>} onClick={()=>void refresh(page)} disabled={busy||loading} sx={{minHeight:44,color:"#b96d8d"}}>Làm mới</Button>
       </Stack>
       <Typography sx={{fontSize:13,color:"#866a77",mt:1}}>Tên gốc hiển thị khi xác định được; tài liệu cũ hoặc chưa có tên dùng mã Drive.</Typography>
-      {!history?.items.length?<Typography sx={{mt:2,color:"#866a77"}}>Chưa có tài liệu nào được gửi lên công cụ.</Typography>:
+      {!history?<Box role="status" sx={{py:3,textAlign:"center",color:"#726070"}}>
+        {loading?"Đang tải tài liệu…":"Chưa tải được lịch sử tài liệu. Nhấn Làm mới để thử lại."}
+      </Box>:!history.items.length?<Box sx={{py:3,textAlign:"center",color:"#726070"}}>
+        <Box sx={{display:"inline-flex",p:1.5,mb:1.5,bgcolor:"#fff1f5",borderRadius:"24px 24px 8px 24px",color:"#b96d8d"}}><LocalFloristRounded aria-hidden="true" sx={{fontSize:32}}/></Box>
+        <Typography sx={{fontWeight:700}}>Chưa có tài liệu nào được xử lý</Typography>
+        <Typography sx={{fontSize:14,mt:1,lineHeight:1.7}}>Tài liệu sẽ xuất hiện tại đây sau khi bạn gửi liên kết.</Typography>
+      </Box>:
         <Stack component="div" spacing={2} sx={{mt:2}}>
           {history.items.map(batch=><Box key={batch.id} sx={{border:"1px solid #f4e6ec",borderRadius:3,p:2}}>
             <Typography sx={{fontSize:12,color:"#866a77",mb:1}}>Ngày gửi: {date(batch.createdAt)}</Typography>
@@ -223,7 +239,7 @@ export function PublicPdfTool() {
               </Box>;
             })}
           </Box>)}
-          {history.total>history.pageSize&&<Stack component="div" direction="row" sx={{justifyContent:"space-between"}}>
+          {history.total>history.pageSize&&<Stack component="div" direction="row" sx={{justifyContent:"space-between",flexWrap:"wrap",gap:1}}>
             <Button sx={{minHeight:44}} disabled={page===1} onClick={()=>{setDownloadFeedback(null);setPage(page-1);}}>Trang trước</Button>
             <Typography sx={{alignSelf:"center"}}>Trang {page}</Typography>
             <Button sx={{minHeight:44}} disabled={page*history.pageSize>=history.total} onClick={()=>{setDownloadFeedback(null);setPage(page+1);}}>Trang sau</Button>
