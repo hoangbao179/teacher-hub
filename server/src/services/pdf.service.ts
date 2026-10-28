@@ -123,7 +123,7 @@ export class PdfService {
     try {
       await this.repo.consume(owner,id,digest(token));
       const stream = await this.provider.open(id,signal);
-      return { stream,bytes:job.bytes!,expiresAt:job.expiresAt,
+      return { stream,filename:job.filename,fileId:job.fileId,bytes:job.bytes!,expiresAt:job.expiresAt,
         maxBytes:job.workerVersion===2 ? PDF_LONG_OUTPUT_MAX_BYTES : PDF_OUTPUT_MAX_BYTES,
         timeoutMs:job.workerVersion===2 ? PDF_LONG_DOWNLOAD_MS : 30000,release:() => { this.downloading=false; } };
     } catch (e) { this.downloading=false; if (e instanceof AppError) throw e; throw pdfError(503,'PDF_DOWNLOAD_UNAVAILABLE'); }

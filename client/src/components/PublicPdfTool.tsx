@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Button, Chip, CircularProgress, LinearProgress, Paper, Stack, TextField, Typography } from "@mui/material";
 import { DownloadRounded, RefreshRounded, ReplayRounded } from "@mui/icons-material";
+import { pdfFilename } from "@teacher/shared";
 import type { PdfBatch, PdfBatchList, PdfCapabilities, PdfJob, PdfJobStatus } from "@teacher/shared";
 import { pdfApi, pdfDriveId } from "../api/pdf";
 import { ApiError } from "../api/client";
@@ -35,7 +36,7 @@ function message(error:unknown):string {
     default:return "Thao tác chưa thành công. Vui lòng thử lại.";
   }
 }
-function title(job:PdfJob):string { return "Tài liệu " + job.fileId.slice(0,14) + (job.fileId.length>14?"…":"") + ".pdf"; }
+function title(job:PdfJob):string { return pdfFilename(job.filename,job.fileId); }
 export function PublicPdfTool() {
   const [caps,setCaps]=useState<PdfCapabilities|null>(null);
   const [history,setHistory]=useState<PdfBatchList|null>(null);
@@ -45,6 +46,12 @@ export function PublicPdfTool() {
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
+  const [downloadFeedback,setDownloadFeedback]=useState<{jobId:string;text:string;error:boolean}|null>(null);
+  useEffect(()=>{
+    if(!downloadFeedback || downloadFeedback.error)return;
+    const timer=window.setTimeout(()=>setDownloadFeedback(null),6500);
+    return ()=>window.clearTimeout(timer);
+  },[downloadFeedback]);
   const [page,setPage]=useState(1);
   const mounted=useRef(true),inFlight=useRef(false);
   const detailCache=useRef<Record<string,PdfBatch>>({});
@@ -104,7 +111,7 @@ export function PublicPdfTool() {
   },[refresh,page,needsFastPoll]);
   async function submit(){
     if(busy||!enabled||invalid)return;
-    setBusy(true);setError("");setNotice("");
+    setBusy(true);setError("");setNotice("");setDownloadFeedback(null);
     const fingerprint=JSON.stringify(parts);
     const key=createAttempt.current?.fingerprint===fingerprint?createAttempt.current.key:crypto.randomUUID();
     createAttempt.current={fingerprint,key};
@@ -120,7 +127,7 @@ export function PublicPdfTool() {
   }
   async function retry(job:PdfJob){
     if(busy||!enabled)return;
-    setBusy(true);setError("");setNotice("");
+    setBusy(true);setError("");setNotice("");setDownloadFeedback(null);
     const key=retryAttempts.current.get(job.id)??crypto.randomUUID();
     retryAttempts.current.set(job.id,key);
     try{await pdfApi.retry(job.id,key);retryAttempts.current.delete(job.id);setNotice("Đã gửi lại yêu cầu xử lý.");await refresh(page);}
@@ -128,27 +135,30 @@ export function PublicPdfTool() {
   }
   async function download(job:PdfJob){
     if(busy||caps?.downloadEnabled!==true)return;
-    setBusy(true);setError("");setNotice("");
+    setBusy(true);setError("");setNotice("");setDownloadFeedback(null);
     try{
       const grant=await pdfApi.ticket(job.id);
-      if(job.workerVersion===2){pdfApi.downloadNative(grant.downloadPath,grant.ticket);setNotice("Trình duyệt đang tải PDF. Nếu tải bị gián đoạn, hãy nhấn Tải PDF để thử lại.");return;}
+      if(!mounted.current)return;
+      if(job.workerVersion===2){pdfApi.downloadNative(grant.downloadPath,grant.ticket);setDownloadFeedback({jobId:job.id,text:"Đã gửi yêu cầu tải PDF cho trình duyệt.",error:false});return;}
       const controller=new AbortController();
       const timer=window.setTimeout(()=>controller.abort(),30000);
       let blob:Blob;
       try{blob=await pdfApi.download(grant.downloadPath,grant.ticket,controller.signal);}
       finally{window.clearTimeout(timer);}
+      if(!mounted.current)return;
       const url=URL.createObjectURL(blob);
       const anchor=document.createElement("a");
       anchor.href=url;anchor.download=title(job);document.body.append(anchor);anchor.click();anchor.remove();
       window.setTimeout(()=>URL.revokeObjectURL(url),1000);
-    }catch(e){setError(message(e));}finally{setBusy(false);}
+    }catch(e){if(mounted.current)setDownloadFeedback({jobId:job.id,text:message(e),error:true});}finally{if(mounted.current)setBusy(false);}
   }
-  return <Box data-testid="public-pdf-tool" sx={{maxWidth:820,mx:"auto",color:"#563c49"}}>
+  return <Box data-testid="public-pdf-tool" sx={{color:"#563c49",minWidth:0}}>
     {error&&<Alert severity="error" role="alert" sx={{mb:2}}>{error}</Alert>}
     {notice&&<Alert severity="success" sx={{mb:2}}>{notice}</Alert>}
-    <Paper elevation={0} sx={{p:{xs:2.5,sm:3},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff"}}>
+    <Box sx={{display:"grid",gridTemplateColumns:"minmax(0, 1fr)",gap:3,alignItems:"start","@media (min-width:1024px)":{gridTemplateColumns:"minmax(0, 0.85fr) minmax(0, 1.65fr)"}}}>
+    <Paper elevation={0} sx={{p:{xs:2,sm:3},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff"}}>
       <Typography component="h2" sx={{fontWeight:800,fontSize:21,mb:1}}>Tạo tài liệu PDF</Typography>
-      <Typography sx={{fontSize:14,color:"#866a77"}}>Dán link Google Drive, mỗi dòng một link. Có thể mở lại trang trên thiết bị khác để xem kết quả.</Typography>
+      <Typography sx={{fontSize:14,color:"#866a77"}}>Dán link Google Drive, mỗi dòng một link. Lịch sử và tên tài liệu hiển thị công khai trên các thiết bị. Chỉ gửi tài liệu phù hợp để chia sẻ công khai.</Typography>
       {loading?<Stack component="div" direction="row" spacing={1} sx={{mt:2,alignItems:"center"}}><CircularProgress size={20}/><Typography>Đang kiểm tra công cụ…</Typography></Stack>:
         !enabled?<Alert severity="info" sx={{mt:2}}>Công cụ PDF đang được chuẩn bị. Chưa thể tạo tài liệu lúc này.</Alert>:null}
       <TextField label="Liên kết Google Drive" data-testid="pdf-links" fullWidth multiline minRows={3} maxRows={8} sx={{mt:2}}
@@ -163,12 +173,12 @@ export function PublicPdfTool() {
         {busy?"Đang thực hiện…":"Tạo PDF"}
       </Button>
     </Paper>
-    <Paper component="section" elevation={0} sx={{mt:3,p:{xs:2.5,sm:3},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff"}}>
-      <Stack component="div" direction="row" spacing={1} sx={{alignItems:"center",justifyContent:"space-between"}}>
+    <Paper component="section" elevation={0} sx={{minWidth:0,p:{xs:2,sm:3},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff"}}>
+      <Stack component="div" direction="row" spacing={1} sx={{alignItems:"center",justifyContent:"space-between",flexWrap:"wrap"}}>
         <Typography component="h2" sx={{fontWeight:800,fontSize:19}}>Tài liệu đã xử lý</Typography>
         <Button startIcon={<RefreshRounded/>} onClick={()=>void refresh(page)} disabled={busy||loading} sx={{minHeight:44,color:"#b96d8d"}}>Làm mới</Button>
       </Stack>
-      <Typography sx={{fontSize:12,color:"#866a77",mt:1}}>Tên tài liệu hiện đặt theo mã Drive; chưa có tên file gốc.</Typography>
+      <Typography sx={{fontSize:13,color:"#866a77",mt:1}}>Tên gốc hiển thị khi xác định được; tài liệu cũ hoặc chưa có tên dùng mã Drive.</Typography>
       {!history?.items.length?<Typography sx={{mt:2,color:"#866a77"}}>Chưa có tài liệu nào được gửi lên công cụ.</Typography>:
         <Stack component="div" spacing={2} sx={{mt:2}}>
           {history.items.map(batch=><Box key={batch.id} sx={{border:"1px solid #f4e6ec",borderRadius:3,p:2}}>
@@ -180,15 +190,15 @@ export function PublicPdfTool() {
               const progress=job.progress;
               const showProgress=Boolean(progress)&&!expired&&(active||completed);
               const retryable=(expired||["FAILED","RETRY_EXHAUSTED","EXPIRED"].includes(job.status))&&job.retryAttempts<(caps?.maxRetries??2);
-              return <Box data-testid="pdf-job" key={job.id} sx={{py:1.5,borderTop:"1px solid #f4e6ec"}}>
-                <Stack component="div" direction="row" spacing={1} sx={{justifyContent:"space-between",alignItems:"flex-start"}}>
-                  <Box sx={{minWidth:0}}>
-                    <Typography sx={{fontWeight:700,overflowWrap:"anywhere",fontSize:14}}>{title(job)}</Typography>
+              return <Box data-testid="pdf-job" key={job.id} sx={{py:1.5,borderTop:"1px solid #f4e6ec",display:"grid",gridTemplateColumns:{xs:"minmax(0,1fr)",sm:"minmax(0,1fr) auto"},columnGap:2,alignItems:"start"}}>
+                <Stack component="div" direction="row" spacing={1} sx={{gridColumn:1,justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:1}}>
+                  <Box sx={{minWidth:0,flex:"1 1 180px"}}>
+                    <Typography sx={{fontWeight:700,overflowWrap:"anywhere",fontSize:15}}>{title(job)}</Typography>
                     <Typography sx={{fontSize:12,color:"#866a77"}}>{job.pages!==null?job.pages+" trang · ":""}{job.bytes!==null?(job.bytes/1048576).toFixed(2)+" MB":"Chưa có dung lượng"}</Typography>
                   </Box>
                   <Chip size="small" color={completed?"success":job.status==="FAILED"?"error":"default"} label={expired?"Hết hạn":statuses[job.status]}/>
                 </Stack>
-                {showProgress&&progress&&<Box data-testid="pdf-progress" sx={{mt:1.5}}>
+                {showProgress&&progress&&<Box data-testid="pdf-progress" sx={{mt:1.5,gridColumn:1}}>
                   <Typography sx={{fontSize:12,mb:0.5}} aria-live="polite">
                     {completed ? "Hoàn thành · 100%" : progress.stage==="DISCOVERING" ? "Đang kiểm tra số trang" :
                       `${progress.processedPages}/${progress.totalPages} trang · ${progress.percent}%${progress.stage==="MERGING" ? " · Đang ghép PDF" : ""}`}
@@ -196,28 +206,30 @@ export function PublicPdfTool() {
                   <LinearProgress variant={progress.totalPages===null&&!completed ? "indeterminate" : "determinate"}
                     value={completed?100:progress.percent} aria-label="Tiến độ tạo PDF" sx={{height:6,borderRadius:3}}/>
                 </Box>}
-                {job.status==="FAILED"&&job.errorCode&&<Box sx={{mt:1}}>
+                {job.status==="FAILED"&&job.errorCode&&<Box sx={{mt:1,gridColumn:1,overflowWrap:"anywhere"}}>
                   <Typography sx={{fontSize:12,color:"#866a77"}}>{failureReasons[job.errorCode]??"Không thể xử lý tài liệu này."}</Typography>
                   <Typography sx={{fontSize:12,color:"#866a77",mt:0.5}}>Hệ thống đã dừng xử lý tài liệu này; không còn job chạy phía server.</Typography>
                 </Box>}
-                {job.status==="RESULT_UNCONFIRMED"&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Chưa xác nhận được kết quả. Hệ thống đang tiếp tục kiểm tra.</Typography>}
-                {job.cloudErrorCode&&ongoing.includes(job.status)&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Hệ thống đang thử kết nối lại. Tiến độ đã lưu vẫn được giữ.</Typography>}
-                {active&&!expired&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>Có thể đóng trang trong khi chờ. Tiến độ cập nhật tự động khi hệ thống còn xử lý.</Typography>}
-                <Stack component="div" direction="row" sx={{mt:1,gap:1,flexWrap:"wrap"}}>
+                {job.status==="RESULT_UNCONFIRMED"&&!expired&&<Typography sx={{fontSize:13,mt:1,gridColumn:1}}>Chưa xác nhận được kết quả. Hệ thống đang tiếp tục kiểm tra.</Typography>}
+                {job.cloudErrorCode&&ongoing.includes(job.status)&&!expired&&<Typography sx={{fontSize:13,mt:1,gridColumn:1}}>Hệ thống đang thử kết nối lại. Tiến độ đã lưu vẫn được giữ.</Typography>}
+                {active&&!expired&&<Typography sx={{fontSize:13,mt:1,gridColumn:1,color:"#866a77"}}>Có thể đóng trang trong khi chờ. Tiến độ cập nhật tự động khi hệ thống còn xử lý.</Typography>}
+                <Stack component="div" direction="row" sx={{mt:{xs:1,sm:0},gap:1,flexWrap:"wrap",gridColumn:{xs:1,sm:2},gridRow:{sm:1},alignSelf:"start"}}>
                   {completed&&<Button data-testid="pdf-download" startIcon={<DownloadRounded/>} disabled={busy||caps?.downloadEnabled!==true}
                     onClick={()=>void download(job)} sx={{minHeight:44,color:"#b96d8d"}}>Tải PDF</Button>}
                   {retryable&&<Button data-testid="pdf-retry" startIcon={<ReplayRounded/>} disabled={busy||!enabled}
                     onClick={()=>void retry(job)} sx={{minHeight:44,color:"#b96d8d"}}>Thử lại</Button>}
                 </Stack>
+                {downloadFeedback?.jobId===job.id&&<Alert data-testid="pdf-download-feedback" severity={downloadFeedback.error?"error":"info"} role={downloadFeedback.error?"alert":"status"} aria-live={downloadFeedback.error?"assertive":"polite"} onClose={()=>setDownloadFeedback(null)} sx={{mt:1,gridColumn:"1 / -1",overflowWrap:"anywhere"}}>{downloadFeedback.text}</Alert>}
               </Box>;
             })}
           </Box>)}
           {history.total>history.pageSize&&<Stack component="div" direction="row" sx={{justifyContent:"space-between"}}>
-            <Button disabled={page===1} onClick={()=>setPage(page-1)}>Trang trước</Button>
+            <Button sx={{minHeight:44}} disabled={page===1} onClick={()=>{setDownloadFeedback(null);setPage(page-1);}}>Trang trước</Button>
             <Typography sx={{alignSelf:"center"}}>Trang {page}</Typography>
-            <Button disabled={page*history.pageSize>=history.total} onClick={()=>setPage(page+1)}>Trang sau</Button>
+            <Button sx={{minHeight:44}} disabled={page*history.pageSize>=history.total} onClick={()=>{setDownloadFeedback(null);setPage(page+1);}}>Trang sau</Button>
           </Stack>}
         </Stack>}
     </Paper>
+    </Box>
   </Box>;
 }

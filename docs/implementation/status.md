@@ -80,8 +80,12 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### DEVELOPING
 
-- **PDF từ link Viewer — DEVELOPING, chưa nghiệm thu:** Source có UI public,
-  API/outbox MySQL, Gateway HMAC, Cloud Tasks → Worker riêng tư → GCS và download
+- **PDF từ link Viewer — DEVELOPING, chưa nghiệm thu:**
+  Tên nguồn tùy chọn đi từ direct Content-Disposition/Viewer title qua checkpoint,
+  result và MySQL (migration 0030) đến lịch sử/download UTF-8; thiếu tên fallback
+  Drive ID. Giao diện public một cột dưới 1024 px, hai cột từ 1024 px; thông báo
+  native download tại tài liệu tự ẩn sau 6,5 giây, không xác nhận hoàn tất tải.
+  Source có UI public, API/outbox MySQL, Gateway HMAC, Cloud Tasks → Worker riêng tư → GCS và download
   ticket/stream. V1 giữ 40 trang/20 MiB; v2 opt-in qua chunk gate: 200 trang,
   output 150 MiB, source 20 MiB, phần 10 trang và progress/recovery bền vững.
   V2 mặc định/tối đa 1 link, 3 active, 20 job/giờ gồm manual retry theo owner;

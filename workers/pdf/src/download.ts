@@ -1,3 +1,4 @@
+import { dispositionFilename } from './filename.ts';
 import { request } from 'node:https';
 import { Resolver } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -48,7 +49,7 @@ export const openSource: OpenSource = async (url, signal) => {
     req.end();
   });
 };
-export async function download(fileId: string, path: string, cap: Limits, signal: AbortSignal, open = openSource): Promise<void> {
+export async function download(fileId: string, path: string, cap: Limits, signal: AbortSignal, open = openSource): Promise<string | null | void> {
   let url = sourceURL(`https://drive.google.com/uc?export=download&id=${fileId}`);
   for (let redirects = 0; ; redirects++) {
     signal.throwIfAborted();
@@ -83,6 +84,6 @@ export async function download(fileId: string, path: string, cap: Limits, signal
           { usedBytes: bytes, limitBytes: cap.maxBytes }) : null, chunk);
     } });
     await pipeline(response, bound, createWriteStream(path, { flags: 'wx', mode: 0o600 }), { signal });
-    return;
+    return dispositionFilename(response.headers['content-disposition']);
   }
 }

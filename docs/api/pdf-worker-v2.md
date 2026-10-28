@@ -44,6 +44,21 @@ Object dưới `jobs/UUID/`, mọi create `ifGenerationMatch=0`:
 | output.pdf | Kết quả cuối, metadata sourceHash, bytes, pages, sha256 |
 | result.json | **Vẫn version:1** và exact schema COMPLETED/FAILED v1 |
 
+Manifest v2 và result COMPLETED v1 chấp nhận thêm đúng một field tùy chọn
+`filename` đã chuẩn hóa theo `shared/src/pdf-filename.ts`; field khác vẫn bị từ
+chối. Claim, part, task payload và result FAILED không đổi. Payload cũ không có
+tên vẫn hợp lệ. Tên không tham gia sourceHash/fingerprint/idempotency và không
+thay đổi state machine. Discovery Viewer đọc title trong browser đang mở sau
+capture/discovery thành công; direct đọc Content-Disposition của response cuối.
+Không có tên thì bỏ field, không làm job thất bại.
+
+Tên đi theo metadata immutable của source.pdf (direct dài), manifest.json
+(Viewer/direct dài), output.pdf và result.json. Recovery sau upload mất marker
+hoặc mất result dùng tên của object thắng đã lưu, không lấy lại từ phiên browser.
+API lưu tên khi nhận COMPLETED; không cần thêm endpoint Gateway. Gateway chuyển
+tiếp JSON opaque trong giới hạn hiện tại. Cần rollout consumer trước producer;
+xem [runbook](../operations/cloud-run-pdf-worker.md#rollout-metadata-tên-tài-liệu).
+
 Range = `(N−1)×10+1 .. min(N×10,totalPages)`; checkpoint phải khớp range,
 job/source/expiry/fingerprint, hash 64 hex, bytes nguyên 1..20 MiB. Mất marker
 sau upload PDF phần: đọc lại winning PDF/metadata rồi tạo marker. Duplicate có

@@ -508,6 +508,36 @@ Không chạy script deploy cũ chỉ với SHA cũ mà chưa xét gate/compatib
 helper đi kèm. Khi incident đã xử lý, xác minh source/identity/schema/queue,
 khôi phục recovery rồi đối chiếu job/output còn hiệu lực trước mở lại.
 
+## Rollout metadata tên tài liệu
+
+Metadata tên là mở rộng tùy chọn của manifest v2/result COMPLETED v1, không đổi
+capabilities hay request schema. Không chạy các bước dưới đây tự động trong task code:
+
+1. Backup theo runbook hiện có, áp dụng migration cộng thêm `0030_pdf_filename.sql`
+   trước API mới. Cột nullable, không backfill; atomic ALTER có ledger recovery.
+   Kiểm cột utf8mb4 nullable và job cũ vẫn NULL. DDL có thể giữ metadata lock ngắn;
+   chọn thời điểm phù hợp với tải MySQL, không suy downtime từ test local.
+2. Triển khai API và recovery CLI cùng shared mới trước khi Worker ghi tên;
+   consumer cũ sẽ từ chối manifest/result có field mới. Gateway không đổi code,
+   endpoint, IAM, HMAC hay resource: chuyển tiếp JSON opaque đã đủ khả năng.
+3. Khi được duyệt rollout Worker, tránh chia traffic giữa reader cũ/mới. Cho
+   dispatch đang chạy ở revision cũ hoàn tất trước khi revision mới bắt đầu ghi
+   manifest có tên. Reader mới đọc checkpoint cũ không tên bình thường; giữ queue
+   tuần tự, concurrency/max instance và mọi quota hiện có.
+4. Triển khai frontend sau API. Kiểm direct/Viewer hợp lệ, tên Unicode, tên thiếu,
+   reload/thiết bị khác, recovery mất result và native POST download thực tế.
+
+Rollback UI độc lập được; giữ API/Worker reader tương thích với field mới khi còn
+job/checkpoint/result có tên. Không đưa Worker cũ vào xử lý manifest có filename;
+đợi job liên quan hoàn tất/hết TTL theo quy trình vận hành và đánh giá result còn
+cần đọc trước khi rollback consumer. Không xóa/sửa object bất biến, không drop cột
+hay backfill ngược; cột nullable có thể giữ lại khi rollback application. Nếu cần
+dừng dịch vụ, dùng quy trình incident ở trên và giữ dữ liệu để phục hồi.
+
+Tên tài liệu được công khai cùng lịch sử public hiện có; không áp dụng cho tài liệu
+nhạy cảm. Title Drive có thể thay đổi/không có; fallback không phải lỗi xử lý.
+Fixture tên không thay kiểm chứng Viewer khác Owner có quyền trên Cloud Run thật.
+
 ## Verification phù hợp từng rủi ro
 
 Docs-only: check:docs, check:repo, diff/check, kiểm anchor/reference và đối chiếu

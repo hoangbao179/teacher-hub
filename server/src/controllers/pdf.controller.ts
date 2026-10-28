@@ -2,7 +2,7 @@ import type { Request,Response,NextFunction } from 'express';
 import { Readable,Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { PdfService } from '../services/pdf.service';
-import { PDF_OUTPUT_MAX_BYTES } from '@teacher/shared';
+import { pdfContentDisposition, pdfFilename, PDF_OUTPUT_MAX_BYTES } from '@teacher/shared';
 import { pdfError } from '../services/pdf-validation';
 
 export class PdfController {
@@ -27,7 +27,7 @@ export class PdfController {
     try {
       const file = await this.service.download(owner,String(req.params.id),req.body?.ticket,abort.signal); release=file.release;
       clearTimeout(timer); timer=setTimeout(()=>abort.abort(),Math.max(1,Math.min(file.timeoutMs ?? 30000,Date.parse(file.expiresAt)-Date.now())));
-      res.set({ 'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="pdf-${req.params.id}.pdf"`,
+      res.set({ 'Content-Type':'application/pdf','Content-Disposition':pdfContentDisposition(pdfFilename(file.filename,file.fileId)),
         'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store','Content-Length':String(file.bytes) });
       let bytes=0;
       const bound = new Transform({ transform(chunk: Buffer,_enc,cb) {

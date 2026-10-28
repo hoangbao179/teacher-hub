@@ -21,6 +21,18 @@ const env = {...process.env,NODE_ENV:"test",DB_HOST:process.env.DB_HOST??"127.0.
   PUBLIC_APP_ORIGIN:origin,VITE_API_BASE_URL:""};
 Object.assign(process.env,env);
 const policy=createArtifactPolicy(root,"public-pdf");
+const viewports=[[320,720],[390,844],[768,1024],[1024,768],[1440,900],[1920,1080]];
+async function verifyResponsive(page) {
+  for(const [width,height] of viewports) {
+    await page.setViewportSize({width,height});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),`overflow at ${width}`);
+    const form=await page.getByTestId('pdf-submit').boundingBox(),history=await page.getByRole('heading',{name:'Tài liệu đã xử lý'}).boundingBox();
+    assert(width>=1024 ? history.x>form.x+form.width : history.y>form.y,`column layout at ${width}`);
+    for(const button of await page.getByTestId('pdf-job').getByRole('button').all()) {
+      const box=await button.boundingBox();assert(box&&box.height>=44&&box.x>=0&&box.x+box.width<=width,`action target at ${width}`);
+    }
+  }
+}
 let browser,vite,server,pool,admin,createdDatabase=false,passed=false;
 try {
   admin=await mysql.createConnection({host:env.DB_HOST,port:Number(env.DB_PORT),user:env.DB_USER,password:env.DB_PASSWORD});
@@ -53,6 +65,8 @@ try {
   installPlaywrightArtifactPolicy(browser,policy);
   const A=await browser.newContext(),B=await browser.newContext();
   const page=await A.newPage();await page.goto(origin+"/tools");
+  await page.getByText('Chưa có tài liệu nào được gửi lên công cụ.').waitFor();
+  await verifyResponsive(page);
   const input=page.getByTestId("pdf-links").locator("textarea").first(),submit=page.getByTestId("pdf-submit");
   const link="https://drive.google.com/file/d/owned_fixture_12345/view";
   for(const value of ["invalid",Array(6).fill(link).join("\n"),[link,link].join("\n")]) {
@@ -135,17 +149,31 @@ try {
   await cp.reload();await cp.getByTestId("pdf-progress").filter({hasText:"100/200 trang"}).waitFor();
   const lm=Date.now(),lc=new Date(lm).toISOString(),le=new Date(lm+86400000).toISOString();
   results.set(longJob.id,{claim:{version:1,sourceHash:digest(JSON.stringify({provider:"google_drive",fileId:longJob.fileId})),createdAt:lc,expiresAt:le},
-    result:{version:1,jobId:longJob.id,status:"COMPLETED",completedAt:lc,expiresAt:le,objectName:`jobs/${longJob.id}/output.pdf`,bytes:bytes.length,pages:200,sha256:digest(bytes.toString())}});
+    result:{version:1,jobId:longJob.id,status:"COMPLETED",completedAt:lc,expiresAt:le,objectName:`jobs/${longJob.id}/output.pdf`,bytes:bytes.length,pages:200,sha256:digest(bytes.toString()),filename:'Bài tập Tiếng Anh lớp 6 - Unit 3.pdf'}});
   await pool.execute("UPDATE pdf_jobs SET next_action_at=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND WHERE id=?",[longJob.id]);await service.tick(owner,longBatch.id);
   await cp.reload();await cp.getByTestId("pdf-progress").filter({hasText:"100%"}).waitFor();
-  const nativeDownload=cp.waitForEvent("download");await cp.getByTestId("pdf-job").filter({hasText:"long_fixture"}).getByTestId("pdf-download").click();
-  assert.equal(await (await nativeDownload).failure(),null);assert.match(cp.url(),/tools/);
+  assert.equal((await repo.get(owner,longJob.id)).filename,'Bài tập Tiếng Anh lớp 6 - Unit 3.pdf');
+  await cp.clock.install();
+  const namedRow=cp.getByTestId("pdf-job").filter({hasText:'Bài tập Tiếng Anh lớp 6 - Unit 3.pdf'});
+  const startDownload=async()=>{const event=cp.waitForEvent('download');await namedRow.getByTestId('pdf-download').click();const file=await event;assert.equal(await file.failure(),null);assert.equal(file.suggestedFilename(),'Bài tập Tiếng Anh lớp 6 - Unit 3.pdf');};
+  await startDownload();assert.match(cp.url(),/tools/);
+  await cp.getByTestId('pdf-download-feedback').waitFor();
+  await verifyResponsive(cp);
+  await cp.clock.fastForward(4000);await startDownload();
+  await cp.clock.fastForward(3000);assert.equal(await cp.getByTestId('pdf-download-feedback').count(),1,'old timer must not clear a newer notice');
+  await cp.clock.fastForward(3501);assert.equal(await cp.getByTestId('pdf-download-feedback').count(),0);
+  await startDownload();await cp.getByTestId('pdf-download-feedback').getByRole('button').click();
+  assert.equal(await cp.getByTestId('pdf-download-feedback').count(),0);
+  await C.route(url=>url.pathname.endsWith('/download-ticket'),r=>r.fulfill({status:503,json:{error:{code:'PDF_SERVICE_UNAVAILABLE'}}}));
+  await namedRow.getByTestId('pdf-download').click();await cp.getByTestId('pdf-download-feedback').waitFor();
+  assert.equal(await cp.getByTestId('pdf-download-feedback').getAttribute('role'),'alert');
+  await cp.reload();await namedRow.waitFor();assert.equal(await cp.getByTestId('pdf-download-feedback').count(),0);
   // A full page of terminal batches must not generate 20 detail reads every tick.
   const polling=await browser.newContext(),pollPage=await polling.newPage();
   await pollPage.clock.install();
   const records=Array.from({length:20},(_,index)=>{
     const id=`00000000-0000-4000-8000-${String(index).padStart(12,"0")}`;
-    return {id,createdAt:now,rightsConfirmedAt:now,jobs:[{...job,id,batchId:id,status:["QUEUED","RESULT_UNCONFIRMED","RETRY_EXHAUSTED","ENQUEUE_RETRY"][index]??"COMPLETED",expiresAt}]};
+    return {id,createdAt:now,rightsConfirmedAt:now,jobs:[{...job,id,batchId:id,filename:index===19?null:'Bài tập Tiếng Anh rất dài '.repeat(5)+'.pdf',status:["QUEUED","RESULT_UNCONFIRMED","RETRY_EXHAUSTED","ENQUEUE_RETRY","FAILED"][index]??"COMPLETED",errorCode:index===4?'ACCESS_DENIED':null,progress:index===0?{stage:'RENDERING',processedPages:10,totalPages:200,percent:4,nextStep:2}:null,expiresAt}]};
   });
   let detailReads=0,listReads=0;
   await polling.route(url=>url.pathname.startsWith(apiRoot),r=>{
@@ -162,6 +190,7 @@ try {
   const refreshed=pollPage.waitForResponse(response=>response.url().endsWith(records[19].id));
   await pollPage.getByRole("button",{name:"Làm mới"}).click();await refreshed;
   assert.equal(detailReads,44,"Manual refresh must include cached terminal batches");
+  await verifyResponsive(pollPage);
   passed=true;
   console.log("Public PDF MySQL/FakeCloud browser E2E passed: close/recovery, v2 persisted progress/refresh/100%/native POST download, public/private history, retry FAILED/EXPIRED, ticket replay, expiry, mobile layout, binary 401, selective polling/manual refresh.");
 } finally {

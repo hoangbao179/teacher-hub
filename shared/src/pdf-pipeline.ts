@@ -1,7 +1,9 @@
+import { normalizePdfFilename } from './pdf-filename.js';
 import { PDF_LONG_MAX_PAGES, PDF_CHUNK_PAGES, PDF_CHUNK_MAX_BYTES, PDF_MAX_STEPS } from './pdf-limits.js';
 export interface PdfChunkJob { version: 2; jobId: string; source: { provider: 'google_drive'; fileId: string }; step: number }
 export interface PdfManifest {
   version: 2; jobId: string; sourceHash: string; expiresAt: string; totalPages: number;
+  filename?: string;
   mode: 'direct' | 'viewer'; fingerprint: string;
 }
 export interface PdfPart {
@@ -24,7 +26,8 @@ export function isPdfChunkJob(v: unknown): v is PdfChunkJob {
     v.source.provider === 'google_drive' && typeof v.source.fileId === 'string' && /^[A-Za-z0-9_-]{10,128}$/.test(v.source.fileId);
 }
 export function isPdfManifest(v: unknown, jobId: string, sourceHash: string, expiresAt: string): v is PdfManifest {
-  return exact(v, 'version,jobId,sourceHash,expiresAt,totalPages,mode,fingerprint') && v.version === 2 && v.jobId === jobId &&
+  return (exact(v, 'version,jobId,sourceHash,expiresAt,totalPages,mode,fingerprint') ||
+    (exact(v, 'version,jobId,sourceHash,expiresAt,totalPages,mode,fingerprint,filename') && typeof v.filename === 'string' && normalizePdfFilename(v.filename) === v.filename)) && v.version === 2 && v.jobId === jobId &&
     v.sourceHash === sourceHash && v.expiresAt === expiresAt && Number.isInteger(v.totalPages) && v.totalPages >= 1 &&
     v.totalPages <= PDF_LONG_MAX_PAGES && ['direct', 'viewer'].includes(v.mode) && hash(v.fingerprint);
 }

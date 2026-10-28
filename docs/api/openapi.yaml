@@ -1275,6 +1275,7 @@ components:
       description: 'Result Worker hợp lệ xác nhận COMPLETED/FAILED. Task MISSING không chứng minh thất bại; v1 chuyển RESULT_UNCONFIRMED, v2 có thể enqueue lại cùng step/tên theo giới hạn. RETRY_EXHAUSTED cần bằng chứng rõ và vẫn kiểm result muộn đến expiry. Enum/payload giữ tương thích.'
       required: [id, batchId, fileId, status, createdAt, updatedAt, enqueuedAt, completedAt, expiresAt, errorCode, cloudErrorCode, bytes, pages, retryOf, retryAttempts, enqueueAttempts]
       properties:
+        filename: {type: string, nullable: true, description: "Tên PDF tùy chọn; fallback theo fileId khi thiếu."}
         workerVersion: {type: integer, enum: [1, 2]}
         progress:
           type: object

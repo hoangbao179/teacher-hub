@@ -115,6 +115,7 @@ tính lượt mới. TTL không hủy task/Worker đã chạy; cần điều tra
 | 0027 | pdf_batches, pdf_jobs/outbox, pdf_download_tickets; unique owner/key, FK và indexes |
 | 0028 | pdf_guest_sessions và pdf_guest_batches; link public cùng transaction batch/jobs |
 | 0029 | worker_version mặc định 1, progress_json nullable; job cũ không tự nâng v2 |
+| 0030 | filename VARCHAR(180) utf8mb4 nullable; không backfill; phục hồi ledger sau atomic ALTER |
 
 Timestamp DB dùng UTC DATETIME(3); UI hiển thị Asia/Ho_Chi_Minh. Job history/session
 không có purge tự động trong module này. Ticket hết hạn được dọn khi cấp ticket;
@@ -126,7 +127,30 @@ UI lấy capabilities/list song song; chi tiết đọc tối đa 4 request cùn
 Polling 5 giây khi có job recoverable chưa hết hạn, còn lại 15 giây; ngừng khi tab
 ẩn. Terminal cache chỉ đọc lại khi cần hoặc Làm mới. Key create/retry giữ trong
 ref khi mạng lỗi, không bền qua reload. V2 progress DISCOVERING/RENDERING/MERGING,
-tối đa 99%; chỉ COMPLETED hiển thị 100%. Tên tạm theo Drive ID.
+tối đa 99%; chỉ COMPLETED hiển thị 100%.
+
+`PdfJob.filename` là metadata tùy chọn, nhận từ result COMPLETED hợp lệ và lưu
+trong cùng UPDATE có lease guard với trạng thái job. Direct lấy Content-Disposition
+ở response cuối đã qua source policy; Viewer đọc title công khai sau discovery/render
+thành công, chỉ nhận suffix ` - Google Drive` tại đúng URL tài liệu và loại tiêu đề
+login/lỗi/chung. Không truy vấn thêm endpoint hay phiên Google. Khi thiếu tên,
+UI và download dùng `Tài liệu <fileId>.pdf`; không backfill lịch sử cũ bằng truy vấn
+Drive mới. Tên NFC, tối đa 180 byte UTF-8 gồm `.pdf`, loại ký tự điều khiển/format,
+surrogate, separator/path traversal và tên thiết bị Windows; không lặp `.pdf`.
+Header attachment có ASCII filename và filename* UTF-8. Không ghi tên vào log.
+
+Lịch sử public vốn dùng chung giữa thiết bị; filename làm lộ thêm nội dung mô tả
+tài liệu cho người đọc public. Form cảnh báo điều này trước khi gửi. Phạm vi
+public/private và kiểm tra quyền API giữ nguyên; không gửi tài liệu nhạy cảm vào
+luồng public. Tên nguồn không phải bằng chứng quyền tải.
+
+Mobile/tablet dùng một cột; từ 1024 px form bên trái và lịch sử rộng hơn bên phải,
+container tối đa MUI lg. Tên xuống dòng, trạng thái wrap và action có vùng bấm ≥44 px.
+Phân trang/API vẫn giữ 20 batch. Native download hiển thị thông báo tại tài liệu
+“Đã gửi yêu cầu tải PDF cho trình duyệt”, tự ẩn sau 6,5 giây hoặc đóng tay. Timer
+được hủy khi thay thông báo/unmount; thao tác mới và chuyển trang xóa thông báo cũ.
+Đây chỉ là thông báo bàn giao cho trình duyệt, không xác nhận download hoàn tất;
+lỗi cấp ticket được hiển thị riêng và không tự ẩn như thông báo bàn giao.
 
 Ticket ngẫu nhiên 32 byte, DB chỉ SHA-256, một lần, TTL min(120 giây, job expiry).
 Consume trước mở upstream; đứt tải phải cấp ticket mới. V1 UI nhận Blob với abort

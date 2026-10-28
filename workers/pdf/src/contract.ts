@@ -26,7 +26,7 @@ export interface Job { version: 1; jobId: string; source: { provider: 'google_dr
 export interface Result {
   version: 1; jobId: string; status: 'COMPLETED' | 'FAILED'; completedAt: string;
   expiresAt: string; objectName?: string; bytes?: number; sha256?: string;
-  pages?: number; errorCode?: string;
+  pages?: number; errorCode?: string; filename?: string;
 }
 export const BUCKET = 'teacher-hub-pdf-results-2026';
 export function parseJob(value: unknown): Job {

@@ -1,3 +1,4 @@
+import { normalizePdfFilename } from '@teacher/shared';
 import { createHash } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -11,7 +12,7 @@ import { diagnostic, type Stage } from './diagnostics.ts';
 interface Claim { version: 1; sourceHash: string; createdAt: string; expiresAt: string }
 export interface Dependencies {
   store: Store; download?: typeof download; validate?: typeof validatePDF;
-  render?: (fileId: string, path: string, cap: Limits, signal: AbortSignal) => Promise<void>;
+  render?: (fileId: string, path: string, cap: Limits, signal: AbortSignal) => Promise<string | null | void>;
   enablePrintFallback?: boolean; tempRoot?: string;
   log?: (value: string) => void;
 }
@@ -58,7 +59,7 @@ export async function processJob(job: Job, cap: Limits, signal: AbortSignal, dep
       !Number.isInteger(Number(m.pages)) || Number(m.pages) < 1 || Number(m.pages) > cap.maxPages ||
       !Number.isFinite(Date.parse(m.completedAt))) throw new JobError('STORAGE_UNAVAILABLE', true);
     return finish({ ...base, status: 'COMPLETED', objectName: `${prefix}output.pdf`, bytes: Number(m.bytes),
-      pages: Number(m.pages), sha256: m.sha256, completedAt: m.completedAt });
+      pages: Number(m.pages), sha256: m.sha256, ...(normalizePdfFilename(m.filename) ? {filename: normalizePdfFilename(m.filename)!} : {}), completedAt: m.completedAt });
   };
   if (Date.now() >= Date.parse(claim.expiresAt)) {
     return finish({ ...base, status: 'FAILED', errorCode: 'JOB_EXPIRED', completedAt: createdAt });
@@ -72,10 +73,11 @@ export async function processJob(job: Job, cap: Limits, signal: AbortSignal, dep
   try {
     const path = join(dir, 'source.pdf');
     try {
+      let filename: string | null = null;
       let info: Awaited<ReturnType<typeof validatePDF>>;
       try {
         const sourceCap = { ...cap, maxBytes: cap.maxSourceBytes ?? cap.maxBytes };
-        await (deps.download ?? download)(job.source.fileId, path, sourceCap, signal);
+        filename = normalizePdfFilename(await (deps.download ?? download)(job.source.fileId, path, sourceCap, signal));
         stage = 'direct-validation';
         // Unchanged direct bytes must satisfy both source and output limits.
         info = await (deps.validate ?? validatePDF)(path, { ...sourceCap, maxBytes: Math.min(sourceCap.maxBytes, cap.maxBytes) }, signal);
@@ -91,12 +93,12 @@ export async function processJob(job: Job, cap: Limits, signal: AbortSignal, dep
         await rm(path, { force:true });
         stage = 'viewer-render';
         const render = deps.render ?? (await import('./renderer.ts')).renderPrintablePdf;
-        await render(job.source.fileId, path, cap, signal);
+        filename = normalizePdfFilename(await render(job.source.fileId, path, cap, signal));
         stage = 'viewer-validation';
         info = await (deps.validate ?? validatePDF)(path, cap, signal);
       }
       stage = 'storage';
-      await store.create(`${prefix}output.pdf`, { path, metadata: { sourceHash, ...Object.fromEntries(
+      await store.create(`${prefix}output.pdf`, { path, metadata: { sourceHash, ...(filename ? {filename} : {}), ...Object.fromEntries(
         Object.entries(info).map(([k, v]) => [k, String(v)])), completedAt: new Date().toISOString() } }, signal);
       const result = await recover();
       if (!result) throw new JobError('STORAGE_UNAVAILABLE', true);
