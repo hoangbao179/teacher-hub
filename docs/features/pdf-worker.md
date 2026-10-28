@@ -48,6 +48,31 @@ flowchart LR
 
 ## Phiên bản và giới hạn
 
+### Giao diện public `/tools`
+
+Hero căn giữa, tiêu đề và mô tả nằm một dòng từ 1024px; mobile xuống dòng tự
+nhiên. Vùng công cụ rộng tối đa 1080px, card tạo PDF và lịch sử luôn xếp dọc,
+cách nhau 24px. Nút tạo PDF rộng toàn form trên mobile, căn phải ở màn lớn.
+Giữ nền kem, viền hồng pastel và hoa trang trí.
+
+Form dùng toàn chiều rộng card, không có hai khối hỗ trợ “Lưu ý nhỏ” và
+“Trạng thái công cụ”. Textarea cao khoảng 144px khi trống trên desktop.
+Loading/lỗi kiểm tra/chưa khả dụng chỉ hiện thông báo ngắn; khi enabled không
+hiện thông báo trạng thái bổ sung. Lịch sử public vẫn dùng chung giữa thiết bị.
+Helper text là câu cố định theo yêu cầu UI: “Tối đa 5 liên kết, mỗi dòng một
+link. Tối đa 200 trang/tài liệu.” Không hiển thị dòng dung lượng nguồn/kết quả.
+Câu hướng dẫn này không thay đổi validation/quota hoặc cấu hình xử lý: API
+capabilities vẫn quyết định giới hạn thực tế, gồm v2 có thể chỉ nhận 1 link.
+Trạng thái kiểm tra công cụ, chưa khả dụng và lỗi tải được phân biệt; lịch sử
+chỉ hiện empty state sau khi tải thành công và không có tài liệu.
+
+Regression trình duyệt `teacher-tools.e2e.mjs` giữ fixture v1, bổ sung fixture
+v2 (1 link, 200 trang, nguồn 20 MiB, kết quả 150 MiB), loading/lỗi API, tên dài,
+tiến độ và kiểm tra bố cục tại 360/390/430/768/1023/1024/1280/1440px. Đây là kiểm thử UI với
+API giả lập, không chứng minh capabilities production hay xử lý PDF thực tế.
+
+### Giới hạn theo phiên bản
+
 Nguồn chuẩn: `shared/src/pdf-limits.ts`, `server/src/config/pdf-settings.ts` và
 guard Worker. `PDF_CHUNKED_JOBS_ENABLED=true` cần đồng bộ các tầng để dùng v2.
 

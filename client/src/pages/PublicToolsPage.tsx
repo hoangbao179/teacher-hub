@@ -32,15 +32,15 @@ export function PublicToolsPage() {
         </Stack>
       </Container>
 
-      <Container component="main" maxWidth="lg" sx={{ flex: 1, pt: { xs: 4, sm: 6 }, pb: 5 }}>
-        <Box sx={{ textAlign: "center", position: "relative", px: { xs: 1, sm: 3 }, pb: 4 }}>
-          <Box sx={{ position: "absolute", width: 74, height: 96, right: 0, top: -10, opacity: 0.7, pointerEvents: "none" }}><GardenSprig /></Box>
-          <Box sx={{ display: "inline-flex", p: 1.5, borderRadius: "24px 24px 24px 8px", bgcolor: "#f9e0e9", color: "#b96d8d", mb: 2 }}>
+      <Container component="main" maxWidth={false} sx={{ maxWidth: 1128, flex: 1, pt: { xs: 2, sm: 3 }, pb: 5 }}>
+        <Box sx={{ textAlign: "center", position: "relative", px: { xs: 1, sm: 3 }, pb: 3 }}>
+          <Box sx={{ position: "absolute", width: 64, height: 78, right: 0, top: -8, opacity: 0.7, pointerEvents: "none" }}><GardenSprig /></Box>
+          <Box sx={{ display: "inline-flex", p: 1.5, borderRadius: "24px 24px 24px 8px", bgcolor: "#f9e0e9", color: "#b96d8d", mb: 1.5 }}>
             <LocalFloristRounded sx={{ fontSize: 32 }} aria-hidden="true" />
           </Box>
           <Typography sx={{ color: "#b96d8d", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", mb: 1.5 }}>CHUẨN BỊ BÀI, THÊM NIỀM VUI</Typography>
-          <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: 32, sm: 40 }, lineHeight: 1.3, letterSpacing: "-0.035em", textWrap: "balance" }}>Góc công cụ<br />của cô Vy</Typography>
-          <Typography sx={{ color: "#72677b", mt: 2, lineHeight: 1.8, maxWidth: 370, mx: "auto" }}>Một góc nhỏ để việc chuẩn bị bài giảng nhẹ nhàng hơn, mỗi ngày một chút.</Typography>
+          <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: 32, sm: 40 }, lineHeight: 1.3, letterSpacing: "-0.035em", textWrap: "balance" }}>Góc công cụ của cô Vy</Typography>
+          <Typography data-testid="tools-description" sx={{ color: "#72677b", mt: 1.5, lineHeight: 1.8, mx: "auto" }}>Một góc nhỏ để việc chuẩn bị bài giảng nhẹ nhàng hơn, mỗi ngày một chút.</Typography>
         </Box>
 
         <PublicPdfTool />

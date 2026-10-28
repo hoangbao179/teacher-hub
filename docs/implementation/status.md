@@ -23,7 +23,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 ### ACTIVE — dùng thực tế
 
 - **Góc công cụ public**: `/tools` không yêu cầu đăng nhập, nhận link Google Drive,
-  không checkbox quyền tải; quota và giới hạn hiển thị từ capabilities. Lịch sử
+  không checkbox quyền tải; quota/validation theo capabilities, hướng dẫn cố định
+  “Tối đa 5 liên kết, mỗi dòng một link. Tối đa 200 trang/tài liệu.” Lịch sử
   public dùng chung giữa thiết bị; cookie chỉ dùng submit/idempotency. PDF từ
   Viewer vẫn **DEVELOPING**, chưa nghiệm thu production; xem mục PDF bên dưới.
 - **Teacher Tools quản trị (giao diện mặc định sau đăng nhập)**: `/admin/tools` cùng toàn bộ `/admin/*` tiếp tục nằm trong auth boundary hiện hành. Khi legacy tắt, các route quản trị cũ chuyển về `/admin/tools` sau khi xác thực; khách vẫn được đưa tới `/admin/login`. Trang public `/tools` không thay thế màn đăng nhập hay trang công cụ quản trị.

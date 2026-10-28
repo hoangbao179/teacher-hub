@@ -28,7 +28,7 @@ async function verifyResponsive(page) {
     await page.setViewportSize({width,height});
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),`overflow at ${width}`);
     const form=await page.getByTestId('pdf-submit').boundingBox(),history=await page.getByRole('heading',{name:'Tài liệu đã xử lý'}).boundingBox();
-    assert(width>=1024 ? history.x>form.x+form.width : history.y>form.y,`column layout at ${width}`);
+    assert(history.y>form.y+form.height,`history below form at ${width}`);
     for(const button of await page.getByTestId('pdf-job').getByRole('button').all()) {
       const box=await button.boundingBox();assert(box&&box.height>=44&&box.x>=0&&box.x+box.width<=width,`action target at ${width}`);
     }
@@ -75,7 +75,7 @@ try {
   installPlaywrightArtifactPolicy(browser,policy);
   const A=await browser.newContext(),B=await browser.newContext();
   const page=await A.newPage();await page.goto(origin+"/tools");
-  await page.getByText('Chưa có tài liệu nào được gửi lên công cụ.').waitFor();
+  await page.getByText('Chưa có tài liệu nào được xử lý',{exact:true}).waitFor();
   await verifyResponsive(page);
   const input=page.getByTestId("pdf-links").locator("textarea").first(),submit=page.getByTestId("pdf-submit");
   const link="https://drive.google.com/file/d/owned_fixture_12345/view";
