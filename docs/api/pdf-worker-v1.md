@@ -1,116 +1,57 @@
-# PDF worker contract v1
+# Contract Worker PDF v1
 
-> **Phạm vi source v1, không phải yêu cầu nghiệp vụ cuối cùng.** Đọc
-> [Viewer PDF product contract](../product-spec/pdf-viewer-links.md).
-> Worker chỉ hỗ trợ file được tải trực tiếp; `Cloud PDF E2E: PASS` với
-> file public downloadable không chứng minh hỗ trợ mọi liên kết Viewer.
-> Không thêm viewer screenshot bypass khi owner/admin tắt tải/copy/print.
+## Phạm vi và request
 
-Status: implemented for local fixture verification; production processing disabled.
-No Teacher Hub API, database, queue dispatch or teacher download authorization is
-implemented here. Task 2 consumes this contract; Task 3 and cloud E2E remain gates.
+V1 vẫn cần để xử lý job đã lưu và khi v2 chưa bật. Đọc
+[yêu cầu quyền](../product-spec/pdf-viewer-links.md),
+[đặc tả API/job](../features/pdf-job-api.md) và [v2](pdf-worker-v2.md).
+Contract không tuyên bố production đã kích hoạt.
 
-### Compression and byte budgets
-
-The v1 transport/result schema is unchanged. Product limits come from
-`shared/src/pdf-limits.ts`: source download and output are independent 20 MiB
-bounds; `PDF_SOURCE_MAX_BYTES` and `PDF_MAX_BYTES` may only lower their respective
-ceilings. A direct PDF must pass both. Viewer capture holds one PNG at a time
-(32 MiB encoded-PNG bound, distinct from decoded native memory), enforces 12 MP
-and >=200 effective DPI, then tries JPEG 90/85/80 from native PNG with 4:4:4 chroma.
-500 KB/page is a soft target, never a new failure code or per-page cap. Existing
-`FILE_TOO_LARGE` output/embedded accounting and final qpdf validation remain.
-The active page ceiling stays 40; 150 MiB and 200 pages are not accepted by v1.
-
-## Transport and request
-
-Cloud Tasks sends `POST SERVICE_BASE_URL/jobs`, `Content-Type: application/json`:
+Cloud Tasks gửi POST `/jobs`, Content-Type application/json, tối đa 4.096 byte:
 
 ```json
-{
-  "version": 1,
-  "jobId": "55b797f0-e128-4525-8df5-c3cb92163167",
-  "source": { "provider": "google_drive", "fileId": "owned_fixture_12345" }
-}
+{"version":1,"jobId":"55b797f0-e128-4525-8df5-c3cb92163167","source":{"provider":"google_drive","fileId":"owned_fixture_12345"}}
 ```
 
-Exactly these fields are accepted at both levels. Version is integer `1`.
-Job ID is a lowercase UUID-v4 (RFC variant); file ID matches
-`^[A-Za-z0-9_-]{10,128}$`. Body limit is 4096 bytes. No URL, bucket, output path,
-resource key, credentials or export options can be supplied. These TypeScript
-types and runtime guards live in `workers/pdf/src/contract.ts`, outside the
-client/server workspaces. Task 2 must test payload compatibility against these
-guards rather than invent another worker contract.
+Chỉ đúng các field ở cả hai cấp. UUID-v4 chữ thường, RFC variant;
+fileId `[A-Za-z0-9_-]{10,128}`. Không nhận URL, resourcekey, cookie, credential,
+bucket, output path hay tùy chọn export. Guard: `workers/pdf/src/contract.ts`.
+Cloud Run IAM xác thực OIDC trước process: invoker
+`teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com`, audience bằng base
+URL Worker, không `/jobs`. Header X-CloudTasks không cấp quyền.
 
-Cloud Run IAM validates OIDC before worker code. Use
-`teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com`; audience is exactly
-the service base URL, without `/jobs`. `X-CloudTasks-*` headers grant no authority
-and are not used for authentication or idempotency. Local listeners are loopback
-only; dependency injection is exclusively for controlled tests, never HTTP input.
+## Response và lỗi
 
-## Responses and retry policy
+| HTTP | Ý nghĩa |
+| --- | --- |
+| 200 | Đã lưu result COMPLETED hoặc FAILED; ACK cả lỗi nguồn vĩnh viễn |
+| 400 | Request sai, ví dụ INVALID_REQUEST; không phải result PDF |
+| 413 | BODY_TOO_LARGE |
+| 409 | JOB_CONFLICT: UUID đã gắn nguồn khác |
+| 404 | Processing tắt hoặc route/method không hỗ trợ |
+| 503 | Lỗi tạm thời, retry cùng UUID/nguồn |
 
-| HTTP | Body | Producer/Cloud Tasks meaning |
-| --- | --- | --- |
-| 200 | Result below, COMPLETED or FAILED | Terminal state durably stored; ACK even for permanent processing failure |
-| 400 | `{ "error": "INVALID_REQUEST", "retryable": false }` | Fix producer payload; no job accepted |
-| 413 | `{ "error": "BODY_TOO_LARGE", "retryable": false }` | Fix producer payload |
-| 409 | `{ "error": "JOB_CONFLICT", "retryable": false }` | UUID already bound to another source; never repurpose IDs |
-| 404 | `{ "error": "not_found" }` | Processing disabled (default), unsupported route/method |
-| 503 | `{ "error": "CODE", "retryable": true }` | Retry with the same job ID and source |
+Lỗi HTTP dùng `{error:CODE,retryable:boolean}`, trừ 404 `{error:"not_found"}`.
+Cloud Tasks retry mọi non-2xx bất kể `retryable`; producer phải validate và giới
+hạn queue. Permanent result codes: ACCESS_DENIED, PRINT_UNAVAILABLE,
+UNSUPPORTED_SOURCE, INVALID_PDF, FILE_TOO_LARGE, PAGE_LIMIT_EXCEEDED, JOB_EXPIRED.
+PRINT_UNAVAILABLE còn trong schema/nhánh legacy; renderer active không kiểm Print.
+Không quy ACCESS_DENIED đơn lẻ thành bằng chứng owner cấm in.
 
-Cloud Tasks retries non-2xx regardless of the JSON `retryable` field. Task 2 must
-validate before enqueue, cap queue attempts/retry duration, reconcile exhausted
-tasks in MySQL and never enqueue while the activation gate is closed. No worker
-2xx is sent for an unpersisted transient error. A dropped connection also retries.
+Lỗi tạm thời: SERVICE_UNAVAILABLE (config/IAM/parser launcher), SOURCE_UNAVAILABLE
+(Drive 429/5xx, Viewer chưa sẵn sàng), STORAGE_UNAVAILABLE, TIMEOUT, INTERNAL_ERROR.
+Không persist timeout thành FAILED. Thiếu qpdf/prlimit không phải INVALID_PDF.
 
-Permanent processing codes stored as FAILED: `ACCESS_DENIED` (401/403/404,
-login redirect or explicitly disabled Print control), `PRINT_UNAVAILABLE`
-(no visible matching Print control; restriction vs UI mismatch is unverified),
-`UNSUPPORTED_SOURCE` (HTML/confirmation/native-document response,
-unsafe redirect, encrypted PDF), `INVALID_PDF`, `FILE_TOO_LARGE`,
-`PAGE_LIMIT_EXCEEDED`, `JOB_EXPIRED`.
-Transient 503 codes: `SERVICE_UNAVAILABLE` (gate/config/permissions),
-`SOURCE_UNAVAILABLE` (429/5xx), `STORAGE_UNAVAILABLE`, `TIMEOUT`, `INTERNAL_ERROR`
-(sanitized unexpected I/O, DNS or transport error). No stack, source URL or provider
-diagnostic text is returned or logged. Fixed, allowlisted diagnostic classifications
-are logged internally as described below. A worker timeout is not persisted as permanent.
+## Claim, output và kết quả bất biến
 
-## Safe internal diagnostics
+Bucket cố định `teacher-hub-pdf-results-2026`, prefix `jobs/<jobId>/`:
 
-Worker emits JSON `event=pdf-stage-failed` for a direct failure before fallback
-and for the final processing failure. Fields are `jobId`, SHA-256 `sourceHash`
-(same claim hash), `stage`, `fallbackEnabled`, allowlisted `code`/`reason`, and
-`retryable`. Stages distinguish direct download/validation, Viewer render/validation
-and storage. Reasons distinguish HTML, encryption, redirects, HTTP access,
-missing/ambiguous/disabled Print, unreadable page totals, ambiguous Viewer layout
-(multiple visible headings/images or a visible toolbar in the page wrapper),
-oversized/low-DPI bitmaps and assembled page-count drift. `FILE_TOO_LARGE` reasons
-distinguish per-page PNG budget, cumulative PNG (32 MiB working set), embedded
-JPEG total (within output cap minus structure headroom), serialized PDF output,
-direct download and post-validation size. Byte-budget failures may include
-allowlisted `pageIndex`, `usedBytes` and `limitBytes`. Layout failures may
-include allowlisted `pageIndex` and `ancestorLevel` (wrapper depth). Unknown details become `unclassified` or
-`INTERNAL_ERROR` in logs; result/retry semantics retain the existing contract.
-No source ID/URL, body, cookies, tokens, parser stderr or stack is logged.
-Encrypted PDF validation never triggers Viewer fallback. A failed logging sink
-cannot prevent result persistence. No diagnostic field is added to HTTP/GCS results.
-
-## Durable objects and result schema
-
-Fixed private bucket: `teacher-hub-pdf-results-2026`.
-
-```text
-jobs/<jobId>/request.json
-jobs/<jobId>/output.pdf
-jobs/<jobId>/result.json
-```
-
-`request.json`: `{ version: 1, sourceHash, createdAt, expiresAt }`. Hash is SHA-256
-of JSON `{provider,fileId}` in that order; no raw source ID or URL is stored.
-Expiry is 24 hours after the first claim. All timestamps are UTC ISO strings.
-
-Successful `result.json` and HTTP 200 body:
+- `request.json`: `{version:1,sourceHash,createdAt,expiresAt}`. SHA-256 của JSON
+  `{provider,fileId}` đúng thứ tự; không raw ID/URL trong claim. Hai thời điểm
+  lấy từ cùng một mốc, chênh đúng 24 giờ; UTC ISO có mili giây.
+- `output.pdf`: bytes và custom metadata sourceHash, bytes/pages dạng chuỗi,
+  sha256, completedAt. V1 direct giữ nguyên bytes; Viewer là PDF ảnh đã validate.
+- `result.json`: schema terminal dưới đây; không signed/public URL.
 
 ```json
 {
@@ -126,71 +67,57 @@ Successful `result.json` and HTTP 200 body:
 }
 ```
 
-FAILED has `version`, `jobId`, `status`, `errorCode`, `completedAt`, `expiresAt`;
-it has no output/checksum/size/pages fields. Bytes/pages are positive integers.
-The SHA-256 above is a synthetic schema example, not a measured file checksum.
-PDF custom metadata contains `sourceHash`, decimal `bytes`/`pages`, `sha256`,
-`completedAt`, atomically uploaded together with the original PDF bytes.
-Worker creates no signed/public URL and grants no user download permission.
+Ví dụ tổng hợp, không phải checksum đã đo. FAILED chỉ có version, jobId, status,
+errorCode, completedAt, expiresAt. API kiểm exact fields, bytes/pages nguyên dương,
+SHA-256 64 hex và đường output đúng UUID.
 
-## Idempotency and partial failures
+Mọi create GCS có `ifGenerationMatch=0`. Claim gắn UUID với nguồn; không phải
+lease phân tán. Duplicate có thể lặp công việc nhưng không overwrite. Result
+terminal đầu tiên thắng. Output đã upload nhưng result chưa ghi được sẽ được
+khôi phục từ metadata; đọc winner khi thua race. Nếu FAILED thắng trước output,
+PDF mồ côi không được cấp tải, chờ lifecycle. Retry thủ công dùng UUID mới.
+Không xóa claim/result khi task còn khả năng redelivery.
 
-Every object creation uses `ifGenerationMatch=0`; overwrites/deletes are never
-requested. A 412 is a race to be read and reconciled, not a successful blind ACK.
-The immutable claim binds the UUID to a single source before source access.
-An existing terminal result is authoritative and returned unchanged. A new UUID
-is required to retry a FAILED job after the source or permission changes.
+TTL ứng dụng 24 giờ; lifecycle bảy ngày là chính sách vận hành cần kiểm live,
+không tự xóa ở mốc 24 giờ và không thay quyền tải. Job hết hạn không tải được
+kể cả object còn tồn tại. Kiểm result trước expiry/new work bảo toàn result cũ.
 
-If output exists without a result, its source hash and validation metadata are
-checked, then COMPLETED is created without re-downloading. If upload succeeds but
-the response or result write fails, the next delivery performs this same recovery.
-If result creation loses a generation race, read and return the terminal winner.
-No second output name is generated. Concurrent requests across instances may
-download the same source, but only one output and one result can be created.
-If a concurrent permanent failure wins before another attempt uploads, FAILED
-remains authoritative; any orphan PDF is inaccessible to users and expires by
-bucket lifecycle. This intentionally favors immutable terminal state over repair.
+## Xử lý và giới hạn runtime
 
-Claims without a result expire after 24 hours and persist JOB_EXPIRED. Existing
-results retain their original expiration even on late delivery. Task 2 must deny
-downloads after `expiresAt`, cap retries below 24 hours and never reuse job UUIDs,
-including after bucket lifecycle deletes their claims. The configured seven-day
-lifecycle is eventual cleanup, not application authorization or expiry logic.
-Do not remove claims/results independently while queue deliveries remain possible.
+`PDF_PROCESSING_ENABLED=true`, runtime Cloud Run, `PDF_WORKER_IAM_READY=true`,
+`PDF_TEMP_ROOT=/tmp/pdf-worker` và Storage get/create preflight là điều kiện
+production handler. `/health` chỉ liveness. Handler busy trả 503.
 
-## Limits and security boundaries
-
-| Limit | Default / hard ceiling |
+| Giới hạn | Hành vi source |
 | --- | --- |
-| PDF_MAX_BYTES | 20971520 (20 MiB product default from `@teacher/shared`), may only be lowered |
-| PDF_MAX_PAGES | 40, may only be lowered |
-| PDF_DEADLINE_MS | 22000 ms, may only be lowered; includes body/storage/source/parser |
-| Redirects | 3; bodies discarded without following HTML links/forms |
-| Source headers / DNS | Node 16 KiB header default; IPv4 DNS 2 s, one try |
-| qpdf subprocess | 512 MiB address space; 5 CPU seconds; 6 s wall per invocation; 16 KiB diagnostics |
-| Storage JSON | 16 KiB per response; no SDK/background retries |
-| Temporary volume | explicit tmpfs at /tmp/pdf-worker, at most 32 MiB |
-| Per-instance processing | one job; overlapping request returns 503 |
+| PDF nguồn/output | Mỗi loại 20 MiB; PDF_SOURCE_MAX_BYTES/PDF_MAX_BYTES chỉ hạ ceiling |
+| Trang | PDF_MAX_PAGES mặc định/tối đa 40 |
+| Handler | PDF_DEADLINE_MS mặc định/tối đa 120.000 ms vì fallback luôn bật |
+| Direct redirect | Tối đa 3; HTTPS drive.google.com/uc hoặc drive.usercontent.google.com/download |
+| DNS direct | Chỉ IPv4 public, resolve 2 giây/một try, pin IP vào TLS; không IPv6 |
+| qpdf validate v1 | Address space 512 MiB, CPU 5 giây, wall 6 giây/lần, output 16 KiB |
+| Storage JSON | 16 KiB; fetch có abort, không SDK retry ngầm |
+| Scratch | tmpfs tối đa 32 MiB trên revision chỉ v1; revision v2 cho job v1 dùng mount 384 MiB |
+| Thực thi | Một request/handler instance; queue mục tiêu một dispatch |
 
-The worker constructs only `https://drive.google.com/uc?export=download&id=ID`.
-Allowed redirect destinations are HTTPS `drive.google.com/uc` and
-`drive.usercontent.google.com/download`, default port, no credentials or fragment.
-DNS answers must all be public IPv4; the selected address is pinned into the TLS
-connection with normal hostname/certificate validation. IPv6 is refused. No
-cookies, authorization headers, viewer scraping, print fallback, CAPTCHA or
-download-confirmation form submission is used. MIME type does not establish PDF
-validity. One bounded file is streamed to disk; magic bytes and qpdf strict checks,
-encryption check and page count are required before upload. Parser warnings fail.
-No rasterization/recompression occurs. Validation is not malware sanitization;
-Task 2 must serve downloads as attachments with appropriate browser headers.
+Direct stream bắt đầu `uc?export=download&id=ID`, không theo form HTML. Kiểm magic,
+qpdf encryption/structure/page count/SHA-256; warning cũng bị từ chối. Lỗi direct
+ACCESS_DENIED/UNSUPPORTED_SOURCE phù hợp (HTML hoặc lỗi download) mới fallback.
+PDF mã hóa không fallback. Byte/page overflow không phải lý do chụp lại.
 
-Original bytes are preserved; embedded links, scripts, signatures and other PDF
-features are not removed or certified safe. qpdf cannot prove semantic fidelity
-or that an owner intended this caller to use a document. Operators/teachers must
-use authorized documents. Resource-key links and other Google hosts may fail
-closed; public Drive behavior remains externally unverified.
+Renderer anonymous active luôn dùng view-only, không xác minh Print/canDownload;
+[rủi ro quyền và giới hạn ảnh](../features/pdf-worker.md#renderer-và-khoảng-cách-về-quyền)
+phải được giải quyết riêng. Browser giới hạn 500 request, 64 MiB response-body
+quan sát được, allowlist Google; đây không phải firewall hay trần RAM.
+Chromium sandbox đang tắt. qpdf không phải antivirus; direct PDF giữ cả tính năng
+nhúng, không được chứng nhận đã làm sạch.
 
-References: [GCS create preconditions](https://docs.cloud.google.com/storage/docs/json_api/v1/objects/insert),
-[permission preflight](https://docs.cloud.google.com/storage/docs/json_api/v1/buckets/testIamPermissions),
-[qpdf checks](https://qpdf.readthedocs.io/en/stable/cli.html),
-[Drive download mechanisms](https://developers.google.com/workspace/drive/api/guides/manage-downloads).
+## Chẩn đoán an toàn
+
+Processor v1 emit `pdf-stage-failed`: jobId, sourceHash, stage, fallbackEnabled,
+code/reason/retryable trong allowlist; có thể thêm pageIndex, ancestorLevel,
+usedBytes/limitBytes đã kiểm. Stage: direct-download, direct-validation,
+viewer-render, viewer-validation, storage. Không raw source ID/URL, cookie,
+token, body, parser stderr hay stack. Unknown được chuẩn hóa, logging lỗi không
+chặn persistence. Processor v2 không có cùng lời gọi diagnostic này; không hứa
+log stage đầy đủ cho mọi job. Ý nghĩa lỗi và cách điều tra ở runbook.

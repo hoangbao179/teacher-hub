@@ -1,617 +1,526 @@
-# Cloud Run PDF worker
+# Triển khai và vận hành hệ thống PDF
 
-## Scope and target
+## Cách sử dụng và ranh giới bằng chứng
 
-The owner confirms that the private **health-only** service is deployed, anonymous
-health returns 403 and authenticated health returns 200. These are supplied
-observations, not cloud checks repeated by this task. Source now includes a
-default-disabled PDF job handler, verified only with local fixtures; it has not
-been deployed or cloud-E2E verified. No cloud/IAM/queue mutation or VPS change is
-authorized here. The [PoC](../features/pdf-quality-poc.md) remains separate. See
-[worker architecture](../features/pdf-worker.md) and [contract v1](../api/pdf-worker-v1.md).
-Teacher Hub job persistence/producer/download implementation is described in the
-[PDF API runbook](pdf-job-api.md); its production identity is still blocked and
-neither API submission nor worker processing is activated by Task 2.
+Đây là runbook chuẩn cho Worker, Gateway, VPS và recovery; thay các runbook PDF
+rời trước đây. Đọc [tổng quan](../features/pdf-worker.md),
+[đặc tả API/job](../features/pdf-job-api.md), [v1](../api/pdf-worker-v1.md),
+[v2](../api/pdf-worker-v2.md) và [quyền nguồn](../product-spec/pdf-viewer-links.md).
+Trạng thái hiện hành chỉ tại [status](../implementation/status.md).
 
-| Resource | Infrastructure reported by owner; IAM not re-inventoried here |
+**Mọi khối có nhãn TÁC ĐỘNG đều là hướng dẫn cho đợt đã được duyệt riêng, không
+phải lệnh cần chạy khi đọc/kiểm toán tài liệu.** Không tự deploy, promote, sửa
+IAM/secret/queue/tài nguyên hay xóa dữ liệu. Thiếu quyền đọc nghĩa là CHƯA XÁC MINH,
+không chứng minh tài nguyên không tồn tại. Không đặt review flag khi chưa review.
+
+Phân biệt: code xác nhận thiết kế; test fixture xác nhận tình huống giả lập;
+operator báo cáo là quan sát được cung cấp; production đã xác minh cần thời điểm,
+revision/digest/traffic và kết quả thực. Health/capabilities không chứng minh PDF
+đủ trang hoặc nét in. Một file owned/direct không thay Viewer khác Owner.
+
+## Đích cố định và kiểm tra chỉ đọc
+
+Project `teacher-hub-pdf`, region `asia-southeast1`, registry repository
+`teacher-pdf`, queue `teacher-pdf-queue`, bucket `teacher-hub-pdf-results-2026`.
+Worker/Gateway là `teacher-pdf-worker`/`teacher-pdf-gateway`, runtime SA cùng tên
+`@teacher-hub-pdf.iam.gserviceaccount.com`; invoker là `teacher-pdf-invoker`.
+Không lấy revision từ tên trong báo cáo cũ để suy traffic hiện tại.
+
+PowerShell dùng `gcloud.cmd`/`npm.cmd` để tránh ExecutionPolicy của launcher .ps1;
+không đổi policy hệ thống. Chỉ đọc trên máy operator đã có quyền:
+
+```powershell
+$project = 'teacher-hub-pdf'
+$region = 'asia-southeast1'
+foreach ($name in @('teacher-pdf-worker', 'teacher-pdf-gateway')) {
+  gcloud.cmd run services describe $name --project=$project --region=$region --format='yaml(metadata.name,status.url,status.traffic,status.latestCreatedRevisionName,status.latestReadyRevisionName)'
+  gcloud.cmd run services get-iam-policy $name --project=$project --region=$region --format='table(bindings.role,bindings.members)'
+}
+gcloud.cmd tasks queues describe teacher-pdf-queue --project=$project --location=$region --format='yaml(state,rateLimits,retryConfig,httpTarget)'
+gcloud.cmd storage buckets describe gs://teacher-hub-pdf-results-2026 --format='yaml(lifecycle_config,soft_delete_policy,retention_policy,public_access_prevention,uniform_bucket_level_access)'
+```
+
+Chỉ xem IAM trên máy tin cậy, không dán policy đầy đủ vào issue. `status.traffic`
+cho biết revision thực nhận request và URL tag. Latest created/ready có thể là
+revision **0% traffic**. Đọc đúng mỗi revision nhận traffic và canary cần kiểm:
+
+```powershell
+$revision = '<REVISION_CAN_KIEM_TRA>'
+gcloud.cmd run revisions describe $revision --project=$project --region=$region --format='yaml(metadata.name,spec.containers[0].image,status.imageDigest,status.conditions,spec.serviceAccountName,spec.timeoutSeconds,spec.containerConcurrency,spec.containers[0].resources,spec.volumes,spec.containers[0].volumeMounts)'
+$sha = (git rev-parse HEAD).Trim()
+node scripts/pdf-v2-readiness.mjs $sha
+Invoke-RestMethod 'https://tienganhcovy.com/api/public/pdf/capabilities'
+```
+
+Không dump env/secret. Muốn xem cờ runtime chỉ lọc tên đã biết trong process tin
+cậy hoặc dùng readiness; không in approval JSON, `docker inspect` env, subject
+JWT, `docker compose config` đầy đủ hay gcloud secret access. Readiness dùng bảy
+cloud reads, không sửa gì; cần quyền services.get/getIamPolicy, revisions.get,
+queues.get. Thất bại in reason an toàn, stdout không có PASS JSON.
+
+V2 mong muốn: capabilities 1 link, 3 active, 20 hourly, maxPages 200,
+maxSourceBytes 20971520, maxBytes 157286400 và submit/downloadEnabled true.
+Override quota thấp hơn là hợp lệ; đừng tự đổi runtime.env để khớp quảng bá.
+
+## Chuỗi CI/CD thực tế
+
+`ci.yml` kiểm quality, integration, browser smoke và schedule regression trước
+pipeline VPS; full regression thủ công không tự deploy. Build API/Web dùng
+Dockerfile.api/web, push GHCR theo full SHA. `deploy.yml` dispatch
+`pdf-worker.yml` trên main với exact SHA và correlation run/attempt, đợi thành
+công, lấy đúng artifact readiness. Workflow PDF **không build/push/deploy Cloud
+Run hay đổi traffic**. Nhánh `verify-wif` không có activation_request chỉ kiểm
+WIF/registry; nhánh `v2-readiness` mới đọc Cloud Run/queue.
+
+Artifact readiness không secret, giữ 1 ngày; VPS chỉ nhận version 1, PASS,
+sourceSha khớp candidate, checkedAt không quá 30 phút, tương lai không quá 60 giây.
+Readiness ghim `RELEASE` trong `scripts/pdf-v2-readiness.mjs`, không lấy latest.
+Source SHA evidence là SHA API/Web sắp deploy, không tự chứng minh Cloud image
+được build từ SHA đó. Cần giữ chuỗi build SHA → registry digest → revision riêng.
+
+GitHub Environment `pdf-worker`: main duy nhất, policy type branch rõ ràng,
+custom_branch_policies true/protected_branches false, can_admins_bypass false;
+reviewer optional cho verifier chỉ đọc. Validator chạy trước auth; thiếu trường/
+API lỗi phải chặn. WIF provider còn cần điều kiện numeric repository/owner ID,
+ref main, event workflow_dispatch, workflow/environment/audience/subject đúng.
+Không dùng validator hay marker shell làm thay IAM; loại đường GitHub impersonate
+deployer và kiểm quyền kế thừa/delegation độc lập. Verifier cần quyền đọc readiness
+nhưng không Run deploy, Artifact Registry push hoặc IAM write.
+
+Trên VPS, deployment lock bảo vệ env snapshot/validation/migration. Backup trước
+migration, kiểm disk/inode và giữ image rollback. Root phải provision/reload unit
+trước; deploy xác minh User=deploy, loaded, không NeedDaemonReload, fragment/
+drop-in và đường cha (cả symlink resolved) root-owned, deploy không ghi được.
+Không cài unit/daemon-reload từ deploy và không cấp sudo ALL.
+
+Candidate chạy `verify-pdf-v2` kiểm ledger/schema 0029, worker_version default 1,
+progress nullable và Gateway queue/capabilities qua approval hiện có. Sau health
+Web/API, deploy enable timer đã cài, cập nhật nguyên tử đúng ba key
+PDF_API_ENABLED/PDF_CHUNKED_JOBS_ENABLED/PDF_LONG_PRINT_TASKS_ENABLED, recreate API,
+kiểm live schema/Gateway, recovery chạy thành công, timer active và public tools.
+Các lần deploy sau lặp gate; copy unit template không đồng nghĩa đã cài unit.
+
+## Build, stage và các helper không được dùng nhầm
+
+| Công cụ | Hành vi thực tế / giới hạn |
 | --- | --- |
-| Project / region | `teacher-hub-pdf` / `asia-southeast1` |
-| Artifact Registry | `teacher-pdf` |
-| Cloud Run service | `teacher-pdf-worker` (private health-only deployed) |
-| Runtime identity | `teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com` |
-| Verifier identity | `teacher-pdf-verifier@teacher-hub-pdf.iam.gserviceaccount.com` |
-| Deployer identity | `teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com` |
-| Future caller identity | `teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com` |
-| Results bucket | `teacher-hub-pdf-results-2026` (private, seven-day lifecycle; worker not activated) |
-| Queue | `teacher-pdf-queue` (no real tasks submitted here) |
+| pdf-cloud-stage.mjs --plan/--inspect | Plan/inventory legacy, chỉ đọc; inspect đòi cả hai service private |
+| pdf-cloud-stage.mjs --stage | Build/push/deploy no-traffic legacy; Worker max 3/scratch 32 MiB, Gateway 30 giây, thiếu chunk gate |
+| pdf-cloud-stage-public-hmac.mjs --preflight | Đọc Git/IAM/Docker daemon/secret metadata; Worker private, Gateway đã public-HMAC, không đọc secret payload |
+| pdf-cloud-stage-public-hmac.mjs --stage | Cùng template legacy, giữ traffic; cần review IAM/HMAC và marker public-hmac-no-traffic |
+| pdf-release-one-shot.mjs --stage-and-verify | Gọi public stage → local offline smoke → staged audit; không promote hoặc E2E cloud |
+| pdf-release-audit.mjs --check | Đọc staged revision/digest/0% traffic theo PDF_STAGED_SHA; contract legacy, không thay readiness v2 |
+| pdf-local-runtime-audit.mjs --smoke | Chạy Docker offline đã có, kiểm browser/ảnh/qpdf; không tự pull, không Drive/cloud |
+| deploy-pdf-worker.sh | Tên/marker health-only nhưng thực tế deploy processing=true, không --no-traffic; max 3, scratch 32 MiB; không dùng cho v2 hoặc staging an toàn |
+| pdf-cloud-readiness.mjs --gcloud | Inventory v1 cũ, không phải release gate v2 |
 
-The new image uses Node 24.18.0, qpdf/util-linux, no runtime npm dependencies, a
-non-root user and an allowlisted source build context. TypeScript tooling/types
-are dev-only in the separate worker package. With Cloud Run `K_SERVICE` set it
-listens on `0.0.0.0:$PORT` (8080 default); local execution binds loopback.
-It returns `200 {"status":"ok"}` for `GET /health`, supports `HEAD /health`,
-returns 404 for disabled POST /jobs and unsupported routes, and drains on SIGTERM
-with an eight-second bound. Interrupted jobs rely on redelivery and storage recovery.
-Health means process liveness only; it does not test Storage, Tasks or PDF readiness.
-IAM authentication is enforced at Cloud Run, not by application JWT parsing.
-Local execution has no authentication and must not be exposed publicly.
+**Phát hiện cần PR code riêng:** hai stage helper và one-shot hiện build với
+context `workers/pdf`/`workers/pdf-gateway`, trong khi Dockerfile cần root context
+(`COPY shared/dist`, `COPY workers/...`). Mock orchestration không chứng minh
+build thật. Không chạy lại các helper như một giải pháp deploy v2. Không sửa gate
+cho dễ PASS. Lệnh build đúng context nằm dưới; task tài liệu không sửa scripts.
 
-Target: **1 vCPU / 2 GiB / concurrency 1 / min 0 / max 3**, request-based CPU
-allocation, CPU boost disabled, 30-second request timeout, startup HTTP health
-probe. Both service and revision scaling limits are set explicitly. Ingress is
-`all` to permit authenticated external calls; IAM invoker checking remains enabled,
-and unauthenticated invocation is disabled. The script refuses public service IAM
-bindings before updating an existing service and checks again after deployment.
-Inherited project/folder IAM must also be reviewed by the operator.
+Sau review source/lock/dependency, Docker Linux amd64, Node 24/npm 12 và quyền
+operator, TÁC ĐỘNG LOCAL (build image, không production):
 
-## IAM prerequisites and unresolved permissions
+```powershell
+$sha = (git rev-parse HEAD).Trim()
+$registry = 'asia-southeast1-docker.pkg.dev/teacher-hub-pdf/teacher-pdf'
+$workerImage = "$registry/teacher-pdf-worker:$sha"
+$gatewayImage = "$registry/teacher-pdf-gateway:$sha"
+npm.cmd ci
+npm.cmd run build:shared
+docker build --pull --platform linux/amd64 -f workers/pdf/Dockerfile -t $workerImage .
+docker build --pull --platform linux/amd64 -f workers/pdf-gateway/Dockerfile -t $gatewayImage .
+```
 
-The supplied resource/account names and GitHub Variables do **not** prove any
-bindings exist. No GCP credentials or IAM inventory was inspected here, so the
-following are **required, pending verification**, not confirmed missing grants.
-An authorized operator must compare actual policies and grant only the missing
-permissions; this workflow neither enables APIs nor creates IAM bindings.
+Working tree phải sạch, SHA đã review/CI đạt, không credential trong context.
+Worker image có browser, qpdf/util-linux, npm runtime dependencies; không còn
+health-only dependency-free. Kiểm image size/layers/cache, non-root, browser
+sandbox/egress, qpdf và tmpfs. Smoke offline chỉ chứng minh image chạy fixture.
 
-| Principal | Scope and required permission/role |
+TÁC ĐỘNG REGISTRY (chỉ sau duyệt push):
+
+```powershell
+gcloud.cmd auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+docker push $workerImage
+docker push $gatewayImage
+$workerDigest = (gcloud.cmd artifacts docker images describe $workerImage --project=teacher-hub-pdf --format='value(image_summary.digest)').Trim()
+$gatewayDigest = (gcloud.cmd artifacts docker images describe $gatewayImage --project=teacher-hub-pdf --format='value(image_summary.digest)').Trim()
+```
+
+Push image **không cập nhật production**. Dùng immutable digest, ghi mapping SHA
+và digest trong evidence riêng. Index digest có thể khác manifest linux/amd64 do
+image index chứa cả manifest platform và attestation. Không tự thay pin bằng một
+digest bất kỳ thấy trong log. Chỉ đọc để đối chiếu cấu trúc:
+
+```powershell
+docker buildx imagetools inspect "$registry/teacher-pdf-worker@$workerDigest" --raw
+```
+
+Đọc `mediaType`, descriptors platform và digest con; so `spec.containers.image`
+với digest deploy và `status.imageDigest` revision. Readiness hiện so nghiêm ngặt
+cả hai với một pin; nếu index/manifest khác, gate có thể fail dù cùng lineage.
+Cần review bằng chứng registry/revision và PR pin/logic phù hợp; không bỏ check.
+[Docker giải thích cấu trúc index/attestation](https://docs.docker.com/build/metadata/attestations/attestation-storage/).
+
+## Tạo revision v2 không chuyển traffic
+
+TÁC ĐỘNG CLOUD: chỉ khi đã duyệt đầy đủ cấu hình v2/IAM/secret/cost. Chụp inventory
+traffic/config trước; giữ cả image và revision rollback. Các command này giữ env/secret khác bằng update; phải đối chiếu override hiện có
+với cấu hình đã duyệt. Không cấp IAM, không tạo secret. Secret reference phải là phiên bản số đã được duyệt.
+`--no-traffic` giữ route cũ; tag canary thêm đường truy cập riêng. Cập nhật service
+scaling có thể ảnh hưởng service dù revision mới 0%, phải review diff trước.
+
+```powershell
+$secretRef = '<TEN_SECRET>:<PHIEN_BAN_SO>'
+gcloud.cmd run deploy teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 --image="$registry/teacher-pdf-worker@$workerDigest" --service-account=teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com --no-traffic --tag=pdf-canary --cpu=1 --memory=2Gi --concurrency=1 --min=0 --max=1 --min-instances=0 --max-instances=1 --timeout=180 --no-cpu-boost --cpu-throttling --port=8080 --ingress=all --update-env-vars=PDF_PROCESSING_ENABLED=true,PDF_WORKER_IAM_READY=true,PDF_TEMP_ROOT=/tmp/pdf-worker,PDF_PRINT_FALLBACK_ENABLED=true,PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true,PDF_CHUNKED_JOBS_ENABLED=true --add-volume=name=pdf-temp,type=in-memory,size-limit=384Mi,mount-path=/tmp/pdf-worker
+gcloud.cmd run deploy teacher-pdf-gateway --project=teacher-hub-pdf --region=asia-southeast1 --image="$registry/teacher-pdf-gateway@$gatewayDigest" --service-account=teacher-pdf-gateway@teacher-hub-pdf.iam.gserviceaccount.com --no-traffic --tag=pdf-canary --cpu=1 --memory=256Mi --concurrency=10 --min=0 --max=1 --min-instances=0 --max-instances=1 --timeout=180 --no-cpu-boost --cpu-throttling --port=8080 --ingress=all --update-env-vars=PDF_GATEWAY_ENABLED=true,PDF_LONG_PRINT_TASKS_ENABLED=true,PDF_CHUNKED_JOBS_ENABLED=true,PDF_GATEWAY_WORKER_URL=https://teacher-pdf-worker-851777150171.asia-southeast1.run.app --update-secrets="PDF_GATEWAY_HMAC_KEY=$secretRef"
+```
+
+Re-inventory đúng revision vừa tạo, Ready, SA, digest, mount/env, private Worker,
+Gateway đúng mode đã duyệt và traffic cũ không đổi. Không suy từ latest template.
+Nếu mount name đã tồn tại cần so cấu hình/CLI đang dùng trước, không thêm volume
+thứ hai để vượt guard. Stage lỗi có thể để lại một revision 0%, không tự xóa.
+
+## Canary chứng minh revision thật xử lý
+
+Không coi `/health`, browser launch hoặc staged audit là canary PDF. Cần fixture
+Viewer khác Owner **được phép tải/in**, mở ẩn danh; kiểm quyền ngoài Worker vì
+source hiện không có gate quyền đầy đủ. Không dùng file khóa Print/Copy.
+
+Canary phải có: URL tag → revision name → request log có revision đó → job UUID
+riêng → claim/checkpoint/result/output → pages/bytes/hash/chất lượng. Task vào
+base URL vẫn chạy revision nhận production traffic, không tự chạy canary.
+Gateway provider/allowlist hiện chỉ dùng canonical Worker URL; **không có helper
+E2E tự động route cả pipeline vào tag**. Không trỏ production queue sang tag.
+
+Với operator đã có quyền mint ID token invoker, có thể gọi trực tiếp tagged
+Worker để kiểm runtime và từng step trên UUID fixture mới. TÁC ĐỘNG DỮ LIỆU THỬ
+GCS (không chuyển traffic), PowerShell, không bật transcript/debug/header logging:
+
+```powershell
+$workerBase = 'https://teacher-pdf-worker-851777150171.asia-southeast1.run.app'
+$canaryURL = '<URL_TAG_WORKER_TU_STATUS_TRAFFIC>'
+$jobId = [guid]::NewGuid().ToString()
+$fileId = '<ID_FIXTURE_VIEWER_DUOC_PHEP>'
+$idToken = (gcloud.cmd auth print-identity-token --impersonate-service-account=teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com --audiences=$workerBase).Trim()
+$body = @{version=2;jobId=$jobId;source=@{provider='google_drive';fileId=$fileId};step=0} | ConvertTo-Json -Compress
+Invoke-RestMethod "$canaryURL/jobs" -Method Post -ContentType 'application/json' -Headers @{Authorization="Bearer $idToken"} -Body $body
+Remove-Variable idToken
+```
+
+Token audience canonical base, không URL tag hay `/jobs`. Không in token, không
+copy secret sang browser. Với ACK CHECKPOINTED, đọc manifest/marker và gọi tiếp
+step 1..ceil(totalPages/10)+1 cùng job/source, token mới khi cần, không bỏ bước.
+Direct ≤50 có thể COMPLETED ngay, do đó không chứng minh renderer hay chunk chạy.
+Đối chiếu GCS metadata/result chỉ trên fixture, log đúng revision; download fixture
+được phép, kiểm qpdf/pages/hash và xem mọi trang. Đừng xóa checkpoint để thử lại;
+dùng UUID mới. Thử v1 payload riêng để bảo vệ tương thích.
+
+Gateway canary cần signed HMAC server-side + nonce mới, queue/capabilities/read
+và lỗi chữ ký/replay, secret lấy qua cơ chế operator hiện có; không đưa secret
+vào CLI/history. Allowlist Worker vẫn canonical nên canary Gateway tạo task không
+chứng minh canary Worker. E2E thật qua website/queue phải thực hiện trong môi
+trường cô lập được duyệt hoặc sau promotion có kiểm soát và rollback sẵn sàng.
+Ghi riêng phần chưa chạy, không gộp direct-tag smoke thành E2E toàn hệ thống.
+
+## Promote, readiness pin và API/Web
+
+TÁC ĐỘNG PRODUCTION: sau canary/quyền/tài nguyên/cost review và duyệt traffic,
+chọn revision đã kiểm chứng, không lấy latest mù. Promoting Gateway tương thích
+trước Worker giúp giữ đọc v1/v2; phải bảo đảm route phục vụ job đang có.
+
+```powershell
+$gatewayRevision = '<REVISION_GATEWAY_DA_DUYET>'
+$workerRevision = '<REVISION_WORKER_DA_DUYET>'
+gcloud.cmd run services update-traffic teacher-pdf-gateway --project=teacher-hub-pdf --region=asia-southeast1 --to-revisions="$gatewayRevision=100"
+gcloud.cmd run services update-traffic teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 --to-revisions="$workerRevision=100"
+```
+
+Đây mới là chuyển 100% traffic; tạo revision không làm bước này.
+[Cloud Run mô tả riêng deploy revision và traffic](https://docs.cloud.google.com/run/docs/deploying).
+Sau promotion đọc lại traffic/revision/IAM/queue. Cập nhật `RELEASE` readiness
+bằng PR riêng có mapping digest/revision đã xác minh và tests pin; không đổi pin
+trong task chuẩn hóa tài liệu này. Chuẩn bị PR pin trước, chỉ công nhận live
+readiness sau traffic đã khớp. Chuyển traffic nhưng giữ pin cũ gây
+`TRAFFIC_MISMATCH`/`REVISION_DIGEST_MISMATCH`, pipeline API/Web bị chặn; không tự
+rollback Cloud Run hoặc tự đổi traffic. Hệ thống đang chạy không tự ngừng chỉ
+vì script readiness chạy thất bại. Cần phối hợp cửa sổ phát hành để tránh chặn
+các deployment khác; không bỏ gate.
+
+API/Web deploy là luồng riêng qua CI/GHCR/VPS, không được coi đã cập nhật chỉ vì
+push Worker. Sau deploy kiểm capabilities thực, một job được phép qua
+website → Gateway → Tasks → đúng Worker → GCS → ticket/download trên thiết bị
+khác; kiểm đóng tab/recovery, lỗi quyền, retry/expiry và progress 10 trang. E2E
+200 trang/giấy in và số đo CPU/RAM/cost vẫn là nghiệm thu riêng.
+
+## Cấu hình VPS và hai chế độ xác thực
+
+Compose ≥2.24 cho optional env_file. Host `/opt/teacher-hub/pdf-runtime/` mount
+read-only tại `/run/teacher-pdf`; API có mạng pdf-egress, MySQL vẫn internal,
+không publish API/Web port. `PDF_GATEWAY_APPROVAL_FILE=/run/teacher-pdf/approval.json`.
+Directory root-owned 0755, secret JSON/JWT 0600 owner UID node 1000 (kiểm image
+thật trước provision), parent không cho người không tin cậy ghi. Renew JWT bằng
+file tạm + chmod/chown + rename nguyên tử. Windows không chứng minh Linux modes.
+Không để credential trong Git/image/GitHub Actions/browser, shell history hay log.
+
+Loader chỉ nhận file absolute 50..4096 byte, file thường, Linux không có quyền
+group/other, exact keys, URL/key là string không whitespace. Schema public-HMAC
+bên dưới chỉ là **mẫu không dùng được**, không phải secret cần copy:
+
+```json
+{
+  "kind": "pdf_gateway_v1",
+  "gatewayURL": "https://teacher-pdf-gateway-851777150171.asia-southeast1.run.app",
+  "workerBaseURL": "https://teacher-pdf-worker-851777150171.asia-southeast1.run.app",
+  "hmacKeyHex": "<64_KY_TU_HEX_THUONG_QUA_KENH_BAO_MAT>",
+  "authMode": "hmac_public_v1",
+  "activationApproved": true,
+  "recoveryVerified": true
+}
+```
+
+Chế độ IAM+HMAC bỏ authMode, thay bằng đúng object:
+
+```json
+{"federation":{"audience":"//iam.googleapis.com/projects/851777150171/locations/global/workloadIdentityPools/<POOL>/providers/<PROVIDER>","serviceAccount":"<CALLER>@teacher-hub-pdf.iam.gserviceaccount.com","subjectTokenFile":"/run/teacher-pdf/subject.jwt"}}
+```
+
+Phải kiểm thêm guard `validGatewayFederation` về pool/provider/caller trước cấp
+cấu hình thực. Không nhận cả hai chế độ trong cùng file. Private mode cần issuer
+độc lập chứng thực VPS; token renew trước expiry, ID token cache refresh trước
+một phút. Không ADC, key JSON, token GitHub, cookie Drive hoặc downgrade khi IAM
+lỗi. Hai approval boolean là xác nhận operator, không tự chứng minh recovery.
+Rehearsal dùng file riêng và DB synthetic cô lập, không bật production để thử.
+
+`runtime.env` chỉ giữ cờ/quota không secret. Mẫu chuẩn bị v2 chưa bật:
+
+```dotenv
+PDF_API_ENABLED=false
+PDF_CHUNKED_JOBS_ENABLED=false
+PDF_BATCH_LIMIT=1
+PDF_ACTIVE_LIMIT=3
+PDF_HOURLY_LIMIT=20
+```
+
+Deployment được duyệt mới bật cờ theo helper hiện có. Override hourly=10 cũ vẫn
+cho 10. Legacy PDF_LONG_PRINT_TASKS_ENABLED có thể được ghi true nhưng code
+Gateway luôn gửi 180s. Các env PDF_PRINT_FALLBACK_ENABLED=false và
+PDF_VIEWER_SCREEN_CAPTURE_ENABLED=false không tắt renderer; rollback phải chọn
+revision/code tương thích, không dựa vào các cờ này.
+
+### HMAC, nonce và IAM
+
+HMAC-SHA256 ký chuỗi nối newline:
+`v1`, method, path, timestamp giây, nonce, SHA-256 raw body. Header
+X-PDF-Timestamp (±60 giây), X-PDF-Nonce (32 hex), X-PDF-Signature (64 hex).
+Sai signature/timestamp/schema từ chối trước thao tác Google. Nonce hợp lệ được
+reserve create-only `gateway-nonces/SHA256(nonce)` trước upstream; replay 412 →
+401. Giữ reservation hơn 120 giây từ lần nhận đầu cộng margin clock skew; không
+xóa sớm. Body Gateway ≤8192 byte, JSON upstream ≤16 KiB. Token bucket local:
+enqueue burst 5/20 mỗi phút, read 10/120, download 2/10; một download/process.
+Không phải global quota hoặc DDoS/spending cap.
+
+Gateway chỉ tasks.create/get và queues.get đúng queue, actAs invoker, object.get
+đúng bucket, create chỉ gateway-nonces/, secret accessor đúng secret; Worker chỉ
+object.get/create. Tasks invoker chỉ run.invoker Worker; service agent Tasks cần
+quyền mint OIDC chuẩn. Private caller chỉ run.invoker Gateway và WIF subject
+đúng; không quyền data/deploy. Review quyền kế thừa, prefix condition, secret
+rotation và revocation. Không cấp Admin/list/delete để sửa lỗi readiness.
+
+Public-HMAC là lựa chọn bảo mật riêng: Gateway bỏ IAM invocation check, không
+allUsers/allAuthenticatedUsers binding; Worker vẫn IAM-private. Unsigned
+Gateway `/v1/queue` phải 401 application, unsigned Worker bị Cloud Run 401/403.
+IAM-private Gateway phải kiểm cả IAM lẫn HMAC. Không đổi mode từ một lỗi 403.
+
+### Systemd và kiểm chứng dữ liệu
+
+Root/operator provision unit template đã review trước deploy, TÁC ĐỘNG HOST:
+
+```bash
+cd /opt/teacher-hub
+sudo install -m 644 teacher-pdf-recovery.service teacher-pdf-recovery.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+```
+
+Sudoers cho deploy chỉ cần đúng `systemctl enable --now teacher-pdf-recovery.timer`
+và `systemctl start teacher-pdf-recovery.service` bằng `sudo -n`. Không quyền
+install/reload/ALL. Service User=deploy, OnCalendar mỗi phút, Persistent=true,
+host flock, CLI `node --max-old-space-size=64 dist/scripts/reconcile-pdf.js`
+trong container API đang chạy, không thêm container lâu dài. Heap 64 MiB không
+phải total RSS; đo API+CLI+MySQL trong host 1,5 GB trước tăng tải.
+
+Chỉ đọc trên VPS Linux:
+
+```bash
+cd /opt/teacher-hub
+systemctl show teacher-pdf-recovery.service --property=User,Result,LoadState,NeedDaemonReload,FragmentPath,DropInPaths
+systemctl is-enabled teacher-pdf-recovery.timer
+systemctl is-active teacher-pdf-recovery.timer
+systemctl list-timers teacher-pdf-recovery.timer
+journalctl -u teacher-pdf-recovery.service -n 30 --no-pager
+```
+
+Result success và processed=0 lúc disabled/idle không chứng minh recovery xử lý.
+Cần job synthetic pending, đóng tab, quan sát qua nhiều timer tick và outage/
+restart. Candidate/live `verify-pdf-v2` kiểm ledger 0029 và type/default thật;
+ledger một mình không đủ. Migrations 0027/0028/0029 forward-only, không sửa SQL
+đã áp dụng. 0029 có recovery khi ALTER xong nhưng ledger chưa ghi. Kiểm bằng
+runner/verifier hiện có, không tự chạy SQL lại hoặc restore dump thật để thử.
+
+## Chẩn đoán theo tầng
+
+Bắt đầu bằng job UUID, workerVersion, status, errorCode, cloudErrorCode,
+createdAt/updatedAt/expiresAt, enqueueAttempts, progress.nextStep. Dùng bản đọc
+DB được cấp quyền, không dump source/ticket/secret. HTTP detail có thể tick và
+cập nhật trạng thái; không coi đó là truy vấn thuần read-only vào DB.
+
+| Triệu chứng | Cách kiểm và ý nghĩa |
 | --- | --- |
-| Approved GitHub WIF principal | `roles/iam.workloadIdentityUser` on the verifier SA only |
-| Verifier SA | `roles/artifactregistry.reader` on repository `teacher-pdf` only |
-| Deployer SA (manual only; preserve existing grants) | `roles/artifactregistry.writer` on repository `teacher-pdf` (push and read image digest) |
-| Deployer SA | `roles/run.developer` on the dedicated project; existing-service update/get and getIamPolicy, no setIamPolicy |
-| Deployer SA | `roles/iam.serviceAccountUser` on the runtime SA only (`iam.serviceAccounts.actAs`) |
-| Cloud Run service agent | Google-managed `roles/run.serviceAgent`; same-project image pull relies on this service agent, not runtime Storage privileges |
-| Runtime SA | Owner reports bucket Object Creator; processing also requires `storage.objects.get` on this bucket; no Tasks/Admin/delete/update/list permission needed |
-| Invoker SA | After first deploy, `roles/run.invoker` on this service only, granted by an authorized operator |
-| Human smoke tester | `roles/iam.serviceAccountOpenIdTokenCreator` on invoker SA to mint an ID token for testing; do not give deployer runtime invocation merely to test health |
+| PDF_RATE_LIMITED | Xác định endpoint: session hoặc submit/retry IP (60/h), owner active/hour, hoặc ticket 20 row chưa hết hạn. So effective capabilities và SQL count chỉ đọc; Retry-After thuộc IP fixed-window, không hứa DB quota cùng mốc |
+| Không submit/download | Kiểm PDF_API_ENABLED, approval loader/mode, provider ready, queue policy và v2 capabilities; disabled không chứng minh IAM bị thiếu cụ thể |
+| ENQUEUE_PENDING/RETRY không tiến | Kiểm recovery timer, next_action_at/lease và cloudErrorCode; lease hết 60s có thể reclaim; không reset row hoặc cấp UUID mới tự động |
+| QUEUED lâu / progress đứng | Kiểm đúng task step, queue RUNNING, retry, Worker request log đúng revision; gap do scheduler phút hoặc browser/source chậm. Không có RUNNING riêng |
+| FAILED | Chỉ dùng result.errorCode đã validate; source error khác outage cloud. Không kết luận Worker vẫn chạy hay đã hủy từ lời UI |
+| EXPIRED | Quyền tải hết dù object còn; TTL không hủy task đang chạy. Điều tra stale dispatch rồi manual retry theo cap |
+| RESULT_UNCONFIRMED | Task/result thiếu hoặc enqueue không xác nhận; tiếp tục recovery đến expiry; không biến thành FAILED hoặc retry UUID mới trước hạn |
+| RETRY_EXHAUSTED | Kiểm bằng chứng attempts/thời gian/queue, vẫn nhận late result; manual successor có thể được tạo theo cap |
+| PDF_RESULT_SCHEMA_MISMATCH | Đối chiếu claim exact 24h, source hash, result fields/version/expiry/bytes/pages. Claim cũ sai TTL không sửa immutable; cần attempt mới sau điều kiện hợp lệ |
+| FILE_TOO_LARGE | Phân biệt nguồn, PNG, JPEG embed, final PDF qua stage/reason/bytes; 150 MiB output không cho nguồn >20 MiB; không giảm DPI/nới cap để che lỗi |
+| Tải đứt/busy | Ticket consume trước upstream; lấy ticket mới. Kiểm Gateway slot, deadline 180s, Nginx buffering/190s, exact bytes và disconnect; không retry ticket cũ |
+| Readiness FAIL | Xem bước WORKER/GATEWAY SERVICE/REVISION/IAM hoặc QUEUE và reason; không tự grant IAM/đổi pin/traffic |
 
-Application deployment preserves IAM and requires an existing private service. The
-old --no-allow-unauthenticated path requests an IAM policy write (setIamPolicy),
-which Run Developer does not provide. It is removed together with IAM-check mutation;
-pre/post checks now reject disabled invoker checking, public bindings and read errors.
-Operator bootstrap/configuration needs setIamPolicy separately; never grant Run Admin
-to the application deployer to repair this. No Owner/Editor grant is required. WIF SA impersonation uses Workload Identity User; no JSON key is needed.
+Readiness reason PERMISSION_DENIED, UNAUTHENTICATED, NOT_FOUND, API_DISABLED,
+DEADLINE_EXCEEDED, UNAVAILABLE, GCLOUD_NOT_FOUND, COMMAND_TIMEOUT,
+OUTPUT_LIMIT_EXCEEDED, INVALID_JSON hoặc COMMAND_FAILED là phân loại riêng.
+Validation có TRAFFIC_MISMATCH, REVISION_DIGEST_MISMATCH, RESOURCE_DRIFT,
+SCRATCH_DRIFT, CHUNKS_DISABLED… Không suy nguyên nhân từ log cũ chung chung
+PDF_V2_CLOUD_READ_BLOCKED; auth action lỗi xảy ra trước script.
 
-Verify billing and APIs: `run.googleapis.com`, `artifactregistry.googleapis.com`,
-`iam.googleapis.com`, `iamcredentials.googleapis.com`, `sts.googleapis.com`.
-Cloud Build is unused (Docker builds on the approved operator workstation). Storage/Tasks APIs and
-data roles are not needed for health-only.
+V1 log `pdf-stage-failed` phân biệt direct-download/validation,
+viewer-render/validation và storage. `html-response` không chứng minh cấm tải;
+`login-redirect` khác encrypted-pdf, ambiguous layout, low DPI hoặc byte bound.
+Legacy reason print-disabled chỉ có ý nghĩa với revision/nhánh thực kiểm Print;
+source active hiện không kiểm. V2 chưa emit cùng diagnostic stage như v1, nên
+cần thêm checkpoint/result/task và request log, không hứa có log không tồn tại.
 
-For a later queue integration, separately review task producer `roles/cloudtasks.enqueuer`
-on the queue and `iam.serviceAccounts.actAs` on invoker SA, Cloud Tasks service
-agent `roles/cloudtasks.serviceAgent` for OIDC tokens, service-scoped invoker binding,
-and runtime bucket object permissions/retention. Do not activate any of these flows
-now; the deployed revision remains health-only and source processing remains disabled.
+Chỉ đọc log đúng revision/UUID bằng PowerShell, ví dụ với v1:
 
-## Processing activation: separate operator review, not performed in Task 1
+```powershell
+$filter = 'resource.type="cloud_run_revision" AND resource.labels.service_name="teacher-pdf-worker" AND resource.labels.revision_name="' + $revision + '" AND jsonPayload.event="pdf-stage-failed" AND jsonPayload.jobId="' + $jobId + '"'
+gcloud.cmd logging read $filter --project=teacher-hub-pdf --limit=20 --format='table(timestamp,resource.labels.revision_name,jsonPayload.stage,jsonPayload.code,jsonPayload.reason,jsonPayload.pageIndex,jsonPayload.usedBytes,jsonPayload.limitBytes)'
+```
 
-Object Creator alone cannot read existing claims/results/output metadata. Minimal
-additional bucket-scoped permission: `storage.objects.get`, preferably a custom
-role alongside existing Creator. Object Viewer is a broader alternative because
-it also grants list; review that extra exposure. No Object Admin, delete/update,
-Tasks or project-wide data grant is needed. The worker preflights get/create using
-bucket testPermissions (itself needs no extra IAM permission) before source access
-or object writes. Tokens come from the fixed Cloud Run metadata endpoint; no keys
-or user Drive OAuth are supported. IAM changes remain operator-only.
+Drive lỗi ở source/renderer; Worker 503 retryable có thể parser/storage/timeout;
+Cloud Tasks 401/403 Worker là OIDC/IAM; Gateway 401 là HMAC/replay hoặc IAM tùy
+mode; API cloudErrorCode là lỗi transport/validation đã chuẩn hóa. Gateway chỉ
+ACK duplicate khi Google 409 ALREADY_EXISTS đúng schema, trả TASK_ALREADY_EXISTS;
+nonce replay 401 không được coi enqueue thành công. Unknown cần bằng chứng thêm.
 
-Before activation, after Tasks 2/3 and private cloud E2E:
+## Chi phí, dung lượng và giám sát
 
-1. Inspect actual runtime identity, private bucket/IAM/lifecycle, IAM invoker check
-   and invoker binding. Record the current revision/digest/traffic/config for rollback.
-2. Build/smoke locally, review the image and immutable digest. The retained
-   health-only deploy script does not configure processing prerequisites and must
-   not be used for activation; its default-disabled 404 job smoke remains valid.
-3. Configure a dedicated **in-memory volume**, mount `/tmp/pdf-worker`, explicit
-   size limit **32 MiB**, writable by non-root UID/GID 1000. In Console: service →
-   revision/container configuration → Volumes → In-memory → mount path and size.
-   Reviewed revision YAML fragment (not applied by this task):
+Không có số đo bill/production capacity trong đợt tài liệu này. Lấy đơn giá theo
+region/billing mode hiện tại từ [Cloud Run](https://cloud.google.com/run/pricing),
+[Cloud Tasks](https://cloud.google.com/tasks/pricing),
+[Cloud Storage](https://cloud.google.com/storage/pricing) và network SKU đích VPS.
+Chi phí gồm Worker CPU/RAM thời gian active/cold start/retry, Gateway CPU/RAM
+cho polling/nonce/stream, request, Tasks create/delivery/read, GCS bytes/ops,
+network Gateway→VPS, VPS→browser, registry layers/cache, log, MySQL history/backup.
+Không tính chồng cùng bytes thành cả GCS internet egress và Gateway internet egress.
+Cloud Run cùng region và internet outbound có cách tính riêng; kiểm bảng giá.
 
-   ```yaml
-   containers:
-   - image: REVIEWED_IMAGE_AT_SHA256_DIGEST
-     volumeMounts:
-     - name: pdf-temp
-       mountPath: /tmp/pdf-worker
-   volumes:
-   - name: pdf-temp
-     emptyDir:
-       medium: Memory
-       sizeLimit: 32Mi
-   ```
+Công thức ước tính: Worker activeSeconds × (vCPU × CPU rate + GiB × RAM rate)
++ request; cộng Gateway active **instance** time (không cộng thời gian request
+chồng nhau), Tasks/GCS/egress. Với 200 trang có thể 22 bước, mỗi bước tối đa 5
+attempt; envelope 22×5×120 giây chỉ là mô hình, không trần hóa đơn hay SLA.
+20 lượt nhận/giờ không bảo đảm 20 hoàn thành: nếu 600 giây Worker/job thì một
+Worker tối đa lý thuyết 6 job/giờ trước scheduling gap/retry/cold start.
 
-   Confirm non-root writability on Cloud Run; do not switch to root or silently
-   use unbounded writable root. Preflight checks tmpfs type, total capacity at
-   most 32 MiB and free bytes at least PDF_MAX_BYTES. This volume consumes the
-   existing 2 GiB RAM. Hard-killed attempts can leave files until instance shutdown;
-   if free-space preflight fails, stop dispatch and recycle the instance. Do not
-   remove durable claims/results to unblock processing.
-4. Set `PDF_TEMP_ROOT=/tmp/pdf-worker`, `PDF_WORKER_IAM_READY=true` after review,
-   and finally `PDF_PROCESSING_ENABLED=true` only after all activation gates pass.
-   Cloud Run supplies `K_SERVICE`. Default processing remains 404; enabled but
-   unready returns 503. `PDF_MAX_BYTES`, `PDF_MAX_PAGES`, `PDF_DEADLINE_MS` can only
-   lower the 20 MiB/40 pages/22 seconds ceilings.
-5. Keep 1 vCPU / 2 GiB / concurrency 1 / min 0 / max 3 / request timeout 30 seconds.
-   Larger PDFs require benchmark/review, not automatic resource/timeout changes.
-   Cloud Run's root is not made read-only by this code; local smoke verifies
-   read-only-root compatibility using a separate bounded temporary volume.
-6. Separately review Task 2 producer/queue permissions and retry/cost limits.
-   OIDC identity is the invoker SA; audience is **service base URL**, without
-   `/jobs`. Verify an owned real Drive download, private queue dispatch/storage,
-   duplicate delivery, failures and expiry before teacher access.
+Giả định planning 320 MiB/job giữ 7 ngày ở 20 job/giờ → khoảng 1.050 GiB dữ liệu
+sống cho một owner; còn lifecycle lag, soft delete, nonces, metadata. Một Worker
+có thể không đạt intake này. MySQL history không tự purge; tính index/binlog/
+backup/log trên SSD chung 15 GB. Không lưu PDF/ảnh tạm lâu dài ở API.
 
-Task 2 must authorize teacher downloads and deny them after `expiresAt` (24 hours
-from first claim), using attachment/nosniff headers. The existing seven-day bucket
-lifecycle is eventual cleanup. Worker creates no signed URL. Queue attempts/rate,
-producer limits and monitoring must account for retries/duplicate transfers;
-max instances alone does not cap monthly cost. Review regional CPU/memory/request,
-storage/operations/network egress, registry layers, cache and log retention costs.
+Giữ min 0/max 1 và queue concurrency 1 theo target. Thu ít nhất một tuần arrival,
+p50/p95 queue/completion, active instance time, CPU/RAM peak, 429 theo tầng,
+retry/error, storage bytes/ops, traffic download và daily spend. Chỉ đề xuất tăng
+3/5 Worker khi có backlog vượt mục tiêu đã duyệt và biết bottleneck thật; với
+3 active chung không tận dụng được 5 Worker. Scaling cần duyệt chi phí/queue/
+quota/Gateway/VPS/security riêng. Budget alert và max instances không phải hard
+spend cap. Không tự tăng VPS RAM/swap/container limits hoặc đổi retention.
 
-For future approved rollout, build the reviewed SHA locally, scan/package-review,
-push only when separately authorized, resolve registry digest and deploy exactly
-`IMAGE@sha256:...` with disabled gates first. Inspect the full revision diff,
-mount, IAM and cost settings before final activation. Keep the prior digest.
-Task 1 performs no cloud build/push/deploy/config command.
+## Rollback giữ job, checkpoint và output
 
-To roll back future activation: stop producers first, disable processing, then
-restore the reviewed health-only revision's traffic and previous service config.
-Traffic rollback alone does not restore environment, mount, scaling or IAM. Keep
-private IAM and claims/results until retry windows close; do not auto-delete data.
+### Hồi phục lỗi phát hành thông thường
 
-References: [bounded Cloud Run memory volumes](https://docs.cloud.google.com/run/docs/configuring/services/in-memory-volume-mounts),
-[GCS permission preflight](https://docs.cloud.google.com/storage/docs/json_api/v1/buckets/testIamPermissions).
+Trước thay đổi giữ mapping image SHA/digest, revisions/traffic, mount/scaling/
+timeout/IAM và snapshot runtime.env/Compose/helper qua kênh riêng. Phân biệt:
 
-## Verification and manual deployment
+- **Chỉ tài liệu:** revert commit tài liệu; không có dữ liệu/hạ tầng cần đảo.
+- **No-traffic canary lỗi:** giữ traffic cũ; không xóa job/object để làm sạch.
+- **API activation lỗi:** helper tự restore runtime/env/images chỉ nếu không có
+  job v2 chưa hết hạn ngoài FAILED/EXPIRED. Có job/output còn hiệu lực hoặc DB
+  không đọc được → giữ API/v2 flags/recovery tương thích, báo lỗi để fix-forward.
+- **Cloud revision lỗi:** chỉ route về revision hỗ trợ mọi v1/v2 đang tồn tại;
+  chưa drain không quay về v1-only. Traffic rollback không khôi phục service
+  scaling/IAM/env/mount, cần so snapshot và duyệt phần cần khôi phục.
 
-GitHub Actions supports only manual **verify-wif**, using the verifier identity.
-There is no deployment mode, image build/push, IAM mutation or Cloud Run call.
-Run local checks without cloud authentication or MySQL. Browser fixtures use only
-owned offline images, but require the matching Playwright headless shell:
+TÁC ĐỘNG PRODUCTION, sau khi chọn revision rollback tương thích và được duyệt:
 
 ```bash
-node --test scripts/validate-pdf-environment.test.cjs
-npm --prefix workers/pdf run check
-npm --prefix workers/pdf test
-npm --prefix workers/pdf run test:docker
-bash -n scripts/deploy-pdf-worker.sh
-bash scripts/deploy-pdf-worker.test.sh
+gcloud run services update-traffic teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 --to-revisions="$PREVIOUS_WORKER_REVISION=100"
+gcloud run services update-traffic teacher-pdf-gateway --project=teacher-hub-pdf --region=asia-southeast1 --to-revisions="$PREVIOUS_GATEWAY_REVISION=100"
 ```
 
-The Bash regression mocks all cloud/container calls. It is not a cloud dry run.
-Install standalone dev tooling first with `npm ci --prefix workers/pdf`.
-Before running browser fixtures on Linux, run
-`npx --no-install playwright install --with-deps --only-shell chromium` from
-`workers/pdf`. The Fast quality job performs this after installing locked npm
-dependencies and before the Worker test suite. Installing the Playwright package
-alone does not install its browser binary; a development browser cache or the
-Cloud Run image must not be assumed present on a fresh CI runner.
-For native Linux tests, install `qpdf` and `util-linux` and verify both `qpdf` and
-`prlimit` are executable before E2E. The Fast quality gate installs and probes
-these dependencies explicitly; a generic Ubuntu runner is not the worker image.
-Missing/inaccessible parser executables or launcher failures are retryable
-SERVICE_UNAVAILABLE, not a permanently invalid PDF. Production diagnostics never
-expose parser stderr; only the controlled missing-executable test prints its
-sanitized fixture error. The Linux E2E remains required and is not skipped.
-`test:docker` builds only `teacher-pdf-worker:local-processing-v1`; it pins a
-local context and rejects remote endpoint overrides. It runs Linux/amd64 with
-1 CPU, 2 GiB/no swap, non-root user, read-only root, 32 MiB `/tmp` tmpfs, network
-none, 128 PIDs, dropped capabilities and no-new-privileges. Tests are a read-only
-bind mount, excluded from the runtime image. It prints image size and whole-suite
-cgroup peak/CPU/wall metrics, not production throughput. No credentials are mounted.
+Định nghĩa hai biến từ inventory đã lưu trước khi chạy. Re-inventory traffic,
+readiness pin tương ứng và verify download/recovery. Không down-migrate 0027–29,
+không đổi worker_version job cũ, không xóa claim/marker/result, không restore DB
+đè job mới chỉ để rollback code. Nếu cần ngừng nhận mới nhưng giữ phục hồi/tải,
+source chưa có cờ riêng cho admission: PDF_API_ENABLED=false còn chặn cả tick/
+download. Cần phương án incident được duyệt, không mô tả cờ này là drain an toàn.
+Hạ quota hợp lệ có thể giảm intake mà không sửa dữ liệu.
 
-Manual equivalent (replace WORKER_TEST_DIRECTORY with an absolute local path):
+### Sự cố credential/lạm dụng
+
+Ưu tiên chặn credential bị lộ, chấp nhận gián đoạn có kiểm soát thay vì hứa
+recovery vẫn chạy. Với public Gateway, TÁC ĐỘNG BẢO MẬT sau duyệt incident:
 
 ```bash
-docker build --platform linux/amd64 -t teacher-pdf-worker:local-processing-v1 workers/pdf
-docker run --rm --network none --cpus=1 --memory=2g --memory-swap=2g \
-  --read-only --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=128 \
-  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m,mode=1777 \
-  --mount type=bind,source=WORKER_TEST_DIRECTORY,target=/app/test,readonly \
-  teacher-pdf-worker:local-processing-v1 node test/linux-run.mjs
-docker image inspect teacher-pdf-worker:local-processing-v1 --format '{{.Id}} {{.Size}}'
+gcloud run services update teacher-pdf-gateway --project=teacher-hub-pdf --region=asia-southeast1 --invoker-iam-check
 ```
 
-For later health-only manual updates, first approve the resource/cost budget,
-verify the existing private service, and validate the Linux image. The historical
-bootstrap below is only for separately approved recovery, not an update. Use a clean,
-reviewed checkout on a trusted workstation with approved operator credentials
-(or an already-authorized human impersonating the deployer). Confirm the active
-gcloud account and any configured impersonation before proceeding. No new human
-impersonation grant is authorized by this task. No GitHub OIDC credentials may be
-used. The script preserves private IAM and the separate runtime SA; it does not
-configure credentials or grant roles. It rejects Actions markers, checks the
-source SHA against HEAD, and refuses a dirty checkout:
+Kiểm không còn public IAM binding kế thừa/trực tiếp, unauthenticated request bị
+Cloud Run chặn. Chỉ tắt website không chặn gọi Gateway trực tiếp. Rotate/revoke
+HMAC qua quy trình secret hiện có; private mode thu hồi caller/token liên quan.
+Nếu cần dừng PDF: operator đặt PDF_API_ENABLED=false trong host runtime.env,
+recreate API, stop timer và service. TÁC ĐỘNG HOST, làm với nhận thức download/
+recovery sẽ dừng, giữ dữ liệu để nối lại sau sửa:
 
 ```bash
-export GCP_PROJECT_ID=teacher-hub-pdf GCP_REGION=asia-southeast1
-export SOURCE_SHA=$(git rev-parse HEAD)
-export CONFIRMATION=deploy-health-only
-bash scripts/deploy-pdf-worker.sh
+cd /opt/teacher-hub
+docker compose --env-file .env -f docker-compose.deploy.yml up -d --no-deps api
+sudo systemctl disable --now teacher-pdf-recovery.timer
+sudo systemctl stop teacher-pdf-recovery.service
 ```
 
-A shell marker is defense in depth, not authorization. Removing GitHub's deployer
-impersonation grants is mandatory even though no workflow calls this script.
+Không chạy script deploy cũ chỉ với SHA cũ mà chưa xét gate/compatibility và
+helper đi kèm. Khi incident đã xử lý, xác minh source/identity/schema/queue,
+khôi phục recovery rồi đối chiếu job/output còn hiệu lực trước mở lại.
 
-Post-deployment smoke commands for the authorized operator (not run in preparation):
+## Verification phù hợp từng rủi ro
 
-```bash
-WORKER_URL=$(gcloud run services describe teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 --format='value(status.url)')
-# Expect 401/403; a 200 is a security failure.
-curl -sS -o /dev/null -w '%{http_code}\n' "$WORKER_URL/health"
-# Disable shell tracing; never print or persist this token.
-set +x
-TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com --audiences="$WORKER_URL")
-curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" "$WORKER_URL/health"
-unset TOKEN
-```
+Docs-only: check:docs, check:repo, diff/check, kiểm anchor/reference và đối chiếu
+source. Không cần Docker/MySQL/browser hoặc cloud mutation.
 
-Expected authorized result: `200 {"status":"ok"}`; token audience is the service
-base URL, without `/health`. Confirm authorized POST `/jobs` returns 404. Capture
-only sanitized status/config evidence under ignored `.artifacts/`, never tokens.
+Code Worker cần check/test và Linux có qpdf/util-linux + Playwright headless shell
+đúng package lock; npm install package không cài browser. CI quality đã provision
+các dependency này. Test Docker cần root context/shared build, không dùng lệnh
+build context cũ trong báo cáo. API/recovery cần unit, MySQL synthetic `_test` và
+browser FakeCloud khi liên quan; runner có thể reset/drop test DB, phải kiểm đích.
+Không chạy vào DB lớp học. Không dùng test SKIP làm bằng chứng PASS.
 
-## Cost, retention, rollback and remaining gates
-
-No cloud resources are created by local checks. Future deployment uses separately
-billed Cloud Run, Artifact Registry image/layer storage, logs and network; future
-Storage/Tasks add their own storage/operation costs. No Cloud Build charge is planned.
-Min 0 permits scale to zero; it does not promise zero billing. At configured max 3,
-the nominal active allocation is 3 vCPU / 6 GiB; Cloud Run can temporarily exceed
-instance limits during spikes/maintenance, so max instances is not a spending cap.
-Approve a budget/alerts and workload estimate against current regional pricing
-before deploying; no usage-based monthly estimate or production sizing is proven.
-The VPS 1.5 GB/1 vCPU/15 GB budget remains separate and unchanged.
-
-Before deploy, record current revision, traffic split, image digest and IAM/config.
-For later revisions, an operator can restore traffic using `gcloud run services
-update-traffic teacher-pdf-worker --to-revisions=PREVIOUS_REVISION=100` with the
-same project/region. Traffic rollback does not restore service-level scaling or IAM;
-restore the reviewed previous settings explicitly. For a first-deploy failure,
-there is no prior revision: an operator must approve removal of the health-only
-service. No automatic destructive rollback or IAM repair is implemented.
-
-Full-SHA tags accumulate; approve an Artifact Registry cleanup policy retaining
-active/rollback digests before repeated deployment. Account for compressed images,
-layers, revisions, runner build cache and logs. Do not change bucket lifecycle in
-this step. Local Linux processing smoke is available; real processing IAM, WIF,
-regional quota/billing and private cloud PDF E2E still need operator verification.
-Health-only anonymous/authenticated smoke is owner-reported PASS. This does not
-approve production processing or the PoC pipeline.
-
-## Historical health-only bootstrap: operator only, after explicit approval
-
-The service already exists according to the owner. Do not repeat bootstrap or its
-IAM commands for Task 1 or to activate processing. Retained for recovery context;
-creation/deletion/IAM actions require a separate operator review.
-
-These commands are a manual runbook, not a script invoked by CI. Use a reviewed,
-clean checkout and an operator identity approved for service creation/update,
-`run.services.getIamPolicy`/`setIamPolicy`, repository push and actAs on the runtime
-SA. Those bootstrap permissions belong to the operator, not the deployer. Confirm
-the project has billing/APIs enabled, the repository exists and service is absent.
-A permission/network error is not evidence of absence; stop and resolve it first.
-Review ancestor IAM for public invoker grants before creating the service.
-
-In Bash on an approved workstation with Linux Docker and gcloud, first build/test:
-
-```bash
-set -euo pipefail
-test -z "$(git status --porcelain)"
-BOOTSTRAP_SHA=$(git rev-parse HEAD)
-IMAGE="asia-southeast1-docker.pkg.dev/teacher-hub-pdf/teacher-pdf/teacher-pdf-worker:$BOOTSTRAP_SHA"
-npm --prefix workers/pdf test
-docker build --pull --platform linux/amd64 -t "$IMAGE" workers/pdf
-docker run -d --name pdf-bootstrap-smoke --cpus=1 --memory=2g --memory-swap=2g \
-  --read-only --cap-drop=ALL --security-opt=no-new-privileges "$IMAGE"
-docker exec pdf-bootstrap-smoke node --input-type=module -e 'const r=await fetch("http://localhost:8080/health"); if(r.status!==200 || (await r.json()).status!=="ok")process.exit(1)'
-docker stop --time=10 pdf-bootstrap-smoke
-test "$(docker inspect --format='{{.State.ExitCode}}' pdf-bootstrap-smoke)" = 0
-docker rm pdf-bootstrap-smoke
-```
-
-If the container/probe fails, stop; inspect sanitized errors and remove only the
-named smoke container. After successful smoke and owner approval, push and create:
-
-```bash
-gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
-docker push "$IMAGE"
-DIGEST=$(gcloud artifacts docker images describe "$IMAGE" --project=teacher-hub-pdf --format='value(image_summary.digest)')
-[[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
-gcloud run deploy teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 \
-  --image="${IMAGE%:*}@$DIGEST" \
-  --service-account=teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com \
-  --cpu=1 --memory=2Gi --concurrency=1 --min=0 --max=3 --min-instances=0 --max-instances=3 \
-  --no-cpu-boost --cpu-throttling --timeout=30 --port=8080 --ingress=all \
-  --invoker-iam-check --no-allow-unauthenticated \
-  --startup-probe='httpGet.path=/health,httpGet.port=8080,periodSeconds=5,timeoutSeconds=2,failureThreshold=3' --quiet
-gcloud run services add-iam-policy-binding teacher-pdf-worker \
-  --project=teacher-hub-pdf --region=asia-southeast1 \
-  --member=serviceAccount:teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com \
-  --role=roles/run.invoker
-gcloud run services describe teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 --format=json
-gcloud run services get-iam-policy teacher-pdf-worker --project=teacher-hub-pdf --region=asia-southeast1 --format=json
-```
-
-Confirm the invoker-check-disabled annotation is absent or `false`, resource limits
-and runtime identity match, and service invoker binding contains only the named
-invoker SA. No `allUsers`/`allAuthenticatedUsers`, including inherited grants.
-Perform the anonymous 401/403 and impersonated 200 health tests above; any other
-status is a failed bootstrap. Preserve only sanitized config, digest and revision.
-Do not mark deployment ready merely because gcloud returned success.
-
-First-deploy failure has no prior revision to restore. Stop further dispatches,
-inspect the actual service state (creation may have partially succeeded), and ask
-the owner to approve either repair or deletion of this exact health-only service.
-Do not delete bucket/queue/repository or broaden deployer IAM. A pushed but unused
-digest is handled by the approved image retention policy. Subsequent application
-deployments use the manual script above; IAM remains operator-controlled.
-
-### Validator runtime and language
-
-Keep this small adapter CommonJS: `actions/github-script@v8` supplies `github`,
-`context` and a checkout-relative `require()`; the workflow calls the exported
-async function directly on Node 24. `.mjs` with dynamic import is possible but
-adds no benefit here and would require action-runtime verification. TypeScript
-would need a compatible execution/build mechanism; do not add one just for this
-adapter. A brief JSDoc describes its boundary; runtime schema guards and Node
-regressions cover untrusted responses. Adding checkJs solely here would require
-new type plumbing for the injected Octokit client, without replacing runtime
-validation. Revisit typed extraction if the module grows beyond this adapter.
-
-Application code remains TypeScript by default (strict client/server/shared
-configs). Shared emits ESM and CommonJS; server uses Node16 module resolution;
-client uses ESNext/Bundler. Root automation mostly uses `.mjs`, with `.cjs`
-adapters where needed. The standalone worker retains a small `.mjs` lifecycle
-adapter outside root workspaces; new business modules use erasable TypeScript,
-standalone tsc checks and Node 24 native stripping, without runtime npm dependencies.
-
-## References
-
-- [Google WIF deployment pipelines](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
-- [Google GitHub auth action](https://github.com/google-github-actions/auth)
-- [Cloud Run deploy permissions](https://docs.cloud.google.com/run/docs/deploying)
-- [gcloud run deploy flags](https://docs.cloud.google.com/sdk/gcloud/reference/run/deploy)
-- [Cloud Tasks HTTP/OIDC](https://docs.cloud.google.com/tasks/docs/creating-http-target-tasks)
-- [Cloud Run maximum instances](https://docs.cloud.google.com/run/docs/configuring/max-instances)
-- [Cloud Run pricing](https://cloud.google.com/run/pricing)
-
-## Single-owner Console setup and independent security gates
-
-Perform these steps as the authorized operator, **before dispatch**. This runbook
-is not permission for automated IAM changes. Existing deployer deployment roles
-remain unchanged. Reviewer approval is not simulated in a single-owner repository.
-
-1. Google Cloud Console → select `teacher-hub-pdf` → IAM & Admin → Service
-   Accounts → Create service account: ID `teacher-pdf-verifier`. Skip project-role
-   grants and key creation. Verify its email exactly matches the table above.
-2. Artifact Registry → Repositories → `teacher-pdf` in `asia-southeast1` →
-   Permissions → Grant access: verifier email, **Artifact Registry Reader**
-   (`roles/artifactregistry.reader`). Grant on this repository, not the project.
-   Inspect IAM including inherited roles, groups, conditional bindings and custom
-   roles. Verifier must have no Run Developer/Admin, Registry Writer, Storage
-   Admin, Tasks Admin, Token Creator, Owner/Editor, actAs, or equivalent custom
-   permissions. No extra permission is required for this metadata-only check.
-3. IAM & Admin → Workload Identity Federation → inspect the pool and provider.
-   Use a dedicated pool or audit **every provider** in the shared pool: a binding
-   is pool-scoped and another provider must not mint the same trusted attributes.
-   Issuer: `https://token.actions.githubusercontent.com`; retain the normal exact
-   provider audience expected by google-github-actions/auth. Map
-   `google.subject=assertion.sub` and
-   `attribute.repository_id=assertion.repository_id`. Review the condition below
-   before saving any operator-approved provider change. Do not broaden audiences.
-4. Service Accounts → verifier → Permissions → Grant access (or the WIF pool's
-   Grant access / service-account impersonation flow): grant only
-   `roles/iam.workloadIdentityUser` **on verifier** to this principal set, replacing
-   PROJECT_NUMBER and POOL with inspected values:
-   `principalSet://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL/attribute.repository_id/1306563928`.
-   Do not grant the entire pool, project-wide WIF User, or Token Creator.
-5. **Separate security gate: revoke GitHub access to deployer.** Service Accounts
-   → `teacher-pdf-deployer` → Permissions: inspect all WIF User/Token Creator and
-   custom impersonation bindings, their members and conditions. Record the exact
-   old member/role/condition for review, without tokens or keys. After operator
-   approval, remove GitHub subject/principalSet grants, including broad pool grants.
-   Also inspect project/folder/organization inherited grants, direct resource grants
-   to federated principals, other SAs reachable by that principal, and delegation
-   chains via verifier. Remove or restrict the offending grant at its actual scope;
-   changing one SA-local binding is insufficient if an inherited path remains.
-   Preserve deployer's Run Developer, Registry Writer, runtime SA User and approved
-   human access. No automatic IAM update is performed by this repository.
-   Re-read policies to establish **no GitHub-to-deployer path**. If unverified,
-   do not dispatch. Deleting `GCP_DEPLOYER_SA` alone does not revoke impersonation.
-6. GitHub Settings → Secrets and variables → Actions → Variables (or environment
-   variables): set `GCP_VERIFIER_SA` to the verifier email. Verify `GCP_PROJECT_ID`,
-   `GCP_REGION`, `GCP_WIF_PROVIDER`; provider is a full numeric-project resource
-   name. Remove obsolete deployer variable if unused elsewhere; no JSON keys.
-7. Settings → Environments → `pdf-worker`: Required reviewers OFF is supported;
-   admin bypass OFF; selected branches/tags: exactly **Branch main**, no tags or
-   wildcards. Settings → Rules → Rulesets: active main/default-branch rule requiring
-   PR (zero approvals for single owner), existing four CI checks, no deletion or
-   force push. Inspect bypass actors with authenticated administration access;
-   do not invent an independent reviewer or disable CI to allow merge.
-8. Only after the IAM/provider gates and variables are verified, and source is
-   merged with required CI passing: Actions → `pdf-worker-manual` → Run workflow
-   → `main`. There are no mode/confirmation inputs. Merging still triggers the
-   existing VPS CI/deployment workflow, a separate effect requiring owner review.
-   This task does not merge or dispatch. Success proves token exchange and registry
-   metadata read only; it cannot prove absence of privileges. Never print JWT,
-   access token or generated credential files; inspect sanitized errors only.
-
-Provider attribute condition (numeric IDs verified from the repository REST API;
-re-check ownership before applying):
-
-```text
-assertion.repository_id == '1306563928' &&
-assertion.repository_owner_id == '52443962' &&
-assertion.ref == 'refs/heads/main' &&
-assertion.event_name == 'workflow_dispatch' &&
-assertion.workflow_ref == 'hoangbao179/teacher-hub/.github/workflows/pdf-worker.yml@refs/heads/main' &&
-assertion.sub == 'repo:hoangbao179@52443962/teacher-hub@1306563928:environment:pdf-worker'
-```
-
-These are GitHub OIDC claims for this non-reusable workflow. Confirm custom subject
-configuration before applying; a changed subject should fail closed, not cause the
-condition to be removed. The environment subject alone does not restrict the ref.
-Provider conditions restrict token acceptance; SA/resource IAM restricts what the
-accepted principal can impersonate or access. Neither is replaced by JavaScript.
-
-### API contract and enforcement boundaries
-
-GitHub Environment enforces selected branch/tag admission (and any configured
-review/wait rules). Workflow checks repository, full main ref, dispatch event,
-exact verifier email/project/region and provider-name syntax before auth. The
-validator reads exactly `pdf-worker`, requires its matching name, protection-rules
-array, explicit `can_admins_bypass=false`, custom policies true and protected-branch
-selection false, then exactly one policy named main with explicit type branch.
-Reviewers and prevent-self-review are not prerequisites for read-only verification.
-
-[Environment GET](https://docs.github.com/en/rest/deployments/environments#get-an-environment)
-and [policy LIST](https://docs.github.com/en/rest/deployments/branch-policies#list-deployment-branch-policies)
-require Actions read; checkout requires Contents read; OIDC requires id-token write.
-No broader GitHub permission is requested. REST examples/generated schemas may omit
-`type` or `can_admins_bypass`; omission is **not** evidence of a safe value. This
-validator deliberately blocks such responses because branch/tag and bypass state
-cannot be established. Live GitHub responses observed here include both fields.
-Do not bypass the check on a plan/API that omits them. Missing/malformed essential
-fields, 403/404/500 or transport errors fail before Google authentication.
-
-### Verification status and readiness
-
-Owner reported single-owner Environment and main ruleset setup. Read-only GitHub
-REST inspection additionally confirmed on 2026-10-24: environment name pdf-worker,
-no reviewer rule, bypass false, custom-only policy, one main branch policy; numeric
-repo/owner IDs above; active ruleset 25771531 and effective main rules requiring PR,
-Fast quality gate, Server integration tests, Production smoke E2E and Schedule
-regression gate, blocking deletion/non-fast-forward. Public REST did not expose
-bypass actors; authenticated operator inspection is still needed for that field.
-No Cloud IAM/provider inventory, variable values or real WIF exchange was verified.
-
-verify-wif: **NOT READY** until verifier least privilege, provider trust, no GitHub
-impersonation of deployer, variables and remaining GitHub settings are verified.
-Cloud Run health-only deployment: owner reports deployed, anonymous 403 and
-authenticated 200. PDF processing deployment/activation: **NOT READY** pending
-Tasks 2/3, reviewed IAM/mount/config, authorized real Drive fixture and private
-cloud E2E. No cloud state was changed or independently inventoried by Task 1.
-
-## Read-only live-revision preflight after PDF audit
-
-The operator preflight `node scripts/pdf-cloud-readiness.mjs --gcloud` now reads both the Cloud Run **service** and its **actual traffic revision**. The latter requires `run.revisions.get` in addition to the existing read permissions. It first validates the revision name from service status before making the read-only `gcloud run revisions describe` call; untrusted text never becomes arbitrary shell input.
-
-A service template is the **desired** state and does not prove a successful rollout. A healthy previous revision can continue serving while a newer revision fails. The preflight therefore blocks resource verification if the service or revision lacks `Ready=True`, if latest-created and latest-ready differ, if traffic is not 100% on that revision, or if the revision image digest/processing flags/resource settings differ from expectations. Missing or denied revision reads are `BLOCKED/FAIL`, never presumed healthy. See [Cloud Run revision details](https://docs.cloud.google.com/run/docs/managing/revisions).
-
-The existing report still returns `activationAllowed=false` even when all resource checks are green. An operator must separately inspect inherited/effective IAM, actual processing deployment, queue execution, nonce retention, secret management and real cross-device PDF E2E before activation.
-
-## Experimental anonymous print-to-image-PDF fallback — staged only
-
-The source image includes pinned Playwright, Chromium headless shell, pdf-lib and
-Sharp for a *print-enabled* anonymous Google Drive Viewer. Runtime
-`PDF_PRINT_FALLBACK_ENABLED` defaults to on (`false` opts out), extending
-the job ceiling to 120s for browser fallback after direct download errors.
-No Google login/OAuth or browser cookies are supplied.
-
-**Do not enable on the current 30-second Cloud Run revision.** This branch
-long-task contract requires explicit activation on each service:
-- The API and Gateway always enqueue Cloud Tasks with **180s** dispatch
-  (`PDF_LONG_PRINT_TASKS_ENABLED` in env is legacy; code ignores `false`).
-- The Gateway accepts signed **30s** or **180s** task requests. Its own HTTP
-  timeout stays 30s for proxy reads; Worker request timeout should stay **180s**.
-- The no-traffic staging template sets Worker timeout to 180s and enables
-  `PDF_PRINT_FALLBACK_ENABLED=true` on Worker and long tasks=true on Gateway.
-  Worker `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` is explicit. Staging
-  does not promote revisions or activate the VPS producer.
-- The Worker uses `PDF_DEADLINE_MS=120000` (default when fallback is on) within
-  the 180s request/dispatch budgets.
-
-**Activation order (separately approved operational work, not this PR):**
-stage new private Worker and HMAC Gateway revisions without traffic and review
-IAM/HMAC, browser egress, cost and resource isolation. Perform real approved
-anonymous Viewer print E2E in isolation. After readiness, coordinate
-promotion and flags: Gateway long tasks, Worker render plus 120s limit,
-VPS producer long tasks; verify live. Never enable producer's 180s dispatch
-before its Gateway recognizes the new contract. To roll back, disable the
-producer long-task flag first, then Worker fallback, then Gateway long tasks;
-revert to prior immutable Cloud Run revisions as needed. Existing GCS
-results/outbox are preserved. Long-running in-flight tasks should be allowed
-to settle before any stricter timeout change.
-
-Cloud Run is private; image includes a headless browser run as non-root.
-Browser sandbox/egress restrictions, CPU/RAM, container start, billable
-duration, network allowlist, tmpfs and output size need an explicit threat
-and cost review. Screenshot capture requires the Viewer Print action to be
-enabled; owner/admin restrictions must not be circumvented. Validate an
-authorized external Viewer link, all pages and actual paper print quality.
-No changes to VPS/credentials/recovery/traffic are made in the source-only PR.
-
-The capture path now waits for >=200 effective DPI at the fitted A4 placement.
-If Google never supplies that detail, the bounded wait fails; it never upsizes a
-preview and labels it printable detail. Peak decoded PNG per page remains capped at
-32 MiB (working set, not cumulative across pages) and JPEG payload accumulation is
-rejected above the 20 MiB output cap from `@teacher/shared` (final PDF overhead is
-checked separately). These checks reduce premature
-capture and memory accumulation, but are not a Cloud Run RAM benchmark. No memory,
-CPU, image, IAM, task deadline, billing configuration or activation gate is changed.
-The local browser regression uses owned synthetic blob images without Google
-network access; external Viewer E2E and print-quality review remain activation gates.
-The complete assembly fixture and processing regressions also pass in the existing
-Worker Linux image with current source mounted read-only, network disabled and
-1 CPU / 2 GiB limits. This local-container result includes real qpdf parsing but
-does not certify the image build, active Cloud Run revision or cloud performance.
-
-## Diagnosing a failed source without guessing
-
-Read logs on the **traffic revision**, filtering `jsonPayload.event="pdf-stage-failed"`
-and the job UUID (or claim `sourceHash`). Compare both direct and Viewer events;
-`UNSUPPORTED_SOURCE` alone does not prove an owner restriction. `html-response`
-means the direct endpoint returned HTML; `print-disabled` means the anonymous
-Viewer explicitly disabled Print and capture stopped. Missing Print remains
-`PRINT_UNAVAILABLE`, not proof of a restriction. Earlier revisions without these
-events cannot retrospectively identify the failure stage.
-
-Staging sets `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true` so view-only tile capture
-is available when Print is missing or disabled (opt out with `false` on a
-revision). Print-gated assembly still rechecks Print when the control is enabled.
-No IAM or production traffic flags are changed by this source update.
-
-For compatibility, inspect service traffic and then `run revisions describe` for
-that exact revision's flags and `timeoutSeconds`; the latest service template may
-belong to a no-traffic revision. Confirm Worker request timeout, producer task
-deadline and Gateway's allowed deadlines together before any separate rollout.
-The direct Cloud Tasks provider remains 30s; the reviewed 180s gate applies to
-the Gateway provider. Local Linux tests do not establish Cloud Run performance.
-
-## Docker build-context regression prevention
-
-### Adaptive compression verification and rollback
-
-Compression policy is shared, not a Cloud Run environment override: native PNG
-→ JPEG 90/85/80, 4:4:4, soft 500,000 bytes/page, no resizing and >=200 DPI.
-Source streaming has an independent `PDF_SOURCE_MAX_BYTES` ceiling of 20 MiB;
-lower values are supported. Output remains 20 MiB and page count remains 40.
-The existing 32 MiB job tmpfs and all request/queue concurrency/deadline limits
-are unchanged. A PNG byte cap is not a cap on decoded pixels, Chromium or RSS.
-
-Run `node test/compression-benchmark.mjs N` from the Worker directory in a
-disposable offline Linux container (1 CPU, 2 GiB, no swap, concurrency one), for
-N=17/50/100/200. Mount the test directory read-only, make only `/tmp` writable
-(256 MiB experimental tmpfs), and set `XDG_CACHE_HOME=/tmp/cache`. This probe
-explicitly bypasses product admission for research; **do not use its 256 MiB
-tmpfs or 150 MiB comparison as production configuration**. It deletes output
-and emits sanitized aggregate metrics. Cgroup peak includes verification and
-tmpfs; Node RSS has different accounting. Keep runs sequential and retain
-optional local logs only under `.artifacts/`. The probe has no browser or Drive
-network and cannot approve capacity or print quality for production.
-
-Deploy/traffic/IAM changes require separate authorization. If a later approved
-rollout regresses compression, restore the prior immutable Worker revision;
-API/Gateway contracts and existing GCS results need no rollback or data migration.
-Do not raise file/page/tmpfs limits to make a failing job complete.
-
-The Chromium Worker Dockerfile runs `COPY package.json package-lock.json ./`
-and `npm ci`. The old `workers/pdf/.dockerignore` denied every path except
-Dockerfile and source; an operator `--stage` build failed at
-`WORKER_DOCKER_BUILD` with `"/package.json": not found` before image push.
-The Worker context now explicitly allows **both npm manifests**, along with
-runtime source; tests and `node_modules` stay excluded. The
-`workers/pdf/test/docker-context.test.mjs` CI test guards these exact inputs.
-
-After merging this fix, update local `main`, reset `SOURCE_SHA`, and use the
-existing public-HMAC `--stage` script; no IAM, HMAC secret, queue, VPS or
-Cloud Run traffic change is needed for this **build-only** correction. Docker
-images and Cloud Run deployment still need successful operator-side execution
-and real print-enabled Viewer E2E before enabling the fallback.
+Nghiệm thu production cần nguồn có quyền, non-owner Viewer, v1/v2, recovery không
+browser, outage/duplicate/checkpoint/merge, expiry/ticket replay, tải thiết bị
+khác, streaming chậm, 200 trang, actual print và số đo host/cloud. Test synthetic
+và số đo lịch sử chỉ hỗ trợ thiết kế, không cấp phép rollout.

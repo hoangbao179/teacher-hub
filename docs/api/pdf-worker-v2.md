@@ -1,136 +1,110 @@
-# PDF Worker v2: durable parts
+# Contract Worker PDF v2 — xử lý theo phần bền vững
 
-Implemented source, opt-in only. Real authorized Viewer/Cloud Run E2E and actual
-paper print quality are not established by offline fixtures. The existing
-[v1 contract](pdf-worker-v1.md), API authorization, HMAC/nonces, IAM and download
-tickets remain compatible. No new cloud credentials or permissions are needed.
+## Tương thích và payload
 
-## Protocol and state
+V2 chỉ bật khi `PDF_CHUNKED_JOBS_ENABLED=true`; job đã lưu giữ worker_version,
+không tự nâng phiên bản. [V1](pdf-worker-v1.md) tiếp tục áp dụng cho xác thực,
+claim/result terminal, lỗi và tạo object bất biến. Nguồn guard/type:
+`shared/src/pdf-pipeline.ts`, `shared/src/pdf-limits.ts`;
+implementation `workers/pdf/src/chunk-processor.ts`.
 
-Shared contracts/guards live in `shared/src/pdf-pipeline.ts`; budgets in
-`shared/src/pdf-limits.ts`. A bounded POST /jobs payload is:
+POST `/jobs`, application/json, tối đa 4.096 byte, đúng các field:
 
 ```json
 {"version":2,"jobId":"55b797f0-e128-4525-8df5-c3cb92163167","source":{"provider":"google_drive","fileId":"owned_fixture_12345"},"step":0}
 ```
 
-Only these exact fields are accepted. UUID/Drive ID retain v1 validation. Step
-0 discovers the source/count; steps 1..ceil(pages/10) process one derived range;
-the last step merges. Maximum step is 21. Caller cannot choose a range, bucket,
-object name, URL or path. All steps are separate deterministic Tasks named
-`pdf-<jobId>-s<step>`, POST /jobs, private Worker OIDC, 180s dispatch, 120s handler.
-One instance processes one request; the existing queue admits one dispatch.
+Step nguyên 0..21, UUID/fileId như v1. Không nhận range/bucket/path do caller chọn.
+Tên task `pdf-UUID-sN`, OIDC audience base URL Worker, dispatch 180 giây;
+handler 120 giây/bước. Queue một dispatch, Worker concurrency một.
 
-Worker returns HTTP 200 only after a durable checkpoint or terminal result.
-Checkpoint ACK is `{version:2,jobId,step,status:"CHECKPOINTED"}`; it is **not** a
-COMPLETED job. The API reads GCS, not Task response bodies. Permanent errors and
-successful terminal results retain the exact v1 result/24h claim schema. Transient
-source/storage/parser deadline failures return non-2xx for retry of that step.
+## Các bước và object
 
-Private objects under `jobs/<jobId>/`:
-
-- `request.json`: immutable v1 source hash and exact 24h expiration.
-- `source.pdf`: immutable direct-source snapshot, only when splitting is needed.
-- `manifest.json`: version/job/source/expiry, mode, total count and fingerprint.
-- `parts/<n>.pdf` and `<n>.json`: immutable validated PDF then checkpoint with
-  source fingerprint, exact range, byte count and SHA-256.
-- `output.pdf`, then `result.json`: validated final output, followed by terminal
-  publication. An uploaded output without a result is recovered on redelivery.
-
-Every creation uses generation-match zero. A duplicate losing upload rereads the
-winner before checkpointing. A lost checkpoint is recovered from stored part PDF
-and metadata without rendering it again. Each successor requires all preceding
-checkpoints; final merge downloads ordered parts through byte-bounded streams,
-checks hashes/counts, invokes isolated qpdf, then validates final count/structure.
-No all-document image/PDF buffer is held by production code. The streaming writer
-retains one JPEG plus O(pages) numeric xref offsets. qpdf has a separate 512 MiB
-address-space cap and can have its own native allocations/caches.
-
-Direct PDF <=50 pages can complete in discovery with original bytes, satisfying
-source/output caps. Long direct PDFs are split from the same checksum-verified
-GCS snapshot. Viewer discovery and every part use a fresh anonymous browser,
-the same print-gated or view-only tile capture as v1 when screen capture is
-enabled, >=200 native effective DPI and a first-page PNG fingerprint; changed
-totals/anchor fail. No Google login/session replay.
-The anchor cannot prove that a later page did not change while count/page one
-stayed identical. Immutable direct bytes are preferred when available; real
-Viewer mutation/layout/virtualization behavior needs authorized E2E.
-
-## API, reconciliation and UI
-
-Migration 0029 adds `worker_version` (existing rows default 1) and nullable
-`progress_json`. Recovery recognizes a completed atomic ALTER whose ledger insert
-was interrupted. Existing job IDs never switch protocol versions.
-
-The existing 60s DB lease/outbox controls dispatch. Reconciliation reads the claim,
-manifest and up to five new contiguous checkpoints per sweep, respecting Gateway
-read admission; previously validated prefixes are cached in MySQL. A 15s aggregate
-cloud progress budget bounds the sweep. Next-step enqueue is idempotent; attempt
-count resets when the step advances. Positive exhaustion remains distinct from
-missing/ambiguous task state. Late terminal results continue to reconcile.
-
-`PdfJob` adds optional `workerVersion` and `progress` with stage, processedPages,
-totalPages, percent and nextStep. 99% means all pages exist but final PDF has not
-been published; UI displays 100% only for COMPLETED. Existing status enums stay.
-Refresh fetches DB-backed history/progress. Public/private visibility and expiry
-authorization remain unchanged. Public v2 downloads POST a one-use ticket using a
-native form; urlencoded parsing is scoped to that download route (1 KiB/one field),
-exact Origin remains mandatory, and no ticket enters URLs/storage. JSON download
-remains compatible. Browser-managed downloads do not allocate a 150 MiB JS Blob;
-an interrupted native download requires a fresh ticket and browser retry.
-
-Gateway v2 capabilities and metadata/task routes require HMAC and durable nonce
-reservation. They expose only fixed manifest/checkpoint JSON, never source/part PDF
-paths. Producer verifies advertised v2 budgets before enabling submission. Binary
-output is limited to 150 MiB only with the explicit chunk gate. API validates each
-result using its persisted worker version, not caller-supplied limits. Gateway/API
-download deadline is 180s, bounded further by job expiry; Nginx disables buffering
-for attachments with 190s idle headroom, avoiding VPS temporary PDF spooling.
-
-## Budgets and threat model
-
-| Resource | v2 bound |
+| Bước | Hành vi |
 | --- | --- |
-| Pages / part | 200 / 10 |
-| Original source / one part | 20 MiB / 20 MiB |
-| Final output | 150 MiB; parts sum reserves 2 MiB structure headroom |
-| Native bitmap | 12 MP, >=200 DPI, PNG encoded bytes <=32 MiB/page |
-| Scratch filesystem | at most 384 MiB; >=320 MiB free before admission |
-| Final merge footprint | <=148 MiB parts + <=150 MiB output, plus bounded overhead |
-| qpdf validation | 512 MiB address space; v2 45 CPU s / 50s per call, whole-task 120s |
-| qpdf merge | 512 MiB address space; 25 CPU s / 30s wall |
-| Queue retries | existing 5 attempts / 3600s per independently named step |
-| API admission | default/ceiling 1 link/batch, 3 active jobs, 20 creations/hour, including manual retries; lower operator limits respected |
+| 0 | Tải/validate direct; ≤50 trang có thể hoàn tất bằng bytes gốc. Direct dài tạo source snapshot; fallback Viewer chỉ khi lỗi phù hợp, không PDF mã hóa; discovery tổng trang/fingerprint |
+| 1..ceil(totalPages/10) | Một phần tối đa 10 trang, bắt buộc checkpoint trước đó liên tục và hợp lệ |
+| ceil(totalPages/10)+1 | Tải phần theo thứ tự, kiểm bytes/hash/pages, qpdf merge, validate và publish |
 
-All CPU deadlines include cancellation and cleanup. Signals and CPU kills are
-transient TIMEOUT, not proof of malformed PDF. No memory/container/VPS quota was
-raised automatically. Runtime v2 refuses the old 32 MiB scratch mount. Source
-bytes, encoded PNG, decoded bitmap, total scratch and RSS are distinct budgets.
-Workers never fetch supplied arbitrary URLs; existing Drive SSRF/egress rules apply.
-Parser/browser isolation is not antivirus. Original direct PDFs retain embedded
-features; serve attachments with nosniff/no-store as before.
+Viewer luôn chia phần kể cả ít trang. Mỗi discovery/part mở browser anonymous
+mới; tổng trang và SHA-256 PNG native trang 1 phải khớp manifest. Anchor không
+chứng minh snapshot toàn tài liệu nếu chỉ trang sau đổi. Direct snapshot immutable
+mạnh hơn. Đường active Viewer không kiểm Print; xem
+[khoảng cách quyền](../features/pdf-worker.md#renderer-và-khoảng-cách-về-quyền).
 
-Local job directories are deleted on success/failure/abort; process/instance loss
-leaves only bounded ephemeral storage. Durable checkpoints intentionally remain
-for recovery and are inaccessible through public download routes. Existing bucket
-seven-day lifecycle supplies eventual remote cleanup, while application access
-expires after 24h. No delete/list IAM grant or lifecycle mutation is added.
-Admission is per owner across public/private jobs and existing worker versions,
-not per browser or IP. Active means unexpired `ENQUEUE_PENDING`, `ENQUEUE_RETRY`,
-`QUEUED` (including Worker execution) or `RESULT_UNCONFIRMED`. Idempotent replays
-return existing jobs before capacity checks. A manual retry creates a new job and
-consumes the rolling-hour job allowance; automatic Task step redelivery does not.
-The batch count is also bounded at 20/hour. No history is reset or removed.
-Three admitted jobs do not mean three executing Workers: queue dispatch, Worker
-concurrency and max instances remain 1. IP guards allow 60 session requests/hour
-and 60 combined submit/retry requests/hour, including failed requests/replays.
+Object dưới `jobs/UUID/`, mọi create `ifGenerationMatch=0`:
 
-At one owner's configured intake ceiling, seven-day retained data can approach 1050 GiB
-(20 jobs/hour × 168h × 320 MiB), plus small checkpoint/nonces/logs. This is an
-intake envelope, not demonstrated single-Worker throughput or a global cost cap;
-multiple owners, soft delete and lifecycle lag can increase storage. Operator must
-verify lifecycle, storage spend/retention and concurrent-instance limits before
-activation; shortening lifecycle needs a separate operational change.
+| Object | Schema / vai trò |
+| --- | --- |
+| request.json | Claim v1: sourceHash, createdAt, expiresAt đúng 24 giờ |
+| source.pdf | Snapshot direct khi cần chia; checksum xác minh lại mỗi phần |
+| manifest.json | version:2, jobId, sourceHash, expiresAt, totalPages, mode:direct/viewer, fingerprint SHA-256 |
+| parts/N.pdf | PDF phần đã validate |
+| parts/N.json | version:2, jobId, sourceHash, expiresAt, fingerprint, index, firstPage, lastPage, bytes, sha256 |
+| output.pdf | Kết quả cuối, metadata sourceHash, bytes, pages, sha256 |
+| result.json | **Vẫn version:1** và exact schema COMPLETED/FAILED v1 |
 
-See [operations and cost review](../operations/pdf-long-documents.md) and the
-[consolidated evidence](../changes/2026-10/pdf-200-page-pipeline.md).
+Range = `(N−1)×10+1 .. min(N×10,totalPages)`; checkpoint phải khớp range,
+job/source/expiry/fingerprint, hash 64 hex, bytes nguyên 1..20 MiB. Mất marker
+sau upload PDF phần: đọc lại winning PDF/metadata rồi tạo marker. Duplicate có
+marker hợp lệ trả lại ACK. Mất result sau upload output: khôi phục từ metadata.
+
+ACK checkpoint HTTP 200 `{version:2,jobId,step,status:"CHECKPOINTED"}` chỉ xác
+nhận bước bền vững, không phải COMPLETED. API không dùng body task làm result;
+đọc GCS để phát bước tiếp. Lỗi tạm thời non-2xx retry cùng step, permanent ghi
+FAILED rồi ACK. Worker không có quyền tạo task.
+
+## Progress và transport
+
+API đọc manifest, tối đa 5 marker mới liên tục mỗi sweep với ngân sách cloud
+progress 15 giây; prefix đã xác minh cache trong MySQL. Progress gồm stage
+DISCOVERING/RENDERING/MERGING, processedPages, totalPages|null, percent, nextStep.
+Percent tối đa 99 trước terminal; UI chỉ hiển thị 100 với COMPLETED.
+Migration 0029 thêm worker_version mặc định 1 và progress_json nullable.
+[Đặc tả API](../features/pdf-job-api.md) giữ state machine/quota/retry/download.
+
+Gateway thêm GET `/v2/capabilities`, `/v2/tasks/:UUID/:step`,
+`/v2/objects/:UUID/manifest.json` và `/v2/objects/:UUID/parts/:N.json`.
+HMAC và nonce bền vững áp dụng cả capabilities; không expose source/part PDF.
+V2 capabilities phải khớp 200 trang/150 MiB/10 trang mỗi phần. Binary output
+vẫn GET `/v1/objects/:UUID/output.pdf`; API public tải native form POST ticket.
+
+## Ngân sách tài nguyên
+
+| Tài nguyên | Giới hạn source / mục tiêu được readiness kiểm |
+| --- | --- |
+| Trang / phần | 200 / 10 |
+| Source / một phần | 20 MiB / 20 MiB |
+| Output | 150 MiB; tổng phần chừa 2 MiB cấu trúc (≤148 MiB) |
+| Bitmap | 12 MP, ≥200 DPI; PNG mã hóa ≤32 MiB/lần capture |
+| Scratch | tmpfs ≤384 MiB; trước v2 cần ≥320 MiB trống |
+| Merge footprint file | ≤148 MiB phần + ≤150 MiB output, còn overhead |
+| qpdf validate | Address space 512 MiB, CPU 45 giây, wall 50 giây/lần; vẫn trong 120 giây/bước |
+| qpdf merge | Address space 512 MiB, CPU 25 giây, wall 30 giây |
+| Worker readiness | 1 vCPU/2 GiB, concurrency 1, min 0/max 1, request timeout ≥180 giây |
+| Gateway readiness | 1 vCPU/256 MiB, concurrency 10, min 0/max 1, request timeout ≥180 giây |
+| Queue | 5 attempts / 3.600 giây, backoff 10..300 giây, ≤1 dispatch/giây, concurrent 1 |
+| Download API/Gateway | 180 giây, cap 150 MiB; Nginx idle 190 giây và buffering off |
+
+Writer v2 giữ một JPEG và offset xref nhỏ, ghi file rồi merge; không buffer PDF
+cả tài liệu trong Node. Điều này không giới hạn tổng RAM Chromium/native/qpdf.
+Tmpfs cũng tính vào RAM, còn profile `/tmp`, `/dev/shm`, cache, runtime và log.
+Scratch admission kiểm tmpfs loại/capacity/free; mount 32 MiB cũ bị từ chối.
+Job v1 trên revision v2 vẫn chịu cap nội dung v1 nhưng được dùng mount 384 MiB.
+
+Local directory dọn trong finally; process/instance bị kill có thể để lại tạm
+trong volume hữu hạn. GCS checkpoint/source/output giữ cho recovery, không xóa
+ngay; lifecycle bảy ngày phải kiểm live, TTL tải 24 giờ vẫn độc lập. Không thêm
+quyền list/delete hay tự đổi retention để giảm chi phí.
+
+## Bằng chứng và nghiệm thu
+
+Test chunk-pipeline có fault checkpoint/result, duplicate/out-of-order, restart,
+source snapshot, direct 3/35/50/51/200 và reject >200. Viewer browser fixture
+kiểm range không bắt đầu trang 1, anchor và thứ tự. Gateway test stream 150 MiB
+bằng chunk, API MySQL/E2E FakeCloud kiểm persisted progress/native download.
+Đây là phạm vi test source; kết quả lần chạy gần nhất và production ở
+[status](../implementation/status.md), số đo lịch sử ở
+[ghi chú thử nghiệm](../features/pdf-quality-poc.md).
+Fixture không thay authorized Viewer khác Owner, 200 trang Cloud Run, recovery
+không tab, tải chậm/thiết bị thứ hai và bản in giấy thực tế.

@@ -1,159 +1,141 @@
-# PDF job API — Task 2
+# Đặc tả kỹ thuật API và vòng đời job PDF
 
-> **Product requirement (chưa nghiệm thu E2E):**
-> [PDF từ liên kết Viewer](../product-spec/pdf-viewer-links.md).
-> UI public `/tools` đã gửi `{ links: [...] }` không checkbox. API vẫn
-> chấp nhận body chỉ `links` hoặc `links` + `rightsConfirmed:true` (legacy);
-> hash idempotency nội bộ vẫn gắn `rightsConfirmed:true` để không đổi batch
-> đã tạo. Trạng thái Worker, cờ và gap nghiệm thu: [status](../implementation/status.md).
+## Nguồn đối chiếu
 
-Status: backend implemented for local/fake verification; production unavailable.
-The public `/tools` UI uses the public endpoints described below. Use [OpenAPI](../api/openapi.yaml), shared
-contracts in `shared/src/contracts/pdf.ts` and the unchanged [Worker v1](../api/pdf-worker-v1.md).
+Contracts: `shared/src/contracts/pdf.ts`, `shared/src/pdf-pipeline.ts`;
+HTTP: [OpenAPI](../api/openapi.yaml), `server/src/routes/index.ts` và hai PDF
+controller. Điều phối: `pdf.service.ts`, `pdf.repository.ts`,
+`pdf-guest.repository.ts`; transport active: `pdf-gateway-provider.ts`.
+[Tổng quan](pdf-worker.md) giải thích luồng;
+[runbook](../operations/cloud-run-pdf-worker.md) hướng dẫn vận hành.
 
-## Task 3 API usage
+## HTTP và public/private
 
-All `/api/pdf/*` routes require the existing Bearer session, TEACHER role and an
-ACTIVE database user. Every batch/job query is scoped to that owner. Public tools
-must not call these endpoints. Responses use `{data:...}` or the existing error
-envelope. Capabilities is authoritative: show unavailable when submitEnabled=false;
-do not present submission/download actions as working while the gate is closed.
+Response JSON dùng `{data: ...}` hoặc envelope lỗi chung. Root public là
+`/api/public/pdf`; root riêng tư `/api/pdf` cần Bearer, role TEACHER và user ACTIVE.
 
-1. GET capabilities. Limits default to five links/batch, ten active jobs, ten
-   batches/hour and fifty job creations/hour including manual retries.
-2. POST batches with `Idempotency-Key: <lowercase UUID-v4>` and
-   `{links:["https://drive.google.com/file/d/FILE_ID/view"]}`. Older clients may send `rightsConfirmed:true` for compatibility.
-   Also accepted: `https://drive.google.com/open?id=FILE_ID`. Only these exact
-   shapes are supported; no extra query, resource key, credential, fragment,
-   confirmation/download URL or native Docs URL is accepted. Duplicate normalized
-   file IDs within a batch are rejected. Store and reuse the key after HTTP errors.
-3. GET batches?page=1 (fixed page size 20), then GET batches/:id to poll details.
-   Poll no faster than 15 seconds. Each detail/create/retry request performs at
-   most three due jobs, with durable next-action times and leases. Five-link
-   batches may initially include ENQUEUE_PENDING jobs; the independent one-shot
-   reconciler drains subsequent jobs without an open browser. Its verified schedule
-   is required before production activation. Refresh/login reads persisted history.
-   Do not equate HTTP 201 or QUEUED with PDF completion.
-4. POST jobs/:id/retry with a new idempotency key only for FAILED,
-   RETRY_EXHAUSTED or EXPIRED. A manual retry creates a fresh Worker UUID linked
-   by retryOf, preserving immutable Worker terminal results. At most two retries
-   in a chain; only one successor per attempt. Reusing the retry key returns that
-   same successor. An active reconciliation lease rejects retry with PDF_RETRY_BUSY
-   (409); retry that request/key after recovery releases the lease. Transient
-   enqueue retries happen automatically on the same UUID. RESULT_UNCONFIRMED
-   cannot spawn a successor before expiry; it keeps polling and becomes EXPIRED
-   at its deadline, after which a capped explicit manual retry is available.
-5. POST jobs/:id/download-ticket for COMPLETED/unexpired jobs. Receive a one-use
-   ticket, downloadPath and expiresAt. POST that path with `{ticket}` and Bearer
-   auth, consume the binary response as a download. Ticket TTL <=120 seconds and
-   <=job expiry. Do not put tickets in URLs/storage/logs. Streaming is bounded to
-   validated bytes (<=20 MiB, `@teacher/shared` `PDF_OUTPUT_MAX_BYTES`), one concurrent stream per process and <=30 seconds
-   or earlier job expiration. Attachments use application/pdf, nosniff and no-store.
-   Interrupted streams require a fresh ticket; partial files must be discarded.
-
-Batch creation stores the server timestamp; legacy `rights_confirmed_at` remains as a database/DTO field but is **not evidence of confirmed rights**. New clients do not assert download permission, and Google permissions still apply.
-Only normalized fileId is persisted; no raw link, cloud token, signed URL or PDF
-bytes enter MySQL. Ticket storage contains only a SHA-256 token hash.
-
-## State and recovery
-
-| State | Meaning / next action |
+| Method/path sau root | Chức năng và điều kiện |
 | --- | --- |
-| ENQUEUE_PENDING | durable intent, not dispatched yet |
-| ENQUEUE_RETRY | transient/ambiguous enqueue error; same deterministic task name |
-| QUEUED | task created or already exists; worker state is not known |
-| COMPLETED | validated durable Worker result and matching source claim |
-| FAILED | validated Worker permanent failure; see errorCode |
-| RETRY_EXHAUSTED | optional positive evidence: matching retry policy, counts/time, failed completed response, no in-flight attempt and 60-second quiescence; late-result polling continues |
-| RESULT_UNCONFIRMED | task missing, pending result beyond two hours, or eight actual enqueue attempts; not proof of PDF failure |
-| EXPIRED | application deadline passed; no download even if object exists |
+| GET `/capabilities` | Trả submit/downloadEnabled, unavailableReason và giới hạn có hiệu lực |
+| POST `/session` (chỉ public) | Exact Origin; cấp cookie khi thiếu session hợp lệ |
+| GET `/batches?page=1` | Phân trang cố định 20, page nguyên 1..10000 |
+| POST `/batches` | `Idempotency-Key` UUID-v4 chữ thường; body links; public cần guest session và Origin |
+| GET `/batches/:id` | Đọc chi tiết và tick tối đa 3 job đến hạn |
+| POST `/jobs/:id/retry` | Key UUID-v4 mới, public exact Origin; tạo successor có giới hạn |
+| POST `/jobs/:id/download-ticket` | Job COMPLETED chưa hết hạn, provider sẵn sàng |
+| POST `/jobs/:id/download` | Body ticket; public exact Origin; attachment stream |
 
-Cloud read/transport errors use cloudErrorCode without inventing PDF failure.
-They are polled again after the stored interval. Missing task alone is ambiguous
-because successful and exhausted tasks are both deleted. Task metadata is optional
-evidence, not the durable source of Worker outcome. RESULT_UNCONFIRMED and
-RETRY_EXHAUSTED both continue late-result polling until expiry, including after
-the task is deleted. A validated Worker result wins over those observations.
-A fresh WAITING observation invalidates older exhaustion evidence and returns
-RESULT_UNCONFIRMED; a missing task alone does not erase previously observed proof.
-Known Worker terminal results are cached in MySQL; expired jobs
-are projected EXPIRED, including permanent failures. Before a Worker claim is known,
-jobs have a conservative 24-hour submission deadline. Validated results use the
-claim's exact 24-hour expiresAt; authorization never relies on seven-day lifecycle.
+Public session `teacher_pdf_guest`: token ngẫu nhiên 32 byte base64url, chỉ hash
+trong DB; HttpOnly, SameSite Strict, Secure production, path `/api/public/pdf`,
+180 ngày. Chỉ submit cần cookie. Public list/detail/retry/ticket/download dùng
+chung giữa các thiết bị, **không riêng cho trình duyệt tạo job**. Endpoint public
+chỉ truy cập batch/job đã có liên kết public; admin list/count loại public.
+Không đưa tài liệu riêng tư vào luồng public. Mọi mutation public kiểm tra Origin
+bằng `PUBLIC_APP_ORIGIN`.
 
-Owner-row locking serializes idempotency/capacity checks with all inserts. Each job
-row is its own transactional outbox item. Leases last 60 seconds and use a UUID
-compare on updates, so a restart or concurrent reconciler cannot apply stale writes.
-No network call occurs inside a transaction. Task names are `pdf-<jobId>` in the
-fixed queue. Create timeout retries the same name; ALREADY_EXISTS is reconciled.
-No task is recreated with a new UUID automatically. A GCS read failure does not
-consume an enqueue attempt before Cloud Tasks creation was attempted.
+Link tối đa 512 ký tự, HTTPS `drive.google.com`, ID `[A-Za-z0-9_-]{10,128}`.
+Chỉ nhận `/file/d/ID/view` không query hoặc `/open?id=ID` với đúng một key.
+Từ chối query thừa/resourcekey, hash, credential, port khác chuẩn và ID trùng.
+Body chính xác `{links:[...]}`; legacy thêm `rightsConfirmed:true` còn được nhận.
+Hash request giữ `{files,rightsConfirmed:true}` để tương thích idempotency.
+Timestamp `rightsConfirmedAt` không phải bằng chứng xác nhận quyền tải.
 
-The independent runner invokes one leased job per step, repeatedly, until idle,
-disabled, 50 steps or 45 seconds by default. Both limits can be lowered. Cloud
-operations inherit the run's AbortSignal and retain a four-second per-call bound.
-The CLI exits forcibly after 50 seconds if DB/driver cleanup cannot finish; the
-next scheduled invocation reclaims abandoned leases. No daemon is added.
+## Tiếp nhận, quota và idempotency
 
-## Production blockers
+Settings chọn bằng `PDF_API_ENABLED`, `PDF_CHUNKED_JOBS_ENABLED`,
+`PDF_BATCH_LIMIT`, `PDF_ACTIVE_LIMIT`, `PDF_HOURLY_LIMIT`. Số phải là chuỗi chữ số,
+nguyên dương trong ceiling; sai → disabled. V1 defaults/ceilings lần lượt
+5/5 link, 10/20 active, 10/30 hourly. V2 defaults và clamp 1/3/20; override thấp
+hơn giữ nguyên. `maxRetries=2`. Capabilities còn đòi provider configured/ready và
+v2 capabilities tương thích; submit/download cùng fail-closed nếu không ready.
 
-The [identity ADR](../decisions/ADR-pdf-producer-identity.md) accepts the Gateway
-direction, not production activation. `PDF_API_ENABLED=true` alone cannot activate
-submission or downloads. HTTP and CLI share createPdfRuntime and the private
-approval-file loader. Reviewed federation, HMAC, activation and recovery attestations
-are required. Operator reports private Worker/Gateway processing PASS, but no VPS
-issuer is confirmed. Token renewal, live recovery and website cloud E2E remain
-blocked until that identity is configured. UI must display unavailable while
-capabilities are disabled. See the activation runbook below.
+Trong transaction: khóa owner user → kiểm tra public session → tìm key cũ, đối
+chiếu request hash/visibility → kiểm quota → ghi batch/job/public link. Cùng key
+và nội dung trả batch cũ trước kiểm quota; khác nội dung/visibility trả 409
+`PDF_IDEMPOTENCY_CONFLICT`. Retry key cũng trả successor cũ trước quota.
 
-## Public guest Tools (Task 3 change)
+Quota active đếm job chưa hết hạn ở `ENQUEUE_PENDING`, `ENQUEUE_RETRY`, `QUEUED`,
+`RESULT_UNCONFIRMED`; không đếm `RETRY_EXHAUSTED`. Quota giờ đếm tất cả job tạo
+trong một giờ trượt, kể cả v1, public/private, thất bại và manual retry;
+ngưỡng job = maxHourly × maxLinks; tạo batch còn kiểm riêng số batch/giờ.
+V2 một link nên tương ứng 20 job/giờ. Public cùng owner giáo viên duy nhất.
 
-The public website `/tools` requires no login. Everyone can list public-tool
-batches, read their details, retry eligible jobs and download completed/unexpired
-PDFs on a different device. These operations do not require the submitting
-browser's cookie. Clearing or expiring that cookie does not remove public history.
-Only records linked through `pdf_guest_batches` are public; private teacher batches
-are rejected by public detail/retry/ticket/download, including when their UUID is
-known. Teacher history list and count exclude public batches.
+Public IP có hai bộ đếm độc lập: session 60 request/giờ; submit+retry dùng chung
+60 request/giờ, fixed window, tính cả request sai/replay, trả `PDF_RATE_LIMITED`
+và Retry-After. Bộ đếm process-local, restart sẽ reset; quota DB không reset.
+Ticket còn có cap 20 row chưa hết hạn/owner, kể cả ticket đã consume. Đây cũng
+có thể gây `PDF_RATE_LIMITED`. Không xóa lịch sử để cấp quota.
 
-POST `/session` issues a Secure (production), HttpOnly, SameSite=Strict cookie
-scoped to `/api/public/pdf`. Only submission needs this cookie, to scope the
-idempotency key. Every public mutation requires the exact website Origin. Creating
-the batch, job outbox and public link is one transaction. A link insert failure
-rolls back all three; enqueue occurs after commit. Retrying the same key/body in
-the same submission session returns the same batch. No teacher JWT is created.
-Guest work shares the teacher-wide capacity/cost ceiling and the existing limits
-of five combined submit/retry requests and ten session requests per IP per hour.
-See the [trusted proxy boundary](../operations/production.md#trusted-proxy-and-client-ip)
-for the actual client IP. Public binary 401 responses leave the teacher session intact.
+## Trạng thái và reconciliation
 
-Initial load and manual refresh read all visible details with at most four
-concurrent requests. Automatic refresh runs at most once per 15 seconds while
-visible, reads list/capabilities to discover new batches, and only loads unknown
-or recoverable unexpired batch details. COMPLETED/FAILED/EXPIRED details are cached
-until manual refresh or page reload. RESULT_UNCONFIRMED and RETRY_EXHAUSTED remain
-pollable until expiry because a late result can supersede them. Manual refresh
-also discovers retries from another device for a cached terminal batch.
+| Trạng thái MySQL | Khi ghi / cách tiến tiếp |
+| --- | --- |
+| ENQUEUE_PENDING | Intent mới; tick đọc result trước rồi enqueue |
+| ENQUEUE_RETRY | Lỗi cloud khi intent chưa queued; thử lại cùng job/task |
+| QUEUED | Task chờ/đang chạy hoặc vừa enqueue; không có enum RUNNING |
+| COMPLETED | Claim/result hợp lệ, có metadata output; đủ điều kiện cấp ticket |
+| FAILED | Result Worker vĩnh viễn hợp lệ; không suy ra từ timeout/mất kết nối |
+| RETRY_EXHAUSTED | Có bằng chứng hết retry; tiếp tục đọc late result đến expiry; cho manual retry |
+| RESULT_UNCONFIRMED | Kết quả chưa rõ; không coi FAILED; tiếp tục kiểm, không manual retry trước expiry |
+| EXPIRED | expires_at đã qua, kể cả job từng COMPLETED/FAILED; không tải; có thể manual retry theo cap |
 
-PDFs have a temporary 24-hour download window (Worker claim deadline once known;
-conservative submission deadline before that), not permanent public URLs. History
-remains after expiry; retry creates a new capped job. Tickets are one-use POST
-body values, never URL/storage values. There is no automatic upload to cô Vy's
-Google Drive. Production processing/download remains disabled until the approved
-identity, queue, Worker, GCS and independent recovery gates pass.
+Tick lease tối đa 3 job/HTTP; CLI lease từng job tuần tự tối đa 50/45 giây, hard
+exit 50 giây, systemd timeout 55 giây. Lease UUID 60 giây, `SKIP LOCKED`, save
+chỉ khi token còn khớp; lịch hành động tiếp theo +15 giây. Network ngoài transaction.
 
-### Follow-up: original document names
+Ưu tiên result bền vững: kiểm source hash, UUID, exact fields, thời gian claim
+đúng 86.400.000 ms, expiresAt, bytes/pages theo `worker_version`, SHA-256 và đường
+`jobs/UUID/output.pdf`. Lỗi schema giữ cloudErrorCode, không nhận thành công giả.
+Claim không được trước job quá 60 giây hoặc ở tương lai quá 60 giây.
+DB ban đầu hết hạn 24 giờ từ tạo job; khi nhận result dùng expiry của claim Worker.
 
-Worker v1 returns file ID and result metadata, not the original filename. The UI
-explicitly identifies its current name as a fallback derived from the Drive ID.
-The unauthenticated direct-download worker has no trusted Drive metadata service;
-adding a Google API lookup to the VPS would add identity, permission and request
-costs. Do not infer the name from viewer HTML or claim that the fallback is original.
-A separate reviewed change should capture and sanitize a trusted filename at the
-Worker's accepted download response, or provide approved Drive metadata access,
-then version/update result validation, shared DTO, persistence and tests together.
-Current strict Worker v1 result fields are unchanged; this PR does not claim real names.
+V1: pending/retry enqueue cùng tên `pdf-UUID`, tối đa 8 lần attempt trước trạng
+thái không xác nhận. Task thiếu là mơ hồ; v1 queued thiếu task hoặc quá 2 giờ
+không result → RESULT_UNCONFIRMED. V2: đọc claim/manifest và tối đa 5 checkpoint
+mới liên tục trong 15 giây, tính nextStep; chỉ kiểm task của step đang chờ.
+Step mới enqueue tên `pdf-UUID-sN`; counter reset khi step tiến lên. Task thiếu
+có thể enqueue lại cùng tên; sau 8 attempt cùng step → RESULT_UNCONFIRMED.
 
-## Production transport and availability
+Gateway provider chỉ báo EXHAUSTED khi responseCount ≥5, dispatchCount bằng
+responseCount, mã lỗi response 1..16, timestamp đúng thứ tự, ít nhất 60 giây sau
+response cuối và 3.660 giây sau dispatch đầu; queue vẫn đúng retry policy.
+Thiếu task không chứng minh hết retry hoặc Worker đã dừng. Late result hợp lệ có
+thể thay trạng thái chưa rõ/hết retry trước expiry. Cloud Tasks retry non-2xx,
+không dựa vào JSON `retryable`. Mất Worker/network giữ khả năng phục hồi cùng UUID.
 
-Gateway transport requires both a Google ID token obtained through explicit OIDC federation and the existing HMAC signature. Public/admin HTTP and recovery CLI share the approved configuration. No issuer is confirmed on the VPS; capabilities remain unavailable until identity renewal, independent recovery, real PDF and cross-device/expiry checks pass. The [activation runbook](../operations/pdf-vps-activation.md) is authoritative for deployment gates. No API contract or 24-hour retention rule changes.
+Manual retry chỉ với FAILED/RETRY_EXHAUSTED/EXPIRED, không lease còn hiệu lực,
+tối đa hai successor trong chuỗi và một con mỗi attempt. Job mới có UUID,
+expiry và worker version theo cấu hình hiện tại; không sửa result cũ. Quota
+tính lượt mới. TTL không hủy task/Worker đã chạy; cần điều tra stale dispatch.
+
+## Database và vòng đời dữ liệu
+
+| Migration | Dữ liệu |
+| --- | --- |
+| 0027 | pdf_batches, pdf_jobs/outbox, pdf_download_tickets; unique owner/key, FK và indexes |
+| 0028 | pdf_guest_sessions và pdf_guest_batches; link public cùng transaction batch/jobs |
+| 0029 | worker_version mặc định 1, progress_json nullable; job cũ không tự nâng v2 |
+
+Timestamp DB dùng UTC DATETIME(3); UI hiển thị Asia/Ho_Chi_Minh. Job history/session
+không có purge tự động trong module này. Ticket hết hạn được dọn khi cấp ticket;
+không xóa nghiệp vụ. GCS lifecycle và TTL tải là hai cơ chế riêng.
+
+## UI, polling và tải
+
+UI lấy capabilities/list song song; chi tiết đọc tối đa 4 request cùng lúc.
+Polling 5 giây khi có job recoverable chưa hết hạn, còn lại 15 giây; ngừng khi tab
+ẩn. Terminal cache chỉ đọc lại khi cần hoặc Làm mới. Key create/retry giữ trong
+ref khi mạng lỗi, không bền qua reload. V2 progress DISCOVERING/RENDERING/MERGING,
+tối đa 99%; chỉ COMPLETED hiển thị 100%. Tên tạm theo Drive ID.
+
+Ticket ngẫu nhiên 32 byte, DB chỉ SHA-256, một lần, TTL min(120 giây, job expiry).
+Consume trước mở upstream; đứt tải phải cấp ticket mới. V1 UI nhận Blob với abort
+30 giây; v2 dùng form POST native, không giữ Blob 150 MiB. Route public nhận
+urlencoded tối đa 1 KiB/một field, vẫn hỗ trợ JSON. Ticket không vào URL/storage.
+API giữ một stream mỗi PdfService instance (public/admin có instance riêng);
+Gateway giữ một stream/process. Không phải khóa toàn hệ thống.
+
+Stream có backpressure, abort khi disconnect/deadline/expiry, kiểm đúng bytes đã
+ghi nhận và cap theo version, trả application/pdf, attachment, nosniff, no-store.
+Gateway v1 deadline 25 giây, API 30; v2 cả hai 180 giây; Nginx tắt buffering và
+timeout idle 190 giây. Capabilities không chứng minh tải chậm/150 MiB thực tế.

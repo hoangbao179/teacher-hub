@@ -22,7 +22,10 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### ACTIVE — dùng thực tế
 
-- **Góc công cụ public**: Nút Công cụ màu hồng pastel dẫn tới `/tools`, không yêu cầu đăng nhập. Form nhận tối đa 5 liên kết Google Drive dạng Viewer (`/file/d/…/view` hoặc `/open?id=…`); **không** còn checkbox xác nhận quyền tải (API vẫn chấp nhận `rightsConfirmed:true` từ client cũ để idempotency ổn định). Luồng server PDF ảnh từ link vẫn **DEVELOPING** — xem mục PDF Viewer bên dưới. Lịch sử public dùng chung trên mọi thiết bị; xem/retry/download không cần cookie thiết bị tạo. Cookie chỉ phục vụ submit/idempotency. Batch/job/liên kết public được ghi nguyên tử; danh sách và tổng số batch admin loại trừ public. UI dùng tên tạm theo mã Drive, ticket POST một lần và thời hạn tải 24 giờ; không upload vào Google Drive cô Vy. Polling bỏ qua chi tiết terminal, giữ theo dõi kết quả muộn và refresh thủ công. `submitEnabled` vẫn fail-closed cho đến khi xác minh identity VPS và recovery production.
+- **Góc công cụ public**: `/tools` không yêu cầu đăng nhập, nhận link Google Drive,
+  không checkbox quyền tải; quota và giới hạn hiển thị từ capabilities. Lịch sử
+  public dùng chung giữa thiết bị; cookie chỉ dùng submit/idempotency. PDF từ
+  Viewer vẫn **DEVELOPING**, chưa nghiệm thu production; xem mục PDF bên dưới.
 - **Teacher Tools quản trị (giao diện mặc định sau đăng nhập)**: `/admin/tools` cùng toàn bộ `/admin/*` tiếp tục nằm trong auth boundary hiện hành. Khi legacy tắt, các route quản trị cũ chuyển về `/admin/tools` sau khi xác thực; khách vẫn được đưa tới `/admin/login`. Trang public `/tools` không thay thế màn đăng nhập hay trang công cụ quản trị.
 
 - **Lớp và học sinh**: quản lý lớp 1–1/lớp nhóm, học sinh, enrollment, khoảng hiệu
@@ -77,83 +80,36 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### DEVELOPING
 
-- **PDF từ link Viewer — chưa DONE (nghiệm thu):** Mục tiêu sản phẩm là
-  **dán link Google Drive chia sẻ Viewer (mở được ẩn danh) → một PDF ảnh để in**,
-  không cần quyền Owner/Editor hay tải bytes PDF gốc. Đó **không** đồng nghĩa vượt
-  hạn chế sao chép/in do chủ file/admin đặt — hai khái niệm tách trong
-  [product contract](../product-spec/pdf-viewer-links.md).
+- **PDF từ link Viewer — DEVELOPING, chưa nghiệm thu:** Source có UI public,
+  API/outbox MySQL, Gateway HMAC, Cloud Tasks → Worker riêng tư → GCS và download
+  ticket/stream. V1 giữ 40 trang/20 MiB; v2 opt-in qua chunk gate: 200 trang,
+  output 150 MiB, source 20 MiB, phần 10 trang và progress/recovery bền vững.
+  V2 mặc định/tối đa 1 link, 3 active, 20 job/giờ gồm manual retry theo owner;
+  override thấp hơn giữ nguyên. Public IP: session 60/h, submit+retry chung 60/h.
+  Queue dispatch và mục tiêu Worker thực thi vẫn 1.
 
-  Nén Viewer dùng JPEG thích ứng 90/85/80, 4:4:4 và mục tiêu mềm 500 KB/trang,
-  không resize; capture/placement dùng chung ngưỡng >=200 DPI. Source cap và
-  output cap độc lập. Pipeline v2 đã có task riêng từng phần 10 trang, checkpoint
-  GCS bất biến, reconciler API điều phối, tiến độ lưu MySQL và hiển thị trên `/tools`.
-  V2 tối đa **200 trang/150 MiB**, source riêng 20 MiB; writer ghi JPEG từng trang
-  xuống file, qpdf ghép, API/Gateway stream và trình duyệt tải native. V2 mặc định
-  tắt qua `PDF_CHUNKED_JOBS_ENABLED`; khi chưa bật, v1 vẫn **40 trang/20 MiB**.
-  Khi bật v2, mặc định/tối đa 20 lượt tạo job/giờ (gồm manual retry), 3 job active,
-  1 link/batch; cấu hình operator thấp hơn vẫn được giữ. IP guard riêng cho session
-  60 request/giờ, submit và retry dùng chung 60 request/giờ. API admission 3 job
-  không tăng queue dispatch, Worker concurrency hoặc max instances (vẫn 1).
-  Chưa đổi Cloud Run/IAM/traffic hoặc runtime.env VPS. Benchmark pipeline tổng hợp
-  17/50/100/200 và E2E Tools local không chứng minh Drive/Cloud Run thật;
-  xem [contract v2](../api/pdf-worker-v2.md).
+  Renderer active direct → fallback Viewer anonymous `view-only`, không kiểm
+  Print/canDownload. Ba cờ legacy fallback/capture/long-task không tắt nhánh
+  tương ứng bằng false. Đây là khoảng cách với yêu cầu từ chối nguồn bị cấm
+  tải/in/copy; chưa được coi là tính năng hợp lệ đã hoàn thành.
 
-  **Cấu hình source (env Cloud Run production chưa xác minh):**
+  API/CLI cùng approval-file loader, fail-closed khi thiếu cấu hình/readiness.
+  Source deployment có Cloud readiness ghim revision/digest, verify schema 0029,
+  Gateway và systemd recovery root-provisioned, rồi bật cờ v2/recreate API.
+  Không downgrade khi còn job/output v2 chưa hết hạn hoặc DB chưa rõ.
 
-  | Cờ | Mặc định | Tác dụng |
-  | --- | --- | --- |
-  | `PDF_PRINT_FALLBACK_ENABLED` | Luôn bật trong code | Sau lỗi `download.ts`, Worker chạy `renderer.ts` ghép bitmap → PDF ảnh A4; env `false` không còn tắt |
-  | `PDF_LONG_PRINT_TASKS_ENABLED` | Luôn bật trong code API/Gateway | Cloud Tasks luôn dùng `180s` khi enqueue; env `false` không còn tắt |
-  | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | Luôn bật trong code | Khi Print tắt/thiếu, ghép PDF ảnh từ tile Viewer (`view-only`); env `false` không còn tắt nhánh này |
+  **Production CHƯA XÁC MINH trong kiểm toán 28/10/2026:** readiness chỉ đọc
+  dừng ở WORKER_SERVICE với PERMISSION_DENIED; không kết luận traffic, revision,
+  flags VPS, schema/timer hay billing hiện hành. Source pin Worker 00017-guf và
+  Gateway 00013-gej là cấu hình gate, không bằng chứng live. Operator từng báo
+  Worker 00017-guf ở 100% và 00020-fiv được stage no-traffic; cần đọc lại inventory.
+  Fixture offline/FakeCloud và số đo cũ không chứng minh Viewer khác Owner có
+  quyền, 200 trang trên Cloud Run, chất lượng giấy in hoặc VPS headroom.
 
-  **Luồng mặc định:** (1) tải trực tiếp `uc?export=download`; (2) nếu lỗi phù hợp →
-  Viewer ẩn danh; (3) **`view-only`** — chụp tile ghép PDF ảnh; **không** phụ thuộc nút In/Print
-  (`viewer-pdf.ts`, `renderer.ts`).
+  Đọc [tổng quan và bản đồ tài liệu](../features/pdf-worker.md),
+  [yêu cầu sản phẩm](../product-spec/pdf-viewer-links.md) và
+  [runbook triển khai/vận hành](../operations/cloud-run-pdf-worker.md).
 
-  **Vì sao chưa DONE:**
-  - **Chủ file khóa Print:** nhánh `view-only` áp dụng cả v1 và v2 (khi bật);
-    chưa E2E Drive thật chứng minh đủ trang, nét in và hành vi restriction của Google.
-  - **Thiếu E2E Drive thật:** test chủ yếu fixture offline; chưa chứng minh đủ trang,
-    thứ tự, nét chữ, timeout/RAM trên revision chạy thật.
-  - **Rủi ro đã biết:** lazy-load Viewer (`capture-page.ts`); smoke không xác minh
-    mode đã chạy, luôn báo view-only `NOT_VERIFIED`, không suy thành công từ env.
-  - **Rollout:** staging `--no-traffic` đặt `PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true`
-    (script `pdf-cloud-stage.mjs`); revision cũ trên Cloud vẫn có thể còn `false` đến khi stage lại;
-    Gateway long tasks=true; cần promote dịch vụ tương thích trước khi bật
-    producer 180s. Merge API/Web với flag thiếu tiếp tục gửi 30s.
-  - **Vận hành:** `submitEnabled` VPS có thể OFF; cờ trên revision live chưa xác minh.
-
-  Chi tiết: [pdf-worker](../features/pdf-worker.md),
-  [cloud-run-pdf-worker](../operations/cloud-run-pdf-worker.md).
-
-
-- **PDF job API - production fail-closed**: migrations `0027`/`0028` cover
-  jobs/outbox, ticket hashes and public history. API/CLI share a private approval
-  loader. Gateway supports issuer JWT -> STS -> Google ID token plus HMAC,
-  or explicit `hmac_public_v1` via a distinct exact private approval file,
-  with no JSON key/ADC or HMAC-only fallback on identity failure. Empty IAM tokens
-  and non-string approval credentials are rejected before dispatch. Compose provides outbound networking
-  and read-only host configuration; PDF remains disabled by default. Production
-  Actions orchestrates read-only Cloud v2 verification through the existing
-  WIF-approved dispatch workflow, validates schema/approved Gateway, manages only
-  the three runtime PDF flags and enables/verifies root-preinstalled systemd
-  recovery running as deploy, with narrowly scoped noninteractive sudo. All gates
-  repeat on subsequent deploys; failure preserves in-flight v2 processing/results.
-  See [automated activation](../operations/pdf-long-documents.md#automated-production-activation).
-  This mechanism is not proof of real-Drive 200-page E2E acceptance. A one-minute
-  systemd timer runs recovery in the existing API container; installation and live
-  recovery are not yet verified. No VPS issuer is confirmed; public-HMAC mode
-  instead requires separate approval of Gateway exposure and abuse/cost risk. See
-  [private activation](../operations/pdf-vps-activation.md) and
-  [public-HMAC gates](../operations/pdf-vps-hmac-public.md).
-- **Cloud Run PDF worker/Gateway**: operator reports Worker
-  `teacher-pdf-worker-00003-6m4` and Gateway `teacher-pdf-gateway-00003-s6v`
-  at 100% traffic; Tasks -> Worker -> PDF and HMAC -> nonce -> Tasks PASS.
-  These are operator-provided results, not website E2E evidence. Gateway remains
-  IAM-private; cloud services are not redeployed. VPS identity/renewal, live
-  recovery, second-device download/24h expiry and VPS headroom remain activation gates.
-
-- **PDF Cloud Run release readiness tools**: Đã bổ sung các script `pdf-release-audit`, `pdf-local-runtime-audit` và `pdf-release-one-shot` và smoke Viewer ẩn danh được phép in (chạy thủ công) từ nhánh review #22 lên nền main sau #24. Script hỗ trợ staging immutable no-traffic, smoke PDF ảnh offline và kiểm tra IAM/digest/revision/traffic, có unit tests CI. Chưa chạy audit với Cloud Run thật và chưa chứng minh Viewer E2E; không bật production hoặc thay đổi quyền/traffic từ PR này. Xem [runbook](../operations/pdf-release-audit.md).
 - **Account settings**: trang tài khoản hiện có tên hiển thị, username, trạng thái
   đăng nhập và đăng xuất. Đổi mật khẩu/cập nhật thông tin trong UI chưa hoàn thiện;
   trang không hiển thị action giả.

@@ -32,30 +32,30 @@ paths:
   /api/public/pdf/capabilities:
     get:
       security: []
-      summary: Public PDF capabilities; production remains disabled until independently approved
+      summary: Khả năng PDF public; chỉ hoạt động khi cấu hình và readiness hợp lệ
       responses:
-        '200': {description: Capabilities, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/PdfCapabilities'}}}}}}
+        '200': {description: Giới hạn và khả năng xử lý, content: {application/json: {schema: {type: object, properties: {data: {$ref: '#/components/schemas/PdfCapabilities'}}}}}}
   /api/public/pdf/session:
     post:
       security: []
-      summary: Issue or reuse a browser-only opaque guest session
-      description: Requires exact Origin matching the configured public website. On success may set a 180-day HttpOnly SameSite=Strict cookie. Only available when PDF processing is enabled.
+      summary: Cấp hoặc dùng lại guest session của trình duyệt để submit
+      description: Yêu cầu Origin khớp chính xác website cấu hình. Có thể cấp cookie HttpOnly SameSite=Strict 180 ngày. Chỉ hoạt động khi PDF được bật và sẵn sàng.
       responses:
-        '200': {description: Guest session ready; cookie is never exposed in response JSON}
-        '403': {description: Invalid Origin}
-        '503': {description: PDF provider unavailable}
+        '200': {description: Guest session sẵn sàng; không trả cookie trong JSON}
+        '403': {description: Origin không hợp lệ}
+        '503': {description: Provider PDF chưa sẵn sàng}
   /api/public/pdf/batches:
     get:
       security: []
-      summary: List PDF batches submitted through the public tool, shared across devices
-      description: Shared public history; no login or submitting-browser cookie required. Private teacher batches are excluded.
+      summary: Danh sách batch PDF public dùng chung giữa thiết bị
+      description: Lịch sử public dùng chung, không cần đăng nhập hoặc cookie của trình duyệt tạo. Không gồm batch riêng tư của giáo viên.
       parameters: [{in: query, name: page, schema: {type: integer, minimum: 1, maximum: 10000, default: 1}}]
       responses:
-        '200': {description: Paginated guest batches, pageSize 20}
+        '200': {description: Batch public phân trang, pageSize 20}
     post:
       security: []
-      summary: Submit one to five authorized Drive links for this browser
-      description: Requires a valid submission cookie, exact Origin and UUID-v4 idempotency header scoped to the browser. Batch, jobs and public linkage commit atomically before enqueue. Existing teacher quotas and guest rate limits apply.
+      summary: Tiếp nhận liên kết Drive theo giới hạn capabilities (v1 tối đa 5, v2 tối đa 1)
+      description: Yêu cầu cookie submit hợp lệ, Origin chính xác và header idempotency UUID-v4 theo phiên. Batch, job và liên kết public commit nguyên tử trước enqueue. Quota owner và request/IP áp dụng độc lập.
       parameters: [{$ref: '#/components/parameters/PdfIdempotencyKey'}]
       requestBody:
         required: true
@@ -69,39 +69,39 @@ paths:
                 links: {type: array, minItems: 1, maxItems: 5, items: {type: string, format: uri, maxLength: 512}}
                 rightsConfirmed: {type: boolean, enum: [true], deprecated: true}
       responses:
-        '201': {description: Batch accepted, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
+        '201': {description: Đã tiếp nhận batch, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
         default: {$ref: '#/components/responses/PdfError'}
   /api/public/pdf/batches/{id}:
     get:
       security: []
-      summary: Retrieve a public-tool batch on any device
+      summary: Đọc batch public trên mọi thiết bị
       parameters: [{$ref: '#/components/parameters/PdfId'}]
       responses:
-        '200': {description: Public-tool batch on any device without a cookie, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
-        '404': {description: Private teacher batch or unknown}
+        '200': {description: Batch public trên mọi thiết bị, không cần cookie, content: {application/json: {schema: {$ref: '#/components/schemas/PdfBatchEnvelope'}}}}
+        '404': {description: Batch riêng tư hoặc không tồn tại}
   /api/public/pdf/jobs/{id}/retry:
     post:
       security: []
-      summary: Retry a public-tool PDF job when server policy permits
-      description: Requires exact Origin and idempotency header; no login or submitting-browser cookie. Private jobs return 404.
+      summary: Retry job PDF public khi chính sách server cho phép
+      description: Yêu cầu Origin chính xác và header idempotency; không cần đăng nhập hoặc cookie trình duyệt tạo. Job riêng tư trả 404.
       parameters: [{$ref: '#/components/parameters/PdfId'}, {$ref: '#/components/parameters/PdfIdempotencyKey'}]
       responses:
-        '201': {description: Idempotent successor job}
+        '201': {description: Job kế tiếp theo idempotency}
         default: {$ref: '#/components/responses/PdfError'}
   /api/public/pdf/jobs/{id}/download-ticket:
     post:
       security: []
-      summary: Create one-use download ticket for completed public-tool job
-      description: Requires exact Origin; no login or submitting-browser cookie. Download window is 24 hours from Worker claim once known. Private jobs return 404.
+      summary: Cấp ticket tải một lần cho job public đã hoàn thành
+      description: Yêu cầu Origin chính xác; không cần đăng nhập hoặc cookie trình duyệt tạo. Khi biết claim, hạn tải là 24 giờ từ claim Worker. Job riêng tư trả 404.
       parameters: [{$ref: '#/components/parameters/PdfId'}]
       responses:
-        '200': {description: Ticket, guest download path and expiry; no permanent public URL}
+        '200': {description: Ticket, đường tải public và thời hạn; không có URL public lâu dài}
         default: {$ref: '#/components/responses/PdfError'}
   /api/public/pdf/jobs/{id}/download:
     post:
       security: []
-      summary: One-use ticket PDF attachment streaming for public-tool job
-      description: Requires exact Origin and an unexpired ticket in the POST body; no login or submitting-browser cookie. Tickets must not appear in URLs or browser storage.
+      summary: Stream PDF đính kèm của job public bằng ticket một lần
+      description: Yêu cầu Origin chính xác và ticket chưa hết hạn trong body POST; không cần đăng nhập hoặc cookie trình duyệt tạo. Không đặt ticket trong URL hoặc bộ nhớ trình duyệt.
       parameters: [{$ref: '#/components/parameters/PdfId'}]
       requestBody:
         required: true
@@ -109,17 +109,17 @@ paths:
           application/json: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}
           application/x-www-form-urlencoded: {schema: {type: object, required: [ticket], properties: {ticket: {type: string}}}}
       responses:
-        '200': {description: PDF stream, content: {application/pdf: {schema: {type: string, format: binary}}}}
+        '200': {description: Luồng PDF, content: {application/pdf: {schema: {type: string, format: binary}}}}
         default: {$ref: '#/components/responses/PdfError'}
   /api/pdf/capabilities:
     get:
       summary: Khả năng PDF của giáo viên; production mặc định disabled
       responses:
-        '200': {description: Capabilities, content: {application/json: {schema: {type: object, required: [data], properties: {data: {$ref: '#/components/schemas/PdfCapabilities'}}}}}}
+        '200': {description: Giới hạn và khả năng xử lý, content: {application/json: {schema: {type: object, required: [data], properties: {data: {$ref: '#/components/schemas/PdfCapabilities'}}}}}}
         default: {$ref: '#/components/responses/PdfError'}
   /api/pdf/batches:
     post:
-      summary: Tạo batch và outbox nguyên tử; quyền sử dụng phải được xác nhận
+      summary: Tạo batch và outbox nguyên tử; không yêu cầu checkbox xác nhận quyền tải
       parameters: [{$ref: '#/components/parameters/PdfIdempotencyKey'}]
       requestBody:
         required: true
@@ -1219,7 +1219,7 @@ components:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   parameters:
     PdfId: {in: path, name: id, required: true, schema: {type: string, format: uuid, pattern: '^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$'}}
-    PdfIdempotencyKey: {in: header, name: Idempotency-Key, required: true, schema: {type: string, format: uuid}, description: Lowercase UUID-v4; giữ nguyên khi retry HTTP request}
+    PdfIdempotencyKey: {in: header, name: Idempotency-Key, required: true, schema: {type: string, format: uuid}, description: UUID-v4 chữ thường; giữ nguyên khi gửi lại request HTTP}
     Id: {in: path, name: id, required: true, schema: {type: integer, format: int64}}
     StudentId: {in: path, name: studentId, required: true, schema: {type: integer, format: int64, minimum: 1}}
     OccurrenceKey: {in: path, name: key, required: true, schema: {type: string, maxLength: 160}, example: '12:34:2026-07-20'}
@@ -1232,7 +1232,7 @@ components:
     PageSize: {in: query, name: pageSize, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
   responses:
     PdfError:
-      description: '401 auth; 403 teacher/ticket; 400 validation; 404 ownership/not-found; 409 idempotency/state; 429 rate/concurrency; 503 PDF_SERVICE_UNAVAILABLE hoặc PDF_DOWNLOAD_UNAVAILABLE. ErrorEnvelope.code là mã ổn định.'
+      description: '401 chưa xác thực; 403 quyền giáo viên/ticket; 400 dữ liệu sai; 404 không có quyền hoặc không tồn tại; 409 idempotency/trạng thái; 429 quota/đồng thời; 503 PDF_SERVICE_UNAVAILABLE hoặc PDF_DOWNLOAD_UNAVAILABLE. ErrorEnvelope.code là mã ổn định.'
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
     ValidationError:
       description: Dữ liệu không hợp lệ
@@ -1272,7 +1272,7 @@ components:
         ticketTtlSeconds: {type: integer, enum: [120]}
     PdfJob:
       type: object
-      description: 'Worker result hợp lệ xác nhận COMPLETED/FAILED. Task MISSING chỉ thành RESULT_UNCONFIRMED; RETRY_EXHAUSTED cần bằng chứng mạnh và vẫn poll result muộn đến expiry. ENUM/payload giữ tương thích.'
+      description: 'Result Worker hợp lệ xác nhận COMPLETED/FAILED. Task MISSING không chứng minh thất bại; v1 chuyển RESULT_UNCONFIRMED, v2 có thể enqueue lại cùng step/tên theo giới hạn. RETRY_EXHAUSTED cần bằng chứng rõ và vẫn kiểm result muộn đến expiry. Enum/payload giữ tương thích.'
       required: [id, batchId, fileId, status, createdAt, updatedAt, enqueuedAt, completedAt, expiresAt, errorCode, cloudErrorCode, bytes, pages, retryOf, retryAttempts, enqueueAttempts]
       properties:
         workerVersion: {type: integer, enum: [1, 2]}

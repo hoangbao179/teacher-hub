@@ -1,91 +1,69 @@
-# PDF producer identity and durable dispatch
+# ADR: định danh producer PDF và Gateway ngoài VPS
 
-Status: accepted source-only HMAC Gateway direction; production activation remains unapproved.
+## Trạng thái
 
-## Context
+Quyết định kiến trúc source đã được chấp nhận: Gateway HMAC, outbox MySQL và
+Worker Cloud Run riêng tư. Hai chế độ xác thực dưới đây có trong code; việc
+chấp nhận source không cấp quyền công khai Gateway hoặc kích hoạt production.
+Trạng thái vận hành chỉ theo [status](../implementation/status.md).
 
-The external VPS has no attested workload identity or approved issuer. A boolean
-feature flag cannot create one. Service-account keys, personal gcloud credentials
-and GitHub verifier federation are prohibited. The VPS has 1.5 GB RAM/1 vCPU/15 GB
-shared with MySQL and web services; no PDF processing belongs there.
+## Bối cảnh
 
-## Decision
+VPS ngoài Google Cloud không tự có workload identity được chứng thực. Một cờ
+boolean không tạo identity. VPS 1,5 GB RAM/1 vCPU/15 GB SSD dùng chung với MySQL,
+API/Web/Caddy; renderer phải tách ngoài. GitHub verifier WIF không đại diện VPS.
+Cần producer có giới hạn quyền, retry bền vững và tải không giữ cả PDF trong RAM.
 
-Keep production unavailable until an operator approves and verifies an independent
-short-lived workload identity. Implement provider interfaces, controlled fakes and
-an inert-by-default REST adapter accepting an explicitly verified token supplier.
-The application factory supplies no production credentials and cannot activate
-submission merely through environment flags. No cloud resource is created here.
+## Quyết định
 
-Preferred candidate: dedicated OIDC workload federation with an existing trusted
-issuer that attests this VPS workload, exact audience/subject restrictions and a
-dedicated producer SA. The issuer must independently authenticate the machine,
-protect signing keys, rotate short-lived subject tokens and support revocation.
-Self-signed VPS JWTs do not independently establish trust. No such issuer has been
-identified or approved; implementation of token acquisition remains blocked.
+Dùng Cloud Run Gateway nhỏ, chỉ cho phép queue/bucket/Worker cố định; runtime
+identity Gateway lấy token ngắn hạn từ metadata. API và recovery CLI dùng chung
+approval-file loader, mặc định DisabledPdfProvider khi thiếu cấu hình hợp lệ.
 
-Use job rows as a transactional outbox, deterministic task names and expiring DB
-leases. Transactions only record intent/updates; network calls run after commit.
-Bounded request-driven reconciliation plus an independently scheduled one-shot
-recovery CLI avoids a daemon. HTTP/CLI share the same default-disabled factory;
-identity approval also requires verified independent recovery before activation.
-Missing tasks are ambiguous, never proof of failure; overdue missing results become
-RESULT_UNCONFIRMED, with late-result polling until expiry. Only positive exhausted
-attempt evidence becomes RETRY_EXHAUSTED.
+- Chế độ riêng tư mặc định `iam_hmac_v1`: issuer độc lập chứng thực VPS → STS →
+  IAM Credentials ID token audience Gateway; gửi cả IAM và HMAC. Cần issuer đã
+  được duyệt và cơ chế renew JWT; chưa có bằng chứng issuer VPS hiện hành.
+- Chế độ public có chủ đích `hmac_public_v1`: approval schema riêng thay federation
+  bằng authMode; chỉ Gateway bỏ IAM invocation check sau review độc lập. HMAC là
+  credential producer duy nhất, không tự chọn khi IAM token lỗi/thiếu. Worker
+  vẫn riêng tư, Cloud Tasks gọi bằng OIDC.
 
-## Alternatives
+GCS nonce create-only bảo vệ replay qua restart/instance. Job MySQL là outbox;
+lease có hạn và task tên xác định. Network nằm ngoài transaction. Reconciler
+độc lập chạy one-shot qua systemd mỗi phút, không thêm daemon/container.
+Result thiếu là không xác nhận, không giả định FAILED. Download dùng ticket một
+lần và streaming qua API, không signed URL hay signBlob.
 
-A separately authenticated broker/gateway could hold cloud privileges and validate
-VPS requests using an independent identity or mTLS. This adds certificate/key
-custody, rotation/revocation, replay protection, another service, logs, requests,
-network egress and operational cost. A source-only HMAC Gateway direction has been approved for implementation, but its public deployment, credentials, IAM bindings and activation remain unapproved.
-Moving the producer to an attested cloud runtime changes deployment/architecture
-and costs; it needs separate approval. Static SA keys and public worker access are
-rejected. IAM keyless signing would need signBlob authority; use bounded authenticated
-streaming as a disabled production alternative until download architecture approval.
+## Phương án đã cân nhắc
 
-## Consequences and permissions
+| Phương án | Đánh giá |
+| --- | --- |
+| VPS federation với issuer có sẵn | Giữ Gateway IAM; cần chứng thực máy độc lập, renew/revoke và review audience/subject |
+| Gateway public HMAC | Ít phụ thuộc issuer; tăng bề mặt lạm dụng và chi phí request chưa xác thực |
+| Tự dựng CA/X.509/OIDC hoặc mTLS broker | Thêm vận hành certificate/key, hosting, rotation/revoke và chi phí; không mặc định làm |
+| Chuyển producer vào cloud | Có attested identity nhưng thay deployment/chi phí, cần duyệt riêng |
+| SA JSON key, ADC cá nhân, GitHub token giao định kỳ cho VPS | Không chấp nhận làm identity runtime |
+| Worker public hoặc ký URL bằng quyền rộng | Không chọn; không cần mở Worker hay signBlob |
 
-Local MySQL/fake tests can establish orchestration correctness, not cloud readiness.
-Federation needs Workload Identity User on the dedicated producer SA for only the
-approved subject. Producer needs tasks.create/tasks.get and queues.get on the exact
-queue, actAs on invoker SA and objects.get on the exact results bucket (prefer custom
-roles over broader viewer roles). Invoker needs service-scoped run.invoker; Cloud
-Tasks service agent needs its standard token-minting role. Runtime worker needs
-bucket objects.create/get. Producer has no Run deployment, IAM mutation or object
-write/delete privilege. Review all bindings including inherited access manually.
-Federation/token exchange, Tasks operations, GCS reads/egress, issuer/broker hosting
-and logging incur workload-dependent costs; no monthly estimate is validated.
+REST producer cũ chỉ còn là adapter được inject rõ ràng trong source/test;
+không phải runtime Gateway mặc định. Pool WIF VPS từng được đề cập trong tài liệu
+cũ không chứng minh đang sử dụng hoặc có issuer hợp lệ.
 
-References: [external federation](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-providers),
-[queue retries](https://docs.cloud.google.com/tasks/docs/configuring-queues).
+## Hệ quả và ranh giới quyền
 
-## Source-level architecture update — October 2026
+Gateway cần tasks.create/get, queues.get trên queue cố định, actAs invoker SA,
+objects.get bucket kết quả, objects.create chỉ prefix gateway-nonces/; secret
+accessor đúng phiên bản. Worker chỉ objects.get/create, không Tasks/list/delete.
+Invoker chỉ run.invoker Worker. Caller riêng tư chỉ run.invoker Gateway và
+subject-scoped federation, không Tasks/GCS. Verifier GitHub chỉ đọc tài nguyên
+cần readiness, không deploy/push/IAM write; không giữ đường impersonate deployer.
+Phải kiểm cả IAM kế thừa/custom role/delegation, không suy least privilege từ
+một lần describe thành công.
 
-For the small single-teacher site, the owner selected a lightweight HMAC-authenticated Cloud Run Gateway over a custom VPS X.509/OIDC certificate authority. The Gateway limits each operation to a fixed PDF queue, task schema and private result bucket; a dedicated Cloud Run service account obtains short-lived GCP credentials from runtime metadata. The external VPS holds only a random shared HMAC secret, not a Google service-account key. Nonce replay prevention reserves create-only GCS objects, and responses/backpressure use bounded streaming. Public/admin API and independently invoked recovery CLI share the same private approval-file loader and stay disabled without an explicitly provisioned valid file. This is a source implementation decision, not a grant to deploy or enable service.
-
-Security consequences: a compromised shared secret can impersonate the producer until revoked; nonces consume GCS storage operations and require dedicated permissions and cleanup; global admission and cost caps require live Cloud Run review; actual IAM, lifecycle, secret rotation, recovery schedule, Worker revision, PDF E2E and measured VPS cost remain production gates. The previously created teacher-hub-vps WIF pool is unused. The existing REST/WIF producer adapter remains disabled unless explicitly injected through a reviewed runtime.
-
-## Private Gateway IAM completion
-
-The Gateway remains IAM-private in addition to HMAC. The source adapter supports existing-issuer OIDC federation: a host-renewed subject JWT is exchanged with STS, then IAM Credentials generates a Gateway-audience ID token. The dedicated caller SA needs only Gateway invoker permission, not Tasks/GCS. No issuer is confirmed; private-mode activation is blocked until operator verification. Long-lived service-account keys and GitHub verifier reuse remain rejected. See [activation](../operations/pdf-vps-activation.md). Token refresh is an additional dependency; failure or an empty token remains unavailable without dispatch.
-
-## Explicit public-HMAC alternative
-
-The owner-selected source-only option B uses the existing Gateway with HTTPS and
-HMAC, without a VPS OIDC issuer. Its distinct approval contract requires
-`authMode: "hmac_public_v1"` and forbids `federation`; absent/invalid IAM identity
-never selects this mode. Both schemas require string URLs and a 64-character
-hexadecimal secret, with no type coercion or surrounding whitespace. API and
-recovery CLI share this loader. Worker invocation remains Cloud Tasks OIDC and
-IAM-private. Existing short-lived IAM federation remains the default alternative.
-
-This removes the issuer dependency but makes the shared secret the sole producer
-credential and allows unauthenticated traffic to incur Gateway costs. A leaked
-key grants all allowlisted PDF task/object operations; CORS and unpredictable job
-IDs are not authorization. Bounded streaming and local admission do not establish
-a global spending limit. No new VPS service, rendering dependency or resource
-increase is introduced. Public exposure, secret provisioning, independent recovery,
-live E2E and resource/cost verification remain separate operator gates in the
-[public-HMAC runbook](../operations/pdf-vps-hmac-public.md); source approval does
-not authorize changing production IAM.
+Secret bị lộ cho phép giả producer với mọi thao tác allowlist đến khi thu hồi.
+CORS, UUID khó đoán, token bucket từng instance và maxScale không phải giới hạn
+chi tiêu toàn cục. Nonce thêm GCS writes/retention; public Gateway chịu cả request
+không chữ ký. CPU/RAM, Tasks, Storage, polling, download egress, registry/log và
+backup đều có chi phí. Các gate bảo mật/tài nguyên/recovery/E2E và rollback nằm
+trong [runbook](../operations/cloud-run-pdf-worker.md); không tự cấp IAM hay
+thay kiến trúc để vượt một gate đang lỗi.

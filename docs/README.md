@@ -65,3 +65,19 @@ chỉ là đường dẫn tương thích đã ignore, không phải nguồn tài
   target đã duyệt cho Admin Dashboard.
 
 Khi sửa feature quan trọng, cập nhật feature doc và shared contract trong cùng PR.
+
+## Bộ tài liệu PDF
+
+Bắt đầu từ [tổng quan và sơ đồ PDF](features/pdf-worker.md), rồi chọn:
+
+- [Yêu cầu sản phẩm và quyền nguồn](product-spec/pdf-viewer-links.md).
+- [Đặc tả API, dữ liệu và vòng đời job](features/pdf-job-api.md).
+- [Contract Worker v1](api/pdf-worker-v1.md) và [v2](api/pdf-worker-v2.md).
+- [Triển khai/vận hành, readiness, chi phí và rollback](operations/cloud-run-pdf-worker.md).
+- [Quyết định định danh producer](decisions/ADR-pdf-producer-identity.md).
+- [Thử nghiệm chất lượng/tài nguyên và giới hạn bằng chứng](features/pdf-quality-poc.md).
+
+[Trạng thái hiện hành](implementation/status.md) công bố riêng mức hoàn thiện và
+phần production chưa xác minh. Các report cũ đã hợp nhất không còn là runbook;
+[bản kiểm toán](changes/2026-10/pdf-documentation-audit.md) giữ danh mục quyết định
+và rủi ro cần xử lý riêng, Git history giữ chi tiết triển khai từng đợt.

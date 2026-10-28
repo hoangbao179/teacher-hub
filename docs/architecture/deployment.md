@@ -1,9 +1,10 @@
 # Deployment architecture
 
-PDF worker có nền tảng container riêng tại `workers/pdf`, ngoài Compose/VPS và
-không kết nối với API hiện hành. [Runbook Cloud Run](../operations/cloud-run-pdf-worker.md)
-mô tả workflow thủ công dùng WIF và các gate IAM/cost trước deploy. Phạm vi hiện tại
-chỉ là health endpoint; chưa triển khai cloud hoặc tích hợp PDF/Storage/Tasks.
+PDF Worker chạy tách khỏi Compose/VPS. API và recovery CLI điều phối qua Gateway
+HMAC → Cloud Tasks → Worker riêng tư → GCS; PDF stream về qua Gateway/API.
+[Tổng quan PDF](../features/pdf-worker.md) mô tả các thành phần;
+[runbook](../operations/cloud-run-pdf-worker.md) quy định deployment/readiness,
+identity và rollback. Trạng thái live theo [status](../implementation/status.md).
 
 Production mục tiêu là một VPS 1 core, 1.5 GB RAM, 15 GB SSD. GitHub Actions build API
 và Web song song sau bốn gate quality/integration/smoke/schedule-regression, lưu image trong GHCR rồi triển
@@ -54,6 +55,9 @@ tab `Tổng quan` và `Ôn từ vựng`, rồi giữ nguyên spreadsheet ID/URL.
 giống file Excel tải xuống được hiển thị; `_TeacherHub` vẫn ẩn để phục vụ đồng bộ. Mỗi
 event lesson cập nhật cả lịch sử và snapshot Học phí để hai tab không lệch nhau.
 
-## PDF VPS integration
+## Tích hợp PDF trên VPS
 
-See [private Gateway activation](../operations/pdf-vps-activation.md) for IAM + HMAC, host-owned secret configuration, outbound API networking, the one-minute systemd recovery timer and rollback. PDF stays disabled until the existing-issuer and live recovery gates pass; no new VPS container or resource increase is introduced.
+API có mạng egress riêng và mount cấu hình PDF host-owned read-only; MySQL vẫn
+internal. Systemd chạy recovery CLI trong API container mỗi phút, không thêm
+renderer/service lâu dài trên VPS. Unit phải do root provision trước; deploy
+chỉ enable/start sau gate. Xem [runbook PDF](../operations/cloud-run-pdf-worker.md).
