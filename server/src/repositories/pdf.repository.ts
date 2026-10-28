@@ -126,14 +126,18 @@ export class PdfRepository {
     });
   }
   async save(work: PdfWork, status: PdfJobStatus, cloudError: string | null, result?: ValidPdfResult, enqueueAttempted = false, progress?: PdfProgress) {
+    const clearProgress = result?.status === 'FAILED';
+    const progressJson = clearProgress ? null : progress ? JSON.stringify(progress) : null;
     await pool.execute(`UPDATE pdf_jobs SET status=?,cloud_error_code=?,updated_at=UTC_TIMESTAMP(3),
       enqueued_at=CASE WHEN ?='QUEUED' THEN COALESCE(enqueued_at,UTC_TIMESTAMP(3)) ELSE enqueued_at END,
-      enqueue_attempts=CASE WHEN ? THEN ? ELSE enqueue_attempts+? END,progress_json=COALESCE(?,progress_json),
+      enqueue_attempts=CASE WHEN ? THEN ? ELSE enqueue_attempts+? END,
+      progress_json=CASE WHEN ? THEN NULL WHEN ? IS NOT NULL THEN ? ELSE progress_json END,
       next_action_at=UTC_TIMESTAMP(3)+INTERVAL 15 SECOND,lease_token=NULL,lease_until=NULL,
       completed_at=COALESCE(?,completed_at),expires_at=COALESCE(?,expires_at),error_code=COALESCE(?,error_code),
       object_name=COALESCE(?,object_name),bytes=COALESCE(?,bytes),pages=COALESCE(?,pages),sha256=COALESCE(?,sha256)
       WHERE id=? AND lease_token=?`, [status,cloudError,status,
-      !!progress && progress.nextStep !== work.progress?.nextStep,enqueueAttempted ? 1 : 0,enqueueAttempted ? 1 : 0,progress ? JSON.stringify(progress) : null,
+      !!progress && progress.nextStep !== work.progress?.nextStep,enqueueAttempted ? 1 : 0,enqueueAttempted ? 1 : 0,
+      clearProgress, progressJson, progressJson,
       result ? new Date(result.completedAt) : null,result ? new Date(result.expiresAt) : null,result?.errorCode ?? null,
       result?.objectName ?? null,result?.bytes ?? null,result?.pages ?? null,result?.sha256 ?? null,work.id,work.lease]);
   }

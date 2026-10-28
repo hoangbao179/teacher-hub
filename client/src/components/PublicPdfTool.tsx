@@ -90,6 +90,7 @@ export function PublicPdfTool() {
       }
     }
   },[]);
+  const needsFastPoll=useMemo(()=>Object.values(details).some(batch=>pdfBatchNeedsPolling(batch)),[details]);
   useEffect(()=>{
     mounted.current=true;
     visiblePage.current=page;
@@ -98,9 +99,9 @@ export function PublicPdfTool() {
       if(inFlight.current){if(activePage.current!==page)pendingRefresh.current=page;}
       else void refresh(page,false);
     });
-    const timer=window.setInterval(()=>{if(!document.hidden&&!inFlight.current)void refresh(page,false);},15000);
+    const timer=window.setInterval(()=>{if(!document.hidden&&!inFlight.current)void refresh(page,false);},needsFastPoll?5000:15000);
     return ()=>{mounted.current=false;window.clearInterval(timer);};
-  },[refresh,page]);
+  },[refresh,page,needsFastPoll]);
   async function submit(){
     if(busy||!enabled||invalid)return;
     setBusy(true);setError("");setNotice("");
@@ -175,6 +176,9 @@ export function PublicPdfTool() {
             {(details[batch.id]?.jobs??[]).map(job=>{
               const expired=Date.parse(job.expiresAt)<=Date.now();
               const completed=job.status==="COMPLETED"&&!expired;
+              const active=ongoing.includes(job.status);
+              const progress=job.progress;
+              const showProgress=Boolean(progress)&&!expired&&(active||completed);
               const retryable=(expired||["FAILED","RETRY_EXHAUSTED","EXPIRED"].includes(job.status))&&job.retryAttempts<(caps?.maxRetries??2);
               return <Box data-testid="pdf-job" key={job.id} sx={{py:1.5,borderTop:"1px solid #f4e6ec"}}>
                 <Stack component="div" direction="row" spacing={1} sx={{justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -182,20 +186,23 @@ export function PublicPdfTool() {
                     <Typography sx={{fontWeight:700,overflowWrap:"anywhere",fontSize:14}}>{title(job)}</Typography>
                     <Typography sx={{fontSize:12,color:"#866a77"}}>{job.pages!==null?job.pages+" trang · ":""}{job.bytes!==null?(job.bytes/1048576).toFixed(2)+" MB":"Chưa có dung lượng"}</Typography>
                   </Box>
-                  <Chip size="small" color={completed?"success":"default"} label={expired?"Hết hạn":statuses[job.status]}/>
+                  <Chip size="small" color={completed?"success":job.status==="FAILED"?"error":"default"} label={expired?"Hết hạn":statuses[job.status]}/>
                 </Stack>
-                {job.progress&&!expired&&<Box data-testid="pdf-progress" sx={{mt:1.5}}>
+                {showProgress&&progress&&<Box data-testid="pdf-progress" sx={{mt:1.5}}>
                   <Typography sx={{fontSize:12,mb:0.5}} aria-live="polite">
-                    {completed ? "Hoàn thành · 100%" : job.progress.stage==="DISCOVERING" ? "Đang kiểm tra số trang" :
-                      `${job.progress.processedPages}/${job.progress.totalPages} trang · ${job.progress.percent}%${job.progress.stage==="MERGING" ? " · Đang ghép PDF" : ""}`}
+                    {completed ? "Hoàn thành · 100%" : progress.stage==="DISCOVERING" ? "Đang kiểm tra số trang" :
+                      `${progress.processedPages}/${progress.totalPages} trang · ${progress.percent}%${progress.stage==="MERGING" ? " · Đang ghép PDF" : ""}`}
                   </Typography>
-                  <LinearProgress variant={job.progress.totalPages===null&&!completed ? "indeterminate" : "determinate"}
-                    value={completed?100:job.progress.percent} aria-label="Tiến độ tạo PDF" sx={{height:6,borderRadius:3}}/>
+                  <LinearProgress variant={progress.totalPages===null&&!completed ? "indeterminate" : "determinate"}
+                    value={completed?100:progress.percent} aria-label="Tiến độ tạo PDF" sx={{height:6,borderRadius:3}}/>
                 </Box>}
-                {job.status==="FAILED"&&job.errorCode&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>{failureReasons[job.errorCode]??"Không thể xử lý tài liệu này."}</Typography>}
+                {job.status==="FAILED"&&job.errorCode&&<Box sx={{mt:1}}>
+                  <Typography sx={{fontSize:12,color:"#866a77"}}>{failureReasons[job.errorCode]??"Không thể xử lý tài liệu này."}</Typography>
+                  <Typography sx={{fontSize:12,color:"#866a77",mt:0.5}}>Hệ thống đã dừng xử lý tài liệu này; không còn job chạy phía server.</Typography>
+                </Box>}
                 {job.status==="RESULT_UNCONFIRMED"&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Chưa xác nhận được kết quả. Hệ thống đang tiếp tục kiểm tra.</Typography>}
                 {job.cloudErrorCode&&ongoing.includes(job.status)&&!expired&&<Typography sx={{fontSize:12,mt:1}}>Hệ thống đang thử kết nối lại. Tiến độ đã lưu vẫn được giữ.</Typography>}
-                {ongoing.includes(job.status)&&!expired&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>Có thể đóng trang trong khi chờ.</Typography>}
+                {active&&!expired&&<Typography sx={{fontSize:12,mt:1,color:"#866a77"}}>Có thể đóng trang trong khi chờ. Tiến độ cập nhật tự động khi hệ thống còn xử lý.</Typography>}
                 <Stack component="div" direction="row" sx={{mt:1,gap:1,flexWrap:"wrap"}}>
                   {completed&&<Button data-testid="pdf-download" startIcon={<DownloadRounded/>} disabled={busy||caps?.downloadEnabled!==true}
                     onClick={()=>void download(job)} sx={{minHeight:44,color:"#b96d8d"}}>Tải PDF</Button>}
