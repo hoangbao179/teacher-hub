@@ -1,6 +1,5 @@
 import { errors, type Page } from 'playwright';
 import { JobError } from './contract.ts';
-import { assertPrintAction } from './print-policy.ts';
 
 /** These pages are disposable. Closing on abort also cancels pending Playwright work. */
 export async function withViewerAbort<T>(page: Page, signal: AbortSignal, work: () => Promise<T>): Promise<T> {
@@ -16,11 +15,13 @@ export async function withViewerAbort<T>(page: Page, signal: AbortSignal, work: 
   }
 }
 
-export async function selectViewerMode(page: Page, screenCapture: boolean, signal: AbortSignal): Promise<'print-gated' | 'view-only'> {
-  return withViewerAbort(page, signal, async () => {
+/** Wait until the anonymous Viewer shell is usable, then always use tile capture. */
+export async function selectViewerMode(page: Page, _screenCapture?: boolean, signal?: AbortSignal): Promise<'view-only'> {
+  if (!signal) throw new JobError('INVALID_REQUEST');
+  return withViewerAbort<'view-only'>(page, signal, async () => {
     // DOMContentLoaded is only the shell. Require page identity, a usable zoom
     // control, no visible loading indicator, and a short quiet toolbar window.
-    // Missing Print must not consume the entire readiness timeout.
+    // Print/In controls are not required for view-only tile capture.
     const state = await page.evaluateHandle(() => ({ signature: '', since: performance.now() }));
     try {
       await page.waitForFunction(state => {
@@ -40,16 +41,6 @@ export async function selectViewerMode(page: Page, screenCapture: boolean, signa
       throw error;
     } finally { await state.dispose(); }
     signal.throwIfAborted();
-    const print = page.getByRole('button', { name: /^(In|Print)$/i });
-    const count = await print.count();
-    const enabled = count === 1 && await print.isVisible() && await print.isEnabled();
-    // Tile capture does not require Print; avoid print-gated rechecks that surface ACCESS_DENIED.
-    if (screenCapture) {
-      if (count > 1) assertPrintAction(count, enabled);
-      return 'view-only';
-    }
-    if (enabled) return 'print-gated';
-    assertPrintAction(count, enabled);
     return 'view-only';
   });
 }

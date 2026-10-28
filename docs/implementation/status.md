@@ -103,8 +103,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   | `PDF_VIEWER_SCREEN_CAPTURE_ENABLED` | Luôn bật trong code | Khi Print tắt/thiếu, ghép PDF ảnh từ tile Viewer (`view-only`); env `false` không còn tắt nhánh này |
 
   **Luồng mặc định:** (1) tải trực tiếp `uc?export=download`; (2) nếu lỗi phù hợp →
-  Viewer ẩn danh; (3) **`print-gated`** khi nút In/Print bật, hoặc **`view-only`**
-  khi Print tắt/thiếu và screen capture không bị tắt (`viewer-pdf.ts`).
+  Viewer ẩn danh; (3) **`view-only`** — chụp tile ghép PDF ảnh; **không** phụ thuộc nút In/Print
+  (`viewer-pdf.ts`, `renderer.ts`).
 
   **Vì sao chưa DONE:**
   - **Chủ file khóa Print:** nhánh `view-only` áp dụng cả v1 và v2 (khi bật);
