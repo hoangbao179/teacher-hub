@@ -38,6 +38,13 @@ còn khoảng cách về yêu cầu/quyền; không âm thầm đổi thành hap
 
 ## Điều kiện nghiệm thu
 
+Khi xác định được tên nguồn từ response direct hợp lệ hoặc tiêu đề Viewer công
+khai sau khi tài liệu mở thành công, giữ tên theo job và dùng cho lịch sử/tải PDF.
+Không lấy được tên vẫn xử lý bình thường, fallback theo Drive ID. Job cũ không
+cần backfill; không mở thêm nguồn hay quyền truy cập. Form nêu rõ lịch sử và tên
+tài liệu public dùng chung giữa thiết bị. Tải native chỉ báo đã gửi yêu cầu cho
+trình duyệt bằng thông báo tạm thời, không khẳng định tải hoàn tất.
+
 | Trường hợp | Kết quả yêu cầu |
 | --- | --- |
 | Viewer khác Owner, mở ẩn danh, được phép tải/in | PDF hợp lệ, đủ trang, tải được để in; bắt buộc E2E thực tế |

@@ -20,3 +20,5 @@ export * from "./contracts/vocabulary-results.js";
 export * from "./assignment-templates.js";
 export * from "./assignment-compatibility.js";
 export { assignmentActivitiesForTemplate } from "./assignment-templates.js";
+
+export * from "./pdf-filename.js";

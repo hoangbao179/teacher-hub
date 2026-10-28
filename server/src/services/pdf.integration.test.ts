@@ -23,6 +23,27 @@ import { verifySchema } from '../scripts/verify-pdf-v2';
 import { pdfSettings } from '../config/pdf-settings';
 
 const integration=process.env.RUN_MYSQL_INTEGRATION==='1'?test:test.skip;
+
+integration('nullable filename migration preserves old jobs and durable Unicode metadata with lease ownership',async t=>{
+  const [insert]=await pool.execute<ResultSetHeader>("INSERT INTO users(username,password_hash,display_name) VALUES(?,'synthetic-fixture','Filename fixture')",[`filename-${randomUUID()}`]);
+  const owner=insert.insertId,repo=new PdfRepository();
+  t.after(async()=>{
+    await pool.execute('DELETE FROM pdf_jobs WHERE owner_id=?',[owner]);
+    await pool.execute('DELETE FROM pdf_batches WHERE owner_id=?',[owner]);
+    await pool.execute('DELETE FROM users WHERE id=?',[owner]);
+  });
+  const id=await repo.create(owner,randomUUID(),'fixture',['fixture_name_12345'],{enabled:true,maxLinks:1,maxActive:3,maxHourly:20,maxRetries:2,chunked:true});
+  const old=(await repo.batch(owner,id)).jobs[0];assert.equal(old.filename,null);
+  const work=await repo.lease(owner,id);assert.ok(work);
+  const filename='Bài tập Tiếng Anh lớp 6.pdf';
+  await repo.save(work,'COMPLETED',null,{status:'COMPLETED',completedAt:new Date().toISOString(),expiresAt:old.expiresAt,filename,objectName:`jobs/${old.id}/output.pdf`,bytes:123,pages:1,sha256:'a'.repeat(64)});
+  assert.equal((await new PdfRepository().get(owner,old.id)).filename,filename);
+  await repo.save(work,'COMPLETED',null,{status:'COMPLETED',completedAt:new Date().toISOString(),expiresAt:old.expiresAt,filename:'stale.pdf'});
+  assert.equal((await repo.get(owner,old.id)).filename,filename,'stale lease cannot overwrite metadata');
+  await pool.execute("DELETE FROM schema_migrations WHERE version='0030_pdf_filename.sql'");
+  const c=await pool.getConnection();try{await recoverInterruptedMigrations(c);}finally{c.release();}
+  const [ledger]=await pool.query<RowDataPacket[]>("SELECT version FROM schema_migrations WHERE version='0030_pdf_filename.sql'");assert.equal(ledger.length,1);
+});
 after(()=>pool.end());
 integration('atomic PDF ALTER is recovered if process dies before migration ledger insert',async()=>{
  const connection=await pool.getConnection();

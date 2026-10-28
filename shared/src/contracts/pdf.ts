@@ -9,6 +9,7 @@ export interface PdfCapabilities {
 }
 export interface PdfJob {
   workerVersion?: 1 | 2; progress?: import('../pdf-pipeline.js').PdfProgress | null;
+  filename?: string | null;
   id: string; batchId: string; fileId: string; status: PdfJobStatus;
   createdAt: string; enqueuedAt: string | null; updatedAt: string;
   completedAt: string | null; expiresAt: string; errorCode: string | null;

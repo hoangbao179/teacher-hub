@@ -1,0 +1,1 @@
+ALTER TABLE pdf_jobs ADD COLUMN filename VARCHAR(180) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL;

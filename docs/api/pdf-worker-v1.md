@@ -53,6 +53,12 @@ Bucket cố định `teacher-hub-pdf-results-2026`, prefix `jobs/<jobId>/`:
   sha256, completedAt. V1 direct giữ nguyên bytes; Viewer là PDF ảnh đã validate.
 - `result.json`: schema terminal dưới đây; không signed/public URL.
 
+Result COMPLETED có thể thêm `filename` tùy chọn đã chuẩn hóa (NFC, ≤180 byte
+UTF-8, đuôi `.pdf`), cùng tên trong custom metadata output.pdf để phục hồi sau
+mất result. Result FAILED không có field này; claim/request không đổi. API mới
+nhận cả schema cũ không tên và schema có đúng field tùy chọn; field lạ vẫn từ chối.
+Xem [quy tắc tên và fallback](../features/pdf-job-api.md#ui-polling-và-tải).
+
 ```json
 {
   "version": 1,

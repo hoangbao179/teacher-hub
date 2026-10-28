@@ -10,7 +10,7 @@ const date = (v: string | Date) => v instanceof Date ? v.toISOString() : new Dat
 const nullableDate = (v: string | null) => v ? date(v) : null;
 export interface PdfWork extends PdfJob { lease: string }
 function job(r: RowDataPacket): PdfJob {
-  return { id: r.id, batchId: r.batch_id, fileId: r.file_id, status: r.status,
+  return { id: r.id, batchId: r.batch_id, fileId: r.file_id, filename: r.filename ?? null, status: r.status,
     workerVersion: r.worker_version === 2 ? 2 : 1,
     progress: typeof r.progress_json === 'string' ? JSON.parse(r.progress_json) : r.progress_json ?? null,
     createdAt: date(r.created_at), updatedAt: date(r.updated_at), enqueuedAt: nullableDate(r.enqueued_at),
@@ -136,12 +136,12 @@ export class PdfRepository {
       progress_json=CASE WHEN ? THEN NULL WHEN ? IS NOT NULL THEN ? ELSE progress_json END,
       next_action_at=UTC_TIMESTAMP(3)+INTERVAL 15 SECOND,lease_token=NULL,lease_until=NULL,
       completed_at=COALESCE(?,completed_at),expires_at=COALESCE(?,expires_at),error_code=COALESCE(?,error_code),
-      object_name=COALESCE(?,object_name),bytes=COALESCE(?,bytes),pages=COALESCE(?,pages),sha256=COALESCE(?,sha256)
+      filename=COALESCE(?,filename),object_name=COALESCE(?,object_name),bytes=COALESCE(?,bytes),pages=COALESCE(?,pages),sha256=COALESCE(?,sha256)
       WHERE id=? AND lease_token=?`, [status,cloudError,status,
       !!progress && progress.nextStep !== work.progress?.nextStep,enqueueAttempted ? 1 : 0,enqueueAttempted ? 1 : 0,
       clearProgress, progressJson, progressJson,
       result ? new Date(result.completedAt) : null,result ? new Date(result.expiresAt) : null,result?.errorCode ?? null,
-      result?.objectName ?? null,result?.bytes ?? null,result?.pages ?? null,result?.sha256 ?? null,work.id,work.lease]);
+      result?.filename ?? null,result?.objectName ?? null,result?.bytes ?? null,result?.pages ?? null,result?.sha256 ?? null,work.id,work.lease]);
   }
   async ticket(owner: number, id: string, hash: string, expiry: Date) {
     // Small expiring authorization records; bounded per job and cleaned without touching job history.

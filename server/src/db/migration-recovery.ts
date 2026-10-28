@@ -314,6 +314,11 @@ export async function recoverInterruptedMigrations(
 ): Promise<void> {
   // MySQL DDL commits before schema_migrations INSERT; recover this atomic ALTER after a crash.
   const pdfVersion='0029_pdf_chunk_progress.sql';
+  const filenameVersion='0030_pdf_filename.sql';
+  if (!await migrationApplied(connection,filenameVersion) && await tableExists(connection,'pdf_jobs') &&
+    await columnExists(connection,'pdf_jobs','filename')) {
+    await connection.query('INSERT IGNORE INTO schema_migrations(version) VALUES (?)',[filenameVersion]);
+  }
   if (!await migrationApplied(connection,pdfVersion) && await tableExists(connection,'pdf_jobs') &&
     await columnExists(connection,'pdf_jobs','worker_version') && await columnExists(connection,'pdf_jobs','progress_json')) {
     await connection.query('INSERT IGNORE INTO schema_migrations(version) VALUES (?)',[pdfVersion]);

@@ -32,7 +32,7 @@ export function PublicToolsPage() {
         </Stack>
       </Container>
 
-      <Container component="main" maxWidth="sm" sx={{ flex: 1, pt: { xs: 4, sm: 6 }, pb: 5 }}>
+      <Container component="main" maxWidth="lg" sx={{ flex: 1, pt: { xs: 4, sm: 6 }, pb: 5 }}>
         <Box sx={{ textAlign: "center", position: "relative", px: { xs: 1, sm: 3 }, pb: 4 }}>
           <Box sx={{ position: "absolute", width: 74, height: 96, right: 0, top: -10, opacity: 0.7, pointerEvents: "none" }}><GardenSprig /></Box>
           <Box sx={{ display: "inline-flex", p: 1.5, borderRadius: "24px 24px 24px 8px", bgcolor: "#f9e0e9", color: "#b96d8d", mb: 2 }}>
@@ -45,7 +45,7 @@ export function PublicToolsPage() {
 
         <PublicPdfTool />
 
-        <Box component="section" aria-labelledby="explore-heading" sx={{ mt: 4 }}>
+        <Box component="section" aria-labelledby="explore-heading" sx={{ mt: 4, maxWidth: 600, mx: "auto" }}>
           <Typography id="explore-heading" component="h2" sx={{ fontWeight: 700, fontSize: 16, mb: 2, textAlign: "center", color: "#6d617a" }}>Khám phá thêm</Typography>
           <Stack spacing={1.5}>
             {[
