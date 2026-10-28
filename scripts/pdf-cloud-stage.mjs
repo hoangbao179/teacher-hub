@@ -4,6 +4,8 @@
  * --stage explicitly builds and stages both immutable images with NO TRAFFIC.
  * Never grants IAM, exposes anonymous ingress, provisions secrets, or flips API.
  * Compatible with Windows PowerShell (gcloud.cmd, docker.exe through cmd.exe).
+ * Legacy v1 resource/env contract, NOT the v2 deployment target. See
+ * docs/operations/pdf-long-documents.md before using this operator-only tool.
  */
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';

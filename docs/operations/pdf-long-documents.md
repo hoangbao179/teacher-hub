@@ -25,6 +25,54 @@ reference, canonical Worker routing and the queue retry/rate policy without an
 HTTP target override. A future cloud release requires a reviewed pin update;
 the gate never moves traffic or relaxes security to make itself pass.
 
+### Readiness failure diagnostics
+
+Failures go to stderr; stdout contains readiness evidence only after every gate
+passes. A failed read identifies `WORKER_SERVICE`, `WORKER_REVISION`, `WORKER_IAM`,
+`GATEWAY_SERVICE`, `GATEWAY_REVISION`, `GATEWAY_IAM` or `QUEUE`, followed by a
+classified reason and, when available, exit status, an allowlisted process signal
+and an allowlisted Google permission name. For example:
+`PDF_V2_WORKER_REVISION_READ_FAILED: reason=PERMISSION_DENIED permission=run.revisions.get exit=1`.
+Permission names are diagnostic evidence, not instructions to grant IAM.
+
+`PERMISSION_DENIED`, `UNAUTHENTICATED`, `NOT_FOUND`, `API_DISABLED`,
+`DEADLINE_EXCEEDED` and `UNAVAILABLE` distinguish common upstream failures.
+`GCLOUD_NOT_FOUND`, `COMMAND_TIMEOUT` and `OUTPUT_LIMIT_EXCEEDED` identify local
+CLI failures. `COMMAND_FAILED` preserves the failing step/status for an
+unrecognized error without guessing its cause. `INVALID_JSON` means the read
+returned output that could not be parsed, not that IAM was denied. Validation
+errors retain the original gate code with Worker/Gateway context; queue drift
+retains `PDF_V2_QUEUE_DRIFT`. Raw command arguments, stdout, stderr, credentials,
+response payloads and upstream error text are never printed.
+
+Inspect the linked readiness run before changing anything. A failure in the auth
+action occurs before this script. For a failed read, independently verify the
+named operation, target revision and verifier access; for drift, compare the
+reviewed v2 contract with cloud inventory. Do not grant IAM, repoint pins, change
+traffic or relax a gate merely to obtain PASS. Historic
+`PDF_V2_CLOUD_READ_BLOCKED` logs cannot establish the original cause; a subsequent
+normal deployment will collect the new diagnostics.
+
+The staging tool and readiness gate intentionally have different contracts:
+
+| Setting | Legacy `pdf-cloud-stage.mjs` | v2 readiness |
+| --- | --- | --- |
+| Worker max instances | 3 | 1 |
+| Worker memory scratch | 32 MiB | 384 MiB |
+| Worker request timeout | 180s | >=180s |
+| Gateway request timeout | 30s | >=180s |
+| `PDF_CHUNKED_JOBS_ENABLED` | Not set | Required true on both |
+| Processing/IAM/fallback flags, temp root | Set on Worker | Required on Worker |
+| Gateway enabled/long-task flags, Worker URL, secret ref | Set on Gateway | Required on Gateway |
+| Invocation policy | Both private in legacy staging | Private Worker, reviewed public-HMAC Gateway |
+
+These are not interchangeable deployment configurations. The legacy tool's
+explicit screen-capture flag is not a v2 readiness requirement; v2 uses its
+Print-gated contract. Do not synchronize legacy maxScale/volume/timeout/env values
+with v2 by weakening readiness or silently expanding the staging resource budget.
+
+### VPS activation and recovery
+
 On the VPS, the existing deployment lock covers configuration snapshots,
 `.env.next` validation/installation and migrations. Existing pre-migration backup,
 disk/inode headroom and immutable image retention still apply. The candidate
