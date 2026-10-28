@@ -78,6 +78,15 @@ Readiness ghim `RELEASE` trong `scripts/pdf-v2-readiness.mjs`, không lấy late
 Source SHA evidence là SHA API/Web sắp deploy, không tự chứng minh Cloud image
 được build từ SHA đó. Cần giữ chuỗi build SHA → registry digest → revision riêng.
 
+Pin hiện hành: Worker `teacher-pdf-worker-00020-fiv` với platform digest
+`sha256:7b0e5d6bcd5ce4aa449939ddf3e31d8f93fd4b6e88c20922850810c06009f5cb`;
+Gateway vẫn `teacher-pdf-gateway-00013-gej` với digest trong `RELEASE`.
+Registry tag Worker `35ff0f8b5a28f91aa7720dbcead85d3f4fe7ef32` trỏ OCI index
+`sha256:75357d6f5062ccb3a120e21271a0a9367616dbd2365d4d2df256ce6e7e520b9b`,
+có descriptor linux/amd64 đúng digest Worker trên. Không dùng index digest thay
+platform digest trong gate này. Mapping tag/index/manifest không phải chứng nhận
+build provenance; kiểm lại live inventory khi rollout tiếp hoặc rollback.
+
 GitHub Environment `pdf-worker`: main duy nhất, policy type branch rõ ràng,
 custom_branch_policies true/protected_branches false, can_admins_bypass false;
 reviewer optional cho verifier chỉ đọc. Validator chạy trước auth; thiếu trường/

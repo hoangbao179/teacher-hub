@@ -102,11 +102,12 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   Gateway và systemd recovery root-provisioned, rồi bật cờ v2/recreate API.
   Không downgrade khi còn job/output v2 chưa hết hạn hoặc DB chưa rõ.
 
-  **Production CHƯA XÁC MINH trong kiểm toán 28/10/2026:** readiness chỉ đọc
-  dừng ở WORKER_SERVICE với PERMISSION_DENIED; không kết luận traffic, revision,
-  flags VPS, schema/timer hay billing hiện hành. Source pin Worker 00017-guf và
-  Gateway 00013-gej là cấu hình gate, không bằng chứng live. Operator từng báo
-  Worker 00017-guf ở 100% và 00020-fiv được stage no-traffic; cần đọc lại inventory.
+  **Cloud inventory chỉ đọc:** Worker 00020-fiv và Gateway 00013-gej nhận 100%
+  traffic; readiness ghim đúng revision và platform digest đã đối chiếu registry.
+  Đây không phải xác minh rollout API/Web, flags VPS, schema/timer hay billing.
+  Worker image thuộc lineage registry tag 35ff0f8, chưa có metadata filename từ
+  PR #51; API mới vẫn nhận kết quả cũ và fallback Drive ID. Cần rollout Worker
+  riêng sau API theo runbook để có tên gốc, không suy từ merge PR là đã deploy.
   Fixture offline/FakeCloud và số đo cũ không chứng minh Viewer khác Owner có
   quyền, 200 trang trên Cloud Run, chất lượng giấy in hoặc VPS headroom.
 
