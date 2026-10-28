@@ -102,15 +102,24 @@ approval files are intentionally rejected. For private rehearsal use a distinct
 `approval.json` only after the following checks. Do not falsely mark production
 recovery verified based on the disabled timer's idle output.
 
-Deploy the reviewed immutable SHA using the existing deployment script, after
-recording the current SHA and saving the previous Compose/script set:
+Root provisions the reviewed recovery units before deployment (including
+`User=deploy` on the service), then runs `systemctl daemon-reload`. Installed
+fragments/drop-ins and their parent paths must be root-owned and not writable
+by deploy. The commands below are root/operator provisioning, not deployment
+sudo permissions. Record the current SHA and save the previous Compose/script set:
 
 ```bash
 cd /opt/teacher-hub
-./deploy-production.sh <REVIEWED_FULL_COMMIT_SHA>
 sudo install -m 644 teacher-pdf-recovery.service teacher-pdf-recovery.timer /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now teacher-pdf-recovery.timer
+```
+
+Then run deployment as `deploy`, with sudoers restricted to the two exact
+noninteractive commands documented in [automated activation](pdf-long-documents.md#vps-activation-and-recovery).
+No sudo ALL, unit installation or daemon reload permission is required by deploy.
+
+```bash
+./deploy-production.sh <REVIEWED_FULL_COMMIT_SHA>
 systemctl list-timers teacher-pdf-recovery.timer
 ```
 

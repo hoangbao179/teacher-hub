@@ -22,6 +22,7 @@ test('PDF host secrets survive deployment and are excluded from image/repository
 test('recovery runs once a minute inside existing API with lock and bounded process', () => {
   assert.match(read('scripts/teacher-pdf-recovery.timer'), /OnCalendar=\*-\*-\* \*:\*:00/);
   assert.match(read('scripts/teacher-pdf-recovery.service'), /TimeoutStartSec=55/);
+  assert.match(read('scripts/teacher-pdf-recovery.service'), /^User=deploy$/m);
   const script = read('scripts/pdf-recovery.sh');
   assert.match(script, /flock -n 9/);
   assert.match(script, /exec -T/);

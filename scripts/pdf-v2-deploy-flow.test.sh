@@ -28,20 +28,30 @@ cat > "$ROOT/bin/systemctl" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "$MOCK_ROOT/system-calls"
 case "$*" in
-  'show '*) echo success;;
+  *'--property=LoadState '*) if [[ "$SCENARIO" == missing ]]; then echo not-found; else echo loaded; fi;;
+  *'--property=NeedDaemonReload '*) if [[ "$SCENARIO" == stale ]]; then echo yes; else echo no; fi;;
+  *'--property=FragmentPath '*) echo "/etc/systemd/system/$2";;
+  *'--property=DropInPaths '*) echo /etc/systemd/system/teacher-pdf-recovery.service.d/override.conf;;
+  *'--property=User '*) if [[ "$SCENARIO" == root-service ]]; then echo root; else echo deploy; fi;;
+  *'--property=Result '*) if [[ "$SCENARIO" == result ]]; then echo exit-code; else echo success; fi;;
+  'is-active '*) [[ "$SCENARIO" != inactive ]];;
   'start teacher-pdf-recovery.service') [[ "$SCENARIO" != recovery ]];;
 esac
 STUB
 cat > "$ROOT/bin/sudo" <<'STUB'
 #!/usr/bin/env bash
+echo "$*" >> "$MOCK_ROOT/sudo-calls"
+case "$*" in
+  '-n systemctl enable --now teacher-pdf-recovery.timer'|'-n systemctl start teacher-pdf-recovery.service') ;;
+  *) echo 'unexpected sudo command' >&2; exit 1;;
+esac
 [[ "$SCENARIO" != sudo ]] || exit 1
 shift
-if [[ "$1" == install ]]; then exit 0; fi
 exec "$@"
 STUB
 cat > "$ROOT/bin/id" <<'STUB'
 #!/usr/bin/env bash
-echo 1000
+if [[ "$SCENARIO" == wrong-user ]]; then echo root; else echo deploy; fi
 STUB
 cat > "$ROOT/bin/flock" <<'STUB'
 #!/usr/bin/env bash
@@ -49,7 +59,8 @@ exit 0
 STUB
 cat > "$ROOT/bin/install" <<'STUB'
 #!/usr/bin/env bash
-# Only backup-directory creation reaches this stub; system unit installs use sudo.
+# Only backup-directory creation is permitted.
+[[ "$*" == '-m 700 -d '* ]] || exit 1
 mkdir -p "${@: -1}"
 STUB
 cat > "$ROOT/bin/curl" <<'STUB'
@@ -62,13 +73,29 @@ printf 'Filesystem 1024-blocks Used Available Capacity Mounted\nfixture 99999999
 STUB
 chmod +x "$ROOT/bin/"*
 export PATH="$ROOT/bin:$PATH"
-for SCENARIO in success migration candidate sudo live recovery active unknown; do
+for SCENARIO in success migration candidate sudo live recovery active unknown missing stale root-service wrong-user unowned writable writable-parent writable-dropin inactive result; do
   export SCENARIO
   MOCK_ROOT="$ROOT/$SCENARIO"; export MOCK_ROOT
   mkdir -p "$MOCK_ROOT/pdf-runtime"
   # Replace only the hardcoded deployment directory in the test copy.
   sed "s|readonly APP_DIR=\"/opt/teacher-hub\"|readonly APP_DIR=\"$MOCK_ROOT\"|" "$SCRIPT_DIR/deploy-production.sh" > "$MOCK_ROOT/deploy-production.sh"
   for helper in deploy-env.sh pdf-v2-deploy.sh; do tr -d '\r' < "$SCRIPT_DIR/$helper" > "$MOCK_ROOT/$helper"; done
+  # Fake only host filesystem metadata; execute the real path/security gates.
+  cat >> "$MOCK_ROOT/pdf-v2-deploy.sh" <<'STUB'
+
+readlink() { echo "${@: -1}"; }
+stat() { if [[ "$SCENARIO" == unowned ]]; then echo 1000; else echo 0; fi; }
+test() {
+  if [[ "$*" == '-f /etc/systemd/system/'* ]]; then return 0; fi
+  if [[ "$1 $2" == '! -w' ]]; then
+    case "$SCENARIO:${@: -1}" in
+      writable:/etc/systemd/system/teacher-pdf-recovery.service|writable-parent:/etc/systemd/system|writable-dropin:*/override.conf) return 1;;
+    esac
+    return 0
+  fi
+  builtin test "$@"
+}
+STUB
   touch "$MOCK_ROOT/docker-compose.deploy.yml" "$MOCK_ROOT/Caddyfile" "$MOCK_ROOT/pdf-recovery.sh" \
     "$MOCK_ROOT/teacher-pdf-recovery.service" "$MOCK_ROOT/teacher-pdf-recovery.timer"
   printf '%s\n' 'GHCR_OWNER=fixture' 'IMAGE_TAG=1111111111111111111111111111111111111111' \
@@ -91,9 +118,14 @@ for SCENARIO in success migration candidate sudo live recovery active unknown; d
     [[ "$status" != 0 ]]
     cmp "$MOCK_ROOT/old-runtime" "$MOCK_ROOT/pdf-runtime/runtime.env"
     cmp "$MOCK_ROOT/old-env" "$MOCK_ROOT/.env"
-    if [[ "$SCENARIO" == migration || "$SCENARIO" == candidate || "$SCENARIO" == sudo ]]; then
-      ! grep -q -- '--force-recreate api' "$MOCK_ROOT/calls"
-    fi
+    case "$SCENARIO" in
+      migration|candidate|sudo|missing|stale|root-service|wrong-user|unowned|writable|writable-parent|writable-dropin|inactive)
+        ! grep -q -- '--force-recreate api' "$MOCK_ROOT/calls";;
+    esac
+  fi
+  if [[ "$SCENARIO" == success ]]; then
+    [[ "$(wc -l < "$MOCK_ROOT/sudo-calls")" == 2 ]]
+    ! grep -q 'daemon-reload' "$MOCK_ROOT/system-calls"
   fi
   echo "Deployment scenario $SCENARIO passed"
 done

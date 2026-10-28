@@ -132,7 +132,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   and read-only host configuration; PDF remains disabled by default. Production
   Actions orchestrates read-only Cloud v2 verification through the existing
   WIF-approved dispatch workflow, validates schema/approved Gateway, manages only
-  the three runtime PDF flags and installs/verifies systemd recovery. All gates
+  the three runtime PDF flags and enables/verifies root-preinstalled systemd
+  recovery running as deploy, with narrowly scoped noninteractive sudo. All gates
   repeat on subsequent deploys; failure preserves in-flight v2 processing/results.
   See [automated activation](../operations/pdf-long-documents.md#automated-production-activation).
   This mechanism is not proof of real-Drive 200-page E2E acceptance. A one-minute
