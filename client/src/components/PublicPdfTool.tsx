@@ -162,25 +162,36 @@ export function PublicPdfTool() {
         <Typography id="pdf-create-heading" component="h2" sx={{fontWeight:800,fontSize:{xs:21,sm:24}}}>Tạo tài liệu PDF</Typography>
         {!loading&&caps&&!enabled&&<Chip size="small" label="Đang chuẩn bị" sx={{bgcolor:"#fff3d5",color:"#745532"}}/>}
       </Stack>
-      <Typography sx={{fontSize:14,color:"#726070",lineHeight:1.7}}>Dán link Google Drive, mỗi dòng một link.</Typography>
-      <Alert severity="info" icon={<InfoOutlined fontSize="small"/>} sx={{mt:2,bgcolor:"#fff5f8",color:"#726070",borderRadius:3,"& .MuiAlert-icon":{color:"#b96d8d"}}}>
-        Lịch sử và tên tài liệu hiển thị công khai trên các thiết bị. Chỉ gửi tài liệu phù hợp để chia sẻ công khai, không chứa thông tin riêng tư.
-      </Alert>
-      {loading?<Stack role="status" direction="row" spacing={1} sx={{mt:2,alignItems:"center"}}><CircularProgress size={20}/><Typography>Đang kiểm tra công cụ…</Typography></Stack>:
-        !caps?<Typography role="status" sx={{mt:2,color:"#726070"}}>Chưa kiểm tra được công cụ. Bạn có thể nhấn Làm mới để thử lại.</Typography>:
-        !enabled?<Alert severity="info" sx={{mt:2}}>Công cụ PDF đang được chuẩn bị. Chưa thể tạo tài liệu lúc này.</Alert>:null}
-      <TextField label="Liên kết Google Drive" data-testid="pdf-links" fullWidth multiline minRows={4} maxRows={8} sx={{mt:3,"& .MuiOutlinedInput-root":{borderRadius:3},"& .MuiFormHelperText-root":{color:"#726070",lineHeight:1.7}}}
+      <Box sx={{display:"flex",flexDirection:"column","@media (min-width:1024px)":{display:"grid",gridTemplateColumns:"minmax(0, 1.6fr) minmax(0, 1fr)",gap:3,alignItems:"start"}}}>
+      <Box data-testid="pdf-input-area" sx={{display:"contents","@media (min-width:1024px)":{display:"block",minWidth:0}}}>
+      <Typography sx={{order:1,fontSize:14,color:"#726070",lineHeight:1.7}}>Dán link Google Drive, mỗi dòng một link.</Typography>
+      <TextField label="Liên kết Google Drive" data-testid="pdf-links" fullWidth multiline minRows={4} maxRows={8} sx={{order:4,mt:3,"& .MuiOutlinedInput-root":{borderRadius:3},"& .MuiFormHelperText-root":{color:"#726070",lineHeight:1.7},"@media (min-width:1024px)":{mt:1.5,"& textarea:not([aria-hidden])":{minHeight:112}}}}
         placeholder="https://drive.google.com/file/d/…/view" value={links} disabled={!enabled||busy}
         onChange={e=>setLinks(e.target.value)} helperText={caps?`Tối đa ${caps.maxLinksPerBatch} liên kết, mỗi dòng một link.${caps.maxPages ? ` Tối đa ${caps.maxPages} trang/tài liệu.` : ''}`:"Mỗi dòng một link. Giới hạn sẽ hiển thị sau khi kiểm tra công cụ."}/>
-      {caps&&<Typography sx={{fontSize:13,color:"#726070",mt:1,lineHeight:1.7}}>
+      {caps&&<Typography sx={{order:5,fontSize:13,color:"#726070",mt:1,lineHeight:1.7}}>
         {caps.maxSourceBytes?`PDF nguồn tối đa ${caps.maxSourceBytes/1048576} MiB · `:""}PDF kết quả tối đa {caps.maxBytes/1048576} MiB.
       </Typography>}
-      {enabled&&links.trim()&&invalid&&<Typography role="alert" sx={{fontSize:13,color:"#b3261e",mt:1}}>{invalid}</Typography>}
-      <Box sx={{display:"flex",justifyContent:"flex-end",mt:2.5}}>
+      {enabled&&links.trim()&&invalid&&<Typography role="alert" sx={{order:6,fontSize:13,color:"#b3261e",mt:1}}>{invalid}</Typography>}
+      <Box sx={{order:7,display:"flex",justifyContent:"flex-end",mt:2.5}}>
       <Button data-testid="pdf-submit" variant="contained" disabled={!enabled||busy||!!invalid}
         onClick={()=>void submit()} sx={{width:{xs:"100%",sm:200},minHeight:48,borderRadius:3,bgcolor:"#b96d8d",boxShadow:"none","&:hover":{bgcolor:"#985170",boxShadow:"0 4px 12px #b96d8d26"}}}>
         {busy?"Đang thực hiện…":"Tạo PDF"}
       </Button>
+      </Box>
+      </Box>
+      <Box data-testid="pdf-support-area" sx={{display:"contents","@media (min-width:1024px)":{display:"flex",flexDirection:"column",gap:1.5,minWidth:0}}}>
+        <Alert data-testid="pdf-privacy-note" severity="info" icon={<InfoOutlined fontSize="small"/>} sx={{order:2,mt:2,bgcolor:"#fff5f8",color:"#726070",borderRadius:3,"& .MuiAlert-icon":{color:"#b96d8d"},"@media (min-width:1024px)":{mt:0,p:2}}}>
+          <Box component="span" sx={{display:"none",fontWeight:700,mb:1,"@media (min-width:1024px)":{display:"block"}}}>Lưu ý nhỏ</Box>
+          Lịch sử và tên tài liệu hiển thị công khai trên các thiết bị. Chỉ gửi tài liệu phù hợp để chia sẻ công khai, không chứa thông tin riêng tư.
+        </Alert>
+        <Box data-testid="pdf-tool-status" sx={{order:3,display:!loading&&enabled?"none":"block","@media (min-width:1024px)":{display:"block",p:2,bgcolor:"#edf7f8",color:"#446d78",borderRadius:3,"& .MuiAlert-root":{mt:0,p:0,bgcolor:"transparent",color:"inherit"},"& .MuiAlert-icon":{display:"none"},"& .MuiAlert-message":{p:0},"& .MuiTypography-root, & .MuiStack-root":{mt:0,fontSize:14,lineHeight:1.7}}}}>
+          <Typography sx={{display:"none",alignItems:"center",gap:1,fontWeight:700,pb:1,"@media (min-width:1024px)":{display:"flex"}}}><InfoOutlined fontSize="small" aria-hidden="true"/>Trạng thái công cụ</Typography>
+          {loading?<Stack role="status" direction="row" spacing={1} sx={{mt:2,alignItems:"center"}}><CircularProgress size={20}/><Typography>Đang kiểm tra công cụ…</Typography></Stack>:
+            !caps?<Typography role="status" sx={{mt:2,color:"#726070"}}>Chưa kiểm tra được công cụ. Bạn có thể nhấn Làm mới để thử lại.</Typography>:
+            !enabled?<Alert severity="info" sx={{mt:2}}>Công cụ PDF đang được chuẩn bị. Chưa thể tạo tài liệu lúc này.</Alert>:
+            <Typography role="status">Có thể gửi yêu cầu tạo PDF.</Typography>}
+        </Box>
+      </Box>
       </Box>
     </Paper>
     <Paper component="section" aria-labelledby="pdf-history-heading" data-testid="pdf-history-card" elevation={0} sx={{minWidth:0,p:{xs:2.5,sm:4},border:"1px solid #f2dce5",borderRadius:4,bgcolor:"#fff",boxShadow:"0 6px 24px #b96d8d08"}}>
