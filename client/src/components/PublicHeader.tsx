@@ -50,7 +50,7 @@ export function PublicHeader({ active, showHomepageLinks = false }: PublicHeader
               <Button component={Link} to="/hoc" data-testid="header-learning" aria-current={active === "learning" ? "page" : undefined} sx={{ ...navButtonSx, px: { xs: 0.75, sm: 1.5 }, ...(active === "learning" ? activeSx : {}) }}>Góc học</Button>
               <Button component={Link} to="/sach" data-testid="header-books" aria-current={active === "books" ? "page" : undefined} sx={{ ...navButtonSx, px: { xs: 0.75, sm: 1.5 }, ...(active === "books" ? activeSx : {}) }}>Tủ sách</Button>
             </>}
-            <Button component={Link} to="/tools" data-testid="header-tools" variant="contained" sx={{ ...navButtonSx, px: { xs: 1.5, sm: 2 }, bgcolor: "#d88eaa", color: "#fff", "&:hover": { bgcolor: "#c47496" }, "&:focus-visible": { outline: "3px solid #f8dce7", outlineOffset: 2 }, "&:link, &:visited": { color: "#fff" } }}>Công cụ</Button>
+            <Button component={Link} to="/tools" data-testid="header-tools" variant="contained" sx={{ ...navButtonSx, px: { xs: 1.5, sm: 2 }, bgcolor: "#ad597f", color: "#fff", "&:link, &:visited, &:hover, &:focus, &:active, &.Mui-focusVisible": { bgcolor: "#ad597f", color: "#fff" }, "&:focus-visible, &.Mui-focusVisible": { outline: "3px solid #ad597f", outlineOffset: 3 } }}>Công cụ</Button>
           </Stack>
         </Toolbar>
       </Container>

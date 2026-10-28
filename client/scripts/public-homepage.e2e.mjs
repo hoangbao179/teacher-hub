@@ -1,4 +1,4 @@
-/* global process, fetch, setTimeout, console, URL, document, window */
+/* global process, fetch, setTimeout, console, URL, document, window, Image */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -205,6 +205,39 @@ try {
   assert(await header.getByRole("link", { name: "Công cụ", exact: true }).isVisible(), "Mobile Tools button is missing");
   assert(await page.getByTestId("header-tools").count() === 1, "Tools link must exist only once in the Header");
   assert(await page.getByTestId("header-tools").getAttribute("href") === "/tools", "Tools must link directly to the public route");
+  const toolsButton = page.getByTestId("header-tools");
+  const assertToolsColors = async (state) => {
+    const colors = await toolsButton.evaluate((element) => {
+      const style = window.getComputedStyle(element);
+      return { background: style.backgroundColor, text: style.color };
+    });
+    assert(colors.background === "rgb(173, 89, 127)", `Tools background changes in ${state}`);
+    assert(colors.text === "rgb(255, 255, 255)", `Tools text changes in ${state}`);
+  };
+  await assertToolsColors("default");
+  await toolsButton.hover();
+  await page.waitForTimeout(250);
+  await assertToolsColors("hover");
+  await page.mouse.down();
+  await assertToolsColors("active");
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+  await page.getByTestId("header-contact").focus();
+  await page.keyboard.press("Tab");
+  assert(await toolsButton.evaluate((element) => element.matches(":focus-visible")), "Tools keyboard focus is missing");
+  await assertToolsColors("keyboard focus");
+  const focusOutline = await toolsButton.evaluate((element) => window.getComputedStyle(element).outlineWidth);
+  assert(Number.parseFloat(focusOutline) >= 3, "Tools keyboard focus outline must remain visible");
+  assert(await page.getByTestId("header-logo").evaluate((image) => image.complete && image.naturalWidth > 0), "Header logo failed to load");
+  for (const asset of ["/favicon.svg", "/logo-covy.svg"]) {
+    const loaded = await page.evaluate(async (source) => {
+      const image = new Image();
+      image.src = source;
+      await image.decode();
+      return image.naturalWidth > 0;
+    }, asset);
+    assert(loaded, `Brand SVG failed to decode: ${asset}`);
+  }
   await page.getByTestId("header-tools").click();
   await page.waitForURL(`${origin}/tools`);
   await page.getByTestId("public-tools-page").waitFor();
@@ -343,6 +376,7 @@ try {
     { width: 412, height: 915 },
     { width: 430, height: 932 },
     { width: 768, height: 1024 },
+    { width: 1280, height: 900 },
     { width: 1440, height: 900 },
   ];
   for (const viewport of viewports) {
