@@ -18,7 +18,7 @@ export async function withViewerAbort<T>(page: Page, signal: AbortSignal, work: 
 /** Wait until the anonymous Viewer shell is usable, then always use tile capture. */
 export async function selectViewerMode(page: Page, _screenCapture?: boolean, signal?: AbortSignal): Promise<'view-only'> {
   if (!signal) throw new JobError('INVALID_REQUEST');
-  return withViewerAbort(page, signal, async () => {
+  return withViewerAbort<'view-only'>(page, signal, async () => {
     // DOMContentLoaded is only the shell. Require page identity, a usable zoom
     // control, no visible loading indicator, and a short quiet toolbar window.
     // Print/In controls are not required for view-only tile capture.
