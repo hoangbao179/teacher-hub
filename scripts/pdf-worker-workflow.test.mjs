@@ -5,6 +5,8 @@ import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { runInNewContext } from 'node:vm';
+import changes from './pdf-worker-changes.cjs';
 const read = p => readFileSync(new URL('../'+p,import.meta.url),'utf8').replaceAll('\r\n','\n');
 const workflow = read('.github/workflows/pdf-worker-release.yml');
 
@@ -40,6 +42,38 @@ test('main deliveries do not cancel each other, bootstrap runs CI and Worker wai
   assert.match(ci,/cancel-in-progress: \$\{\{ github.ref != 'refs\/heads\/main' \}\}/);
   assert.match(ci,/workflow_dispatch:\s+inputs:\s+force_worker_release:/);
   assert.match(ci,/needs:\s+- deploy-production\s+- pdf-worker-changes/);
+});
+
+test('manual CI cannot publish API/Web; bootstrap is explicit, opt-in and main-only',()=>{
+  const ci=read('.github/workflows/ci.yml');
+  const job=name=>ci.split('\n  '+name+':\n')[1].split(/\n  [a-z-]+:\n/)[0];
+  const conditions=['deploy-production','pdf-worker-changes','deploy-pdf-worker'].map(name=>
+    job(name).match(/^    if: \$\{\{ (.+) \}\}$/m)[1]
+      .replaceAll('needs.pdf-worker-changes','needs["pdf-worker-changes"]'));
+  for(const event_name of ['push','workflow_dispatch','pull_request']) {
+    for(const force of [undefined,false,true]) for(const enabled of ['false','true']) {
+      for(const ref of ['refs/heads/main','refs/heads/feature','refs/tags/main']) {
+        for(const repository of ['hoangbao179/teacher-hub','fork/teacher-hub']) {
+          const trusted=repository==='hoangbao179/teacher-hub' && ref==='refs/heads/main';
+          const requested=event_name==='push'||(event_name==='workflow_dispatch'&&force===true&&enabled==='true');
+          const ctx={github:{event_name,ref,repository},inputs:{force_worker_release:force},
+            vars:{PDF_WORKER_AUTO_DEPLOY_ENABLED:enabled},needs:{'pdf-worker-changes':{outputs:{changed:'true'}}}};
+          conditions.forEach((condition,i)=>assert.equal(Boolean(runInNewContext(condition,ctx)),
+            trusted&&requested&&(i===0||enabled==='true'),JSON.stringify({event_name,force,enabled,ref,repository,i})));
+        }
+      }
+    }
+  }
+  assert.match(job('deploy-production'),/needs:\s+- quality\s+- integration\s+- e2e-smoke\s+- schedule-regression/);
+  assert.match(job('deploy-production'),/uses: \.\/\.github\/workflows\/deploy.yml/);
+});
+
+test('stage metadata contract names the guarded release job and every required gate',()=>{
+  const ci=read('.github/workflows/ci.yml');
+  const caller=ci.split('\n  deploy-pdf-worker:\n')[1].match(/    name: (.+)/)[1];
+  assert.equal(changes.stageJobName,caller+' / release');
+  for(const name of changes.stageSteps) assert(workflow.includes('      - name: '+name+'\n'),name);
+  assert(!changes.paths.includes('.github/workflows/ci.yml'));
 });
 
 // Execute the actual workflow shell, with every external mutation replaced by

@@ -190,7 +190,7 @@ jobs:
 
   deploy-production:
     name: Publish and deploy production
-    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+    if: ${{ github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.force_worker_release == true && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true')) }}
     needs:
       - quality
       - integration
@@ -207,7 +207,7 @@ jobs:
 
   pdf-worker-changes:
     name: Detect PDF Worker changes
-    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
+    if: ${{ github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.force_worker_release == true)) && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -219,7 +219,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Compare since last successful main delivery
+      - name: Compare against verified Worker stage history
         id: diff
         uses: actions/github-script@v8
         with:
@@ -227,7 +227,7 @@ jobs:
 
   deploy-pdf-worker:
     name: Release Cloud Run PDF Worker after VPS deployment
-    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' && needs.pdf-worker-changes.outputs.changed == 'true' }}
+    if: ${{ github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.force_worker_release == true)) && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' && needs.pdf-worker-changes.outputs.changed == 'true' }}
     needs:
       - deploy-production
       - pdf-worker-changes

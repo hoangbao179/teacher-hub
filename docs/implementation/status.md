@@ -111,6 +111,9 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   riêng sau API theo runbook để có tên gốc, không suy từ merge PR là đã deploy.
   CI có opt-in build/stage Worker từ exact SHA sau migration/API/Web; so digest
   Buildx với registry, canary private 0% và authenticated health, kiểm lại traffic.
+  Bộ lọc dùng job/step stage success có SHA khớp, không dùng CI success đơn lẻ;
+  CSS/API/CI-test-only không build lại khi inputs khớp stage đã xác minh. Manual
+  CI force=false chỉ kiểm thử; bootstrap force=true cần main và opt-in bật.
   Không tự promote/rollback: cần operator nghiệm thu PDF thật, drain dispatch và
   review reader/filename trước đổi traffic. Bootstrap bằng manual CI trên main
   với `force_worker_release=true`; không cần commit giả. Source workflow không
