@@ -159,25 +159,66 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
       if (!isPdfPart(winner,m,index)) throw new JobError('STORAGE_UNAVAILABLE',true);
       return {version:2,jobId:job.jobId,step:index,status:'CHECKPOINTED'};
     }
-    const files: {path:string}[] = [];
-    for (const p of parts) {
-      const path=join(dir,`part-${p.index}.pdf`); await get(`parts/${p.index}.pdf`,path,p.bytes);
-      // Each part was fully validated before its immutable checkpoint was committed.
-      // Repeating three qpdf parser passes for every part can exhaust the final step
-      // deadline. Verify bytes + SHA-256 against the validated checkpoint instead.
-      const {size}=await stat(path);
-      if (size!==p.bytes) throw new JobError('STORAGE_UNAVAILABLE',true);
+    // The final merge may consume most of the 165s dispatch budget. Persist an
+    // INTERNAL, UNVALIDATED assembly so a retry can validate it independently.
+    // Never publish assembled.pdf as output.pdf or report COMPLETED before validation.
+    const partsHash=createHash('sha256').update(JSON.stringify(parts.map(p=>
+      [p.index,p.firstPage,p.lastPage,p.bytes,p.sha256]))).digest('hex');
+    const assembledName=prefix+'assembled.pdf';
+    const assembled=await store.head(assembledName,signal);
+    const path=join(dir,'output.pdf');
+    const hashFile=async () => {
       const hash=createHash('sha256');
       for await (const chunk of createReadStream(path,{signal})) hash.update(chunk);
-      if (hash.digest('hex')!==p.sha256) throw new JobError('STORAGE_UNAVAILABLE',true);
-      files.push({path});
+      return hash.digest('hex');
+    };
+    const expected=(meta:Record<string,string>)=>
+      meta.sourceHash===sourceHash && meta.fingerprint===m.fingerprint &&
+      meta.partsHash===partsHash && meta.totalPages===String(m.totalPages) &&
+      /^[a-f0-9]{64}$/.test(meta.sha256??'') &&
+      Number.isSafeInteger(Number(meta.bytes)) && Number(meta.bytes)>0 &&
+      Number(meta.bytes)<=cap.maxBytes;
+    stage='chunk-merge';
+    let assemblyMeta: Record<string,string>;
+    if (assembled) {
+      if (!expected(assembled.metadata)) throw new JobError('STORAGE_UNAVAILABLE',true);
+      await get('assembled.pdf',path,cap.maxBytes);
+      const {size}=await stat(path);
+      if (size!==Number(assembled.metadata.bytes) || await hashFile()!==assembled.metadata.sha256)
+        throw new JobError('STORAGE_UNAVAILABLE',true);
+      assemblyMeta=assembled.metadata;
+    } else {
+      const files: {path:string}[] = [];
+      for (const p of parts) {
+        const partPath=join(dir,`part-${p.index}.pdf`); await get(`parts/${p.index}.pdf`,partPath,p.bytes);
+        // Chunk PDFs were parser-validated before committing immutable markers.
+        // Check bytes and SHA-256 again without re-parsing every chunk.
+        const {size}=await stat(partPath);
+        if (size!==p.bytes) throw new JobError('STORAGE_UNAVAILABLE',true);
+        const hash=createHash('sha256');
+        for await (const chunk of createReadStream(partPath,{signal})) hash.update(chunk);
+        if (hash.digest('hex')!==p.sha256) throw new JobError('STORAGE_UNAVAILABLE',true);
+        files.push({path:partPath});
+      }
+      await (deps.merge ?? qpdfParts)(files,path,signal);
+      const {size}=await stat(path);
+      if (size>cap.maxBytes) throw new JobError('FILE_TOO_LARGE',false,'validated-pdf-bytes',
+        {usedBytes:size,limitBytes:cap.maxBytes});
+      assemblyMeta={sourceHash,fingerprint:m.fingerprint,partsHash,totalPages:String(m.totalPages),
+        bytes:String(size),sha256:await hashFile()};
+      await store.create(assembledName,{path,metadata:assemblyMeta},signal);
+      // A lost-write or duplicate dispatch must not silently trust another assembly.
+      const winner=await store.head(assembledName,signal);
+      if (!winner || !expected(winner.metadata) || winner.metadata.bytes!==assemblyMeta.bytes ||
+        winner.metadata.sha256!==assemblyMeta.sha256)
+        throw new JobError('STORAGE_UNAVAILABLE',true);
     }
     const filename = normalizePdfFilename(m.filename);
-    stage = 'chunk-merge';
-    const path=join(dir,'output.pdf'); await (deps.merge ?? qpdfParts)(files,path,signal);
     stage = 'chunk-validation';
     const info=await validate(path,cap,signal);
     if (info.pages!==m.totalPages) throw new JobError('INVALID_PDF');
+    if (info.bytes!==Number(assemblyMeta.bytes) || info.sha256!==assemblyMeta.sha256)
+      throw new JobError('STORAGE_UNAVAILABLE',true);
     stage = 'storage';
     await store.create(prefix+'output.pdf',{path,metadata:{sourceHash,...(filename ? {filename} : {}),bytes:String(info.bytes),pages:String(info.pages),sha256:info.sha256}},signal);
     // Retry recovery validates the immutable winning output metadata too.
