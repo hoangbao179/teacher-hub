@@ -131,7 +131,8 @@ export function audit(sourceSha, run=cliCall) {
 export function main(argv=process.argv.slice(2),run=cliCall,output=console) {
   try { output.log(JSON.stringify(audit(argv[0],run))); return 0; }
   catch(e) {
-    output.error(e instanceof ReadinessDiagnostic || ['PDF_V2_SOURCE_SHA_REQUIRED','PDF_V2_QUEUE_DRIFT'].includes(e?.message)
+    output.error(e instanceof ReadinessDiagnostic || ['PDF_V2_SOURCE_SHA_REQUIRED','PDF_V2_QUEUE_DRIFT',
+      'PDF_V2_WORKER_LIVE_REVISION_INVALID','PDF_V2_WORKER_LIVE_IMAGE_INVALID'].includes(e?.message)
       ? e.message : 'PDF_V2_READINESS_FAILED: reason=UNEXPECTED_ERROR');
     return 1;
   }
