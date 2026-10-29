@@ -28,9 +28,17 @@ export async function validatePDF(path: string, cap: Limits, signal: AbortSignal
         const unavailable = error && (error.code === 'ENOENT' || error.code === 'EACCES' ||
           (typeof error.code === 'number' && [1, 126, 127].includes(error.code)));
         if (error && typeof error.code === 'number' && allowedCodes.includes(error.code)) resolve(String(error.code));
-        else if (error) reject(new JobError(signal.aborted || error.killed || error.signal ? 'TIMEOUT' :
-          unavailable ? 'SERVICE_UNAVAILABLE' : 'INVALID_PDF',
-          signal.aborted || error.killed || !!error.signal || !!unavailable));
+        else if (error) {
+          const timedOut=signal.aborted || error.killed || !!error.signal;
+          const operation=args[0]==='--is-encrypted' ? 'encryption' :
+            args[0]==='--check' ? 'integrity' : 'page-count';
+          const reason=signal.aborted ? `parser-${operation}-deadline` :
+            error.killed ? `parser-${operation}-wall-timeout` :
+            error.signal ? `parser-${operation}-signalled` : undefined;
+          reject(new JobError(timedOut ? 'TIMEOUT' :
+            unavailable ? 'SERVICE_UNAVAILABLE' : 'INVALID_PDF',
+            !!timedOut || !!unavailable, reason));
+        }
         else resolve(stdout.trim());
       });
   });
