@@ -10,12 +10,29 @@ function fixture() {
     policies: { total_count: 1, branch_policies: [{ id: 64168843, name: 'main', type: 'branch' }] },
   };
 }
-function client(f, failure, status = 403) {
+function client(f, failure, status = 403, environment = 'pdf-worker') {
   return { rest: { repos: {
-    getEnvironment: async args => { assert.deepEqual(args, { ...context.repo, environment_name: 'pdf-worker' }); if (failure === 'env') throw Object.assign(new Error('API failure'), { status }); return { data: f.env }; },
-    listDeploymentBranchPolicies: async args => { assert.deepEqual(args, { ...context.repo, environment_name: 'pdf-worker' }); if (failure === 'policies') throw Object.assign(new Error('API failure'), { status }); return { data: f.policies }; },
+    getEnvironment: async args => { assert.deepEqual(args, { ...context.repo, environment_name: environment }); if (failure === 'env') throw Object.assign(new Error('API failure'), { status }); return { data: f.env }; },
+    listDeploymentBranchPolicies: async args => { assert.deepEqual(args, { ...context.repo, environment_name: environment }); if (failure === 'policies') throw Object.assign(new Error('API failure'), { status }); return { data: f.policies }; },
   } } };
 }
+
+test('release validates its own main-only environment before WIF and fails closed', async () => {
+  for (const eventName of ['push','workflow_dispatch']) {
+    const f=fixture(); f.env.name='pdf-worker-deploy';
+    await validate.release(client(f,undefined,403,'pdf-worker-deploy'),{...context,eventName});
+    for (const failure of ['env','policies']) {
+      await assert.rejects(validate.release(client(f,failure,403,'pdf-worker-deploy'),{...context,eventName}));
+    }
+    f.policies.branch_policies[0].type='tag';
+    await assert.rejects(validate.release(client(f,undefined,403,'pdf-worker-deploy'),{...context,eventName}));
+    f.policies.branch_policies[0].type='branch'; f.env.can_admins_bypass=true;
+    await assert.rejects(validate.release(client(f,undefined,403,'pdf-worker-deploy'),{...context,eventName}));
+  }
+  for (const override of [{eventName:'pull_request'},{ref:'refs/tags/main'},{repo:{owner:'other',repo:'teacher-hub'}}]) {
+    await assert.rejects(validate.release({}, {...context,...override}),/Release WIF requires/);
+  }
+});
 test('accepts main-only environment without reviewers for verifier workflow', async () => {
   const f = fixture();
   await validate(client(f), context);

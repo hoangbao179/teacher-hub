@@ -15,12 +15,13 @@ concurrency:
 
 jobs:
   release:
-    if: ${{ github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
+    if: ${{ github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     environment: pdf-worker-deploy
     permissions:
       contents: read
+      actions: read
       id-token: write
     env:
       SOURCE_SHA: ${{ inputs.source_sha }}
@@ -50,6 +51,10 @@ jobs:
       - run: |
           npm ci
           npm run build:shared
+      - name: Validate main-only deploy environment before WIF
+        uses: actions/github-script@v8
+        with:
+          script: await require('./scripts/validate-pdf-environment.cjs').release(github, context);
       - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.PDF_DEPLOY_WIF_PROVIDER }}
@@ -67,13 +72,16 @@ jobs:
         run: |
           set -Eeuo pipefail
           docker buildx build --pull --platform linux/amd64 --provenance=false --sbom=false \
+            --metadata-file "$RUNNER_TEMP/worker-build.json" \
             --file workers/pdf/Dockerfile --tag "$REGISTRY/$WORKER:$SOURCE_SHA" --push .
       - name: Resolve manifest digest
         id: image
         run: |
           set -Eeuo pipefail
-          d="$(gcloud artifacts docker images describe "$REGISTRY/$WORKER:$SOURCE_SHA" --project="$CLOUD_PROJECT" --location="$CLOUD_REGION" --format='value(image_summary.digest)')"
+          d="$(gcloud artifacts docker images describe "$REGISTRY/$WORKER:$SOURCE_SHA" --project="$CLOUD_PROJECT" --format='value(image_summary.digest)')"
           [[ "$d" =~ ^sha256:[a-f0-9]{64}$ ]]
+          built="$(node -e 'console.log(require(process.argv[1])["containerimage.digest"])' "$RUNNER_TEMP/worker-build.json")"
+          test "$d" = "$built"
           echo "digest=$d" >> "$GITHUB_OUTPUT"
       - name: Stage zero-traffic canary
         env:
@@ -97,42 +105,45 @@ jobs:
           set -Eeuo pipefail
           node scripts/pdf-worker-auto-release.mjs staged "$SOURCE_SHA" "$IMAGE_DIGEST" "$OLD_REV" > "$RUNNER_TEMP/canary.json"
           node -e 'const x=require(process.argv[1]); console.log("revision="+x.revision); console.log("url="+x.canaryURL)' "$RUNNER_TEMP/canary.json" >> "$GITHUB_OUTPUT"
+      - name: Mint audience-bound canary identity token
+        id: smoke-auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.PDF_DEPLOY_WIF_PROVIDER }}
+          service_account: ${{ vars.PDF_DEPLOYER_SA }}
+          project_id: teacher-hub-pdf
+          token_format: id_token
+          id_token_audience: https://teacher-pdf-worker-851777150171.asia-southeast1.run.app
+          id_token_include_email: true
       - name: Authenticated canary smoke
         env:
           CANARY_URL: ${{ steps.canary.outputs.url }}
+          ID_TOKEN: ${{ steps.smoke-auth.outputs.id_token }}
         run: |
           set -Eeuo pipefail
-          token="$(gcloud auth print-identity-token --audiences="$WORKER_URL")"
-          [[ -n "$token" ]]
+          [[ -n "$ID_TOKEN" ]]
           curl --fail --silent --show-error --retry 2 --max-time 30 \
-            -H "Authorization: Bearer $token" "$CANARY_URL/health" > "$RUNNER_TEMP/health.json"
+            -H "Authorization: Bearer $ID_TOKEN" "$CANARY_URL/health" > "$RUNNER_TEMP/health.json"
           node -e 'if(require(process.argv[1]).status!=="ok")process.exit(1)' "$RUNNER_TEMP/health.json"
-          unset token
-      - name: Promote, verify and rollback if necessary
+      - name: Recheck candidate and unchanged production traffic after smoke
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          OLD_REV: ${{ steps.old.outputs.revision }}
+        run: node scripts/pdf-worker-auto-release.mjs staged "$SOURCE_SHA" "$IMAGE_DIGEST" "$OLD_REV"
+      - name: Publish staged candidate for operator verification
         env:
           CANDIDATE: ${{ steps.canary.outputs.revision }}
           OLD_REV: ${{ steps.old.outputs.revision }}
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          CANARY_URL: ${{ steps.canary.outputs.url }}
         run: |
-          set -Eeuo pipefail
-          promoted=0
-          rollback() {
-            if [[ "$promoted" == 1 ]]; then
-              echo 'PDF Worker verification failed; restoring previous traffic' >&2
-              gcloud run services update-traffic "$WORKER" --project="$CLOUD_PROJECT" --region="$CLOUD_REGION" \
-                --to-revisions="$OLD_REV=100" --quiet || echo 'ROLLBACK_FAILED: manual intervention required' >&2
-            fi
-          }
-          trap rollback ERR
-          promoted=1
-          gcloud run services update-traffic "$WORKER" --project="$CLOUD_PROJECT" --region="$CLOUD_REGION" \
-            --to-revisions="$CANDIDATE=100" --quiet
-          node scripts/pdf-worker-auto-release.mjs promoted "$SOURCE_SHA" "$IMAGE_DIGEST" "$CANDIDATE"
-          token="$(gcloud auth print-identity-token --audiences="$WORKER_URL")"
-          [[ -n "$token" ]]
-          curl --fail --silent --show-error --max-time 30 \
-            -H "Authorization: Bearer $token" "$WORKER_URL/health" > "$RUNNER_TEMP/live-health.json"
-          node -e 'if(require(process.argv[1]).status!=="ok")process.exit(1)' "$RUNNER_TEMP/live-health.json"
-          promoted=0
-          trap - ERR
-          echo "Worker production revision verified: $CANDIDATE" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo '### Worker staged only; production traffic was not promoted'
+            echo "Source: $SOURCE_SHA"
+            echo "Candidate: $CANDIDATE"
+            echo "Digest: $IMAGE_DIGEST"
+            echo "Canary: $CANARY_URL"
+            echo "Production revision: $OLD_REV"
+            echo 'Health is not a PDF functional gate. Verify authorized non-owner Viewer, filename/output/recovery, drain old dispatches and approve compatible rollback before changing traffic.'
+            echo 'Follow docs/operations/cloud-run-pdf-worker.md. Workflow success means staging only.'
+          } >> "$GITHUB_STEP_SUMMARY"

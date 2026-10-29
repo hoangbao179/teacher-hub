@@ -63,29 +63,61 @@ maxSourceBytes 20971520, maxBytes 157286400 và submit/downloadEnabled true.
 Override quota thấp hơn là hợp lệ; đừng tự đổi runtime.env để khớp quảng bá.
 
 
-## Tự động phát hành Worker sau CI (chưa kích hoạt mặc định)
+## Tự động build và stage Worker sau CI (opt-in)
 
 Workflow `.github/workflows/pdf-worker-release.yml` được gọi từ `ci.yml` **sau**
-`deploy-production` thành công, khi commit `main` thay đổi `workers/pdf/`,
-`shared/` hoặc các file release/readiness liên quan. Repository variable
+`deploy-production` thành công, khi delivery `main` thay đổi đầu vào Worker.
+Workflow chỉ **build/push và stage canary 0%**, không tự promote/rollback traffic.
+Repository variable
 `PDF_WORKER_AUTO_DEPLOY_ENABLED=true` là công tắc **opt-in**; thiếu hoặc khác
 `true` thì toàn bộ Cloud release job bị bỏ qua và readiness giữ pin Worker cũ.
 
 Luồng phát hành: CI chất lượng/integration/browser → migration và API/Web trên VPS
 → preflight Cloud read-only → build Docker `linux/amd64` từ đúng source SHA,
 `--provenance=false --sbom=false` để tạo single-platform manifest → push Artifact
-Registry → xác nhận digest → deploy Worker với `--no-traffic --tag=pdf-ci`
-→ kiểm IAM/volume/tài nguyên, đúng digest và traffic cũ vẫn 100% → GET
-`/health` có xác thực tại canary → chuyển 100% sang revision được xác minh
-→ kiểm toàn bộ Cloud readiness và authenticated health. Nếu bước sau promote lỗi,
-workflow cố gắng trả 100% về revision cũ, báo fail nếu không hoàn tất. Cần kiểm
-tra traffic thực tế khi rollback thất bại; không coi rollback là tuyệt đối khi
-CI bị hủy/runner mất điện.
+Registry → so digest Buildx với Artifact Registry → deploy Worker với
+`--no-traffic --tag=pdf-ci` → kiểm IAM/volume/tài nguyên, đúng
+digest và traffic cũ vẫn 100% → GET `/health` có xác thực tại canary → kiểm lại
+traffic/cấu hình → summary ghi source SHA, digest, candidate và revision cũ.
+Identity token được mint qua auth action, audience là service base URL, không phải
+tagged URL. **Workflow success chỉ chứng minh staging**, không chứng minh PDF
+hoạt động. API/Web hiện deploy cùng nhau trước Worker; không cam kết frontend
+sau Worker. Gateway không được build/deploy hoặc sửa IAM.
+
+### Bộ lọc, bootstrap và chi phí
+
+CI vẫn chạy Worker unit/runtime tests cho push/PR kể cả CSS/API. Test không build
+Docker. `scripts/pdf-worker-changes.cjs` so SHA hiện tại với CI main delivery thành
+công gần nhất (push/manual cùng repo, run number trước run hiện tại). Không chỉ
+dùng `event.before`: pending run có thể bị thay thế, release trước có thể fail.
+Main workflow không cancel run đang chạy; PR vẫn cancel như trước. Không có
+baseline, API GitHub lỗi, thiếu Git object hoặc diff lỗi thì build bảo thủ.
+
+Đầu vào gồm toàn bộ `workers/pdf/`, `shared/`, root package/lock/npm config,
+`.dockerignore`, workflow CI/release và helper release/readiness/policy trực tiếp.
+Root lock có thể đổi vì client nhưng vẫn là đầu vào build shared: chấp nhận build
+bảo thủ. Chưa lọc nhỏ `shared/` vì Docker copy toàn bộ dist và public exports liên
+kết nhiều module. Frontend/CSS/logo/API source đơn thuần không build Worker.
+
+Sau provisioning/review, operator bật opt-in rồi chạy Actions **ci**, branch
+**main**, `force_worker_release=true`: đủ CI + API delivery rồi stage Worker,
+không cần commit giả. Không thực hiện bootstrap trong phiên audit.
+
+Mỗi qualifying delivery hoặc bootstrap/retry vẫn build/push; cùng SHA có thể build
+lại. Base image/apt/browser chưa pin digest nên không giả định reproducible.
+Chưa skip image theo provenance hoặc có BuildKit cache. Không dùng tag SHA đơn lẻ
+để skip/chọn image; digest Buildx phải khớp registry. Cache cần đo cold/warm time
+và bytes trước. Artifact Registry/revision/tag có thể tích lũy; operator review
+cleanup policy, giữ image live/rollback hợp lệ. Canary min=0 nhưng tag còn truy
+cập được với IAM và có thể còn instance ấm khi scale-down. Cleanup tag sau review;
+workflow không xóa artifact Cloud và không đổi VPS/container budget.
 
 **Phải hoàn thành provisioning IAM ngoài workflow trước khi bật flag:**
 
-- Tạo GitHub Environment `pdf-worker-deploy`, chỉ cho phép nhánh `main`, dùng
-  protection/reviewer theo chính sách vận hành. Không dùng lại danh tính verifier.
+- Tạo GitHub Environment `pdf-worker-deploy`, custom branch policy chỉ `main`,
+  type branch, admin bypass false. Workflow kiểm metadata qua API trước WIF;
+  token phải đọc được Environment, API từ chối thì dừng. Reviewer theo chính sách
+  vận hành. Không dùng lại danh tính verifier.
 - Tạo service account `teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com`.
   Cấu hình WIF giới hạn repository numeric identity, branch `main`,
   `job_workflow_ref` của `pdf-worker-release.yml` và environment
@@ -94,24 +126,49 @@ CI bị hủy/runner mất điện.
 - Review và cấp quyền tối thiểu đủ đọc IAM/revision/queue, ghi Artifact Registry
   `teacher-pdf`, cập nhật riêng Cloud Run service `teacher-pdf-worker`,
   `iam.serviceAccounts.actAs` với **Worker SA** và `run.invoker` cho endpoint
-  canary/prod. Không cấp IAM write hoặc quyền deploy Gateway. Kiểm tra provider
-  trust/IAM trên Google Cloud trước khi bật flag.
+  canary/prod và mint ID token cho deployer qua WIF. Không cấp IAM write hoặc quyền
+  deploy Gateway. Kiểm provider trust, quyền kế thừa, SA delegation, custom role
+  và resource condition thật trên Cloud trước bật flag; tên SA không chứng minh
+  least privilege. Source không chứng minh policy Cloud hiện hành.
 - Bật `PDF_WORKER_AUTO_DEPLOY_ENABLED=true` tại repository variables **sau khi**
   dry-run từng bước và đã nghiệm thu fixture PDF công khai được phép tải/in.
   Không bật chỉ để thử việc xác thực quyền. Không thay `GCP_VERIFIER_SA` hiện hành.
 
 Khi bật flag, readiness cũ trong `pdf-worker.yml` chuyển sang kiểm live Worker
 revision và *platform digest bất biến* thuộc registry cố định, cùng IAM, tài
-nguyên, queue, Gateway pinned; promotion lại kiểm **đúng candidate revision +
+nguyên, queue, Gateway pinned; staged gate kiểm **đúng candidate revision +
 digest** từ build run. Cách này bỏ pin Worker cố định khỏi mỗi lần commit nhưng
 không tự chứng minh source SHA của image cũ; kiểm chuỗi build/provenance và WIF
 là bắt buộc. Gateway vẫn pin cũ và **không được deploy bởi workflow này**.
 
-Canary hiện kiểm health và cấu hình, chưa gửi job Google Drive thật hay xác nhận
-tên Unicode/GCS output/200 trang trên Cloud Run. Vì vậy production enable vẫn cần
-smoke E2E tài liệu owned được phép và review quyền Print/canDownload. Không coi
-health, unit tests hoặc workflow PASS là bằng chứng chất lượng in giấy. Bản cũ
-không có filename không được backfill; kiểm tên bằng job mới sau rollout.
+Tắt opt-in sau rollout mới sẽ quay về pin Worker cũ và chặn readiness; phải review
+pin trước khi tắt. Không suy từ opt-in rằng đã bật feature PDF trên VPS.
+
+### Gate promote và rollback do operator
+
+Không tự promote từ health. Phải review đúng candidate trong summary, chạy job
+non-owner Viewer mở ẩn danh được phép tải/in, kiểm PDF/GCS/filename Unicode,
+download/recovery theo contract. Gọi qua Gateway production không chứng minh đã
+test canary: phải xác minh request đến đúng tagged revision, vẫn giữ base URL làm
+OIDC audience. Dùng fixture/job/prefix riêng; canary ghi storage thật có thể tạo
+checkpoint không tương thích reader cũ. Không coi health là bằng chứng in giấy.
+
+Trước đổi traffic, chờ dispatch cũ hoàn tất theo quy trình operator; queue
+concurrency 1 không tự chứng minh revision cũ đã drain. Review API/schema 0030 và
+reader từng source. API mới nhận result cũ không tên; job cũ không backfill, dùng
+fallback Drive ID. Worker trước filename từ chối manifest có field mới: **không
+tự rollback về revision preflight** sau khi Worker mới đã ghi dữ liệu. Nếu chưa
+chứng minh reader cũ tương thích, giữ API/recovery và fix forward; không xóa/sửa
+object bất biến.
+
+Promote thủ công theo phần canary/traffic, rồi chạy
+`pdf-worker-auto-release.mjs promoted SHA DIGEST REVISION`, authenticated live
+health và kiểm job/download. Traffic update lỗi giữa chừng phải đọc routing thực
+tế. Rollback chỉ sau review tương thích, rồi đọc lại routing 100% và kiểm job;
+exit code của lệnh rollback không đủ. Cancel/runner mất kết nối cần operator đọc
+traffic/tag/revision thực tế. Staging không đổi traffic nên không cần rollback
+traffic tự động, nhưng revision/tag đã tạo có thể còn lại. Audit không cam kết
+zero downtime.
 
 ## Chuỗi CI/CD thực tế
 
