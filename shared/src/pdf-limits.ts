@@ -20,7 +20,8 @@ export const PDF_CHUNK_PAGES = 10;
 export const PDF_CHUNK_MAX_BYTES = 20 * 1024 * 1024;
 export const PDF_LONG_TEMP_BYTES = 384 * 1024 * 1024;
 export const PDF_LONG_DOWNLOAD_MS = 180_000;
-export const PDF_CHUNK_DEADLINE_MS = 120_000;
+/** 165s budget remains below the 180s Cloud Tasks and Cloud Run request deadlines. */
+export const PDF_CHUNK_DEADLINE_MS = 165_000;
 export const PDF_CHUNK_DISPATCH_SECONDS = 180;
 export const PDF_MAX_STEPS = Math.ceil(PDF_LONG_MAX_PAGES / PDF_CHUNK_PAGES) + 1;
 export const PDF_LONG_MAX_LINKS = 1;
