@@ -59,6 +59,32 @@ test('direct 3/35/50 pages keep normal path; 51/200 pages checkpoint and merge e
     assert.equal(Number(execFileSync('qpdf',['--show-npages',f.store.path(`jobs/${job.jobId}/output.pdf`)],{encoding:'utf8'})),pages);
   }
 });
+test('final assembly verifies checkpoint bytes without reparsing every part', async t=>{
+  if(process.platform!=='linux'){t.skip('Linux qpdf');return;}
+  const root=await mkdtemp(join(tmpdir(),'chunk-final-hash-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  const f=await fixture(root,23);
+  for(let step=0;step<=3;step++) await f.run(step);
+  let validationCalls=0;
+  const {validatePDF}=await import('../src/pdf.ts');
+  f.deps.validate=async (...args)=>{validationCalls++;return validatePDF(...args);};
+  const result=await f.run(4);
+  assert.equal(result.status,'COMPLETED');
+  assert.equal(result.pages,23);
+  assert.equal(validationCalls,1,'only the final assembled PDF needs a full parser validation');
+  assert.deepEqual(await readdir(f.temp),[]);
+});
+
+test('final assembly rejects tampered PDF parts before merge', async t=>{
+  if(process.platform!=='linux'){t.skip('Linux qpdf');return;}
+  const root=await mkdtemp(join(tmpdir(),'chunk-final-corrupt-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  const f=await fixture(root,23);
+  for(let step=0;step<=3;step++) await f.run(step);
+  await writeFile(f.store.path(`jobs/${job.jobId}/parts/2.pdf`),'corrupt');
+  await assert.rejects(f.run(4),{code:'STORAGE_UNAVAILABLE'});
+  assert.equal(await f.store.head(`jobs/${job.jobId}/output.pdf`),null);
+  assert.deepEqual(await readdir(f.temp),[]);
+});
+
 test('over 200 pages and permission restriction persist failure, no partial output',async t=>{
   const root=await mkdtemp(join(tmpdir(),'chunk-limit-'));t.after(()=>rm(root,{recursive:true,force:true}));const f=await fixture(root,201);
   assert.equal((await f.run(0)).errorCode,'PAGE_LIMIT_EXCEEDED');assert.equal(await f.store.head(`jobs/${job.jobId}/output.pdf`),null);
