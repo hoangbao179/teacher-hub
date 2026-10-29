@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { normalizePdfFilename, isPdfManifest, isPdfPart, pdfPartCount, pdfPartRange, PDF_CHUNK_MAX_BYTES, PDF_LONG_OUTPUT_MAX_BYTES,
@@ -161,13 +162,20 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
     const files: {path:string}[] = [];
     for (const p of parts) {
       const path=join(dir,`part-${p.index}.pdf`); await get(`parts/${p.index}.pdf`,path,p.bytes);
-      const info=await validate(path,{...cap,maxBytes:p.bytes},signal);
-      if (info.sha256!==p.sha256 || info.pages!==p.lastPage-p.firstPage+1) throw new JobError('STORAGE_UNAVAILABLE',true);
+      // Each part was fully validated before its immutable checkpoint was committed.
+      // Repeating three qpdf parser passes for every part can exhaust the final step
+      // deadline. Verify bytes + SHA-256 against the validated checkpoint instead.
+      const {size}=await stat(path);
+      if (size!==p.bytes) throw new JobError('STORAGE_UNAVAILABLE',true);
+      const hash=createHash('sha256');
+      for await (const chunk of createReadStream(path,{signal})) hash.update(chunk);
+      if (hash.digest('hex')!==p.sha256) throw new JobError('STORAGE_UNAVAILABLE',true);
       files.push({path});
     }
     const filename = normalizePdfFilename(m.filename);
     stage = 'chunk-merge';
     const path=join(dir,'output.pdf'); await (deps.merge ?? qpdfParts)(files,path,signal);
+    stage = 'chunk-validation';
     const info=await validate(path,cap,signal);
     if (info.pages!==m.totalPages) throw new JobError('INVALID_PDF');
     stage = 'storage';
