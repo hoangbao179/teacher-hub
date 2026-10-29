@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   release:
-    if: ${{ github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }
+    if: ${{ github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     environment: pdf-worker-deploy
@@ -23,7 +23,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      SOURCE_SHA: ${{ inputs.source_sha }
+      SOURCE_SHA: ${{ inputs.source_sha }}
       CLOUD_PROJECT: teacher-hub-pdf
       CLOUD_REGION: asia-southeast1
       WORKER: teacher-pdf-worker
@@ -33,12 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.source_sha }
+          ref: ${{ inputs.source_sha }}
           persist-credentials: false
       - name: Validate source SHA and isolated deployer
         env:
-          PROVIDER: ${{ vars.PDF_DEPLOY_WIF_PROVIDER }
-          DEPLOYER: ${{ vars.PDF_DEPLOYER_SA }
+          PROVIDER: ${{ vars.PDF_DEPLOY_WIF_PROVIDER }}
+          DEPLOYER: ${{ vars.PDF_DEPLOYER_SA }}
         run: |
           set -Eeuo pipefail
           [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ && "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
@@ -52,8 +52,8 @@ jobs:
           npm run build:shared
       - uses: google-github-actions/auth@v3
         with:
-          workload_identity_provider: ${{ vars.PDF_DEPLOY_WIF_PROVIDER }
-          service_account: ${{ vars.PDF_DEPLOYER_SA }
+          workload_identity_provider: ${{ vars.PDF_DEPLOY_WIF_PROVIDER }}
+          service_account: ${{ vars.PDF_DEPLOYER_SA }}
           project_id: teacher-hub-pdf
       - uses: google-github-actions/setup-gcloud@v3
       - name: Readiness and rollback target
@@ -77,7 +77,7 @@ jobs:
           echo "digest=$d" >> "$GITHUB_OUTPUT"
       - name: Stage zero-traffic canary
         env:
-          IMAGE_DIGEST: ${{ steps.image.outputs.digest }
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           set -Eeuo pipefail
           gcloud run deploy "$WORKER" --project="$CLOUD_PROJECT" --region="$CLOUD_REGION" \
@@ -91,15 +91,15 @@ jobs:
       - name: Check staged revision and live traffic
         id: canary
         env:
-          IMAGE_DIGEST: ${{ steps.image.outputs.digest }
-          OLD_REV: ${{ steps.old.outputs.revision }
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          OLD_REV: ${{ steps.old.outputs.revision }}
         run: |
           set -Eeuo pipefail
           node scripts/pdf-worker-auto-release.mjs staged "$SOURCE_SHA" "$IMAGE_DIGEST" "$OLD_REV" > "$RUNNER_TEMP/canary.json"
           node -e 'const x=require(process.argv[1]); console.log("revision="+x.revision); console.log("url="+x.canaryURL)' "$RUNNER_TEMP/canary.json" >> "$GITHUB_OUTPUT"
       - name: Authenticated canary smoke
         env:
-          CANARY_URL: ${{ steps.canary.outputs.url }
+          CANARY_URL: ${{ steps.canary.outputs.url }}
         run: |
           set -Eeuo pipefail
           token="$(gcloud auth print-identity-token --audiences="$WORKER_URL")"
@@ -110,9 +110,9 @@ jobs:
           unset token
       - name: Promote, verify and rollback if necessary
         env:
-          CANDIDATE: ${{ steps.canary.outputs.revision }
-          OLD_REV: ${{ steps.old.outputs.revision }
-          IMAGE_DIGEST: ${{ steps.image.outputs.digest }
+          CANDIDATE: ${{ steps.canary.outputs.revision }}
+          OLD_REV: ${{ steps.old.outputs.revision }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           set -Eeuo pipefail
           promoted=0
