@@ -197,11 +197,40 @@ jobs:
       source_sha: ${{ github.sha }}
     secrets: inherit
 
+  pdf-worker-changes:
+    name: Detect PDF Worker changes
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare exact pushed commit range
+        id: diff
+        env:
+          PREVIOUS_SHA: ${{ github.event.before }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ ! "$PREVIOUS_SHA" =~ ^[a-f0-9]{40}$ || "$PREVIOUS_SHA" == "0000000000000000000000000000000000000000" ]]; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$PREVIOUS_SHA" "$GITHUB_SHA" -- \
+            workers/pdf/ shared/ .github/workflows/pdf-worker-release.yml \
+            scripts/pdf-worker-auto-release.mjs scripts/pdf-v2-readiness.mjs; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+
   deploy-pdf-worker:
     name: Release Cloud Run PDF Worker after VPS deployment
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' && needs.pdf-worker-changes.outputs.changed == 'true' }}
     needs:
       - deploy-production
+      - pdf-worker-changes
     permissions:
       contents: read
       id-token: write
