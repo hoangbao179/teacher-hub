@@ -69,8 +69,11 @@ Workflow `.github/workflows/pdf-worker-release.yml` được gọi từ `ci.yml`
 `deploy-production` thành công, khi delivery `main` thay đổi đầu vào Worker.
 Workflow chỉ **build/push và stage canary 0%**, không tự promote/rollback traffic.
 Repository variable
-`PDF_WORKER_AUTO_DEPLOY_ENABLED=true` là công tắc **opt-in**; thiếu hoặc khác
-`true` thì toàn bộ Cloud release job bị bỏ qua và readiness giữ pin Worker cũ.
+`PDF_WORKER_AUTO_DEPLOY_ENABLED=true` là công tắc **opt-in** cho tác vụ có quyền
+build/push/stage Cloud Run Worker. Thiếu hoặc khác `true` thì tác vụ release Worker
+bị bỏ qua, nhưng **readiness chỉ đọc luôn xác minh revision Worker thực nhận 100%
+traffic và digest bất biến**. Thay đổi Worker revision hợp lệ không cần sửa pin
+trong source hoặc bật quyền deploy.
 
 Luồng phát hành: CI chất lượng/integration/browser → migration và API/Web trên VPS
 → preflight Cloud read-only → build Docker `linux/amd64` từ đúng source SHA,
@@ -171,15 +174,17 @@ workflow không xóa artifact Cloud và không đổi VPS/container budget.
   dry-run từng bước và đã nghiệm thu fixture PDF công khai được phép tải/in.
   Không bật chỉ để thử việc xác thực quyền. Không thay `GCP_VERIFIER_SA` hiện hành.
 
-Khi bật flag, readiness cũ trong `pdf-worker.yml` chuyển sang kiểm live Worker
-revision và *platform digest bất biến* thuộc registry cố định, cùng IAM, tài
-nguyên, queue, Gateway pinned; staged gate kiểm **đúng candidate revision +
-digest** từ build run. Cách này bỏ pin Worker cố định khỏi mỗi lần commit nhưng
-không tự chứng minh source SHA của image cũ; kiểm chuỗi build/provenance và WIF
-là bắt buộc. Gateway vẫn pin cũ và **không được deploy bởi workflow này**.
+Readiness trong `pdf-worker.yml` **luôn** kiểm live Worker revision và *platform
+digest bất biến* thuộc registry cố định, cùng IAM, tài nguyên, queue và Gateway
+pinned, bất kể biến opt-in. Khi bật flag, workflow release bổ sung staged gate
+kiểm **đúng candidate revision + digest** từ build run. Không cần pin Worker trong
+source theo mỗi revision. Việc kiểm live revision không tự chứng minh source SHA
+của image đang chạy; khi promote vẫn cần kiểm chuỗi build/provenance và WIF.
+Gateway vẫn pin cũ và **không được deploy bởi workflow Worker**.
 
-Tắt opt-in sau rollout mới sẽ quay về pin Worker cũ và chặn readiness; phải review
-pin trước khi tắt. Không suy từ opt-in rằng đã bật feature PDF trên VPS.
+Tắt opt-in chỉ ngừng build/push/stage Worker; readiness vẫn kiểm revision Worker
+production thực tế và không quay về pin cũ. Không suy từ opt-in rằng đã bật
+feature PDF trên VPS.
 
 ### Gate promote và rollback do operator
 
@@ -220,13 +225,17 @@ Worker sau khi bật opt-in và đã provision WIF deployer.
 
 Artifact readiness không secret, giữ 1 ngày; VPS chỉ nhận version 1, PASS,
 sourceSha khớp candidate, checkedAt không quá 30 phút, tương lai không quá 60 giây.
-Readiness ghim `RELEASE` trong `scripts/pdf-v2-readiness.mjs`, không lấy latest.
-Source SHA evidence là SHA API/Web sắp deploy, không tự chứng minh Cloud image
-được build từ SHA đó. Cần giữ chuỗi build SHA → registry digest → revision riêng.
+Readiness ghim **Gateway** trong `RELEASE` của `scripts/pdf-v2-readiness.mjs`;
+**Worker** được lấy từ revision duy nhất nhận 100% traffic (không dùng latest
+created/ready). Sau đó xác minh revision, image digest bất biến, IAM, cấu hình và
+queue trước khi xuất bằng chứng. Source SHA evidence là SHA API/Web sắp deploy,
+không tự chứng minh Cloud image được build từ SHA đó. Vẫn cần lưu và kiểm chuỗi
+build SHA → registry digest → revision riêng cho Worker khi phát hành.
 
-Pin hiện hành: Worker `teacher-pdf-worker-00020-fiv` với platform digest
-`sha256:7b0e5d6bcd5ce4aa449939ddf3e31d8f93fd4b6e88c20922850810c06009f5cb`;
-Gateway vẫn `teacher-pdf-gateway-00013-gej` với digest trong `RELEASE`.
+Mốc Worker `teacher-pdf-worker-00020-fiv` với platform digest
+`sha256:7b0e5d6bcd5ce4aa449939ddf3e31d8f93fd4b6e88c20922850810c06009f5cb`
+là **dữ liệu lịch sử**, không phải pin live. Gateway vẫn ghim
+`teacher-pdf-gateway-00013-gej` và digest trong `RELEASE`.
 Registry tag Worker `35ff0f8b5a28f91aa7720dbcead85d3f4fe7ef32` trỏ OCI index
 `sha256:75357d6f5062ccb3a120e21271a0a9367616dbd2365d4d2df256ce6e7e520b9b`,
 có descriptor linux/amd64 đúng digest Worker trên. Không dùng index digest thay
