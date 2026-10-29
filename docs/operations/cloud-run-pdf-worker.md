@@ -119,9 +119,10 @@ không có filename không được backfill; kiểm tên bằng job mới sau r
 pipeline VPS; full regression thủ công không tự deploy. Build API/Web dùng
 Dockerfile.api/web, push GHCR theo full SHA. `deploy.yml` dispatch
 `pdf-worker.yml` trên main với exact SHA và correlation run/attempt, đợi thành
-công, lấy đúng artifact readiness. Workflow PDF **không build/push/deploy Cloud
-Run hay đổi traffic**. Nhánh `verify-wif` không có activation_request chỉ kiểm
-WIF/registry; nhánh `v2-readiness` mới đọc Cloud Run/queue.
+công, lấy đúng artifact readiness. Workflow `pdf-worker.yml` vẫn chỉ kiểm tra read-only. Nhánh `verify-wif`
+không có activation_request kiểm WIF/registry, còn `v2-readiness` đọc Cloud
+Run/queue. Workflow `pdf-worker-release.yml` riêng chỉ build/deploy/promote
+Worker sau khi bật opt-in và đã provision WIF deployer.
 
 Artifact readiness không secret, giữ 1 ngày; VPS chỉ nhận version 1, PASS,
 sourceSha khớp candidate, checkedAt không quá 30 phút, tương lai không quá 60 giây.
