@@ -102,6 +102,84 @@ test('139-page split Viewer layers resolve only independent page-scoped bitmaps'
   });
 });
 
+test('transient Drive image decode failures recover without retrying an entire PDF chunk', { timeout: 30000 }, async t => {
+  const browser = await chromium.launch({ headless: true });
+  t.after(() => browser.close());
+  const budget = 32 * 1048576;
+  const fixture = async t => {
+    const page = await browser.newPage();
+    t.after(() => page.close());
+    await page.route('**/*', route => route.abort());
+    await page.setContent('<main><section><h2>Page 1 / 139</h2><img style="width:300px"></section></main>');
+    await page.evaluate(async () => {
+      window.makeNativeBlob = async color => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1800; canvas.height = 2547;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = color; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve));
+        canvas.width = canvas.height = 1;
+        return URL.createObjectURL(blob);
+      };
+      const image = document.querySelector('img');
+      image.src = await window.makeNativeBlob('red');
+      await image.decode();
+      window.greenBlob = await window.makeNativeBlob('green');
+    });
+    return page;
+  };
+  const verifyColor = async (capture, rgb) => {
+    assert.equal(capture.width, 1800);
+    assert.equal(capture.height, 2547);
+    const pixel = await sharp(capture.png).removeAlpha().extract({left:0,top:0,width:1,height:1}).raw().toBuffer();
+    assert.deepEqual([...pixel],rgb);
+  };
+  await t.test('two native decode rejections recover on the third attempt without image substitution',async t => {
+    const page = await fixture(t);
+    await page.evaluate(() => {
+      const img = document.querySelector('img');
+      const native = img.decode.bind(img);
+      window.decodeAttempts = 0;
+      img.decode = async () => {
+        window.decodeAttempts++;
+        if (window.decodeAttempts <= 2) throw new DOMException('transient decoder failure');
+        await native();
+      };
+    });
+    await verifyColor(await captureViewerPage(page,1,139,budget),[255,0,0]);
+    assert.equal(await page.evaluate(() => window.decodeAttempts),3);
+  });
+  await t.test('late source replacement after 2.5 seconds captures only new native pixels',async t => {
+    const page = await fixture(t);
+    await page.evaluate(() => {
+      const img = document.querySelector('img');
+      const originalSource = img.src;
+      const native = img.decode.bind(img);
+      img.decode = async () => {
+        if (img.src === originalSource) throw new DOMException('temporary unavailable decoder');
+        await native();
+      };
+      setTimeout(() => { img.src = window.greenBlob; }, 3700);
+    });
+    await verifyColor(await captureViewerPage(page,1,139,budget),[0,128,0]);
+  });
+  await t.test('permanently failing decode remains retryable and is retried at most three times',async t => {
+    const page = await fixture(t);
+    await page.evaluate(() => {
+      const img = document.querySelector('img');
+      window.decodeAttempts = 0;
+      img.decode = async () => {
+        window.decodeAttempts++;
+        throw new DOMException('unreadable blob');
+      };
+    });
+    await assert.rejects(captureViewerPage(page,1,139,budget),{
+      code:'SOURCE_UNAVAILABLE',retryable:true,reason:'bitmap-decode-failed',pageIndex:1,
+    });
+    assert.equal(await page.evaluate(() => window.decodeAttempts),3);
+  });
+});
+
 test('browser capture waits for zoom detail, preserves blank/landscape pages and excludes toolbar', { timeout: 45000 }, async t => {
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
