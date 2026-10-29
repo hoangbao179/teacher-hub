@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import {evaluateService, RELEASE, main} from './pdf-v2-readiness.mjs';
 import {CLOUD} from './pdf-cloud-stage.mjs';
 
+const WORKER={revision:'teacher-pdf-worker-00024-lir',digest:'sha256:'+'a'.repeat(64)};
+const trusted=kind=>kind==='worker'?WORKER:RELEASE.gateway;
 function fixture(kind) {
-  const worker=kind==='worker', name=CLOUD[kind], {revision,digest}=RELEASE[kind];
+  const worker=kind==='worker', name=CLOUD[kind], {revision,digest}=trusted(kind);
   const image=CLOUD.registry+'/'+name+'@'+digest;
   const gates=worker?{PDF_CHUNKED_JOBS_ENABLED:'true',PDF_PROCESSING_ENABLED:'true',PDF_WORKER_IAM_READY:'true',PDF_PRINT_FALLBACK_ENABLED:'true',PDF_TEMP_ROOT:'/tmp/pdf-worker'}:
     {PDF_CHUNKED_JOBS_ENABLED:'true',PDF_GATEWAY_ENABLED:'true',PDF_LONG_PRINT_TASKS_ENABLED:'true',PDF_GATEWAY_WORKER_URL:CLOUD.workerURL};
@@ -17,14 +19,13 @@ function fixture(kind) {
           ...(!worker?[{name:'PDF_GATEWAY_HMAC_KEY',valueFrom:{secretKeyRef:{name:'existing',key:'1'}}}]:[])],
           volumeMounts:[{name:'scratch',mountPath:'/tmp/pdf-worker'}]}],volumes:[{name:'scratch',emptyDir:{medium:'Memory',sizeLimit:'384Mi'}}]}},policy:{bindings:worker?[{role:'roles/run.invoker',members:['serviceAccount:teacher-pdf-invoker@teacher-hub-pdf.iam.gserviceaccount.com']}]:[]}};
 }
-const evaluate=f=>evaluateService(f.kind,f.service,f.revision,f.policy);
-test('Worker pin matches reviewed live revision and linux/amd64 manifest, Gateway stays unchanged',()=>{
+const evaluate=f=>evaluateService(f.kind,f.service,f.revision,f.policy,trusted(f.kind));
+test('Only Gateway is pinned in source; Worker pin is discovered from live traffic',()=>{
   assert.deepEqual(RELEASE,{
-    worker:{revision:'teacher-pdf-worker-00022-hap',digest:'sha256:a59482ce0711c2278189db21143658b1e2eccbee276f58c28492bfb3398e6f55'},
     gateway:{revision:'teacher-pdf-gateway-00013-gej',digest:'sha256:5adfd3d41adf82dde6158e9b0c97acbaebb173837cdf7cee99f9680009e1744f'},
   });
 });
-test('Worker rejects superseded traffic and registry index instead of the reviewed platform manifest',()=>{
+test('Worker rejects traffic drift and image digest that differs from selected live manifest',()=>{
   const old=fixture('worker');old.service.status.traffic[1].revisionName='teacher-pdf-worker-00017-guf';
   assert.throws(()=>evaluate(old),/TRAFFIC_MISMATCH/);
   const index=fixture('worker');
@@ -33,7 +34,7 @@ test('Worker rejects superseded traffic and registry index instead of the review
   assert.throws(()=>evaluate(index),/REVISION_DIGEST_MISMATCH/);
 });
 for(const kind of ['worker','gateway']) {
-  test(kind+': accepts pinned live image and ignores zero-traffic tags',()=>assert.deepEqual(evaluate(fixture(kind)),RELEASE[kind]));
+  test(kind+': accepts exact revision and ignores zero-traffic tags',()=>assert.deepEqual(evaluate(fixture(kind)),trusted(kind)));
   for(const [label,mutate] of [
     ['split traffic',f=>{f.service.status.traffic[0].percent=1;f.service.status.traffic[1].percent=99;}],
     ['wrong live revision',f=>f.service.status.traffic[1].revisionName='old'],
@@ -81,7 +82,53 @@ test('audit performs only seven reads and emits evidence only after all gates pa
   assert.equal(r.code,0);assert.equal(r.calls.length,7);assert.deepEqual(r.errors,[]);
   const evidence=JSON.parse(r.logs[0]);
   assert.equal(evidence.sourceSha,SHA);assert.equal(evidence.result,'PASS');
-  assert.deepEqual(evidence.services,RELEASE);
+  assert.deepEqual(evidence.services,{worker:WORKER,gateway:RELEASE.gateway});
+});
+
+
+test('readiness automatically accepts a newly promoted immutable Worker revision',()=>{
+  const revision='teacher-pdf-worker-00031-new';
+  const digest='sha256:'+'b'.repeat(64);
+  const image=CLOUD.registry+'/'+CLOUD.worker+'@'+digest;
+  const r=execute({mutate:(step,data)=>{
+    if(step==='WORKER_SERVICE')data.status.traffic[1].revisionName=revision;
+    if(step==='WORKER_REVISION'){
+      data.metadata.name=revision;
+      data.spec.containers[0].image=image;
+      data.status.imageDigest=image;
+    }
+  }});
+  assert.equal(r.code,0);
+  assert.deepEqual(JSON.parse(r.logs[0]).services.worker,{revision,digest});
+  assert.deepEqual(JSON.parse(r.logs[0]).services.gateway,RELEASE.gateway);
+});
+
+test('readiness does not trust a tag-based or unknown live Worker image',()=>{
+  const r=execute({mutate:(step,data)=>{
+    if(step==='WORKER_REVISION'){
+      data.spec.containers[0].image=CLOUD.registry+'/'+CLOUD.worker+':latest';
+    }
+  }});
+  assert.equal(r.code,1);
+  assert.deepEqual(r.errors,['PDF_V2_WORKER_LIVE_IMAGE_INVALID']);
+});
+
+test('readiness rejects split traffic and an invalid Worker revision name before image lookup',()=>{
+  const split=execute({mutate:(step,data)=>{
+    if(step==='WORKER_SERVICE')data.status.traffic=[
+      {revisionName:'teacher-pdf-worker-00024-lir',percent:50},
+      {revisionName:'teacher-pdf-worker-00031-new',percent:50}
+    ];
+  }});
+  assert.equal(split.code,1);
+  assert.deepEqual(split.errors,['PDF_V2_WORKER_LIVE_REVISION_INVALID']);
+  assert.equal(split.calls.length,1);
+  const invalid=execute({mutate:(step,data)=>{
+    if(step==='WORKER_SERVICE')data.status.traffic[1].revisionName='outside-repo';
+  }});
+  assert.equal(invalid.code,1);
+  assert.deepEqual(invalid.errors,['PDF_V2_WORKER_LIVE_REVISION_INVALID']);
+  assert.equal(invalid.calls.length,1);
 });
 
 for(const step of steps) {
