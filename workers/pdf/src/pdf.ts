@@ -58,12 +58,13 @@ export async function validatePDF(path: string, cap: Limits, signal: AbortSignal
           (typeof error.code === 'number' && [1, 126, 127].includes(error.code)));
         if (error && typeof error.code === 'number' && allowedCodes.includes(error.code)) resolve(String(error.code));
         else if (error) {
-          const interrupted=signal.aborted || error.killed || !!error.signal;
+          const timedOut=signal.aborted || error.killed || error.signal==='SIGXCPU';
+          const interrupted=timedOut || !!error.signal;
           const reason=pdfParserFailureReason(args[0],signal.aborted,!!error.killed,error.signal);
-          // SIGKILL may be a CPU hard-limit or an OS memory kill; it is
-          // retryable infrastructure failure, not evidence of an invalid PDF.
-          reject(new JobError(interrupted ? 'TIMEOUT' :
-            unavailable ? 'SERVICE_UNAVAILABLE' : 'INVALID_PDF',
+          // SIGKILL may be a CPU hard-limit or OS memory kill; SIGSEGV may
+          // indicate exhausted address space. Neither proves invalid PDF.
+          reject(new JobError(timedOut ? 'TIMEOUT' :
+            (unavailable || interrupted) ? 'SERVICE_UNAVAILABLE' : 'INVALID_PDF',
             !!interrupted || !!unavailable, reason));
         }
         else resolve(stdout.trim());
