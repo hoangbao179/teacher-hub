@@ -340,17 +340,28 @@ test('offline bitmap synchronization, recreation and identity failures', { timeo
       code: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-layout-toolbar-visible',
     });
   });
-  await t.test('unreadable blob is an explicit retryable source failure', async t => {
+  await t.test('unreadable blob is a classified retryable source failure', async t => {
     const page = await fixture(t);
     await page.evaluate(() => { document.querySelector('img').src = 'blob:null/missing'; });
-    await assert.rejects(captureViewerPage(page, 1, 2, budget), { code: 'SOURCE_UNAVAILABLE', retryable: true });
+    await assert.rejects(captureViewerPage(page, 1, 2, budget),
+      { code: 'SOURCE_UNAVAILABLE', retryable: true, reason: 'bitmap-dimensions-invalid', pageIndex: 1 });
+  });
+  await t.test('Drive bitmap replacement after first quiet window recovers without a new chunk attempt', async t => {
+    const page = await fixture(t);
+    await page.evaluate(() => {
+      const image = document.querySelector('img');
+      image.src = 'blob:null/missing';
+      setTimeout(() => { image.src = window.sharper; }, 1200);
+    });
+    await verify(await captureViewerPage(page, 1, 2, budget), 2334, 3301, [0, 128, 0]);
   });
   await t.test('canvas read failure is retryable rather than a permanent source rejection', async t => {
     const page = await fixture(t);
     await page.evaluate(() => {
       HTMLCanvasElement.prototype.toDataURL = () => { throw new DOMException('temporary read failure'); };
     });
-    await assert.rejects(captureViewerPage(page, 1, 2, budget), { code: 'SOURCE_UNAVAILABLE', retryable: true });
+    await assert.rejects(captureViewerPage(page, 1, 2, budget),
+      { code: 'SOURCE_UNAVAILABLE', retryable: true, reason: 'bitmap-canvas-read-failed', pageIndex: 1 });
   });
   await t.test('below-DPI bitmap remains pending until the global deadline', async t => {
     const page = await fixture(t);
