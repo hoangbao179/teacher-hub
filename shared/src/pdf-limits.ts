@@ -23,6 +23,10 @@ export const PDF_LONG_DOWNLOAD_MS = 180_000;
 /** 165s budget remains below the 180s Cloud Tasks and Cloud Run request deadlines. */
 export const PDF_CHUNK_DEADLINE_MS = 165_000;
 export const PDF_CHUNK_DISPATCH_SECONDS = 180;
+/** Maximum processing age for a long PDF job; independent of the 24h download TTL.
+ * Each Worker request is still independently bounded by PDF_CHUNK_DEADLINE_MS.
+ */
+export const PDF_LONG_PROCESSING_MAX_AGE_MS = 60 * 60 * 1000;
 export const PDF_MAX_STEPS = Math.ceil(PDF_LONG_MAX_PAGES / PDF_CHUNK_PAGES) + 1;
 export const PDF_LONG_MAX_LINKS = 1;
 /** API admission only; Cloud Tasks dispatch and Worker instance limits remain independent. */
