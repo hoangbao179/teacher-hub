@@ -34,6 +34,15 @@ test('deploy protection precedes WIF, tokens use service audience and readiness 
   assert.match(workflow,/ID_TOKEN: \$\{\{ steps.smoke-auth.outputs.id_token \}\}/);
   assert.match(read('.github/workflows/pdf-worker.yml'),/PDF_WORKER_AUTO_DEPLOY_ENABLED: \$\{\{ vars.PDF_WORKER_AUTO_DEPLOY_ENABLED \}\}/);
 });
+test('registry cleanup runs only after staged candidate and separate opt-in',()=>{
+  const afterStage=workflow.indexOf('Publish staged candidate for operator verification');
+  const preview=workflow.indexOf('Preview obsolete Artifact Registry images');
+  const apply=workflow.indexOf('Cleanup obsolete Artifact Registry images when separately enabled');
+  assert(afterStage>=0 && preview>afterStage && apply>preview);
+  assert.match(workflow,/if: \$\\{\\{ vars\\.PDF_REGISTRY_CLEANUP_ENABLED == 'true' \\}\\}/);
+  assert.match(workflow,/node scripts\\/pdf-registry-cleanup\\.mjs --dry-run/);
+  assert.match(workflow,/node scripts\\/pdf-registry-cleanup\\.mjs --apply/);
+});
 test('generated WIF credential files stay out of Git and Docker context',()=>{
   for(const file of ['.gitignore','.dockerignore']) assert.match(read(file),/^gha-creds-\*\.json$/m,file);
 });
