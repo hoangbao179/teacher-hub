@@ -9,7 +9,7 @@ const reasons = new Set(['redirect-policy', 'redirect-limit', 'login-redirect', 
   'invalid-file-id', 'page-count-unreadable', 'page-total-mismatch', 'anchor-fingerprint-mismatch', 'assembled-page-mismatch',
   'duplicate-page-heading', 'ambiguous-page-layout', 'ambiguous-layout-multiple-headings',
   'ambiguous-layout-multiple-images', 'ambiguous-layout-toolbar-visible', 'bitmap-oversized',
-  'bitmap-dimensions-invalid', 'bitmap-dpi-low', 'intermediate-png-page', 'intermediate-png-total',
+  'bitmap-dimensions-invalid', 'bitmap-dpi-low', 'viewer-seek-timeout', 'viewer-seek-error', 'viewer-bitmap-timeout', 'viewer-bitmap-error', 'intermediate-png-page', 'intermediate-png-total',
   'embedded-jpeg-total', 'output-pdf-bytes', 'direct-download-bytes', 'validated-pdf-bytes']);
 const maxDiagnosticBytes = 64 * 1048576;
 

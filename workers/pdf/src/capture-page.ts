@@ -1,4 +1,4 @@
-import type { Page } from 'playwright';
+import { errors as playwrightErrors, type Page } from 'playwright';
 import { JobError } from './contract.ts';
 import { withViewerAbort } from './viewer-ready.ts';
 import { PDF_VIEWER_MIN_DPI, PDF_VIEWER_MAX_PIXELS } from '@teacher/shared';
@@ -229,7 +229,9 @@ export async function captureViewerPage(page: Page, index: number, total: number
       if (error instanceof JobError) throw error;
       // Timeout, closed browser and lost execution context are not permanent
       // evidence against the source document.
-      throw new JobError('SOURCE_UNAVAILABLE', true);
+      throw new JobError('SOURCE_UNAVAILABLE', true,
+        error instanceof playwrightErrors.TimeoutError ? 'viewer-bitmap-timeout' : 'viewer-bitmap-error',
+        {pageIndex:index});
     } finally { if (!observation && state) await disposeViewerBitmaps(state); }
   });
 }
