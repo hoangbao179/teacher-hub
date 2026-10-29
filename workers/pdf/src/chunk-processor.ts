@@ -4,7 +4,7 @@ import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { normalizePdfFilename, isPdfManifest, isPdfPart, pdfPartCount, pdfPartRange, PDF_CHUNK_MAX_BYTES, PDF_LONG_OUTPUT_MAX_BYTES,
-  PDF_NORMAL_MAX_PAGES, type PdfChunkJob, type PdfManifest, type PdfPart } from '@teacher/shared';
+  PDF_NORMAL_MAX_PAGES, PDF_LONG_PROCESSING_MAX_AGE_MS, type PdfChunkJob, type PdfManifest, type PdfPart } from '@teacher/shared';
 import { JobError, type Limits, type Result } from './contract.ts';
 import { type Dependencies } from './processor.ts';
 import { download } from './download.ts';
@@ -62,6 +62,11 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
         !Number.isInteger(Number(m.pages)) || Number(m.pages)<1 || Number(m.pages)>cap.maxPages) throw new JobError('STORAGE_UNAVAILABLE',true);
       return await finish({status:'COMPLETED',objectName:prefix+'output.pdf',bytes:Number(m.bytes),pages:Number(m.pages),sha256:m.sha256,...(normalizePdfFilename(m.filename) ? {filename:normalizePdfFilename(m.filename)!} : {})});
     }
+    // Give late confirmed outputs priority, but never spend more CPU on new
+    // render/merge attempts once the total v2 processing window has elapsed.
+    // The separate immutable GCS result/download TTL remains 24 hours.
+    if (Date.now() >= Date.parse(claim.createdAt) + PDF_LONG_PROCESSING_MAX_AGE_MS)
+      return await finish({status:'FAILED',errorCode:'JOB_EXPIRED'});
     let manifest = await store.json<PdfManifest>(prefix+'manifest.json',signal);
     if (manifest && !isPdfManifest(manifest,job.jobId,sourceHash,claim.expiresAt)) throw new JobError('STORAGE_UNAVAILABLE',true);
     if (!manifest) {
