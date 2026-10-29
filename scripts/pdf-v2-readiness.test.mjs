@@ -20,7 +20,7 @@ function fixture(kind) {
 const evaluate=f=>evaluateService(f.kind,f.service,f.revision,f.policy);
 test('Worker pin matches reviewed live revision and linux/amd64 manifest, Gateway stays unchanged',()=>{
   assert.deepEqual(RELEASE,{
-    worker:{revision:'teacher-pdf-worker-00020-fiv',digest:'sha256:7b0e5d6bcd5ce4aa449939ddf3e31d8f93fd4b6e88c20922850810c06009f5cb'},
+    worker:{revision:'teacher-pdf-worker-00022-hap',digest:'sha256:a59482ce0711c2278189db21143658b1e2eccbee276f58c28492bfb3398e6f55'},
     gateway:{revision:'teacher-pdf-gateway-00013-gej',digest:'sha256:5adfd3d41adf82dde6158e9b0c97acbaebb173837cdf7cee99f9680009e1744f'},
   });
 });

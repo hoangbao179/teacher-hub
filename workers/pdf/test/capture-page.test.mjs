@@ -4,6 +4,104 @@ import { chromium } from 'playwright';
 import sharp from 'sharp';
 import { captureViewerPage, observeViewerBitmaps, disposeViewerBitmaps } from '../src/capture-page.ts';
 
+test('139-page split Viewer layers resolve only independent page-scoped bitmaps', { timeout: 45000 }, async t => {
+  const browser = await chromium.launch({ headless: true });
+  t.after(() => browser.close());
+  const budget = 32 * 1048576;
+  async function fixture(t) {
+    const page = await browser.newPage({ viewport: { width: 800, height: 1000 } });
+    t.after(() => page.close());
+    await page.route('**/*', route => route.abort());
+    // Accessibility page regions and bitmaps are separate DOM layers. The first
+    // ancestor with images (level 2) contains both page headings, as in the failure.
+    await page.setContent(`<style>
+      .layers { position:relative; width:300px; height:860px }
+      .slot { position:absolute; width:300px; height:430px; left:0 }
+      h2 { margin:0; font-size:16px }
+      img { position:absolute; left:0; width:280px }
+    </style><button>Toolbar outside page</button><main><section class="layers">
+      <div class="labels"><div class="slot" style="top:0"><h2>Page 11 / 139</h2></div>
+      <div class="slot" style="top:430px"><h2>Page 12 / 139</h2></div></div>
+      <div class="bitmaps"><img data-page="11" style="top:24px"><img data-page="12" style="top:454px"></div>
+    </section></main>`);
+    await page.evaluate(async () => {
+      window.makeBitmap = async (width, height, color) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d'); ctx.fillStyle = color; ctx.fillRect(0, 0, width, height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve));
+        canvas.width = canvas.height = 1;
+        return URL.createObjectURL(blob);
+      };
+      for (const [index, color] of [[11, 'red'], [12, 'blue']]) {
+        const image = document.querySelector(`[data-page="${index}"]`);
+        image.src = await window.makeBitmap(1800, 2547, color);
+        await image.decode();
+      }
+      window.sharper = await window.makeBitmap(2334, 3301, 'green');
+    });
+    return page;
+  }
+  async function verify(capture, width, height, color) {
+    assert.equal(capture.width, width); assert.equal(capture.height, height);
+    const stats = await sharp(capture.png).removeAlpha().stats();
+    for (let channel = 0; channel < 3; channel++) {
+      assert.equal(stats.channels[channel].min, color[channel]);
+      assert.equal(stats.channels[channel].max, color[channel]);
+    }
+  }
+  await t.test('pages 11 and 12 visible at once retain exact native dimensions and distinct pixels', async t => {
+    const page = await fixture(t);
+    for (const [index, color] of [[11, [255, 0, 0]], [12, [0, 0, 255]]])
+      await verify(await captureViewerPage(page, index, 139, budget), 1800, 2547, color);
+  });
+  await t.test('scroll, zoom and replacement during decode re-resolve page ownership', async t => {
+    const page = await fixture(t);
+    const observation = await observeViewerBitmaps(page);
+    t.after(() => disposeViewerBitmaps(observation));
+    await page.evaluate(() => {
+      const spacer = document.createElement('div'); spacer.style.height = '1200px';
+      document.querySelector('main').before(spacer);
+      const image = document.querySelector('[data-page="11"]');
+      const decode = image.decode.bind(image);
+      image.decode = async () => {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await decode();
+      };
+      setTimeout(() => {
+        const labels = document.querySelector('.labels');
+        labels.replaceWith(labels.cloneNode(true));
+        document.querySelector('.layers').style.transform = 'scale(0.9)';
+        image.src = window.sharper;
+      }, 850);
+    });
+    await verify(await captureViewerPage(page, 11, 139, budget, observation), 2334, 3301, [0, 128, 0]);
+  });
+  await t.test('recycled split-layer page waits for a new bitmap source', async t => {
+    const page = await fixture(t);
+    const observation = await observeViewerBitmaps(page);
+    t.after(() => disposeViewerBitmaps(observation));
+    await page.evaluate(() => {
+      document.querySelector('h2').textContent = 'Page 13 / 139';
+      setTimeout(() => { document.querySelector('[data-page="11"]').src = window.sharper; }, 1200);
+    });
+    await verify(await captureViewerPage(page, 13, 139, budget, observation), 2334, 3301, [0, 128, 0]);
+  });
+  for (const [kind, reason] of [
+    ['duplicate', 'duplicate-page-heading'], ['images', 'ambiguous-layout-multiple-images'],
+    ['overlap', 'ambiguous-layout-multiple-headings'], ['boundary', 'ambiguous-layout-multiple-headings'],
+  ]) await t.test(`rejects ambiguous ${kind}`, async t => {
+    const page = await fixture(t);
+    await page.evaluate(kind => {
+      if (kind === 'duplicate') document.querySelector('.labels').append(document.querySelector('.slot').cloneNode(true));
+      if (kind === 'images') document.querySelector('.bitmaps').append(document.querySelector('img').cloneNode(true));
+      if (kind === 'overlap') document.querySelectorAll('.slot')[1].style.top = '400px';
+      if (kind === 'boundary') document.querySelector('img').style.top = '100px';
+    }, kind);
+    await assert.rejects(captureViewerPage(page, 11, 139, budget), { code: 'UNSUPPORTED_SOURCE', reason });
+  });
+});
+
 test('browser capture waits for zoom detail, preserves blank/landscape pages and excludes toolbar', { timeout: 45000 }, async t => {
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
