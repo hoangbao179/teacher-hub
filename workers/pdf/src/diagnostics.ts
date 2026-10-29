@@ -1,7 +1,7 @@
 import { JobError } from './contract.ts';
 import { PDF_LONG_MAX_PAGES, PDF_MAX_STEPS } from '@teacher/shared';
 
-export type Stage = 'direct-download' | 'direct-validation' | 'viewer-render' | 'viewer-validation' | 'chunk-merge' | 'storage';
+export type Stage = 'direct-download' | 'direct-validation' | 'viewer-render' | 'viewer-validation' | 'chunk-merge' | 'chunk-validation' | 'storage';
 const codes = new Set(['ACCESS_DENIED', 'PRINT_UNAVAILABLE', 'UNSUPPORTED_SOURCE', 'INVALID_PDF',
   'FILE_TOO_LARGE', 'PAGE_LIMIT_EXCEEDED', 'SOURCE_UNAVAILABLE', 'TIMEOUT', 'SERVICE_UNAVAILABLE', 'STORAGE_UNAVAILABLE']);
 const reasons = new Set(['redirect-policy', 'redirect-limit', 'login-redirect', 'http-access', 'http-status',
