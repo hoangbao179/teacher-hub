@@ -147,3 +147,15 @@ jobs:
             echo 'Health is not a PDF functional gate. Verify authorized non-owner Viewer, filename/output/recovery, drain old dispatches and approve compatible rollback before changing traffic.'
             echo 'Follow docs/operations/cloud-run-pdf-worker.md. Workflow success means staging only.'
           } >> "$GITHUB_STEP_SUMMARY"
+      # Independent, fail-closed maintenance. Does not alter traffic or image staging.
+      # Use the same protected WIF deployer identity; never expose credentials.
+      - name: Preview obsolete Artifact Registry images
+        continue-on-error: true
+        run: node scripts/pdf-registry-cleanup.mjs --dry-run
+      - name: Cleanup obsolete Artifact Registry images when separately enabled
+        if: ${{ vars.PDF_REGISTRY_CLEANUP_ENABLED == 'true' }}
+        continue-on-error: true
+        env:
+          PDF_REGISTRY_CLEANUP_ENABLED: 'true'
+          PDF_REGISTRY_CLEANUP_CONFIRM: 'APPLY'
+        run: node scripts/pdf-registry-cleanup.mjs --apply
