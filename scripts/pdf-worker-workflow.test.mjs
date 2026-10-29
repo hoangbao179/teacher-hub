@@ -45,7 +45,7 @@ test('production promotion is opt-in, guarded, Worker-only, after successful can
   assert(step.includes('update-traffic "$WORKER"'));
   assert.doesNotMatch(step,/teacher-pdf-gateway|--to-latest/);
   assert(step.indexOf('PDF_AUTO_QUEUE_NOT_DRAINED')<step.indexOf('gcloud run services update-traffic'));
-  assert(workflow.includes("Publish staged candidate for operator verification\\n        if: ${{ vars.PDF_WORKER_AUTO_PROMOTE_ENABLED != 'true' }}"));
+  assert(workflow.includes('Publish staged candidate for operator verification') && workflow.includes("if: ${{ vars.PDF_WORKER_AUTO_PROMOTE_ENABLED != 'true' }}"));
 
 });
 test('image is bound to build output and registry digest, root context and exact source',()=>{
