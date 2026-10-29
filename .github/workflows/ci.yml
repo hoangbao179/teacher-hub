@@ -196,3 +196,16 @@ jobs:
     with:
       source_sha: ${{ github.sha }}
     secrets: inherit
+
+  deploy-pdf-worker:
+    name: Release Cloud Run PDF Worker after VPS deployment
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
+    needs:
+      - deploy-production
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/pdf-worker-release.yml
+    with:
+      source_sha: ${{ github.sha }}
+    secrets: inherit
