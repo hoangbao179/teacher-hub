@@ -11,13 +11,18 @@ const stageJobName = 'Release Cloud Run PDF Worker after VPS deployment / releas
 const stageSteps = [
   'Resolve manifest digest', 'Check staged revision and live traffic',
   'Authenticated canary smoke', 'Recheck candidate and unchanged production traffic after smoke',
+];
+const stageCompletionSteps = [
   'Publish staged candidate for operator verification',
+  'Auto-promote guarded canary when enabled and queue drained',
 ];
 
 function stageSucceeded(job, sha) {
   return job.name === stageJobName && job.head_sha === sha &&
     job.status === 'completed' && job.conclusion === 'success' &&
     stageSteps.every(name => job.steps?.some(s => s.name === name &&
+      s.status === 'completed' && s.conclusion === 'success')) &&
+    stageCompletionSteps.some(name => job.steps?.some(s => s.name === name &&
       s.status === 'completed' && s.conclusion === 'success'));
 }
 
@@ -87,3 +92,4 @@ module.exports.changed = changed;
 module.exports.paths = paths;
 module.exports.stageJobName = stageJobName;
 module.exports.stageSteps = stageSteps;
+module.exports.stageCompletionSteps = stageCompletionSteps;
