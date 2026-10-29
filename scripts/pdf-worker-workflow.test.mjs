@@ -36,16 +36,17 @@ test('production promotion is opt-in, guarded, Worker-only, after successful can
   const canary=workflow.indexOf('      - name: Recheck candidate and unchanged production traffic after smoke');
   const step=workflow.split('      - name: Auto-promote guarded canary when enabled and queue drained')[1].split('\n      - name:')[0];
   assert(gate>canary);
-  assert.match(step,/if: \$\\{\\{ vars.PDF_WORKER_AUTO_PROMOTE_ENABLED == 'true' \\}\\}/);
+  assert(step.includes("if: ${{ vars.PDF_WORKER_AUTO_PROMOTE_ENABLED == 'true' }}"));
   assert.match(step,/PDF_AUTO_MAIN_MOVED/);
   assert.match(step,/PDF_AUTO_QUEUE_NOT_DRAINED/);
-  assert.match(step,/node scripts\\/pdf-worker-auto-release\\.mjs staged/);
-  assert.match(step,/node scripts\\/pdf-worker-auto-release\\.mjs promoted/);
+  assert(step.includes('node scripts/pdf-worker-auto-release.mjs staged'));
+  assert(step.includes('node scripts/pdf-worker-auto-release.mjs promoted'));
   assert.equal((workflow.match(/gcloud run services update-traffic/g)??[]).length,1);
-  assert.match(step,/update-traffic "\\$WORKER"/);
+  assert(step.includes('update-traffic "$WORKER"'));
   assert.doesNotMatch(step,/teacher-pdf-gateway|--to-latest/);
   assert(step.indexOf('PDF_AUTO_QUEUE_NOT_DRAINED')<step.indexOf('gcloud run services update-traffic'));
-  assert.match(workflow,/Publish staged candidate for operator verification\\n        if: \$\\{\\{ vars.PDF_WORKER_AUTO_PROMOTE_ENABLED != 'true' \\}\\}/);
+  assert(workflow.includes("Publish staged candidate for operator verification\\n        if: ${{ vars.PDF_WORKER_AUTO_PROMOTE_ENABLED != 'true' }}"));
+
 });
 test('image is bound to build output and registry digest, root context and exact source',()=>{
   assert.match(workflow,/ref: \$\{\{ inputs.source_sha \}\}/);
