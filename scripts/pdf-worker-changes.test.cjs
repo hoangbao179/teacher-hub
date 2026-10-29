@@ -51,7 +51,7 @@ function entry(n,extra={}) {
 }
 function staged(sha=OLD,extra={}) {
   return {name:detect.stageJobName,head_sha:sha,status:'completed',conclusion:'success',
-    steps:detect.stageSteps.map(name=>({name,status:'completed',conclusion:'success'})),...extra};
+    steps:[...detect.stageSteps,detect.stageCompletionSteps[0]].map(name=>({name,status:'completed',conclusion:'success'})),...extra};
 }
 function client({pages=[[]],jobs={},failure,currentRun=current}={}) {
   const calls=[];
@@ -100,6 +100,16 @@ for(const conclusion of ['failure','cancelled','skipped']) test('Worker stage '+
   assert.deepEqual(r.outputs,[['changed','true']]);
 });
 
+test('auto-promoted release with all required evidence advances stage baseline',async()=>{
+  const steps=[...detect.stageSteps,detect.stageCompletionSteps[1]]
+    .map(name=>({name,status:'completed',conclusion:'success'}));
+  const r=await exercise({pages:[[entry(9)]],jobs:{9:[staged(OLD,{steps})]}});
+  assert.deepEqual(r.outputs,[['changed','false']]);
+  const partial=steps.filter(s=>s.name!==detect.stageCompletionSteps[1]);
+  const noFinal=await exercise({pages:[[entry(9)]],jobs:{9:[staged(OLD,{steps:partial})]}});
+  assert.deepEqual(noFinal.outputs,[['changed','true']]);
+});
+
 test('same inputs after verified stage skip build, even across successful non-stage CIs',async()=>{
   const r=await exercise({pages:[[entry(9),entry(8)]],jobs:{9:[],8:[staged()]}});
   assert.equal(r.diffs[0][2],OLD);assert.deepEqual(r.outputs,[['changed','false']]);
@@ -142,7 +152,7 @@ test('PR, fork, non-main, other workflow, future/current run and malformed SHA n
 test('job success without source binding and all stage gates is insufficient',async()=>{
   for(const job of [staged(SHA),staged(OLD,{name:'quality'}),staged(OLD,{steps:[]}),
     staged(OLD,{status:'in_progress'}),
-    ...detect.stageSteps.map(name=>staged(OLD,{steps:detect.stageSteps.map(n=>({name:n,status:'completed',conclusion:n===name?'skipped':'success'}))}))]) {
+    ...[...detect.stageSteps,detect.stageCompletionSteps[0]].map(name=>staged(OLD,{steps:[...detect.stageSteps,detect.stageCompletionSteps[0]].map(n=>({name:n,status:'completed',conclusion:n===name?'skipped':'success'}))}))]) {
     const r=await exercise({pages:[[entry(9)]],jobs:{9:[job]}});
     assert.deepEqual(r.outputs,[['changed','true']]);assert.deepEqual(r.diffs,[]);
   }
