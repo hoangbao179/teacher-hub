@@ -53,7 +53,7 @@ jobs:
       - run: node --test scripts/validate-pdf-environment.test.cjs
       - run: node --test scripts/pdf-vps-config.test.mjs
       - run: node --test scripts/pdf-v2-readiness.test.mjs scripts/dispatch-pdf-v2-readiness.test.cjs
-      - run: node --test scripts/pdf-worker-auto-release.test.mjs
+      - run: node --test scripts/pdf-worker-auto-release.test.mjs scripts/pdf-registry-cleanup.test.mjs
       - run: node --test scripts/pdf-worker-changes.test.cjs scripts/pdf-worker-workflow.test.mjs
       - run: bash scripts/pdf-v2-deploy.test.sh
       - run: bash scripts/pdf-v2-deploy-flow.test.sh

@@ -212,6 +212,46 @@ traffic/tag/revision thực tế. Staging không đổi traffic nên không cầ
 traffic tự động, nhưng revision/tag đã tạo có thể còn lại. Audit không cam kết
 zero downtime.
 
+## Dọn Artifact Registry sau mỗi lần stage Worker
+
+Workflow `pdf-worker-release.yml` chạy `scripts/pdf-registry-cleanup.mjs --dry-run`
+sau khi stage canary và kiểm lại traffic. Mặc định **không xóa image**.
+Chỉ khi biến repository `PDF_REGISTRY_CLEANUP_ENABLED=true` được bật, workflow
+sử dụng cùng environment `pdf-worker-deploy` và WIF deployer đã kiểm soát để
+chạy `--apply`. Cần cấp riêng quyền
+`artifactregistry.versions.delete` cho deployer tại repository
+`teacher-pdf`; chưa được cấp thì bước cleanup báo lỗi, không làm mất
+kết quả stage. Biến opt-in Worker `PDF_WORKER_AUTO_DEPLOY_ENABLED=true` cũng
+phải được provision hợp lệ trước; không mở quyền chỉ vì muốn dọn image.
+
+Planner chỉ đọc hai package `teacher-pdf-worker` và
+`teacher-pdf-gateway`. Nó xác minh production độc quyền 100% traffic,
+revision có tag canary 0%, image immutable digest thuộc đúng registry,
+các OCI parent-child manifests và danh sách top-level images. Nó luôn giữ
+các image production/canary và ba bản mới nhất của mỗi package, không
+xóa image mới dưới ba ngày, và giới hạn tối đa 12 top-level images mỗi
+đợt. Trước xóa nó đọc lại toàn bộ inventory để phát hiện thay đổi;
+nếu đọc Cloud hoặc Docker lỗi thì từ chối xóa. Không xóa GCS, Cloud Run
+revision, task hay MySQL. Image có tham chiếu từ revision cũ 0% traffic,
+không còn tag, có thể bị dọn; nếu cần rollback thì phải đặt tag canary
+hoặc bổ sung chính sách giữ tương ứng trước khi bật cleanup.
+
+Chạy thủ công trên máy operator có Docker Buildx và gcloud quyền phù hợp:
+
+```powershell
+gcloud.cmd auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+node scripts/pdf-registry-cleanup.mjs --dry-run
+# Chi sau khi review candidate va bao dam khong co release dang chay:
+$env:PDF_REGISTRY_CLEANUP_ENABLED = 'true'
+$env:PDF_REGISTRY_CLEANUP_CONFIRM = 'APPLY'
+node scripts/pdf-registry-cleanup.mjs --apply
+```
+
+Không đặt tự động xóa trước khi Worker đã có đường stage an toàn; bản
+script cũ `cleanup_teacher_pdf_images.ps1` không phải quy trình chuẩn.
+Việc stage thành công chưa chứng minh đã promote bản sửa xử lý 139 trang.
+Phải kiểm tra canary PDF và chuyển traffic theo quy trình độc lập.
+
 ## Chuỗi CI/CD thực tế
 
 `ci.yml` kiểm quality, integration, browser smoke và schedule regression trước
