@@ -87,27 +87,64 @@ sau Worker. Gateway không được build/deploy hoặc sửa IAM.
 ### Bộ lọc, bootstrap và chi phí
 
 CI vẫn chạy Worker unit/runtime tests cho push/PR kể cả CSS/API. Test không build
-Docker. `scripts/pdf-worker-changes.cjs` so SHA hiện tại với CI main delivery thành
-công gần nhất (push/manual cùng repo, run number trước run hiện tại). Không chỉ
-dùng `event.before`: pending run có thể bị thay thế, release trước có thể fail.
-Main workflow không cancel run đang chạy; PR vẫn cancel như trước. Không có
-baseline, API GitHub lỗi, thiếu Git object hoặc diff lỗi thì build bảo thủ.
+Docker. `CI_SUCCESS` **khác** `WORKER_STAGE_SUCCESS`; cả hai đều không chứng minh
+`PRODUCTION_PROMOTED`. `scripts/pdf-worker-changes.cjs` dùng metadata GitHub Actions:
+tìm main run gần nhất theo run number có đúng job release hoàn tất thành công,
+head SHA khớp, và các bước digest, staged revision, authenticated canary health,
+post-smoke traffic check, summary đều completed/success. CI xanh khi flag OFF,
+job release skipped/failed/cancelled hoặc thiếu step evidence không làm mốc.
+Không cần database, service mới hoặc tải log/artifact để lưu trạng thái stage.
+
+API lịch sử được phân trang và dừng khi có bằng chứng. Nếu rerun cùng source,
+job stage thành công từ attempt trước cũng được chấp nhận; force vẫn build lại.
+Nếu run cũ stage đã thành công nhưng CI lỗi ở phần khác, stage evidence vẫn có
+giá trị. Main workflow không cancel run đang chạy; PR vẫn cancel như trước.
+Không có stage history, metadata/API không đọc được, thiếu Git object hoặc diff
+lỗi thì build bảo thủ; không âm thầm kết luận đã stage. History chỉ chứng minh
+stage từng thành công, không chứng minh tag canary còn tồn tại hay traffic live;
+operator đã đổi/xóa canary thì dùng force để stage lại khi cần.
 
 Đầu vào gồm toàn bộ `workers/pdf/`, `shared/`, root package/lock/npm config,
-`.dockerignore`, workflow CI/release và helper release/readiness/policy trực tiếp.
+`.dockerignore` và workflow release (chứa build command/runtime/config staging).
 Root lock có thể đổi vì client nhưng vẫn là đầu vào build shared: chấp nhận build
 bảo thủ. Chưa lọc nhỏ `shared/` vì Docker copy toàn bộ dist và public exports liên
-kết nhiều module. Frontend/CSS/logo/API source đơn thuần không build Worker.
+kết nhiều module. Khi đã có stage evidence và không còn Worker update tồn đọng,
+merge frontend/CSS/logo/API source riêng không build/push Worker. Chỉ sửa test
+trong `ci.yml`, helper change detection/readiness/policy không tạo image cũng
+không tự build Chromium image; tests vẫn chạy. Muốn áp dụng lại cấu hình bằng
+source không đổi thì dùng force. Toàn bộ `workers/pdf/` vẫn kích hoạt, kể cả test.
+
+Manual Actions **ci**, `force_worker_release=false` (mặc định): chỉ kiểm thử,
+không build/push/deploy API/Web hoặc Worker. Manual force=true chỉ mở bootstrap
+trên đúng repository/main và khi repository opt-in=true; vẫn chờ quality,
+integration, smoke, schedule gates, migration/API/Web thành công rồi mới stage.
+Push main thông thường giữ nguyên deploy API/Web; Worker chỉ build/stage khi
+opt-in bật và filter báo cần. PR/fork/branch/tag khác không mở đường deploy.
 
 Sau provisioning/review, operator bật opt-in rồi chạy Actions **ci**, branch
-**main**, `force_worker_release=true`: đủ CI + API delivery rồi stage Worker,
-không cần commit giả. Không thực hiện bootstrap trong phiên audit.
+**main**, `force_worker_release=true` để bootstrap hoặc retry có chủ đích, không
+cần commit giả. Giữ API delivery trước Worker: Cloud readiness hiện không chứng
+minh schema/API trên VPS tương thích, nên chưa tách bootstrap bỏ qua VPS.
+Nếu Worker release thất bại, rerun failed jobs hoặc dispatch force=true; nếu chưa
+có stage thành công, push sau vẫn so với mốc stage cũ (không so riêng last push).
+Xem log `Detect PDF Worker changes`: baseline run ID/SHA, lý do build/skip; mở job
+release trong baseline để kiểm các bước success. Job release skipped không phải
+Worker đã cập nhật. Bootstrap không được thực hiện trong phiên sửa source này.
 
-Mỗi qualifying delivery hoặc bootstrap/retry vẫn build/push; cùng SHA có thể build
-lại. Base image/apt/browser chưa pin digest nên không giả định reproducible.
-Chưa skip image theo provenance hoặc có BuildKit cache. Không dùng tag SHA đơn lẻ
-để skip/chọn image; digest Buildx phải khớp registry. Cache cần đo cold/warm time
-và bytes trước. Artifact Registry/revision/tag có thể tích lũy; operator review
+Mỗi qualifying delivery hoặc explicit force chạy một lệnh Buildx `--push` sau
+preflight; lỗi build có thể chưa push, push lỗi có thể đã gửi một phần layers.
+Không đổi image inputs so với stage đã xác minh thì skip cả Docker build/push.
+Cùng source vẫn build lại khi force, mất evidence/history hoặc lần trước chưa
+stage thành công, dù image có thể đã push. Không tái sử dụng tag SHA để suy image
+đã stage; digest Buildx phải khớp registry. Base image/apt/browser chưa pin digest
+nên không giả định reproducible; muốn refresh base/runtime không đổi source cần
+force có chủ đích. Chưa thêm BuildKit cache vì chưa đo cold/warm time và bytes
+upload/download; tránh chuyển một lượng cache lớn cho hệ thống nhỏ.
+
+Chromium/Playwright deps vẫn cài trên CI quality mọi lần chạy; suite có browser
+và Linux runtime checks. Không cắt coverage hoặc thêm cache khi chưa đo/thiết kế
+gate tương đương. Tối ưu hiện tại giảm image build/push, không tuyên bố đã giảm
+browser-test download hoặc số MB cụ thể. Artifact Registry/revision/tag có thể tích lũy; operator review
 cleanup policy, giữ image live/rollback hợp lệ. Canary min=0 nhưng tag còn truy
 cập được với IAM và có thể còn instance ấm khi scale-down. Cleanup tag sau review;
 workflow không xóa artifact Cloud và không đổi VPS/container budget.

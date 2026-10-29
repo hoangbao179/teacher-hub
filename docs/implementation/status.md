@@ -111,6 +111,9 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   riêng sau API theo runbook để có tên gốc, không suy từ merge PR là đã deploy.
   CI có opt-in build/stage Worker từ exact SHA sau migration/API/Web; so digest
   Buildx với registry, canary private 0% và authenticated health, kiểm lại traffic.
+  Bộ lọc dùng job/step stage success có SHA khớp, không dùng CI success đơn lẻ;
+  CSS/API/CI-test-only không build lại khi inputs khớp stage đã xác minh. Manual
+  CI force=false chỉ kiểm thử; bootstrap force=true cần main và opt-in bật.
   Không tự promote/rollback: cần operator nghiệm thu PDF thật, drain dispatch và
   review reader/filename trước đổi traffic. Bootstrap bằng manual CI trên main
   với `force_worker_release=true`; không cần commit giả. Source workflow không
@@ -147,7 +150,10 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   public/private, ticket một lần, FAILED/EXPIRED retry, binary 401 và polling có chọn lọc.
   Fixture FakeCloud dùng cùng một mốc thời gian cho claim TTL đúng 24 giờ, xác minh
   schema trước recovery và trạng thái COMPLETED trước khi chờ nút tải; lỗi fixture
-  không bị che thành browser timeout. Các suite E2E
+  không bị che thành browser timeout. Bàn giao browser→recovery tạm chặn request
+  create/detail/retry mới trong fixture trước khi drain handler đang chạy; poll
+  đến muộn không thể lấy lease sau drain. Mở lại request sau recovery độc lập.
+  Các suite E2E
   quản trị nghiệp vụ còn lại cần giao diện legacy, không dùng để xác minh Tools.
 
 - **Vocabulary public game**: `VOCABULARY_GAMES_ENABLED = false`. Các route `/play/*`
