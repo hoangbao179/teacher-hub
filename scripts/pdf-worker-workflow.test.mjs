@@ -13,7 +13,9 @@ const workflow = read('.github/workflows/pdf-worker-release.yml');
 test('PDF release installs the pinned npm before npm ci, matching primary CI',()=>{
   const primary = read('.github/workflows/ci.yml');
   const pkg = JSON.parse(read('package.json'));
-  const version = pkg.packageManager.match(/^npm@(\\d+\\.\\d+\\.\\d+)$/)?.[1];
+  const version = pkg.packageManager.slice(4);
+  assert.equal(pkg.packageManager, 'npm@' + version);
+  assert.match(version, /^[0-9]+[.][0-9]+[.][0-9]+$/);
   assert(version, 'packageManager must pin npm');
   const pin = 'npm install -g npm@' + version;
   assert(primary.includes(pin), 'main CI must use pinned npm');
