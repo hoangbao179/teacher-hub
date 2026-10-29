@@ -12,14 +12,21 @@ test('real anonymous browser captures requested noninitial range, preserves nati
  const root=await mkdtemp(join(tmpdir(),'viewer-chunk-'));t.after(()=>rm(root,{recursive:true,force:true}));
  const browser=await chromium.launch({headless:true});t.after(()=>browser.close());const page=await browser.newPage();
  await page.route('**/*',r=>r.abort());
- await page.setContent('<button>Print</button><input role="combobox" value="100%"><main></main>');
+ await page.setContent(`<style>
+  .layers{position:relative;width:300px;height:1350px}
+  .slot{position:absolute;left:0;width:300px;height:450px} h2{margin:0;font-size:16px}
+  img{position:absolute;left:0;width:300px}
+ </style><button>Print</button><input role="combobox" value="100%"><main>
+ <section class="layers"><div class="labels"></div><div class="bitmaps"></div></section></main>`);
  await page.evaluate(async()=>{
-  for(const [i,color] of [[1,'white'],[11,'red'],[12,'blue']]){
+  for(const [offset,[i,color]] of [[1,'white'],[11,'red'],[12,'blue']].entries()){
    const canvas=document.createElement('canvas');canvas.width=1800;canvas.height=2547;
    const context=canvas.getContext('2d');context.fillStyle=color;context.fillRect(0,0,1800,2547);
    const blob=await new Promise(resolve=>canvas.toBlob(resolve));
-   const section=document.createElement('section');section.innerHTML=`<div><h2>Page ${i} / 23</h2></div><img style="width:300px">`;
-   document.querySelector('main').append(section);const image=section.querySelector('img');image.src=URL.createObjectURL(blob);await image.decode();canvas.width=canvas.height=1;
+   const slot=document.createElement('div');slot.className='slot';slot.style.top=`${offset*450}px`;
+   slot.innerHTML=`<h2>Page ${i} / 23</h2>`;document.querySelector('.labels').append(slot);
+   const image=document.createElement('img');image.style.top=`${offset*450+24}px`;
+   document.querySelector('.bitmaps').append(image);image.src=URL.createObjectURL(blob);await image.decode();canvas.width=canvas.height=1;
   }
  });
  const signal=()=>AbortSignal.timeout(30000);

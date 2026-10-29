@@ -94,7 +94,8 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   Queue dispatch và mục tiêu Worker thực thi vẫn 1.
 
   Source v2 có diagnostic allowlist theo step/stage, phân biệt fingerprint anchor,
-  tổng trang và bố cục Viewer; lineage production 35ff0f8 chưa có logger này.
+  tổng trang và bố cục Viewer. Capture hỗ trợ các vùng trang độc lập trong hai
+  lớp heading/bitmap; vùng chồng nhau hoặc không xác định duy nhất vẫn fail-close.
   Anchor vẫn SHA-256 PNG trang 1, fail-closed khi khác; chưa có snapshot/revision
   ổn định cho Viewer. Không coi diagnostic fix là đã sửa job 139 trang production.
 
@@ -108,12 +109,12 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   Gateway và systemd recovery root-provisioned, rồi bật cờ v2/recreate API.
   Không downgrade khi còn job/output v2 chưa hết hạn hoặc DB chưa rõ.
 
-  **Cloud inventory chỉ đọc:** Worker 00020-fiv và Gateway 00013-gej nhận 100%
+  **Cloud inventory chỉ đọc:** Worker 00022-hap và Gateway 00013-gej nhận 100%
   traffic; readiness ghim đúng revision và platform digest đã đối chiếu registry.
   Đây không phải xác minh rollout API/Web, flags VPS, schema/timer hay billing.
-  Worker image thuộc lineage registry tag 35ff0f8, chưa có metadata filename từ
-  PR #51; API mới vẫn nhận kết quả cũ và fallback Drive ID. Cần rollout Worker
-  riêng sau API theo runbook để có tên gốc, không suy từ merge PR là đã deploy.
+  Worker digest `sha256:a59482ce0711c2278189db21143658b1e2eccbee276f58c28492bfb3398e6f55`
+  thuộc source `7770617`; chưa có bằng chứng PDF Viewer 139 trang thành công.
+  Candidate sửa capture phải được kiểm thử chức năng trước khi promote.
   CI có opt-in build/stage Worker từ exact SHA sau migration/API/Web; so digest
   Buildx với registry, canary private 0% và authenticated health, kiểm lại traffic.
   Bộ lọc dùng job/step stage success có SHA khớp, không dùng CI success đơn lẻ;

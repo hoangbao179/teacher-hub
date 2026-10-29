@@ -45,27 +45,57 @@ export async function observeViewerBitmaps(page: Page) {
         if (!heading) return {};
         if (parseLabel(heading.textContent ?? '')?.total !== total)
           return { error: 'UNSUPPORTED_SOURCE', reason: 'page-total-mismatch' } as const;
-        // Known heading-wrapper + bitmap layout, allowing nested image wrappers.
+        // Resolve the smallest structural page scope first. Some Viewer versions
+        // put the accessibility and bitmap layers in separate sibling trees; in
+        // that case only disjoint, single-heading page rectangles prove ownership.
         // Stop at document landmarks or a visible toolbar; never widen to the document.
         let container = heading.parentElement;
-        for (let depth = 0; container && depth < 3; depth++, container = container.parentElement) {
+        for (let depth = 0; container && depth < 12; depth++, container = container.parentElement) {
           if (container.matches('body, html, main, header, nav, aside, [role="toolbar"]')) return {};
           const headingsInContainer = [...container.querySelectorAll('h2')].filter(visible);
-          if (headingsInContainer.length > 1) {
-            return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-layout-multiple-headings', ancestorLevel: depth } as const;
-          }
           if (visibleToolbar(container)) {
             return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-layout-toolbar-visible', ancestorLevel: depth } as const;
           }
           const images = [...container.querySelectorAll('img')].filter(visible);
-          if (images.length > 1) {
+          if (!images.length) continue;
+          let pageImages = images;
+          if (headingsInContainer.length > 1) {
+            const ambiguous = { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-layout-multiple-headings', ancestorLevel: depth } as const;
+            const scopes = headingsInContainer.map(h => {
+              let scope: HTMLElement = h;
+              while (scope.parentElement && scope.parentElement !== container &&
+                [...scope.parentElement.querySelectorAll('h2')].filter(visible).length === 1) scope = scope.parentElement;
+              return { heading: h, scope, rect: scope.getBoundingClientRect(), label: parseLabel(h.textContent ?? '') };
+            });
+            const overlaps = (a: DOMRect, b: DOMRect) =>
+              Math.min(a.right, b.right) > Math.max(a.left, b.left) &&
+              Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top);
+            if (scopes.some((s, i) => !s.label || s.label.total !== total || s.rect.width <= 0 || s.rect.height <= 0 ||
+              scopes.some((other, j) => i !== j && (s.scope === other.scope || overlaps(s.rect, other.rect))))) return ambiguous;
+            const target = scopes.find(s => s.heading === heading);
+            if (!target) return ambiguous;
+            const contains = (a: DOMRect, b: DOMRect) => b.width > 0 && b.height > 0 &&
+              b.left >= a.left && b.right <= a.right && b.top >= a.top && b.bottom <= a.bottom;
+            // Full bitmap containment, never nearest-heading or DOM-order guesses.
+            // A bitmap crossing a page boundary is ambiguous, even if its centre fits.
+            if (images.some(image => {
+              const rect = image.getBoundingClientRect();
+              return overlaps(target.rect, rect) && !contains(target.rect, rect);
+            })) return ambiguous;
+            pageImages = images.filter(image => contains(target.rect, image.getBoundingClientRect()));
+            if (!pageImages.length) return {};
+          }
+          if (pageImages.length > 1) {
             return { error: 'UNSUPPORTED_SOURCE', reason: 'ambiguous-layout-multiple-images', ancestorLevel: depth } as const;
           }
-          if (images.length === 1 && headingsInContainer.length === 1) {
-            const image = images[0];
+          if (pageImages.length === 1 && headingsInContainer.includes(heading)) {
+            const image = pageImages[0];
             const key = `${index}/${total}`;
             const source = `${image.src}|${image.srcset}`;
-            const signature = `${image.currentSrc}|${source}|${image.naturalWidth}|${image.naturalHeight}|${image.complete}`;
+            const rect = image.getBoundingClientRect();
+            const headingRect = heading.getBoundingClientRect();
+            const signature = `${image.currentSrc}|${source}|${image.naturalWidth}|${image.naturalHeight}|${image.complete}|` +
+              `${rect.x},${rect.y},${rect.width},${rect.height}|${headingRect.x},${headingRect.y},${headingRect.width},${headingRect.height}`;
             const old = bindings.get(image);
             // Finishing an old in-flight decode is not a new page source.
             const stale = !!old && (old.key !== key || old.stale) && old.source === source;
@@ -86,17 +116,24 @@ export async function observeViewerBitmaps(page: Page) {
         }
       },
       observer: new MutationObserver(() => { state.changedAt = performance.now(); state.scan(); }),
+      layoutChanged: () => { state.changedAt = performance.now(); },
     };
     state.observer.observe(document.body, { subtree: true, childList: true, characterData: true,
       attributes: true, attributeFilter: ['src', 'srcset', 'width', 'height', 'aria-busy', 'class', 'style'] });
     state.scan();
+    document.addEventListener('scroll', state.layoutChanged, true);
+    window.addEventListener('resize', state.layoutChanged);
     return state;
   });
 }
 
 export async function disposeViewerBitmaps(state: Awaited<ReturnType<typeof observeViewerBitmaps>>) {
   // Abort/navigation may already have destroyed the observer's execution context.
-  try { await state.evaluate(state => state.observer.disconnect()).catch(() => {}); }
+  try { await state.evaluate(state => {
+    state.observer.disconnect();
+    document.removeEventListener('scroll', state.layoutChanged, true);
+    window.removeEventListener('resize', state.layoutChanged);
+  }).catch(() => {}); }
   finally { await state.dispose(); }
 }
 

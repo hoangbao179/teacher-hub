@@ -102,6 +102,13 @@ hạn chế là chức năng hợp lệ.
 
 Capture dùng bitmap native, tối đa 12 MP và PNG mã hóa tối đa 32 MiB/lần capture;
 đòi ít nhất 200 DPI hiệu dụng khi đặt lên A4 theo chiều trang. Không upscale.
+
+Heading và bitmap có thể nằm trong hai lớp DOM riêng: khi ancestor chung có nhiều
+heading, chỉ ghép ảnh nằm trọn trong vùng trang chứa duy nhất heading tương ứng,
+các vùng không chồng nhau và cùng tổng trang. Không chọn theo khoảng cách hoặc
+thứ tự DOM. Heading trùng, nhiều ảnh trong vùng hoặc ảnh cắt qua biên vẫn bị từ
+chối; scroll/zoom, source và node thay đổi phải ổn định và decode lại trước capture.
+
 JPEG thử 90 → 85 → 80 từ PNG gốc, 4:4:4, mục tiêu mềm 500.000 byte/trang, không
 resize. Chữ nhỏ, trang trắng/ngang và thứ tự phải nghiệm thu trên file thật.
 V1 dùng pdf-lib giữ stream ảnh cả tài liệu; v2 ghi JPEG từng trang vào file và
