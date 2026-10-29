@@ -32,6 +32,7 @@ jobs:
       actions: read
       id-token: write
     env:
+      PDF_WORKER_AUTO_DEPLOY_ENABLED: ${{ vars.PDF_WORKER_AUTO_DEPLOY_ENABLED }}
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       GCP_REGION: ${{ vars.GCP_REGION }}
       GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
@@ -86,6 +87,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: pdf-worker
+    env:
+      PDF_WORKER_AUTO_DEPLOY_ENABLED: ${{ vars.PDF_WORKER_AUTO_DEPLOY_ENABLED }}
     permissions:
       contents: read
       actions: read

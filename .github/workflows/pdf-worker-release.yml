@@ -1,0 +1,138 @@
+name: PDF Worker Cloud Run release
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+concurrency:
+  group: pdf-worker-cloudrun-production
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: ${{ github.repository == 'hoangbao179/teacher-hub' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: pdf-worker-deploy
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      CLOUD_PROJECT: teacher-hub-pdf
+      CLOUD_REGION: asia-southeast1
+      WORKER: teacher-pdf-worker
+      REGISTRY: asia-southeast1-docker.pkg.dev/teacher-hub-pdf/teacher-pdf
+      WORKER_URL: https://teacher-pdf-worker-851777150171.asia-southeast1.run.app
+      PDF_WORKER_AUTO_DEPLOY_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - name: Validate source SHA and isolated deployer
+        env:
+          PROVIDER: ${{ vars.PDF_DEPLOY_WIF_PROVIDER }}
+          DEPLOYER: ${{ vars.PDF_DEPLOYER_SA }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ && "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          [[ "$PROVIDER" =~ ^projects/[0-9]+/locations/global/workloadIdentityPools/[^/]+/providers/[^/]+$ ]]
+          [[ "$DEPLOYER" == 'teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com' ]]
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.18.0
+      - run: |
+          npm ci
+          npm run build:shared
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.PDF_DEPLOY_WIF_PROVIDER }}
+          service_account: ${{ vars.PDF_DEPLOYER_SA }}
+          project_id: teacher-hub-pdf
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Readiness and rollback target
+        id: old
+        run: |
+          set -Eeuo pipefail
+          node scripts/pdf-worker-auto-release.mjs preflight "$SOURCE_SHA" > "$RUNNER_TEMP/old.json"
+          node -e 'console.log("revision="+require(process.argv[1]).previousRevision)' "$RUNNER_TEMP/old.json" >> "$GITHUB_OUTPUT"
+      - run: gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+      - name: Build single-platform immutable image
+        run: |
+          set -Eeuo pipefail
+          docker buildx build --pull --platform linux/amd64 --provenance=false --sbom=false \
+            --file workers/pdf/Dockerfile --tag "$REGISTRY/$WORKER:$SOURCE_SHA" --push .
+      - name: Resolve manifest digest
+        id: image
+        run: |
+          set -Eeuo pipefail
+          d="$(gcloud artifacts docker images describe "$REGISTRY/$WORKER:$SOURCE_SHA" --project="$CLOUD_PROJECT" --location="$CLOUD_REGION" --format='value(image_summary.digest)')"
+          [[ "$d" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "digest=$d" >> "$GITHUB_OUTPUT"
+      - name: Stage zero-traffic canary
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -Eeuo pipefail
+          gcloud run deploy "$WORKER" --project="$CLOUD_PROJECT" --region="$CLOUD_REGION" \
+            --image="$REGISTRY/$WORKER@$IMAGE_DIGEST" \
+            --service-account=teacher-pdf-worker@teacher-hub-pdf.iam.gserviceaccount.com \
+            --no-traffic --tag=pdf-ci --cpu=1 --memory=2Gi --concurrency=1 \
+            --min=0 --max=1 --min-instances=0 --max-instances=1 --timeout=180 \
+            --no-cpu-boost --cpu-throttling --port=8080 --ingress=all \
+            --update-env-vars=PDF_PROCESSING_ENABLED=true,PDF_WORKER_IAM_READY=true,PDF_TEMP_ROOT=/tmp/pdf-worker,PDF_PRINT_FALLBACK_ENABLED=true,PDF_VIEWER_SCREEN_CAPTURE_ENABLED=true,PDF_CHUNKED_JOBS_ENABLED=true \
+            --add-volume=name=pdf-temp,type=in-memory,size-limit=384Mi,mount-path=/tmp/pdf-worker --quiet
+      - name: Check staged revision and live traffic
+        id: canary
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          OLD_REV: ${{ steps.old.outputs.revision }}
+        run: |
+          set -Eeuo pipefail
+          node scripts/pdf-worker-auto-release.mjs staged "$SOURCE_SHA" "$IMAGE_DIGEST" "$OLD_REV" > "$RUNNER_TEMP/canary.json"
+          node -e 'const x=require(process.argv[1]); console.log("revision="+x.revision); console.log("url="+x.canaryURL)' "$RUNNER_TEMP/canary.json" >> "$GITHUB_OUTPUT"
+      - name: Authenticated canary smoke
+        env:
+          CANARY_URL: ${{ steps.canary.outputs.url }}
+        run: |
+          set -Eeuo pipefail
+          token="$(gcloud auth print-identity-token --audiences="$WORKER_URL")"
+          [[ -n "$token" ]]
+          curl --fail --silent --show-error --retry 2 --max-time 30 \
+            -H "Authorization: Bearer $token" "$CANARY_URL/health" > "$RUNNER_TEMP/health.json"
+          node -e 'if(require(process.argv[1]).status!=="ok")process.exit(1)' "$RUNNER_TEMP/health.json"
+          unset token
+      - name: Promote, verify and rollback if necessary
+        env:
+          CANDIDATE: ${{ steps.canary.outputs.revision }}
+          OLD_REV: ${{ steps.old.outputs.revision }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -Eeuo pipefail
+          promoted=0
+          rollback() {
+            if [[ "$promoted" == 1 ]]; then
+              echo 'PDF Worker verification failed; restoring previous traffic' >&2
+              gcloud run services update-traffic "$WORKER" --project="$CLOUD_PROJECT" --region="$CLOUD_REGION" \
+                --to-revisions="$OLD_REV=100" --quiet || echo 'ROLLBACK_FAILED: manual intervention required' >&2
+            fi
+          }
+          trap rollback ERR
+          promoted=1
+          gcloud run services update-traffic "$WORKER" --project="$CLOUD_PROJECT" --region="$CLOUD_REGION" \
+            --to-revisions="$CANDIDATE=100" --quiet
+          node scripts/pdf-worker-auto-release.mjs promoted "$SOURCE_SHA" "$IMAGE_DIGEST" "$CANDIDATE"
+          token="$(gcloud auth print-identity-token --audiences="$WORKER_URL")"
+          [[ -n "$token" ]]
+          curl --fail --silent --show-error --max-time 30 \
+            -H "Authorization: Bearer $token" "$WORKER_URL/health" > "$RUNNER_TEMP/live-health.json"
+          node -e 'if(require(process.argv[1]).status!=="ok")process.exit(1)' "$RUNNER_TEMP/live-health.json"
+          promoted=0
+          trap - ERR
+          echo "Worker production revision verified: $CANDIDATE" >> "$GITHUB_STEP_SUMMARY"
