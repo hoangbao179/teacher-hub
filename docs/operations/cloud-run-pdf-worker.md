@@ -67,7 +67,7 @@ Override quota thấp hơn là hợp lệ; đừng tự đổi runtime.env để
 
 Workflow `.github/workflows/pdf-worker-release.yml` được gọi từ `ci.yml` **sau**
 `deploy-production` thành công, khi delivery `main` thay đổi đầu vào Worker.
-Workflow chỉ **build/push và stage canary 0%**, không tự promote/rollback traffic.
+Workflow mặc định **build/push và stage canary 0%**. Chỉ khi bật riêng biến repository `PDF_WORKER_AUTO_PROMOTE_ENABLED=true`, workflow mới tự chuyển traffic sau canary và các cổng an toàn; không tự rollback.
 Repository variable
 `PDF_WORKER_AUTO_DEPLOY_ENABLED=true` là công tắc **opt-in** cho tác vụ có quyền
 build/push/stage Cloud Run Worker. Thiếu hoặc khác `true` thì tác vụ release Worker
@@ -81,10 +81,10 @@ Luồng phát hành: CI chất lượng/integration/browser → migration và AP
 Registry → so digest Buildx với Artifact Registry → deploy Worker với
 `--no-traffic --tag=pdf-ci` → kiểm IAM/volume/tài nguyên, đúng
 digest và traffic cũ vẫn 100% → GET `/health` có xác thực tại canary → kiểm lại
-traffic/cấu hình → summary ghi source SHA, digest, candidate và revision cũ.
+traffic/cấu hình → nếu bật auto-promote: kiểm tra commit `main` mới nhất, kiểm tra Cloud Tasks queue rỗng, kiểm tra staged revision/digest lại, chuyển 100% traffic sang đúng candidate và xác nhận read-only live digest/traffic → summary ghi kết quả. Nếu biến tắt thì chỉ stage, giữ production cũ.
 Identity token được mint qua auth action, audience là service base URL, không phải
-tagged URL. **Workflow success chỉ chứng minh staging**, không chứng minh PDF
-hoạt động. API/Web hiện deploy cùng nhau trước Worker; không cam kết frontend
+tagged URL. **Stage/canary health PASS chưa chứng minh được PDF 139 trang hoàn chỉnh**;
+mode auto-promote chấp nhận rủi ro này theo opt-in của operator. API/Web hiện deploy cùng nhau trước Worker; không cam kết frontend
 sau Worker. Gateway không được build/deploy hoặc sửa IAM.
 
 ### Bộ lọc, bootstrap và chi phí
@@ -188,7 +188,18 @@ feature PDF trên VPS.
 
 ### Gate promote và rollback do operator
 
-Không tự promote từ health. Phải review đúng candidate trong summary, chạy job
+Mặc định không tự promote. Operator có thể bật `PDF_WORKER_AUTO_PROMOTE_ENABLED=true`
+một lần để mọi lần phát hành Worker tiếp theo tự promote **chỉ khi** main HEAD
+vẫn đúng source SHA, canary health PASS, revision/digest/config đúng, Cloud Tasks
+queue rỗng và kiểm tra live revision/digest PASS sau khi đổi traffic. Queue rỗng
+là snapshot, không khóa tác vụ mới; cần đưa job cũ về trạng thái terminal
+trước khi xóa Cloud Task để tránh API reconciler tạo lại. Nếu queue chưa rỗng,
+job release FAIL an toàn, canary vẫn ở 0%; không tự xóa job, queue hay GCS.
+Auto-promote không phải PDF functional E2E; nên chỉ bật sau khi operator chấp
+nhận rủi ro này. Không tự rollback sau khi Worker mới ghi checkpoint vì có
+nguy cơ schema không tương thích.
+
+Khi rollout có thay đổi breaking contract, phải tắt flag và review đúng candidate trong summary, chạy job
 non-owner Viewer mở ẩn danh được phép tải/in, kiểm PDF/GCS/filename Unicode,
 download/recovery theo contract. Gọi qua Gateway production không chứng minh đã
 test canary: phải xác minh request đến đúng tagged revision, vẫn giữ base URL làm
