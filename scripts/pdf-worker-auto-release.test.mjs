@@ -88,7 +88,31 @@ test('invalid source fails before cloud access and errors never reveal command d
   assert.equal(calls,0);
   const errors=[];
   assert.equal(main(['preflight',SHA],run,{log:()=>{},error:x=>errors.push(x)}),1);
-  assert.deepEqual(errors,['PDF_AUTO_VALIDATION_FAILED']);
+  assert.deepEqual(errors,['PDF_V2_WORKER_SERVICE_READ_FAILED: reason=COMMAND_FAILED']);
+  assert(!errors.join('').includes('private_token_123'));
+});
+
+test('preflight exposes only sanitized read-failure classification, not gcloud secrets',()=>{
+  const errors=[];
+  const run=()=>{throw Object.assign(new Error('private_token_123'),{
+    status:1,
+    stderr:Buffer.from('PERMISSION_DENIED: run.services.get denied; Bearer sensitive-token\\n'
+      +'https://private.example?key=do-not-log'),
+  });};
+  assert.equal(main(['preflight',SHA],run,{log:()=>{},error:x=>errors.push(x)}),1);
+  assert.deepEqual(errors,[
+    'PDF_V2_WORKER_SERVICE_READ_FAILED: reason=PERMISSION_DENIED permission=run.services.get exit=1']);
+  assert(!errors.join('').includes('sensitive-token'));
+  assert(!errors.join('').includes('private.example'));
+});
+
+test('preflight exposes sanitized policy drift without leaking cloud resources',()=>{
+  const errors=[];
+  const c=cloud({mutate:w=>{
+    w.service.spec.template.metadata.annotations['autoscaling.knative.dev/maxScale']='3';
+  }});
+  assert.equal(main(['preflight',SHA],c.run,{log:()=>{},error:x=>errors.push(x)}),1);
+  assert.deepEqual(errors,['PDF_V2_WORKER_VALIDATION_FAILED: PDF_V2_SCALING_DRIFT']);
 });
 
 for (const [name,mutate] of [
