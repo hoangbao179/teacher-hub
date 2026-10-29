@@ -20,12 +20,15 @@ export async function seekViewerPage(page: Page, index: number, total: number, s
       if(headings.some(h=>h.index===index))return true;
       // Keep the original scroll container while Drive unmounts virtual headings.
       // Falling back to document.scrollingElement loses the Viewer scroll position.
-      let scroller: Element | null=state.scroller?.isConnected ? state.scroller : headings[0]?.el.parentElement??null;
+      // The DOM node is retained only inside Chromium; never serialize Element in Playwright arguments.
+      const browserState=state as unknown as {scroller:Element | null};
+      const cached=browserState.scroller;
+      let scroller: Element | null=cached?.isConnected ? cached : headings[0]?.el.parentElement??null;
       while(scroller && !(scroller.scrollHeight>scroller.clientHeight+16 && /auto|scroll/.test(getComputedStyle(scroller).overflowY)))
         scroller=scroller.parentElement;
       scroller??=document.scrollingElement;
       if(!scroller || scroller.scrollHeight<=scroller.clientHeight+16)return false;
-      state.scroller=scroller;
+      browserState.scroller=scroller;
       const now=performance.now();
       if(now-state.at<175)return false;
       const frame=scroller.getBoundingClientRect();
@@ -50,7 +53,7 @@ export async function seekViewerPage(page: Page, index: number, total: number, s
         if(direction)scroller.scrollTop+=direction*Math.max(100,scroller.clientHeight*0.6);
       }
       state.at=now;return false;
-    },{index,total,state:{started:false,at:0,lastSeen:0,lastIndex:1,scroller:null as Element | null}},{timeout:30000,polling:'raf'});
+    },{index,total,state:{started:false,at:0,lastSeen:0,lastIndex:1,scroller:null}},{timeout:30000,polling:'raf'});
   } catch(error) {
     signal.throwIfAborted();
     throw new JobError('SOURCE_UNAVAILABLE',true,
