@@ -10,6 +10,21 @@ import changes from './pdf-worker-changes.cjs';
 const read = p => readFileSync(new URL('../'+p,import.meta.url),'utf8').replaceAll('\r\n','\n');
 const workflow = read('.github/workflows/pdf-worker-release.yml');
 
+test('PDF release installs the pinned npm before npm ci, matching primary CI',()=>{
+  const primary = read('.github/workflows/ci.yml');
+  const pkg = JSON.parse(read('package.json'));
+  const version = pkg.packageManager.match(/^npm@(\\d+\\.\\d+\\.\\d+)$/)?.[1];
+  assert(version, 'packageManager must pin npm');
+  const pin = 'npm install -g npm@' + version;
+  assert(primary.includes(pin), 'main CI must use pinned npm');
+  const setup = workflow.indexOf('      - uses: actions/setup-node@v6');
+  const install = workflow.indexOf('      - name: Install pinned npm for PDF Worker release');
+  const installCommand = workflow.indexOf('        run: ' + pin, install);
+  const ci = workflow.indexOf('          npm ci', install);
+  assert(setup >= 0 && install > setup && installCommand > install && ci > installCommand,
+    'npm must be upgraded after setup-node and before npm ci');
+});
+
 test('staging never promotes, mutates IAM, or deploys Gateway; reports staging explicitly',()=>{
   assert.doesNotMatch(workflow,/update-traffic|set-iam-policy|add-iam-policy-binding|allow-unauthenticated/);
   assert.match(workflow,/--no-traffic --tag=pdf-ci/);
