@@ -100,7 +100,7 @@ export function audit(sourceSha, run=cliCall) {
       const prefix=CLOUD.registry+'/'+CLOUD.worker+'@';
       requireCheck(image.startsWith(prefix) && /^sha256:[a-f0-9]{64}$/.test(image.slice(prefix.length)),
         'WORKER_LIVE_IMAGE_INVALID');
-      expected={revision:live[0].revisionName,digest:image.slice(prefix.length)};
+      const expected={revision:live[0].revisionName,digest:image.slice(prefix.length)};
       const policy=readCloud(step+'_IAM',['run','services','get-iam-policy',name,...common],run);
       try { services[kind]=evaluateService(kind,service,current,policy,expected); }
       catch(error) {
