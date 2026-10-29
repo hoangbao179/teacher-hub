@@ -14,22 +14,49 @@ export async function seekViewerPage(page: Page, index: number, total: number, s
   signal.throwIfAborted();
   try {
     await page.waitForFunction(({index,total,state})=>{
-      const headings=[...document.querySelectorAll('h2')].map(el=>({el,index:Number(el.textContent?.match(/(?:^|\D)(\d+)\s*(?:\/|of)\s*\d+\s*$/i)?.[1])})).filter(v=>v.index>0);
+      const headings=[...document.querySelectorAll('h2')]
+        .map(el=>({el,index:Number(el.textContent?.match(/(?:^|\\D)(\\d+)\\s*(?:\\/|of)\\s*\\d+\\s*$/i)?.[1])}))
+        .filter(v=>v.index>0 && v.index<=total);
       if(headings.some(h=>h.index===index))return true;
-      let scroller: Element | null=headings[0]?.el.parentElement??null;
-      while(scroller && !(scroller.scrollHeight>scroller.clientHeight+16 && /auto|scroll/.test(getComputedStyle(scroller).overflowY)))scroller=scroller.parentElement;
+      // Keep the original scroll container while Drive unmounts virtual headings.
+      // Falling back to document.scrollingElement loses the Viewer scroll position.
+      let scroller: Element | null=state.scroller?.isConnected ? state.scroller : headings[0]?.el.parentElement??null;
+      while(scroller && !(scroller.scrollHeight>scroller.clientHeight+16 && /auto|scroll/.test(getComputedStyle(scroller).overflowY)))
+        scroller=scroller.parentElement;
       scroller??=document.scrollingElement;
-      if(!scroller || !headings.length || performance.now()-state.at<100)return false;
-      if(!state.started){scroller.scrollTop=(index-1)/total*scroller.scrollHeight;state.started=true;}
-      else {
-        const frame=scroller.getBoundingClientRect();
-        const visible=headings.filter(h=>{const r=h.el.getBoundingClientRect();return r.bottom>=Math.max(0,frame.top)&&r.top<=Math.min(innerHeight,frame.bottom);});
-        const low=Math.min(...(visible.length?visible:headings).map(h=>h.index));
-        scroller.scrollTop+=(index<low?-1:1)*scroller.clientHeight*0.8;
+      if(!scroller || scroller.scrollHeight<=scroller.clientHeight+16)return false;
+      state.scroller=scroller;
+      const now=performance.now();
+      if(now-state.at<175)return false;
+      const frame=scroller.getBoundingClientRect();
+      const visible=headings.filter(h=>{const r=h.el.getBoundingClientRect();return r.bottom>=Math.max(0,frame.top)&&r.top<=Math.min(innerHeight,frame.bottom);});
+      const nearby=visible.length?visible:headings;
+      const closest=nearby.reduce((best,h)=>!best || Math.abs(index-h.index)<Math.abs(index-best.index)?h:best,null);
+      if(closest){state.lastIndex=closest.index;state.lastSeen=now;}
+      if(!state.started){
+        scroller.scrollTop=Math.min(scroller.scrollHeight-scroller.clientHeight,(index-1)/total*scroller.scrollHeight);
+        state.started=true;
+      }else if(closest){
+        const direction=Math.sign(index-closest.index);
+        if(direction) {
+          const approximate=Math.abs(index-closest.index)*scroller.scrollHeight/total*0.65;
+          const step=Math.min(scroller.clientHeight*1.25,Math.max(scroller.clientHeight*0.55,approximate));
+          scroller.scrollTop+=direction*step;
+        }
+      }else if(now-state.lastSeen>900){
+        // Virtualized headings can all disappear during a distant jump. Nudge the
+        // cached Viewer scroller instead of freezing until a heading reappears.
+        const direction=Math.sign(index-(state.lastIndex??1));
+        if(direction)scroller.scrollTop+=direction*Math.max(100,scroller.clientHeight*0.6);
       }
-      state.at=performance.now();return false;
-    },{index,total,state:{started:false,at:0}},{timeout:15000,polling:'raf'});
-  } catch { signal.throwIfAborted(); throw new JobError('SOURCE_UNAVAILABLE',true); }
+      state.at=now;return false;
+    },{index,total,state:{started:false,at:0,lastSeen:0,lastIndex:1,scroller:null}},{timeout:30000,polling:'raf'});
+  } catch(error) {
+    signal.throwIfAborted();
+    throw new JobError('SOURCE_UNAVAILABLE',true,
+      error instanceof playwrightErrors.TimeoutError ? 'viewer-seek-timeout' : 'viewer-seek-error',
+      {pageIndex:index});
+  }
 }
 
 export async function captureViewerChunk(page: Page, path: string | null, cap: Limits, signal: AbortSignal,
