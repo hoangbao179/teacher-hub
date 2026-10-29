@@ -42,9 +42,8 @@ function verifyWorker(service,policy,revision,digest) {
 }
 export function preflight(sourceSha,run=cliCall) {
   checkSource(sourceSha);
-  // Verify IAM, resources, queue and Gateway first. The auto mode reads the live
-  // immutable Worker revision rather than the historical hardcoded release pin.
-  const evidence=audit(sourceSha,run,{managedWorker:true});
+  // Read-only readiness always verifies the live immutable Worker revision.
+  const evidence=audit(sourceSha,run);
   const previous=evidence.services.worker;
   required(REVISION.test(previous.revision) && DIGEST.test(previous.digest),'INVALID_PREVIOUS');
   return {sourceSha,previousRevision:previous.revision,previousDigest:previous.digest};
@@ -68,7 +67,7 @@ export function checkStaged(sourceSha,digest,previousRevision,run=cliCall) {
 export function verifyPromoted(sourceSha,digest,revision,run=cliCall) {
   checkSource(sourceSha);
   required(DIGEST.test(digest??'') && REVISION.test(revision??''),'INVALID_ARGUMENT');
-  const evidence=audit(sourceSha,run,{managedWorker:true});
+  const evidence=audit(sourceSha,run);
   required(evidence.services.worker.revision===revision && evidence.services.worker.digest===digest,
     'PROMOTION_MISMATCH');
   return {sourceSha,revision,digest,verified:true};
