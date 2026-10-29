@@ -7,18 +7,40 @@ import { PDF_VIEWER_MIN_DPI, PDF_VIEWER_MAX_PIXELS } from '@teacher/shared';
 export async function observeViewerBitmaps(page: Page) {
   return page.evaluateHandle(() => {
     const bindings = new WeakMap<HTMLImageElement, { key: string; source: string; signature: string; stale: boolean }>();
-    const decodes = new WeakMap<HTMLImageElement, { signature: string; status: number }>();
+    const decodes = new WeakMap<HTMLImageElement, {
+      signature: string; status: number; attempts: number; lastAttemptAt: number; firstFailedAt: number;
+    }>();
     const state = {
       changedAt: performance.now(),
       decoded(image: HTMLImageElement, signature: string) {
+        const now = performance.now();
         const old = decodes.get(image);
-        if (old?.signature === signature) return old.status;
-        const decode = { signature, status: 0 };
+        // A single decode() rejection can be transient while Drive is replacing
+        // a blob. Retry the SAME native image at most twice, without ever
+        // trusting a failure, canvas fallback, or the previous page's bitmap.
+        if (old?.signature === signature) {
+          if (old.status !== -1 || old.attempts >= 3 || now - old.lastAttemptAt < 750) return old.status;
+        }
+        const decode = old?.signature === signature ? old : {
+          signature, status: 0, attempts: 0, lastAttemptAt: 0, firstFailedAt: 0,
+        };
+        decode.status = 0;
+        decode.attempts++;
+        decode.lastAttemptAt = now;
         decodes.set(image, decode);
         void image.decode().then(() => {
-          decode.status = 1; state.changedAt = performance.now();
-        }, () => { decode.status = -1; state.changedAt = performance.now(); });
+          decode.status = 1;
+          if (decodes.get(image) === decode) state.changedAt = performance.now();
+        }, () => {
+          decode.status = -1;
+          if (!decode.firstFailedAt) decode.firstFailedAt = performance.now();
+          if (decodes.get(image) === decode) state.changedAt = performance.now();
+        });
         return 0;
+      },
+      decodeFailedAt(image: HTMLImageElement, signature: string) {
+        const record = decodes.get(image);
+        return record?.signature === signature ? record.firstFailedAt : 0;
       },
       resolve(index: number, total: number) {
         const pageLabel = /(?:^|\D)(\d+)\s*(?:\/|of)\s*(\d+)\s*$/i;
@@ -182,9 +204,15 @@ export async function captureViewerPage(page: Page, index: number, total: number
           return { error: 'SOURCE_UNAVAILABLE', reason: 'bitmap-dimensions-invalid' };
         }
         if (!image.complete || !image.src.startsWith('blob:') || !width || !height) return null;
-        const decoded = state.decoded(image, candidate.signature ?? '');
+        const signature = candidate.signature ?? '';
+        const decoded = state.decoded(image, signature);
         if (decoded < 0) {
-          if (performance.now() - state.changedAt < 2500) return null;
+          // Bound recovery by the FIRST failure for this source, rather than
+          // resetting the grace period on every failed decode retry or DOM event.
+          // Drive can replace a transiently broken blob several seconds after
+          // the first rejection; never accept pixels until decode() succeeds.
+          const failedAt = state.decodeFailedAt(image, signature);
+          if (!failedAt || performance.now() - failedAt < 5500) return null;
           return { error: 'SOURCE_UNAVAILABLE', reason: 'bitmap-decode-failed' };
         }
         const landscape = width > height;
