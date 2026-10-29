@@ -3,8 +3,9 @@ import {pathToFileURL} from 'node:url';
 import {CLOUD, cliCall} from './pdf-cloud-stage.mjs';
 import {checkPolicy} from './pdf-cloud-stage-public-hmac.mjs';
 
+// Only the Gateway has a source-controlled release pin. Worker is validated against
+// the single currently serving, immutable Cloud Run revision on every deployment.
 export const RELEASE = Object.freeze({
-  worker: {revision:'teacher-pdf-worker-00022-hap', digest:'sha256:a59482ce0711c2278189db21143658b1e2eccbee276f58c28492bfb3398e6f55'},
   gateway: {revision:'teacher-pdf-gateway-00013-gej', digest:'sha256:5adfd3d41adf82dde6158e9b0c97acbaebb173837cdf7cee99f9680009e1744f'},
 });
 const requireCheck = (ok, code) => { if (!ok) throw Error('PDF_V2_'+code); };
@@ -79,7 +80,7 @@ export function evaluateService(kind, service, revision, policy, expected=RELEAS
   return {revision:expected.revision,digest:expected.digest};
 }
 
-export function audit(sourceSha, run=cliCall, options={}) {
+export function audit(sourceSha, run=cliCall) {
   requireCheck(/^[a-f0-9]{40}$/.test(sourceSha??''),'SOURCE_SHA_REQUIRED');
   const common=['--project='+CLOUD.project,'--region='+CLOUD.region,'--format=json'];
   const services={};
@@ -87,10 +88,10 @@ export function audit(sourceSha, run=cliCall, options={}) {
     const name=CLOUD[kind];
     const step=kind.toUpperCase();
     const service=readCloud(step+'_SERVICE',['run','services','describe',name,...common],run);
-    // Managed Worker releases verify the live immutable platform digest, not a stale
-    // source pin. Gateway is still pinned to its reviewed revision and digest.
-    let expected=RELEASE[kind];
-    if(kind==='worker' && options.managedWorker===true) {
+    // Read the live Worker revision on every deployment, regardless of whether
+    // Worker image publishing is enabled. This decouples read-only verification
+    // from the privileged release opt-in and prevents stale source pin drift.
+    if(kind==='worker') {
       const live=(service.status?.traffic??[]).filter(t=>(t.percent??0)>0);
       requireCheck(live.length===1 && live[0].percent===100 &&
         /^teacher-pdf-worker-[a-z0-9-]+$/.test(live[0].revisionName??''),'WORKER_LIVE_REVISION_INVALID');
@@ -99,7 +100,7 @@ export function audit(sourceSha, run=cliCall, options={}) {
       const prefix=CLOUD.registry+'/'+CLOUD.worker+'@';
       requireCheck(image.startsWith(prefix) && /^sha256:[a-f0-9]{64}$/.test(image.slice(prefix.length)),
         'WORKER_LIVE_IMAGE_INVALID');
-      expected={revision:live[0].revisionName,digest:image.slice(prefix.length)};
+      const expected={revision:live[0].revisionName,digest:image.slice(prefix.length)};
       const policy=readCloud(step+'_IAM',['run','services','get-iam-policy',name,...common],run);
       try { services[kind]=evaluateService(kind,service,current,policy,expected); }
       catch(error) {
@@ -108,6 +109,7 @@ export function audit(sourceSha, run=cliCall, options={}) {
       }
       continue;
     }
+    const expected=RELEASE.gateway;
     const revision=readCloud(step+'_REVISION',['run','revisions','describe',expected.revision,...common],run);
     const policy=readCloud(step+'_IAM',['run','services','get-iam-policy',name,...common],run);
     try { services[kind]=evaluateService(kind,service,revision,policy,expected); }
@@ -127,9 +129,10 @@ export function audit(sourceSha, run=cliCall, options={}) {
 }
 
 export function main(argv=process.argv.slice(2),run=cliCall,output=console) {
-  try { output.log(JSON.stringify(audit(argv[0],run,{managedWorker:process.env.PDF_WORKER_AUTO_DEPLOY_ENABLED==='true'}))); return 0; }
+  try { output.log(JSON.stringify(audit(argv[0],run))); return 0; }
   catch(e) {
-    output.error(e instanceof ReadinessDiagnostic || ['PDF_V2_SOURCE_SHA_REQUIRED','PDF_V2_QUEUE_DRIFT'].includes(e?.message)
+    output.error(e instanceof ReadinessDiagnostic || ['PDF_V2_SOURCE_SHA_REQUIRED','PDF_V2_QUEUE_DRIFT',
+      'PDF_V2_WORKER_LIVE_REVISION_INVALID','PDF_V2_WORKER_LIVE_IMAGE_INVALID'].includes(e?.message)
       ? e.message : 'PDF_V2_READINESS_FAILED: reason=UNEXPECTED_ERROR');
     return 1;
   }

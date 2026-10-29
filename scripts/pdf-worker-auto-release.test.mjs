@@ -5,7 +5,7 @@ import { RELEASE, audit } from './pdf-v2-readiness.mjs';
 import { preflight, checkStaged, verifyPromoted, main } from './pdf-worker-auto-release.mjs';
 
 const SHA='a'.repeat(40), OLD='teacher-pdf-worker-00020-fiv', NEW='teacher-pdf-worker-00021-abc';
-const OLD_DIGEST=RELEASE.worker.digest, NEW_DIGEST='sha256:'+'b'.repeat(64);
+const OLD_DIGEST='sha256:'+'a'.repeat(64), NEW_DIGEST='sha256:'+'b'.repeat(64);
 const queue={name:'projects/teacher-hub-pdf/locations/asia-southeast1/queues/teacher-pdf-queue',
   state:'RUNNING',rateLimits:{maxConcurrentDispatches:1,maxDispatchesPerSecond:1},
   retryConfig:{maxAttempts:5,maxRetryDuration:'3600s',minBackoff:'10s',maxBackoff:'300s'}};
