@@ -31,7 +31,7 @@ export async function seekViewerPage(page: Page, index: number, total: number, s
       const frame=scroller.getBoundingClientRect();
       const visible=headings.filter(h=>{const r=h.el.getBoundingClientRect();return r.bottom>=Math.max(0,frame.top)&&r.top<=Math.min(innerHeight,frame.bottom);});
       const nearby=visible.length?visible:headings;
-      const closest=nearby.reduce((best,h)=>!best || Math.abs(index-h.index)<Math.abs(index-best.index)?h:best,null);
+      const closest=nearby.length ? nearby.reduce((best,h)=>Math.abs(index-h.index)<Math.abs(index-best.index)?h:best) : null;
       if(closest){state.lastIndex=closest.index;state.lastSeen=now;}
       if(!state.started){
         scroller.scrollTop=Math.min(scroller.scrollHeight-scroller.clientHeight,(index-1)/total*scroller.scrollHeight);
@@ -50,7 +50,7 @@ export async function seekViewerPage(page: Page, index: number, total: number, s
         if(direction)scroller.scrollTop+=direction*Math.max(100,scroller.clientHeight*0.6);
       }
       state.at=now;return false;
-    },{index,total,state:{started:false,at:0,lastSeen:0,lastIndex:1,scroller:null}},{timeout:30000,polling:'raf'});
+    },{index,total,state:{started:false,at:0,lastSeen:0,lastIndex:1,scroller:null as Element | null}},{timeout:30000,polling:'raf'});
   } catch(error) {
     signal.throwIfAborted();
     throw new JobError('SOURCE_UNAVAILABLE',true,
