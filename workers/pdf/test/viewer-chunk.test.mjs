@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { chromium } from 'playwright';
+import { chromium, errors as playwrightErrors } from 'playwright';
 import { PDFDocument, PDFDict, PDFName, PDFRawStream } from 'pdf-lib';
 import sharp from 'sharp';
 import { captureViewerChunk, seekViewerPage } from '../src/viewer-chunk.ts';
@@ -91,4 +91,30 @@ test('virtualized late headings are reached by bounded scroll, without an off-sc
  });
  await seekViewerPage(page,101,200,AbortSignal.timeout(5000));assert.equal(await page.locator('h2').textContent(),'Page 101 / 200');
  await seekViewerPage(page,10,200,AbortSignal.timeout(5000));assert.equal(await page.locator('h2').textContent(),'Page 10 / 200');
+});
+
+test('late-page seek keeps the Viewer scroller when virtualization temporarily removes every heading',async t=>{
+ const browser=await chromium.launch({headless:true});t.after(()=>browser.close());
+ const page=await browser.newPage();
+ await page.route('**/*',r=>r.abort());
+ await page.setContent('<main style="height:500px;overflow-y:auto"><div style="height:13900px;position:relative"><section style="position:absolute"><h2>Page 1 / 139</h2></section></div></main>');
+ await page.evaluate(()=>{
+   const scroller=document.querySelector('main'),section=document.querySelector('section');
+   scroller.addEventListener('scroll',()=>{
+     const top=scroller.scrollTop;
+     // Remote Viewer pages are not mounted immediately after the large seek.
+     section.innerHTML=top>=13300?'<h2>Page 131 / 139</h2>':'';
+     section.style.top=top+'px';
+   });
+ });
+ await seekViewerPage(page,131,139,AbortSignal.timeout(6000));
+ assert.equal(await page.locator('h2').textContent(),'Page 131 / 139');
+});
+
+test('late-page navigation records an allowlisted reason and page index on Playwright timeout',async()=>{
+ const fake={waitForFunction:async()=>{throw new playwrightErrors.TimeoutError('synthetic timeout with private URL');}};
+ await assert.rejects(seekViewerPage(fake,131,139,new AbortController().signal),e=>
+   e.code==='SOURCE_UNAVAILABLE' && e.retryable===true &&
+   e.reason==='viewer-seek-timeout' && e.pageIndex===131 &&
+   !String(e.message).includes('private URL'));
 });
