@@ -88,7 +88,8 @@ test('invalid source fails before cloud access and errors never reveal command d
   assert.equal(calls,0);
   const errors=[];
   assert.equal(main(['preflight',SHA],run,{log:()=>{},error:x=>errors.push(x)}),1);
-  assert.deepEqual(errors,['PDF_AUTO_VALIDATION_FAILED']);
+  assert.deepEqual(errors,['PDF_V2_WORKER_SERVICE_READ_FAILED: reason=COMMAND_FAILED']);
+  assert(!errors.join('').includes('private_token_123'));
 });
 
 test('preflight exposes only sanitized read-failure classification, not gcloud secrets',()=>{
