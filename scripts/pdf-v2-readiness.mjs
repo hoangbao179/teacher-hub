@@ -128,12 +128,19 @@ export function audit(sourceSha, run=cliCall) {
     gatewayURL:'https://teacher-pdf-gateway-851777150171.asia-southeast1.run.app',services,result:'PASS'};
 }
 
+// Only expose diagnostics constructed by this module or fixed, allowlisted
+// gate codes. Never forward arbitrary gcloud exceptions to workflow logs.
+export function publicReadinessDiagnostic(error) {
+  return error instanceof ReadinessDiagnostic ||
+    ['PDF_V2_SOURCE_SHA_REQUIRED','PDF_V2_QUEUE_DRIFT',
+      'PDF_V2_WORKER_LIVE_REVISION_INVALID','PDF_V2_WORKER_LIVE_IMAGE_INVALID'].includes(error?.message)
+    ? error.message : null;
+}
+
 export function main(argv=process.argv.slice(2),run=cliCall,output=console) {
   try { output.log(JSON.stringify(audit(argv[0],run))); return 0; }
   catch(e) {
-    output.error(e instanceof ReadinessDiagnostic || ['PDF_V2_SOURCE_SHA_REQUIRED','PDF_V2_QUEUE_DRIFT',
-      'PDF_V2_WORKER_LIVE_REVISION_INVALID','PDF_V2_WORKER_LIVE_IMAGE_INVALID'].includes(e?.message)
-      ? e.message : 'PDF_V2_READINESS_FAILED: reason=UNEXPECTED_ERROR');
+    output.error(publicReadinessDiagnostic(e) ?? 'PDF_V2_READINESS_FAILED: reason=UNEXPECTED_ERROR');
     return 1;
   }
 }
