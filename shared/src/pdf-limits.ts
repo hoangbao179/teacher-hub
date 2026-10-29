@@ -30,3 +30,10 @@ export const PDF_LONG_MAX_ACTIVE = 3;
 export const PDF_LONG_MAX_HOURLY = 20;
 export const PDF_LONG_PARSER_CPU_SECONDS = 45;
 export const PDF_LONG_PARSER_WALL_MS = 50_000;
+/** Final, already-assembled v2 PDFs receive one larger bounded qpdf integrity pass.
+ * The request still has an overall 165s deadline (Cloud Tasks/Run: 180s).
+ * Other parser passes and every chunk retain their existing smaller budgets.
+ */
+export const PDF_FINAL_PARSER_CPU_SECONDS = 110;
+export const PDF_FINAL_PARSER_WALL_MS = 125_000;
+export const PDF_FINAL_PARSER_AS_BYTES = 1024 * 1024 * 1024;

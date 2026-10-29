@@ -215,7 +215,9 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
     }
     const filename = normalizePdfFilename(m.filename);
     stage = 'chunk-validation';
-    const info=await validate(path,cap,signal);
+    // Strict full-parser validation is still required before publishing
+    // output.pdf. Only this final, immutable assembly gets the expanded budget.
+    const info=await validate(path,cap,signal,{finalAssembly:true});
     if (info.pages!==m.totalPages) throw new JobError('INVALID_PDF');
     if (info.bytes!==Number(assemblyMeta.bytes) || info.sha256!==assemblyMeta.sha256)
       throw new JobError('STORAGE_UNAVAILABLE',true);

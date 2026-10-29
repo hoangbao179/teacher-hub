@@ -66,7 +66,11 @@ test('final assembly verifies checkpoint bytes without reparsing every part', as
   for(let step=0;step<=3;step++) await f.run(step);
   let validationCalls=0;
   const {validatePDF}=await import('../src/pdf.ts');
-  f.deps.validate=async (...args)=>{validationCalls++;return validatePDF(...args);};
+  f.deps.validate=async (...args)=>{
+    validationCalls++;
+    assert.deepEqual(args[3],{finalAssembly:true},'only the final assembly opts into expanded budget');
+    return validatePDF(...args);
+  };
   const result=await f.run(4);
   assert.equal(result.status,'COMPLETED');
   assert.equal(result.pages,23);

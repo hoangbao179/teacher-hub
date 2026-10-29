@@ -12,7 +12,7 @@ import { JobError, limits, parseJob, printFallbackEnabled, viewerScreenCaptureEn
 import { selectViewerMode } from '../src/viewer-ready.ts';
 import { download, openSource, sourceURL, publicAddress } from '../src/download.ts';
 import { processJob } from '../src/processor.ts';
-import { validatePDF } from '../src/pdf.ts';
+import { validatePDF, pdfParserBudget, pdfParserFailureReason } from '../src/pdf.ts';
 import { createWorkerServer } from '../src/server.mjs';
 import { scratchVolumeLimitBytes } from '../src/http.ts';
 import { job, MemoryStore, syntheticPDF } from './fixtures.mjs';
@@ -39,6 +39,30 @@ test('v1 remains compatible with a v2 Worker scratch mount during rollout', () =
   assert.equal(scratchVolumeLimitBytes({ PDF_CHUNKED_JOBS_ENABLED: 'true' }, false), v2);
   assert.equal(scratchVolumeLimitBytes({ PDF_CHUNKED_JOBS_ENABLED: 'true' }, true), v2);
   assert.equal(scratchVolumeLimitBytes({}, true), v2);
+});
+
+test('final PDF parser gets a bounded integrity-only budget; chunk and v1 limits do not change', () => {
+  const longCap={...cap,maxBytes:150*1048576,maxPages:200};
+  assert.deepEqual(pdfParserBudget(longCap,'--check',false),
+    {cpuSeconds:45,wallMs:50000,addressSpace:536870912});
+  assert.deepEqual(pdfParserBudget(longCap,'--check',true),
+    {cpuSeconds:110,wallMs:125000,addressSpace:1073741824});
+  assert.deepEqual(pdfParserBudget(longCap,'--is-encrypted',true),
+    {cpuSeconds:45,wallMs:50000,addressSpace:536870912});
+  assert.deepEqual(pdfParserBudget(longCap,'--show-npages',true),
+    {cpuSeconds:45,wallMs:50000,addressSpace:536870912});
+  assert.deepEqual(pdfParserBudget(cap,'--check',true),
+    {cpuSeconds:5,wallMs:6000,addressSpace:536870912});
+  assert.ok(pdfParserBudget(longCap,'--check',true).wallMs<165000);
+});
+
+test('qpdf signals report CPU, OOM/kill and segfault distinctly without provider content', () => {
+  assert.equal(pdfParserFailureReason('--check',false,false,'SIGXCPU'),'parser-integrity-cpu-limit');
+  assert.equal(pdfParserFailureReason('--check',false,false,'SIGKILL'),'parser-integrity-sigkill');
+  assert.equal(pdfParserFailureReason('--check',false,false,'SIGSEGV'),'parser-integrity-sigsegv');
+  assert.equal(pdfParserFailureReason('--check',false,true,'SIGKILL'),'parser-integrity-wall-timeout');
+  assert.equal(pdfParserFailureReason('--check',true,false,'SIGXCPU'),'parser-integrity-deadline');
+  assert.equal(pdfParserFailureReason('--show-npages',false,false,'SIGTERM'),'parser-page-count-signalled');
 });
 
 test('source validation and output validation use independent byte ceilings', async t => {
