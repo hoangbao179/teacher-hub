@@ -32,6 +32,16 @@ chứng minh snapshot toàn tài liệu nếu chỉ trang sau đổi. Direct sna
 mạnh hơn. Đường active Viewer không kiểm Print; xem
 [khoảng cách quyền](../features/pdf-worker.md#renderer-và-khoảng-cách-về-quyền).
 
+Fingerprint khác trả reason nội bộ `anchor-fingerprint-mismatch` (pageIndex=1),
+khác với `page-total-mismatch` và các reason `ambiguous-layout-*`/
+`duplicate-page-heading`/`bitmap-oversized`. Mã result công khai vẫn là
+`UNSUPPORTED_SOURCE`; không đổi schema manifest/checkpoint/result.
+V2 phát `pdf-stage-failed` qua logger allowlist như v1, thêm `step` nguyên 0..21;
+không ghi PNG, URL, title, fileId hoặc giá trị fingerprint. Logger lỗi không đổi
+retry/persistence. Chưa có định danh revision nguồn ổn định: không dung sai pixel
+hoặc bỏ anchor để tiếp tục ghép. Xem
+[phân tích và hướng đối chiếu nguồn](../changes/2026-10/pdf-v2-source-diagnostics.md).
+
 Object dưới `jobs/UUID/`, mọi create `ifGenerationMatch=0`:
 
 | Object | Schema / vai trò |
