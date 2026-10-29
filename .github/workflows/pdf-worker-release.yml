@@ -133,7 +133,45 @@ jobs:
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
           OLD_REV: ${{ steps.old.outputs.revision }}
         run: node scripts/pdf-worker-auto-release.mjs staged "$SOURCE_SHA" "$IMAGE_DIGEST" "$OLD_REV"
+      # Auto promotion is an explicit one-time repository variable opt-in.
+      # Do not promote while ANY existing Cloud Task could be executing or retrying.
+      - name: Auto-promote guarded canary when enabled and queue drained
+        if: ${{ vars.PDF_WORKER_AUTO_PROMOTE_ENABLED == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ steps.canary.outputs.revision }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          OLD_REV: ${{ steps.old.outputs.revision }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$CANDIDATE" =~ ^teacher-pdf-worker-[a-z0-9-]+$ ]]
+          # A superseded pipeline must not overwrite the newest main revision.
+          newest="$(gh api repos/hoangbao179/teacher-hub/git/ref/heads/main --jq '.object.sha')"
+          [[ "$newest" == "$SOURCE_SHA" ]] || { echo 'PDF_AUTO_MAIN_MOVED'; exit 1; }
+          node scripts/pdf-worker-auto-release.mjs staged "$SOURCE_SHA" "$IMAGE_DIGEST" "$OLD_REV" > "$RUNNER_TEMP/pre-promote.json"
+          node -e 'const d=require(process.argv[1]);if(d.revision!==process.argv[2])process.exit(1)' "$RUNNER_TEMP/pre-promote.json" "$CANDIDATE"
+          # Only switch when all pending/retrying tasks have drained. This is
+          # a fail-closed snapshot, not a lock against new concurrent submissions.
+          gcloud tasks list --project="$CLOUD_PROJECT" --location="$CLOUD_REGION" \
+            --queue=teacher-pdf-queue --format='value(name)' > "$RUNNER_TEMP/pending-tasks.txt"
+          [[ ! -s "$RUNNER_TEMP/pending-tasks.txt" ]] || { echo 'PDF_AUTO_QUEUE_NOT_DRAINED'; exit 1; }
+          newest="$(gh api repos/hoangbao179/teacher-hub/git/ref/heads/main --jq '.object.sha')"
+          [[ "$newest" == "$SOURCE_SHA" ]] || { echo 'PDF_AUTO_MAIN_MOVED'; exit 1; }
+          gcloud run services update-traffic "$WORKER" \
+            --project="$CLOUD_PROJECT" --region="$CLOUD_REGION" \
+            --to-revisions="${CANDIDATE}=100" --quiet
+          node scripts/pdf-worker-auto-release.mjs promoted "$SOURCE_SHA" "$IMAGE_DIGEST" "$CANDIDATE"
+          {
+            echo '### PDF Worker auto-promoted (protected, queue drained)'
+            echo "Source: $SOURCE_SHA"
+            echo "Candidate: $CANDIDATE"
+            echo "Digest: $IMAGE_DIGEST"
+            echo "Previous revision: $OLD_REV"
+            echo 'Live traffic verified 100% for candidate. Keep previous image for rollback.'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Publish staged candidate for operator verification
+        if: ${{ vars.PDF_WORKER_AUTO_PROMOTE_ENABLED != 'true' }}
         env:
           CANDIDATE: ${{ steps.canary.outputs.revision }}
           OLD_REV: ${{ steps.old.outputs.revision }}
