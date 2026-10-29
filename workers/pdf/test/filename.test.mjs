@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -49,7 +50,8 @@ for(const mode of ['direct-short','direct-long','viewer']) test(`v2 ${mode} keep
   const dir=await mkdtemp(join(tmpdir(),'pdf-v2-name-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   const f=await fixture(dir,1);
   let pages=mode==='direct-long'?51:1;
-  f.deps.validate=async()=>({bytes:syntheticPDF(1).length,pages,sha256:'a'.repeat(64)});
+  // This fixture reaches final assembly, so checkpoint metadata must describe actual bytes.
+  f.deps.validate=async()=>({bytes:syntheticPDF(1).length,pages,sha256:createHash('sha256').update(syntheticPDF(1)).digest('hex')});
   f.deps.merge=async(_files,path)=>writeFile(path,syntheticPDF(1));
   f.deps.renderChunk=async(_id,path)=>writeFile(path,syntheticPDF(1));
   if(mode.startsWith('direct'))f.deps.download=async(_id,path)=>{await writeFile(path,syntheticPDF(1));return filename;};
