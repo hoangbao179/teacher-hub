@@ -33,12 +33,45 @@ test('real anonymous browser captures requested noninitial range, preserves nati
   assert.equal((await sharp(jpeg).metadata()).width,1800);
   const pixel=await sharp(jpeg).extract({left:0,top:0,width:1,height:1}).raw().toBuffer();assert.ok(pixel[i===0?0:2]>250);
  }
- await assert.rejects(captureViewerChunk(page,join(root,'wrong.pdf'),longCap,signal(),{firstPage:11,lastPage:12},{...m,fingerprint:'b'.repeat(64)}),{code:'UNSUPPORTED_SOURCE'});
+ await assert.rejects(captureViewerChunk(page,join(root,'wrong.pdf'),longCap,signal(),{firstPage:11,lastPage:12},{...m,fingerprint:'b'.repeat(64)}),
+  {code:'UNSUPPORTED_SOURCE',reason:'anchor-fingerprint-mismatch',pageIndex:1});
  await page.getByRole('button',{name:'Print'}).evaluate(el=>{el.disabled=true;});
  const restricted=join(root,'restricted.pdf');
  await captureViewerChunk(page,restricted,longCap,signal(),{firstPage:11,lastPage:12},m);
  assert.equal((await PDFDocument.load(await readFile(restricted))).getPageCount(),2);
  assert.deepEqual(await readdir(root),['part.pdf','restricted.pdf']);
+});
+
+test('independent Viewer sessions keep stable anchors but fail closed for tiny render drift and changed documents', async t => {
+ const root=await mkdtemp(join(tmpdir(),'viewer-anchor-'));t.after(()=>rm(root,{recursive:true,force:true}));
+ const browser=await chromium.launch({headless:true});t.after(()=>browser.close());
+ const capture=async(variant,expected)=>{
+  const context=await browser.newContext();
+  try {
+   const page=await context.newPage();await page.route('**/*',r=>r.abort());
+   await page.setContent('<input role="combobox" value="100%"><main></main>');
+   await page.evaluate(async variant=>{
+    const canvas=document.createElement('canvas');canvas.width=1800;canvas.height=2547;
+    const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,1800,2547);
+    ctx.fillStyle='black';ctx.fillRect(80,80,800,20);
+    if(variant==='drift'){ctx.fillStyle='#fefefe';ctx.fillRect(0,0,1,1);}
+    if(variant==='changed'){ctx.fillStyle='black';ctx.fillRect(80,150,800,20);}
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve));
+    document.querySelector('main').innerHTML=`<section><div><h2>Page 1 / ${variant==='total'?24:23}</h2></div><img style="width:300px"></section>`;
+    const img=document.querySelector('img');img.src=URL.createObjectURL(blob);await img.decode();
+    canvas.width=canvas.height=1;
+   },variant);
+   return await captureViewerChunk(page,null,longCap,AbortSignal.timeout(15000),undefined,expected);
+  } finally {await context.close();}
+ };
+ const baseline=await capture('stable');
+ assert.deepEqual(await capture('stable',baseline),baseline);
+ for(const variant of ['drift','changed']) {
+  await assert.rejects(capture(variant,baseline),
+   {code:'UNSUPPORTED_SOURCE',reason:'anchor-fingerprint-mismatch',pageIndex:1});
+ }
+ await assert.rejects(capture('total',baseline),{code:'UNSUPPORTED_SOURCE',reason:'page-total-mismatch'});
+ assert.deepEqual(await readdir(root),[],'discovery retains no page images');
 });
 
 test('virtualized late headings are reached by bounded scroll, without an off-screen extraction endpoint',async t=>{

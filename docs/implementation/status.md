@@ -93,6 +93,11 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   override thấp hơn giữ nguyên. Public IP: session 60/h, submit+retry chung 60/h.
   Queue dispatch và mục tiêu Worker thực thi vẫn 1.
 
+  Source v2 có diagnostic allowlist theo step/stage, phân biệt fingerprint anchor,
+  tổng trang và bố cục Viewer; lineage production 35ff0f8 chưa có logger này.
+  Anchor vẫn SHA-256 PNG trang 1, fail-closed khi khác; chưa có snapshot/revision
+  ổn định cho Viewer. Không coi diagnostic fix là đã sửa job 139 trang production.
+
   Renderer active direct → fallback Viewer anonymous `view-only`, không kiểm
   Print/canDownload. Ba cờ legacy fallback/capture/long-task không tắt nhánh
   tương ứng bằng false. Đây là khoảng cách với yêu cầu từ chối nguồn bị cấm

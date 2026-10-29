@@ -557,14 +557,17 @@ V1 log `pdf-stage-failed` phân biệt direct-download/validation,
 viewer-render/validation và storage. `html-response` không chứng minh cấm tải;
 `login-redirect` khác encrypted-pdf, ambiguous layout, low DPI hoặc byte bound.
 Legacy reason print-disabled chỉ có ý nghĩa với revision/nhánh thực kiểm Print;
-source active hiện không kiểm. V2 chưa emit cùng diagnostic stage như v1, nên
-cần thêm checkpoint/result/task và request log, không hứa có log không tồn tại.
+source active hiện không kiểm. Source v2 phát cùng diagnostic event, có thêm
+`step` 0..21 và stage `chunk-merge`. `anchor-fingerprint-mismatch` khác
+`page-total-mismatch` và lỗi bố cục `ambiguous-layout-*`; không log fingerprint
+hay ảnh. Revision lineage 35ff0f8 chưa phát event v2: phải đối chiếu
+checkpoint/result/task và request log; thiếu event không chứng minh nguồn ổn định.
 
-Chỉ đọc log đúng revision/UUID bằng PowerShell, ví dụ với v1:
+Chỉ đọc log đúng revision/UUID bằng PowerShell (v2 cần revision có logger mới):
 
 ```powershell
 $filter = 'resource.type="cloud_run_revision" AND resource.labels.service_name="teacher-pdf-worker" AND resource.labels.revision_name="' + $revision + '" AND jsonPayload.event="pdf-stage-failed" AND jsonPayload.jobId="' + $jobId + '"'
-gcloud.cmd logging read $filter --project=teacher-hub-pdf --limit=20 --format='table(timestamp,resource.labels.revision_name,jsonPayload.stage,jsonPayload.code,jsonPayload.reason,jsonPayload.pageIndex,jsonPayload.usedBytes,jsonPayload.limitBytes)'
+gcloud.cmd logging read $filter --project=teacher-hub-pdf --limit=20 --format='table(timestamp,resource.labels.revision_name,jsonPayload.step,jsonPayload.stage,jsonPayload.code,jsonPayload.reason,jsonPayload.pageIndex,jsonPayload.usedBytes,jsonPayload.limitBytes)'
 ```
 
 Drive lỗi ở source/renderer; Worker 503 retryable có thể parser/storage/timeout;

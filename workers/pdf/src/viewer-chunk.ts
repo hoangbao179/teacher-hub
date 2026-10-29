@@ -52,7 +52,8 @@ export async function captureViewerChunk(page: Page, path: string | null, cap: L
     // Anchor first native page across independent browser sessions; never upscale.
     const anchor = await captureViewerPage(page, 1, totalPages, PDF_INTERMEDIATE_PNG_PEAK_BYTES, observation, signal);
     const fingerprint = createHash('sha256').update(anchor.png).digest('hex'); anchor.png = Buffer.alloc(0);
-    if (expected && fingerprint !== expected.fingerprint) throw new JobError('UNSUPPORTED_SOURCE', false, 'page-total-mismatch');
+    if (expected && fingerprint !== expected.fingerprint)
+      throw new JobError('UNSUPPORTED_SOURCE', false, 'anchor-fingerprint-mismatch', { pageIndex: 1 });
     if (path && range) {
       writer = await ImagePdfWriter.create(path, cap.maxBytes, signal);
       for (let index = range.firstPage; index <= range.lastPage; index++) {

@@ -12,6 +12,7 @@ import { qpdfParts } from './qpdf-parts.ts';
 import { viewerFilename } from './filename.ts';
 import { withDriveViewer } from './renderer.ts';
 import { captureViewerChunk } from './viewer-chunk.ts';
+import { diagnostic, type Stage } from './diagnostics.ts';
 
 export interface ChunkDependencies extends Dependencies {
   discoverViewer?: (id: string, cap: Limits, signal: AbortSignal)=>Promise<{totalPages: number; fingerprint: string; filename?: string}>;
@@ -49,6 +50,9 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
     if (!store.download) throw new JobError('SERVICE_UNAVAILABLE',true);
     await store.download(prefix+name,path,bytes,signal);
   };
+  let stage: Stage = 'storage';
+  const logFailure = (error: unknown) => diagnostic(job.jobId, sourceHash, stage,
+    deps.enablePrintFallback === true, error, deps.log, job.step);
   try {
     const out = await store.head(prefix+'output.pdf',signal);
     if (out) {
@@ -68,8 +72,13 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
         // Recover an immutable source snapshot uploaded before discovery checkpoint failed.
         const storedSource = await store.head(prefix+'source.pdf',signal);
         if (storedSource) { await get('source.pdf',path,cap.maxSourceBytes!); filename = normalizePdfFilename(storedSource.metadata.filename); }
-        else filename = normalizePdfFilename(await (deps.download ?? download)(job.source.fileId,path,{...cap,maxBytes:cap.maxSourceBytes!},signal));
+        else {
+          stage = 'direct-download';
+          filename = normalizePdfFilename(await (deps.download ?? download)(job.source.fileId,path,{...cap,maxBytes:cap.maxSourceBytes!},signal));
+        }
+        stage = 'direct-validation';
         const info = await validate(path,{...cap,maxBytes:cap.maxSourceBytes!},signal);
+        stage = 'storage';
         if (info.pages <= PDF_NORMAL_MAX_PAGES) {
           await store.create(prefix+'output.pdf',{path,metadata:{sourceHash,...(filename ? {filename} : {}),bytes:String(info.bytes),pages:String(info.pages),sha256:info.sha256}},signal);
           const winner=await store.head(prefix+'output.pdf',signal);
@@ -80,16 +89,21 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
         await store.create(prefix+'source.pdf',{path,metadata:{sourceHash,...(filename ? {filename} : {}),sha256:info.sha256}},signal);
         // Read back the winning immutable source when duplicate discovery races.
         await rm(path,{force:true}); await get('source.pdf',path,cap.maxSourceBytes!);
+        stage = 'direct-validation';
         const snapshot = await validate(path,{...cap,maxBytes:cap.maxSourceBytes!},signal);
+        stage = 'storage';
         const winningSource = await store.head(prefix+'source.pdf',signal);
         filename = normalizePdfFilename(winningSource?.metadata.filename);
         discovery = {mode:'direct',fingerprint:snapshot.sha256,totalPages:snapshot.pages,...(filename ? {filename} : {})};
       } catch (e) {
         const eligible = e instanceof JobError && !e.retryable && ['ACCESS_DENIED','UNSUPPORTED_SOURCE'].includes(e.code) && e.reason !== 'encrypted-pdf';
         if (!eligible || !deps.enablePrintFallback) throw e;
+        logFailure(e);
+        stage = 'viewer-render';
         const info = await (deps.discoverViewer ?? ((id,c,s)=>withDriveViewer(id,c,s,async p=>{const info=await captureViewerChunk(p,null,c,s); const filename=await viewerFilename(p,id); return {...info,...(filename ? {filename} : {})};})))(job.source.fileId,cap,signal);
         discovery = {mode:'viewer',...info};
       }
+      stage = 'storage';
       const candidate: PdfManifest = {version:2,jobId:job.jobId,sourceHash,expiresAt:claim.expiresAt,...discovery};
       if (!isPdfManifest(candidate,job.jobId,sourceHash,claim.expiresAt)) throw new JobError('PAGE_LIMIT_EXCEEDED');
       await store.create(prefix+'manifest.json',{json:candidate},signal);
@@ -118,16 +132,21 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
       if (uploaded) await get(name,path,PDF_CHUNK_MAX_BYTES);
       else if (m.mode === 'direct') {
         const source = join(dir,'source.pdf'); await get('source.pdf',source,cap.maxSourceBytes!);
+        stage = 'direct-validation';
         const info = await validate(source,{...cap,maxBytes:cap.maxSourceBytes!},signal);
         if (info.sha256 !== m.fingerprint || info.pages !== m.totalPages) throw new JobError('STORAGE_UNAVAILABLE',true);
+        stage = 'chunk-merge';
         await (deps.merge ?? qpdfParts)([{path:source,range:`${range.firstPage}-${range.lastPage}`}],path,signal);
       } else {
+        stage = 'viewer-render';
         await (deps.renderChunk ?? ((id,path,c,s,r,m)=>withDriveViewer(id,c,s,async p=>{await captureViewerChunk(p,path,c,s,r,m);})))
           (job.source.fileId,path,partCap,signal,range,m);
       }
+      stage = m.mode === 'viewer' ? 'viewer-validation' : 'direct-validation';
       const info = await validate(path,partCap,signal);
       if (info.pages !== range.lastPage-range.firstPage+1) throw new JobError('INVALID_PDF');
       if (parts.reduce((n,p)=>n+p.bytes,info.bytes)>budget) throw new JobError('FILE_TOO_LARGE');
+      stage = 'storage';
       const checkpoint: PdfPart = {version:2,jobId:job.jobId,sourceHash,expiresAt:claim.expiresAt,fingerprint:m.fingerprint,index,...range,bytes:info.bytes,sha256:info.sha256};
       if (uploaded && (uploaded.metadata.sourceHash!==sourceHash || uploaded.metadata.fingerprint!==m.fingerprint || uploaded.metadata.sha256!==info.sha256)) throw new JobError('STORAGE_UNAVAILABLE',true);
       if (!uploaded) {
@@ -147,9 +166,11 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
       files.push({path});
     }
     const filename = normalizePdfFilename(m.filename);
+    stage = 'chunk-merge';
     const path=join(dir,'output.pdf'); await (deps.merge ?? qpdfParts)(files,path,signal);
     const info=await validate(path,cap,signal);
     if (info.pages!==m.totalPages) throw new JobError('INVALID_PDF');
+    stage = 'storage';
     await store.create(prefix+'output.pdf',{path,metadata:{sourceHash,...(filename ? {filename} : {}),bytes:String(info.bytes),pages:String(info.pages),sha256:info.sha256}},signal);
     // Retry recovery validates the immutable winning output metadata too.
     const winner=await store.head(prefix+'output.pdf',signal);
@@ -157,6 +178,7 @@ export async function processChunkJob(job: PdfChunkJob, cap: Limits, signal: Abo
     const winningName = normalizePdfFilename(winner.metadata.filename);
     return await finish({status:'COMPLETED',objectName:prefix+'output.pdf',...info,...(winningName ? {filename:winningName} : {})});
   } catch (e) {
+    logFailure(e);
     if (signal.aborted || !(e instanceof JobError) || e.retryable) throw e;
     if (['ACCESS_DENIED','PRINT_UNAVAILABLE','UNSUPPORTED_SOURCE','INVALID_PDF','FILE_TOO_LARGE','PAGE_LIMIT_EXCEEDED','JOB_EXPIRED'].includes(e.code))
       return await finish({status:'FAILED',errorCode:e.code});
