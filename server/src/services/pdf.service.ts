@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { PdfCapabilities, PdfDownloadTicket } from '@teacher/shared';
-import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES, PDF_SOURCE_MAX_BYTES, PDF_LONG_MAX_PAGES, PDF_LONG_OUTPUT_MAX_BYTES, PDF_LONG_DOWNLOAD_MS, type PdfChunkJob } from '@teacher/shared';
+import { PDF_MAX_PAGES, PDF_OUTPUT_MAX_BYTES, PDF_SOURCE_MAX_BYTES, PDF_LONG_MAX_PAGES, PDF_LONG_OUTPUT_MAX_BYTES, PDF_LONG_DOWNLOAD_MS, PDF_LONG_PROCESSING_MAX_AGE_MS, type PdfChunkJob } from '@teacher/shared';
 import { PdfRepository } from '../repositories/pdf.repository';
 import type { PdfProvider } from './pdf-provider';
 import type { PdfSettings } from '../config/pdf-settings';
@@ -66,6 +66,11 @@ export class PdfService {
         if (pair) {
           const result = validatePdfResult(work,pair,Date.now());
           await this.repo.save(work,Date.parse(result.expiresAt)<=Date.now() ? 'EXPIRED' : result.status,null,result);
+        } else if (work.workerVersion === 2 &&
+          Date.now() - Date.parse(work.createdAt) >= PDF_LONG_PROCESSING_MAX_AGE_MS) {
+          // The provider returned no terminal result. Stop re-enqueueing this
+          // old job even if the last task is missing or appears retryable.
+          await this.repo.stopLongProcessing(work);
         } else if (work.workerVersion === 2) {
           if (!this.provider.chunked || !this.provider.progress) throw new Error('PDF_CHUNKS_DISABLED');
           const progress = await this.provider.progress(work,signal);
