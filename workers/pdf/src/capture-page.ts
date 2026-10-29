@@ -175,11 +175,18 @@ export async function captureViewerPage(page: Page, index: number, total: number
         if (busy) { state.changedAt = performance.now(); return null; }
         const { naturalWidth: width, naturalHeight: height } = image;
         if (width * height > maxPixels) return { error: 'UNSUPPORTED_SOURCE', reason: 'bitmap-oversized' };
-        if (image.complete && (!width || !height) && performance.now() - state.changedAt >= 750)
-          return { error: 'SOURCE_UNAVAILABLE' };
+        // A revoked/broken blob may be replaced by Drive after the initial quiet
+        // window. Give a bounded grace period without accepting a stale bitmap.
+        if (image.complete && (!width || !height)) {
+          if (performance.now() - state.changedAt < 2500) return null;
+          return { error: 'SOURCE_UNAVAILABLE', reason: 'bitmap-dimensions-invalid' };
+        }
         if (!image.complete || !image.src.startsWith('blob:') || !width || !height) return null;
         const decoded = state.decoded(image, candidate.signature ?? '');
-        if (decoded < 0) return { error: 'SOURCE_UNAVAILABLE' };
+        if (decoded < 0) {
+          if (performance.now() - state.changedAt < 2500) return null;
+          return { error: 'SOURCE_UNAVAILABLE', reason: 'bitmap-decode-failed' };
+        }
         const landscape = width > height;
         const scale = Math.min(((landscape ? 841.89 : 595.28) - 16) / width,
           ((landscape ? 595.28 : 841.89) - 16) / height);
@@ -195,7 +202,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
         canvas.width = width; canvas.height = height;
         try {
           const context = canvas.getContext('2d');
-          if (!context) return { error: 'SOURCE_UNAVAILABLE' };
+          if (!context) return { error: 'SOURCE_UNAVAILABLE', reason: 'bitmap-canvas-unavailable' };
           context.drawImage(image, 0, 0);
           const png = canvas.toDataURL('image/png');
           const encoded = png.slice('data:image/png;base64,'.length);
@@ -204,12 +211,12 @@ export async function captureViewerPage(page: Page, index: number, total: number
             return { error: 'FILE_TOO_LARGE', reason: 'intermediate-png-page', usedBytes: bytes, limitBytes: remainingBytes };
           }
           return { width, height, encoded };
-        } catch { return { error: 'SOURCE_UNAVAILABLE' }; }
+        } catch { return { error: 'SOURCE_UNAVAILABLE', reason: 'bitmap-canvas-read-failed' }; }
         finally { canvas.width = canvas.height = 1; }
       }, { state, index, total, remainingBytes, minDpi: PDF_VIEWER_MIN_DPI, maxPixels: PDF_VIEWER_MAX_PIXELS }, { timeout: 15000, polling: 'raf' });
       try {
         const captured = await handle.jsonValue() as Record<string, unknown> | null;
-        if (!captured) throw new JobError('SOURCE_UNAVAILABLE', true);
+        if (!captured) throw new JobError('SOURCE_UNAVAILABLE', true, 'bitmap-empty-result', { pageIndex: index });
         if ('error' in captured && typeof captured.error === 'string') {
           const reason = typeof captured.reason === 'string' ? captured.reason : undefined;
           const ancestorLevel = typeof captured.ancestorLevel === 'number' ? captured.ancestorLevel : undefined;
