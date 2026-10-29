@@ -15,7 +15,7 @@ export async function seekViewerPage(page: Page, index: number, total: number, s
   try {
     await page.waitForFunction(({index,total,state})=>{
       const headings=[...document.querySelectorAll('h2')]
-        .map(el=>({el,index:Number(el.textContent?.match(/(?:^|\\D)(\\d+)\\s*(?:\\/|of)\\s*\\d+\\s*$/i)?.[1])}))
+        .map(el=>({el,index:Number(el.textContent?.match(/(?:^|\D)(\d+)\s*(?:\/|of)\s*\d+\s*$/i)?.[1])}))
         .filter(v=>v.index>0 && v.index<=total);
       if(headings.some(h=>h.index===index))return true;
       // Keep the original scroll container while Drive unmounts virtual headings.
