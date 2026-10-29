@@ -150,7 +150,10 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   public/private, ticket một lần, FAILED/EXPIRED retry, binary 401 và polling có chọn lọc.
   Fixture FakeCloud dùng cùng một mốc thời gian cho claim TTL đúng 24 giờ, xác minh
   schema trước recovery và trạng thái COMPLETED trước khi chờ nút tải; lỗi fixture
-  không bị che thành browser timeout. Các suite E2E
+  không bị che thành browser timeout. Bàn giao browser→recovery tạm chặn request
+  create/detail/retry mới trong fixture trước khi drain handler đang chạy; poll
+  đến muộn không thể lấy lease sau drain. Mở lại request sau recovery độc lập.
+  Các suite E2E
   quản trị nghiệp vụ còn lại cần giao diện legacy, không dùng để xác minh Tools.
 
 - **Vocabulary public game**: `VOCABULARY_GAMES_ENABLED = false`. Các route `/play/*`

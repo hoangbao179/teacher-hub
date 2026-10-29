@@ -13,6 +13,7 @@ import mysql from "mysql2/promise";
 import { createServer } from "vite";
 import { chromium } from "@playwright/test";
 import { createArtifactPolicy, finalizePlaywrightArtifacts, installPlaywrightArtifactPolicy } from "./artifacts.mjs";
+import { createPdfRequestBarrier } from "./pdf-request-barrier.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const origin = "http://127.0.0.1:5197", apiRoot = "/api/public/pdf";
@@ -58,14 +59,9 @@ try {
     result:async id=>results.get(id)??null,task:async()=>"WAITING",open:async()=> (async function*(){yield bytes;})()};
   const settings={enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2,chunked:false};
   const service=new PdfService(repo,cloud,settings);
-  const controller=new PublicPdfController(service),pendingPdfRequests=new Set();
+  const controller=new PublicPdfController(service),pendingPdfRequests=createPdfRequestBarrier();
   for(const name of ['create','detail','retry']) {
-    const handle=controller[name];
-    controller[name]=(...args)=>{
-      const pending=handle(...args);pendingPdfRequests.add(pending);
-      void pending.then(()=>pendingPdfRequests.delete(pending),()=>pendingPdfRequests.delete(pending));
-      return pending;
-    };
+    controller[name]=pendingPdfRequests.wrap(controller[name]);
   }
   const app=express();app.use(express.json());app.use(createRouter(controller));app.use(errorHandler);
   vite=await createServer({root:path.join(root,"client"),define:{"import.meta.env.VITE_API_BASE_URL":JSON.stringify("")},
@@ -87,7 +83,7 @@ try {
   await submit.click();
   await page.getByTestId("pdf-job").waitFor();
   const batch=await repo.batch(owner,(await guests.publicList(1)).items[0].id),job=batch.jobs[0];
-  while(pendingPdfRequests.size)await Promise.all([...pendingPdfRequests]);
+  await pendingPdfRequests.drain();
   // Reproduce a poll that has already read a missing result and still owns its
   // lease when the tab closes. Closing a tab does not await its HTTP handler.
   let releasePoll,observedPoll;
@@ -100,9 +96,10 @@ try {
   try {
     await Promise.race([pollStarted,new Promise((_,reject)=>{pollTimeout=setTimeout(()=>reject(Error('Expected an in-flight PDF poll')),10000);})]);
     assert(pendingPdfRequests.size>0,'the held poll must still have an active HTTP handler');
+    pendingPdfRequests.pause(); // Reject late arrivals before they can lease the job.
     await page.close(); // Recovery proceeds with no live page from the submitter.
   } finally {clearTimeout(pollTimeout);releasePoll();}
-  while(pendingPdfRequests.size)await Promise.all([...pendingPdfRequests]);
+  await pendingPdfRequests.drain();
   cloud.task=async()=> 'WAITING';
   // The completed poll may have postponed next_action_at by 15 seconds. Seed
   // the result and make recovery due only after every pre-close handler settles.
@@ -113,9 +110,11 @@ try {
     result:{version:1,jobId:job.id,status:"COMPLETED",completedAt:now,expiresAt,objectName:`jobs/${job.id}/output.pdf`,bytes:bytes.length,pages:1,sha256:digest(bytes.toString())}});
   validatePdfResult(job,results.get(job.id),Date.now());
   await pool.execute("UPDATE pdf_jobs SET next_action_at=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND WHERE id=?",[job.id]);
-  await runPdfRecovery({},new PdfService(new PdfRepository(),cloud,{enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2}));
+  const recovery=await runPdfRecovery({},new PdfService(new PdfRepository(),cloud,{enabled:true,maxLinks:5,maxActive:10,maxHourly:10,maxRetries:2}));
+  assert.equal(recovery.processed,1,`Fixture recovery did not process the due job: ${JSON.stringify(recovery)}`);
   const recovered=await repo.get(owner,job.id);
   assert.equal(recovered.status,"COMPLETED",`Fixture recovery failed: ${recovered.cloudErrorCode}`);
+  pendingPdfRequests.resume();
   const b=await B.newPage();await b.goto(origin+"/tools");await b.getByTestId("pdf-download").waitFor();
   assert.equal((await B.cookies()).length,0,"Reader must not need the submitting cookie");
   for(const width of [360,390,430,1440]) {

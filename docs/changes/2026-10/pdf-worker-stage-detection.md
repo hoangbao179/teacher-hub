@@ -18,6 +18,14 @@ bật opt-in; không build/push/deploy thật trong phiên này.
 3. Pathspec gồm `ci.yml` và helper không tạo image, khiến chỉ sửa test/gate cũng
    build/push Chromium image. Docker thực sự copy Worker source/package/lock và
    shared package/dist; shared build phụ thuộc root package/lock/npm config.
+4. Smoke PDF có cửa sổ race riêng trong fixture: drain Set handler không chặn
+   poll đến muộn sau khi Set rỗng. Poll có thể lease/read result cũ rồi dời due
+   time, khiến sweep một lần giữ QUEUED thay vì COMPLETED. Job smoke PR #58
+   123259983320 lỗi tại assertion này; quality/integration/schedule đều success.
+   Fixture nay đóng admission create/detail/retry trước khi đóng tab, thả poll
+   đã giữ và drain, rồi seed result/due, chạy recovery và mới mở admission lại.
+   Không đổi production lease/recovery, không sleep hoặc bỏ assertion. Unit test
+   cố ý gửi request cả trong lúc drain và sau drain để bảo vệ cửa sổ này.
 
 ## Decision và Changes
 
@@ -75,6 +83,9 @@ Loại test-only trigger và dùng stage proof giúp bỏ cả build lẫn push 
 - `node --test scripts/pdf-worker-changes.test.cjs`: 15 tests PASS.
 - `node --test scripts/pdf-worker-workflow.test.mjs`: 8 tests PASS, gồm matrix
   manual/push/PR/ref/repository/flag và mock shell build/push/deploy/health failure.
+- `node --test client/scripts/pdf-polling.unit.mjs`: 2 tests PASS, gồm handoff
+  barrier; syntax checks cho E2E/helper và client typecheck/lint PASS.
+  Smoke thực tế cần CI MySQL/Chrome xác nhận.
 - Actionlint CI/release/deploy/manual workflows: PASS; Bash `-n` cho 17 multiline
   workflow run blocks: PASS. `node --check scripts/pdf-worker-changes.cjs`: PASS.
 - `node scripts/check-doc-links.mjs`, `node scripts/check-repo.mjs` và Git diff
