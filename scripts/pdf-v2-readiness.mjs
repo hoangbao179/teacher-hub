@@ -43,8 +43,8 @@ function readCloud(step, args, run) {
   catch { throw new ReadinessDiagnostic('PDF_V2_'+step+'_READ_FAILED: reason=INVALID_JSON'); }
 }
 
-export function evaluateService(kind, service, revision, policy) {
-  const worker=kind==='worker', name=worker?CLOUD.worker:CLOUD.gateway, expected=RELEASE[kind];
+export function evaluateService(kind, service, revision, policy, expected=RELEASE[kind]) {
+  const worker=kind==='worker', name=worker?CLOUD.worker:CLOUD.gateway;
   requireCheck(!!expected,'UNKNOWN_SERVICE');
   checkPolicy(name,service,policy);
   if(worker) requireCheck(policy.bindings?.some(b=>b.role==='roles/run.invoker' && !b.condition &&
@@ -79,7 +79,7 @@ export function evaluateService(kind, service, revision, policy) {
   return {revision:expected.revision,digest:expected.digest};
 }
 
-export function audit(sourceSha, run=cliCall) {
+export function audit(sourceSha, run=cliCall, options={}) {
   requireCheck(/^[a-f0-9]{40}$/.test(sourceSha??''),'SOURCE_SHA_REQUIRED');
   const common=['--project='+CLOUD.project,'--region='+CLOUD.region,'--format=json'];
   const services={};
@@ -87,9 +87,30 @@ export function audit(sourceSha, run=cliCall) {
     const name=CLOUD[kind];
     const step=kind.toUpperCase();
     const service=readCloud(step+'_SERVICE',['run','services','describe',name,...common],run);
-    const revision=readCloud(step+'_REVISION',['run','revisions','describe',RELEASE[kind].revision,...common],run);
+    // Managed Worker releases verify the live immutable platform digest, not a stale
+    // source pin. Gateway is still pinned to its reviewed revision and digest.
+    let expected=RELEASE[kind];
+    if(kind==='worker' && options.managedWorker===true) {
+      const live=(service.status?.traffic??[]).filter(t=>(t.percent??0)>0);
+      requireCheck(live.length===1 && live[0].percent===100 &&
+        /^teacher-pdf-worker-[a-z0-9-]+$/.test(live[0].revisionName??''),'WORKER_LIVE_REVISION_INVALID');
+      const current=readCloud(step+'_REVISION',['run','revisions','describe',live[0].revisionName,...common],run);
+      const image=current?.spec?.containers?.[0]?.image??'';
+      const prefix=CLOUD.registry+'/'+CLOUD.worker+'@';
+      requireCheck(image.startsWith(prefix) && /^sha256:[a-f0-9]{64}$/.test(image.slice(prefix.length)),
+        'WORKER_LIVE_IMAGE_INVALID');
+      expected={revision:live[0].revisionName,digest:image.slice(prefix.length)};
+      const policy=readCloud(step+'_IAM',['run','services','get-iam-policy',name,...common],run);
+      try { services[kind]=evaluateService(kind,service,current,policy,expected); }
+      catch(error) {
+        const code=/^PDF_(V2|CLOUD)_[A-Z0-9_]+$/.test(error?.message) ? error.message : 'INVALID_RESPONSE';
+        throw new ReadinessDiagnostic('PDF_V2_'+step+'_VALIDATION_FAILED: '+code);
+      }
+      continue;
+    }
+    const revision=readCloud(step+'_REVISION',['run','revisions','describe',expected.revision,...common],run);
     const policy=readCloud(step+'_IAM',['run','services','get-iam-policy',name,...common],run);
-    try { services[kind]=evaluateService(kind,service,revision,policy); }
+    try { services[kind]=evaluateService(kind,service,revision,policy,expected); }
     catch(error) {
       const code=/^PDF_(V2|CLOUD)_[A-Z0-9_]+$/.test(error?.message) ? error.message : 'INVALID_RESPONSE';
       throw new ReadinessDiagnostic('PDF_V2_'+step+'_VALIDATION_FAILED: '+code);
@@ -106,7 +127,7 @@ export function audit(sourceSha, run=cliCall) {
 }
 
 export function main(argv=process.argv.slice(2),run=cliCall,output=console) {
-  try { output.log(JSON.stringify(audit(argv[0],run))); return 0; }
+  try { output.log(JSON.stringify(audit(argv[0],run,{managedWorker:process.env.PDF_WORKER_AUTO_DEPLOY_ENABLED==='true'}))); return 0; }
   catch(e) {
     output.error(e instanceof ReadinessDiagnostic || ['PDF_V2_SOURCE_SHA_REQUIRED','PDF_V2_QUEUE_DRIFT'].includes(e?.message)
       ? e.message : 'PDF_V2_READINESS_FAILED: reason=UNEXPECTED_ERROR');
