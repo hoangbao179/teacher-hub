@@ -10,7 +10,10 @@ const reasons = new Set(['redirect-policy', 'redirect-limit', 'login-redirect', 
   'duplicate-page-heading', 'ambiguous-page-layout', 'ambiguous-layout-multiple-headings',
   'ambiguous-layout-multiple-images', 'ambiguous-layout-toolbar-visible', 'bitmap-oversized',
   'bitmap-dimensions-invalid', 'bitmap-decode-failed', 'bitmap-canvas-unavailable', 'bitmap-canvas-read-failed', 'bitmap-empty-result', 'bitmap-dpi-low', 'viewer-seek-timeout', 'viewer-seek-error', 'viewer-bitmap-timeout', 'viewer-bitmap-error', 'intermediate-png-page', 'intermediate-png-total',
-  'embedded-jpeg-total', 'output-pdf-bytes', 'direct-download-bytes', 'validated-pdf-bytes']);
+  'embedded-jpeg-total', 'output-pdf-bytes', 'direct-download-bytes', 'validated-pdf-bytes',
+  'parser-encryption-deadline', 'parser-encryption-wall-timeout', 'parser-encryption-signalled',
+  'parser-integrity-deadline', 'parser-integrity-wall-timeout', 'parser-integrity-signalled',
+  'parser-page-count-deadline', 'parser-page-count-wall-timeout', 'parser-page-count-signalled']);
 const maxDiagnosticBytes = 64 * 1048576;
 
 /** Only fixed classifications and validated correlation fields; never provider text. */

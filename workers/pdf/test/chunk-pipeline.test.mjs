@@ -74,6 +74,47 @@ test('final assembly verifies checkpoint bytes without reparsing every part', as
   assert.deepEqual(await readdir(f.temp),[]);
 });
 
+test('final assembly resumes validation from an immutable internal checkpoint', async t=>{
+  if(process.platform!=='linux'){t.skip('Linux qpdf');return;}
+  const root=await mkdtemp(join(tmpdir(),'chunk-resume-'));
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  const f=await fixture(root,23);
+  for(let step=0;step<=3;step++) await f.run(step);
+  let interrupted=false;
+  f.deps.validate=async()=>{interrupted=true;throw new JobError('TIMEOUT',true);};
+  await assert.rejects(f.run(4),{code:'TIMEOUT',retryable:true});
+  assert.equal(interrupted,true);
+  const prefix=`jobs/${job.jobId}/`;
+  assert.ok(await f.store.head(prefix+'assembled.pdf'),'internal assembly must survive');
+  assert.equal(await f.store.head(prefix+'output.pdf'),null,'unvalidated bytes must not be published');
+  assert.equal(await f.store.head(prefix+'result.json'),null);
+  f.deps.merge=()=>assert.fail('resume must not redo assembly');
+  const originalDownload=f.store.download.bind(f.store);
+  f.store.download=async(name,path,maxBytes,signal)=>{
+    assert.equal(name,prefix+'assembled.pdf');
+    return originalDownload(name,path,maxBytes,signal);
+  };
+  delete f.deps.validate;
+  const result=await f.run(4);
+  assert.equal(result.status,'COMPLETED');assert.equal(result.pages,23);
+  assert.deepEqual(await readdir(f.temp),[]);
+});
+
+test('tampered staged assembly cannot be promoted or passed to validator',async t=>{
+  if(process.platform!=='linux'){t.skip('Linux qpdf');return;}
+  const root=await mkdtemp(join(tmpdir(),'chunk-staged-tamper-'));
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  const f=await fixture(root,23);
+  for(let step=0;step<=3;step++) await f.run(step);
+  f.deps.validate=async()=>{throw new JobError('TIMEOUT',true);};
+  await assert.rejects(f.run(4),{code:'TIMEOUT'});
+  await writeFile(f.store.path(`jobs/${job.jobId}/assembled.pdf`),'%PDF-1.7 corrupted bytes');
+  f.deps.merge=()=>assert.fail('do not reassemble corrupted checkpoint');
+  f.deps.validate=()=>assert.fail('corrupt checkpoint must not reach validator');
+  await assert.rejects(f.run(4),{code:'STORAGE_UNAVAILABLE'});
+  assert.equal(await f.store.head(`jobs/${job.jobId}/output.pdf`),null);
+});
+
 test('final assembly rejects tampered PDF parts before merge', async t=>{
   if(process.platform!=='linux'){t.skip('Linux qpdf');return;}
   const root=await mkdtemp(join(tmpdir(),'chunk-final-corrupt-'));t.after(()=>rm(root,{recursive:true,force:true}));

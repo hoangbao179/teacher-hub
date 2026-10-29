@@ -14,7 +14,7 @@ import { job, syntheticPDF } from './fixtures.mjs';
 export class DiskStore {
   constructor(root) { this.root=root; this.metadata=new Map(); this.failName=''; }
   async ready() {}
-  path(name) { assert.match(name,/^jobs\/[a-f0-9-]+\/(?:request\.json|manifest\.json|result\.json|source\.pdf|output\.pdf|parts\/\d+\.(?:pdf|json))$/); return join(this.root,name); }
+  path(name) { assert.match(name,/^jobs\/[a-f0-9-]+\/(?:request\.json|manifest\.json|result\.json|source\.pdf|assembled\.pdf|output\.pdf|parts\/\d+\.(?:pdf|json))$/); return join(this.root,name); }
   async head(name) { try { await stat(this.path(name)); return {metadata:this.metadata.get(name)??{},generation:'1'}; } catch(e) { if(e.code==='ENOENT')return null;throw e; } }
   async json(name) { try{return JSON.parse(await readFile(this.path(name),'utf8'));}catch(e){if(e.code==='ENOENT')return null;throw e;} }
   async create(name,body,signal) {
