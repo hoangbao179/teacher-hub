@@ -90,3 +90,16 @@ test('invalid source fails before cloud access and errors never reveal command d
   assert.equal(main(['preflight',SHA],run,{log:()=>{},error:x=>errors.push(x)}),1);
   assert.deepEqual(errors,['PDF_AUTO_VALIDATION_FAILED']);
 });
+
+for (const [name,mutate] of [
+  ['not Ready',(w,c)=>{c.status.conditions[0].status='False';}],
+  ['wrong CPU',(w,c)=>{c.spec.containers[0].resources.limits.cpu='2';}],
+  ['wrong RAM',(w,c)=>{c.spec.containers[0].resources.limits.memory='4Gi';}],
+  ['wrong concurrency',(w,c)=>{c.spec.containerConcurrency=2;}],
+  ['short timeout',(w,c)=>{c.spec.timeoutSeconds=30;}],
+  ['wrong scratch',(w,c)=>{c.spec.volumes[0].emptyDir.sizeLimit='32Mi';}],
+  ['IAM disabled',(w)=>{w.service.metadata.annotations['run.googleapis.com/invoker-iam-disabled']='true';}],
+  ['tag receiving traffic',(w)=>{w.service.status.traffic[1].percent=1;}],
+]) test('staged gate rejects '+name,()=>{
+  assert.throws(()=>checkStaged(SHA,NEW_DIGEST,OLD,cloud({mutate}).run));
+});

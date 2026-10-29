@@ -6,10 +6,14 @@ module.exports = async function validateEnvironment(github, context) {
       context.ref !== 'refs/heads/main' || context.eventName !== 'workflow_dispatch') {
     throw new Error('WIF requires workflow_dispatch on teacher-hub main.');
   }
-  const args = { ...context.repo, environment_name: 'pdf-worker' };
+  await validateProtection(github, context.repo, 'pdf-worker');
+};
+
+async function validateProtection(github, repo, environment) {
+  const args = { ...repo, environment_name: environment };
   const { data: env } = await github.rest.repos.getEnvironment(args);
   // Reviewers are optional for the verifier; security metadata is not inferred.
-  if (env?.name !== 'pdf-worker' || !Array.isArray(env.protection_rules) ||
+  if (env?.name !== environment || !Array.isArray(env.protection_rules) ||
       !env.protection_rules.every(r => r && typeof r.type === 'string') ||
       env.can_admins_bypass !== false) {
     throw new Error('Require pdf-worker metadata and explicit disabled admin bypass.');
@@ -27,4 +31,12 @@ module.exports = async function validateEnvironment(github, context) {
       policies[0]?.type !== 'branch') {
     throw new Error('Environment must allow only the main branch.');
   }
+}
+
+module.exports.release = async function validateRelease(github, context) {
+  if (context.repo.owner !== 'hoangbao179' || context.repo.repo !== 'teacher-hub' ||
+      context.ref !== 'refs/heads/main' || !['push', 'workflow_dispatch'].includes(context.eventName)) {
+    throw new Error('Release WIF requires teacher-hub main delivery.');
+  }
+  await validateProtection(github, context.repo, 'pdf-worker-deploy');
 };

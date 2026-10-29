@@ -1,4 +1,5 @@
 node_modules/
+gha-creds-*.json
 **/dist/
 .env
 .env.*

@@ -109,6 +109,12 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   Worker image thuộc lineage registry tag 35ff0f8, chưa có metadata filename từ
   PR #51; API mới vẫn nhận kết quả cũ và fallback Drive ID. Cần rollout Worker
   riêng sau API theo runbook để có tên gốc, không suy từ merge PR là đã deploy.
+  CI có opt-in build/stage Worker từ exact SHA sau migration/API/Web; so digest
+  Buildx với registry, canary private 0% và authenticated health, kiểm lại traffic.
+  Không tự promote/rollback: cần operator nghiệm thu PDF thật, drain dispatch và
+  review reader/filename trước đổi traffic. Bootstrap bằng manual CI trên main
+  với `force_worker_release=true`; không cần commit giả. Source workflow không
+  chứng minh WIF/IAM hoặc trạng thái rollout production.
   Fixture offline/FakeCloud và số đo cũ không chứng minh Viewer khác Owner có
   quyền, 200 trang trên Cloud Run, chất lượng giấy in hoặc VPS headroom.
 

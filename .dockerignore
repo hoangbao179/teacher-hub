@@ -1,5 +1,6 @@
 .git
 .gitignore
+gha-creds-*.json
 .github
 docs
 node_modules

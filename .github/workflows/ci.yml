@@ -3,13 +3,19 @@ name: ci
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      force_worker_release:
+        description: Stage Worker from main after CI and API delivery (bootstrap/retry)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   quality:
@@ -48,6 +54,7 @@ jobs:
       - run: node --test scripts/pdf-vps-config.test.mjs
       - run: node --test scripts/pdf-v2-readiness.test.mjs scripts/dispatch-pdf-v2-readiness.test.cjs
       - run: node --test scripts/pdf-worker-auto-release.test.mjs
+      - run: node --test scripts/pdf-worker-changes.test.cjs scripts/pdf-worker-workflow.test.mjs
       - run: bash scripts/pdf-v2-deploy.test.sh
       - run: bash scripts/pdf-v2-deploy-flow.test.sh
       - run: bash -n scripts/pdf-recovery.sh
@@ -183,7 +190,7 @@ jobs:
 
   deploy-production:
     name: Publish and deploy production
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     needs:
       - quality
       - integration
@@ -200,8 +207,11 @@ jobs:
 
   pdf-worker-changes:
     name: Detect PDF Worker changes
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
     outputs:
       changed: ${{ steps.diff.outputs.changed }}
     steps:
@@ -209,31 +219,21 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Compare exact pushed commit range
+      - name: Compare since last successful main delivery
         id: diff
-        env:
-          PREVIOUS_SHA: ${{ github.event.before }}
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          if [[ ! "$PREVIOUS_SHA" =~ ^[a-f0-9]{40}$ || "$PREVIOUS_SHA" == "0000000000000000000000000000000000000000" ]]; then
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-          elif git diff --quiet "$PREVIOUS_SHA" "$GITHUB_SHA" -- \
-            workers/pdf/ shared/ .github/workflows/pdf-worker-release.yml \
-            scripts/pdf-worker-auto-release.mjs scripts/pdf-v2-readiness.mjs; then
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
-          else
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-          fi
+        uses: actions/github-script@v8
+        with:
+          script: await require('./scripts/pdf-worker-changes.cjs')(github, context, core);
 
   deploy-pdf-worker:
     name: Release Cloud Run PDF Worker after VPS deployment
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' && needs.pdf-worker-changes.outputs.changed == 'true' }}
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.PDF_WORKER_AUTO_DEPLOY_ENABLED == 'true' && needs.pdf-worker-changes.outputs.changed == 'true' }}
     needs:
       - deploy-production
       - pdf-worker-changes
     permissions:
       contents: read
+      actions: read
       id-token: write
     uses: ./.github/workflows/pdf-worker-release.yml
     with:
