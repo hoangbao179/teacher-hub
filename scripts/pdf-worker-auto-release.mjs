@@ -2,7 +2,7 @@
 // Cloud Run Worker release gates. Read-only; mutation happens only in the protected Actions job.
 import { pathToFileURL } from 'node:url';
 import { CLOUD, cliCall } from './pdf-cloud-stage.mjs';
-import { audit, evaluateService } from './pdf-v2-readiness.mjs';
+import { audit, evaluateService, publicReadinessDiagnostic } from './pdf-v2-readiness.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
@@ -84,7 +84,7 @@ export function main(argv=process.argv.slice(2),run=cliCall,out=console) {
     return 0;
   } catch (error) {
     const message=error instanceof Error && /^PDF_AUTO_[A-Z0-9_]+$/.test(error.message)
-      ? error.message : 'PDF_AUTO_VALIDATION_FAILED';
+      ? error.message : publicReadinessDiagnostic(error) ?? 'PDF_AUTO_VALIDATION_FAILED';
     out.error(message);
     return 1;
   }
