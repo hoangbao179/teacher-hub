@@ -62,6 +62,57 @@ V2 mong muốn: capabilities 1 link, 3 active, 20 hourly, maxPages 200,
 maxSourceBytes 20971520, maxBytes 157286400 và submit/downloadEnabled true.
 Override quota thấp hơn là hợp lệ; đừng tự đổi runtime.env để khớp quảng bá.
 
+
+## Tự động phát hành Worker sau CI (chưa kích hoạt mặc định)
+
+Workflow `.github/workflows/pdf-worker-release.yml` được gọi từ `ci.yml` **sau**
+`deploy-production` thành công, khi commit `main` thay đổi `workers/pdf/`,
+`shared/` hoặc các file release/readiness liên quan. Repository variable
+`PDF_WORKER_AUTO_DEPLOY_ENABLED=true` là công tắc **opt-in**; thiếu hoặc khác
+`true` thì toàn bộ Cloud release job bị bỏ qua và readiness giữ pin Worker cũ.
+
+Luồng phát hành: CI chất lượng/integration/browser → migration và API/Web trên VPS
+→ preflight Cloud read-only → build Docker `linux/amd64` từ đúng source SHA,
+`--provenance=false --sbom=false` để tạo single-platform manifest → push Artifact
+Registry → xác nhận digest → deploy Worker với `--no-traffic --tag=pdf-ci`
+→ kiểm IAM/volume/tài nguyên, đúng digest và traffic cũ vẫn 100% → GET
+`/health` có xác thực tại canary → chuyển 100% sang revision được xác minh
+→ kiểm toàn bộ Cloud readiness và authenticated health. Nếu bước sau promote lỗi,
+workflow cố gắng trả 100% về revision cũ, báo fail nếu không hoàn tất. Cần kiểm
+tra traffic thực tế khi rollback thất bại; không coi rollback là tuyệt đối khi
+CI bị hủy/runner mất điện.
+
+**Phải hoàn thành provisioning IAM ngoài workflow trước khi bật flag:**
+
+- Tạo GitHub Environment `pdf-worker-deploy`, chỉ cho phép nhánh `main`, dùng
+  protection/reviewer theo chính sách vận hành. Không dùng lại danh tính verifier.
+- Tạo service account `teacher-pdf-deployer@teacher-hub-pdf.iam.gserviceaccount.com`.
+  Cấu hình WIF giới hạn repository numeric identity, branch `main`,
+  `job_workflow_ref` của `pdf-worker-release.yml` và environment
+  `pdf-worker-deploy`. Tạo repository/environment variables
+  `PDF_DEPLOY_WIF_PROVIDER`, `PDF_DEPLOYER_SA`, không lưu JSON key lâu dài.
+- Review và cấp quyền tối thiểu đủ đọc IAM/revision/queue, ghi Artifact Registry
+  `teacher-pdf`, cập nhật riêng Cloud Run service `teacher-pdf-worker`,
+  `iam.serviceAccounts.actAs` với **Worker SA** và `run.invoker` cho endpoint
+  canary/prod. Không cấp IAM write hoặc quyền deploy Gateway. Kiểm tra provider
+  trust/IAM trên Google Cloud trước khi bật flag.
+- Bật `PDF_WORKER_AUTO_DEPLOY_ENABLED=true` tại repository variables **sau khi**
+  dry-run từng bước và đã nghiệm thu fixture PDF công khai được phép tải/in.
+  Không bật chỉ để thử việc xác thực quyền. Không thay `GCP_VERIFIER_SA` hiện hành.
+
+Khi bật flag, readiness cũ trong `pdf-worker.yml` chuyển sang kiểm live Worker
+revision và *platform digest bất biến* thuộc registry cố định, cùng IAM, tài
+nguyên, queue, Gateway pinned; promotion lại kiểm **đúng candidate revision +
+digest** từ build run. Cách này bỏ pin Worker cố định khỏi mỗi lần commit nhưng
+không tự chứng minh source SHA của image cũ; kiểm chuỗi build/provenance và WIF
+là bắt buộc. Gateway vẫn pin cũ và **không được deploy bởi workflow này**.
+
+Canary hiện kiểm health và cấu hình, chưa gửi job Google Drive thật hay xác nhận
+tên Unicode/GCS output/200 trang trên Cloud Run. Vì vậy production enable vẫn cần
+smoke E2E tài liệu owned được phép và review quyền Print/canDownload. Không coi
+health, unit tests hoặc workflow PASS là bằng chứng chất lượng in giấy. Bản cũ
+không có filename không được backfill; kiểm tên bằng job mới sau rollout.
+
 ## Chuỗi CI/CD thực tế
 
 `ci.yml` kiểm quality, integration, browser smoke và schedule regression trước
