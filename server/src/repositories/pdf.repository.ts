@@ -143,6 +143,16 @@ export class PdfRepository {
       result ? new Date(result.completedAt) : null,result ? new Date(result.expiresAt) : null,result?.errorCode ?? null,
       result?.filename ?? null,result?.objectName ?? null,result?.bytes ?? null,result?.pages ?? null,result?.sha256 ?? null,work.id,work.lease]);
   }
+  /** Terminal, lease-guarded processing cutoff: no new Cloud Tasks may be
+   * created by a later reconciliation sweep. Never delete GCS checkpoints. */
+  async stopLongProcessing(work: PdfWork) {
+    await pool.execute(`UPDATE pdf_jobs SET status='EXPIRED',error_code='JOB_EXPIRED',
+      cloud_error_code='PDF_PROCESSING_TIMEOUT',updated_at=UTC_TIMESTAMP(3),
+      expires_at=LEAST(expires_at,UTC_TIMESTAMP(3)),
+      lease_token=NULL,lease_until=NULL
+      WHERE id=? AND worker_version=2 AND lease_token=?
+        AND status NOT IN ('COMPLETED','FAILED','EXPIRED')`, [work.id,work.lease]);
+  }
   async ticket(owner: number, id: string, hash: string, expiry: Date) {
     // Small expiring authorization records; bounded per job and cleaned without touching job history.
     await transaction(async c => {

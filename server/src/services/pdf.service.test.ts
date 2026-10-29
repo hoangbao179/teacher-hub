@@ -153,6 +153,32 @@ test('HTTP/CLI runtime needs approved identity and verified independent recovery
   } finally { if(previous===undefined) delete process.env.PDF_API_ENABLED;else process.env.PDF_API_ENABLED=previous; }
 });
 
+test('one-hour v2 processing cap stops new tasks while preserving job history',async()=>{
+  const id=randomUUID();
+  let leases=0,stopped=0,checked=0,created=0;
+  const work={id,workerVersion:2,status:'QUEUED',lease:randomUUID(),
+    fileId:'owned_fixture_12345',createdAt:new Date(Date.now()-3600001).toISOString()};
+  const repo={
+    expire:async()=>{},
+    lease:async()=>leases++===0?work:null,
+    stopLongProcessing:async(w:any)=>{ assert.equal(w.id,id); stopped++; },
+    save:async()=>assert.fail('stop must not revert an expired v2 job to queued')
+  };
+  const provider={
+    configured:true,chunked:true,ready:async()=>true,
+    result:async()=>{checked++;return null;},
+    progress:async()=>assert.fail('expired job must not start a progress read'),
+    task:async()=>assert.fail('expired job must not poll task status'),
+    enqueue:async()=>{created++;throw Error('must never enqueue an expired job');}
+  };
+  const cfg=pdfSettings({PDF_API_ENABLED:'true',PDF_CHUNKED_JOBS_ENABLED:'true'});
+  const service=new PdfService(repo as any,provider as any,cfg);
+  assert.equal(await service.tick(undefined,undefined,1),1);
+  assert.equal(checked,1,'check for a late completion before stopping');
+  assert.equal(stopped,1);
+  assert.equal(created,0);
+});
+
 test('VPS PDF modules do not import a parser, renderer or child-process runtime',()=>{
   for(const file of ['pdf.service.ts','pdf-provider.ts','pdf-validation.ts']) {
     const source=readFileSync(path.join(__dirname,file),'utf8');

@@ -22,6 +22,24 @@ test('real HTTP v2 dispatch is gated, validates payload and persists terminal re
   assert.equal(response.status,enabled?200:503);const body=await response.json();if(enabled)assert.equal(body.status,'COMPLETED');
  }
 });
+test('one-hour long-job cutoff returns a terminal result without another render or merge',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'chunk-processing-cap-'));
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  const f=await fixture(root,139);
+  await f.run(0);
+  const claim=await f.store.json(`jobs/${job.jobId}/request.json`);
+  const later=Date.parse(claim.createdAt)+60*60*1000+1;
+  t.mock.method(Date,'now',()=>later);
+  f.deps.renderChunk=()=>assert.fail('must not render pages after processing deadline');
+  f.deps.merge=()=>assert.fail('must not merge after processing deadline');
+  const result=await f.run(1);
+  assert.equal(result.status,'FAILED');
+  assert.equal(result.errorCode,'JOB_EXPIRED');
+  assert.equal(result.expiresAt,claim.expiresAt,'24-hour result expiry remains unchanged');
+  assert.equal((await f.run(1)).errorCode,'JOB_EXPIRED','later deliveries are idempotent');
+  assert.equal(await f.store.head(`jobs/${job.jobId}/parts/1.pdf`),null);
+});
+
 test('versioned chunk payload rejects extra fields and unbounded steps',()=>{
   assert.equal(isPdfChunkJob({...job,version:2,step:0}),true);
   for(const v of [{...job,version:2,step:22},{...job,version:2,step:-1},{...job,version:2,step:1,range:'1-200'}]) assert.equal(isPdfChunkJob(v),false);
