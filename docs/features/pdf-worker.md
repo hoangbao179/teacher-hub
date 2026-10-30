@@ -114,6 +114,11 @@ DOM chưa đổi sau khi capture; nếu có biến động, Worker chụp lại 
 fingerprint trước khi ghi PDF. Các chunk khác vẫn xác minh anchor riêng; không
 bỏ decode, DPI, page identity hoặc bước xác thực cuối.
 
+Khi anchor không còn hợp lệ, giải phóng PNG cũ trước khi chụp PNG thay thế để
+không giữ đồng thời hai buffer PNG trong Node. Seek theo trang dùng cùng cơ chế
+đóng page khi abort như capture, và dispose handle polling ngay khi thành công.
+Browser/context vẫn dùng riêng cho từng invocation; không giữ session qua job.
+
 JPEG thử 90 → 85 → 80 từ PNG gốc, 4:4:4, mục tiêu mềm 500.000 byte/trang, không
 resize. Chữ nhỏ, trang trắng/ngang và thứ tự phải nghiệm thu trên file thật.
 V1 dùng pdf-lib giữ stream ảnh cả tài liệu; v2 ghi JPEG từng trang vào file và
@@ -123,3 +128,26 @@ Chromium chỉ ở Worker Cloud Run: Node 24.18.0 Debian slim, qpdf/util-linux,
 Playwright, sharp, pdf-lib, user node. Gateway dùng Node Alpine và shared dist,
 không có renderer. VPS chung 1,5 GB RAM/1 vCPU/15 GB SSD không chạy Chromium;
 API container 384 MiB còn phải chia cho HTTP và recovery CLI.
+
+## Đo hiệu năng và scheduling
+
+Checkpoint chưa tự phát task kế tiếp: Worker chỉ ghi GCS; API tick phát task khi
+đọc được checkpoint hợp lệ. Mỗi lần save đặt `next_action_at` sau 15 giây; UI
+poll 5 giây khi tab hiển thị và recovery độc lập chạy mỗi phút. Vì vậy giảm CPU
+encode không loại được khoảng trống giữa các phần. Discovery và mỗi phần Viewer
+vẫn mở browser, readiness, zoom và chụp anchor riêng; 200 trang cần 21 session
+Viewer nếu không retry (discovery + 20 phần), sau đó là task merge.
+
+`workers/pdf/test/image-writer-benchmark.mjs` đo riêng base64 decode, adaptive JPEG
+và ghi PDF với 5/17/50/100/139/200 trang tổng hợp. JPEG được encode một lần ngoài
+timer writer; không suy thời gian toàn pipeline từ phép đo này. Kiểm page count,
+hash và kích thước ảnh bằng pdf-lib không thay qpdf validation production.
+`workers/pdf/test/viewer-seek-benchmark.mjs` đo hủy seek offline với Chromium thật;
+không đo job thành công. Hai script nhận label và tùy chọn đường dẫn module
+baseline đã lưu trong `.artifacts/`; không tải Google hoặc tự deploy. Chạy cùng
+máy, cùng giới hạn tài nguyên, tuần tự và giữ raw output ngoài Git.
+
+Các phép đo Windows không áp hard CPU/RAM cap, không đo được toàn bộ process tree
+Chromium, Cloud Tasks/GCS hay chất lượng bản in. Linux/Cloud Run và Viewer khác
+Owner được phép tải vẫn cần kiểm chứng riêng. Xem
+[audit hiệu năng và giới hạn bằng chứng](../changes/2026-10/pdf-worker-performance-audit.md).

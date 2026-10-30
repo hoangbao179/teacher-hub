@@ -7,13 +7,14 @@ import { readViewerPageCount, setViewerZoom } from './viewer-pdf.ts';
 import { encodeViewerJpeg } from './jpeg.ts';
 import { ImagePdfWriter } from './image-pdf-writer.ts';
 import { PAGE_INDICATOR_LOCATOR, parsePageIndicator } from './viewer-page-indicator.ts';
-import { selectViewerMode } from './viewer-ready.ts';
+import { selectViewerMode, withViewerAbort } from './viewer-ready.ts';
 
 /** Navigate only by the visible Viewer's scroll container; virtualized headings may not exist yet. */
 export async function seekViewerPage(page: Page, index: number, total: number, signal: AbortSignal) {
   signal.throwIfAborted();
   try {
-    await page.waitForFunction(({index,total,state})=>{
+    await withViewerAbort(page, signal, async () => {
+    const handle = await page.waitForFunction(({index,total,state})=>{
       const headings=[...document.querySelectorAll('h2')]
         .map(el=>({el,index:Number(el.textContent?.match(/(?:^|\D)(\d+)\s*(?:\/|of)\s*\d+\s*$/i)?.[1])}))
         .filter(v=>v.index>0 && v.index<=total);
@@ -54,6 +55,8 @@ export async function seekViewerPage(page: Page, index: number, total: number, s
       }
       state.at=now;return false;
     },{index,total,state:{started:false,at:0,lastSeen:0,lastIndex:1,scroller:null}},{timeout:30000,polling:'raf'});
+    await handle.dispose();
+    });
   } catch(error) {
     signal.throwIfAborted();
     throw new JobError('SOURCE_UNAVAILABLE',true,
@@ -100,6 +103,8 @@ export async function captureViewerChunk(page: Page, path: string | null, cap: L
             current.signature === stamp.signature && state.changedAt === stamp.changedAt &&
             performance.now() - state.changedAt >= 750;
         }, {total:totalPages, signature:anchor.signature, changedAt:anchor.changedAt});
+        // A fallback must release the old PNG BEFORE allocating a replacement.
+        if (!reuseAnchor) anchor.png = Buffer.alloc(0);
         const image = reuseAnchor ? anchor :
           await captureViewerPage(page,index,totalPages,PDF_INTERMEDIATE_PNG_PEAK_BYTES,observation,signal);
         try {
