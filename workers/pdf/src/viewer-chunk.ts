@@ -76,12 +76,15 @@ export async function captureViewerChunk(page: Page, path: string | null, cap: L
   if (range && (range.firstPage < 1 || range.lastPage > totalPages || range.lastPage - range.firstPage >= PDF_CHUNK_PAGES)) throw new JobError('INVALID_REQUEST');
   const observation = await observeViewerBitmaps(page);
   let writer: ImagePdfWriter | undefined;
+  let anchor: Awaited<ReturnType<typeof captureViewerPage>> | undefined;
   try {
     await setViewerZoom(page, signal);
     await observation.evaluate(s=>{s.changedAt=performance.now();});
     // Anchor first native page across independent browser sessions; never upscale.
-    const anchor = await captureViewerPage(page, 1, totalPages, PDF_INTERMEDIATE_PNG_PEAK_BYTES, observation, signal);
-    const fingerprint = createHash('sha256').update(anchor.png).digest('hex'); anchor.png = Buffer.alloc(0);
+    anchor = await captureViewerPage(page, 1, totalPages, PDF_INTERMEDIATE_PNG_PEAK_BYTES, observation, signal);
+    const fingerprint = createHash('sha256').update(anchor.png).digest('hex');
+    // Only chunk 1 can reuse its verified first-page bitmap; all others release it immediately.
+    if (!path || range?.firstPage !== 1) anchor.png = Buffer.alloc(0);
     if (expected && fingerprint !== expected.fingerprint)
       throw new JobError('UNSUPPORTED_SOURCE', false, 'anchor-fingerprint-mismatch', { pageIndex: 1 });
     if (path && range) {
@@ -89,8 +92,24 @@ export async function captureViewerChunk(page: Page, path: string | null, cap: L
       for (let index = range.firstPage; index <= range.lastPage; index++) {
         signal.throwIfAborted();
         await seekViewerPage(page,index,totalPages,signal);
-        const image = await captureViewerPage(page,index,totalPages,PDF_INTERMEDIATE_PNG_PEAK_BYTES,observation,signal);
-        try { const jpeg = await encodeViewerJpeg(image.png,signal,cap.maxBytes); await writer.page(jpeg,image.width,image.height); }
+        // DOM replacement/scroll must invalidate the anchor, even if its pixels look plausible.
+        // On any change, capture again and refuse a new page-1 bitmap with a different fingerprint.
+        const reuseAnchor = index === 1 && await observation.evaluate((state, stamp) => {
+          const current = state.resolve(1, stamp.total);
+          return !('error' in current) && !!current.image && !current.stale &&
+            current.signature === stamp.signature && state.changedAt === stamp.changedAt &&
+            performance.now() - state.changedAt >= 750;
+        }, {total:totalPages, signature:anchor.signature, changedAt:anchor.changedAt});
+        const image = reuseAnchor ? anchor :
+          await captureViewerPage(page,index,totalPages,PDF_INTERMEDIATE_PNG_PEAK_BYTES,observation,signal);
+        try {
+          if (index === 1 && !reuseAnchor &&
+              createHash('sha256').update(image.png).digest('hex') !== fingerprint) {
+            throw new JobError('UNSUPPORTED_SOURCE', false, 'anchor-fingerprint-mismatch', { pageIndex: 1 });
+          }
+          const jpeg = await encodeViewerJpeg(image.png,signal,cap.maxBytes);
+          await writer.page(jpeg,image.width,image.height);
+        }
         finally { image.png = Buffer.alloc(0); }
       }
       const labels=(await page.locator('h2').allTextContents()).map(parsePageIndicator).filter(Boolean);
@@ -100,5 +119,5 @@ export async function captureViewerChunk(page: Page, path: string | null, cap: L
     }
     return { totalPages, fingerprint };
   } catch (e) { await writer?.abort(); throw e; }
-  finally { await disposeViewerBitmaps(observation); }
+  finally { if (anchor) anchor.png = Buffer.alloc(0); await disposeViewerBitmaps(observation); }
 }

@@ -238,7 +238,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
           if (bytes > remainingBytes) {
             return { error: 'FILE_TOO_LARGE', reason: 'intermediate-png-page', usedBytes: bytes, limitBytes: remainingBytes };
           }
-          return { width, height, encoded };
+          return { width, height, encoded, signature: current.signature ?? '', changedAt: state.changedAt };
         } catch { return { error: 'SOURCE_UNAVAILABLE', reason: 'bitmap-canvas-read-failed' }; }
         finally { canvas.width = canvas.height = 1; }
       }, { state, index, total, remainingBytes, minDpi: PDF_VIEWER_MIN_DPI, maxPixels: PDF_VIEWER_MAX_PIXELS }, { timeout: 15000, polling: 'raf' });
@@ -257,7 +257,10 @@ export async function captureViewerPage(page: Page, index: number, total: number
         const width = typeof captured.width === 'number' ? captured.width : 0;
         const height = typeof captured.height === 'number' ? captured.height : 0;
         const png = Buffer.from(encoded, 'base64');
-        return { width, height, png };
+        // This identity is only an in-memory reuse guard; never persist or log the Viewer source.
+        const signature = typeof captured.signature === 'string' ? captured.signature : '';
+        const changedAt = typeof captured.changedAt === 'number' ? captured.changedAt : -1;
+        return { width, height, png, signature, changedAt };
       } finally { await handle.dispose(); }
     } catch (error) {
       if (signal.aborted) throw signal.reason;

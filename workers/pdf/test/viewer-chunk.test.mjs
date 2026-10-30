@@ -8,6 +8,39 @@ import { PDFDocument, PDFDict, PDFName, PDFRawStream } from 'pdf-lib';
 import sharp from 'sharp';
 import { captureViewerChunk, seekViewerPage } from '../src/viewer-chunk.ts';
 import { longCap } from './chunk-fixture.mjs';
+test('first Viewer chunk reuses the verified page-1 bitmap rather than exporting PNG twice', async t => {
+ const root=await mkdtemp(join(tmpdir(),'viewer-first-anchor-'));t.after(()=>rm(root,{recursive:true,force:true}));
+ const browser=await chromium.launch({headless:true});t.after(()=>browser.close());
+ const page=await browser.newPage();await page.route('**/*',r=>r.abort());
+ await page.setContent('<input role="combobox" value="100%"><main><section><div><h2>Page 1 / 1</h2></div><img style="width:300px"></section></main>');
+ await page.evaluate(async()=>{
+  const canvas=document.createElement('canvas');canvas.width=1800;canvas.height=2547;
+  const ctx=canvas.getContext('2d');ctx.fillStyle='green';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve));
+  const img=document.querySelector('img');img.src=URL.createObjectURL(blob);await img.decode();
+  canvas.width=canvas.height=1;
+  const original=HTMLCanvasElement.prototype.toDataURL;
+  window.pngExports=0;
+  HTMLCanvasElement.prototype.toDataURL=function(...args){window.pngExports++;return original.apply(this,args);};
+ });
+ const signal=()=>AbortSignal.timeout(30000);
+ const discovery=await captureViewerChunk(page,null,longCap,signal());
+ assert.equal(await page.evaluate(()=>window.pngExports),1,'discovery exports the anchor once');
+ const path=join(root,'first.pdf');
+ await captureViewerChunk(page,path,longCap,signal(),{firstPage:1,lastPage:1},discovery);
+ assert.equal(await page.evaluate(()=>window.pngExports),2,'first chunk must not recapture its own anchor');
+ const pdf=await PDFDocument.load(await readFile(path));assert.equal(pdf.getPageCount(),1);
+ const refs=pdf.getPage(0).node.Resources().lookup(PDFName.of('XObject'),PDFDict).values();
+ const jpeg=Buffer.from(pdf.context.lookup(refs[0],PDFRawStream).getContents());
+ assert.equal((await sharp(jpeg).metadata()).width,1800);
+ const pixel=await sharp(jpeg).extract({left:0,top:0,width:1,height:1}).raw().toBuffer();
+ assert.ok(pixel[1]>100 && pixel[0]<40 && pixel[2]<40,'the saved page contains the native green bitmap');
+ await assert.rejects(captureViewerChunk(page,join(root,'wrong.pdf'),longCap,signal(),
+   {firstPage:1,lastPage:1},{...discovery,fingerprint:'b'.repeat(64)}),
+   {code:'UNSUPPORTED_SOURCE',reason:'anchor-fingerprint-mismatch',pageIndex:1});
+ assert.deepEqual(await readdir(root),['first.pdf'],'failed identity must not publish a part');
+});
+
 test('real anonymous browser captures requested noninitial range, preserves native images, rejects changed anchor and still captures when Print is disabled',async t=>{
  const root=await mkdtemp(join(tmpdir(),'viewer-chunk-'));t.after(()=>rm(root,{recursive:true,force:true}));
  const browser=await chromium.launch({headless:true});t.after(()=>browser.close());const page=await browser.newPage();

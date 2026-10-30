@@ -109,6 +109,11 @@ các vùng không chồng nhau và cùng tổng trang. Không chọn theo khoả
 thứ tự DOM. Heading trùng, nhiều ảnh trong vùng hoặc ảnh cắt qua biên vẫn bị từ
 chối; scroll/zoom, source và node thay đổi phải ổn định và decode lại trước capture.
 
+Chunk đầu tái sử dụng bitmap anchor của trang 1 chỉ khi chữ ký ảnh và trạng thái
+DOM chưa đổi sau khi capture; nếu có biến động, Worker chụp lại và kiểm tra
+fingerprint trước khi ghi PDF. Các chunk khác vẫn xác minh anchor riêng; không
+bỏ decode, DPI, page identity hoặc bước xác thực cuối.
+
 JPEG thử 90 → 85 → 80 từ PNG gốc, 4:4:4, mục tiêu mềm 500.000 byte/trang, không
 resize. Chữ nhỏ, trang trắng/ngang và thứ tự phải nghiệm thu trên file thật.
 V1 dùng pdf-lib giữ stream ảnh cả tài liệu; v2 ghi JPEG từng trang vào file và
