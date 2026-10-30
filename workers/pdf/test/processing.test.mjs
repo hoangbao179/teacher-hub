@@ -190,11 +190,14 @@ test('browser job deadline stays on the long fallback budget', () => {
 test('Viewer mode selection always uses view-only tile capture', async () => {
   assert.equal(viewerScreenCaptureEnabled({ PDF_VIEWER_SCREEN_CAPTURE_ENABLED: 'false' }), true);
   for (const count of [0, 1, 2]) {
+    let disposed = 0;
     const page = {
-      evaluateHandle: async () => ({ dispose: async () => {} }), waitForFunction: async () => {},
+      evaluateHandle: async () => ({ dispose: async () => {} }),
+      waitForFunction: async () => ({ dispose: async () => { disposed++; } }),
       getByRole: () => ({ count: async () => count, isVisible: async () => true, isEnabled: async () => true }),
     };
     assert.equal(await selectViewerMode(page, true, signal()), 'view-only');
+    assert.equal(disposed, 1, 'successful readiness must dispose the polling handle');
   }
 });
 

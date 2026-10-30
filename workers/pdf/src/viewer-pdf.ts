@@ -68,7 +68,7 @@ export async function setViewerZoom(page: Page, signal: AbortSignal): Promise<vo
     const end = Date.now() + 15000;
     const remaining = () => Math.max(1, end - Date.now());
     const zoom = page.locator('[role="combobox"], select').first();
-    await page.waitForFunction(() => {
+    const editable = await page.waitForFunction(() => {
       const inputs = document.querySelectorAll('[role="combobox"], select');
       const input = inputs[0];
       if (inputs.length !== 1 || !input) return false;
@@ -80,6 +80,7 @@ export async function setViewerZoom(page: Page, signal: AbortSignal): Promise<vo
       }
       return input instanceof HTMLElement && input.getAttribute('aria-disabled') !== 'true';
     }, undefined, { timeout: remaining(), polling: 'raf' });
+    await editable.dispose();
     const control = await zoom.evaluateHandle(el => el);
     const tag = await control.evaluate(el => el.tagName);
     await control.dispose();
@@ -96,7 +97,7 @@ export async function setViewerZoom(page: Page, signal: AbortSignal): Promise<vo
     }
     const state = await page.evaluateHandle(() => ({ since: performance.now() }));
     try {
-      await page.waitForFunction(state => {
+      const settled = await page.waitForFunction(state => {
         const inputs = document.querySelectorAll('[role="combobox"], select');
         const input = inputs[0];
         const busy = [...document.querySelectorAll('[aria-busy="true"], [role="progressbar"]')]
@@ -109,6 +110,7 @@ export async function setViewerZoom(page: Page, signal: AbortSignal): Promise<vo
         if (!settled) state.since = performance.now();
         return settled && performance.now() - state.since >= 250;
       }, state, { timeout: remaining(), polling: 'raf' });
+      await settled.dispose();
     } finally { await state.dispose(); }
   });
 }

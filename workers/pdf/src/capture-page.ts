@@ -12,6 +12,12 @@ export async function observeViewerBitmaps(page: Page) {
     }>();
     const state = {
       changedAt: performance.now(),
+      isBusy() {
+        const busy = [...document.querySelectorAll('[aria-busy="true"], [role="progressbar"]')]
+          .some(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
+        if (busy) state.changedAt = performance.now();
+        return busy;
+      },
       decoded(image: HTMLImageElement, signature: string) {
         const now = performance.now();
         const old = decodes.get(image);
@@ -141,7 +147,7 @@ export async function observeViewerBitmaps(page: Page) {
       layoutChanged: () => { state.changedAt = performance.now(); },
     };
     state.observer.observe(document.body, { subtree: true, childList: true, characterData: true,
-      attributes: true, attributeFilter: ['src', 'srcset', 'width', 'height', 'aria-busy', 'class', 'style'] });
+      attributes: true, attributeFilter: ['src', 'srcset', 'width', 'height', 'aria-busy', 'role', 'class', 'style'] });
     state.scan();
     document.addEventListener('scroll', state.layoutChanged, true);
     window.addEventListener('resize', state.layoutChanged);
@@ -168,6 +174,9 @@ export async function captureViewerPage(page: Page, index: number, total: number
       state ??= await observeViewerBitmaps(page);
       // Scroll while polling: virtualized headings/images may disappear/reappear.
       const handle = await page.waitForFunction(({ state, index, total, remainingBytes, minDpi, maxPixels }) => {
+        // Defer transient layout errors while loading, but still allow scrolling
+        // a resolved off-screen heading to trigger the Viewer's lazy load.
+        const busy = state.isBusy();
         const layoutReasons = new Set(['ambiguous-layout-multiple-headings', 'ambiguous-layout-multiple-images',
           'ambiguous-layout-toolbar-visible']);
         const settleLayout = (candidate: {
@@ -182,7 +191,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
         };
         const candidate = settleLayout(state.resolve(index, total));
         if (!candidate) return null;
-        if ('error' in candidate) return candidate;
+        if ('error' in candidate) return busy ? null : candidate;
         if (!candidate.image || !candidate.heading) return null;
         const { image, heading, container } = candidate;
         if (!image.getClientRects().length || getComputedStyle(image).visibility === 'hidden') return null;
@@ -192,9 +201,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
           state.changedAt = performance.now();
           return null;
         }
-        const busy = [...document.querySelectorAll('[aria-busy="true"], [role="progressbar"]')]
-          .some(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
-        if (busy) { state.changedAt = performance.now(); return null; }
+        if (busy) return null;
         const { naturalWidth: width, naturalHeight: height } = image;
         if (width * height > maxPixels) return { error: 'UNSUPPORTED_SOURCE', reason: 'bitmap-oversized' };
         // A revoked/broken blob may be replaced by Drive after the initial quiet
@@ -238,7 +245,7 @@ export async function captureViewerPage(page: Page, index: number, total: number
           if (bytes > remainingBytes) {
             return { error: 'FILE_TOO_LARGE', reason: 'intermediate-png-page', usedBytes: bytes, limitBytes: remainingBytes };
           }
-          return { width, height, encoded };
+          return { width, height, encoded, signature: current.signature ?? '', changedAt: state.changedAt };
         } catch { return { error: 'SOURCE_UNAVAILABLE', reason: 'bitmap-canvas-read-failed' }; }
         finally { canvas.width = canvas.height = 1; }
       }, { state, index, total, remainingBytes, minDpi: PDF_VIEWER_MIN_DPI, maxPixels: PDF_VIEWER_MAX_PIXELS }, { timeout: 15000, polling: 'raf' });
@@ -257,7 +264,10 @@ export async function captureViewerPage(page: Page, index: number, total: number
         const width = typeof captured.width === 'number' ? captured.width : 0;
         const height = typeof captured.height === 'number' ? captured.height : 0;
         const png = Buffer.from(encoded, 'base64');
-        return { width, height, png };
+        // This identity is only an in-memory reuse guard; never persist or log the Viewer source.
+        const signature = typeof captured.signature === 'string' ? captured.signature : '';
+        const changedAt = typeof captured.changedAt === 'number' ? captured.changedAt : -1;
+        return { width, height, png, signature, changedAt };
       } finally { await handle.dispose(); }
     } catch (error) {
       if (signal.aborted) throw signal.reason;
