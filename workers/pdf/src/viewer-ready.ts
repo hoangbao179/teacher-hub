@@ -24,7 +24,7 @@ export async function selectViewerMode(page: Page, _screenCapture?: boolean, sig
     // Print/In controls are not required for view-only tile capture.
     const state = await page.evaluateHandle(() => ({ signature: '', since: performance.now() }));
     try {
-      await page.waitForFunction(state => {
+      const ready = await page.waitForFunction(state => {
         const visible = (el: Element) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
         const controls = [...document.querySelectorAll('button, [role="button"], [role="combobox"], select')].filter(visible);
         const zoom = controls.filter(el => el.matches('[role="combobox"], select'));
@@ -36,6 +36,7 @@ export async function selectViewerMode(page: Page, _screenCapture?: boolean, sig
         if (signature !== state.signature) { state.signature = signature; state.since = performance.now(); }
         return ready && performance.now() - state.since >= 500;
       }, state, { timeout: 15000, polling: 'raf' });
+      await ready.dispose();
     } catch (error) {
       if (error instanceof errors.TimeoutError) throw new JobError('SOURCE_UNAVAILABLE', true, 'viewer-readiness');
       throw error;

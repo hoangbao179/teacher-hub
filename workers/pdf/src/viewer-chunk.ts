@@ -98,6 +98,7 @@ export async function captureViewerChunk(page: Page, path: string | null, cap: L
         // DOM replacement/scroll must invalidate the anchor, even if its pixels look plausible.
         // On any change, capture again and refuse a new page-1 bitmap with a different fingerprint.
         const reuseAnchor = index === 1 && await observation.evaluate((state, stamp) => {
+          if (state.isBusy()) return false;
           const current = state.resolve(1, stamp.total);
           return !('error' in current) && !!current.image && !current.stale &&
             current.signature === stamp.signature && state.changedAt === stamp.changedAt &&

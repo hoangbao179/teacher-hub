@@ -6,6 +6,26 @@ import { setViewerZoom } from '../src/viewer-pdf.ts';
 
 const viewer = '<h2>Page 1 / 1</h2><input role="combobox" value="100%">';
 
+test('readiness and zoom dispose every successful polling handle', async t => {
+  const browser = await chromium.launch({ headless: true });
+  t.after(() => browser.close());
+  const page = await browser.newPage();
+  await page.route('**/*', route => route.abort());
+  await page.setContent(viewer);
+  let acquired = 0, disposed = 0;
+  const wait = page.waitForFunction.bind(page);
+  t.mock.method(page, 'waitForFunction', async (...args) => {
+    const handle = await wait(...args); acquired++;
+    const dispose = handle.dispose.bind(handle);
+    handle.dispose = async () => { disposed++; await dispose(); };
+    return handle;
+  });
+  await selectViewerMode(page, true, AbortSignal.timeout(5000));
+  await setViewerZoom(page, AbortSignal.timeout(5000));
+  assert.equal(acquired, 3);
+  assert.equal(disposed, acquired, 'readiness, editable zoom and settled zoom handles must be released');
+});
+
 test('offline Viewer initialization and zoom readiness', { timeout: 30000 }, async t => {
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
