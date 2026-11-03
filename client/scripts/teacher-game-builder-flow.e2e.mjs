@@ -46,6 +46,18 @@ try {
     if (url.pathname === "/api/classes") {
       return route.fulfill({ json: { data: [{ id: 22, name: "Lớp 3A", status: "ACTIVE", type: "GROUP", subject: "English", defaultPackagePrice: 0, defaultDurationMinutes: 60, activeStudentCount: 10, paymentDueCount: 0 }] } });
     }
+    if (url.pathname === "/api/vocabulary/media/status") {
+      return route.fulfill({ json: { data: { enabled: true, provider: "ARASAAC", providers: [
+        { provider: "ARASAAC", enabled: true },
+      ] } } });
+    }
+    if (url.pathname === "/api/vocabulary/media/upload" && request.method() === "POST") {
+      return route.fulfill({ status: 201, json: { data: { id: 77 } } });
+    }
+    if (url.pathname === "/api/public/vocabulary-media/77") {
+      return route.fulfill({ contentType: "image/svg+xml", body:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="#94a3b8"/></svg>' });
+    }
     if (url.pathname === "/api/vocabulary/sets" && request.method() === "GET") {
       return route.fulfill({ json: { data: [], page: 1, pageSize: 50, total: 0 } });
     }
@@ -75,7 +87,7 @@ try {
         assert.equal(body.lessonName, undefined);
       } else {
         assert.equal(body.items.length, 3);
-        assert.equal(body.items[0].illustration.kind, "EMOJI");
+        assert.deepEqual(body.items[0].illustration, { kind: "STORED_MEDIA", mediaId: 77 });
         assert.equal(body.items[2].illustration.kind, "NONE");
         assert.equal(body.audienceType, "OPEN_LINK");
         assert.equal(body.classId, undefined, "delivery audience class must stay separate");
@@ -152,6 +164,18 @@ try {
     await vietnamese.fill(meaning);
   }
   assert.equal(await page.getByTestId("teacher-game-word-row").count(), 3);
+  await page.getByTestId("teacher-game-word-row").first().getByTestId("teacher-game-choose-image").click();
+  const picker = page.getByTestId("vocabulary-image-picker");
+  await picker.waitFor();
+  await picker.locator('input[type="file"]').setInputFiles({
+    name: "apple.png", mimeType: "image/png",
+    buffer: Buffer.from("image fixture"),
+  });
+  await picker.getByRole("button", { name: "Dùng ảnh này" }).click();
+  await picker.waitFor({ state: "hidden" });
+  await page.getByText("1/3 từ có ảnh thực").waitFor();
+  await page.getByText(/Còn 2 từ chưa có ảnh thật/).waitFor();
+  await page.getByRole("img", { name: "Hình minh họa apple" }).first().waitFor();
   await page.getByText("3 từ hợp lệ").waitFor();
   assert.equal(await page.getByText("2 từ có hình/emoji").count(), 1);
 
@@ -186,6 +210,7 @@ try {
   await page.waitForURL(`${origin}/admin/games/123/edit`);
   await page.getByTestId("teacher-game-word-row").nth(2).waitFor();
   assert.equal(await page.getByTestId("teacher-game-word-row").count(), 3);
+  await page.getByText("1/3 từ có ảnh thực").waitFor();
   const reopenedRow = page.getByTestId("teacher-game-word-row").nth(2);
   assert.equal(await reopenedRow.getByRole("textbox", { name: "Từ tiếng Anh" }).inputValue(), "hungry");
   assert.equal(await reopenedRow.getByRole("textbox", { name: "Nghĩa tiếng Việt" }).inputValue(), "đói");
@@ -221,7 +246,7 @@ try {
 
   assert(!calls.some((value) => value.includes("media/search") || value.includes("image-search")), "Teacher flow must not search remote images");
   assert.deepEqual(errors, []);
-  console.log("PASS teacher game UI: add two-field rows, focus, delete, title-only draft, preview, reopen, mobile");
+  console.log("PASS teacher game UI: choose/upload picture, two-field rows, focus, delete, title-only draft, preview, reopen, mobile");
 } finally {
   await browser?.close();
   app.kill("SIGTERM");
