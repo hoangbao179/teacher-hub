@@ -86,6 +86,8 @@ export interface AssignmentDraftInput {
   title: string;
   /** Optional lesson organization, not the delivery audience. */
   teachingClassId?: number;
+  /** School grade: 0 for preschool, 1–9 for school grades. */
+  gradeLevel?: number;
   textbookName?: string;
   lessonName?: string;
   instruction?: string;
@@ -113,6 +115,7 @@ export interface UpdateAssignmentDraftRequest extends AssignmentDraftInput {
 export interface AssignmentListQuery {
   search?: string;
   teachingClassId?: number;
+  gradeLevel?: number;
   status?: AssignmentStatus;
   audienceType?: AssignmentAudienceType;
   ageBand?: LearningAgeBand;
@@ -124,6 +127,7 @@ export interface AssignmentListItem {
   id: number;
   title: string;
   teachingClassId: number | null;
+  gradeLevel: number | null;
   textbookName: string | null;
   lessonName: string | null;
   status: AssignmentStatus;
