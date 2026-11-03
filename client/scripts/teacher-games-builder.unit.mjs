@@ -75,6 +75,10 @@ test("only actual images make a word ready for illustrated games", () => {
   assert.equal(hasRealGameImage({ illustration: { kind: "NONE" } }), false);
   assert.equal(hasRealGameImage({ illustration: { kind: "EMOJI", value: "🍎" } }), false);
   assert.equal(hasRealGameImage({ illustration: { kind: "STORED_MEDIA", mediaId: 77 } }), true);
+  assert.equal(hasRealGameImage({
+    illustration: { kind: "EMOJI", value: "🍎" },
+    illustrationSnapshot: { kind: "STORED_MEDIA", mediaId: 77 },
+  }), true, "published snapshot takes precedence over draft emoji");
   assert.equal(hasRealGameImage({ illustration: { kind: "PUBLIC_ASSET", value: "/learning/colors/red.svg" } }), true);
   const rows = [
     { id: 7, word: "apple", meaningVi: "quả táo" },
