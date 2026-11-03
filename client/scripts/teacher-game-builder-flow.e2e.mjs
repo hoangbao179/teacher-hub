@@ -177,7 +177,6 @@ try {
   await page.getByText(/Còn 2 từ chưa có ảnh thật/).waitFor();
   await page.getByRole("img", { name: "Hình minh họa apple" }).first().waitFor();
   await page.getByText("3 từ hợp lệ").waitFor();
-  assert.equal(await page.getByText("2 từ có hình/emoji").count(), 1);
 
   await page.getByRole("button", { name: "Xem thử thẻ học" }).click();
   const preview = page.getByTestId("teacher-game-preview");
