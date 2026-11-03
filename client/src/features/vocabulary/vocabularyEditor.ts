@@ -7,7 +7,7 @@ import type {
   VocabularyTopicSuggestion,
 } from "@teacher/shared";
 import type { LearningUnit } from "../learning/types";
-import { suggestOfflineIllustration } from "./offlineIllustrations";
+import { suggestOfflineIllustration } from "./offlineIllustrations.ts";
 
 export const levelSlugsByAgeBand = {
   PRESCHOOL_G1: ["mam-non", "lop-1"],
