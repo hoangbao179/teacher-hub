@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { teacherWordsFromPaste, teacherWordsToPaste } from "../src/features/teacher-games/teacherWordDraft.ts";
+import { teacherWordsFromPaste, teacherWordsFromRows, teacherWordRowsFromItems, teacherWordsToPaste } from "../src/features/teacher-games/teacherWordDraft.ts";
 import { isTeacherGamesPath } from "../src/features/teacher-games/teacherGameRoutes.ts";
 import { ageBandForGrade, teacherGradeLabel, teacherGradeOptions } from "../src/features/teacher-games/teacherGrades.ts";
 
@@ -88,7 +88,10 @@ test("teacher game UI only creates drafts and cannot expose a dead game share li
   const list = src("features/teacher-games/pages/TeacherGamesPage.tsx");
   assert.match(builder, /createAssignment\(request\)/);
   assert.match(builder, /updateAssignment\(id, \{ \.\.\.request, version \}\)/);
-  assert.match(builder, /teacherWordsFromPaste\(paste, previousItems\)/);
+  assert.match(builder, /teacherWordsFromRows\(wordRows, previousItems\)/);
+  assert.match(builder, /data-testid="teacher-game-add-word"/);
+  assert.match(builder, /data-testid="teacher-game-word-row"/);
+  assert.doesNotMatch(builder, /data-testid="teacher-game-words"/);
   assert.match(builder, /Xem thử thẻ học/);
   assert.match(list, /listAssignments\(/);
   for (const code of [builder, list]) {
