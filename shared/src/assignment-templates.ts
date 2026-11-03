@@ -37,7 +37,8 @@ export function hasRealGameImage(
     illustrationSnapshot: VocabularyIllustrationInput;
   },
 ): boolean {
-  const image = "illustration" in item ? item.illustration : item.illustrationSnapshot;
+  // Published assignments carry both fields; the stored snapshot is authoritative.
+  const image = "illustrationSnapshot" in item ? item.illustrationSnapshot : item.illustration;
   return (image.kind === "STORED_MEDIA" && Number.isInteger(image.mediaId) && image.mediaId! > 0)
     || (image.kind === "PUBLIC_ASSET" && Boolean(image.value?.startsWith("/learning/")));
 }
