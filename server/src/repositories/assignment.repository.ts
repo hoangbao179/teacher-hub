@@ -25,7 +25,10 @@ interface AssignmentRow extends RowDataPacket {
   teacher_user_id: number;
   vocabulary_set_id: number | null;
   title: string;
+  textbook_name: string | null;
+  lesson_name: string | null;
   instruction: string | null;
+  teaching_class_id: number | null;
   audience_type: AssignmentAudienceType | null;
   class_id: number | null;
   public_code: string | null;
@@ -91,6 +94,9 @@ function mapList(row: AssignmentRow): AssignmentListItem {
   return {
     id: Number(row.id),
     title: row.title,
+    textbookName: row.textbook_name,
+    lessonName: row.lesson_name,
+    teachingClassId: row.teaching_class_id == null ? null : Number(row.teaching_class_id),
     status: row.status,
     audienceType: row.audience_type,
     ageBand: row.age_band,
@@ -174,6 +180,7 @@ export class AssignmentRepository {
       params.push(query.audienceType);
     }
     if (query.ageBand) { where.push("a.age_band=?"); params.push(query.ageBand); }
+    if (query.teachingClassId) { where.push("a.teaching_class_id=?"); params.push(query.teachingClassId); }
     const filter = where.join(" AND ");
     const [count] = await pool.query<Array<RowDataPacket & { count: number }>>(
       `SELECT COUNT(*) count FROM learning_assignments a WHERE ${filter}`,
@@ -402,8 +409,9 @@ export class AssignmentRepository {
         );
       const [result] = await connection.execute<ResultSetHeader>(
         `UPDATE learning_assignments SET
-          vocabulary_set_id=?,title=?,instruction=?,audience_type=?,class_id=?,
-          template_code=?,age_band=?,available_from=?,due_at=?,max_attempts=?,
+          vocabulary_set_id=?,title=?,textbook_name=?,lesson_name=?,instruction=?,
+          audience_type=?,class_id=?,teaching_class_id=?,template_code=?,age_band=?,
+          available_from=?,due_at=?,max_attempts=?,
           pass_score=?,answer_feedback_mode=?,shuffle_questions=?,version=version+1
          WHERE id=? AND version=?`,
         this.assignmentParams(input, id, expectedVersion),
@@ -696,6 +704,13 @@ export class AssignmentRepository {
     input: CreateAssignmentDraftRequest,
     teacherUserId: number,
   ): Promise<void> {
+    if (input.teachingClassId != null) {
+      const [classes] = await connection.execute<RowDataPacket[]>(
+        "SELECT id FROM classes WHERE id=? LIMIT 1", [input.teachingClassId],
+      );
+      if (!classes.length)
+        throw new AppError(404, "CLASS_NOT_FOUND", "Lớp quản lý bài không tồn tại.");
+    }
     if (input.vocabularySetId != null) {
       const [sets] = await connection.execute<RowDataPacket[]>(
         "SELECT id FROM vocabulary_sets WHERE id=? AND teacher_user_id=? LIMIT 1",
@@ -759,10 +774,10 @@ export class AssignmentRepository {
   ): Promise<number> {
     const [result] = await connection.execute<ResultSetHeader>(
       `INSERT INTO learning_assignments
-        (teacher_user_id,vocabulary_set_id,title,instruction,audience_type,class_id,
-         template_code,age_band,available_from,due_at,max_attempts,pass_score,
-         answer_feedback_mode,shuffle_questions)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        (teacher_user_id,vocabulary_set_id,title,textbook_name,lesson_name,instruction,
+         audience_type,class_id,teaching_class_id,template_code,age_band,
+         available_from,due_at,max_attempts,pass_score,answer_feedback_mode,shuffle_questions)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [teacherUserId, ...this.assignmentParams(input)],
     );
     const id = Number(result.insertId);
@@ -777,9 +792,12 @@ export class AssignmentRepository {
     return [
       input.vocabularySetId ?? null,
       input.title,
+      input.textbookName || null,
+      input.lessonName || null,
       input.instruction || null,
       input.audienceType ?? null,
       input.audienceType === "CLASS" ? input.classId ?? null : null,
+      input.teachingClassId ?? null,
       input.templateCode,
       input.ageBand,
       input.availableFrom ?? null,
