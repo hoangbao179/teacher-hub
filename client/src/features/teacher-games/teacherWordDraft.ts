@@ -44,7 +44,8 @@ export function teacherWordsFromPaste(
   const errors: string[] = [];
   if (preview.invalidCount) errors.push(`${preview.invalidCount} dòng chưa đủ từ và nghĩa tiếng Việt.`);
   if (duplicateLines.length) errors.push(`Từ bị lặp ở dòng ${duplicateLines.join(", ")}. Hãy sửa trước khi lưu.`);
-  if (items.length < 2) errors.push("Một bài cần ít nhất 2 từ.");
+  // Drafts may be saved with zero or one word; two words are only needed to publish/play.
+  // Preserve validation of malformed/duplicate rows so entered text is never silently dropped.
   if (items.length > 40) errors.push("Mỗi bài được dùng tối đa 40 từ.");
   return { preview, items, duplicateLines, errors };
 }
