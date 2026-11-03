@@ -1,4 +1,4 @@
-import { AutoAwesome, BookOutlined, CheckCircleOutline, ChevronLeft, ChevronRight, SaveOutlined, VisibilityOutlined } from "@mui/icons-material";
+import { AutoAwesome, BookOutlined, CheckCircleOutlined, ChevronLeft, ChevronRight, SaveOutlined, VisibilityOutlined } from "@mui/icons-material";
 import {
   Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress,
   FormControlLabel, MenuItem, Stack, TextField, Typography,
@@ -231,7 +231,7 @@ export function TeacherGameBuilderPage() {
     subtitle="Một trang soạn bài đơn giản theo Unit hoặc Lesson. Ảnh là tùy chọn, không cần tìm trên Internet.">
     <Stack spacing={2.25} data-testid="teacher-game-builder-page">
       {error && <Alert severity="error">{error}</Alert>}
-      {savedNotice && <Alert severity="success" icon={<CheckCircleOutline />}>{savedNotice}</Alert>}
+      {savedNotice && <Alert severity="success" icon={<CheckCircleOutlined />}>{savedNotice}</Alert>}
       <Card variant="outlined" sx={{ borderRadius: 3 }}>
         <CardContent><Stack spacing={1.5}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
@@ -281,7 +281,7 @@ export function TeacherGameBuilderPage() {
                 {item.illustration.kind === "EMOJI" ? item.illustration.value : "•"}
               </Typography>
               <Box sx={{ minWidth: 0 }}>
-                <Typography fontWeight={700} sx={{ overflowWrap: "anywhere" }}>{item.word}</Typography>
+                <Typography sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>{item.word}</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>{item.meaningVi}</Typography>
               </Box>
             </Box>)}
@@ -302,7 +302,7 @@ export function TeacherGameBuilderPage() {
               aria-pressed={form.templateCode === option.value}
               onClick={() => { setForm((current) => ({ ...current, templateCode: option.value })); setSavedNotice(""); }}
               sx={{ minHeight: 77, textAlign: "left", justifyContent: "flex-start", alignItems: "flex-start", flexDirection: "column", borderRadius: 2, textTransform: "none", px: 2, py: 1.25 }}>
-              <Typography fontWeight={800} sx={{ color: "inherit" }}>{option.title}</Typography>
+              <Typography sx={{ color: "inherit", fontWeight: 800 }}>{option.title}</Typography>
               <Typography variant="caption" sx={{ color: "inherit", opacity: 0.85 }}>{option.detail}</Typography>
             </Button>)}
           </Box>
@@ -366,7 +366,7 @@ export function TeacherGameBuilderPage() {
             sx={{ width: "100%", minHeight: 180, p: 2, border: "2px solid #bfebd9", borderRadius: 3, bgcolor: "#eefbf4",
               display: "flex", flexDirection: "column", gap: 1, textTransform: "none" }}>
             {visibleCard.illustration.kind === "EMOJI" && <Typography aria-hidden="true" sx={{ fontSize: 54 }}>{visibleCard.illustration.value}</Typography>}
-            <Typography variant="h5" fontWeight={800} sx={{ overflowWrap: "anywhere" }}>
+            <Typography variant="h5" sx={{ fontWeight: 800, overflowWrap: "anywhere" }}>
               {flipped ? visibleCard.meaningVi : visibleCard.word}
             </Typography>
             <Typography variant="caption">Chạm để lật thẻ</Typography>
