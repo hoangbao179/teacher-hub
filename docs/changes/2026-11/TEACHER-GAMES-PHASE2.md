@@ -11,6 +11,7 @@ Legacy Admin đang TEMP_DISABLED, giáo viên chỉ tới `/admin/tools`. Wizard
 - Chỉ thêm một CTA **Soạn trò chơi từ vựng** vào Teacher Tools, không hồi sinh AdminLayout/legacy routes.
 - Tận dụng endpoints, DTO, template, preview và assignment draft có sẵn; bổ sung migration append-only `0031_teacher_game_catalog.sql` trên bảng `learning_assignments`, **không** thêm service hoặc third-party runtime.
 - Hỗ trợ dán từ bằng dấu phẩy/tab/chấm phẩy/` - `, hiển thị preview cục bộ, chọn bộ từ đã lưu, mẫu game và dự định người nhận, lưu/nhân bản bản nháp.
+- **Only title required on DRAFT:** lớp/khối/sách/Unit/người nhận/từ vựng/hoạt động đều có thể để trống khi lưu nháp; nhóm trình độ và template có mặc định kỹ thuật. Đã chọn `CLASS` nhưng chưa chọn lớp nhận được lưu thành người nhận chưa xác định; không tự phát link hoặc giao bài. Dòng từ đã nhập mà lỗi/trùng vẫn phải được sửa để tránh mất dữ liệu.
 - Giữ `VOCABULARY_GAMES_ENABLED=false`: không publish, không phát link/QR giả, không thay đổi dữ liệu game public. Không nói preview flashcard là lượt chơi thử.
 
 ## Alternatives
@@ -29,6 +30,7 @@ Legacy Admin đang TEMP_DISABLED, giáo viên chỉ tới `/admin/tools`. Wizard
 
 ## Verification
 - Targeted frontend typecheck/lint/unit, backend MySQL migration + validation/filter/duplicate regression, E2E browser 360/390/430 px và public tools/PDF smoke theo GitHub CI.
+- Regression cho lưu bản nháp **chỉ có tên**, từ 0 hoặc 1; mở lại các trường optional vẫn trống, sau đó bổ sung từ/giáo trình; không thay đổi điều kiện publish hoặc bảo vệ public games.
 - Kiểm tra sự khác biệt với branch Phase 1, phải không có source PDF/Worker hoặc download path bị sửa.
 - UI manual: 360/390/430 px, đăng nhập, nhập/dán danh sách, từ trừu tượng không cần ảnh, xem thử, lưu, refresh/mở lại, nhân bản. Verify API failures không làm mất nội dung trong trang.
 - **Không xác nhận production-ready chỉ từ CI**; feature chưa merge hoặc deploy.
