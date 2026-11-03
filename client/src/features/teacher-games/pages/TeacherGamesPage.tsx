@@ -38,7 +38,8 @@ export function TeacherGamesPage() {
       });
       if (requestId.current !== current) return;
       setItems(result.data);
-      setTotal(result.meta?.total ?? result.data.length);
+      const count = Number(result.meta?.total);
+      setTotal(Number.isFinite(count) && count >= 0 ? count : result.data.length);
     } catch (caught) {
       if (requestId.current === current)
         setError(caught instanceof Error ? caught.message : "Không tải được danh sách bài.");
