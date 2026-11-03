@@ -81,6 +81,14 @@ test("one word invokes at most one fallback and does not amplify non-empty resul
   assert.deepEqual(calls, ["airliner"]);
 });
 
+test("local pictures match Vietnamese meanings", () => {
+  assert.equal(buildVocabularyImageStrategy("orange", [], "màu cam").publicAsset, "/learning/colors/orange.svg");
+  assert.equal(buildVocabularyImageStrategy("orange", [], "quả cam").publicAsset, undefined);
+  assert.equal(buildVocabularyImageStrategy("one", [], "số một").publicAsset, "/learning/numbers/1.svg");
+  assert.equal(buildVocabularyImageStrategy("one", [], "một người").publicAsset, undefined);
+  assert.equal(buildVocabularyImageStrategy("cat", [], "con mèo").publicAsset, "/learning/animals/cat.svg");
+});
+
 test("media type reset clears all remote results and waits for an explicit new batch", () => {
   assert.match(bulk, /setStates\(initialStates\(\)\)/);
   assert.match(bulk, /setAwaitingStart\(true\)/);
