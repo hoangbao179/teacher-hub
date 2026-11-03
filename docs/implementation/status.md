@@ -142,7 +142,11 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   header và ô **Soạn trò chơi từ vựng** tại `/admin/tools`. Các route riêng
   `/admin/games*` được bảo vệ bởi `Protected` và có form nhập/dán từ giáo trình
   (không cần hình), chọn lộ trình, dự định người nhận, lưu/sửa/nhân bản bản nháp,
-  xem trước thẻ từ cục bộ. `/tools` và PDF Worker không thay đổi.
+  xem trước thẻ từ cục bộ. Bổ sung **khối lớp Mầm non/Lớp 1–9**,
+  **lớp quản lý bài độc lập người nhận**, giáo trình và Unit/Bài học; danh sách
+  lọc theo khối/lớp, tìm tên bài/sách/Unit, nhân bản để dùng cho lớp khác.
+  Các metadata này yêu cầu migration append-only `0031_teacher_game_catalog.sql`
+  trước khi UI hoạt động trên DB production. `/tools` và PDF Worker không thay đổi.
   Chưa bật publish/link/QR/game học sinh vì `VOCABULARY_GAMES_ENABLED=false`.
   Bài đã xuất bản từ trước chỉ được liệt kê/nhân bản; chưa có result dashboard
   giản lược trên màn mới.
