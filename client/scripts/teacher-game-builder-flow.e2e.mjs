@@ -1,4 +1,4 @@
-/* global process, console, document, fetch */
+/* global process, console, document, fetch, URL */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import path from "node:path";
