@@ -30,7 +30,7 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
 }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const strategy = useMemo(() => buildVocabularyImageStrategy(word, searchTerms), [searchTerms, word]);
+  const strategy = useMemo(() => buildVocabularyImageStrategy(word, searchTerms, meaningVi), [searchTerms, word, meaningVi]);
   const [query, setQuery] = useState(strategy.query);
   const [mediaType, setMediaType] = useState<VocabularyImageFilter>("ILLUSTRATION");
   const [items, setItems] = useState<VocabularyMediaSearchItem[]>([]);
@@ -213,7 +213,7 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
               </Box>
               {page < 3 && items.length < Math.min(total, VOCABULARY_IMAGE_LIMIT) && <Button variant="outlined" disabled={loading || cooldownSeconds > 0} onClick={() => void search(page + 1)} startIcon={loading ? <CircularProgress size={18} /> : undefined}>Xem thêm 8 ảnh</Button>}
             </>}
-            {items.length > 0 && currentProvider === "ARASAAC" && <Typography variant="caption" color="text.secondary">Pictogram: Sergio Palao / ARASAAC · Government of Aragón · CC BY-NC-SA.</Typography>}
+            {items.length > 0 && currentProvider === "ARASAAC" && <Alert severity="warning">Ảnh ARASAAC có giấy phép CC BY-NC-SA (phi thương mại). Với lớp học hoặc dịch vụ có thu phí, chỉ dùng nếu đã có quyền phù hợp; nếu không, hãy chọn ảnh của cô hoặc nguồn cho phép sử dụng thương mại. Tác giả: Sergio Palao / Gobierno de Aragón / ARASAAC.</Alert>}
           </>}
           <Button component="label" variant="outlined" startIcon={<UploadFile />}>Tải ảnh từ máy<input hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectUpload(event.target.files?.[0])} /></Button>
           {uploadDraft && <Stack direction="row" sx={{ gap: 1, alignItems: "center" }}><Box component="img" src={uploadDraft.preview} alt="Xem trước ảnh tải lên" sx={{ width: 112, height: 112, objectFit: "cover", borderRadius: 1 }} /><Button variant="contained" disabled={Boolean(importing)} onClick={() => void upload()}>{importing === "USER_UPLOAD" ? "Đang tải…" : "Dùng ảnh này"}</Button></Stack>}

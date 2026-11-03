@@ -81,6 +81,14 @@ test("one word invokes at most one fallback and does not amplify non-empty resul
   assert.deepEqual(calls, ["airliner"]);
 });
 
+test("local pictures match Vietnamese meanings", () => {
+  assert.equal(buildVocabularyImageStrategy("orange", [], "màu cam").publicAsset, "/learning/colors/orange.svg");
+  assert.equal(buildVocabularyImageStrategy("orange", [], "quả cam").publicAsset, undefined);
+  assert.equal(buildVocabularyImageStrategy("one", [], "số một").publicAsset, "/learning/numbers/1.svg");
+  assert.equal(buildVocabularyImageStrategy("one", [], "một người").publicAsset, undefined);
+  assert.equal(buildVocabularyImageStrategy("cat", [], "con mèo").publicAsset, "/learning/animals/cat.svg");
+});
+
 test("media type reset clears all remote results and waits for an explicit new batch", () => {
   assert.match(bulk, /setStates\(initialStates\(\)\)/);
   assert.match(bulk, /setAwaitingStart\(true\)/);
@@ -154,7 +162,7 @@ test("ARASAAC is the illustration source while unavailable filters and stale req
   assert.match(picker, /provider\.provider === "PIXABAY" && provider\.enabled/);
   assert.match(picker, /\{photoEnabled && <MenuItem value="PHOTO"/);
   assert.match(picker, /item\.provider === "ARASAAC" \? "contain" : "cover"/);
-  assert.match(picker, /Sergio Palao \/ ARASAAC/);
+  assert.match(picker, /Sergio Palao.*ARASAAC/);
   assert.match(bulk, /searchCache\.current\.get\(key\)/);
   assert.match(bulk, /candidateControllers\.current\.forEach\(\(controller\) => controller\.abort\(\)\)/);
   assert.match(bulk, /status: candidate\.strategy\.publicAsset \? "SELECTED" : "SEARCH_PENDING"/);

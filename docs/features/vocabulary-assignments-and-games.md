@@ -121,6 +121,59 @@ nhiên, không chứa `studentId` và có thể thu hồi.
 
 ## 4. Luồng tạo bài dành cho giáo viên
 
+### Luồng nhanh đang được mở trên source Phase 2
+
+Khi `LEGACY_ADMIN_ENABLED=false`, các route giáo viên có xác thực
+`/admin/games`, `/admin/games/new`, `/admin/games/:id/edit` được
+allowlist riêng, không bật lại toàn bộ Admin shell cũ. Trang chủ công khai
+chỉ thêm nút đăng nhập; trang PDF public `/tools`, nút **Công cụ** và
+Teacher Tools giữ nguyên phần tải tài liệu hiện tại.
+
+- Sau đăng nhập, cô đến `/admin/tools`, chọn **Soạn trò chơi từ vựng**.
+- Trang **Trò chơi từ vựng** liệt kê bản nháp và bài đã giao, cho phép
+  tiếp tục sửa hoặc nhân bản; không hiện link chết khi game học sinh đang tắt.
+- Trang soạn một màn: **chỉ tên bài là bắt buộc để lưu DRAFT**. Khối lớp
+  (Mầm non/Lớp 1–9), lớp học cụ thể, giáo trình, Unit/Bài học, người nhận,
+  nguồn từ vựng và số lượng từ đều tùy chọn ở thời điểm lưu nháp. Các metadata
+  có giá trị NULL khi chưa chọn, được lưu qua migration 0031 và hiện trong danh sách.
+  **Nội dung từ vựng nhập theo từng cặp ô**: bấm **+ Thêm từ** để hiện hai ô
+  **Từ tiếng Anh** và **Nghĩa tiếng Việt**, có thể xóa từng dòng. Mobile bố trí
+  theo chiều dọc, desktop hai cột. Nếu copy bảng Word/Excel nhiều dòng thì dán
+  vào ô tiếng Anh để tách thành các cặp (tab, dấu phẩy, chấm phẩy hoặc ` - `);
+  từ không có hình vẫn có thể **lưu DRAFT**. Trước khi **giao trò chơi**,
+  mỗi từ phải có **ảnh thật** (STORED_MEDIA hoặc ảnh nội bộ đã materialize),
+  emoji không được tính là ảnh thật.
+- Phân loại và giao bài là hai khái niệm độc lập:
+  `teachingClassId` là lớp dùng để **lưu và tìm lại bài**,
+  `classId` chỉ dùng khi `audienceType=CLASS` (lớp nhận bài). Bài lưu cho
+  một lớp vẫn có thể dùng `OPEN_LINK`. Khối lớp `gradeLevel` xác định
+  Lớp 1–9, không được nhầm với nhóm độ tuổi `ageBand` của game.
+- Danh sách bài hỗ trợ lọc theo khối lớp và lớp học thực tế, tìm theo tên bài,
+  giáo trình hoặc Unit và phân trang. Bài không phân lớp được ghi rõ là bài dùng
+  chung. **Nhân bản** giữ nguyên dữ liệu nguồn và metadata nhưng tạo bản nháp mới,
+  cô có thể đổi lớp cho bản sao mà không thay đổi bài gốc hoặc lịch sử giao trước.
+- Chọn một trong bốn lộ trình cũ (Bé mới học, Nhớ từ nhanh, Luyện chính tả,
+  Ôn trước kiểm tra), xem thử thẻ học ngay trên trình duyệt.
+- Có thể **chọn người nhận sau**; để trống không tự chọn OPEN_LINK.
+  Nếu cô đang chọn chế độ giao cho lớp nhưng chưa xác định lớp nhận, bản nháp
+  được lưu với người nhận chưa chọn. API vẫn đặt giá trị kỹ thuật mặc định cho
+  nhóm trình độ và template, không yêu cầu cô thao tác.
+- Có thể lưu nháp khi chưa dán từ, có một từ hoặc chưa chọn hoạt động. Khi đã
+  nhập từ nhưng dòng lỗi hoặc trùng thì phải sửa trước khi lưu để không âm thầm
+  bỏ sót dữ liệu. Khi thực sự phát bài, vẫn áp dụng kiểm tra đủ ít nhất 2 từ,
+  hoạt động và người nhận; lưu nháp không tạo token/link/QR hoặc phát bài.
+- Lưu và mở lại bản nháp sử dụng `/api/vocabulary/assignments` sẵn có;
+  ảnh cô đã chọn được giữ lại nếu cặp từ/nghĩa không đổi. Không xóa dữ liệu
+  đang có khi danh sách dán chứa dòng thiếu nghĩa/trùng hoặc vượt giới hạn.
+- Trên trang soạn nhanh, từng dòng có nút **Chọn ảnh/Đổi ảnh** tái sử dụng\n  `VocabularyImagePicker`: ảnh giáo viên upload hoặc chọn từ nguồn hợp lệ được\n  lưu theo đúng cặp Anh/Việt; đổi nghĩa sẽ không giữ sai ảnh. Xem trước và\n  thông báo đếm **ảnh thực**, không xem emoji là ảnh hoàn chỉnh.\n- Chỉ tham khảo UX của các game GitHub, không copy code/ảnh không rõ giấy phép.\n  ARASAAC **CC BY-NC-SA** không dành cho mục đích thương mại; ảnh Pixabay có\n  điều kiện riêng, không tự động tải hàng loạt hoặc sử dụng không kiểm duyệt.\n- `VOCABULARY_GAMES_ENABLED=false` giữ nguyên. Xem thử thẻ học **không phải**
+  lượt chơi thử đầy đủ; hoạt động publish, chia sẻ QR và thu kết quả mới
+  phải đợi các phase kích hoạt game/kiểm tra release. Không thêm tài khoản
+  học sinh hoặc thư viện tạo ảnh runtime.
+
+Luồng wizard 6 bước cũ bên dưới tiếp tục được giữ trong source cho tương thích
+và khi cần chỉnh sửa nâng cao trong tương lai.
+
+
 Wizard gồm năm bước logic. Trên mobile có thể trình bày thành các màn nối tiếp;
 trên desktop dùng stepper bên trái và nội dung chính ở giữa.
 
@@ -460,14 +513,15 @@ Quy tắc import nhanh:
   kiểm duyệt tại `client/src/features/vocabulary/offlineIllustrations.ts`.
   Ví dụ `orange — quả cam` khác `orange — màu cam`; không tự đoán `table`
   hoặc từ trừu tượng chưa có ánh xạ. Không dùng kết quả tìm ảnh online làm mặc định.
-- Không khớp được hình thì dùng `illustration.kind = NONE`; đó **không phải lỗi**.
+- Không khớp được hình thì dùng `illustration.kind = NONE`; đó **không phải lỗi khi soạn/lưu nháp**. Ở bước phát hành phải bổ sung ảnh thật cho từng từ.
   Giáo viên có thể lưu bộ từ bình thường. Chỉ khi giáo viên chủ động mở phần
   hình nâng cao, upload hoặc tìm ảnh thì luồng media cũ mới được dùng; không tự
   retry khi nguồn ARASAAC/Pixabay trả 429.
 - Chỉnh sửa chữ/nghĩa chỉ tái gợi ý nếu hình trống hoặc đúng là emoji đã được
   gợi ý trước đó. Ảnh đã upload/chọn của giáo viên phải được giữ lại.
-- Khi sinh câu hỏi, trò yêu cầu hình thiếu dữ liệu phải chuyển sang dạng chữ/nghĩa
-  tương thích hoặc bỏ câu với cảnh báo; không được phát câu hỏi có ô hình trống.
+- Các bài **đã xuất bản trước đó** vẫn được engine xử lý thiếu hình theo cơ chế tương thích chữ/nghĩa để không phá lịch sử.
+  Với **bài mới**, API phát hành không chấp nhận bất kỳ từ nào chưa có ảnh thật;
+  trình duyệt hiển thị ảnh ở thẻ, ghép hình, bài chọn đáp án và luyện chữ.
 - Đây là **logic đã chuẩn bị trong source**; không đồng nghĩa với việc mở lại
   `LEGACY_ADMIN_ENABLED` hoặc `VOCABULARY_GAMES_ENABLED`. Giao diện nhập từ
   và publish game cho cô giáo thuộc các phase sau.

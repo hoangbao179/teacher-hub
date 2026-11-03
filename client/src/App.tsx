@@ -6,8 +6,11 @@ import { LoadingState } from "./components/LoadingState";
 import { RouteMetadata } from "./components/RouteMetadata";
 import { AuthProvider } from "./auth/AuthContext";
 import { LEGACY_ADMIN_ENABLED, VOCABULARY_GAMES_ENABLED } from "./config/featureAvailability";
+import { isTeacherGamesPath } from "./features/teacher-games/teacherGameRoutes";
 
 const TeacherToolsPage = lazy(() => import("./pages/TeacherToolsPage").then((module) => ({ default: module.TeacherToolsPage })));
+const TeacherGamesPage = lazy(() => import("./features/teacher-games/pages/TeacherGamesPage").then((module) => ({ default: module.TeacherGamesPage })));
+const TeacherGameBuilderPage = lazy(() => import("./features/teacher-games/pages/TeacherGameBuilderPage").then((module) => ({ default: module.TeacherGameBuilderPage })));
 const PublicToolsPage = lazy(() => import("./pages/PublicToolsPage").then((module) => ({ default: module.PublicToolsPage })));
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })));
 const LoginPage = lazy(() => import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })));
@@ -65,13 +68,21 @@ function Protected() {
   const location = useLocation();
   if (bootstrapping) return <LoadingState />;
   if (!user) return <Navigate to="/admin/login" replace state={{ from: location.pathname + location.search }} />;
-  if (!LEGACY_ADMIN_ENABLED && location.pathname !== "/admin/tools") return <Navigate to="/admin/tools" replace />;
+  if (!LEGACY_ADMIN_ENABLED && location.pathname !== "/admin/tools" && !isTeacherGamesPath(location.pathname)) return <Navigate to="/admin/tools" replace />;
   return <Outlet />;
 }
 function GuestOnly() {
   const { user, bootstrapping } = useAuth();
+  const location = useLocation();
   if (bootstrapping) return <LoadingState />;
-  return user ? <Navigate to="/admin/tools" replace /> : <Outlet />;
+  if (!user) return <Outlet />;
+  // Auth state can update before LoginPage's submit handler navigates.
+  // Respect the original protected route even when this boundary renders first.
+  const requested = (location.state as { from?: unknown } | null)?.from;
+  const destination = typeof requested === "string"
+    && (isTeacherGamesPath(requested) || (LEGACY_ADMIN_ENABLED && requested.startsWith("/admin/")))
+    ? requested : "/admin/tools";
+  return <Navigate to={destination} replace />;
 }
 export function App() {
   return (
@@ -102,6 +113,9 @@ export function App() {
         </Route>
         <Route element={<Protected />}>
           <Route path="/admin/tools" element={<TeacherToolsPage />} />
+          <Route path="/admin/games" element={<TeacherGamesPage />} />
+          <Route path="/admin/games/new" element={<TeacherGameBuilderPage />} />
+          <Route path="/admin/games/:id/edit" element={<TeacherGameBuilderPage />} />
           <Route element={<AdminLayout />}>
           <Route path="/admin" element={<DashboardPage />} />
           <Route path="/admin/reconciliation" element={<ReconciliationPage />} />

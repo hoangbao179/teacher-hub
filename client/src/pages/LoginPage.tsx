@@ -27,6 +27,7 @@ import { useAuth } from "../auth/AuthContext";
 import { getRememberedUsername, getRememberPreference } from "../auth/authStorage";
 import { adminTheme, uiTokens } from "../theme";
 import { LEGACY_ADMIN_ENABLED } from "../config/featureAvailability";
+import { isTeacherGamesPath } from "../features/teacher-games/teacherGameRoutes";
 
 function friendlyLoginError(error: unknown): string {
   if (!(error instanceof ApiError)) return "Không thể đăng nhập. Vui lòng thử lại.";
@@ -66,7 +67,7 @@ export function LoginPage() {
     try {
       await auth.login({ username, password }, remember);
       const destination = (location.state as { from?: string } | null)?.from;
-      navigate(LEGACY_ADMIN_ENABLED && destination?.startsWith("/admin") ? destination : "/admin/tools", { replace: true });
+      navigate(destination && (isTeacherGamesPath(destination) || (LEGACY_ADMIN_ENABLED && destination.startsWith("/admin/"))) ? destination : "/admin/tools", { replace: true });
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 429) {
         setBlockedSeconds(Math.max(1, caught.retryAfterSeconds ?? 60));

@@ -9,6 +9,7 @@ import {
   gameMechanics,
   gamePresentations,
   hasPlayableImage,
+  hasRealGameImage,
   isSupportedActivity,
   learningAgeBands,
   type AssignmentDetail,
@@ -70,10 +71,14 @@ export class AssignmentService {
       throw this.validation("Kiểu người nhận không hợp lệ.");
     if (raw.ageBand && !learningAgeBands.includes(raw.ageBand))
       throw new AppError(400, "INVALID_AGE_BAND", "Nhóm tuổi không hợp lệ.");
+    const teachingClassId = raw.teachingClassId == null ? undefined : this.id(raw.teachingClassId);
+    const gradeLevel = raw.gradeLevel == null ? undefined : this.integer(raw.gradeLevel, 0, 0, 9, "Khối lớp");
     return this.repository.list({
       page,
       pageSize,
       search,
+      teachingClassId,
+      gradeLevel,
       status: raw.status,
       audienceType: raw.audienceType,
       ageBand: raw.ageBand,
@@ -133,7 +138,7 @@ export class AssignmentService {
       );
     const warnings = this.publishWarnings(assignment);
     if (warnings.length)
-      throw new AppError(422, warnings[0].includes("cần hình")
+      throw new AppError(422, (warnings[0].includes("ảnh minh họa thật") || warnings[0].includes("cần hình"))
         ? "ACTIVITY_REQUIRES_IMAGES"
         : "VALIDATION_ERROR", warnings[0], { warnings });
     const publicCode = assignmentPublicCode();
@@ -174,6 +179,10 @@ export class AssignmentService {
     const input = this.prepare({
       title: this.text(title, 1, 160, "Tiêu đề") || `${source.title} — bản sao`,
       instruction: source.instruction ?? undefined,
+      textbookName: source.textbookName ?? undefined,
+      lessonName: source.lessonName ?? undefined,
+      teachingClassId: source.teachingClassId ?? undefined,
+      gradeLevel: source.gradeLevel ?? undefined,
       vocabularySetId: source.vocabularySetId ?? undefined,
       ageBand: source.ageBand,
       audienceType: source.audienceType ?? undefined,
@@ -257,6 +266,10 @@ export class AssignmentService {
   ): CreateAssignmentDraftRequest {
     const title = this.text(raw.title, 1, 160, "Tiêu đề");
     const instruction = this.text(raw.instruction, 0, 1000, "Hướng dẫn") || undefined;
+    const textbookName = this.text(raw.textbookName, 0, 120, "Giáo trình") || undefined;
+    const lessonName = this.text(raw.lessonName, 0, 120, "Unit/Bài học") || undefined;
+    const teachingClassId = raw.teachingClassId == null ? undefined : this.id(raw.teachingClassId);
+    const gradeLevel = raw.gradeLevel == null ? undefined : this.integer(raw.gradeLevel, 0, 0, 9, "Khối lớp");
     if (!learningAgeBands.includes(raw.ageBand))
       throw new AppError(400, "INVALID_AGE_BAND", "Hãy xác nhận nhóm tuổi.");
     if (raw.audienceType && !assignmentAudienceTypes.includes(raw.audienceType))
@@ -318,6 +331,10 @@ export class AssignmentService {
     return {
       title,
       instruction,
+      textbookName,
+      lessonName,
+      teachingClassId,
+      gradeLevel,
       vocabularySetId: raw.vocabularySetId == null
         ? undefined
         : this.id(raw.vocabularySetId),
@@ -389,6 +406,9 @@ export class AssignmentService {
           warnings.push(`${activity.presentation}: Bộ từ này không tạo được câu hỏi cho hoạt động đã chọn.`);
       }
     }
+    const missingImages = assignment.items.filter((item) => !hasRealGameImage(item));
+    if (missingImages.length)
+      warnings.push(`Mọi từ cần ảnh minh họa thật trước khi giao bài (còn ${missingImages.length} từ thiếu ảnh); emoji không thay thế ảnh.`);
     return [...new Set(warnings)];
   }
 

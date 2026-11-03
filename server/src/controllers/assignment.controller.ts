@@ -14,6 +14,9 @@ export class AssignmentController {
   list = async (req: Request, res: Response) => {
     const result = await this.service.list({
       search: typeof req.query.search === "string" ? req.query.search : undefined,
+      teachingClassId: typeof req.query.teachingClassId === "string"
+        ? Number(req.query.teachingClassId) : undefined,
+      gradeLevel: typeof req.query.gradeLevel === "string" ? Number(req.query.gradeLevel) : undefined,
       status: typeof req.query.status === "string" ? req.query.status as AssignmentStatus : undefined,
       audienceType: typeof req.query.audienceType === "string"
         ? req.query.audienceType as AssignmentAudienceType : undefined,
