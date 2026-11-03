@@ -115,7 +115,7 @@ function selectQuestion(
 ): GeneratedQuestion | null {
   let presentation = activity.presentation;
   const imagePresentation = ["LISTEN_PICK_IMAGE", "IMAGE_PICK_WORD"].includes(presentation);
-  if (imagePresentation && uniqueItems(allItems.filter(hasImage), "word").length < count) {
+  if (imagePresentation && (uniqueItems(allItems.filter(hasImage), "word").length < count || !hasImage(item))) {
     presentation = presentation === "LISTEN_PICK_IMAGE"
       ? "LISTEN_PICK_WORD"
       : "WORD_PICK_MEANING";
@@ -207,10 +207,17 @@ function pairQuestion(
   activity: AssignmentActivity,
   items: AssignmentSnapshotItem[],
   random: () => number,
+  warnings: string[],
   key: string,
 ): GeneratedQuestion | null {
   const wantsImage = activity.presentation.includes("IMAGE");
-  const pool = uniqueItems(wantsImage ? items.filter(hasImage) : items, "word");
+  const useImage = wantsImage && uniqueItems(items.filter(hasImage), "word").length >= 2;
+  const presentation = wantsImage && !useImage
+    ? activity.mechanic === "MEMORY_PAIRS" ? "MEMORY_WORD_MEANING" : "MATCH_WORD_MEANING"
+    : activity.presentation;
+  if (wantsImage && !useImage)
+    warnings.push(`${activity.presentation}: không đủ hình, đã dùng ${presentation}.`);
+  const pool = uniqueItems(useImage ? items.filter(hasImage) : items, "word");
   const count = Math.min(
     activity.mechanic === "MEMORY_PAIRS" ? 6 : 5,
     pool.length,
@@ -230,7 +237,7 @@ function pairQuestion(
   const right = shuffle(chosen, random).map((item) => ({
     id: pairIds.get(item.id)!.rightId,
     matchKey: pairIds.get(item.id)!.matchKey,
-    ...(wantsImage
+    ...(useImage
       ? { illustration: illustration(item) }
       : { label: item.meaningVi }),
   }));
@@ -240,11 +247,11 @@ function pairQuestion(
     assignmentItemIds: chosen.map((item) => item.id),
     activityId: activity.id,
     mechanic: activity.mechanic,
-    presentation: activity.presentation,
+    presentation,
     prompt: {
       instruction: activity.mechanic === "MEMORY_PAIRS"
         ? "Lật hai thẻ để tìm một cặp nhé!"
-        : "Chạm một từ rồi chạm hình hoặc nghĩa phù hợp.",
+        : useImage ? "Chạm một từ rồi chạm hình phù hợp." : "Chạm một từ rồi chạm nghĩa phù hợp.",
       pairs: left,
     },
     options: right,
@@ -419,6 +426,7 @@ export function generateQuestionQueue(
         activity,
         items,
         random,
+        warnings,
         `activity-${activity.id}-pairs`,
       );
       if (question) primary.push(question);
