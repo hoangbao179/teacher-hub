@@ -135,6 +135,8 @@ jobs:
       - name: Build client assets required by public Homepage smoke
         run: npm -w client run build:production
       - run: npm run test:e2e:smoke
+      - name: Teacher vocabulary builder UI regression
+        run: npm -w client run test:e2e:teacher-games
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
