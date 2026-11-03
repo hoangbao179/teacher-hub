@@ -196,8 +196,8 @@ try {
   assert.equal(await page.getByTestId("teacher-game-words").locator("textarea").first().inputValue(), "");
   assert.equal(await page.getByTestId("teacher-game-textbook").locator("input").inputValue(), "");
   assert.equal(await page.getByTestId("teacher-game-lesson").locator("input").inputValue(), "");
-  assert.equal(await page.getByRole("combobox", { name: "Người nhận (có thể chọn sau)" }).textContent()
-    .then((value) => value?.includes("Chọn người nhận sau")), true);
+  await page.getByRole("combobox", { name: "Người nhận (có thể chọn sau)" }).click();
+  assert.equal(await page.getByRole("option", { name: "Chọn người nhận sau" }).getAttribute("aria-selected"), "true");
 
   assert(!calls.some((value) => value.includes("media/search") || value.includes("image-search")), "Teacher flow must not search remote images");
   assert.deepEqual(errors, []);
