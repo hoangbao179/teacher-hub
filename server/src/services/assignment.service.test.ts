@@ -109,7 +109,9 @@ test("activity templates fall back when images or age band are incompatible", ()
 });
 
 test("publish returns one-time open access and QR without persisting raw token", async () => {
-  let current = detail();
+  let current = detail({ items: detail().items.map((item, index) => ({
+    ...item, illustrationSnapshot: { kind: "STORED_MEDIA" as const, mediaId: index + 1 },
+  })) });
   let persistedHash = "";
   const repository = {
     detail: async () => current,
