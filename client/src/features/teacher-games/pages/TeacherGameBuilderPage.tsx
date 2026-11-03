@@ -1,4 +1,4 @@
-import { Add, AutoAwesome, BookOutlined, CheckCircleOutlined, ChevronLeft, ChevronRight, DeleteOutline, SaveOutlined, VisibilityOutlined } from "@mui/icons-material";
+import { Add, AutoAwesome, BookOutlined, CheckCircleOutlined, ChevronLeft, ChevronRight, DeleteOutlined, SaveOutlined, VisibilityOutlined } from "@mui/icons-material";
 import {
   Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress,
   FormControlLabel, MenuItem, Stack, TextField, Typography,
@@ -389,7 +389,7 @@ export function TeacherGameBuilderPage() {
               <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 1, gap: 1 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Từ {index + 1}</Typography>
                 <Button onClick={() => removeWordRow(row.id)} aria-label={"Xóa từ " + (index + 1)}
-                  color="error" size="small" startIcon={<DeleteOutline />} sx={{ minHeight: 44 }}>Xóa</Button>
+                  color="error" size="small" startIcon={<DeleteOutlined />} sx={{ minHeight: 44 }}>Xóa</Button>
               </Stack>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
                 <TextField fullWidth label="Từ tiếng Anh" placeholder="apple" size="small"
