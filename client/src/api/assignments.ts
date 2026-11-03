@@ -35,6 +35,7 @@ function query(values: object) {
 export const listAssignments = (values: {
   search?: string;
   teachingClassId?: number;
+  gradeLevel?: number;
   status?: AssignmentStatus;
   audienceType?: AssignmentAudienceType;
   ageBand?: LearningAgeBand;
