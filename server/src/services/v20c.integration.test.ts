@@ -94,6 +94,9 @@ function updateInput(
 ): UpdateAssignmentDraftRequest {
   return {
     title: assignment.title,
+    teachingClassId: assignment.teachingClassId ?? undefined,
+    textbookName: assignment.textbookName ?? undefined,
+    lessonName: assignment.lessonName ?? undefined,
     instruction: assignment.instruction ?? undefined,
     vocabularySetId: assignment.vocabularySetId ?? undefined,
     ageBand: assignment.ageBand,
@@ -212,6 +215,77 @@ integration("V20C migration, class snapshot, concurrency and immutable state wor
   assert.equal(duplicate.status, "DRAFT");
   assert.equal(duplicate.publicCode, null);
   assert.equal(duplicate.recipientCount, 0);
+});
+
+
+integration("teacher lesson catalog stores class, textbook and Unit independently of link audience", async () => {
+  const [migration] = await pool.query<RowDataPacket[]>(
+    "SELECT version FROM schema_migrations WHERE version='0031_teacher_game_catalog.sql'",
+  );
+  assert.equal(migration.length, 1);
+  const data = await fixture();
+  const assignments = service();
+  const draft = await assignments.create({
+    title: "Food practice",
+    textbookName: "Oxford Discover",
+    lessonName: "Unit 4 — Food",
+    teachingClassId: data.classId,
+    ageBand: "G2_G3",
+    audienceType: "OPEN_LINK",
+    templateCode: "WORD_RECOGNITION",
+    answerFeedbackMode: "IMMEDIATE",
+    shuffleQuestions: true,
+    items,
+    activities,
+  }, data.teacherId);
+  assert.equal(draft.status, "DRAFT");
+  assert.equal(draft.audienceType, "OPEN_LINK");
+  assert.equal(draft.classId, null, "class delivery must stay distinct from lesson grouping");
+  assert.equal(draft.teachingClassId, data.classId);
+  assert.equal(draft.textbookName, "Oxford Discover");
+  assert.equal(draft.lessonName, "Unit 4 — Food");
+
+  const grouped = await assignments.list({
+    page: 1, pageSize: 10, teachingClassId: data.classId,
+  }, data.teacherId);
+  assert.equal(grouped.total, 1);
+  assert.equal(grouped.items[0].teachingClassId, data.classId);
+  assert.equal((await assignments.list({
+    page: 1, pageSize: 10, search: "Oxford",
+  }, data.teacherId)).total, 1);
+  assert.equal((await assignments.list({
+    page: 1, pageSize: 10, search: "Unit 4",
+  }, data.teacherId)).total, 1);
+  assert.equal((await assignments.list({
+    page: 1, pageSize: 10, teachingClassId: data.classId + 9999,
+  }, data.teacherId)).total, 0);
+
+  const copy = await assignments.duplicate(draft.id, "Food practice for another class", data.teacherId);
+  assert.equal(copy.teachingClassId, data.classId);
+  assert.equal(copy.textbookName, "Oxford Discover");
+  assert.equal(copy.lessonName, "Unit 4 — Food");
+  assert.equal(copy.classId, null);
+  const updated = await assignments.update(copy.id, {
+    ...updateInput(copy),
+    teachingClassId: undefined,
+    lessonName: "Unit 5 — Food",
+  }, data.teacherId);
+  assert.equal(updated.teachingClassId, null, "lesson can become reusable for all classes");
+  assert.equal(updated.lessonName, "Unit 5 — Food");
+  assert.equal((await assignments.list({
+    page: 1, pageSize: 10, teachingClassId: data.classId,
+  }, data.teacherId)).total, 1, "moving the copy must not change the source lesson");
+
+  await assert.rejects(
+    assignments.create({
+      ...updateInput(draft), teachingClassId: 999999999,
+    }, data.teacherId),
+    (error: unknown) => (error as { code?: string }).code === "CLASS_NOT_FOUND",
+  );
+  await assert.rejects(
+    assignments.create({ ...updateInput(draft), teachingClassId: -1 }, data.teacherId),
+    (error: unknown) => (error as { code?: string }).code === "VALIDATION_ERROR",
+  );
 });
 
 integration("selected students and open link keep separate recipient semantics", async () => {
