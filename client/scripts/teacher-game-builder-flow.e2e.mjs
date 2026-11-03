@@ -93,7 +93,7 @@ try {
   await page.goto(`${origin}/admin/games/new`);
   await page.waitForURL(`${origin}/admin/login`);
   await page.getByLabel("Tên đăng nhập").fill("covy");
-  await page.getByLabel("Mật khẩu").fill("fixture-password");
+  await page.getByLabel("Mật khẩu", { exact: true }).fill("fixture-password");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await page.waitForURL(`${origin}/admin/games/new`);
   await page.getByTestId("teacher-game-builder-page").waitFor();
