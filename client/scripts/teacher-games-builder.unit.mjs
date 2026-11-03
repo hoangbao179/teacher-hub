@@ -111,7 +111,8 @@ test("lesson catalog separates school grade, actual teaching class and delivery 
   assert.match(builder, /data-testid="teacher-game-teaching-class"/);
   assert.match(builder, /data-testid="teacher-game-textbook"/);
   assert.match(builder, /data-testid="teacher-game-lesson"/);
-  assert.match(builder, /classId: form.audienceType === "CLASS"/);
+  assert.match(builder, /classId: audienceType === "CLASS"/);
+  assert.match(builder, /form.audienceType === "CLASS" && !form.classId/);
   assert.match(list, /data-testid="teacher-games-grade-filter"/);
   assert.match(list, /data-testid="teacher-games-class-filter"/);
   assert.match(list, /teacherGradeLabel\(item.gradeLevel\)/);
