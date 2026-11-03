@@ -5,6 +5,7 @@ import { VocabularyResultsService } from "./vocabulary-results.service";
 
 const source: AssignmentDetail = {
   id: 7, teacherUserId: 1, title: "Animals", instruction: null,
+  teachingClassId: null, gradeLevel: null, textbookName: null, lessonName: null,
   status: "CLOSED", audienceType: "SELECTED_STUDENTS", ageBand: "G2_G3",
   dueAt: null, recipientCount: 1, itemCount: 1, version: 3,
   updatedAt: new Date().toISOString(), vocabularySetId: null, classId: null,
