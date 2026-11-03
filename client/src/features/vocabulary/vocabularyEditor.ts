@@ -7,6 +7,7 @@ import type {
   VocabularyTopicSuggestion,
 } from "@teacher/shared";
 import type { LearningUnit } from "../learning/types";
+import { suggestOfflineIllustration } from "./offlineIllustrations";
 
 export const levelSlugsByAgeBand = {
   PRESCHOOL_G1: ["mam-non", "lop-1"],
@@ -73,7 +74,9 @@ export function parseVocabularyPaste(value: string): VocabularyPastePreview {
 export function suggestionItems(
   suggestion: VocabularyTopicSuggestion,
 ): VocabularySetItemInput[] {
-  return suggestion.items.filter((item) => item.selected).map((item, index) => ({
+  return suggestion.items.filter((item) => item.selected).map((item, index) => {
+    const illustration = suggestOfflineIllustration(item.word, item.meaningVi);
+    return {
     sourceTopicWordId: item.id,
     displayOrder: index + 1,
     word: item.word,
@@ -83,10 +86,11 @@ export function suggestionItems(
     exampleEn: item.exampleEn ?? undefined,
     speechText: item.speechText,
     tier: item.tier,
-    illustration: { kind: "NONE" },
-    supportsImageGame: item.supportsImageGame,
+    illustration,
+    supportsImageGame: illustration.kind !== "NONE",
     imageSearchTerms: item.imageSearchTerms,
-  }));
+    };
+  });
 }
 
 function publicIllustration(image: string): VocabularyIllustrationInput {
