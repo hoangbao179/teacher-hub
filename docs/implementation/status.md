@@ -145,6 +145,10 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   xem trước thẻ từ cục bộ. Bổ sung **khối lớp Mầm non/Lớp 1–9**,
   **lớp quản lý bài độc lập người nhận**, giáo trình và Unit/Bài học; danh sách
   lọc theo khối/lớp, tìm tên bài/sách/Unit, nhân bản để dùng cho lớp khác.
+  **Chỉ tên bài bắt buộc để lưu DRAFT**. Có thể để trống khối/lớp, sách,
+  Unit, người nhận, từ vựng hoặc hoạt động và bổ sung sau; nhóm độ tuổi và
+  mẫu game có mặc định kỹ thuật. Khi đã dán từ lỗi/trùng, yêu cầu sửa trước khi
+  lưu nhằm tránh bỏ sót dữ liệu. Điều kiện giao bài thật vẫn kiểm tra riêng.
   Các metadata này yêu cầu migration append-only `0031_teacher_game_catalog.sql`
   trước khi UI hoạt động trên DB production. `/tools` và PDF Worker không thay đổi.
   Chưa bật publish/link/QR/game học sinh vì `VOCABULARY_GAMES_ENABLED=false`.
