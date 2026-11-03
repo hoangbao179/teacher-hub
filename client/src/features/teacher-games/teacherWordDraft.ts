@@ -2,8 +2,8 @@ import type { AssignmentVocabularyItemInput, VocabularyPastePreview } from "@tea
 import { suggestOfflineIllustration } from "../vocabulary/offlineIllustrations.ts";
 import { parseVocabularyPaste } from "../vocabulary/vocabularyEditor.ts";
 
-const normalize = (value: string) => value.normalize("NFKC").trim().replace(/\\s+/gu, " ").toLocaleLowerCase("vi-VN");
-const key = (word: string, meaning: string) => `${normalize(word)}\\u0000${normalize(meaning)}`;
+const normalize = (value: string) => value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("vi-VN");
+const key = (word: string, meaning: string) => `${normalize(word)}\u0000${normalize(meaning)}`;
 
 export interface TeacherWordRow {
   id: number;
@@ -85,5 +85,5 @@ export function teacherWordRowsFromItems(
 }
 
 export function teacherWordsToPaste(items: readonly Pick<AssignmentVocabularyItemInput, "word" | "meaningVi">[]): string {
-  return items.map((item) => `${item.word}\\t${item.meaningVi}`).join("\\n");
+  return items.map((item) => `${item.word}\t${item.meaningVi}`).join("\n");
 }
