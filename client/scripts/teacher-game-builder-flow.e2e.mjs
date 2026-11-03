@@ -1,5 +1,6 @@
 /* global process, console, document, fetch, URL */
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { setTimeout } from "node:timers/promises";
