@@ -18,6 +18,7 @@ import { listTeacherGameClasses, listTeacherGameStudents } from "../../../api/te
 import { getVocabularySet, listVocabularySets } from "../../../api/vocabulary";
 import { ageBandOptions } from "../../vocabulary/vocabularyEditor";
 import { TeacherGameShell } from "../TeacherGameShell";
+import { ageBandForGrade, teacherGradeOptions } from "../teacherGrades";
 import { teacherWordsFromPaste, teacherWordsToPaste } from "../teacherWordDraft";
 
 const templateOptions: Array<{ value: AssignmentTemplateCode; title: string; detail: string }> = [
@@ -116,6 +117,7 @@ export function TeacherGameBuilderPage() {
       setForm({
         title: detail.title,
         teachingClassId: detail.teachingClassId ?? undefined,
+        gradeLevel: detail.gradeLevel ?? undefined,
         textbookName: detail.textbookName ?? undefined,
         lessonName: detail.lessonName ?? undefined,
         instruction: detail.instruction ?? undefined,
@@ -254,6 +256,20 @@ export function TeacherGameBuilderPage() {
             placeholder="Ví dụ: Food & Drinks"
             value={form.title} onChange={(event) => { setForm((current) => ({ ...current, title: event.target.value })); setSavedNotice(""); }}
             slotProps={{ htmlInput: { maxLength: 160 } }} />
+          <TextField select fullWidth label="Khối lớp" data-testid="teacher-game-grade"
+            value={form.gradeLevel ?? ""}
+            onChange={(event) => {
+              const raw = event.target.value;
+              const gradeLevel = raw === "" ? undefined : Number(raw);
+              setForm((current) => ({
+                ...current, gradeLevel,
+                ageBand: gradeLevel == null ? current.ageBand : ageBandForGrade(gradeLevel),
+              }));
+              setSavedNotice("");
+            }}>
+            <MenuItem value="">Chưa phân khối / Bài dùng chung</MenuItem>
+            {teacherGradeOptions.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+          </TextField>
           <TextField fullWidth label="Giáo trình (tùy chọn)" data-testid="teacher-game-textbook"
             placeholder="Ví dụ: Family and Friends"
             value={form.textbookName ?? ""} onChange={(event) => { setForm((current) => ({ ...current, textbookName: event.target.value })); setSavedNotice(""); }}
@@ -274,7 +290,7 @@ export function TeacherGameBuilderPage() {
           <Typography variant="body2" color="text.secondary">
             Lớp này dùng để sắp xếp và tìm lại bài. Cô vẫn có thể giao bài bằng link chung hoặc nhân bản sang lớp khác.
           </Typography>
-          <TextField select fullWidth label="Nhóm lớp" value={form.ageBand}
+          <TextField select fullWidth label="Nhóm trình độ trò chơi" value={form.ageBand}
             onChange={(event) => { setForm((current) => ({ ...current, ageBand: event.target.value as AssignmentDraftInput["ageBand"] })); setSavedNotice(""); }}>
             {ageBandOptions.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
           </TextField>
