@@ -184,6 +184,7 @@ try {
   await page.getByText("Food & Drinks", { exact: true }).waitFor();
   await page.getByRole("link", { name: "Tiếp tục soạn" }).click();
   await page.waitForURL(`${origin}/admin/games/123/edit`);
+  await page.getByTestId("teacher-game-word-row").nth(2).waitFor();
   assert.equal(await page.getByTestId("teacher-game-word-row").count(), 3);
   const reopenedRow = page.getByTestId("teacher-game-word-row").nth(2);
   assert.equal(await reopenedRow.getByRole("textbox", { name: "Từ tiếng Anh" }).inputValue(), "hungry");
