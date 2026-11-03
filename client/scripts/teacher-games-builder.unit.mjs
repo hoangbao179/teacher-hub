@@ -26,7 +26,7 @@ test("an empty or one-word input is a valid saved draft, but malformed rows stil
   assert.deepEqual(one.errors, []);
   const malformed = teacherWordsFromPaste("apple");
   assert.equal(malformed.items.length, 0);
-  assert.ok(malformed.errors.some((message) => message.includes("chưa đủ từ")));
+  assert.ok(malformed.errors.some((message) => message.toLocaleLowerCase("vi-VN").includes("chưa đủ từ")));
   const duplicate = teacherWordsFromPaste("apple - quả táo\napple - quả táo");
   assert.ok(duplicate.errors.some((message) => message.includes("bị lặp")));
   const builder = src("features/teacher-games/pages/TeacherGameBuilderPage.tsx");
