@@ -70,10 +70,12 @@ export class AssignmentService {
       throw this.validation("Kiểu người nhận không hợp lệ.");
     if (raw.ageBand && !learningAgeBands.includes(raw.ageBand))
       throw new AppError(400, "INVALID_AGE_BAND", "Nhóm tuổi không hợp lệ.");
+    const teachingClassId = raw.teachingClassId == null ? undefined : this.id(raw.teachingClassId);
     return this.repository.list({
       page,
       pageSize,
       search,
+      teachingClassId,
       status: raw.status,
       audienceType: raw.audienceType,
       ageBand: raw.ageBand,
@@ -174,6 +176,9 @@ export class AssignmentService {
     const input = this.prepare({
       title: this.text(title, 1, 160, "Tiêu đề") || `${source.title} — bản sao`,
       instruction: source.instruction ?? undefined,
+      textbookName: source.textbookName ?? undefined,
+      lessonName: source.lessonName ?? undefined,
+      teachingClassId: source.teachingClassId ?? undefined,
       vocabularySetId: source.vocabularySetId ?? undefined,
       ageBand: source.ageBand,
       audienceType: source.audienceType ?? undefined,
@@ -257,6 +262,9 @@ export class AssignmentService {
   ): CreateAssignmentDraftRequest {
     const title = this.text(raw.title, 1, 160, "Tiêu đề");
     const instruction = this.text(raw.instruction, 0, 1000, "Hướng dẫn") || undefined;
+    const textbookName = this.text(raw.textbookName, 0, 120, "Giáo trình") || undefined;
+    const lessonName = this.text(raw.lessonName, 0, 120, "Unit/Bài học") || undefined;
+    const teachingClassId = raw.teachingClassId == null ? undefined : this.id(raw.teachingClassId);
     if (!learningAgeBands.includes(raw.ageBand))
       throw new AppError(400, "INVALID_AGE_BAND", "Hãy xác nhận nhóm tuổi.");
     if (raw.audienceType && !assignmentAudienceTypes.includes(raw.audienceType))
@@ -318,6 +326,9 @@ export class AssignmentService {
     return {
       title,
       instruction,
+      textbookName,
+      lessonName,
+      teachingClassId,
       vocabularySetId: raw.vocabularySetId == null
         ? undefined
         : this.id(raw.vocabularySetId),
