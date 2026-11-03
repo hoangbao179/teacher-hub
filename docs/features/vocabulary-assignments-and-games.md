@@ -136,8 +136,11 @@ Teacher Tools giữ nguyên phần tải tài liệu hiện tại.
   (Mầm non/Lớp 1–9), lớp học cụ thể, giáo trình, Unit/Bài học, người nhận,
   nguồn từ vựng và số lượng từ đều tùy chọn ở thời điểm lưu nháp. Các metadata
   có giá trị NULL khi chưa chọn, được lưu qua migration 0031 và hiện trong danh sách.
-  Có thể **dán từ + nghĩa từ giáo trình ngoài** (tab, dấu phẩy/chấm phẩy hoặc
-  ` - `) hoặc chọn bộ từ đã lưu; chỉ gợi ý emoji offline khi khớp nghĩa.
+  **Nội dung từ vựng nhập theo từng cặp ô**: bấm **+ Thêm từ** để hiện hai ô
+  **Từ tiếng Anh** và **Nghĩa tiếng Việt**, có thể xóa từng dòng. Mobile bố trí
+  theo chiều dọc, desktop hai cột. Nếu copy bảng Word/Excel nhiều dòng thì dán
+  vào ô tiếng Anh để tách thành các cặp (tab, dấu phẩy, chấm phẩy hoặc ` - `);
+  từ không có hình vẫn có thể lưu và chơi các hoạt động chữ/nghĩa.
 - Phân loại và giao bài là hai khái niệm độc lập:
   `teachingClassId` là lớp dùng để **lưu và tìm lại bài**,
   `classId` chỉ dùng khi `audienceType=CLASS` (lớp nhận bài). Bài lưu cho
