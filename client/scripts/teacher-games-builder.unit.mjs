@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { teacherWordsFromPaste, teacherWordsFromRows, teacherWordRowsFromItems, teacherWordsToPaste } from "../src/features/teacher-games/teacherWordDraft.ts";
+import { hasRealGameImage } from "@teacher/shared";
 import { isTeacherGamesPath } from "../src/features/teacher-games/teacherGameRoutes.ts";
 import { ageBandForGrade, teacherGradeLabel, teacherGradeOptions } from "../src/features/teacher-games/teacherGrades.ts";
 
@@ -68,6 +69,27 @@ test("two-field rows allow empty drafts but reject incomplete and duplicate pair
     word: String(n), meaningVi: "nghĩa " + n,
   })));
   assert.ok(tooLong.errors.some((msg) => msg.includes("40")));
+});
+
+test("only actual images make a word ready for illustrated games", () => {
+  assert.equal(hasRealGameImage({ illustration: { kind: "NONE" } }), false);
+  assert.equal(hasRealGameImage({ illustration: { kind: "EMOJI", value: "🍎" } }), false);
+  assert.equal(hasRealGameImage({ illustration: { kind: "STORED_MEDIA", mediaId: 77 } }), true);
+  assert.equal(hasRealGameImage({ illustration: { kind: "PUBLIC_ASSET", value: "/learning/colors/red.svg" } }), true);
+  const rows = [
+    { id: 7, word: "apple", meaningVi: "quả táo" },
+    { id: 8, word: "bat", meaningVi: "con dơi" },
+  ];
+  const manual = teacherWordsFromRows(rows, [], { 7: { kind: "STORED_MEDIA", mediaId: 77 } });
+  assert.equal(manual.items[0].illustration.kind, "STORED_MEDIA");
+  assert.equal(manual.items[1].illustration.kind, "EMOJI");
+  const changedSense = teacherWordsFromRows([{ id: 7, word: "apple", meaningVi: "nghĩa khác" }]);
+  assert.equal(hasRealGameImage(changedSense.items[0]), false);
+  const code = src("features/teacher-games/pages/TeacherGameBuilderPage.tsx");
+  assert.match(code, /VocabularyImagePicker/);
+  assert.match(code, /data-testid="teacher-game-choose-image"/);
+  assert.match(code, /missingPictures > 0/);
+  assert.match(code, /TeacherGameImage image=\{visibleCard.illustration\}/);
 });
 
 test("a preserved custom image survives paste roundtrip and reordering", () => {
