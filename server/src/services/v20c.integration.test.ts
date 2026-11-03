@@ -125,6 +125,46 @@ function service() {
   );
 }
 
+integration("teacher can save and reopen a title-only draft with no classification, words or recipient", async () => {
+  const data = await fixture();
+  const assignments = service();
+  const created = await assignments.create({
+    title: "Bài mới — bổ sung sau",
+    ageBand: "G2_G3",
+    templateCode: "WORD_RECOGNITION",
+    answerFeedbackMode: "IMMEDIATE",
+    shuffleQuestions: true,
+    items: [],
+    activities: [],
+  }, data.teacherId);
+  assert.equal(created.status, "DRAFT");
+  assert.equal(created.title, "Bài mới — bổ sung sau");
+  assert.equal(created.teachingClassId, null);
+  assert.equal(created.gradeLevel, null);
+  assert.equal(created.textbookName, null);
+  assert.equal(created.lessonName, null);
+  assert.equal(created.audienceType, null);
+  assert.equal(created.classId, null);
+  assert.equal(created.items.length, 0);
+  assert.equal(created.activities.length, 0);
+  const reopened = await assignments.detail(created.id, data.teacherId);
+  assert.equal(reopened.status, "DRAFT");
+  assert.equal(reopened.title, created.title);
+  assert.equal(reopened.audienceType, null);
+  assert.equal(reopened.items.length, 0);
+  const updated = await assignments.update(created.id, {
+    ...updateInput(reopened),
+    textbookName: "Family and Friends",
+    lessonName: "Unit 4",
+    items,
+    activities,
+  }, data.teacherId);
+  assert.equal(updated.textbookName, "Family and Friends");
+  assert.equal(updated.lessonName, "Unit 4");
+  assert.equal(updated.items.length, 2);
+  assert.equal(updated.status, "DRAFT");
+});
+
 integration("V20C migration, class snapshot, concurrency and immutable state work atomically", async () => {
   const [migration] = await pool.query<RowDataPacket[]>(
     "SELECT version FROM schema_migrations WHERE version='0018_v20c_vocabulary_assignments.sql'",
