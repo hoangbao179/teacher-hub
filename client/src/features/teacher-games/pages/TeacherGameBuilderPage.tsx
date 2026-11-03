@@ -370,7 +370,7 @@ export function TeacherGameBuilderPage() {
           <Typography component="h2" variant="h6" sx={{ fontWeight: 800 }}>2. Từ vựng</Typography>
           <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap" }}>
             <Button variant={sourceMode === "PASTE" ? "contained" : "outlined"}
-              onClick={() => setSourceMode("PASTE")} sx={{ minHeight: 44 }}>Dán từ bên ngoài</Button>
+              onClick={() => setSourceMode("PASTE")} sx={{ minHeight: 44 }}>Nhập từng từ</Button>
             <Button variant={sourceMode === "SET" ? "contained" : "outlined"}
               onClick={() => setSourceMode("SET")} sx={{ minHeight: 44 }}>Dùng bộ từ đã lưu</Button>
           </Stack>
