@@ -312,6 +312,18 @@ async function recoverV20fFallback(connection: PoolConnection): Promise<void> {
 export async function recoverInterruptedMigrations(
   connection: PoolConnection,
 ): Promise<void> {
+  // If the ALTER succeeded but recording the migration crashed, all three
+  // columns exist as an atomic MySQL DDL operation. Keep recovery append-only.
+  const catalogVersion = "0031_teacher_game_catalog.sql";
+  if (!await migrationApplied(connection, catalogVersion)
+      && await tableExists(connection, "learning_assignments")
+      && await columnExists(connection, "learning_assignments", "teaching_class_id")
+      && await columnExists(connection, "learning_assignments", "textbook_name")
+      && await columnExists(connection, "learning_assignments", "lesson_name")) {
+    await connection.query(
+      "INSERT IGNORE INTO schema_migrations(version) VALUES (?)", [catalogVersion],
+    );
+  }
   // MySQL DDL commits before schema_migrations INSERT; recover this atomic ALTER after a crash.
   const pdfVersion='0029_pdf_chunk_progress.sql';
   const filenameVersion='0030_pdf_filename.sql';
