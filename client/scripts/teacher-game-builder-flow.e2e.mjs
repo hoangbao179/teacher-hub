@@ -99,7 +99,7 @@ try {
   await page.getByTestId("teacher-game-builder-page").waitFor();
 
   await page.getByTestId("teacher-game-title").locator("input").fill("Family and Friends – Unit 4");
-  await page.getByTestId("teacher-game-words").locator("textarea").fill("apple - quả táo\nbanana - quả chuối\nhungry - đói");
+  await page.getByTestId("teacher-game-words").locator("textarea").first().fill("apple - quả táo\nbanana - quả chuối\nhungry - đói");
   await page.getByText("3 từ hợp lệ").waitFor();
   assert.equal(await page.getByText("2 từ có hình/emoji").count(), 1);
 
@@ -126,8 +126,8 @@ try {
   await page.getByText("Family and Friends – Unit 4").waitFor();
   await page.getByRole("link", { name: "Tiếp tục soạn" }).click();
   await page.waitForURL(`${origin}/admin/games/123/edit`);
-  await page.getByTestId("teacher-game-words").locator("textarea").waitFor();
-  assert.match(await page.getByTestId("teacher-game-words").locator("textarea").inputValue(), /hungry/);
+  await page.getByTestId("teacher-game-words").locator("textarea").first().waitFor();
+  assert.match(await page.getByTestId("teacher-game-words").locator("textarea").first().inputValue(), /hungry/);
 
   assert(!calls.some((value) => value.includes("media/search") || value.includes("image-search")), "Teacher flow must not search remote images");
   assert.deepEqual(errors, []);
