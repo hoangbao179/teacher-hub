@@ -84,6 +84,10 @@ export interface AssignmentVocabularyItemInput {
 
 export interface AssignmentDraftInput {
   title: string;
+  /** Optional lesson organization, not the delivery audience. */
+  teachingClassId?: number;
+  textbookName?: string;
+  lessonName?: string;
   instruction?: string;
   vocabularySetId?: number;
   ageBand: LearningAgeBand;
@@ -108,6 +112,7 @@ export interface UpdateAssignmentDraftRequest extends AssignmentDraftInput {
 
 export interface AssignmentListQuery {
   search?: string;
+  teachingClassId?: number;
   status?: AssignmentStatus;
   audienceType?: AssignmentAudienceType;
   ageBand?: LearningAgeBand;
@@ -118,6 +123,9 @@ export interface AssignmentListQuery {
 export interface AssignmentListItem {
   id: number;
   title: string;
+  teachingClassId: number | null;
+  textbookName: string | null;
+  lessonName: string | null;
   status: AssignmentStatus;
   audienceType: AssignmentAudienceType | null;
   ageBand: LearningAgeBand;
