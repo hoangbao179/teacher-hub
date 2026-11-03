@@ -95,6 +95,7 @@ function updateInput(
   return {
     title: assignment.title,
     teachingClassId: assignment.teachingClassId ?? undefined,
+    gradeLevel: assignment.gradeLevel ?? undefined,
     textbookName: assignment.textbookName ?? undefined,
     lessonName: assignment.lessonName ?? undefined,
     instruction: assignment.instruction ?? undefined,
@@ -230,6 +231,7 @@ integration("teacher lesson catalog stores class, textbook and Unit independentl
     textbookName: "Oxford Discover",
     lessonName: "Unit 4 — Food",
     teachingClassId: data.classId,
+    gradeLevel: 3,
     ageBand: "G2_G3",
     audienceType: "OPEN_LINK",
     templateCode: "WORD_RECOGNITION",
@@ -242,6 +244,7 @@ integration("teacher lesson catalog stores class, textbook and Unit independentl
   assert.equal(draft.audienceType, "OPEN_LINK");
   assert.equal(draft.classId, null, "class delivery must stay distinct from lesson grouping");
   assert.equal(draft.teachingClassId, data.classId);
+  assert.equal(draft.gradeLevel, 3);
   assert.equal(draft.textbookName, "Oxford Discover");
   assert.equal(draft.lessonName, "Unit 4 — Food");
 
@@ -250,6 +253,8 @@ integration("teacher lesson catalog stores class, textbook and Unit independentl
   }, data.teacherId);
   assert.equal(grouped.total, 1);
   assert.equal(grouped.items[0].teachingClassId, data.classId);
+  assert.equal(grouped.items[0].gradeLevel, 3);
+  assert.equal((await assignments.list({ page: 1, pageSize: 10, gradeLevel: 3 }, data.teacherId)).total, 1);
   assert.equal((await assignments.list({
     page: 1, pageSize: 10, search: "Oxford",
   }, data.teacherId)).total, 1);
@@ -262,15 +267,18 @@ integration("teacher lesson catalog stores class, textbook and Unit independentl
 
   const copy = await assignments.duplicate(draft.id, "Food practice for another class", data.teacherId);
   assert.equal(copy.teachingClassId, data.classId);
+  assert.equal(copy.gradeLevel, 3);
   assert.equal(copy.textbookName, "Oxford Discover");
   assert.equal(copy.lessonName, "Unit 4 — Food");
   assert.equal(copy.classId, null);
   const updated = await assignments.update(copy.id, {
     ...updateInput(copy),
     teachingClassId: undefined,
+    gradeLevel: 4,
     lessonName: "Unit 5 — Food",
   }, data.teacherId);
   assert.equal(updated.teachingClassId, null, "lesson can become reusable for all classes");
+  assert.equal(updated.gradeLevel, 4);
   assert.equal(updated.lessonName, "Unit 5 — Food");
   assert.equal((await assignments.list({
     page: 1, pageSize: 10, teachingClassId: data.classId,
