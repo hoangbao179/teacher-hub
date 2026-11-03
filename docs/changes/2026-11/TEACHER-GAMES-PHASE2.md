@@ -10,7 +10,7 @@ Legacy Admin đang TEMP_DISABLED, giáo viên chỉ tới `/admin/tools`. Wizard
 - Chỉ allowlist ba route có xác thực: `/admin/games`, `/admin/games/new`, `/admin/games/:id/edit` dưới `Protected`.
 - Chỉ thêm một CTA **Soạn trò chơi từ vựng** vào Teacher Tools, không hồi sinh AdminLayout/legacy routes.
 - Tận dụng endpoints, DTO, template, preview và assignment draft có sẵn; bổ sung migration append-only `0031_teacher_game_catalog.sql` trên bảng `learning_assignments`, **không** thêm service hoặc third-party runtime.
-- Hỗ trợ dán từ bằng dấu phẩy/tab/chấm phẩy/` - `, hiển thị preview cục bộ, chọn bộ từ đã lưu, mẫu game và dự định người nhận, lưu/nhân bản bản nháp.
+- Nhập từ theo từng dòng có hai ô tiếng Anh/nghĩa tiếng Việt, nút **Thêm từ** (icon cộng), xóa từng dòng, tự focus ô tiếng Anh mới. Dán trực tiếp bảng nhiều dòng Word/Excel vào ô tiếng Anh vẫn được hỗ trợ (tab/dấu phẩy/chấm phẩy/` - `), nhưng không còn textarea nhập từ chính. Giữ emoji offline, preview, mẫu game, người nhận và lưu/nhân bản bản nháp.
 - **Only title required on DRAFT:** lớp/khối/sách/Unit/người nhận/từ vựng/hoạt động đều có thể để trống khi lưu nháp; nhóm trình độ và template có mặc định kỹ thuật. Đã chọn `CLASS` nhưng chưa chọn lớp nhận được lưu thành người nhận chưa xác định; không tự phát link hoặc giao bài. Dòng từ đã nhập mà lỗi/trùng vẫn phải được sửa để tránh mất dữ liệu.
 - Giữ `VOCABULARY_GAMES_ENABLED=false`: không publish, không phát link/QR giả, không thay đổi dữ liệu game public. Không nói preview flashcard là lượt chơi thử.
 
