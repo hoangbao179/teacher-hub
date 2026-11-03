@@ -1,4 +1,4 @@
-import { AutoAwesome, BookOutlined, CheckCircleOutlined, ChevronLeft, ChevronRight, SaveOutlined, VisibilityOutlined } from "@mui/icons-material";
+import { Add, AutoAwesome, BookOutlined, CheckCircleOutlined, ChevronLeft, ChevronRight, DeleteOutline, SaveOutlined, VisibilityOutlined } from "@mui/icons-material";
 import {
   Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress,
   FormControlLabel, MenuItem, Stack, TextField, Typography,
@@ -9,7 +9,8 @@ import type {
   ClassListItem, StudentListItem, VocabularySetListItem,
 } from "@teacher/shared";
 import { assignmentActivitiesForTemplate, hasPlayableImage } from "@teacher/shared";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ClipboardEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   createAssignment, getAssignment, previewAssignment, updateAssignment,
@@ -19,7 +20,8 @@ import { getVocabularySet, listVocabularySets } from "../../../api/vocabulary";
 import { ageBandOptions } from "../../vocabulary/vocabularyEditor";
 import { TeacherGameShell } from "../TeacherGameShell";
 import { ageBandForGrade, teacherGradeOptions } from "../teacherGrades";
-import { teacherWordsFromPaste, teacherWordsToPaste } from "../teacherWordDraft";
+import { teacherWordRowsFromItems, teacherWordsFromPaste, teacherWordsFromRows } from "../teacherWordDraft";
+import type { TeacherWordRow } from "../teacherWordDraft";
 
 const templateOptions: Array<{ value: AssignmentTemplateCode; title: string; detail: string }> = [
   { value: "YOUNG_BEGINNER", title: "Bé mới học", detail: "Thẻ từ, nghe, ghép cặp" },
@@ -54,7 +56,10 @@ export function TeacherGameBuilderPage() {
   const [id, setId] = useState<number | undefined>(editingId);
   const [version, setVersion] = useState(1);
   const [form, setForm] = useState<AssignmentDraftInput>(initial);
-  const [paste, setPaste] = useState("");
+  const [wordRows, setWordRows] = useState<TeacherWordRow[]>([]);
+  const nextRowId = useRef(1);
+  const focusRowId = useRef<number | null>(null);
+  const [wordNotice, setWordNotice] = useState("");
   const [previousItems, setPreviousItems] = useState<AssignmentVocabularyItemInput[]>([]);
   const [sourceMode, setSourceMode] = useState<"PASTE" | "SET">("PASTE");
   const [sets, setSets] = useState<VocabularySetListItem[]>([]);
@@ -112,7 +117,8 @@ export function TeacherGameBuilderPage() {
       setId(detail.id);
       setVersion(detail.version);
       setPreviousItems(loadedItems);
-      setPaste(teacherWordsToPaste(loadedItems));
+      setWordRows(teacherWordRowsFromItems(loadedItems));
+      nextRowId.current = loadedItems.length + 1;
       setSourceMode(detail.vocabularySetId ? "SET" : "PASTE");
       setForm({
         title: detail.title,
@@ -142,7 +148,7 @@ export function TeacherGameBuilderPage() {
     return () => { canceled = true; };
   }, [editingId, navigate]);
 
-  const wordDraft = useMemo(() => teacherWordsFromPaste(paste, previousItems), [paste, previousItems]);
+  const wordDraft = useMemo(() => teacherWordsFromRows(wordRows, previousItems), [wordRows, previousItems]);
   const activities = useMemo(() => form.templateCode === "CUSTOM" ? form.activities
     : assignmentActivitiesForTemplate(form.templateCode, {
       ageBand: form.ageBand, itemCount: wordDraft.items.length,
@@ -173,12 +179,14 @@ export function TeacherGameBuilderPage() {
         supportsImageGame: item.illustration.kind !== "NONE", imageSearchTerms: item.imageSearchTerms,
       }));
       setPreviousItems(mapped);
-      setPaste(teacherWordsToPaste(mapped));
+      setWordRows(teacherWordRowsFromItems(mapped));
+      nextRowId.current = mapped.length + 1;
       setForm((current) => ({ ...current, vocabularySetId: selected.id,
         ageBand: selected.ageBand, title: current.title || selected.title }));
       setCardIndex(0);
       setFlipped(false);
       setSavedNotice("");
+      setWordNotice("");
       setServerWarnings([]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Không thể mở bộ từ.");
@@ -187,13 +195,67 @@ export function TeacherGameBuilderPage() {
     }
   };
 
-  const changePaste = (value: string) => {
-    setPaste(value);
+  const changeWordRow = (id: number, field: "word" | "meaningVi", value: string) => {
+    setWordRows((current) => current.map((row) => row.id === id ? { ...row, [field]: value } : row));
+    setSourceMode("PASTE");
+    setForm((current) => ({ ...current, vocabularySetId: undefined }));
+    setCardIndex(0);
+    setFlipped(false);
+    setWordNotice("");
+    setSavedNotice("");
+    setServerWarnings([]);
+  };
+
+  const addWordRow = () => {
+    if (wordRows.length >= 40) return;
+    const id = nextRowId.current++;
+    focusRowId.current = id;
+    setWordRows((current) => [...current, { id, word: "", meaningVi: "" }]);
+    setWordNotice("");
+    setSavedNotice("");
+  };
+
+  const removeWordRow = (id: number) => {
+    setWordRows((current) => current.filter((row) => row.id !== id));
+    setSourceMode("PASTE");
+    setForm((current) => ({ ...current, vocabularySetId: undefined }));
+    setCardIndex(0);
+    setFlipped(false);
+    setWordNotice("");
+    setSavedNotice("");
+    setServerWarnings([]);
+  };
+
+  // Word/Excel table paste into the English field, without changing the main UI.
+  const pasteWordPairs = (event: ClipboardEvent<HTMLDivElement>, rowId: number) => {
+    const pasted = event.clipboardData.getData("text/plain");
+    if (!/[\n\r\t]/u.test(pasted)) return;
+    event.preventDefault();
+    const imported = teacherWordsFromPaste(pasted, previousItems);
+    if (imported.errors.length || !imported.items.length) {
+      setWordNotice(imported.errors.join(" ") || "Không nhận ra cặp từ và nghĩa. Hãy kiểm tra dữ liệu đã sao chép.");
+      return;
+    }
+    const replacing = wordRows.find((row) => row.id === rowId);
+    const canReplace = replacing && !replacing.word.trim() && !replacing.meaningVi.trim();
+    const next = wordRows.filter((row) => row.id !== rowId || !canReplace);
+    const inserted: TeacherWordRow[] = imported.items.map((item) => ({
+      id: nextRowId.current++, word: item.word, meaningVi: item.meaningVi,
+    }));
+    const insertAt = canReplace ? wordRows.findIndex((row) => row.id === rowId) : next.length;
+    next.splice(insertAt, 0, ...inserted);
+    const validated = teacherWordsFromRows(next, previousItems);
+    if (validated.errors.length) {
+      setWordNotice(validated.errors.join(" "));
+      return;
+    }
+    setWordRows(next);
     setSourceMode("PASTE");
     setForm((current) => ({ ...current, vocabularySetId: undefined }));
     setCardIndex(0);
     setFlipped(false);
     setSavedNotice("");
+    setWordNotice("Đã thêm " + inserted.length + " cặp từ và nghĩa từ bảng đã sao chép.");
     setServerWarnings([]);
   };
 
@@ -224,7 +286,9 @@ export function TeacherGameBuilderPage() {
       setVersion(detail.version);
       const updatedItems = itemsFromDetail(detail);
       setPreviousItems(updatedItems);
-      setPaste(teacherWordsToPaste(updatedItems));
+      setWordRows(teacherWordRowsFromItems(updatedItems));
+      nextRowId.current = updatedItems.length + 1;
+      setWordNotice("");
       const savedMessage = "Đã lưu bản nháp. Cô có thể quay lại sửa bất kỳ lúc nào.";
       setSavedNotice(savedMessage);
       try {
@@ -316,11 +380,44 @@ export function TeacherGameBuilderPage() {
           </TextField>}
           {sourceMode === "SET" && setsError && <Alert severity="warning">{setsError}</Alert>}
           <Typography variant="body2" color="text.secondary">
-            Dán từ từ Word, Excel hoặc tài liệu: mỗi dòng một từ tiếng Anh và nghĩa Việt, ngăn bằng dấu phẩy, tab, chấm phẩy hoặc " - ".
+            Bấm <strong>+ Thêm từ</strong> để mở hai ô riêng cho tiếng Anh và nghĩa tiếng Việt.
+            Có thể dán bảng từ Word/Excel vào ô tiếng Anh để tự tách thành các cặp.
           </Typography>
-          <TextField fullWidth multiline minRows={5} maxRows={13} data-testid="teacher-game-words"
-            label="Danh sách từ vựng" placeholder={"apple - quả táo\nbanana - quả chuối\nhungry - đói"}
-            value={paste} onChange={(event) => changePaste(event.target.value)} />
+          <Stack spacing={1.5} data-testid="teacher-game-word-list">
+            {wordRows.map((row, index) => <Box key={row.id} data-testid="teacher-game-word-row"
+              sx={{ p: { xs: 1.5, sm: 2 }, border: "1px solid #dfece6", borderRadius: 2, bgcolor: "#fbfefd" }}>
+              <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 1, gap: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Từ {index + 1}</Typography>
+                <Button onClick={() => removeWordRow(row.id)} aria-label={"Xóa từ " + (index + 1)}
+                  color="error" size="small" startIcon={<DeleteOutline />} sx={{ minHeight: 44 }}>Xóa</Button>
+              </Stack>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
+                <TextField fullWidth label="Từ tiếng Anh" placeholder="apple" size="small"
+                  value={row.word} onChange={(event) => changeWordRow(row.id, "word", event.target.value)}
+                  onPaste={(event) => pasteWordPairs(event, row.id)}
+                  inputRef={(node: HTMLInputElement | null) => {
+                    if (node && focusRowId.current === row.id) {
+                      focusRowId.current = null;
+                      node.focus();
+                    }
+                  }}
+                  slotProps={{ htmlInput: { maxLength: 120 } }} />
+                <TextField fullWidth label="Nghĩa tiếng Việt" placeholder="quả táo" size="small"
+                  value={row.meaningVi} onChange={(event) => changeWordRow(row.id, "meaningVi", event.target.value)}
+                  slotProps={{ htmlInput: { maxLength: 240 } }} />
+              </Box>
+            </Box>)}
+            {wordRows.length === 0 && <Typography variant="body2" color="text.secondary">
+              Chưa có từ nào. Cô vẫn có thể lưu nháp chỉ với tên bài.
+            </Typography>}
+            <Button data-testid="teacher-game-add-word" onClick={addWordRow} startIcon={<Add />}
+              variant="outlined" disabled={wordRows.length >= 40}
+              sx={{ minHeight: 48, alignSelf: "flex-start", fontWeight: 800 }}>
+              + Thêm từ
+            </Button>
+            {wordRows.length >= 40 && <Typography variant="caption" color="text.secondary">Tối đa 40 từ mỗi bài.</Typography>}
+          </Stack>
+          {wordNotice && <Alert severity={wordNotice.startsWith("Đã thêm") ? "success" : "warning"}>{wordNotice}</Alert>}
           <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap", alignItems: "center" }}>
             <Chip color={wordDraft.errors.length ? "default" : "success"} label={`${wordDraft.items.length} từ hợp lệ`} />
             <Chip variant="outlined" label={`${wordDraft.items.filter(hasPlayableImage).length} từ có hình/emoji`} />
