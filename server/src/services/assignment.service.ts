@@ -138,7 +138,7 @@ export class AssignmentService {
       );
     const warnings = this.publishWarnings(assignment);
     if (warnings.length)
-      throw new AppError(422, warnings.some((warning) => warning.includes("ảnh minh họa thật") || warning.includes("cần hình"))
+      throw new AppError(422, (warnings[0].includes("ảnh minh họa thật") || warnings[0].includes("cần hình"))
         ? "ACTIVITY_REQUIRES_IMAGES"
         : "VALIDATION_ERROR", warnings[0], { warnings });
     const publicCode = assignmentPublicCode();
@@ -365,9 +365,6 @@ export class AssignmentService {
     if (!assignment.title.trim()) warnings.push("Bài chưa có tiêu đề.");
     if (!assignment.audienceType) warnings.push("Hãy chọn người nhận.");
     if (assignment.items.length < 2) warnings.push("Bài cần ít nhất 2 từ.");
-    const missingImages = assignment.items.filter((item) => !hasRealGameImage(item));
-    if (missingImages.length)
-      warnings.push(`Mọi từ cần ảnh minh họa thật trước khi giao bài (còn ${missingImages.length} từ thiếu ảnh); emoji không thay thế ảnh.`);
     if (!assignment.activities.length) warnings.push("Bài cần ít nhất một hoạt động.");
     for (const activity of assignment.activities) {
       if (!isSupportedActivity(activity.mechanic, activity.presentation))
@@ -409,6 +406,9 @@ export class AssignmentService {
           warnings.push(`${activity.presentation}: Bộ từ này không tạo được câu hỏi cho hoạt động đã chọn.`);
       }
     }
+    const missingImages = assignment.items.filter((item) => !hasRealGameImage(item));
+    if (missingImages.length)
+      warnings.push(`Mọi từ cần ảnh minh họa thật trước khi giao bài (còn ${missingImages.length} từ thiếu ảnh); emoji không thay thế ảnh.`);
     return [...new Set(warnings)];
   }
 
