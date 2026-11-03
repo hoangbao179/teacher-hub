@@ -35,6 +35,7 @@ interface AssignmentRow extends RowDataPacket {
   status: AssignmentStatus;
   template_code: AssignmentDetail["templateCode"];
   age_band: LearningAgeBand;
+  grade_level: number | null;
   available_from: string | null;
   due_at: string | null;
   max_attempts: number | null;
@@ -100,6 +101,7 @@ function mapList(row: AssignmentRow): AssignmentListItem {
     status: row.status,
     audienceType: row.audience_type,
     ageBand: row.age_band,
+    gradeLevel: row.grade_level == null ? null : Number(row.grade_level),
     dueAt: dateTime(row.due_at),
     recipientCount: Number(row.recipient_count ?? 0),
     itemCount: Number(row.item_count ?? 0),
@@ -181,6 +183,7 @@ export class AssignmentRepository {
     }
     if (query.ageBand) { where.push("a.age_band=?"); params.push(query.ageBand); }
     if (query.teachingClassId) { where.push("a.teaching_class_id=?"); params.push(query.teachingClassId); }
+    if (query.gradeLevel != null) { where.push("a.grade_level=?"); params.push(query.gradeLevel); }
     const filter = where.join(" AND ");
     const [count] = await pool.query<Array<RowDataPacket & { count: number }>>(
       `SELECT COUNT(*) count FROM learning_assignments a WHERE ${filter}`,
@@ -411,7 +414,7 @@ export class AssignmentRepository {
         `UPDATE learning_assignments SET
           vocabulary_set_id=?,title=?,textbook_name=?,lesson_name=?,instruction=?,
           audience_type=?,class_id=?,teaching_class_id=?,template_code=?,age_band=?,
-          available_from=?,due_at=?,max_attempts=?,
+          grade_level=?,available_from=?,due_at=?,max_attempts=?,
           pass_score=?,answer_feedback_mode=?,shuffle_questions=?,version=version+1
          WHERE id=? AND version=?`,
         this.assignmentParams(input, id, expectedVersion),
@@ -775,9 +778,9 @@ export class AssignmentRepository {
     const [result] = await connection.execute<ResultSetHeader>(
       `INSERT INTO learning_assignments
         (teacher_user_id,vocabulary_set_id,title,textbook_name,lesson_name,instruction,
-         audience_type,class_id,teaching_class_id,template_code,age_band,
+         audience_type,class_id,teaching_class_id,template_code,age_band,grade_level,
          available_from,due_at,max_attempts,pass_score,answer_feedback_mode,shuffle_questions)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [teacherUserId, ...this.assignmentParams(input)],
     );
     const id = Number(result.insertId);
@@ -800,6 +803,7 @@ export class AssignmentRepository {
       input.teachingClassId ?? null,
       input.templateCode,
       input.ageBand,
+      input.gradeLevel ?? null,
       input.availableFrom ?? null,
       input.dueAt ?? null,
       input.maxAttempts ?? null,
