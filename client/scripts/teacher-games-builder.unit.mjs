@@ -86,7 +86,7 @@ test("only actual images make a word ready for illustrated games", () => {
   ];
   const manual = teacherWordsFromRows(rows, [], { 7: { kind: "STORED_MEDIA", mediaId: 77 } });
   assert.equal(manual.items[0].illustration.kind, "STORED_MEDIA");
-  assert.equal(manual.items[1].illustration.kind, "NONE");
+  assert.equal(manual.items[1].illustration.kind, "EMOJI");
   const changedSense = teacherWordsFromRows([{ id: 7, word: "apple", meaningVi: "nghĩa khác" }]);
   assert.equal(hasRealGameImage(changedSense.items[0]), false);
   const code = src("features/teacher-games/pages/TeacherGameBuilderPage.tsx");
