@@ -62,7 +62,7 @@ import {
 import { VocabularyImagePicker } from "../components/VocabularyImagePicker";
 import { VocabularyBulkImageSuggestions } from "../components/VocabularyBulkImageSuggestions";
 import { vocabularyMediaUrl } from "../../../api/vocabularyMedia";
-import { suggestOfflineIllustration, updateOfflineIllustrationAfterTextEdit } from "../offlineIllustrations";
+import { suggestOfflineIllustration, updateOfflineIllustrationAfterTextEdit } from "../offlineIllustrations.ts";
 
 type SourceMode = "TOPIC_CATALOG" | "MANUAL" | "PUBLIC_UNIT";
 
