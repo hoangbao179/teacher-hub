@@ -139,7 +139,19 @@ try {
   await page.getByRole("option", { name: "Lớp 3A" }).click();
   await page.getByRole("combobox", { name: "Người nhận (có thể chọn sau)" }).click();
   await page.getByRole("option", { name: "Mọi người có link/QR" }).click();
-  await page.getByTestId("teacher-game-words").locator("textarea").first().fill("apple - quả táo\nbanana - quả chuối\nhungry - đói");
+  const addWord = page.getByTestId("teacher-game-add-word");
+  assert.equal(await page.getByTestId("teacher-game-word-row").count(), 0);
+  for (const [word, meaning] of [["apple", "quả táo"], ["banana", "quả chuối"], ["hungry", "đói"]]) {
+    await addWord.click();
+    const row = page.getByTestId("teacher-game-word-row").last();
+    const english = row.getByRole("textbox", { name: "Từ tiếng Anh" });
+    const vietnamese = row.getByRole("textbox", { name: "Nghĩa tiếng Việt" });
+    assert.equal(await english.evaluate((input) => document.activeElement === input), true,
+      "adding a row should focus English input");
+    await english.fill(word);
+    await vietnamese.fill(meaning);
+  }
+  assert.equal(await page.getByTestId("teacher-game-word-row").count(), 3);
   await page.getByText("3 từ hợp lệ").waitFor();
   assert.equal(await page.getByText("2 từ có hình/emoji").count(), 1);
 
@@ -172,8 +184,10 @@ try {
   await page.getByText("Food & Drinks", { exact: true }).waitFor();
   await page.getByRole("link", { name: "Tiếp tục soạn" }).click();
   await page.waitForURL(`${origin}/admin/games/123/edit`);
-  await page.getByTestId("teacher-game-words").locator("textarea").first().waitFor();
-  assert.match(await page.getByTestId("teacher-game-words").locator("textarea").first().inputValue(), /hungry/);
+  assert.equal(await page.getByTestId("teacher-game-word-row").count(), 3);
+  const reopenedRow = page.getByTestId("teacher-game-word-row").nth(2);
+  assert.equal(await reopenedRow.getByRole("textbox", { name: "Từ tiếng Anh" }).inputValue(), "hungry");
+  assert.equal(await reopenedRow.getByRole("textbox", { name: "Nghĩa tiếng Việt" }).inputValue(), "đói");
   assert.equal(await page.getByTestId("teacher-game-lesson").locator("input").inputValue(), "Unit 4");
   assert.equal(await page.getByTestId("teacher-game-textbook").locator("input").inputValue(), "Family and Friends");
 
@@ -186,14 +200,19 @@ try {
   assert.equal(await saveOnlyTitle.isDisabled(), true, "an empty title cannot be saved");
   await page.getByTestId("teacher-game-title").locator("input").fill("Chỉ có tên bài");
   assert.equal(await saveOnlyTitle.isEnabled(), true, "the title alone must enable saving");
-  await page.getByTestId("teacher-game-words").locator("textarea").first().fill("apple");
-  assert.equal(await saveOnlyTitle.isDisabled(), true, "malformed entered words must not be silently discarded");
-  await page.getByTestId("teacher-game-words").locator("textarea").first().fill("");
+  await page.getByTestId("teacher-game-add-word").click();
+  const emptyRow = page.getByTestId("teacher-game-word-row").first();
+  await emptyRow.getByRole("textbox", { name: "Từ tiếng Anh" }).fill("apple");
+  assert.equal(await saveOnlyTitle.isDisabled(), true, "an incomplete pair cannot be silently discarded");
+  await emptyRow.getByRole("textbox", { name: "Nghĩa tiếng Việt" }).fill("quả táo");
+  assert.equal(await saveOnlyTitle.isEnabled(), true, "a complete pair permits saving");
+  await emptyRow.getByRole("button", { name: "Xóa từ 1" }).click();
+  assert.equal(await page.getByTestId("teacher-game-word-row").count(), 0);
   assert.equal(await saveOnlyTitle.isEnabled(), true);
   await saveOnlyTitle.click();
   await page.waitForURL(`${origin}/admin/games/124/edit`);
   await page.getByText(/Đã lưu bản nháp/).waitFor();
-  assert.equal(await page.getByTestId("teacher-game-words").locator("textarea").first().inputValue(), "");
+  assert.equal(await page.getByTestId("teacher-game-word-row").count(), 0);
   assert.equal(await page.getByTestId("teacher-game-textbook").locator("input").inputValue(), "");
   assert.equal(await page.getByTestId("teacher-game-lesson").locator("input").inputValue(), "");
   await page.getByRole("combobox", { name: "Người nhận (có thể chọn sau)" }).click();
@@ -201,7 +220,7 @@ try {
 
   assert(!calls.some((value) => value.includes("media/search") || value.includes("image-search")), "Teacher flow must not search remote images");
   assert.deepEqual(errors, []);
-  console.log("PASS teacher game UI: title-only draft, optional metadata/audience, auth, paste, preview, reopen, mobile");
+  console.log("PASS teacher game UI: add two-field rows, focus, delete, title-only draft, preview, reopen, mobile");
 } finally {
   await browser?.close();
   app.kill("SIGTERM");
