@@ -50,13 +50,14 @@ try {
       return route.fulfill({ json: { data: [], page: 1, pageSize: 50, total: 0 } });
     }
     if (url.pathname === "/api/vocabulary/assignments" && request.method() === "GET") {
+      const gradeMatches = !url.searchParams.has("gradeLevel") || Number(url.searchParams.get("gradeLevel")) === draft?.gradeLevel;
       const classMatches = !url.searchParams.has("teachingClassId") || Number(url.searchParams.get("teachingClassId")) === draft?.teachingClassId;
       const search = (url.searchParams.get("search") ?? "").toLowerCase();
       const searchMatches = !search || [draft?.title, draft?.textbookName, draft?.lessonName].some((value) => value?.toLowerCase().includes(search));
-      const matches = Boolean(draft && classMatches && searchMatches);
+      const matches = Boolean(draft && classMatches && gradeMatches && searchMatches);
       return route.fulfill({ json: { data: matches ? [{
         id: draft.id, title: draft.title, status: draft.status, ageBand: draft.ageBand,
-        teachingClassId: draft.teachingClassId ?? null, textbookName: draft.textbookName ?? null, lessonName: draft.lessonName ?? null,
+        teachingClassId: draft.teachingClassId ?? null, gradeLevel: draft.gradeLevel ?? null, textbookName: draft.textbookName ?? null, lessonName: draft.lessonName ?? null,
         audienceType: draft.audienceType, itemCount: draft.items.length,
         recipientCount: 0, updatedAt: draft.updatedAt, dueAt: null, version: draft.version,
       }] : [], meta: { page: 1, pageSize: 50, total: matches ? 1 : 0 } } });
@@ -69,6 +70,7 @@ try {
       assert.equal(body.audienceType, "OPEN_LINK");
       assert.equal(body.classId, undefined, "delivery audience class must stay separate");
       assert.equal(body.teachingClassId, 22);
+      assert.equal(body.gradeLevel, 3);
       assert.equal(body.textbookName, "Family and Friends");
       assert.equal(body.lessonName, "Unit 4");
       draft = {
@@ -116,6 +118,8 @@ try {
   }
 
   await page.getByTestId("teacher-game-title").locator("input").fill("Food & Drinks");
+  await page.getByTestId("teacher-game-grade").getByRole("combobox").click();
+  await page.getByRole("option", { name: "Lớp 3", exact: true }).click();
   await page.getByTestId("teacher-game-textbook").locator("input").fill("Family and Friends");
   await page.getByTestId("teacher-game-lesson").locator("input").fill("Unit 4");
   await page.getByTestId("teacher-game-teaching-class").getByRole("combobox").click();
@@ -146,6 +150,8 @@ try {
   await page.getByTestId("teacher-games-page").waitFor();
   await page.getByText("Food & Drinks", { exact: true }).waitFor();
   await page.getByText("Family and Friends · Unit 4").waitFor();
+  await page.getByTestId("teacher-games-grade-filter").getByRole("combobox").click();
+  await page.getByRole("option", { name: "Lớp 3", exact: true }).click();
   await page.getByTestId("teacher-games-class-filter").getByRole("combobox").click();
   await page.getByRole("option", { name: "Lớp 3A" }).click();
   await page.getByText("Food & Drinks", { exact: true }).waitFor();
