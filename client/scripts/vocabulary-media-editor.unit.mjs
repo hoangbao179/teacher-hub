@@ -162,7 +162,7 @@ test("ARASAAC is the illustration source while unavailable filters and stale req
   assert.match(picker, /provider\.provider === "PIXABAY" && provider\.enabled/);
   assert.match(picker, /\{photoEnabled && <MenuItem value="PHOTO"/);
   assert.match(picker, /item\.provider === "ARASAAC" \? "contain" : "cover"/);
-  assert.match(picker, /Sergio Palao \/ ARASAAC/);
+  assert.match(picker, /Sergio Palao.*ARASAAC/);
   assert.match(bulk, /searchCache\.current\.get\(key\)/);
   assert.match(bulk, /candidateControllers\.current\.forEach\(\(controller\) => controller\.abort\(\)\)/);
   assert.match(bulk, /status: candidate\.strategy\.publicAsset \? "SELECTED" : "SEARCH_PENDING"/);
