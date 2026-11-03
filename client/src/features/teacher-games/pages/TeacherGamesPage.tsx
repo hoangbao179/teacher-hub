@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { duplicateAssignment, listAssignments } from "../../../api/assignments";
 import { listTeacherGameClasses } from "../../../api/teacherGames";
 import { TeacherGameShell } from "../TeacherGameShell";
+import { teacherGradeLabel, teacherGradeOptions } from "../teacherGrades";
 
 const statusText = { DRAFT: "Bản nháp", PUBLISHED: "Đã giao", CLOSED: "Đã đóng" } as const;
 
@@ -14,6 +15,7 @@ export function TeacherGamesPage() {
   const [items, setItems] = useState<AssignmentListItem[]>([]);
   const [filter, setFilter] = useState("");
   const [classFilter, setClassFilter] = useState<number | "ALL">("ALL");
+  const [gradeFilter, setGradeFilter] = useState<number | "ALL">("ALL");
   const [classes, setClasses] = useState<ClassListItem[]>([]);
   const [classesError, setClassesError] = useState("");
   const [page, setPage] = useState(1);
@@ -32,6 +34,7 @@ export function TeacherGamesPage() {
         pageSize: 50, page,
         search: filter.trim() || undefined,
         teachingClassId: classFilter === "ALL" ? undefined : classFilter,
+        gradeLevel: gradeFilter === "ALL" ? undefined : gradeFilter,
       });
       if (requestId.current !== current) return;
       setItems(result.data);
@@ -42,7 +45,7 @@ export function TeacherGamesPage() {
     } finally {
       if (requestId.current === current) setLoading(false);
     }
-  }, [classFilter, filter, page]);
+  }, [classFilter, gradeFilter, filter, page]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 250);
@@ -91,6 +94,12 @@ export function TeacherGamesPage() {
       <Stack spacing={1.5}>
         <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>Bài đã tạo theo lớp</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 1.5 }}>
+          <TextField select size="small" value={gradeFilter} data-testid="teacher-games-grade-filter"
+            onChange={(event) => { setGradeFilter(event.target.value === "ALL" ? "ALL" : Number(event.target.value)); setPage(1); }}
+            label="Khối lớp" sx={{ flex: 1, minWidth: 0 }}>
+            <MenuItem value="ALL">Tất cả khối lớp</MenuItem>
+            {teacherGradeOptions.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+          </TextField>
           <TextField select size="small" value={classFilter} data-testid="teacher-games-class-filter"
             onChange={(event) => { setClassFilter(event.target.value === "ALL" ? "ALL" : Number(event.target.value)); setPage(1); }}
             label="Lọc theo lớp" sx={{ flex: 1, minWidth: 0 }}>
@@ -119,6 +128,7 @@ export function TeacherGamesPage() {
                   <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                     <Chip size="small" label={statusText[item.status]} color={item.status === "PUBLISHED" ? "success" : "default"} />
                     <Chip size="small" variant="outlined" label={`${item.itemCount} từ`} />
+                    <Chip size="small" variant="outlined" label={teacherGradeLabel(item.gradeLevel)} />
                     <Chip size="small" variant="outlined" label={item.teachingClassId == null
                       ? "Bài dùng chung"
                       : classes.find((value) => value.id === item.teachingClassId)?.name ?? `Lớp #${item.teachingClassId}`} />
