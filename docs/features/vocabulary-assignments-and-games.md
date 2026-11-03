@@ -140,7 +140,9 @@ Teacher Tools giữ nguyên phần tải tài liệu hiện tại.
   **Từ tiếng Anh** và **Nghĩa tiếng Việt**, có thể xóa từng dòng. Mobile bố trí
   theo chiều dọc, desktop hai cột. Nếu copy bảng Word/Excel nhiều dòng thì dán
   vào ô tiếng Anh để tách thành các cặp (tab, dấu phẩy, chấm phẩy hoặc ` - `);
-  từ không có hình vẫn có thể lưu và chơi các hoạt động chữ/nghĩa.
+  từ không có hình vẫn có thể **lưu DRAFT**. Trước khi **giao trò chơi**,
+  mỗi từ phải có **ảnh thật** (STORED_MEDIA hoặc ảnh nội bộ đã materialize),
+  emoji không được tính là ảnh thật.
 - Phân loại và giao bài là hai khái niệm độc lập:
   `teachingClassId` là lớp dùng để **lưu và tìm lại bài**,
   `classId` chỉ dùng khi `audienceType=CLASS` (lớp nhận bài). Bài lưu cho
@@ -163,7 +165,7 @@ Teacher Tools giữ nguyên phần tải tài liệu hiện tại.
 - Lưu và mở lại bản nháp sử dụng `/api/vocabulary/assignments` sẵn có;
   ảnh cô đã chọn được giữ lại nếu cặp từ/nghĩa không đổi. Không xóa dữ liệu
   đang có khi danh sách dán chứa dòng thiếu nghĩa/trùng hoặc vượt giới hạn.
-- `VOCABULARY_GAMES_ENABLED=false` giữ nguyên. Xem thử thẻ học **không phải**
+- Trên trang soạn nhanh, từng dòng có nút **Chọn ảnh/Đổi ảnh** tái sử dụng\n  `VocabularyImagePicker`: ảnh giáo viên upload hoặc chọn từ nguồn hợp lệ được\n  lưu theo đúng cặp Anh/Việt; đổi nghĩa sẽ không giữ sai ảnh. Xem trước và\n  thông báo đếm **ảnh thực**, không xem emoji là ảnh hoàn chỉnh.\n- Chỉ tham khảo UX của các game GitHub, không copy code/ảnh không rõ giấy phép.\n  ARASAAC **CC BY-NC-SA** không dành cho mục đích thương mại; ảnh Pixabay có\n  điều kiện riêng, không tự động tải hàng loạt hoặc sử dụng không kiểm duyệt.\n- `VOCABULARY_GAMES_ENABLED=false` giữ nguyên. Xem thử thẻ học **không phải**
   lượt chơi thử đầy đủ; hoạt động publish, chia sẻ QR và thu kết quả mới
   phải đợi các phase kích hoạt game/kiểm tra release. Không thêm tài khoản
   học sinh hoặc thư viện tạo ảnh runtime.
@@ -511,14 +513,15 @@ Quy tắc import nhanh:
   kiểm duyệt tại `client/src/features/vocabulary/offlineIllustrations.ts`.
   Ví dụ `orange — quả cam` khác `orange — màu cam`; không tự đoán `table`
   hoặc từ trừu tượng chưa có ánh xạ. Không dùng kết quả tìm ảnh online làm mặc định.
-- Không khớp được hình thì dùng `illustration.kind = NONE`; đó **không phải lỗi**.
+- Không khớp được hình thì dùng `illustration.kind = NONE`; đó **không phải lỗi khi soạn/lưu nháp**. Ở bước phát hành phải bổ sung ảnh thật cho từng từ.
   Giáo viên có thể lưu bộ từ bình thường. Chỉ khi giáo viên chủ động mở phần
   hình nâng cao, upload hoặc tìm ảnh thì luồng media cũ mới được dùng; không tự
   retry khi nguồn ARASAAC/Pixabay trả 429.
 - Chỉnh sửa chữ/nghĩa chỉ tái gợi ý nếu hình trống hoặc đúng là emoji đã được
   gợi ý trước đó. Ảnh đã upload/chọn của giáo viên phải được giữ lại.
-- Khi sinh câu hỏi, trò yêu cầu hình thiếu dữ liệu phải chuyển sang dạng chữ/nghĩa
-  tương thích hoặc bỏ câu với cảnh báo; không được phát câu hỏi có ô hình trống.
+- Các bài **đã xuất bản trước đó** vẫn được engine xử lý thiếu hình theo cơ chế tương thích chữ/nghĩa để không phá lịch sử.
+  Với **bài mới**, API phát hành không chấp nhận bất kỳ từ nào chưa có ảnh thật;
+  trình duyệt hiển thị ảnh ở thẻ, ghép hình, bài chọn đáp án và luyện chữ.
 - Đây là **logic đã chuẩn bị trong source**; không đồng nghĩa với việc mở lại
   `LEGACY_ADMIN_ENABLED` hoặc `VOCABULARY_GAMES_ENABLED`. Giao diện nhập từ
   và publish game cho cô giáo thuộc các phase sau.
