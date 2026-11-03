@@ -132,9 +132,10 @@ Teacher Tools giữ nguyên phần tải tài liệu hiện tại.
 - Sau đăng nhập, cô đến `/admin/tools`, chọn **Soạn trò chơi từ vựng**.
 - Trang **Trò chơi từ vựng** liệt kê bản nháp và bài đã giao, cho phép
   tiếp tục sửa hoặc nhân bản; không hiện link chết khi game học sinh đang tắt.
-- Trang soạn một màn: đặt **tên bài**, **khối lớp 0 (Mầm non)/1–9**,
-  **lớp học cụ thể tùy chọn**, **giáo trình** và **Unit/Bài học**; các trường này
-  được lưu vào `learning_assignments` qua migration 0031 và hiện trong danh sách.
+- Trang soạn một màn: **chỉ tên bài là bắt buộc để lưu DRAFT**. Khối lớp
+  (Mầm non/Lớp 1–9), lớp học cụ thể, giáo trình, Unit/Bài học, người nhận,
+  nguồn từ vựng và số lượng từ đều tùy chọn ở thời điểm lưu nháp. Các metadata
+  có giá trị NULL khi chưa chọn, được lưu qua migration 0031 và hiện trong danh sách.
   Có thể **dán từ + nghĩa từ giáo trình ngoài** (tab, dấu phẩy/chấm phẩy hoặc
   ` - `) hoặc chọn bộ từ đã lưu; chỉ gợi ý emoji offline khi khớp nghĩa.
 - Phân loại và giao bài là hai khái niệm độc lập:
@@ -148,8 +149,14 @@ Teacher Tools giữ nguyên phần tải tài liệu hiện tại.
   cô có thể đổi lớp cho bản sao mà không thay đổi bài gốc hoặc lịch sử giao trước.
 - Chọn một trong bốn lộ trình cũ (Bé mới học, Nhớ từ nhanh, Luyện chính tả,
   Ôn trước kiểm tra), xem thử thẻ học ngay trên trình duyệt.
-- Chọn dự định giao link chung, lớp hoặc một số học sinh; thông tin được lưu
-  **ở trạng thái DRAFT**, không tạo token/link/QR và không phát bài đến học sinh.
+- Có thể **chọn người nhận sau**; để trống không tự chọn OPEN_LINK.
+  Nếu cô đang chọn chế độ giao cho lớp nhưng chưa xác định lớp nhận, bản nháp
+  được lưu với người nhận chưa chọn. API vẫn đặt giá trị kỹ thuật mặc định cho
+  nhóm trình độ và template, không yêu cầu cô thao tác.
+- Có thể lưu nháp khi chưa dán từ, có một từ hoặc chưa chọn hoạt động. Khi đã
+  nhập từ nhưng dòng lỗi hoặc trùng thì phải sửa trước khi lưu để không âm thầm
+  bỏ sót dữ liệu. Khi thực sự phát bài, vẫn áp dụng kiểm tra đủ ít nhất 2 từ,
+  hoạt động và người nhận; lưu nháp không tạo token/link/QR hoặc phát bài.
 - Lưu và mở lại bản nháp sử dụng `/api/vocabulary/assignments` sẵn có;
   ảnh cô đã chọn được giữ lại nếu cặp từ/nghĩa không đổi. Không xóa dữ liệu
   đang có khi danh sách dán chứa dòng thiếu nghĩa/trùng hoặc vượt giới hạn.
