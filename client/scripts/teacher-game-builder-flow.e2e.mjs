@@ -96,7 +96,12 @@ try {
   await page.locator('input[name="password"]').fill("fixture-password");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await page.waitForURL(`${origin}/admin/games/new`);
-  await page.getByTestId("teacher-game-builder-page").waitFor();
+  try {
+    await page.getByTestId("teacher-game-builder-page").waitFor({ timeout: 8_000 });
+  } catch {
+    const body = await page.locator("body").innerText().catch(() => "(no body)");
+    throw new Error(`Teacher builder did not render. URL=${page.url()} errors=${JSON.stringify(errors)} calls=${JSON.stringify(calls)} body=${body.slice(0, 1600)}`);
+  }
 
   await page.getByTestId("teacher-game-title").locator("input").fill("Family and Friends – Unit 4");
   await page.getByTestId("teacher-game-words").locator("textarea").first().fill("apple - quả táo\nbanana - quả chuối\nhungry - đói");
