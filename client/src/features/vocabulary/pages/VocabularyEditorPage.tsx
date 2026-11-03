@@ -62,6 +62,7 @@ import {
 import { VocabularyImagePicker } from "../components/VocabularyImagePicker";
 import { VocabularyBulkImageSuggestions } from "../components/VocabularyBulkImageSuggestions";
 import { vocabularyMediaUrl } from "../../../api/vocabularyMedia";
+import { suggestOfflineIllustration, updateOfflineIllustrationAfterTextEdit } from "../offlineIllustrations";
 
 type SourceMode = "TOPIC_CATALOG" | "MANUAL" | "PUBLIC_UNIT";
 
@@ -162,8 +163,8 @@ export function VocabularyEditorPage() {
         exampleEn: item.exampleEn ?? undefined,
         speechText: item.speechText,
         tier: item.tier,
-        illustration: { kind: "NONE" as const },
-        supportsImageGame: item.supportsImageGame,
+        illustration: suggestOfflineIllustration(item.word, item.meaningVi),
+        supportsImageGame: suggestOfflineIllustration(item.word, item.meaningVi).kind !== "NONE",
         imageSearchTerms: item.imageSearchTerms,
       }))
       : publicUnitId
@@ -265,7 +266,11 @@ export function VocabularyEditorPage() {
       setError(`Có ${preview.invalidCount} dòng chưa đủ từ và nghĩa.`);
       return;
     }
-    setItems(preview.rows.map((row, index) => ({ ...emptyItem(index + 1), word: row.word, meaningVi: row.meaningVi })));
+    setItems(preview.rows.map((row, index) => {
+      const illustration = suggestOfflineIllustration(row.word, row.meaningVi);
+      return { ...emptyItem(index + 1), word: row.word, meaningVi: row.meaningVi,
+        illustration, supportsImageGame: illustration.kind !== "NONE" };
+    }));
     setDirty(true);
     setNotice(`Đã đọc ${preview.validCount} từ. Hãy kiểm tra trước khi lưu.`);
   };
@@ -376,14 +381,15 @@ export function VocabularyEditorPage() {
 
       {!setId && mode === "MANUAL" && (
         <Card variant="outlined"><CardContent>
-          <Typography variant="h6" sx={{ mb: 1 }}>3. Dán danh sách</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Mỗi dòng: từ tiếng Anh, dấu phẩy hoặc tab, nghĩa tiếng Việt.</Typography>
+          <Typography variant="h6" sx={{ mb: 1 }}>3. Dán danh sách từ giáo trình</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Dán từ từ Word, Excel hoặc giáo trình. Mỗi dòng: từ tiếng Anh, dấu phẩy hoặc tab, nghĩa tiếng Việt.</Typography>
           <TextField fullWidth multiline minRows={5} value={paste} onChange={(event) => setPaste(event.target.value)} placeholder={"apple, quả táo\nbanana, quả chuối"} />
           <Button sx={{ mt: 1 }} variant="outlined" onClick={applyPaste}>Đọc danh sách</Button>
         </CardContent></Card>
       )}
 
       <Box>
+        <Alert severity="info" sx={{ mb: 1.5 }}>Hình minh họa không bắt buộc. Hệ thống tự gợi ý emoji khi nhận diện đúng nghĩa; không có hình vẫn lưu bộ từ và luyện trò chơi chữ/nghĩa được. Chỉ tìm hoặc tải ảnh nếu cô muốn.</Alert>
         <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1 }}>
           <Typography component="h2" variant="h6">{setId ? "Các từ trong bộ" : "4. Kiểm tra từ"} <Chip size="small" label={`${currentItems.length}/100`} /></Typography>
           <Stack direction="row" sx={{ gap: 0.5, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -460,7 +466,7 @@ function VocabularyItemEditor({ item, index, readOnly, mediaReadOnly, onChange, 
             <Stack spacing={0.75}>
               <Typography variant="subtitle2">Hình minh họa</Typography>
               <Typography variant="body2" color="text.secondary">
-                {item.illustration.kind === "NONE" ? "Chưa có hình" : item.illustration.kind === "STORED_MEDIA" ? "Ảnh đã lưu an toàn" : item.illustration.kind === "EMOJI" ? "Emoji từ Unit công khai" : "Ảnh nội bộ từ Unit công khai"}
+                {item.illustration.kind === "NONE" ? "Chưa có hình" : item.illustration.kind === "STORED_MEDIA" ? "Ảnh đã lưu an toàn" : item.illustration.kind === "EMOJI" ? "Emoji minh họa có sẵn" : "Ảnh nội bộ"}
               </Typography>
               {!mediaReadOnly && <Stack direction="row" sx={{ gap: 0.5, flexWrap: "wrap" }}>
                 <Button size="small" variant="outlined" startIcon={<ImageSearch />} onClick={onFindImage}>{item.illustration.kind === "NONE" ? "Tìm ảnh" : "Đổi ảnh"}</Button>
@@ -469,8 +475,8 @@ function VocabularyItemEditor({ item, index, readOnly, mediaReadOnly, onChange, 
             </Stack>
           </Box>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
-            <TextField label="Từ tiếng Anh" value={item.word} disabled={readOnly} onChange={(event) => onChange({ ...item, word: event.target.value })} />
-            <TextField label="Nghĩa tiếng Việt" value={item.meaningVi} disabled={readOnly} onChange={(event) => onChange({ ...item, meaningVi: event.target.value })} />
+            <TextField label="Từ tiếng Anh" value={item.word} disabled={readOnly} onChange={(event) => onChange(updateOfflineIllustrationAfterTextEdit(item, "word", event.target.value))} />
+            <TextField label="Nghĩa tiếng Việt" value={item.meaningVi} disabled={readOnly} onChange={(event) => onChange(updateOfflineIllustrationAfterTextEdit(item, "meaningVi", event.target.value))} />
             <TextField label="Phiên âm" value={item.phonetic ?? ""} disabled={readOnly} onChange={(event) => onChange({ ...item, phonetic: event.target.value })} />
             <TextField label="Ví dụ tiếng Anh" value={item.exampleEn ?? ""} disabled={readOnly} onChange={(event) => onChange({ ...item, exampleEn: event.target.value })} />
           </Box>
