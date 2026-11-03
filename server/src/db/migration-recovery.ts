@@ -318,6 +318,7 @@ export async function recoverInterruptedMigrations(
   if (!await migrationApplied(connection, catalogVersion)
       && await tableExists(connection, "learning_assignments")
       && await columnExists(connection, "learning_assignments", "teaching_class_id")
+      && await columnExists(connection, "learning_assignments", "grade_level")
       && await columnExists(connection, "learning_assignments", "textbook_name")
       && await columnExists(connection, "learning_assignments", "lesson_name")) {
     await connection.query(
