@@ -171,8 +171,8 @@ export class AssignmentRepository {
     const where = ["a.teacher_user_id=?"];
     const params: unknown[] = [teacherUserId];
     if (query.search) {
-      where.push("(a.title LIKE ? OR a.public_code LIKE ?)");
-      params.push(`%${query.search}%`, `%${query.search}%`);
+      where.push("(a.title LIKE ? OR a.textbook_name LIKE ? OR a.lesson_name LIKE ? OR a.public_code LIKE ?)");
+      params.push(...Array(4).fill(`%${query.search}%`));
     }
     if (query.status) { where.push("a.status=?"); params.push(query.status); }
     if (query.audienceType) {
