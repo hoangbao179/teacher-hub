@@ -132,9 +132,20 @@ Teacher Tools giữ nguyên phần tải tài liệu hiện tại.
 - Sau đăng nhập, cô đến `/admin/tools`, chọn **Soạn trò chơi từ vựng**.
 - Trang **Trò chơi từ vựng** liệt kê bản nháp và bài đã giao, cho phép
   tiếp tục sửa hoặc nhân bản; không hiện link chết khi game học sinh đang tắt.
-- Trang soạn một màn: đặt tên theo sách/Unit, chọn nhóm lớp; **dán từ + nghĩa
-  từ giáo trình ngoài** (tab, dấu phẩy/chấm phẩy hoặc ` - `) hoặc chọn bộ từ
-  đã lưu; hệ thống chỉ tự gợi ý emoji offline khi khớp nghĩa đã kiểm duyệt.
+- Trang soạn một màn: đặt **tên bài**, **khối lớp 0 (Mầm non)/1–9**,
+  **lớp học cụ thể tùy chọn**, **giáo trình** và **Unit/Bài học**; các trường này
+  được lưu vào `learning_assignments` qua migration 0031 và hiện trong danh sách.
+  Có thể **dán từ + nghĩa từ giáo trình ngoài** (tab, dấu phẩy/chấm phẩy hoặc
+  ` - `) hoặc chọn bộ từ đã lưu; chỉ gợi ý emoji offline khi khớp nghĩa.
+- Phân loại và giao bài là hai khái niệm độc lập:
+  `teachingClassId` là lớp dùng để **lưu và tìm lại bài**,
+  `classId` chỉ dùng khi `audienceType=CLASS` (lớp nhận bài). Bài lưu cho
+  một lớp vẫn có thể dùng `OPEN_LINK`. Khối lớp `gradeLevel` xác định
+  Lớp 1–9, không được nhầm với nhóm độ tuổi `ageBand` của game.
+- Danh sách bài hỗ trợ lọc theo khối lớp và lớp học thực tế, tìm theo tên bài,
+  giáo trình hoặc Unit và phân trang. Bài không phân lớp được ghi rõ là bài dùng
+  chung. **Nhân bản** giữ nguyên dữ liệu nguồn và metadata nhưng tạo bản nháp mới,
+  cô có thể đổi lớp cho bản sao mà không thay đổi bài gốc hoặc lịch sử giao trước.
 - Chọn một trong bốn lộ trình cũ (Bé mới học, Nhớ từ nhanh, Luyện chính tả,
   Ôn trước kiểm tra), xem thử thẻ học ngay trên trình duyệt.
 - Chọn dự định giao link chung, lớp hoặc một số học sinh; thông tin được lưu
