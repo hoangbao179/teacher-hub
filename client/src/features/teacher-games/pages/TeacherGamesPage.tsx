@@ -67,7 +67,7 @@ export function TeacherGamesPage() {
         <TextField size="small" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Tìm tên bài…" label="Tìm bài" sx={{ width: { xs: "100%", sm: 260 } }} />
       </Stack>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={() => void load()}>Tải lại</Button>}>{error}</Alert>}
-      {loading ? <Stack alignItems="center" sx={{ py: 5 }}><CircularProgress aria-label="Đang tải bài từ vựng" /></Stack> : (
+      {loading ? <Stack sx={{ py: 5, alignItems: "center" }}><CircularProgress aria-label="Đang tải bài từ vựng" /></Stack> : (
         visible.length === 0
           ? <Card variant="outlined" sx={{ borderRadius: 3 }}><CardContent sx={{ textAlign: "center", py: 5 }}>
               <MenuBookOutlined sx={{ fontSize: 40, color: "#0f766e", mb: 1 }} />
