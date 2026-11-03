@@ -82,13 +82,19 @@ export function TeacherGameBuilderPage() {
   }, []);
 
   useEffect(() => {
-    if (form.audienceType === "OPEN_LINK") return;
     let canceled = false;
-    void Promise.all([listTeacherGameClasses(), listTeacherGameStudents()]).then(([allClasses, allStudents]) => {
-      if (canceled) return;
-      setClasses(allClasses.filter((item) => item.status === "ACTIVE"));
-      setStudents(allStudents.filter((item) => item.status === "ACTIVE"));
-    }).catch(() => { if (!canceled) setRosterError("Không tải được lớp/học sinh. Hãy thử mở lại mục người nhận."); });
+    void listTeacherGameClasses().then((allClasses) => {
+      if (!canceled) setClasses(allClasses);
+    }).catch(() => { if (!canceled) setRosterError("Không tải được lớp học. Cô có thể lưu bài chưa phân lớp và thử lại."); });
+    return () => { canceled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (form.audienceType !== "SELECTED_STUDENTS") return;
+    let canceled = false;
+    void listTeacherGameStudents().then((allStudents) => {
+      if (!canceled) setStudents(allStudents.filter((item) => item.status === "ACTIVE"));
+    }).catch(() => { if (!canceled) setRosterError("Không tải được danh sách học sinh."); });
     return () => { canceled = true; };
   }, [form.audienceType]);
 
@@ -109,6 +115,9 @@ export function TeacherGameBuilderPage() {
       setSourceMode(detail.vocabularySetId ? "SET" : "PASTE");
       setForm({
         title: detail.title,
+        teachingClassId: detail.teachingClassId ?? undefined,
+        textbookName: detail.textbookName ?? undefined,
+        lessonName: detail.lessonName ?? undefined,
         instruction: detail.instruction ?? undefined,
         vocabularySetId: detail.vocabularySetId ?? undefined,
         ageBand: detail.ageBand,
@@ -241,10 +250,30 @@ export function TeacherGameBuilderPage() {
             <BookOutlined color="primary" />
             <Typography component="h2" variant="h6" sx={{ fontWeight: 800 }}>1. Bài học của cô</Typography>
           </Stack>
-          <TextField fullWidth required label="Tên bài / Giáo trình / Unit" data-testid="teacher-game-title"
-            placeholder="Ví dụ: Family and Friends – Unit 4 – Food"
+          <TextField fullWidth required label="Tên bài ôn tập" data-testid="teacher-game-title"
+            placeholder="Ví dụ: Food & Drinks"
             value={form.title} onChange={(event) => { setForm((current) => ({ ...current, title: event.target.value })); setSavedNotice(""); }}
             slotProps={{ htmlInput: { maxLength: 160 } }} />
+          <TextField fullWidth label="Giáo trình (tùy chọn)" data-testid="teacher-game-textbook"
+            placeholder="Ví dụ: Family and Friends"
+            value={form.textbookName ?? ""} onChange={(event) => { setForm((current) => ({ ...current, textbookName: event.target.value })); setSavedNotice(""); }}
+            slotProps={{ htmlInput: { maxLength: 120 } }} />
+          <TextField fullWidth label="Unit / Bài học (tùy chọn)" data-testid="teacher-game-lesson"
+            placeholder="Ví dụ: Unit 4 – Lesson 2"
+            value={form.lessonName ?? ""} onChange={(event) => { setForm((current) => ({ ...current, lessonName: event.target.value })); setSavedNotice(""); }}
+            slotProps={{ htmlInput: { maxLength: 120 } }} />
+          <TextField select fullWidth label="Lưu bài vào lớp" data-testid="teacher-game-teaching-class"
+            value={form.teachingClassId ?? ""}
+            onChange={(event) => { setForm((current) => ({ ...current, teachingClassId: event.target.value ? Number(event.target.value) : undefined })); setSavedNotice(""); }}>
+            <MenuItem value="">Bài dùng chung / Chưa phân lớp</MenuItem>
+            {classes.map((item) => <MenuItem key={item.id} value={item.id} disabled={item.status !== "ACTIVE" && item.id !== form.teachingClassId}>
+              {item.name}{item.status !== "ACTIVE" ? " (đã ngừng)" : ""}
+            </MenuItem>)}
+          </TextField>
+          {rosterError && <Alert severity="warning">{rosterError}</Alert>}
+          <Typography variant="body2" color="text.secondary">
+            Lớp này dùng để sắp xếp và tìm lại bài. Cô vẫn có thể giao bài bằng link chung hoặc nhân bản sang lớp khác.
+          </Typography>
           <TextField select fullWidth label="Nhóm lớp" value={form.ageBand}
             onChange={(event) => { setForm((current) => ({ ...current, ageBand: event.target.value as AssignmentDraftInput["ageBand"] })); setSavedNotice(""); }}>
             {ageBandOptions.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
@@ -323,7 +352,7 @@ export function TeacherGameBuilderPage() {
           <TextField select fullWidth label="Người nhận" value={form.audienceType ?? "OPEN_LINK"}
             onChange={(event) => {
               setForm((current) => ({ ...current, audienceType: event.target.value as AssignmentAudienceType,
-                classId: undefined, selectedStudentIds: [] }));
+                classId: event.target.value === "CLASS" ? current.teachingClassId : undefined, selectedStudentIds: [] }));
               setSavedNotice("");
               setRosterError("");
             }}>
@@ -331,7 +360,6 @@ export function TeacherGameBuilderPage() {
             <MenuItem value="CLASS">Một lớp đang học</MenuItem>
             <MenuItem value="SELECTED_STUDENTS">Một số học sinh</MenuItem>
           </TextField>
-          {rosterError && form.audienceType !== "OPEN_LINK" && <Alert severity="warning">{rosterError}</Alert>}
           {form.audienceType === "CLASS" && <TextField select fullWidth label="Chọn lớp" value={form.classId ?? ""}
             onChange={(event) => setForm((current) => ({ ...current, classId: Number(event.target.value) }))}>
             {classes.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
