@@ -1,4 +1,4 @@
-import type { AssignmentVocabularyItemInput, VocabularyPastePreview } from "@teacher/shared";
+import type { AssignmentVocabularyItemInput, VocabularyPastePreview, VocabularyIllustrationInput } from "@teacher/shared";
 import { suggestOfflineIllustration } from "../vocabulary/offlineIllustrations.ts";
 import { parseVocabularyPaste } from "../vocabulary/vocabularyEditor.ts";
 
@@ -18,7 +18,7 @@ export interface TeacherWordDraft {
   errors: string[];
 }
 
-type WordPairInput = Pick<TeacherWordRow, "word" | "meaningVi"> & { sourceLine?: number };
+type WordPairInput = Pick<TeacherWordRow, "word" | "meaningVi"> & { id?: number; sourceLine?: number };
 type RowsResult = Pick<TeacherWordDraft, "items" | "duplicateLines" | "errors">;
 
 /** Editable pairs are the source of truth. Ignore entirely blank rows in drafts;
@@ -27,6 +27,7 @@ type RowsResult = Pick<TeacherWordDraft, "items" | "duplicateLines" | "errors">;
 export function teacherWordsFromRows(
   rows: readonly WordPairInput[],
   previous: readonly AssignmentVocabularyItemInput[] = [],
+  images: Readonly<Record<number, VocabularyIllustrationInput>> = {},
 ): RowsResult {
   const prior = new Map(previous.map((item) => [key(item.word, item.meaningVi), item]));
   const duplicates = new Set<string>();
@@ -46,7 +47,8 @@ export function teacherWordsFromRows(
     if (duplicates.has(normalized)) duplicateLines.push(line);
     duplicates.add(normalized);
     const existing = prior.get(normalized);
-    const illustration = existing?.illustration ?? suggestOfflineIllustration(word, meaningVi);
+    const illustration = (row.id == null ? undefined : images[row.id])
+      ?? existing?.illustration ?? suggestOfflineIllustration(word, meaningVi);
     items.push({
       ...existing,
       displayOrder: items.length + 1,
