@@ -172,6 +172,21 @@ test("draft validation rejects invalid audience, date and image-dependent publis
   );
 });
 
+test("emoji-only exercises may be saved as drafts but cannot be published as illustrated games", async () => {
+  const service = new AssignmentService(
+    { detail: async () => detail() } as never,
+    "https://tienganhcovy.com",
+    { materializeItems: async (items: unknown) => items } as never,
+  );
+  const preview = await service.preview(1, 1);
+  assert.ok(preview.warnings.some((warning) => warning.includes("ảnh minh họa thật")));
+  await assert.rejects(
+    service.publish(1, 1, 1),
+    (error: unknown) =>
+      (error as { code?: string }).code === "ACTIVITY_REQUIRES_IMAGES",
+  );
+});
+
 test("backend rejects unsupported combinations and publish dry-run blocks zero questions", async () => {
   const service = new AssignmentService(
     { detail: async () => detail({
