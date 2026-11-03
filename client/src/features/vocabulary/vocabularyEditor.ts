@@ -77,18 +77,18 @@ export function suggestionItems(
   return suggestion.items.filter((item) => item.selected).map((item, index) => {
     const illustration = suggestOfflineIllustration(item.word, item.meaningVi);
     return {
-    sourceTopicWordId: item.id,
-    displayOrder: index + 1,
-    word: item.word,
-    meaningVi: item.meaningVi,
-    phonetic: item.phonetic ?? undefined,
-    partOfSpeech: item.partOfSpeech ?? undefined,
-    exampleEn: item.exampleEn ?? undefined,
-    speechText: item.speechText,
-    tier: item.tier,
-    illustration,
-    supportsImageGame: illustration.kind !== "NONE",
-    imageSearchTerms: item.imageSearchTerms,
+      sourceTopicWordId: item.id,
+      displayOrder: index + 1,
+      word: item.word,
+      meaningVi: item.meaningVi,
+      phonetic: item.phonetic ?? undefined,
+      partOfSpeech: item.partOfSpeech ?? undefined,
+      exampleEn: item.exampleEn ?? undefined,
+      speechText: item.speechText,
+      tier: item.tier,
+      illustration,
+      supportsImageGame: illustration.kind !== "NONE",
+      imageSearchTerms: item.imageSearchTerms,
     };
   });
 }
