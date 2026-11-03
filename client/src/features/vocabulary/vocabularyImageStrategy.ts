@@ -72,7 +72,7 @@ export function buildVocabularyImageStrategy(
   rawWord: string, searchTerms: string[] = [], meaningVi?: string,
 ): VocabularyImageStrategy {
   const word = normalize(rawWord);
-  const verifiedSense = meaningVi ? localSenseAssets[`${word}\\u0000${normalizeMeaning(meaningVi)}`] : undefined;
+  const verifiedSense = meaningVi ? localSenseAssets[`${word}\u0000${normalizeMeaning(meaningVi)}`] : undefined;
   const publicAsset = verifiedSense ??
     (!meaningVi || allowedLocalAssetSense(word, meaningVi) ? localAssetManifest[word] : undefined);
   if (publicAsset) return { category: "LOCAL", query: word, queries: [word], publicAsset };
