@@ -1,4 +1,4 @@
-import { Add, AutoAwesome, BookOutlined, CheckCircleOutlined, ChevronLeft, ChevronRight, DeleteOutlined, SaveOutlined, VisibilityOutlined } from "@mui/icons-material";
+import { Add, AutoAwesome, BookOutlined, CheckCircleOutlined, ChevronLeft, ChevronRight, DeleteOutlined, ImageSearch, SaveOutlined, VisibilityOutlined } from "@mui/icons-material";
 import {
   Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress,
   FormControlLabel, MenuItem, Stack, TextField, Typography,
@@ -7,8 +7,9 @@ import type {
   AssignmentAudienceType, AssignmentDetail, AssignmentDraftInput,
   AssignmentTemplateCode, AssignmentVocabularyItemInput,
   ClassListItem, StudentListItem, VocabularySetListItem,
+  VocabularyIllustrationInput,
 } from "@teacher/shared";
-import { assignmentActivitiesForTemplate, hasPlayableImage } from "@teacher/shared";
+import { assignmentActivitiesForTemplate, hasRealGameImage } from "@teacher/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -17,6 +18,8 @@ import {
 } from "../../../api/assignments";
 import { listTeacherGameClasses, listTeacherGameStudents } from "../../../api/teacherGames";
 import { getVocabularySet, listVocabularySets } from "../../../api/vocabulary";
+import { vocabularyMediaUrl } from "../../../api/vocabularyMedia";
+import { VocabularyImagePicker } from "../../vocabulary/components/VocabularyImagePicker";
 import { ageBandOptions } from "../../vocabulary/vocabularyEditor";
 import { TeacherGameShell } from "../TeacherGameShell";
 import { ageBandForGrade, teacherGradeOptions } from "../teacherGrades";
@@ -48,6 +51,27 @@ function itemsFromDetail(detail: AssignmentDetail): AssignmentVocabularyItemInpu
   }));
 }
 
+function TeacherGameImage({ image, word, large = false }: {
+  image: VocabularyIllustrationInput; word: string; large?: boolean;
+}) {
+  const source = image.kind === "STORED_MEDIA" && image.mediaId
+    ? vocabularyMediaUrl(image.mediaId, large ? "GAME" : "THUMBNAIL")
+    : image.kind === "PUBLIC_ASSET" ? image.value : null;
+  if (source) return <Box component="img" src={source} loading="lazy"
+    alt={`Hình minh họa ${word}`} sx={{
+      display: "block", width: large ? 220 : 94, height: large ? 180 : 94,
+      maxWidth: "100%", objectFit: "contain", borderRadius: 2, bgcolor: "grey.50",
+    }} />;
+  if (image.kind === "EMOJI") return <Stack sx={{ width: 94, minHeight: 94, alignItems: "center", justifyContent: "center" }}>
+    <Typography aria-label={`Emoji gợi ý cho ${word}`} role="img" sx={{ fontSize: large ? 64 : 46 }}>{image.value}</Typography>
+    {!large && <Typography variant="caption" color="text.secondary">Emoji gợi ý</Typography>}
+  </Stack>;
+  return <Stack sx={{ minHeight: 94, width: 94, alignItems: "center", justifyContent: "center" }}>
+    <ImageSearch color="disabled" fontSize="large" />
+    <Typography variant="caption" color="text.secondary">Thiếu ảnh</Typography>
+  </Stack>;
+}
+
 export function TeacherGameBuilderPage() {
   const routeId = useParams().id;
   const editingId = routeId ? Number(routeId) : undefined;
@@ -60,6 +84,8 @@ export function TeacherGameBuilderPage() {
   const nextRowId = useRef(1);
   const focusRowId = useRef<number | null>(null);
   const [wordNotice, setWordNotice] = useState("");
+  const [rowImages, setRowImages] = useState<Record<number, VocabularyIllustrationInput>>({});
+  const [imagePickerRowId, setImagePickerRowId] = useState<number | null>(null);
   const [previousItems, setPreviousItems] = useState<AssignmentVocabularyItemInput[]>([]);
   const [sourceMode, setSourceMode] = useState<"PASTE" | "SET">("PASTE");
   const [sets, setSets] = useState<VocabularySetListItem[]>([]);
@@ -118,6 +144,7 @@ export function TeacherGameBuilderPage() {
       setVersion(detail.version);
       setPreviousItems(loadedItems);
       setWordRows(teacherWordRowsFromItems(loadedItems));
+      setRowImages({});
       nextRowId.current = loadedItems.length + 1;
       setSourceMode(detail.vocabularySetId ? "SET" : "PASTE");
       setForm({
@@ -148,19 +175,22 @@ export function TeacherGameBuilderPage() {
     return () => { canceled = true; };
   }, [editingId, navigate]);
 
-  const wordDraft = useMemo(() => teacherWordsFromRows(wordRows, previousItems), [wordRows, previousItems]);
+  const wordDraft = useMemo(() => teacherWordsFromRows(wordRows, previousItems, rowImages), [wordRows, previousItems, rowImages]);
+  const realPictureCount = wordDraft.items.filter(hasRealGameImage).length;
+  const missingPictures = wordDraft.items.length - realPictureCount;
+  const pickerRow = wordRows.find((row) => row.id === imagePickerRowId);
   const activities = useMemo(() => form.templateCode === "CUSTOM" ? form.activities
     : assignmentActivitiesForTemplate(form.templateCode, {
       ageBand: form.ageBand, itemCount: wordDraft.items.length,
-      imageItemCount: wordDraft.items.filter(hasPlayableImage).length,
+      imageItemCount: realPictureCount,
       exampleItemCount: wordDraft.items.filter((item) => Boolean(item.exampleEn)).length,
-    }).activities, [form.ageBand, form.activities, form.templateCode, wordDraft.items]);
+    }).activities, [form.ageBand, form.activities, form.templateCode, wordDraft.items, realPictureCount]);
   const warnings = useMemo(() => form.templateCode === "CUSTOM" ? [] :
     assignmentActivitiesForTemplate(form.templateCode, {
       ageBand: form.ageBand, itemCount: wordDraft.items.length,
-      imageItemCount: wordDraft.items.filter(hasPlayableImage).length,
+      imageItemCount: realPictureCount,
       exampleItemCount: wordDraft.items.filter((item) => Boolean(item.exampleEn)).length,
-    }).warnings, [form.ageBand, form.templateCode, wordDraft.items]);
+    }).warnings, [form.ageBand, form.templateCode, wordDraft.items, realPictureCount]);
 
   const cannotSave = !form.title.trim() || form.title.length > 160
     || wordDraft.errors.length > 0 || busy;
@@ -180,6 +210,8 @@ export function TeacherGameBuilderPage() {
       }));
       setPreviousItems(mapped);
       setWordRows(teacherWordRowsFromItems(mapped));
+      setRowImages({});
+      setImagePickerRowId(null);
       nextRowId.current = mapped.length + 1;
       setForm((current) => ({ ...current, vocabularySetId: selected.id,
         ageBand: selected.ageBand, title: current.title || selected.title }));
@@ -197,6 +229,7 @@ export function TeacherGameBuilderPage() {
 
   const changeWordRow = (id: number, field: "word" | "meaningVi", value: string) => {
     setWordRows((current) => current.map((row) => row.id === id ? { ...row, [field]: value } : row));
+    setRowImages((current) => { const next = { ...current }; delete next[id]; return next; });
     setSourceMode("PASTE");
     setForm((current) => ({ ...current, vocabularySetId: undefined }));
     setCardIndex(0);
@@ -217,6 +250,8 @@ export function TeacherGameBuilderPage() {
 
   const removeWordRow = (id: number) => {
     setWordRows((current) => current.filter((row) => row.id !== id));
+    setRowImages((current) => { const next = { ...current }; delete next[id]; return next; });
+    if (imagePickerRowId === id) setImagePickerRowId(null);
     setSourceMode("PASTE");
     setForm((current) => ({ ...current, vocabularySetId: undefined }));
     setCardIndex(0);
@@ -259,6 +294,14 @@ export function TeacherGameBuilderPage() {
     setServerWarnings([]);
   };
 
+  const applyPicture = (rowId: number, image: VocabularyIllustrationInput) => {
+    const row = wordRows.find((item) => item.id === rowId);
+    if (!row?.word.trim() || !row.meaningVi.trim()) return;
+    setRowImages((current) => ({ ...current, [rowId]: image }));
+    setSavedNotice("");
+    setServerWarnings([]);
+  };
+
   const save = async () => {
     if (cannotSave) return;
     setBusy(true);
@@ -286,6 +329,7 @@ export function TeacherGameBuilderPage() {
       setVersion(detail.version);
       const updatedItems = itemsFromDetail(detail);
       setPreviousItems(updatedItems);
+      setRowImages({});
       setWordRows(teacherWordRowsFromItems(updatedItems));
       nextRowId.current = updatedItems.length + 1;
       setWordNotice("");
