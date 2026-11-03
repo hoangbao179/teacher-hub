@@ -413,7 +413,7 @@ export function TeacherGameBuilderPage() {
             <Button data-testid="teacher-game-add-word" onClick={addWordRow} startIcon={<Add />}
               variant="outlined" disabled={wordRows.length >= 40}
               sx={{ minHeight: 48, alignSelf: "flex-start", fontWeight: 800 }}>
-              + Thêm từ
+              Thêm từ
             </Button>
             {wordRows.length >= 40 && <Typography variant="caption" color="text.secondary">Tối đa 40 từ mỗi bài.</Typography>}
           </Stack>
