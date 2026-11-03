@@ -10,7 +10,7 @@ import type {
 } from "@teacher/shared";
 import { assignmentActivitiesForTemplate, hasPlayableImage } from "@teacher/shared";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   createAssignment, getAssignment, previewAssignment, updateAssignment,
 } from "../../../api/assignments";
@@ -49,6 +49,7 @@ export function TeacherGameBuilderPage() {
   const routeId = useParams().id;
   const editingId = routeId ? Number(routeId) : undefined;
   const navigate = useNavigate();
+  const location = useLocation();
   const [id, setId] = useState<number | undefined>(editingId);
   const [version, setVersion] = useState(1);
   const [form, setForm] = useState<AssignmentDraftInput>(initial);
@@ -63,7 +64,10 @@ export function TeacherGameBuilderPage() {
   const [loading, setLoading] = useState(Boolean(editingId));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [savedNotice, setSavedNotice] = useState("");
+  const [savedNotice, setSavedNotice] = useState(() => {
+    const state = location.state as { savedNotice?: unknown } | null;
+    return typeof state?.savedNotice === "string" ? state.savedNotice : "";
+  });
   const [serverWarnings, setServerWarnings] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [cardIndex, setCardIndex] = useState(0);
@@ -207,14 +211,15 @@ export function TeacherGameBuilderPage() {
       const updatedItems = itemsFromDetail(detail);
       setPreviousItems(updatedItems);
       setPaste(teacherWordsToPaste(updatedItems));
-      setSavedNotice("Đã lưu bản nháp. Cô có thể quay lại sửa bất kỳ lúc nào.");
-      if (!editingId) navigate(`/admin/games/${detail.id}/edit`, { replace: true });
+      const savedMessage = "Đã lưu bản nháp. Cô có thể quay lại sửa bất kỳ lúc nào.";
+      setSavedNotice(savedMessage);
       try {
         const preview = await previewAssignment(detail.id);
         setServerWarnings(preview.warnings);
       } catch {
         setServerWarnings(["Đã lưu bài nhưng chưa kiểm tra được bản xem trước từ máy chủ."]);
       }
+      if (!editingId) navigate(`/admin/games/${detail.id}/edit`, { replace: true, state: { savedNotice: savedMessage } });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Không thể lưu bài nháp.");
     } finally {
