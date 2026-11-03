@@ -29,7 +29,7 @@ const templateOptions: Array<{ value: AssignmentTemplateCode; title: string; det
 ];
 
 const initial: AssignmentDraftInput = {
-  title: "", ageBand: "G2_G3", audienceType: "OPEN_LINK",
+  title: "", ageBand: "G2_G3",
   templateCode: "WORD_RECOGNITION", answerFeedbackMode: "IMMEDIATE",
   shuffleQuestions: true, items: [], activities: [],
 };
@@ -156,9 +156,8 @@ export function TeacherGameBuilderPage() {
       exampleItemCount: wordDraft.items.filter((item) => Boolean(item.exampleEn)).length,
     }).warnings, [form.ageBand, form.templateCode, wordDraft.items]);
 
-  const cannotSave = !form.title.trim() || form.title.length > 160 || wordDraft.errors.length > 0
-    || activities.length === 0 || busy
-    || (form.audienceType === "CLASS" && !form.classId);
+  const cannotSave = !form.title.trim() || form.title.length > 160
+    || wordDraft.errors.length > 0 || busy;
 
   const chooseSet = async (raw: string) => {
     if (!raw) return;
@@ -205,14 +204,18 @@ export function TeacherGameBuilderPage() {
     setSavedNotice("");
     setServerWarnings([]);
     try {
+      // An incomplete CLASS delivery selection is a publish-time choice, not a draft blocker.
+      const audienceType = form.audienceType === "CLASS" && !form.classId
+        ? undefined : form.audienceType;
       const request: AssignmentDraftInput = {
         ...form,
         title: form.title.trim(),
+        audienceType,
         vocabularySetId: form.vocabularySetId,
-        selectedStudentIds: form.audienceType === "SELECTED_STUDENTS" ? (form.selectedStudentIds ?? []) : [],
-        classId: form.audienceType === "CLASS" ? form.classId : undefined,
+        selectedStudentIds: audienceType === "SELECTED_STUDENTS" ? (form.selectedStudentIds ?? []) : [],
+        classId: audienceType === "CLASS" ? form.classId : undefined,
         items: wordDraft.items,
-        activities,
+        activities: wordDraft.items.length === 0 ? [] : activities,
       };
       const detail = id
         ? await updateAssignment(id, { ...request, version })
@@ -256,7 +259,8 @@ export function TeacherGameBuilderPage() {
             placeholder="Ví dụ: Food & Drinks"
             value={form.title} onChange={(event) => { setForm((current) => ({ ...current, title: event.target.value })); setSavedNotice(""); }}
             slotProps={{ htmlInput: { maxLength: 160 } }} />
-          <TextField select fullWidth label="Khối lớp" data-testid="teacher-game-grade"
+          <Alert severity="info">Chỉ tên bài là bắt buộc để lưu bản nháp. Cô có thể thêm từ vựng, lớp học, giáo trình và người nhận sau.</Alert>
+          <TextField select fullWidth label="Khối lớp (tùy chọn)" data-testid="teacher-game-grade"
             value={form.gradeLevel ?? ""}
             onChange={(event) => {
               const raw = event.target.value;
@@ -278,7 +282,7 @@ export function TeacherGameBuilderPage() {
             placeholder="Ví dụ: Unit 4 – Lesson 2"
             value={form.lessonName ?? ""} onChange={(event) => { setForm((current) => ({ ...current, lessonName: event.target.value })); setSavedNotice(""); }}
             slotProps={{ htmlInput: { maxLength: 120 } }} />
-          <TextField select fullWidth label="Lưu bài vào lớp" data-testid="teacher-game-teaching-class"
+          <TextField select fullWidth label="Lưu bài vào lớp (tùy chọn)" data-testid="teacher-game-teaching-class"
             value={form.teachingClassId ?? ""}
             onChange={(event) => { setForm((current) => ({ ...current, teachingClassId: event.target.value ? Number(event.target.value) : undefined })); setSavedNotice(""); }}>
             <MenuItem value="">Bài dùng chung / Chưa phân lớp</MenuItem>
@@ -290,7 +294,7 @@ export function TeacherGameBuilderPage() {
           <Typography variant="body2" color="text.secondary">
             Lớp này dùng để sắp xếp và tìm lại bài. Cô vẫn có thể giao bài bằng link chung hoặc nhân bản sang lớp khác.
           </Typography>
-          <TextField select fullWidth label="Nhóm trình độ trò chơi" value={form.ageBand}
+          <TextField select fullWidth label="Nhóm trình độ trò chơi (có thể đổi sau)" value={form.ageBand}
             onChange={(event) => { setForm((current) => ({ ...current, ageBand: event.target.value as AssignmentDraftInput["ageBand"] })); setSavedNotice(""); }}>
             {ageBandOptions.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
           </TextField>
@@ -322,7 +326,10 @@ export function TeacherGameBuilderPage() {
             <Chip variant="outlined" label={`${wordDraft.items.filter(hasPlayableImage).length} từ có hình/emoji`} />
           </Stack>
           {wordDraft.errors.map((message) => <Alert severity="warning" key={message}>{message}</Alert>)}
-          {!wordDraft.errors.length && <Alert severity="success">Danh sách hợp lệ. Từ không có hình vẫn được tạo hoạt động chữ/nghĩa.</Alert>}
+          {!wordDraft.errors.length && wordDraft.items.length > 1 &&
+            <Alert severity="success">Danh sách hợp lệ. Từ không có hình vẫn được tạo hoạt động chữ/nghĩa.</Alert>}
+          {!wordDraft.errors.length && wordDraft.items.length <= 1 &&
+            <Alert severity="info">Có thể lưu bản nháp với {wordDraft.items.length} từ. Khi giao trò chơi, cô sẽ cần ít nhất 2 từ hợp lệ.</Alert>}
           {wordDraft.items.length > 0 && <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
             {wordDraft.items.slice(0, 12).map((item, index) => <Box key={index} sx={{ border: "1px solid #dfece6", borderRadius: 2, p: 1.25, display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
               <Typography aria-hidden="true" sx={{ width: 32, textAlign: "center", fontSize: 25 }}>
@@ -365,19 +372,21 @@ export function TeacherGameBuilderPage() {
       <Card variant="outlined" sx={{ borderRadius: 3 }}>
         <CardContent><Stack spacing={1.5}>
           <Typography component="h2" variant="h6" sx={{ fontWeight: 800 }}>4. Dự định giao cho ai?</Typography>
-          <TextField select fullWidth label="Người nhận" value={form.audienceType ?? "OPEN_LINK"}
+          <TextField select fullWidth label="Người nhận (có thể chọn sau)" value={form.audienceType ?? ""}
             onChange={(event) => {
-              setForm((current) => ({ ...current, audienceType: event.target.value as AssignmentAudienceType,
+              setForm((current) => ({ ...current, audienceType: event.target.value ? event.target.value as AssignmentAudienceType : undefined,
                 classId: event.target.value === "CLASS" ? current.teachingClassId : undefined, selectedStudentIds: [] }));
               setSavedNotice("");
               setRosterError("");
             }}>
+            <MenuItem value="">Chọn người nhận sau</MenuItem>
             <MenuItem value="OPEN_LINK">Mọi người có link/QR</MenuItem>
             <MenuItem value="CLASS">Một lớp đang học</MenuItem>
             <MenuItem value="SELECTED_STUDENTS">Một số học sinh</MenuItem>
           </TextField>
           {form.audienceType === "CLASS" && <TextField select fullWidth label="Chọn lớp" value={form.classId ?? ""}
-            onChange={(event) => setForm((current) => ({ ...current, classId: Number(event.target.value) }))}>
+            onChange={(event) => setForm((current) => ({ ...current, classId: event.target.value ? Number(event.target.value) : undefined }))}>
+            <MenuItem value="">Chọn lớp sau (chỉ lưu bản nháp)</MenuItem>
             {classes.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
           </TextField>}
           {form.audienceType === "SELECTED_STUDENTS" && <Box sx={{ maxHeight: 240, overflowY: "auto", border: 1, borderColor: "divider", borderRadius: 2, p: 1 }}>
