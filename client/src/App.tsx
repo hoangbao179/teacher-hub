@@ -73,8 +73,16 @@ function Protected() {
 }
 function GuestOnly() {
   const { user, bootstrapping } = useAuth();
+  const location = useLocation();
   if (bootstrapping) return <LoadingState />;
-  return user ? <Navigate to="/admin/tools" replace /> : <Outlet />;
+  if (!user) return <Outlet />;
+  // Auth state can update before LoginPage's submit handler navigates.
+  // Respect the original protected route even when this boundary renders first.
+  const requested = (location.state as { from?: unknown } | null)?.from;
+  const destination = typeof requested === "string"
+    && (isTeacherGamesPath(requested) || (LEGACY_ADMIN_ENABLED && requested.startsWith("/admin/")))
+    ? requested : "/admin/tools";
+  return <Navigate to={destination} replace />;
 }
 export function App() {
   return (
