@@ -71,11 +71,13 @@ export class AssignmentService {
     if (raw.ageBand && !learningAgeBands.includes(raw.ageBand))
       throw new AppError(400, "INVALID_AGE_BAND", "Nhóm tuổi không hợp lệ.");
     const teachingClassId = raw.teachingClassId == null ? undefined : this.id(raw.teachingClassId);
+    const gradeLevel = raw.gradeLevel == null ? undefined : this.integer(raw.gradeLevel, 0, 0, 9, "Khối lớp");
     return this.repository.list({
       page,
       pageSize,
       search,
       teachingClassId,
+      gradeLevel,
       status: raw.status,
       audienceType: raw.audienceType,
       ageBand: raw.ageBand,
@@ -179,6 +181,7 @@ export class AssignmentService {
       textbookName: source.textbookName ?? undefined,
       lessonName: source.lessonName ?? undefined,
       teachingClassId: source.teachingClassId ?? undefined,
+      gradeLevel: source.gradeLevel ?? undefined,
       vocabularySetId: source.vocabularySetId ?? undefined,
       ageBand: source.ageBand,
       audienceType: source.audienceType ?? undefined,
@@ -265,6 +268,7 @@ export class AssignmentService {
     const textbookName = this.text(raw.textbookName, 0, 120, "Giáo trình") || undefined;
     const lessonName = this.text(raw.lessonName, 0, 120, "Unit/Bài học") || undefined;
     const teachingClassId = raw.teachingClassId == null ? undefined : this.id(raw.teachingClassId);
+    const gradeLevel = raw.gradeLevel == null ? undefined : this.integer(raw.gradeLevel, 0, 0, 9, "Khối lớp");
     if (!learningAgeBands.includes(raw.ageBand))
       throw new AppError(400, "INVALID_AGE_BAND", "Hãy xác nhận nhóm tuổi.");
     if (raw.audienceType && !assignmentAudienceTypes.includes(raw.audienceType))
@@ -329,6 +333,7 @@ export class AssignmentService {
       textbookName,
       lessonName,
       teachingClassId,
+      gradeLevel,
       vocabularySetId: raw.vocabularySetId == null
         ? undefined
         : this.id(raw.vocabularySetId),
