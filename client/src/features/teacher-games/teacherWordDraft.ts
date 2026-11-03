@@ -1,6 +1,6 @@
 import type { AssignmentVocabularyItemInput, VocabularyPastePreview } from "@teacher/shared";
-import { suggestOfflineIllustration } from "../../vocabulary/offlineIllustrations.ts";
-import { parseVocabularyPaste } from "../../vocabulary/vocabularyEditor.ts";
+import { suggestOfflineIllustration } from "../vocabulary/offlineIllustrations.ts";
+import { parseVocabularyPaste } from "../vocabulary/vocabularyEditor.ts";
 
 const normalize = (value: string) => value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("vi-VN");
 const key = (word: string, meaning: string) => `${normalize(word)}\u0000${normalize(meaning)}`;
