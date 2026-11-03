@@ -1,6 +1,8 @@
 -- Separate a teacher's lesson catalog from assignment delivery/audience.
 -- NULL means older or reusable lessons not tied to one specific class.
 ALTER TABLE learning_assignments
+  ADD COLUMN grade_level TINYINT UNSIGNED NULL AFTER age_band,
+  ADD CONSTRAINT chk_learning_assignments_grade_level CHECK (grade_level IS NULL OR grade_level BETWEEN 0 AND 9),
   ADD COLUMN teaching_class_id BIGINT UNSIGNED NULL AFTER class_id,
   ADD COLUMN textbook_name VARCHAR(120) NULL AFTER title,
   ADD COLUMN lesson_name VARCHAR(120) NULL AFTER textbook_name,
