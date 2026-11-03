@@ -450,6 +450,28 @@ export function TeacherGameBuilderPage() {
                   value={row.meaningVi} onChange={(event) => changeWordRow(row.id, "meaningVi", event.target.value)}
                   slotProps={{ htmlInput: { maxLength: 240 } }} />
               </Box>
+              <Stack direction="row" sx={{ gap: 1.5, flexWrap: "wrap", alignItems: "center", mt: 1.5 }}>
+                {(() => {
+                  const pair = wordDraft.items.find((item) =>
+                    item.word === row.word.trim() && item.meaningVi === row.meaningVi.trim());
+                  const image = pair?.illustration ?? { kind: "NONE" as const };
+                  return <>
+                    <TeacherGameImage image={image} word={row.word} />
+                    <Stack spacing={0.75} sx={{ flex: 1, minWidth: 150 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {hasRealGameImage({ illustration: image }) ? "Đã có ảnh minh họa" : "Cần chọn ảnh minh họa thật"}
+                      </Typography>
+                      <Button size="small" variant="outlined" startIcon={<ImageSearch />}
+                        data-testid="teacher-game-choose-image"
+                        disabled={!row.word.trim() || !row.meaningVi.trim()}
+                        onClick={() => setImagePickerRowId(row.id)}
+                        sx={{ alignSelf: "flex-start", minHeight: 44 }}>
+                        {hasRealGameImage({ illustration: image }) ? "Đổi ảnh" : "Chọn ảnh"}
+                      </Button>
+                    </Stack>
+                  </>;
+                })()}
+              </Stack>
             </Box>)}
             {wordRows.length === 0 && <Typography variant="body2" color="text.secondary">
               Chưa có từ nào. Cô vẫn có thể lưu nháp chỉ với tên bài.
@@ -464,18 +486,17 @@ export function TeacherGameBuilderPage() {
           {wordNotice && <Alert severity={wordNotice.startsWith("Đã thêm") ? "success" : "warning"}>{wordNotice}</Alert>}
           <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap", alignItems: "center" }}>
             <Chip color={wordDraft.errors.length ? "default" : "success"} label={`${wordDraft.items.length} từ hợp lệ`} />
-            <Chip variant="outlined" label={`${wordDraft.items.filter(hasPlayableImage).length} từ có hình/emoji`} />
+            <Chip variant="outlined" label={`${realPictureCount}/${wordDraft.items.length} từ có ảnh thực`} />
           </Stack>
           {wordDraft.errors.map((message) => <Alert severity="warning" key={message}>{message}</Alert>)}
-          {!wordDraft.errors.length && wordDraft.items.length > 1 &&
-            <Alert severity="success">Danh sách hợp lệ. Từ không có hình vẫn được tạo hoạt động chữ/nghĩa.</Alert>}
+          {!wordDraft.errors.length && wordDraft.items.length > 1 && missingPictures === 0 &&
+            <Alert severity="success">Tất cả từ đã có ảnh minh họa, đủ điều kiện về hình khi chuẩn bị trò chơi.</Alert>}
+          {missingPictures > 0 && <Alert severity="warning">Còn {missingPictures} từ chưa có ảnh thật. Emoji chỉ là gợi ý; cần chọn ảnh phù hợp trước khi giao trò chơi. Bản nháp vẫn lưu được.</Alert>}
           {!wordDraft.errors.length && wordDraft.items.length <= 1 &&
             <Alert severity="info">Có thể lưu bản nháp với {wordDraft.items.length} từ. Khi giao trò chơi, cô sẽ cần ít nhất 2 từ hợp lệ.</Alert>}
           {wordDraft.items.length > 0 && <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
             {wordDraft.items.slice(0, 12).map((item, index) => <Box key={index} sx={{ border: "1px solid #dfece6", borderRadius: 2, p: 1.25, display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-              <Typography aria-hidden="true" sx={{ width: 32, textAlign: "center", fontSize: 25 }}>
-                {item.illustration.kind === "EMOJI" ? item.illustration.value : "•"}
-              </Typography>
+              <TeacherGameImage image={item.illustration} word={item.word} />
               <Box sx={{ minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>{item.word}</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>{item.meaningVi}</Typography>
@@ -563,7 +584,7 @@ export function TeacherGameBuilderPage() {
             aria-label="Lật thẻ xem từ hoặc nghĩa"
             sx={{ width: "100%", minHeight: 180, p: 2, border: "2px solid #bfebd9", borderRadius: 3, bgcolor: "#eefbf4",
               display: "flex", flexDirection: "column", gap: 1, textTransform: "none" }}>
-            {visibleCard.illustration.kind === "EMOJI" && <Typography aria-hidden="true" sx={{ fontSize: 54 }}>{visibleCard.illustration.value}</Typography>}
+            <TeacherGameImage image={visibleCard.illustration} word={visibleCard.word} large />
             <Typography variant="h5" sx={{ fontWeight: 800, overflowWrap: "anywhere" }}>
               {flipped ? visibleCard.meaningVi : visibleCard.word}
             </Typography>
@@ -578,5 +599,14 @@ export function TeacherGameBuilderPage() {
         </Stack></CardContent>
       </Card>}
     </Stack>
+    {pickerRow && <VocabularyImagePicker
+      key={pickerRow.id}
+      open
+      word={pickerRow.word}
+      meaningVi={pickerRow.meaningVi}
+      onClose={() => setImagePickerRowId(null)}
+      onSelect={(media) => applyPicture(pickerRow.id, { kind: "STORED_MEDIA", mediaId: media.id })}
+      onSelectLocal={(publicAsset) => applyPicture(pickerRow.id, { kind: "PUBLIC_ASSET", value: publicAsset })}
+    />}
   </TeacherGameShell>;
 }
