@@ -64,17 +64,30 @@ try {
     }
     if (url.pathname === "/api/vocabulary/assignments" && request.method() === "POST") {
       const body = request.postDataJSON();
-      assert.equal(body.items.length, 3);
-      assert.equal(body.items[0].illustration.kind, "EMOJI");
-      assert.equal(body.items[2].illustration.kind, "NONE");
-      assert.equal(body.audienceType, "OPEN_LINK");
-      assert.equal(body.classId, undefined, "delivery audience class must stay separate");
-      assert.equal(body.teachingClassId, 22);
-      assert.equal(body.gradeLevel, 3);
-      assert.equal(body.textbookName, "Family and Friends");
-      assert.equal(body.lessonName, "Unit 4");
+      const titleOnly = body.title === "Chỉ có tên bài";
+      if (titleOnly) {
+        assert.deepEqual(body.items, []);
+        assert.deepEqual(body.activities, []);
+        assert.equal(body.audienceType, undefined);
+        assert.equal(body.teachingClassId, undefined);
+        assert.equal(body.gradeLevel, undefined);
+        assert.equal(body.textbookName, undefined);
+        assert.equal(body.lessonName, undefined);
+      } else {
+        assert.equal(body.items.length, 3);
+        assert.equal(body.items[0].illustration.kind, "EMOJI");
+        assert.equal(body.items[2].illustration.kind, "NONE");
+        assert.equal(body.audienceType, "OPEN_LINK");
+        assert.equal(body.classId, undefined, "delivery audience class must stay separate");
+        assert.equal(body.teachingClassId, 22);
+        assert.equal(body.gradeLevel, 3);
+        assert.equal(body.textbookName, "Family and Friends");
+        assert.equal(body.lessonName, "Unit 4");
+      }
       draft = {
-        ...body, id: 123, status: "DRAFT", version: 1, teacherUserId: 1, classId: null,
+        ...body, id: titleOnly ? 124 : 123, status: "DRAFT", version: 1, teacherUserId: 1, classId: null,
+        audienceType: body.audienceType ?? null, teachingClassId: body.teachingClassId ?? null,
+        gradeLevel: body.gradeLevel ?? null, textbookName: body.textbookName ?? null, lessonName: body.lessonName ?? null,
         publicCode: null, publishedAt: null, closedAt: null,
         vocabularySetId: null, instruction: body.instruction ?? null,
         dueAt: null, availableFrom: null, maxAttempts: null, passScore: null,
@@ -88,9 +101,9 @@ try {
       };
       return route.fulfill({ status: 201, json: { data: draft } });
     }
-    if (url.pathname === "/api/vocabulary/assignments/123/preview" && draft)
+    if (url.pathname === `/api/vocabulary/assignments/${draft?.id}/preview` && draft)
       return route.fulfill({ json: { data: { banner: "XEM_TRUOC", assignment: draft, estimatedMinutes: 3, warnings: [] } } });
-    if (url.pathname === "/api/vocabulary/assignments/123" && draft) {
+    if (url.pathname === `/api/vocabulary/assignments/${draft?.id}` && draft) {
       if (request.method() === "GET") return route.fulfill({ json: { data: draft } });
       if (request.method() === "PATCH") {
         const body = request.postDataJSON();
@@ -124,6 +137,8 @@ try {
   await page.getByTestId("teacher-game-lesson").locator("input").fill("Unit 4");
   await page.getByTestId("teacher-game-teaching-class").getByRole("combobox").click();
   await page.getByRole("option", { name: "Lớp 3A" }).click();
+  await page.getByRole("combobox", { name: "Người nhận (có thể chọn sau)" }).click();
+  await page.getByRole("option", { name: "Mọi người có link/QR" }).click();
   await page.getByTestId("teacher-game-words").locator("textarea").first().fill("apple - quả táo\nbanana - quả chuối\nhungry - đói");
   await page.getByText("3 từ hợp lệ").waitFor();
   assert.equal(await page.getByText("2 từ có hình/emoji").count(), 1);
@@ -162,9 +177,31 @@ try {
   assert.equal(await page.getByTestId("teacher-game-lesson").locator("input").inputValue(), "Unit 4");
   assert.equal(await page.getByTestId("teacher-game-textbook").locator("input").inputValue(), "Family and Friends");
 
+  // A teacher may postpone every optional field and save a title-only draft.
+  await page.getByRole("link", { name: "Quay lại" }).click();
+  await page.waitForURL(`${origin}/admin/games`);
+  await page.getByRole("link", { name: "Tạo bài mới" }).click();
+  await page.waitForURL(`${origin}/admin/games/new`);
+  const saveOnlyTitle = page.getByTestId("teacher-game-save");
+  assert.equal(await saveOnlyTitle.isDisabled(), true, "an empty title cannot be saved");
+  await page.getByTestId("teacher-game-title").locator("input").fill("Chỉ có tên bài");
+  assert.equal(await saveOnlyTitle.isEnabled(), true, "the title alone must enable saving");
+  await page.getByTestId("teacher-game-words").locator("textarea").first().fill("apple");
+  assert.equal(await saveOnlyTitle.isDisabled(), true, "malformed entered words must not be silently discarded");
+  await page.getByTestId("teacher-game-words").locator("textarea").first().fill("");
+  assert.equal(await saveOnlyTitle.isEnabled(), true);
+  await saveOnlyTitle.click();
+  await page.waitForURL(`${origin}/admin/games/124/edit`);
+  await page.getByText(/Đã lưu bản nháp/).waitFor();
+  assert.equal(await page.getByTestId("teacher-game-words").locator("textarea").first().inputValue(), "");
+  assert.equal(await page.getByTestId("teacher-game-textbook").locator("input").inputValue(), "");
+  assert.equal(await page.getByTestId("teacher-game-lesson").locator("input").inputValue(), "");
+  assert.equal(await page.getByRole("combobox", { name: "Người nhận (có thể chọn sau)" }).textContent()
+    .then((value) => value?.includes("Chọn người nhận sau")), true);
+
   assert(!calls.some((value) => value.includes("media/search") || value.includes("image-search")), "Teacher flow must not search remote images");
   assert.deepEqual(errors, []);
-  console.log("PASS teacher game UI: auth, paste, emoji, no-image fallback, preview, draft, reopen, 360/390/430px");
+  console.log("PASS teacher game UI: title-only draft, optional metadata/audience, auth, paste, preview, reopen, mobile");
 } finally {
   await browser?.close();
   app.kill("SIGTERM");
