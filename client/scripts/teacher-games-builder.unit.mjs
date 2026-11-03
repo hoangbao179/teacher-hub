@@ -37,6 +37,39 @@ test("an empty or one-word input is a valid saved draft, but malformed rows stil
   assert.match(builder, /audienceType: event\.target\.value \?/);
 });
 
+test("two-field rows allow empty drafts but reject incomplete and duplicate pairs", () => {
+  assert.deepEqual(teacherWordRowsFromItems([]), []);
+  assert.deepEqual(teacherWordsFromRows([{ word: "", meaningVi: "" }]).errors, []);
+  const half = teacherWordsFromRows([{ word: "apple", meaningVi: "" }]);
+  assert.equal(half.items.length, 0);
+  assert.ok(half.errors.some((msg) => msg.includes("dòng 1")));
+  const complete = teacherWordsFromRows([
+    { word: "apple", meaningVi: "quả táo" },
+    { word: "banana", meaningVi: "quả chuối" },
+    { word: "", meaningVi: "" },
+  ]);
+  assert.deepEqual(complete.errors, []);
+  assert.deepEqual(complete.items.map((item) => item.displayOrder), [1, 2]);
+  const oldMedia = { ...complete.items[0], illustration: { kind: "STORED_MEDIA", mediaId: 22 } };
+  const revised = teacherWordsFromRows([
+    { word: "banana", meaningVi: "quả chuối" },
+    { word: "apple", meaningVi: "quả táo" },
+  ], [oldMedia, complete.items[1]]);
+  assert.deepEqual(revised.items[1].illustration, oldMedia.illustration);
+  assert.deepEqual(teacherWordsFromRows([
+    { word: "apple", meaningVi: "một nghĩa khác" },
+  ], [oldMedia]).items[0].illustration, { kind: "NONE" });
+  const duplicate = teacherWordsFromRows([
+    { word: "apple", meaningVi: "quả táo" },
+    { word: " Apple ", meaningVi: "QUẢ TÁO" },
+  ]);
+  assert.deepEqual(duplicate.duplicateLines, [2]);
+  const tooLong = teacherWordsFromRows(Array.from({ length: 41 }, (_, n) => ({
+    word: String(n), meaningVi: "nghĩa " + n,
+  })));
+  assert.ok(tooLong.errors.some((msg) => msg.includes("40")));
+});
+
 test("a preserved custom image survives paste roundtrip and reordering", () => {
   const original = teacherWordsFromPaste("cat - con mèo\ndog - con chó").items;
   original[0].illustration = { kind: "STORED_MEDIA", mediaId: 27 };
