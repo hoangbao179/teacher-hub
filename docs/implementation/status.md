@@ -141,7 +141,9 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 - **Teacher Game Builder Phase 2 (frontend)**: nút đăng nhập giáo viên ở public
   header và ô **Soạn trò chơi từ vựng** tại `/admin/tools`. Các route riêng
   `/admin/games*` được bảo vệ bởi `Protected` và có form nhập/dán từ giáo trình
-  (không cần hình), chọn lộ trình, dự định người nhận, lưu/sửa/nhân bản bản nháp,
+  (không cần hình) bằng các dòng **hai ô tiếng Anh/nghĩa Việt** với nút cộng/xóa,
+  hỗ trợ dán bảng Word/Excel vào ô tiếng Anh, chọn lộ trình, dự định người nhận,
+  lưu/sửa/nhân bản bản nháp,
   xem trước thẻ từ cục bộ. Bổ sung **khối lớp Mầm non/Lớp 1–9**,
   **lớp quản lý bài độc lập người nhận**, giáo trình và Unit/Bài học; danh sách
   lọc theo khối/lớp, tìm tên bài/sách/Unit, nhân bản để dùng cho lớp khác.
