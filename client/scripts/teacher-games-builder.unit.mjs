@@ -147,7 +147,7 @@ test("teacher game UI only creates drafts and cannot expose a dead game share li
   const list = src("features/teacher-games/pages/TeacherGamesPage.tsx");
   assert.match(builder, /createAssignment\(request\)/);
   assert.match(builder, /updateAssignment\(id, \{ \.\.\.request, version \}\)/);
-  assert.match(builder, /teacherWordsFromRows\(wordRows, previousItems\)/);
+  assert.match(builder, /teacherWordsFromRows\(wordRows, previousItems, rowImages\)/);
   assert.match(builder, /data-testid="teacher-game-add-word"/);
   assert.match(builder, /data-testid="teacher-game-word-row"/);
   assert.doesNotMatch(builder, /data-testid="teacher-game-words"/);
