@@ -120,12 +120,13 @@ test("publish returns one-time open access and QR without persisting raw token",
       openToken?: { tokenHash: string };
     }) => {
       persistedHash = input.openToken?.tokenHash ?? "";
-      current = detail({
+      current = {
+        ...current,
         status: "PUBLISHED",
         publicCode: input.publicCode,
         version: 2,
         publishedAt: new Date().toISOString(),
-      });
+      };
       return [];
     },
   };
