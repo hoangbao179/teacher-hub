@@ -80,7 +80,6 @@ export function TeacherGameBuilderPage() {
   useEffect(() => {
     if (form.audienceType === "OPEN_LINK") return;
     let canceled = false;
-    setRosterError("");
     void Promise.all([listTeacherGameClasses(), listTeacherGameStudents()]).then(([allClasses, allStudents]) => {
       if (canceled) return;
       setClasses(allClasses.filter((item) => item.status === "ACTIVE"));
@@ -92,7 +91,6 @@ export function TeacherGameBuilderPage() {
   useEffect(() => {
     if (!editingId) return;
     let canceled = false;
-    setLoading(true);
     void getAssignment(editingId).then((detail) => {
       if (canceled) return;
       if (detail.status !== "DRAFT") {
@@ -322,6 +320,7 @@ export function TeacherGameBuilderPage() {
               setForm((current) => ({ ...current, audienceType: event.target.value as AssignmentAudienceType,
                 classId: undefined, selectedStudentIds: [] }));
               setSavedNotice("");
+              setRosterError("");
             }}>
             <MenuItem value="OPEN_LINK">Mọi người có link/QR</MenuItem>
             <MenuItem value="CLASS">Một lớp đang học</MenuItem>
