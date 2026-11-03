@@ -30,7 +30,7 @@ export function VocabularyImagePicker({ open, word, meaningVi, searchTerms = [],
 }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const strategy = useMemo(() => buildVocabularyImageStrategy(word, searchTerms), [searchTerms, word]);
+  const strategy = useMemo(() => buildVocabularyImageStrategy(word, searchTerms, meaningVi), [searchTerms, word, meaningVi]);
   const [query, setQuery] = useState(strategy.query);
   const [mediaType, setMediaType] = useState<VocabularyImageFilter>("ILLUSTRATION");
   const [items, setItems] = useState<VocabularyMediaSearchItem[]>([]);
