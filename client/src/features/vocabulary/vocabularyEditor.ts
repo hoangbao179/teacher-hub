@@ -7,6 +7,7 @@ import type {
   VocabularyTopicSuggestion,
 } from "@teacher/shared";
 import type { LearningUnit } from "../learning/types";
+import { suggestOfflineIllustration } from "./offlineIllustrations.ts";
 
 export const levelSlugsByAgeBand = {
   PRESCHOOL_G1: ["mam-non", "lop-1"],
@@ -73,20 +74,23 @@ export function parseVocabularyPaste(value: string): VocabularyPastePreview {
 export function suggestionItems(
   suggestion: VocabularyTopicSuggestion,
 ): VocabularySetItemInput[] {
-  return suggestion.items.filter((item) => item.selected).map((item, index) => ({
-    sourceTopicWordId: item.id,
-    displayOrder: index + 1,
-    word: item.word,
-    meaningVi: item.meaningVi,
-    phonetic: item.phonetic ?? undefined,
-    partOfSpeech: item.partOfSpeech ?? undefined,
-    exampleEn: item.exampleEn ?? undefined,
-    speechText: item.speechText,
-    tier: item.tier,
-    illustration: { kind: "NONE" },
-    supportsImageGame: item.supportsImageGame,
-    imageSearchTerms: item.imageSearchTerms,
-  }));
+  return suggestion.items.filter((item) => item.selected).map((item, index) => {
+    const illustration = suggestOfflineIllustration(item.word, item.meaningVi);
+    return {
+      sourceTopicWordId: item.id,
+      displayOrder: index + 1,
+      word: item.word,
+      meaningVi: item.meaningVi,
+      phonetic: item.phonetic ?? undefined,
+      partOfSpeech: item.partOfSpeech ?? undefined,
+      exampleEn: item.exampleEn ?? undefined,
+      speechText: item.speechText,
+      tier: item.tier,
+      illustration,
+      supportsImageGame: illustration.kind !== "NONE",
+      imageSearchTerms: item.imageSearchTerms,
+    };
+  });
 }
 
 function publicIllustration(image: string): VocabularyIllustrationInput {

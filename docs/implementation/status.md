@@ -165,6 +165,11 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 - **Vocabulary public game**: `VOCABULARY_GAMES_ENABLED = false`. Các route `/play/*`
   hiển thị “Trò chơi đang được hoàn thiện” và dẫn về `/hoc`; action giao/chia sẻ game
   bị ẩn. Source engine, API, schema và dữ liệu vẫn được giữ để bật lại sau.
+  Luồng soạn bộ từ **trong source đang tạm ẩn** hỗ trợ giáo viên dán từ và nghĩa
+  từ giáo trình bên ngoài; gợi ý emoji offline theo cặp nghĩa đã kiểm duyệt,
+  cho phép để trống hình, không tự gọi ARASAAC/Pixabay. Game engine có phương án
+  chữ/nghĩa thay thế khi thiếu hình. Chức năng này chưa được nghiệm thu public,
+  không làm thay đổi trạng thái TEMP_DISABLED của giao bài và trò chơi.
 
 ## Trạng thái phát hành
 

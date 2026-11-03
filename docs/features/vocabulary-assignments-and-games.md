@@ -451,6 +451,29 @@ Quy tắc import nhanh:
 
 ## 7. Tìm và chọn hình
 
+### Nguyên tắc offline-first khi chuẩn bị bộ từ (Phase 1)
+
+- Giáo viên **luôn có thể nhập/dán từ bên ngoài**, theo đúng bài học của giáo trình;
+  mỗi dòng cần từ tiếng Anh và nghĩa tiếng Việt; không bắt buộc chọn catalog/Unit.
+- Khi tạo bộ từ từ danh sách dán hoặc catalog chủ đề, client chỉ gợi ý một emoji
+  nếu cả **từ tiếng Anh và nghĩa tiếng Việt** khớp chính xác với tập cặp nghĩa đã
+  kiểm duyệt tại `client/src/features/vocabulary/offlineIllustrations.ts`.
+  Ví dụ `orange — quả cam` khác `orange — màu cam`; không tự đoán `table`
+  hoặc từ trừu tượng chưa có ánh xạ. Không dùng kết quả tìm ảnh online làm mặc định.
+- Không khớp được hình thì dùng `illustration.kind = NONE`; đó **không phải lỗi**.
+  Giáo viên có thể lưu bộ từ bình thường. Chỉ khi giáo viên chủ động mở phần
+  hình nâng cao, upload hoặc tìm ảnh thì luồng media cũ mới được dùng; không tự
+  retry khi nguồn ARASAAC/Pixabay trả 429.
+- Chỉnh sửa chữ/nghĩa chỉ tái gợi ý nếu hình trống hoặc đúng là emoji đã được
+  gợi ý trước đó. Ảnh đã upload/chọn của giáo viên phải được giữ lại.
+- Khi sinh câu hỏi, trò yêu cầu hình thiếu dữ liệu phải chuyển sang dạng chữ/nghĩa
+  tương thích hoặc bỏ câu với cảnh báo; không được phát câu hỏi có ô hình trống.
+- Đây là **logic đã chuẩn bị trong source**; không đồng nghĩa với việc mở lại
+  `LEGACY_ADMIN_ENABLED` hoặc `VOCABULARY_GAMES_ENABLED`. Giao diện nhập từ
+  và publish game cho cô giáo thuộc các phase sau.
+- Không thay đổi PDF public `/tools`, Worker PDF hoặc nút tải PDF trong Phase 1.
+
+
 ### 7.1 Trải nghiệm
 
 Mỗi từ có ô ảnh với CTA `Tìm ảnh`. Không yêu cầu giáo viên upload ảnh từng từ.

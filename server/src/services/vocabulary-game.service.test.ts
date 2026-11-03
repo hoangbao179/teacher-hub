@@ -306,3 +306,48 @@ test("missing-letter grading accepts only its opaque option id", () => {
     { optionId: "letter-option-correct", missingIndex: 2 },
   ), false);
 });
+
+test("image activities fall back to word/meaning when no illustration is provided", () => {
+  const wordsWithoutImages = assignment.items.map((item) => ({
+    ...item,
+    illustration: { kind: "NONE" as const },
+    illustrationSnapshot: { kind: "NONE" as const },
+    supportsImageGame: false,
+  }));
+  const queue = generateQuestionQueue({
+    ...assignment,
+    items: wordsWithoutImages,
+    activities: [
+      { id: 601, displayOrder: 1, mechanic: "SELECT_ONE", presentation: "LISTEN_PICK_IMAGE", required: true },
+      { id: 602, displayOrder: 2, mechanic: "SELECT_ONE", presentation: "IMAGE_PICK_WORD", required: true },
+      { id: 603, displayOrder: 3, mechanic: "MATCH_PAIRS", presentation: "MATCH_WORD_IMAGE", required: true },
+      { id: 604, displayOrder: 4, mechanic: "MEMORY_PAIRS", presentation: "MEMORY_WORD_IMAGE", required: true },
+    ],
+  }, "no-images");
+  const primary = queue.questions.filter((question) => question.questionKind === "PRIMARY");
+  assert.ok(primary.length > 0);
+  assert.ok(primary.some((question) => question.presentation === "LISTEN_PICK_WORD"));
+  assert.ok(primary.some((question) => question.presentation === "WORD_PICK_MEANING"));
+  assert.ok(primary.some((question) => question.presentation === "MATCH_WORD_MEANING"));
+  assert.ok(primary.some((question) => question.presentation === "MEMORY_WORD_MEANING"));
+  assert.ok(primary.every((question) => !question.presentation.endsWith("_IMAGE")));
+  assert.ok(queue.warnings.some((warning) => warning.includes("không đủ hình")));
+});
+
+test("partial image sets never render an empty image prompt for the missing word", () => {
+  const firstWithoutImage = assignment.items.map((item, index) => index === 0
+    ? { ...item, illustration: { kind: "NONE" as const }, illustrationSnapshot: { kind: "NONE" as const }, supportsImageGame: false }
+    : item);
+  const queue = generateQuestionQueue({
+    ...assignment,
+    ageBand: "G2_G3",
+    items: firstWithoutImage,
+    activities: [
+      { id: 605, displayOrder: 1, mechanic: "SELECT_ONE", presentation: "IMAGE_PICK_WORD", required: true },
+    ],
+  }, "partial-images");
+  const primary = queue.questions.filter((question) => question.questionKind === "PRIMARY");
+  const missing = primary.find((question) => question.assignmentItemId === assignment.items[0].id);
+  assert.equal(missing?.presentation, "WORD_PICK_MEANING");
+  assert.ok(primary.some((question) => question.presentation === "IMAGE_PICK_WORD"));
+});
