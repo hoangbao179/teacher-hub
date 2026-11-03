@@ -123,7 +123,7 @@ export function TeacherGameBuilderPage() {
         instruction: detail.instruction ?? undefined,
         vocabularySetId: detail.vocabularySetId ?? undefined,
         ageBand: detail.ageBand,
-        audienceType: detail.audienceType ?? "OPEN_LINK",
+        audienceType: detail.audienceType ?? undefined,
         classId: detail.classId ?? undefined,
         selectedStudentIds: detail.selectedStudentIds,
         templateCode: detail.templateCode,
