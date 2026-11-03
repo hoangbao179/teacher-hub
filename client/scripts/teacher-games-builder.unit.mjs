@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import { teacherWordsFromPaste, teacherWordsToPaste } from "../src/features/teacher-games/teacherWordDraft.ts";
 import { isTeacherGamesPath } from "../src/features/teacher-games/teacherGameRoutes.ts";
+import { ageBandForGrade, teacherGradeLabel, teacherGradeOptions } from "../src/features/teacher-games/teacherGrades.ts";
 
 const src = (file) => fs.readFileSync(path.resolve(import.meta.dirname, "../src", file), "utf8");
 
@@ -73,4 +74,25 @@ test("teacher game UI only creates drafts and cannot expose a dead game share li
   for (const code of [builder, list]) {
     assert.doesNotMatch(code, /publishAssignment\(|regenerateAssignmentAccess\(|\/play\//);
   }
+});
+
+test("lesson catalog separates school grade, actual teaching class and delivery audience", () => {
+  assert.equal(teacherGradeOptions.length, 10);
+  assert.equal(teacherGradeLabel(0), "Mầm non");
+  assert.equal(teacherGradeLabel(3), "Lớp 3");
+  assert.equal(teacherGradeLabel(null), "Chưa phân khối");
+  for (const [grade, band] of [[0, "PRESCHOOL_G1"], [1, "PRESCHOOL_G1"], [2, "G2_G3"], [3, "G2_G3"], [4, "G4_G5"], [5, "G4_G5"], [6, "G6_G9"], [9, "G6_G9"]]) {
+    assert.equal(ageBandForGrade(grade), band);
+  }
+  assert.throws(() => ageBandForGrade(10));
+  const builder = src("features/teacher-games/pages/TeacherGameBuilderPage.tsx");
+  const list = src("features/teacher-games/pages/TeacherGamesPage.tsx");
+  assert.match(builder, /data-testid="teacher-game-grade"/);
+  assert.match(builder, /data-testid="teacher-game-teaching-class"/);
+  assert.match(builder, /data-testid="teacher-game-textbook"/);
+  assert.match(builder, /data-testid="teacher-game-lesson"/);
+  assert.match(builder, /classId: form.audienceType === "CLASS"/);
+  assert.match(list, /data-testid="teacher-games-grade-filter"/);
+  assert.match(list, /data-testid="teacher-games-class-filter"/);
+  assert.match(list, /teacherGradeLabel\(item.gradeLevel\)/);
 });
