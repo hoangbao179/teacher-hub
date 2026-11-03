@@ -142,7 +142,9 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
   header và ô **Soạn trò chơi từ vựng** tại `/admin/tools`. Các route riêng
   `/admin/games*` được bảo vệ bởi `Protected` và có form nhập/dán từ giáo trình
   (không cần hình) bằng các dòng **hai ô tiếng Anh/nghĩa Việt** với nút cộng/xóa,
-  hỗ trợ dán bảng Word/Excel vào ô tiếng Anh, chọn lộ trình, dự định người nhận,
+  hỗ trợ dán bảng Word/Excel vào ô tiếng Anh, **chọn/tải ảnh thật riêng từng từ**,
+  hiển thị ảnh trong preview; API publish yêu cầu tất cả từ có ảnh thực,
+  emoji chỉ gợi ý (bản nháp vẫn lưu được), chọn lộ trình, dự định người nhận,
   lưu/sửa/nhân bản bản nháp,
   xem trước thẻ từ cục bộ. Bổ sung **khối lớp Mầm non/Lớp 1–9**,
   **lớp quản lý bài độc lập người nhận**, giáo trình và Unit/Bài học; danh sách
