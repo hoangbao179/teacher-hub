@@ -121,6 +121,36 @@ nhiên, không chứa `studentId` và có thể thu hồi.
 
 ## 4. Luồng tạo bài dành cho giáo viên
 
+### Luồng nhanh đang được mở trên source Phase 2
+
+Khi `LEGACY_ADMIN_ENABLED=false`, các route giáo viên có xác thực
+`/admin/games`, `/admin/games/new`, `/admin/games/:id/edit` được
+allowlist riêng, không bật lại toàn bộ Admin shell cũ. Trang chủ công khai
+chỉ thêm nút đăng nhập; trang PDF public `/tools`, nút **Công cụ** và
+Teacher Tools giữ nguyên phần tải tài liệu hiện tại.
+
+- Sau đăng nhập, cô đến `/admin/tools`, chọn **Soạn trò chơi từ vựng**.
+- Trang **Trò chơi từ vựng** liệt kê bản nháp và bài đã giao, cho phép
+  tiếp tục sửa hoặc nhân bản; không hiện link chết khi game học sinh đang tắt.
+- Trang soạn một màn: đặt tên theo sách/Unit, chọn nhóm lớp; **dán từ + nghĩa
+  từ giáo trình ngoài** (tab, dấu phẩy/chấm phẩy hoặc ` - `) hoặc chọn bộ từ
+  đã lưu; hệ thống chỉ tự gợi ý emoji offline khi khớp nghĩa đã kiểm duyệt.
+- Chọn một trong bốn lộ trình cũ (Bé mới học, Nhớ từ nhanh, Luyện chính tả,
+  Ôn trước kiểm tra), xem thử thẻ học ngay trên trình duyệt.
+- Chọn dự định giao link chung, lớp hoặc một số học sinh; thông tin được lưu
+  **ở trạng thái DRAFT**, không tạo token/link/QR và không phát bài đến học sinh.
+- Lưu và mở lại bản nháp sử dụng `/api/vocabulary/assignments` sẵn có;
+  ảnh cô đã chọn được giữ lại nếu cặp từ/nghĩa không đổi. Không xóa dữ liệu
+  đang có khi danh sách dán chứa dòng thiếu nghĩa/trùng hoặc vượt giới hạn.
+- `VOCABULARY_GAMES_ENABLED=false` giữ nguyên. Xem thử thẻ học **không phải**
+  lượt chơi thử đầy đủ; hoạt động publish, chia sẻ QR và thu kết quả mới
+  phải đợi các phase kích hoạt game/kiểm tra release. Không thêm tài khoản
+  học sinh hoặc thư viện tạo ảnh runtime.
+
+Luồng wizard 6 bước cũ bên dưới tiếp tục được giữ trong source cho tương thích
+và khi cần chỉnh sửa nâng cao trong tương lai.
+
+
 Wizard gồm năm bước logic. Trên mobile có thể trình bày thành các màn nối tiếp;
 trên desktop dùng stepper bên trái và nội dung chính ở giữa.
 
