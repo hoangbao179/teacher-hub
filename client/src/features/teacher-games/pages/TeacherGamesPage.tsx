@@ -29,7 +29,7 @@ export function TeacherGamesPage() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
 
   const visible = useMemo(() => items.filter((item) =>
     item.title.toLocaleLowerCase("vi-VN").includes(filter.trim().toLocaleLowerCase("vi-VN"))
