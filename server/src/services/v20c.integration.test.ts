@@ -50,6 +50,19 @@ async function fixture() {
     `INSERT INTO users(username,email,password_hash,display_name)
      VALUES ('v20c','v20c@example.com','hash','V20C')`,
   );
+  // Local test-only metadata rows satisfy the same ACTIVE media FK used by
+  // uploaded pictures. No binary is served from these fixtures.
+  for (let index = 1; index <= 2; index++) {
+    await pool.execute(
+      `INSERT INTO vocabulary_media
+        (provider,provider_asset_id,storage_path,thumbnail_path,alt_text,
+         mime_type,byte_size,thumbnail_byte_size,width,height,content_sha256,status)
+       VALUES ('USER_UPLOAD',?,?,?,?, 'image/webp',1,1,300,300,?,'ACTIVE')`,
+      [`v20c-fixture-${index}`, `fixtures/game-${index}.webp`,
+        `fixtures/thumbnail-${index}.webp`, `Test animal picture ${index}`,
+        String(index).repeat(64)],
+    );
+  }
   const [classResult] = await pool.execute<ResultSetHeader>(
     `INSERT INTO classes
       (name,class_type,subject,default_package_price,default_duration_minutes,start_date,status)
@@ -78,9 +91,9 @@ async function fixture() {
 
 const items = [
   { displayOrder: 1, word: "cat", meaningVi: "con mèo", tier: "CORE" as const,
-    illustration: { kind: "EMOJI" as const, value: "🐱" }, supportsImageGame: true },
+    illustration: { kind: "STORED_MEDIA" as const, mediaId: 1 }, supportsImageGame: true },
   { displayOrder: 2, word: "dog", meaningVi: "con chó", tier: "CORE" as const,
-    illustration: { kind: "EMOJI" as const, value: "🐶" }, supportsImageGame: true },
+    illustration: { kind: "STORED_MEDIA" as const, mediaId: 2 }, supportsImageGame: true },
 ];
 const activities = [{
   displayOrder: 1,
