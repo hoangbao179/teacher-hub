@@ -43,15 +43,23 @@ try {
       return route.fulfill({ json: { data: { token, user } } });
     }
     if (url.pathname === "/api/auth/logout") return route.fulfill({ status: 204 });
+    if (url.pathname === "/api/classes") {
+      return route.fulfill({ json: { data: [{ id: 22, name: "Lớp 3A", status: "ACTIVE", type: "GROUP", subject: "English", defaultPackagePrice: 0, defaultDurationMinutes: 60, activeStudentCount: 10, paymentDueCount: 0 }] } });
+    }
     if (url.pathname === "/api/vocabulary/sets" && request.method() === "GET") {
       return route.fulfill({ json: { data: [], page: 1, pageSize: 50, total: 0 } });
     }
     if (url.pathname === "/api/vocabulary/assignments" && request.method() === "GET") {
-      return route.fulfill({ json: { data: draft ? [{
+      const classMatches = !url.searchParams.has("teachingClassId") || Number(url.searchParams.get("teachingClassId")) === draft?.teachingClassId;
+      const search = (url.searchParams.get("search") ?? "").toLowerCase();
+      const searchMatches = !search || [draft?.title, draft?.textbookName, draft?.lessonName].some((value) => value?.toLowerCase().includes(search));
+      const matches = Boolean(draft && classMatches && searchMatches);
+      return route.fulfill({ json: { data: matches ? [{
         id: draft.id, title: draft.title, status: draft.status, ageBand: draft.ageBand,
+        teachingClassId: draft.teachingClassId ?? null, textbookName: draft.textbookName ?? null, lessonName: draft.lessonName ?? null,
         audienceType: draft.audienceType, itemCount: draft.items.length,
         recipientCount: 0, updatedAt: draft.updatedAt, dueAt: null, version: draft.version,
-      }] : [], page: 1, pageSize: 50, total: draft ? 1 : 0 } });
+      }] : [], meta: { page: 1, pageSize: 50, total: matches ? 1 : 0 } } });
     }
     if (url.pathname === "/api/vocabulary/assignments" && request.method() === "POST") {
       const body = request.postDataJSON();
@@ -59,6 +67,10 @@ try {
       assert.equal(body.items[0].illustration.kind, "EMOJI");
       assert.equal(body.items[2].illustration.kind, "NONE");
       assert.equal(body.audienceType, "OPEN_LINK");
+      assert.equal(body.classId, undefined, "delivery audience class must stay separate");
+      assert.equal(body.teachingClassId, 22);
+      assert.equal(body.textbookName, "Family and Friends");
+      assert.equal(body.lessonName, "Unit 4");
       draft = {
         ...body, id: 123, status: "DRAFT", version: 1, teacherUserId: 1, classId: null,
         publicCode: null, publishedAt: null, closedAt: null,
@@ -103,7 +115,11 @@ try {
     throw new Error(`Teacher builder did not render. URL=${page.url()} errors=${JSON.stringify(errors)} calls=${JSON.stringify(calls)} body=${body.slice(0, 1600)}`);
   }
 
-  await page.getByTestId("teacher-game-title").locator("input").fill("Family and Friends – Unit 4");
+  await page.getByTestId("teacher-game-title").locator("input").fill("Food & Drinks");
+  await page.getByTestId("teacher-game-textbook").locator("input").fill("Family and Friends");
+  await page.getByTestId("teacher-game-lesson").locator("input").fill("Unit 4");
+  await page.getByTestId("teacher-game-teaching-class").getByRole("combobox").click();
+  await page.getByRole("option", { name: "Lớp 3A" }).click();
   await page.getByTestId("teacher-game-words").locator("textarea").first().fill("apple - quả táo\nbanana - quả chuối\nhungry - đói");
   await page.getByText("3 từ hợp lệ").waitFor();
   assert.equal(await page.getByText("2 từ có hình/emoji").count(), 1);
@@ -128,11 +144,17 @@ try {
   await page.getByRole("link", { name: "Quay lại" }).click();
   await page.waitForURL(`${origin}/admin/games`);
   await page.getByTestId("teacher-games-page").waitFor();
-  await page.getByText("Family and Friends – Unit 4").waitFor();
+  await page.getByText("Food & Drinks", { exact: true }).waitFor();
+  await page.getByText("Family and Friends · Unit 4").waitFor();
+  await page.getByTestId("teacher-games-class-filter").getByRole("combobox").click();
+  await page.getByRole("option", { name: "Lớp 3A" }).click();
+  await page.getByText("Food & Drinks", { exact: true }).waitFor();
   await page.getByRole("link", { name: "Tiếp tục soạn" }).click();
   await page.waitForURL(`${origin}/admin/games/123/edit`);
   await page.getByTestId("teacher-game-words").locator("textarea").first().waitFor();
   assert.match(await page.getByTestId("teacher-game-words").locator("textarea").first().inputValue(), /hungry/);
+  assert.equal(await page.getByTestId("teacher-game-lesson").locator("input").inputValue(), "Unit 4");
+  assert.equal(await page.getByTestId("teacher-game-textbook").locator("input").inputValue(), "Family and Friends");
 
   assert(!calls.some((value) => value.includes("media/search") || value.includes("image-search")), "Teacher flow must not search remote images");
   assert.deepEqual(errors, []);
