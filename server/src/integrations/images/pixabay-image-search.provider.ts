@@ -89,7 +89,9 @@ function rankAndDeduplicate(
 }
 
 function numberHeader(response: Response, name: string): number | undefined {
-  const value = Number(response.headers.get(name));
+  const raw = response.headers.get(name);
+  if (raw === null || raw.trim() === "") return undefined;
+  const value = Number(raw);
   return Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
@@ -102,8 +104,9 @@ function retryAfterSeconds(response: Response, now = Date.now()): number {
     if (Number.isFinite(date)) return Math.max(1, Math.ceil((date - now) / 1000));
   }
   const reset = numberHeader(response, "X-RateLimit-Reset");
-  if (reset !== undefined)
+  if (reset !== undefined && reset > 0)
     return Math.max(1, Math.ceil(reset > 1_000_000_000 ? reset - now / 1000 : reset));
+  // Missing or zero reset headers do not mean the upstream quota has recovered.
   return 60;
 }
 
