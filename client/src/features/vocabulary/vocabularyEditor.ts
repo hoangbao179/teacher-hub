@@ -52,7 +52,7 @@ export function vocabularyTopicIcon(iconKey: string): string {
 
 export function parseVocabularyPaste(value: string): VocabularyPastePreview {
   const rows = value.split(/\r?\n/u).map((line, index) => {
-    const parts = line.split(/\t|;|,/u).map((part) => part.trim());
+    const parts = line.split(/\t|;|,|\s+[-–—]\s+/u).map((part) => part.trim());
     const word = parts[0] ?? "";
     const meaningVi = parts.slice(1).join(", ").trim();
     const valid = Boolean(word && meaningVi);

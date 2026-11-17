@@ -9,8 +9,11 @@ type Answer = Record<string, unknown>;
 function Illustration({ value }: { value: NonNullable<PublicLearningQuestion["prompt"]["illustration"]> }) {
   if (value.kind === "EMOJI")
     return <Typography aria-label={value.altText ?? "Hình minh họa"} sx={{ fontSize: 72 }}>{value.value}</Typography>;
-  if (value.kind === "STORED_MEDIA" && value.mediaUrl)
-    return <Box component="img" src={value.mediaUrl} alt={value.altText ?? ""} sx={{ width: "100%", maxHeight: 220, objectFit: "contain", borderRadius: 3 }} />;
+  const url = value.kind === "STORED_MEDIA" ? value.mediaUrl
+    : value.kind === "PUBLIC_ASSET" && value.value?.startsWith("/learning/") ? value.value : undefined;
+  if (url)
+    return <Box component="img" src={url} alt={value.altText ?? "Hình minh họa từ vựng"}
+      loading="lazy" sx={{ width: "100%", maxHeight: 220, objectFit: "contain", borderRadius: 3 }} />;
   return null;
 }
 
@@ -122,6 +125,11 @@ export function GameQuestion({
             <Alert severity="info">Thiết bị này chưa hỗ trợ phát âm thanh.</Alert>
           )}
           {audioError && <Alert severity="warning">{audioError}</Alert>}
+          {question.prompt.illustration && question.mechanic !== "EXPLORE_CARD"
+            && !pairMode && question.presentation !== "LISTEN_PICK_IMAGE"
+            && <Box data-testid="game-prompt-picture" sx={{ display: "flex", justifyContent: "center" }}>
+              <Illustration value={question.prompt.illustration} />
+            </Box>}
           {question.mechanic === "EXPLORE_CARD" ? (
             <Box sx={{ perspective: "1200px", minHeight: { xs: 330, sm: 370 } }}>
               <Box
@@ -253,7 +261,10 @@ export function GameQuestion({
                       onClick={() => setLeft(item.id)}
                       sx={{ minHeight: 64 }}
                     >
-                      {item.label}
+                      <Stack sx={{ alignItems: "center", gap: 0.5 }}>
+                        {item.illustration && <Illustration value={item.illustration} />}
+                        <Typography sx={{ color: "inherit", fontWeight: 700 }}>{item.label}</Typography>
+                      </Stack>
                     </Button>
                   </Grid>
                 ))}

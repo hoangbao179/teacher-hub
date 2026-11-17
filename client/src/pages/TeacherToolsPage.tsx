@@ -1,4 +1,4 @@
-import { ArrowBack, Logout, PictureAsPdf, LinkOutlined } from "@mui/icons-material";
+import { ArrowBack, Logout, PictureAsPdf, LinkOutlined, SportsEsportsOutlined } from "@mui/icons-material";
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -30,6 +30,16 @@ export function TeacherToolsPage() {
             <Typography component="h1" variant="h4" sx={{ fontWeight: 800, fontSize: { xs: "1.8rem", sm: "2.15rem" } }}>Công cụ cho cô Vy</Typography>
             <Typography color="text.secondary" sx={{ maxWidth: 330, lineHeight: 1.65 }}>Một nơi đơn giản để chuẩn bị tài liệu giảng dạy và in ấn.</Typography>
           </Stack>
+          <Box sx={{ mt: 3, p: { xs: 2.5, sm: 3 }, borderRadius: 3, bgcolor: "#fff", border: "1px solid #d5e9e2", textAlign: "center" }}>
+            <SportsEsportsOutlined aria-hidden="true" sx={{ fontSize: 36, color: "#0f766e" }} />
+            <Typography component="h2" variant="h6" sx={{ mt: 1, fontWeight: 800 }}>Trò chơi từ vựng</Typography>
+            <Typography color="text.secondary" sx={{ mt: 1, mb: 2, lineHeight: 1.6 }}>
+              Dán từ theo giáo trình, tạo trò ôn tập và lưu bài cho học sinh. Không cần tìm ảnh.
+            </Typography>
+            <Button component={Link} to="/admin/games" data-testid="teacher-games-entry" variant="contained" sx={{ minHeight: 48, width: { xs: "100%", sm: "auto" } }}>
+              Soạn trò chơi từ vựng
+            </Button>
+          </Box>
           <Box sx={{ mt: 4, p: { xs: 2.5, sm: 3 }, borderRadius: 3, bgcolor: "#fff", border: "1px solid #d5e9e2", textAlign: "center" }}>
             <LinkOutlined aria-hidden="true" sx={{ fontSize: 32, color: "#0f766e" }} />
             <Typography variant="h6" component="h2" sx={{ mt: 1, fontWeight: 700 }}>Tải tài liệu từ liên kết</Typography>

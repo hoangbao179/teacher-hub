@@ -41,6 +41,10 @@ function detail(overrides: Partial<AssignmentDetail> = {}): AssignmentDetail {
     id: 1,
     teacherUserId: 1,
     title: draftInput.title,
+    teachingClassId: null,
+    gradeLevel: null,
+    textbookName: null,
+    lessonName: null,
     instruction: draftInput.instruction ?? null,
     status: "DRAFT",
     audienceType: "OPEN_LINK",
@@ -105,7 +109,9 @@ test("activity templates fall back when images or age band are incompatible", ()
 });
 
 test("publish returns one-time open access and QR without persisting raw token", async () => {
-  let current = detail();
+  let current = detail({ items: detail().items.map((item, index) => ({
+    ...item, illustrationSnapshot: { kind: "STORED_MEDIA" as const, mediaId: index + 1 },
+  })) });
   let persistedHash = "";
   const repository = {
     detail: async () => current,
@@ -114,12 +120,13 @@ test("publish returns one-time open access and QR without persisting raw token",
       openToken?: { tokenHash: string };
     }) => {
       persistedHash = input.openToken?.tokenHash ?? "";
-      current = detail({
+      current = {
+        ...current,
         status: "PUBLISHED",
         publicCode: input.publicCode,
         version: 2,
         publishedAt: new Date().toISOString(),
-      });
+      };
       return [];
     },
   };
@@ -163,6 +170,21 @@ test("draft validation rejects invalid audience, date and image-dependent publis
   await assert.rejects(
     service.publish(1, 1, 1),
     (error: unknown) => (error as { code?: string }).code === "ACTIVITY_REQUIRES_IMAGES",
+  );
+});
+
+test("emoji-only exercises may be saved as drafts but cannot be published as illustrated games", async () => {
+  const service = new AssignmentService(
+    { detail: async () => detail() } as never,
+    "https://tienganhcovy.com",
+    { materializeItems: async (items: unknown) => items } as never,
+  );
+  const preview = await service.preview(1, 1);
+  assert.ok(preview.warnings.some((warning) => warning.includes("ảnh minh họa thật")));
+  await assert.rejects(
+    service.publish(1, 1, 1),
+    (error: unknown) =>
+      (error as { code?: string }).code === "ACTIVITY_REQUIRES_IMAGES",
   );
 });
 

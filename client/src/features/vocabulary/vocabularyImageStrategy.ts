@@ -32,11 +32,49 @@ const contextLabels: Record<VocabularyImageCategory, string> = {
   FOOD: "meal", SCHOOL: "classroom", FAMILY: "people", ACTION: "person", EMOTION: "facial expression",
 };
 const normalize = (value: string) => value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("en");
+const localSenseAssets: Readonly<Record<string, string>> = {
+  "cat\u0000con mèo": "/learning/animals/cat.svg",
+  "cat\u0000mèo": "/learning/animals/cat.svg",
+};
+const colorMeanings: Readonly<Record<string, string>> = {
+  red: "đỏ", blue: "xanh dương", yellow: "vàng", green: "xanh lá",
+  orange: "cam", purple: "tím", pink: "hồng", black: "đen",
+  white: "trắng", brown: "nâu", gray: "xám", gold: "vàng kim", silver: "bạc",
+};
+const numberMeanings: Readonly<Record<string, string>> = Object.fromEntries(
+  ["một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín", "mười",
+   "mười một", "mười hai", "mười ba", "mười bốn", "mười lăm", "mười sáu",
+   "mười bảy", "mười tám", "mười chín", "hai mươi"]
+    .map((meaning, index) => [
+      ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+       "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+       "eighteen", "nineteen", "twenty"][index], meaning,
+    ]),
+);
+const normalizeMeaning = (value: string) =>
+  value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("vi-VN");
+function allowedLocalAssetSense(word: string, meaningVi: string): boolean {
+  const meaning = normalizeMeaning(meaningVi);
+  if (word in colorMeanings) {
+    const color = colorMeanings[word];
+    return meaning === color || meaning === `màu ${color}`;
+  }
+  if (word in numberMeanings) {
+    const number = numberMeanings[word];
+    return meaning === number || meaning === `số ${number}`;
+  }
+  return false;
+}
+
 const clean = (value: string) => normalize(value).split(" ").filter((part) => !noise.has(part)).join(" ");
 
-export function buildVocabularyImageStrategy(rawWord: string, searchTerms: string[] = []): VocabularyImageStrategy {
+export function buildVocabularyImageStrategy(
+  rawWord: string, searchTerms: string[] = [], meaningVi?: string,
+): VocabularyImageStrategy {
   const word = normalize(rawWord);
-  const publicAsset = localAssetManifest[word];
+  const verifiedSense = meaningVi ? localSenseAssets[`${word}\u0000${normalizeMeaning(meaningVi)}`] : undefined;
+  const publicAsset = verifiedSense ??
+    (!meaningVi || allowedLocalAssetSense(word, meaningVi) ? localAssetManifest[word] : undefined);
   if (publicAsset) return { category: "LOCAL", query: word, queries: [word], publicAsset };
   const category = groups.find(([, words]) => words.has(word))?.[0] ?? "NOUN";
   const preferred = searchTerms.map(clean).find((term) => term && term !== word);

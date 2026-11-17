@@ -31,6 +31,18 @@ export function hasPlayableImage(
     || illustration.kind === "STORED_MEDIA";
 }
 
+/** A real visual asset, rather than a font-rendered emoji, must back image-required games. */
+export function hasRealGameImage(
+  item: Pick<AssignmentVocabularyItemInput, "illustration"> | {
+    illustrationSnapshot: VocabularyIllustrationInput;
+  },
+): boolean {
+  // Published assignments carry both fields; the stored snapshot is authoritative.
+  const image = "illustrationSnapshot" in item ? item.illustrationSnapshot : item.illustration;
+  return (image.kind === "STORED_MEDIA" && Number.isInteger(image.mediaId) && image.mediaId! > 0)
+    || (image.kind === "PUBLIC_ASSET" && Boolean(image.value?.startsWith("/learning/")));
+}
+
 function activities(
   values: Array<Omit<AssignmentActivityInput, "displayOrder" | "required">>,
 ): AssignmentActivityInput[] {

@@ -137,7 +137,30 @@ hiện hành của hệ thống. Lịch sử milestone, command và evidence t�
 
 ### TEMP_DISABLED
 
-- **Giao diện quản trị cũ**: `LEGACY_ADMIN_ENABLED = false` tạm ngừng truy cập tất cả màn quản lý lớp, học sinh, lịch, học phí, kho từ và giao bài ở frontend; điều hướng về `/admin/tools`. Toàn bộ source, API và dữ liệu giữ nguyên, không thực hiện xóa hay di chuyển dữ liệu. Các feature được liệt kê ACTIVE/ADVANCED phía trên phản ánh trạng thái implementation lưu lại, không phải các màn còn được truy cập trong UI mặc định.
+
+- **Teacher Game Builder Phase 2 (frontend)**: nút đăng nhập giáo viên ở public
+  header và ô **Soạn trò chơi từ vựng** tại `/admin/tools`. Các route riêng
+  `/admin/games*` được bảo vệ bởi `Protected` và có form nhập/dán từ giáo trình
+  (không cần hình) bằng các dòng **hai ô tiếng Anh/nghĩa Việt** với nút cộng/xóa,
+  hỗ trợ dán bảng Word/Excel vào ô tiếng Anh, **chọn/tải ảnh thật riêng từng từ**,
+  hiển thị ảnh trong preview; API publish yêu cầu tất cả từ có ảnh thực,
+  emoji chỉ gợi ý (bản nháp vẫn lưu được), chọn lộ trình, dự định người nhận,
+  lưu/sửa/nhân bản bản nháp,
+  xem trước thẻ từ cục bộ. Bổ sung **khối lớp Mầm non/Lớp 1–9**,
+  **lớp quản lý bài độc lập người nhận**, giáo trình và Unit/Bài học; danh sách
+  lọc theo khối/lớp, tìm tên bài/sách/Unit, nhân bản để dùng cho lớp khác.
+  **Chỉ tên bài bắt buộc để lưu DRAFT**. Có thể để trống khối/lớp, sách,
+  Unit, người nhận, từ vựng hoặc hoạt động và bổ sung sau; nhóm độ tuổi và
+  mẫu game có mặc định kỹ thuật. Khi đã dán từ lỗi/trùng, yêu cầu sửa trước khi
+  lưu nhằm tránh bỏ sót dữ liệu. Điều kiện giao bài thật vẫn kiểm tra riêng.
+  Các metadata này yêu cầu migration append-only `0031_teacher_game_catalog.sql`
+  trước khi UI hoạt động trên DB production. `/tools` và PDF Worker không thay đổi.
+  Chưa bật publish/link/QR/game học sinh vì `VOCABULARY_GAMES_ENABLED=false`.
+  Bài đã xuất bản từ trước chỉ được liệt kê/nhân bản; chưa có result dashboard
+  giản lược trên màn mới.
+
+
+- **Giao diện quản trị cũ**: `LEGACY_ADMIN_ENABLED = false` tiếp tục tạm ngừng các màn quản lý lớp, học sinh, lịch, học phí, kho từ và wizard giao bài cũ; điều hướng về `/admin/tools`. **Ngoại lệ allowlist Phase 2**: `/admin/games`, `/admin/games/new`, `/admin/games/:id/edit` chỉ mở sau xác thực, dùng API bài nháp hiện có, không khôi phục Admin shell cũ. Toàn bộ source, API và dữ liệu giữ nguyên, không thực hiện xóa hay di chuyển dữ liệu. Các feature được liệt kê ACTIVE/ADVANCED phía trên phản ánh trạng thái implementation lưu lại, không phải các màn còn được truy cập trong UI mặc định.
 
   Regression hiện hành: `npm -w client run test:e2e:tools` chạy frontend thật với API auth
   giả lập, không cần database; kiểm tra public `/tools`/reload/navigation/metadata, guest/login, refresh cả hai chế độ ghi nhớ,

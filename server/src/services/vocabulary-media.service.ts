@@ -16,7 +16,7 @@ import {
 import { AppError } from "../errors/app-error";
 import type { VocabularyMediaSettings } from "../config/vocabulary-media-settings";
 import { StaticImageProviderRegistry, type ImageProviderRegistry, type ImageSearchProvider } from "../integrations/images/image-search.provider";
-import { VocabularyMediaRepository } from "../repositories/vocabulary-media.repository";
+import { VocabularyMediaRepository, type CachedSearchPayload } from "../repositories/vocabulary-media.repository";
 import { SecureImageDownloader } from "./secure-image-downloader";
 import { processVocabularyImage } from "./secure-image-downloader";
 import { VocabularyMediaStorage } from "./vocabulary-media-storage";
@@ -30,6 +30,7 @@ export class VocabularyMediaService {
   private lifecycleTimer?: ReturnType<typeof setInterval>;
   private readonly registry: ImageProviderRegistry;
   private readonly imports = new Map<string, Promise<VocabularyStoredMedia>>();
+  private readonly inFlightSearches = new Map<string, Promise<{ payload: CachedSearchPayload; expiresAt: Date }>>();
   constructor(
     private readonly repository: VocabularyMediaRepository,
     providerOrRegistry: ImageSearchProvider | ImageProviderRegistry | null,
@@ -37,7 +38,8 @@ export class VocabularyMediaService {
     private readonly downloader = new SecureImageDownloader(settings),
     private readonly storage = new VocabularyMediaStorage(settings.storagePath),
     private readonly now: () => Date = () => new Date(),
-    private readonly coordinator: ProviderRateCoordinator = new InMemoryProviderRateCoordinator(),
+    // Keep a conservative per-process Pixabay pace below the provider's default key quota.
+    private readonly coordinator: ProviderRateCoordinator = new InMemoryProviderRateCoordinator(800),
   ) {
     this.registry = providerOrRegistry && "get" in providerOrRegistry
       ? providerOrRegistry
@@ -68,58 +70,74 @@ export class VocabularyMediaService {
       !vocabularyImageOrientations.includes(orientation))
       throw new AppError(400, "VALIDATION_ERROR", "Bộ lọc ảnh không hợp lệ.");
     const provider = this.providerFor(mediaType);
+    // The picker displays at most three pages of eight photos. Reuse one
+    // 24-result Pixabay search instead of spending three upstream calls.
+    const pooledPixabay = provider.name === "PIXABAY" && pageSize === 8 && page <= 3;
     const cacheKey = createHash("sha256").update(JSON.stringify({
       provider: provider.name,
       query,
       mediaType,
       orientation,
-      ...(provider.name === "ARASAAC" ? {} : { page, pageSize }),
+      ...(provider.name === "ARASAAC" ? {} : pooledPixabay ? { windowSize: 24 } : { page, pageSize }),
     })).digest("hex");
-    const providerPage = provider.name === "ARASAAC" ? 1 : page;
-    const providerPageSize = provider.name === "ARASAAC" ? 50 : pageSize;
+    const providerPage = provider.name === "ARASAAC" || pooledPixabay ? 1 : page;
+    const providerPageSize = provider.name === "ARASAAC" ? 50 : pooledPixabay ? 24 : pageSize;
     const now = this.now();
     let cached = await this.repository.findCache(provider.name, cacheKey, now);
     if (!cached) {
-      let payload;
-      try {
-        payload = await this.coordinator.run(provider.name, () => provider.search({
-          query,
-          page: providerPage,
-          pageSize: providerPageSize,
-          mediaType,
-          orientation,
-          safeSearch: true,
-        }));
-      } catch (error) {
-        const details = error instanceof AppError && typeof error.details === "object" && error.details
-          ? error.details as Record<string, unknown>
-          : {};
-        console.warn(JSON.stringify({
-          level: "warn",
-          event: "vocabulary_image_provider_failed",
-          provider: provider.name,
-          category: error instanceof AppError ? error.code : "UNEXPECTED",
-          operation: details.operation,
-          reason: details.reason,
-          upstreamStatus: details.upstreamStatus,
-        }));
-        throw error;
+      // Coalesce concurrent identical cache misses within this server process.
+      // Share both the provider response and the database write.
+      let pending = this.inFlightSearches.get(cacheKey);
+      if (!pending) {
+        pending = (async () => {
+          let payload: CachedSearchPayload;
+          try {
+            payload = await this.coordinator.run(provider.name, () => provider.search({
+              query,
+              page: providerPage,
+              pageSize: providerPageSize,
+              mediaType,
+              orientation,
+              safeSearch: true,
+            }));
+          } catch (error) {
+            const details = error instanceof AppError && typeof error.details === "object" && error.details
+              ? error.details as Record<string, unknown>
+              : {};
+            console.warn(JSON.stringify({
+              level: "warn",
+              event: "vocabulary_image_provider_failed",
+              provider: provider.name,
+              category: error instanceof AppError ? error.code : "UNEXPECTED",
+              operation: details.operation,
+              reason: details.reason,
+              upstreamStatus: details.upstreamStatus,
+            }));
+            throw error;
+          }
+          const expiresAt = new Date(this.now().getTime() + (provider.name === "ARASAAC"
+            ? 7 * 24 * 60 * 60 * 1_000
+            : this.settings.cacheTtlMs));
+          await this.repository.saveCache({
+            provider: provider.name,
+            cacheKey,
+            normalizedQuery: query,
+            mediaType,
+            orientation,
+            page: providerPage,
+            pageSize: providerPageSize,
+            payload,
+            expiresAt,
+          });
+          return { payload, expiresAt };
+        })();
+        this.inFlightSearches.set(cacheKey, pending);
       }
-      const expiresAt = new Date(now.getTime() + (provider.name === "ARASAAC"
-        ? 7 * 24 * 60 * 60 * 1_000
-        : this.settings.cacheTtlMs));
-      await this.repository.saveCache({
-        provider: provider.name,
-        cacheKey,
-        normalizedQuery: query,
-        mediaType,
-        orientation,
-        page: providerPage,
-        pageSize: providerPageSize,
-        payload,
-        expiresAt,
-      });
-      cached = { payload, expiresAt };
+      try {
+        cached = await pending;
+      } finally {
+        if (this.inFlightSearches.get(cacheKey) === pending) this.inFlightSearches.delete(cacheKey);
+      }
     }
     return {
       provider: provider.name,
@@ -127,8 +145,8 @@ export class VocabularyMediaService {
       cacheExpiresAt: cached.expiresAt.toISOString(),
       page,
       pageSize,
-      total: cached.payload.total,
-      items: (provider.name === "ARASAAC"
+      total: pooledPixabay ? Math.min(cached.payload.total, cached.payload.items.length) : cached.payload.total,
+      items: (provider.name === "ARASAAC" || pooledPixabay
         ? cached.payload.items.slice((page - 1) * pageSize, page * pageSize)
         : cached.payload.items).map((item) => ({
         provider: item.provider,

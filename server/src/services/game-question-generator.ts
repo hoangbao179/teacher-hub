@@ -179,7 +179,9 @@ function selectQuestion(
                     ? "Nối toa có đáp án đúng vào đầu tàu!"
                   : "Chọn nghĩa đúng nhé!",
     ...(presentation.startsWith("LISTEN_") ? { speechText: item.speechText ?? item.word } : {}),
-    ...(presentation === "IMAGE_PICK_WORD" ? { illustration: illustration(item) } : {}),
+    // Picture is a study cue except when the choices themselves are pictures.
+    ...(presentation !== "LISTEN_PICK_IMAGE" && hasImage(item)
+      ? { illustration: illustration(item) } : {}),
     ...(presentation === "MEANING_PICK_WORD" ? { meaningVi: item.meaningVi } : {}),
     ...(!presentation.startsWith("LISTEN_")
       && presentation !== "IMAGE_PICK_WORD"
@@ -233,6 +235,7 @@ function pairQuestion(
     id: pairIds.get(item.id)!.leftId,
     label: item.word,
     matchKey: pairIds.get(item.id)!.matchKey,
+    ...(!useImage && hasImage(item) ? { illustration: illustration(item) } : {}),
   }));
   const right = shuffle(chosen, random).map((item) => ({
     id: pairIds.get(item.id)!.rightId,

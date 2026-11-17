@@ -81,6 +81,30 @@ test("Pixabay 429 preserves quota headers and requests the animals category", as
   assert.equal(requested?.searchParams.get("category"), "animals");
 });
 
+test("Pixabay missing quota headers do not report a fake zero and use a safe retry", async () => {
+  const provider = new PixabayImageSearchProvider("secret", async () =>
+    new Response(null, { status: 429 }));
+  await assert.rejects(
+    provider.search({ query: "smile", page: 1, pageSize: 8,
+      mediaType: "PHOTO", orientation: "ALL", safeSearch: true }),
+    (error: unknown) => error instanceof AppError &&
+      error.code === "IMAGE_PROVIDER_RATE_LIMITED" &&
+      error.retryAfterSeconds === 60 &&
+      (error.details as { remaining?: number; reset?: number }).remaining === undefined &&
+      (error.details as { remaining?: number; reset?: number }).reset === undefined,
+  );
+});
+
+test("Pixabay zero reset header does not cause a one-second retry loop", async () => {
+  const provider = new PixabayImageSearchProvider("secret", async () =>
+    new Response(null, { status: 429, headers: { "X-RateLimit-Reset": "0" } }));
+  await assert.rejects(
+    provider.search({ query: "smile", page: 1, pageSize: 8,
+      mediaType: "PHOTO", orientation: "ALL", safeSearch: true }),
+    (error: unknown) => error instanceof AppError && error.retryAfterSeconds === 60,
+  );
+});
+
 test("Pixabay results are ranked by word, media type and square shape then deduplicated", async () => {
   const hit = (id: number, type: string, tags: string, width: number, height: number, suffix = String(id)) => ({
     id, pageURL: `https://pixabay.com/images/${id}/`, type, tags,

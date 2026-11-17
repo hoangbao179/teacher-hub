@@ -185,15 +185,15 @@ test("search uses cache, or persists a 24-hour safe result on miss", async () =>
   assert.equal(missResult.cacheExpiresAt, "2026-07-27T00:00:00.000Z");
 });
 
-test("search forwards page and defaults to eight results per page", async () => {
+test("picker prefetches 24 photos while returning eight per page", async () => {
   const value = makeService();
   const result = await value.service.search({ query: "Apple", page: 2, pageSize: 8, mediaType: "PHOTO" });
   assert.equal(result.page, 2);
   assert.equal(result.pageSize, 8);
   assert.deepEqual(value.providerInput(), {
     query: "apple",
-    page: 2,
-    pageSize: 8,
+    page: 1,
+    pageSize: 24,
     mediaType: "PHOTO",
     orientation: "ALL",
     safeSearch: true,
@@ -251,6 +251,53 @@ test("ARASAAC caches normalized result for seven days independently of requested
   assert.equal(saved[0].page, 1);
   assert.equal(saved[0].pageSize, 50);
   assert.equal(saved[0].expiresAt.toISOString(), "2026-08-02T00:00:00.000Z");
+});
+
+test("Pixabay picker pages share one cached upstream search and concurrent misses coalesce", async () => {
+  const cache = new Map<string, { payload: { total: number; items: ProviderImageAsset[] }; expiresAt: Date }>();
+  const repository = {
+    findCache: async (_provider: string, key: string) => cache.get(key) ?? null,
+    saveCache: async (input: {
+      cacheKey: string;
+      payload: { total: number; items: ProviderImageAsset[] };
+      expiresAt: Date;
+    }) => { cache.set(input.cacheKey, { payload: input.payload, expiresAt: input.expiresAt }); },
+  };
+  let calls = 0;
+  let upstreamPage = 0;
+  let upstreamPageSize = 0;
+  const provider = {
+    name: "PIXABAY" as const,
+    allowedDownloadHosts: ["cdn.pixabay.com"] as const,
+    supportedMediaTypes: ["ALL", "PHOTO"] as const,
+    search: async (input: { page: number; pageSize: number }) => {
+      calls += 1;
+      upstreamPage = input.page;
+      upstreamPageSize = input.pageSize;
+      await Promise.resolve();
+      return {
+        total: 100,
+        items: Array.from({ length: 24 }, (_, i): ProviderImageAsset => ({
+          ...asset, providerAssetId: String(i + 1),
+        })),
+      };
+    },
+  };
+  const service = new VocabularyMediaService(
+    repository as never, provider, settings,
+    undefined, { initialize: async () => undefined } as never,
+  );
+  const search = (page: number) => service.search({ query: "smile", mediaType: "PHOTO", page, pageSize: 8 });
+  const [first, second] = await Promise.all([search(1), search(2)]);
+  const third = await search(3);
+  assert.equal(calls, 1);
+  assert.equal(upstreamPage, 1);
+  assert.equal(upstreamPageSize, 24);
+  assert.deepEqual(first.items.map((item) => item.providerAssetId), ["1", "2", "3", "4", "5", "6", "7", "8"]);
+  assert.deepEqual(second.items.map((item) => item.providerAssetId), ["9", "10", "11", "12", "13", "14", "15", "16"]);
+  assert.deepEqual(third.items.map((item) => item.providerAssetId), ["17", "18", "19", "20", "21", "22", "23", "24"]);
+  assert.equal(first.total, 24);
+  assert.equal(cache.size, 1);
 });
 
 test("provider rate limits remain distinct and preserve retry timing", async () => {

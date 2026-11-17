@@ -50,6 +50,19 @@ async function fixture() {
     `INSERT INTO users(username,email,password_hash,display_name)
      VALUES ('v20c','v20c@example.com','hash','V20C')`,
   );
+  // Local test-only metadata rows satisfy the same ACTIVE media FK used by
+  // uploaded pictures. No binary is served from these fixtures.
+  for (let index = 1; index <= 2; index++) {
+    await pool.execute(
+      `INSERT INTO vocabulary_media
+        (provider,provider_asset_id,storage_path,thumbnail_path,alt_text,
+         mime_type,byte_size,thumbnail_byte_size,width,height,content_sha256,status)
+       VALUES ('USER_UPLOAD',?,?,?,?, 'image/webp',1,1,300,300,?,'ACTIVE')`,
+      [`v20c-fixture-${index}`, `fixtures/game-${index}.webp`,
+        `fixtures/thumbnail-${index}.webp`, `Test animal picture ${index}`,
+        String(index).repeat(64)],
+    );
+  }
   const [classResult] = await pool.execute<ResultSetHeader>(
     `INSERT INTO classes
       (name,class_type,subject,default_package_price,default_duration_minutes,start_date,status)
@@ -78,9 +91,9 @@ async function fixture() {
 
 const items = [
   { displayOrder: 1, word: "cat", meaningVi: "con mèo", tier: "CORE" as const,
-    illustration: { kind: "EMOJI" as const, value: "🐱" }, supportsImageGame: true },
+    illustration: { kind: "STORED_MEDIA" as const, mediaId: 1 }, supportsImageGame: true },
   { displayOrder: 2, word: "dog", meaningVi: "con chó", tier: "CORE" as const,
-    illustration: { kind: "EMOJI" as const, value: "🐶" }, supportsImageGame: true },
+    illustration: { kind: "STORED_MEDIA" as const, mediaId: 2 }, supportsImageGame: true },
 ];
 const activities = [{
   displayOrder: 1,
@@ -94,6 +107,10 @@ function updateInput(
 ): UpdateAssignmentDraftRequest {
   return {
     title: assignment.title,
+    teachingClassId: assignment.teachingClassId ?? undefined,
+    gradeLevel: assignment.gradeLevel ?? undefined,
+    textbookName: assignment.textbookName ?? undefined,
+    lessonName: assignment.lessonName ?? undefined,
     instruction: assignment.instruction ?? undefined,
     vocabularySetId: assignment.vocabularySetId ?? undefined,
     ageBand: assignment.ageBand,
@@ -120,6 +137,46 @@ function service() {
     { materializeItems: async (values: unknown) => values } as never,
   );
 }
+
+integration("teacher can save and reopen a title-only draft with no classification, words or recipient", async () => {
+  const data = await fixture();
+  const assignments = service();
+  const created = await assignments.create({
+    title: "Bài mới — bổ sung sau",
+    ageBand: "G2_G3",
+    templateCode: "WORD_RECOGNITION",
+    answerFeedbackMode: "IMMEDIATE",
+    shuffleQuestions: true,
+    items: [],
+    activities: [],
+  }, data.teacherId);
+  assert.equal(created.status, "DRAFT");
+  assert.equal(created.title, "Bài mới — bổ sung sau");
+  assert.equal(created.teachingClassId, null);
+  assert.equal(created.gradeLevel, null);
+  assert.equal(created.textbookName, null);
+  assert.equal(created.lessonName, null);
+  assert.equal(created.audienceType, null);
+  assert.equal(created.classId, null);
+  assert.equal(created.items.length, 0);
+  assert.equal(created.activities.length, 0);
+  const reopened = await assignments.detail(created.id, data.teacherId);
+  assert.equal(reopened.status, "DRAFT");
+  assert.equal(reopened.title, created.title);
+  assert.equal(reopened.audienceType, null);
+  assert.equal(reopened.items.length, 0);
+  const updated = await assignments.update(created.id, {
+    ...updateInput(reopened),
+    textbookName: "Family and Friends",
+    lessonName: "Unit 4",
+    items,
+    activities,
+  }, data.teacherId);
+  assert.equal(updated.textbookName, "Family and Friends");
+  assert.equal(updated.lessonName, "Unit 4");
+  assert.equal(updated.items.length, 2);
+  assert.equal(updated.status, "DRAFT");
+});
 
 integration("V20C migration, class snapshot, concurrency and immutable state work atomically", async () => {
   const [migration] = await pool.query<RowDataPacket[]>(
@@ -212,6 +269,84 @@ integration("V20C migration, class snapshot, concurrency and immutable state wor
   assert.equal(duplicate.status, "DRAFT");
   assert.equal(duplicate.publicCode, null);
   assert.equal(duplicate.recipientCount, 0);
+});
+
+
+integration("teacher lesson catalog stores class, textbook and Unit independently of link audience", async () => {
+  const [migration] = await pool.query<RowDataPacket[]>(
+    "SELECT version FROM schema_migrations WHERE version='0031_teacher_game_catalog.sql'",
+  );
+  assert.equal(migration.length, 1);
+  const data = await fixture();
+  const assignments = service();
+  const draft = await assignments.create({
+    title: "Food practice",
+    textbookName: "Oxford Discover",
+    lessonName: "Unit 4 — Food",
+    teachingClassId: data.classId,
+    gradeLevel: 3,
+    ageBand: "G2_G3",
+    audienceType: "OPEN_LINK",
+    templateCode: "WORD_RECOGNITION",
+    answerFeedbackMode: "IMMEDIATE",
+    shuffleQuestions: true,
+    items,
+    activities,
+  }, data.teacherId);
+  assert.equal(draft.status, "DRAFT");
+  assert.equal(draft.audienceType, "OPEN_LINK");
+  assert.equal(draft.classId, null, "class delivery must stay distinct from lesson grouping");
+  assert.equal(draft.teachingClassId, data.classId);
+  assert.equal(draft.gradeLevel, 3);
+  assert.equal(draft.textbookName, "Oxford Discover");
+  assert.equal(draft.lessonName, "Unit 4 — Food");
+
+  const grouped = await assignments.list({
+    page: 1, pageSize: 10, teachingClassId: data.classId,
+  }, data.teacherId);
+  assert.equal(grouped.total, 1);
+  assert.equal(grouped.items[0].teachingClassId, data.classId);
+  assert.equal(grouped.items[0].gradeLevel, 3);
+  assert.equal((await assignments.list({ page: 1, pageSize: 10, gradeLevel: 3 }, data.teacherId)).total, 1);
+  assert.equal((await assignments.list({
+    page: 1, pageSize: 10, search: "Oxford",
+  }, data.teacherId)).total, 1);
+  assert.equal((await assignments.list({
+    page: 1, pageSize: 10, search: "Unit 4",
+  }, data.teacherId)).total, 1);
+  assert.equal((await assignments.list({
+    page: 1, pageSize: 10, teachingClassId: data.classId + 9999,
+  }, data.teacherId)).total, 0);
+
+  const copy = await assignments.duplicate(draft.id, "Food practice for another class", data.teacherId);
+  assert.equal(copy.teachingClassId, data.classId);
+  assert.equal(copy.gradeLevel, 3);
+  assert.equal(copy.textbookName, "Oxford Discover");
+  assert.equal(copy.lessonName, "Unit 4 — Food");
+  assert.equal(copy.classId, null);
+  const updated = await assignments.update(copy.id, {
+    ...updateInput(copy),
+    teachingClassId: undefined,
+    gradeLevel: 4,
+    lessonName: "Unit 5 — Food",
+  }, data.teacherId);
+  assert.equal(updated.teachingClassId, null, "lesson can become reusable for all classes");
+  assert.equal(updated.gradeLevel, 4);
+  assert.equal(updated.lessonName, "Unit 5 — Food");
+  assert.equal((await assignments.list({
+    page: 1, pageSize: 10, teachingClassId: data.classId,
+  }, data.teacherId)).total, 1, "moving the copy must not change the source lesson");
+
+  await assert.rejects(
+    assignments.create({
+      ...updateInput(draft), teachingClassId: 999999999,
+    }, data.teacherId),
+    (error: unknown) => (error as { code?: string }).code === "CLASS_NOT_FOUND",
+  );
+  await assert.rejects(
+    assignments.create({ ...updateInput(draft), teachingClassId: -1 }, data.teacherId),
+    (error: unknown) => (error as { code?: string }).code === "VALIDATION_ERROR",
+  );
 });
 
 integration("selected students and open link keep separate recipient semantics", async () => {
