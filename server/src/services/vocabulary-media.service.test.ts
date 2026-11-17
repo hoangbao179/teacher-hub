@@ -185,15 +185,15 @@ test("search uses cache, or persists a 24-hour safe result on miss", async () =>
   assert.equal(missResult.cacheExpiresAt, "2026-07-27T00:00:00.000Z");
 });
 
-test("search forwards page and defaults to eight results per page", async () => {
+test("picker prefetches 24 photos while returning eight per page", async () => {
   const value = makeService();
   const result = await value.service.search({ query: "Apple", page: 2, pageSize: 8, mediaType: "PHOTO" });
   assert.equal(result.page, 2);
   assert.equal(result.pageSize, 8);
   assert.deepEqual(value.providerInput(), {
     query: "apple",
-    page: 2,
-    pageSize: 8,
+    page: 1,
+    pageSize: 24,
     mediaType: "PHOTO",
     orientation: "ALL",
     safeSearch: true,
